@@ -1,0 +1,215 @@
+/*Light mode */
+body {
+    background: #FFFFF4 !important;
+    color: #00131D;
+}
+
+main a:focus, aside a:focus, footer a:focus  {
+    outline: 3px solid #00131D;
+	transition: outline-offset .2s linear !important;
+    }
+
+div#titleLink, div#logo  {
+    border: 0.2rem solid black;
+}
+
+/* Logo things */
+a#home {
+    color: white !important;
+}
+a#home:hover,
+a#home:focus {
+    color: #FCBC00 !important;
+}
+a#home:focus {
+    outline: none;
+    border-bottom: 0.2rem white dotted;
+}
+/* Logo things ends */
+
+section.related {
+    border-bottom: 0.1rem solid #002E3B;
+	
+}
+section.related:last-child {
+	    border-bottom: 0rem solid #002E3B;
+}
+
+
+a,
+a:visited {
+    color: #005051;
+}
+
+a:hover {
+    color: #8D3970;
+	text-decoration: none;
+}
+#myBtn, #myBtn2, #myBtn:active, #myBtn2:active {
+    background-color: #002E3B;
+    color: white;
+    border: 1px solid #9FB1BD;
+}
+
+#myBtn:hover,
+#myBtn:focus, #myBtn2:hover, #myBtn2:focus{
+    color: #231F20;
+    background-color: white;
+    box-shadow: 0 0 0 2pt #005C84;
+    border: 1px solid #FCBC00;
+}
+
+/* skip link */
+.skip-link {
+    color: black;
+    background-color: #FFFFEE;
+    border: 1px solid black;
+    -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+}
+
+.skip-link:focus {
+    border: black solid .25rem;
+    outline: 0px solid #74C9E5;
+}
+
+/* Details and Summary styling */
+details {
+    outline: 0.3rem solid #495961;
+}
+summary:hover {
+    background: #E1E8EC;
+    outline: 0.2rem solid black;
+}
+summary:focus {
+    background: #E1E8EC;
+    outline: 0.2rem solid black;
+}
+summary:active {
+    background: #002E3B;
+    border: 2px solid #E1E8EC;
+}
+summary {
+    border: 2px solid #E1E8EC;
+}
+
+button {
+    color: #231F20;
+    border: 1px solid #E1E8EC;
+}
+
+button:hover,
+button:focus {
+    color: #E1E8EC;
+    background-color: #231F20;
+    box-shadow: 0 0 0 3pt #FCBC00;
+    border: 1px solid #FCBC00;
+}
+
+
+
+.page-wrap {
+    background: #FFFFF4;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.33);
+}
+
+
+.page-header {
+    background-image: url("https://pbs.twimg.com/media/DY-ZVA2XUAAEK3B.png") !important;
+    color: white;
+    border: 0px black solid;
+}
+
+
+
+.page-sidebar {
+    background: #FFFFF4;
+    border: 0px black solid;
+}
+
+.page-nav {
+    background: #FFFFF4;
+    border: 0px black solid;
+}
+
+.page-main {
+    background: #FFFFF4;
+    border: 0px black solid;
+}
+
+.page-footer {
+    background: #FFFFF4;
+    border: 0px black solid;
+}
+
+.topnav {
+    background-color: #FFFFF4;
+}
+
+.topnav a {
+    color: black;
+    border: 0.1rem solid black;
+    margin: 0.1rem;
+    background-color: #E1E8EC;
+}
+
+
+.topnav a.icon {
+    background: #FCBC00;
+}
+
+.topnav a:hover,
+.topnav a:focus,
+.topnav a.active:focus,
+.topnav a.active:hover {
+    background-color: #FFFFF4;
+    color: black;
+    box-shadow: 0 0 0 2pt #005C84;
+	outline: 0.0rem solid #FFFFF4 !important;
+}
+
+
+
+.topnav a.active {
+    background-color: #FCBC00;
+    color: #00131D;
+    border: 0.1rem solid black;
+}
+
+
+
+img.articleImage {
+    border: 2px solid black;
+}
+
+
+
+input:focus {
+    outline: 3px solid #00131D;
+}
+
+
+
+
+
+/*position new box*/
+.wrapper input + label::before {
+    background: #E1E8EC;
+}
+
+
+
+
+/*focus styles*/
+.wrapper input:focus + label::before {
+    box-shadow: 0 0 0 3px #00131D;
+}
+
+
+
+
+/*focus styles*/
+.wrapper2 input:focus + label::before {
+    box-shadow: 0 0 0 3px #00131D;
+}

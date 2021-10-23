@@ -1,0 +1,616 @@
+/* Components - NO COLOURS*/
+html {
+  scroll-behavior: smooth;
+}
+
+/* for high contrast */
+
+*:focus {
+  outline: 3px solid transparent;
+}
+
+/* Panel */
+#panel {
+	position: fixed;
+	bottom: 40px;
+	right: 30px;
+	z-index: 99;
+}
+
+.panelButton {margin: 0rem 0em 0rem 0.7rem }
+
+/* Related images */
+aside img {
+    width: 100%;
+    object-fit: cover;
+    overflow: hidden;
+}
+
+.relatedPresExample {
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+}
+
+
+
+
+
+/* testing hamburger things */
+#arrow {display:none;}
+
+/* hamburger test ends */
+/* Links */
+a {
+    font-weight: bold;
+}
+a:hover {
+    text-decoration: none;
+}
+/* Links Ends */
+
+/* Footer things */
+
+div#aboutFoot {
+    float: right;
+}
+div#YouTubeChannelFoot,
+div#twitterFoot,div#AccessibilityFoot {
+    float: left;
+}
+
+
+div#YouTubeChannelFoot,
+div#twitterFoot,
+div#AccessibilityFoot,
+div#aboutFoot {
+        padding: 5px;
+    
+}
+/* Footer things ENDS */
+
+/* Side panel stuff */
+ul.relUL {
+    list-style-type: none;
+    padding: 0;    
+}
+
+aside.related {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+section.related {
+     margin: 0.5rem;
+}
+/* Side panel stuff ENDS */
+
+@media (max-width: 800px) {
+    .page-wrap {
+        grid-template-columns: 100%;
+        grid-template-rows: auto;
+    }
+    .page-wrap > * {
+        grid-column: 1/-1 !important;
+        grid-row: auto !important;
+    }
+	div#titleLink {display:none;}
+	div#aboutFoot {
+    float: none;
+}
+div#YouTubeChannelFoot,
+div#twitterFoot,div#AccessibilityFoot {
+    float: none;
+}
+#relPres {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-gap: 1rem;
+}
+	
+}
+@media screen and (max-width: 600px) {
+    .topnav a:not(:first-child) {
+        display: none;
+    }
+    .topnav a.icon {
+        float: right;
+        display: block;
+    }
+	
+}
+
+@media screen and (max-width: 600px) {
+    .topnav.responsive {
+        position: relative;
+    }
+    .topnav.responsive .icon {
+        position: absolute;
+        right: 0;
+        top: 0;
+    }
+    .topnav.responsive a {
+        float: none;
+        display: block;
+        text-align: left;
+		margin-bottom: 0.7rem;
+    }
+}
+
+@media only screen and (max-width: 500px) {
+        #myBtn {
+        /* display: none !important; */
+    }
+}
+a#webTitle {
+    /* box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, .53); */
+    padding: 10px;
+    /* border-radius: 0.5em; */
+    color: white;
+    text-decoration: none;
+		font-weight: normal;
+}
+div#logo
+{
+    float: left;
+}
+
+
+
+div#titleLink 
+{
+    float: right;
+	  text-align: right;
+}
+
+div#titleLink, div#logo  {
+
+    border: 0.2rem solid black;
+    box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, .70);
+padding: 0.5rem;
+    border-radius: 0.5rem;
+}
+* {
+overflow-wrap: break-word;}
+h1 {
+    font-size: 2.5em;
+}
+
+
+a:focus {
+	outline-offset: 5px;
+	transition: all 0.3s ease-in-out !important;
+}
+
+a,
+a:visited {
+	font-weight: bold;
+}
+a {
+    font-weight: bold;
+}
+a:hover {
+    text-decoration: none;
+}
+
+* {
+	box-sizing: border-box;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+#myBtn {
+	display: none;
+
+	font-size: 18px;
+	border: none;
+	outline: none;
+	color: white;
+	cursor: pointer;
+	padding: 15px;
+	border-radius: 0.5rem;
+	  float: left;
+}
+
+#myBtn:hover,
+#myBtn:focus {
+	transition: .3s linear;
+	cursor: pointer;
+	outline: none !important;
+}
+
+#myBtn2 {
+	display: none;
+
+	font-size: 18px;
+	border: none;
+	outline: none;
+	color: white;
+	cursor: pointer;
+	padding: 15px;
+	border-radius: 0.5rem;
+	  float: right;
+}
+
+#myBtn2:hover,
+#myBtn2:focus {
+	transition: .3s linear;
+	cursor: pointer;
+	outline: none !important;
+}
+
+
+/* skip link */
+
+.skip-link {
+	position: absolute;
+	padding: 1.5rem 2rem;
+	font-weight: bold;
+	z-index: 10;
+	transform: translate3d(.125rem, -6rem, 0);
+	transition: transform .3s ease-out;
+	text-decoration: underline;
+}
+
+.skip-link:focus {
+	transform: translate3d(1.25rem, 1.25rem, 0);
+	transition: transform .3s ease-out;
+}
+/* Video */
+.videoWrapper {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+}
+.videoWrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.5rem;
+}
+
+/* Details and Summary styling */
+
+details {
+	border-radius: 0.5rem;
+	padding: .5em .5em 0;
+	margin: 1rem;
+	cursor: pointer;
+}
+
+summary {
+	font-weight: bold;
+	margin: -.5em -.5em 0;
+	padding: .5em;
+	text-decoration: underline;
+	border-radius: 0.5rem;
+}
+
+summary:hover {
+	transition: .3s linear;
+	text-decoration: none;
+}
+
+summary:focus {
+	text-decoration: none;
+}
+
+details[open] {
+	padding: .5em;
+}
+
+details[open] summary {
+	margin-bottom: .5em;
+}
+
+
+div#login {
+    float: right;
+}
+
+button {
+    border-radius: 0.5rem;
+    vertical-align: middle;
+    padding: 0.5rem 1rem 0.5rem 1rem;
+    font-size: 1rem;
+}
+
+button:hover,
+button:focus {
+    transition: .3s linear;
+    cursor: pointer;
+    outline: none !important;
+}
+
+button:active {
+    transform: translateY(4px) !important;
+}
+
+body {
+    padding: 5px;
+    height: 100vh;
+    margin: 0;
+    font: 500 100% system-ui, sans-serif;
+    text-transform: none;
+}
+
+.page-wrap {
+    height: calc(170vh - 10px);
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.33);
+    display: grid;
+    grid-template-columns: minmax(10px, 1fr) minmax(10px, 3fr);
+    grid-template-rows: min-content min-content 1fr min-content;
+    gap: 1px;
+}
+.page-wrap > * {
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.page-header {
+    grid-column: 1/-1;
+    background-position: center;
+    /* Center the image */
+    background-repeat: no-repeat;
+    /* Do not repeat the image */
+    background-size: cover;
+    /* Resize the background image to cover the entire container */
+    font-size: 2rem;
+}
+/* Old
+.page-sidebar {
+    grid-column: 1/2;
+    grid-row: 2/4;
+}
+
+.page-nav {
+    grid-column: 2/3;
+}
+
+.page-main {
+    grid-column: 2/3;
+}
+
+.page-footer {
+    grid-column: 1/-1;
+}
+*/
+.page-sidebar {
+    grid-column: 1/2;
+    grid-row: 3/4;
+}
+
+.page-nav {
+    grid-column: 1/3;
+}
+
+.page-main {
+    grid-column: 2/3;
+}
+
+.page-footer {
+    grid-column: 1/-1;
+}
+details p {
+    text-transform: none;
+    text-align: left;
+}
+
+div#myTopnav {
+    padding-top: 0.1rem;
+    padding-bottom: 0.1rem;
+}
+
+.topnav {
+    overflow: hidden;
+}
+
+.topnav a {
+    float: left;
+    display: block;
+    text-align: left;
+    padding: 14px 16px;
+    font-size: 17px;
+    border-radius: 0.5rem;
+	margin-right: 0.3rem;
+	
+}
+
+.topnav a:hover,
+.topnav a:focus {
+    text-decoration: none;
+}
+
+
+.topnav a.active {
+    color: #00131D;
+}
+
+.topnav .icon {
+    display: none;
+}
+.topnav a.icon {
+    padding: 10px ;
+    border-radius: 0.5rem;
+    border: 0.1rem black double !important;
+    margin-right: 0.3rem;
+    margin-top: 0.42rem;
+}
+
+
+
+img.articleImage {
+    width: 20%;
+    float: right;
+    margin: 10px;
+    border-radius: 0.5rem;
+}
+
+a:focus {
+	transition: outline-offset .2s linear !important;
+}
+a {
+    font-weight: bold;
+}
+a:hover {
+    text-decoration: none;
+}
+input:focus {
+	transition: outline-offset .2s linear !important;
+}
+
+html {
+  box-sizing: border-box;
+}
+
+
+/* Inherit box-sizing to make it easier to change the property
+ * for components that leverage other behavior.*/
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+/*style form to limit width and highlight the long label*/
+form {
+
+    max-width: 750px;
+}
+
+/*style wrapper to give some space*/
+.wrapper {
+    position: relative;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+}
+
+/*style label to give some more space*/
+.wrapper label {
+    display: block;
+    padding: 12px 0 12px 48px;
+}
+
+/*style and hide original checkbox*/
+.wrapper input {
+  height: 40px;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  width: 40px;
+}
+
+/*position new box*/
+.wrapper input + label::before {
+  border: 2px solid;
+  content: "";
+  height: 40px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 40px;
+    background: #E1E8EC;
+}
+
+/*svg background styles*/
+.wrapper input + label::after {
+  content: "";
+  opacity: 0;
+  background-image: url("https://s3-us-west-2.amazonaws.com/s.cdpn.io/210284/check.svg");
+  background-repeat: no-repeat;
+  height: 20px;
+  width: 20px;
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/*reveal check for 'on' state*/
+.wrapper input:checked + label::after {
+  opacity: 1;
+}
+
+/*focus styles*/
+.wrapper input:focus + label::before {
+  outline: 3px solid transparent; /* For Windows high contrast mode. */
+}
+
+
+
+/*style wrapper2 to give some space*/
+.wrapper2 {
+    position: relative;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+}
+
+/*style label to give some more space*/
+.wrapper2 label {
+    display: block;
+    padding: 12px 0 12px 48px;
+}
+
+/*style and hide original checkbox*/
+.wrapper2 input {
+  height: 40px;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  width: 40px;
+}
+
+/*position new box*/
+.wrapper2 input + label::before {
+  border: 2px solid;
+  content: "";
+  height: 40px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 40px;
+  border-radius: 50%;
+}
+
+/*radio pseudo element styles*/
+.wrapper2 input + label::after {
+  content: "";
+  opacity: 0;
+  border: 10px solid;
+  border-radius: 50%;
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/*reveal check for 'on' state*/
+.wrapper2 input:checked + label::after {
+  opacity: 1;
+}
+
+/*focus styles*/
+.wrapper2 input:focus + label::before {
+  outline: 3px solid transparent; /* For Windows high contrast mode. */
+}
+
+/* For those who prefer reduced motion */
+
+@media (prefers-reduced-motion) {
+	.skip-link,
+	.skip-link:focus,
+	summary:focus,
+	summary:hover,
+	button:hover,
+	button:focus,
+	a:focus {
+		transition-duration: 0s;
+	}
+	html {
+  scroll-behavior: auto;
+}
+	
+}
+
