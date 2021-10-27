@@ -36,7 +36,7 @@ section.related:last-child {
 
 @media screen and (max-width: 600px) {
 section.related:last-child {
-       border-bottom: 0.1rem solid #758D9A;
+       border-bottom: 0.1rem solid #758D9A !important;
 
 }
 	
