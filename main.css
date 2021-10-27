@@ -3,6 +3,20 @@ html {
   scroll-behavior: smooth;
 }
 
+/* article styling */
+article {
+  max-width: 80ch;
+  padding: 0rem 2rem 3rem 1rem;
+  margin: auto;
+  line-height: 1.75;
+  font-size: 1.25rem;
+}
+
+p,ul,ol {
+  margin-bottom: 2rem;
+}
+
+
 /* for high contrast */
 
 *:focus {
