@@ -34,13 +34,7 @@ section.related:last-child {
 
 }
 
-@media screen and (max-width: 600px) {
-section.related:last-child {
-       border-bottom: 0.1rem solid #758D9A !important;
 
-}
-	
-}
 
 
     body {
@@ -159,6 +153,7 @@ body {
 
 .page-footer {
     background: #231F20;
+	border-top: 0.2rem #758D9A solid;
 }
 
 
