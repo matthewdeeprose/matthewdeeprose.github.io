@@ -6,7 +6,7 @@ html {
 /* article styling */
 article {
   max-width: 80ch;
-  padding: 0rem 2rem 3rem 1rem;
+  padding: 0rem 2rem 0rem 2rem;
   margin: auto;
   line-height: 1.75;
   font-size: 1.25rem;
@@ -349,7 +349,7 @@ body {
 }
 
 .page-wrap {
-    height: calc(170vh - 10px);
+    height: calc(10vh - 10px);
     box-shadow: 0 0 3px rgba(0, 0, 0, 0.33);
     display: grid;
     grid-template-columns: minmax(10px, 1fr) minmax(10px, 3fr);
