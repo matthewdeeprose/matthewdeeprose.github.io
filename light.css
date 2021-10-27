@@ -4,6 +4,12 @@ body {
     color: #00131D;
 }
 
+/* Presentations */
+.presentations {
+    border: 1px solid grey;
+    background: #f6f3f3;
+}
+
 main a:focus, aside a:focus, footer a:focus  {
     outline: 3px solid #00131D;
 	transition: outline-offset .2s linear !important;
