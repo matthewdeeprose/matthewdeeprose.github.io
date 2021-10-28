@@ -4,6 +4,10 @@ body {
     color: #00131D;
 }
 
+	#Example {
+    border: 0.2rem solid #00131D;
+}
+
 /* Presentations */
 .presentations {
     border: 1px solid grey;

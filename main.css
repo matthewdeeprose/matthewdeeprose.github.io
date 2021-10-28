@@ -11,8 +11,11 @@ html {
     line-height: 1.75;
 }
 
-.gridWrap {
-
+#Example {
+    min-width: 17rem;
+    max-width: 25rem;
+    padding: 1rem;
+    font-family: courier;
 }
 
 /* article styling */

@@ -1,5 +1,13 @@
 @media (prefers-color-scheme: dark) {
 	
+	#Example {
+    border: 0.2rem solid #E1E8EC !important;
+}
+
+	.videoWrapper iframe {
+border: 0.3rem solid #E1E8EC;
+}
+	
 	.presentations {
     border: 0.1rem solid #495961;
     background: none;
