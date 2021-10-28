@@ -8,15 +8,11 @@ html {
     border-radius: 0.5rem;
     padding: 0rem 1rem 1rem 1rem ;
     margin: 0.5rem;
-  line-height: 1.75;
+    line-height: 1.75;
 }
 
 .gridWrap {
-    margin:auto;
-  display: grid;
-  align-items: center;
-  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
-        gap: 1rem;
+
 }
 
 /* article styling */
