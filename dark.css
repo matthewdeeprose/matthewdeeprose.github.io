@@ -1,6 +1,9 @@
 @media (prefers-color-scheme: dark) {
 	
-	
+	.presentations {
+    border: 0.1rem solid #495961;
+    background: none;
+}
 
 main a:focus, aside a:focus, footer a:focus {
 	outline: 0.3rem solid #4BB694 !important;
