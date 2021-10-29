@@ -7,11 +7,15 @@ body {
 	#Example {
     border: 0.2rem solid #00131D;
 }
+	.videoWrapper iframe {
+border: 0.3rem solid #495961;
+}
+	
 
 /* Presentations */
 .presentations {
-    border: 1px solid grey;
-    background: #f6f3f3;
+    border: 1px solid #495961;
+    background: #E1E8EC;
 }
 
 main a:focus, aside a:focus, footer a:focus  {
@@ -65,9 +69,8 @@ a:hover {
 #myBtn:hover,
 #myBtn:focus, #myBtn2:hover, #myBtn2:focus{
     color: #231F20;
-    background-color: white;
+    background-color: #FEFFF4;
     box-shadow: 0 0 0 2pt #005C84;
-    border: 1px solid #FCBC00;
 }
 
 /* skip link */

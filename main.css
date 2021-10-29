@@ -274,6 +274,14 @@ a:hover {
 	outline: none !important;
 }
 
+@media screen and (max-width: 500px) {
+    #panel {
+	bottom: 1rem;
+	right: 1rem;}
+	#myBtn, #myBtn2 {
+	font-size: 1px;
+	padding: 1px;}
+}
 
 /* skip link */
 
