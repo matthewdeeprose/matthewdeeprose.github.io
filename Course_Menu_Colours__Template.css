@@ -1,0 +1,23 @@
+/* Change colour of subheader */
+ #courseMenuPalette h3 span { 
+color: #TEXT_COLOUR !important; } 
+
+/* Set menu item text to #FFFFFF */ 
+#courseMenuPalette div.navPaletteContent ul li a, 
+#courseMenuPalette h3 a, 
+#previewCourseMenu h3 a, 
+.navPaletteContent h3 a.submenuLink:before, .
+navPaletteContent h3 a.submenuLink_active:before,
+ #courseMenuPalette div.navPaletteContent ul li a span,
+ #courseMenuPalette .navPaletteContent .subhead { 
+color:  #TEXT_COLOUR; } 
+
+/* Set menu background */ 
+#courseMenuPalette div.navPaletteContent, 
+#courseMenuPalette_contents li, 
+#courseMenuPalette_paletteTitleHeading h3 { 
+background-color: #BACKGROUND_COLOUR !important; } 
+
+/* Hide colour menu settings */
+ li#menuDesignElement { 
+display: none; } 
