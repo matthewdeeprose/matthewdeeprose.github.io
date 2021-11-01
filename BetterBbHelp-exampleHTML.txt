@@ -1,0 +1,6 @@
+
+
+<p id="YBhelp">
+<img src="${resourcePath}/help.png" alt="Help and direction icon" align="right" height="60">
+<b>Need help with __________?</b><br />
+<br />Review our guide: <a href="https://yourlink.here" target="_blank" title="Name of your page">Name of your guide</a>.</p>

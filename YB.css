@@ -1,0 +1,16 @@
+#YBhelp { 
+border-radius: 0px; 
+margin: 5px; 
+background: #FFD; 
+padding: 10px; 
+border: 3px solid grey; 
+font-size: 100%; 
+margin-bottom: 30px; } 
+
+#YBhelp a:hover, 
+#YBhelp a:focus { 
+color: #fff !important; 
+text-decoration: underline !important; 
+background-color: #231F20 !important; 
+transition: ease-in-out 0.5s !important; 
+outline: 0px; } 
