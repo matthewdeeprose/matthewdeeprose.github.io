@@ -4,13 +4,16 @@ body {
     color: #00131D;
 }
 
-	#Example {
+#Example {
     border: 0.2rem solid #00131D;
 }
-	.videoWrapper iframe {
-border: 0.3rem solid #495961;
+.videoWrapper iframe {
+    border: 0.3rem solid #495961;
 }
-	
+/* Post source */
+dd.from {
+    color: #002E3B;
+}
 
 /* Presentations */
 .presentations {
@@ -18,12 +21,15 @@ border: 0.3rem solid #495961;
     background: #fefeef;
 }
 
-main a:focus, aside a:focus, footer a:focus  {
+main a:focus,
+aside a:focus,
+footer a:focus {
     outline: 3px solid #00131D;
-	transition: outline-offset .2s linear !important;
-    }
+    transition: outline-offset .2s linear !important;
+}
 
-div#titleLink, div#logo  {
+div#titleLink,
+div#logo {
     border: 0.2rem solid black;
 }
 
@@ -40,13 +46,11 @@ a#home:focus {
     border-bottom: 0.2rem white dotted;
 }
 /* Logo things ends */
-
 section.related {
     border-bottom: 0.1rem solid #002E3B;
-	
 }
 section.related:last-child {
-	    border-bottom: 0rem solid #002E3B;
+    border-bottom: 0rem solid #002E3B;
 }
 
 
@@ -58,16 +62,21 @@ a:visited {
 
 a:hover {
     color: #8D3970;
-	text-decoration: none;
+    text-decoration: none;
 }
-#myBtn, #myBtn2, #myBtn:active, #myBtn2:active {
+#myBtn,
+#myBtn2,
+#myBtn:active,
+#myBtn2:active {
     background-color: #002E3B;
     color: white;
     border: 1px solid #9FB1BD;
 }
 
 #myBtn:hover,
-#myBtn:focus, #myBtn2:hover, #myBtn2:focus{
+#myBtn:focus,
+#myBtn2:hover,
+#myBtn2:focus {
     color: #231F20;
     background-color: #FEFFF4;
     box-shadow: 0 0 0 2pt #005C84;
@@ -155,7 +164,7 @@ button:focus {
 .page-footer {
     background: #FFFFF4;
     border: 0px black solid;
-	border-top: 0.2rem #002E3B solid;
+    border-top: 0.2rem #002E3B solid;
 }
 
 .topnav {
@@ -181,7 +190,7 @@ button:focus {
     background-color: #FFFFF4;
     color: black;
     box-shadow: 0 0 0 2pt #005C84;
-	outline: 0.0rem solid #FFFFF4 !important;
+    outline: 0.0rem solid #FFFFF4 !important;
 }
 
 
