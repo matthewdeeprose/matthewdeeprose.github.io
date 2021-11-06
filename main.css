@@ -191,6 +191,7 @@ section.related {
 }
 	img.articleImage,img.articleImageLeft {
     width: 100% !important;
+	margin-bottom: 1.5rem !important;
 	}
 	    div#titleLink {
         display: none;
@@ -516,14 +517,14 @@ div#myTopnav {
 img.articleImage {
     width: 40%;
     float: right;
-    margin: 10px;
+    margin: 1rem;
     border-radius: 0.5rem;
 }
 
 img.articleImageLeft {
     width: 40%;
     float: left;
-    margin: 10px;
+    margin: 1rem  ;
     border-radius: 0.5rem;
 }
 
