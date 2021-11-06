@@ -139,9 +139,7 @@ section.related {
         grid-column: 1/-1 !important;
         grid-row: auto !important;
     }
-    div#titleLink {
-        display: none;
-    }
+
     div#aboutFoot {
         float: none;
     }
@@ -182,12 +180,23 @@ section.related {
         margin-bottom: 0.7rem;
     }
     dt {
-        margin-bottom: 0.5rem;
+        margin-bottom: 1rem;
     }
 
     dd {
         margin: 0;
     }
+	dd.from {
+    margin-bottom: 1.5rem !important;
+}
+	img.articleImage,img.articleImageLeft {
+    width: 100% !important;
+	}
+	    div#titleLink {
+        display: none;
+    }
+
+
 }
 
 @media only screen and (max-width: 500px) {
@@ -589,7 +598,7 @@ form {
 .wrapper input + label::after {
     content: "";
     opacity: 0;
-    background-image: url("https://s3-us-west-2.amazonaws.com/s.cdpn.io/210284/check.svg");
+    background-image: url("check.svg");
     background-repeat: no-repeat;
     height: 20px;
     width: 20px;

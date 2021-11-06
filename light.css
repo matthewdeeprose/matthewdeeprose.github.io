@@ -139,7 +139,7 @@ button:focus {
 
 
 .page-header {
-    background-image: url("https://pbs.twimg.com/media/DY-ZVA2XUAAEK3B.png") !important;
+    background-image: url("lightbg.png") !important;
     color: white;
     border: 0px black solid;
 }
