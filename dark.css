@@ -208,7 +208,7 @@ body {
 
 
 
-img.articleImage {
+img.articleImage, img.articleImageLeft {
     border: 2px solid white;
 }
 
