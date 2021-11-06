@@ -505,8 +505,15 @@ div#myTopnav {
 
 
 img.articleImage {
-    width: 20%;
+    width: 40%;
     float: right;
+    margin: 10px;
+    border-radius: 0.5rem;
+}
+
+img.articleImageLeft {
+    width: 40%;
+    float: left;
     margin: 10px;
     border-radius: 0.5rem;
 }
