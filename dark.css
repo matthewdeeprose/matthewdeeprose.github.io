@@ -1,5 +1,9 @@
 @media (prefers-color-scheme: dark) {
-	
+	/* Post source */
+dd.from {
+    color: #9FB1BD;
+}
+
 	#Example {
     border: 0.2rem solid #E1E8EC !important;
 }
