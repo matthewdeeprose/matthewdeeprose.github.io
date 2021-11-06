@@ -7,7 +7,9 @@ html {
 dd.from {
     font-family: monospace;
   font-size: 1rem;
-margin: 0.2rem 0 1.2rem 1rem;}
+margin-top: 1.2rem ;
+margin-bottom: 1.2rem;
+}
 
 /* Presentations */
 .presentations {
@@ -177,6 +179,7 @@ div#twitterFoot,div#AccessibilityFoot {
         text-align: left;
 		margin-bottom: 0.7rem;
     }
+	dl, dt, dd { margin:0;}
 }
 
 @media only screen and (max-width: 500px) {
