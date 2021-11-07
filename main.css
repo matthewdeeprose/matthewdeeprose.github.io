@@ -2,6 +2,73 @@
 html {
     scroll-behavior: smooth;
 }
+/* Cards */
+
+.cards {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  flex-wrap: wrap;
+  list-style: none;
+    border-radius: 3px;
+  margin: 0;
+  padding: 0;
+    border-radius: .6em;
+}
+
+.cards > * {
+  flex: 0 1 25em;
+
+}
+
+.card {
+  margin: .75em;
+  padding: .75em;
+    border-radius: 0.5rem;
+}
+}
+  
+  
+/* Start of moving the image above the heading */
+
+.reorder {
+  display: flex;
+  flex-direction: column;
+}
+
+.reorder img {
+   max-width: 100%;
+   order: -1;
+}
+
+/* End of moving the image above the heading */
+
+.card > * a, .card > .cta {
+  display: block;
+}
+
+.card h2 > a {
+  text-decoration: none;
+  color: inherit;
+}
+
+
+.linkify:hover {
+  cursor: pointer;
+}
+
+.card img {
+  width: 100%;
+  height: auto;
+}
+
+.cards .isfocused {
+  outline: 0;}
+  
+.card .cta {
+  text-decoration: underline;
+  font-weight: bold;
+}
 
 /* Post source */
 dd.from {
@@ -27,7 +94,7 @@ dd.from {
 }
 
 /* article styling */
-article {
+article.standard {
     max-width: 80ch;
     padding: 0rem 2rem 0rem 2rem;
     margin: auto;
@@ -35,7 +102,7 @@ article {
     font-size: 1.25rem;
 }
 
-article h1 {
+article.standard h1 {
     line-height: 1.1;
     font-size: 2.5rem;
 }
