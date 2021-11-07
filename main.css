@@ -228,7 +228,7 @@ section.related {
     div#aboutFoot {
         float: none;
     }
-    div#YouTubeChannelFoot,
+    div#YouTubeChannelFoot, div#SiteMap,
     div#twitterFoot,
     div#AccessibilityFoot {
         float: none;
