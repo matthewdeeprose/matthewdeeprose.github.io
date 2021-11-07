@@ -3,6 +3,24 @@ body {
     background: #FFFFF4 !important;
     color: #00131D;
 }
+/* cards */
+.card {
+  border: 2px solid #9FB1BD;
+  background-color: #fff;
+}
+
+.linkify:hover {
+  box-shadow: 0 0 0 3px #005051;
+}
+
+.cards .isfocused {
+   box-shadow: 0 0 0 3px #005051;
+}
+
+.card .cta {
+  color: #005051;
+}
+
 
 #Example {
     border: 0.2rem solid #00131D;

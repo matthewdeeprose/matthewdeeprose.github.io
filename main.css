@@ -2,6 +2,24 @@
 html {
     scroll-behavior: smooth;
 }
+/* Front article */
+article.front {
+    max-width: 120ch;
+    margin-left: 1rem;
+    margin-right: 1rem;
+    line-height: 1.5;
+    font-size: 1.25rem;
+}
+
+article.front h1 {
+    line-height: 1.1;
+    font-size: 2.5rem;
+}
+
+aside li{
+  margin: 10px 0;
+}
+
 /* Cards */
 
 .cards {
