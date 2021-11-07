@@ -35,14 +35,14 @@ aside li{
 }
 
 .cards > * {
-  flex: 0 1 25em;
+  flex: 0 1 20em;
 
 }
 
 .card {
   margin: .75em;
   padding: .75em;
-    border-radius: 0.5rem;
+  border-radius: 0.5rem;
 }
 }
   
