@@ -53,8 +53,8 @@ ul.cards {
 /* Start of moving the image above the heading */
 
 .reorder {
-  display: flex;
-  flex-direction: column;
+  /*display: flex;
+  flex-direction: column; */
 }
 
 .reorder img {
