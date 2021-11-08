@@ -17,10 +17,12 @@ dd.from {
 
 .linkify:hover {
   box-shadow: 0 0 0 3px #FCBC00;
+  border: 2px solid #231F20;
 }
 
 .cards .isfocused {
    box-shadow: 0 0 0 3px #FCBC00;
+   border: 2px solid #231F20;
 }
 
 
