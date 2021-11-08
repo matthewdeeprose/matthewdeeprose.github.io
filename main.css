@@ -23,28 +23,30 @@ aside li{
 /* Cards */
 
 .cards {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  flex-wrap: wrap;
-  list-style: none;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    list-style: none;
     border-radius: 3px;
-  margin: 0;
-  padding: 0;
+    margin: 0;
+    padding: 0;
     border-radius: .6em;
 }
 
 .cards > * {
-  flex: 0 1 20em;
-
+    flex: 0 1 20em;
+    flex-grow: 1;
 }
 
 .card {
-  margin: .75em;
-  padding: .75em;
-  border-radius: 0.5rem;
+    margin: 0.75rem;
+    padding: 0.75rem border-radius: 0.5rem;
 }
+ul.cards {
+    margin-bottom: 0rem;
 }
+
   
   
 /* Start of moving the image above the heading */
