@@ -5,18 +5,18 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
 
-<title>Toward amazing accessibility</title>
+<title>Presentation Template</title>
 <link rel="stylesheet" href="light.css">
 <link rel="stylesheet" href="main.css">
 <link rel="stylesheet" href="dark.css">
 <link rel="stylesheet" href="print.css" media="print">
 
 
-<meta property="og:title" content="Toward amazing accessibility - Matthew Deeprose">
-<meta property="og:description" content="IT departments in the Higher Education sector and elsewhere know they must commit to accessibility, but how can we take this ambition and embed it within our operations? I attempt to show how we could start that journey through shifting left.">
+<meta property="og:title" content="Presentation Template - Matthew Deeprose">
+<meta property="og:description" content="">
 <meta property="og:locale" content="en_GB">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://matthewdeeprose.github.io/amazing.html">
+<meta property="og:url" content="https://matthewdeeprose.github.io/pres.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
@@ -50,7 +50,7 @@
   <a href="posts.html">Blog Posts</a>
   <a href="projects.html">Projects</a>
   <a href="about.html">About</a>
-  <a id="menu" href="javascript:void(0);"  aria-label="Menu" class="icon" role="button" aria-haspopup="menu" onclick="menuAction()">
+  <a id="menu" href="javascript:void(0);"  aria-label="Menu"  aria-expanded="false" class="icon" role="button" aria-haspopup="menu" onclick="menuAction()">
        <span id="hamburger">
 	   <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">  <title id="hamSVGTitle">Menu</title>
   <desc id="hamSVGDesc">Select to open the menu</desc>
@@ -85,7 +85,7 @@
   <main class="page-main" id="main">
 
     <article class="standard">
-  	<h1 id="top">Toward amazing accessibility!</h1>
+  	<h1 id="top">Presentation template</h1>
 
 	
     </article>
@@ -175,13 +175,20 @@
 
 <script>
 function menuAction() {
-  let x = document.getElementById("myTopnav");
-  if (x.className === "topnav") {
-    x.className += " responsive";
-	document.getElementById('homeMenu').focus();
-  } else {
-    x.className = "topnav";
-  }
+    let x = document.getElementById("myTopnav");
+    if (x.className === "topnav") {
+        x.className += " responsive";
+        document.getElementById('homeMenu').focus();
+    } else {
+        x.className = "topnav";
+    }
+    let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+    if (menuAriaAttrib == "true") {
+        menuAriaAttrib = "false"
+    } else {
+        menuAriaAttrib = "true"
+    }
+    document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
 }
 // Responsive menu hamburger changes
 // Set constant

@@ -50,7 +50,7 @@
   <a href="posts.html">Blog Posts</a>
   <a href="projects.html">Projects</a>
   <a href="about.html">About</a>
-  <a id="menu" href="javascript:void(0);"  aria-label="Menu" class="icon" role="button" aria-haspopup="menu" onclick="menuAction()">
+  <a id="menu" href="javascript:void(0);"  aria-label="Menu"  aria-expanded="false" class="icon" role="button" aria-haspopup="menu" onclick="menuAction()">
        <span id="hamburger">
 	   <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">  <title id="hamSVGTitle">Menu</title>
   <desc id="hamSVGDesc">Select to open the menu</desc>
@@ -1135,13 +1135,20 @@ Reviewing a design for accessibility</a>
 
 <script>
 function menuAction() {
-  let x = document.getElementById("myTopnav");
-  if (x.className === "topnav") {
-    x.className += " responsive";
-	document.getElementById('homeMenu').focus();
-  } else {
-    x.className = "topnav";
-  }
+    let x = document.getElementById("myTopnav");
+    if (x.className === "topnav") {
+        x.className += " responsive";
+        document.getElementById('homeMenu').focus();
+    } else {
+        x.className = "topnav";
+    }
+    let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+    if (menuAriaAttrib == "true") {
+        menuAriaAttrib = "false"
+    } else {
+        menuAriaAttrib = "true"
+    }
+    document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
 }
 // Responsive menu hamburger changes
 // Set constant
