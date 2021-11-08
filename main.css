@@ -2,6 +2,12 @@
 html {
     scroll-behavior: smooth;
 }
+#banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 /* Front article */
 article.front {
     max-width: 100ch;
@@ -321,12 +327,18 @@ div#titleLink {
 
 div#titleLink,
 div#logo {
-
     border: 0.2rem solid black;
     box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, .70);
-    padding: 0.5rem;
+    
     border-radius: 0.5rem;
 }
+div#logo {
+	padding: 0.5rem;
+}
+div#titleLink {
+    padding: 1rem;
+}
+
 * {
     overflow-wrap: break-word;
 }
