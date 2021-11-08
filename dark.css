@@ -6,8 +6,12 @@ dd.from {
 
 /* cards */
 
+.card img {
+  /* border: 2px solid #231F20; */
+}
+
 .card {
-  border: 2px solid #495961;
+  border: 2px solid #FFFFFF;
   background-color: #00131D;
 }
 
