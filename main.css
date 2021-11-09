@@ -416,7 +416,8 @@ a:hover {
     #myBtn,
     #myBtn2 {
         font-size: 1px;
-        padding: 1px;
+        padding: 0.2rem;
+        margin-left: 1.5rem;
     }
 }
 
