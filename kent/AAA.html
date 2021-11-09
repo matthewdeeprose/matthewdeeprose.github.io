@@ -1,0 +1,419 @@
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1" charset="ISO-8859-1">
+<title>Examples of AAA</title>
+
+<div id="Return">    
+<p><a href="matrix.html">Return to colour matrix.</a></p>
+</div>
+<style>
+/* Responsive */
+table,
+#return {
+    font-size: 0.7rem !important;
+}
+
+@media only screen and (min-width: 468px) {
+    table,
+    #return {
+        font-size: 0.9rem !important;
+    }
+}
+
+@media only screen and (min-width: 668px) {
+    table,
+    #return {
+        font-size: 0.9rem !important;
+    }
+}
+
+@media only screen and (min-width: 768px) {
+    table,
+    #return {
+        font-size: 1rem !important;
+    }
+}
+@media only screen and (max-width: 468px) {
+#return {
+    bottom: 5;
+    padding: 0rem 0.1rem 0rem 0.1rem;
+}
+}
+@media only screen and (min-width: 1068px) {
+    table {
+        font-size: 2rem !important;
+    }
+}
+/* Style the floating return to matrix box */
+#return {
+    position: fixed;
+    height: auto;
+    width: auto;
+    background: #FFF;
+    border: 3px solid #000;
+    -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    color: #00131D;
+    padding: 0.1rem 1rem 0.1rem 1rem;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#return a:focus {
+    outline: 2px solid #00131D !important;
+    outline-offset: 0px !important;
+}
+#return a:hover {
+    outline: 2px dotted #00131D !important;
+    outline-offset: 0px !important;
+}
+
+#return a,
+#return a:visited {
+    color: #005C84;
+}
+body {
+    background: #ffffee;
+
+}
+</style>
+<style>
+table {
+    -webkit-box-shadow: 10px 10px 32px -18px rgba(0, 0, 0, 0.75);
+    -moz-box-shadow: 10px 10px 32px -18px rgba(0, 0, 0, 0.75);
+    box-shadow: 10px 10px 32px -18px rgba(0, 0, 0, 0.75);
+}
+</style>
+<div align="center">
+
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#345235</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #345235; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; color: #345235;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">8.73</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#345235</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #345235; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #345235; color: #FFFFFF;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">8.73</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#003882</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #003882; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; color: #003882;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">11.1</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#003882</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #003882; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #003882; color: #FFFFFF;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">11.1</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#671115</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #671115; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; color: #671115;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">12.5</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#671115</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #671115; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #671115; color: #FFFFFF;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">12.5</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#05345C</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #05345C; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; color: #05345C;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">12.7</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#05345C</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #05345C; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #05345C; color: #FFFFFF;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">12.7</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#133520</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #133520; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; color: #133520;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">13.4</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#133520</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #133520; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Text</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #133520; color: #FFFFFF;" colspan="2">Sufficient contrast</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">13.4</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+</div>
