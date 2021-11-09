@@ -1,0 +1,1937 @@
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1" charset="ISO-8859-1">
+<title>Examples of G and above</title>
+
+<div id="Return">    
+<p><a href="matrix.html">Return to colour matrix.</a></p>
+</div>
+<style>
+/* Responsive */
+table,
+#return {
+    font-size: 0.7rem !important;
+}
+
+@media only screen and (min-width: 468px) {
+    table,
+    #return {
+        font-size: 0.9rem !important;
+    }
+}
+
+@media only screen and (min-width: 668px) {
+    table,
+    #return {
+        font-size: 0.9rem !important;
+    }
+}
+
+@media only screen and (min-width: 768px) {
+    table,
+    #return {
+        font-size: 1rem !important;
+    }
+}
+@media only screen and (max-width: 468px) {
+#return {
+    bottom: 5;
+    padding: 0rem 0.1rem 0rem 0.1rem;
+}
+}
+@media only screen and (min-width: 1068px) {
+    table {
+        font-size: 2rem !important;
+    }
+}
+/* Style the floating return to matrix box */
+#return {
+    position: fixed;
+    height: auto;
+    width: auto;
+    background: #FFF;
+    border: 3px solid #000;
+    -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    color: #00131D;
+    padding: 0.1rem 1rem 0.1rem 1rem;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#return a:focus {
+    outline: 2px solid #00131D !important;
+    outline-offset: 0px !important;
+}
+#return a:hover {
+    outline: 2px dotted #00131D !important;
+    outline-offset: 0px !important;
+}
+
+#return a,
+#return a:visited {
+    color: #005C84;
+}
+body {
+    background: #ffffee;
+
+}
+</style>
+<style>
+table {
+    -webkit-box-shadow: 10px 10px 32px -18px rgba(0, 0, 0, 0.75);
+    -moz-box-shadow: 10px 10px 32px -18px rgba(0, 0, 0, 0.75);
+    box-shadow: 10px 10px 32px -18px rgba(0, 0, 0, 0.75);
+}
+</style>
+<div align="center">
+
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E31837; font-size: 350%; color: #D6CFCA;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.06</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; font-size: 350%; color: #E31837;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.06</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#B7AEA9</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #B7AEA9; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #B7AEA9; font-size: 350%; color: #AF0D1A;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.32</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#B7AEA9</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #B7AEA9; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; font-size: 350%; color: #B7AEA9;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.32</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E31837; font-size: 350%; color: #ACE6F8;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.46</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; font-size: 350%; color: #E31837;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.46</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #686260; font-size: 350%; color: #000000;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.50</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#3AC2EF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #3AC2EF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; font-size: 350%; color: #3AC2EF;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.50</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #000000; font-size: 350%; color: #686260;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.50</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#3AC2EF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #3AC2EF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #3AC2EF; font-size: 350%; color: #AF0D1A;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.50</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E31837; font-size: 350%; color: #E1DFDC;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.54</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; font-size: 350%; color: #E31837;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.54</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; font-size: 350%; color: #686260;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.89</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #686260; font-size: 350%; color: #D6CFCA;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">3.89</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; font-size: 350%; color: #686260;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.40</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #686260; font-size: 350%; color: #ACE6F8;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.40</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E31837; font-size: 350%; color: #000000;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.45</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #000000; font-size: 350%; color: #E31837;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.45</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">G</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; font-size: 350%; color: #686260;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.50</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #686260; font-size: 350%; color: #E1DFDC;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.50</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; font-size: 350%; color: #AF0D1A;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.71</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; font-size: 350%; color: #D6CFCA;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.71</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; font-size: 350%; color: #E31837;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.71</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E31837</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E31837; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E31837; font-size: 350%; color: #FFFFFF;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.71</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#B7AEA9</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #B7AEA9; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #B7AEA9; font-size: 350%; color: #810001;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.98</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#B7AEA9</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #B7AEA9; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #810001; font-size: 350%; color: #B7AEA9;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">4.98</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#3AC2EF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #3AC2EF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #810001; font-size: 350%; color: #3AC2EF;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">5.24</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#3AC2EF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #3AC2EF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #3AC2EF; font-size: 350%; color: #810001;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">5.24</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; font-size: 350%; color: #ACE6F8;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">5.32</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; font-size: 350%; color: #AF0D1A;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">5.32</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; font-size: 350%; color: #AF0D1A;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">5.45</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; font-size: 350%; color: #E1DFDC;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">5.45</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; font-size: 350%; color: #686260;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">5.99</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#686260</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #686260; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #686260; font-size: 350%; color: #FFFFFF;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">5.99</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; font-size: 350%; color: #810001;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">7.05</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #810001; font-size: 350%; color: #D6CFCA;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">7.05</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; font-size: 350%; color: #AF0D1A;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">7.25</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#AF0D1A</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #AF0D1A; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #AF0D1A; font-size: 350%; color: #FFFFFF;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">7.25</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; font-size: 350%; color: #810001;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">7.97</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #810001; font-size: 350%; color: #ACE6F8;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">7.97</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; font-size: 350%; color: #810001;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">8.16</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #810001; font-size: 350%; color: #E1DFDC;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">8.16</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#B7AEA9</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #B7AEA9; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #B7AEA9; font-size: 350%; color: #000000;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">9.64</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#B7AEA9</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #B7AEA9; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #000000; font-size: 350%; color: #B7AEA9;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">9.64</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#3AC2EF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #3AC2EF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #3AC2EF; font-size: 350%; color: #000000;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">10.1</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#3AC2EF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #3AC2EF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #000000; font-size: 350%; color: #3AC2EF;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">10.1</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; font-size: 350%; color: #810001;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">10.8</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#810001</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #810001; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #810001; font-size: 350%; color: #FFFFFF;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">10.8</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; font-size: 350%; color: #000000;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">13.6</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#D6CFCA</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #D6CFCA; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #000000; font-size: 350%; color: #D6CFCA;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">13.6</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; font-size: 350%; color: #000000;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">15.4</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#ACE6F8</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #ACE6F8; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #000000; font-size: 350%; color: #ACE6F8;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">15.4</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; font-size: 350%; color: #000000;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">15.7</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#E1DFDC</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #E1DFDC; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #000000; font-size: 350%; color: #E1DFDC;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">15.7</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; font-size: 350%; color: #000000;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">21</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+<div style="overflow-x: auto;">
+<table style="border: 3px solid #000; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 200%; background-color: white; color: #00131D;   line-height: 1.6;">
+<tbody>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Foreground Colour</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Background Colour</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#FFFFFF</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">#000000</td>
+</tr>
+<tr style="text-align: center;">
+<tr style="text-align: center;">
+<td style="background-color: #FFFFFF; border: 1px solid black; width: 30%; padding: 15px;"></td>
+<td style="background-color: #000000; border: 1px solid black; width: 30%; padding: 15px;"></td>
+</tr>
+<tr style="text-align: center;">
+<td colspan="2"><strong>Example Icon</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="background-color: #000000; font-size: 350%; color: #FFFFFF;" colspan="2">&#x2745;</td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>Contrast Ratio</strong></td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;"><strong>WCAG Rating</strong></td>
+</tr>
+<tr style="text-align: center;">
+<td style="border: 1px solid black; width: 30%; padding: 15px;">21</td>
+<td style="border: 1px solid black; width: 30%; padding: 15px;">AAA</td>
+</tr>
+</tbody>
+</table></div>
+<p><br /></p>
+</div>
