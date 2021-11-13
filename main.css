@@ -1,6 +1,14 @@
 /* Components - NO COLOURS*/
+@media (min-width: 60rem) {
+    html {
+        margin: 0 10% 0 10%;
+    }
+}
 html {
     scroll-behavior: smooth;
+	    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+        overflow-y: scroll;
 }
 #banner {
     display: flex;
@@ -615,7 +623,7 @@ div#myTopnav {
     border-radius: 0.5rem;
     border: 0.1rem black double !important;
     margin-right: 0.3rem;
-    margin-top: 0.42rem;
+    /* margin-top: 0.42rem; */
 }
 
 
