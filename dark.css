@@ -53,6 +53,13 @@ border: 0.3rem solid #E1E8EC;
     background: none;
 }
 
+@media only screen and (max-width: 600px) {
+    .presentations {
+        border: 0px solid #495961 !important;
+    }
+}
+
+
 main a:focus, aside a:focus, footer a:focus {
 	outline: 0.3rem solid #4BB694 !important;
 	transition: outline-offset .2s linear !important;
