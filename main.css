@@ -19,9 +19,9 @@ html {
 
 /* Front article */
 article.front {
-    max-width: 100ch;
+   /* max-width: 100ch; */
     margin-left: 1.5rem;
-    margin-right: 1.5rem;
+    margin-right: 1.5rem; 
     line-height: 1.5;
     font-size: 1.25rem;
 }
@@ -50,13 +50,13 @@ aside li{
 }
 
 .cards > * {
-    flex: 0 1 20em;
+    flex: 0 1 17em;
     flex-grow: 1;
 }
 
 .card {
-    margin: 0.75rem;
-    padding: 0.75rem;
+    margin: 0.3rem;
+    padding: 0.5em;
 	border-radius: 0.5rem;
 }
 ul.cards {
@@ -132,9 +132,10 @@ dd.from {
 
 /* article styling */
 article.standard {
-    max-width: 80ch;
-    padding: 0rem 2rem 0rem 2rem;
-    margin: auto;
+   /* max-width: 80ch;
+
+    margin: auto; */
+	    padding: 0rem 2rem 0rem 2rem;
     line-height: 1.5;
     font-size: 1.25rem;
 }
@@ -258,7 +259,7 @@ section.related {
         grid-gap: 1rem;
     }
 }
-@media screen and (max-width: 640px) {
+@media screen and (max-width: 620px) {
     .topnav a:not(:first-child) {
         display: none;
     }
@@ -268,7 +269,7 @@ section.related {
     }
 }
 
-@media screen and (max-width: 640px) {
+@media screen and (max-width: 620px) {
     .topnav.responsive {
         position: relative;
     }
@@ -308,9 +309,21 @@ section.related {
 
 }
 
-@media only screen and (max-width: 500px) {
-    #myBtn {
-        /* display: none !important; */
+@media only screen and (max-width: 300px) {
+    #panel {
+        display: none !important;
+    }
+
+    article.front {
+
+        margin-left: 0rem !important;
+        margin-right: 0rem!important;
+        line-height: 1.5;
+        font-size: 1.25rem;
+    }
+
+    article.standard {
+        padding: 0rem 0rem 0rem 0rem !important;
     }
 }
 a#webTitle {

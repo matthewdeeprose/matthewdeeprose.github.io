@@ -9,7 +9,9 @@ dd.from {
 .card img {
   /* border: 2px solid #231F20; */
 }
-
+.plainBlack{
+  background-color: #231F20;
+}
 .card {
   border: 2px solid #FFFFFF;
   background-color: #00131D;
@@ -80,10 +82,6 @@ section.related:last-child {
 
 
 
-    body {
-        color: #E1E8EC;
-        background: #231F20 !important;
-    }
     a,
     a:visited {
         color: #FCBC00;
@@ -167,7 +165,7 @@ button:focus {
 }
 
 body {
-    background: #231F20;
+    background: #161415 !important;
     color: #E1E8EC;
 }
 
