@@ -1,12 +1,8 @@
 /*Light mode */
-@media (min-width: 60rem) {
-body {
-	background: #F0F2E8 !important;
-}
-}
+
 
 body {
-    color: #00131D;
+    color: #F0F2E8;
 	background: #FFFFF4 !important;
 }
 

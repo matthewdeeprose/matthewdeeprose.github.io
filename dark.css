@@ -1,9 +1,5 @@
 @media (prefers-color-scheme: dark) {
-@media (min-width: 60rem) {
-body {
-	background: #161415  !important;
-}
-}
+
 
 	/* Post source */
 dd.from {
@@ -178,7 +174,7 @@ button:focus {
 }
 
 body {
-    background: #231F20 !important;
+    background: #161415 !important;
     color: #E1E8EC;
 }
 
