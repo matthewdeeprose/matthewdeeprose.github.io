@@ -1,7 +1,16 @@
 /*Light mode */
+@media (min-width: 60rem) {
+   .page-wrap {
+        margin: 0 10% 0 10%;
+    } 
+body {
+	background: #F0F2E8 !important;
+}
+}
+
 body {
     color: #00131D;
-	background: #F0F2E8 !important;
+	background: #FFFFF4 !important;
 }
 
 /* cards */
