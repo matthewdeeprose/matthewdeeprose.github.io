@@ -1,8 +1,5 @@
 /*Light mode */
 @media (min-width: 60rem) {
-   .page-wrap {
-        margin: 0 10% 0 10%;
-    } 
 body {
 	background: #F0F2E8 !important;
 }
@@ -16,7 +13,6 @@ body {
 /* cards */
 .card {
   border: 2px solid #9FB1BD;
-  background-color: #fff;
 }
 
 .linkify:hover {

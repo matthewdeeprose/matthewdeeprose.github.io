@@ -1,15 +1,36 @@
 /* Components - NO COLOURS*/
 @media (min-width: 60rem) {
-   .page-wrap {
+    .page-wrap {
         margin: 0 10% 0 10%;
-    } 
-
+    }
 }
+@media only screen and (max-width: 600px) {
+    article.front {
+
+        margin-left: 0rem !important;
+        margin-right: 0rem!important;
+        line-height: 1.5;
+        font-size: 1.25rem;
+    }
+
+    article.standard {
+        padding: 0rem 0rem 0rem 0rem !important;
+    }
+
+    .presentations {
+        border-radius: 0.5rem;
+        padding: 0;
+        margin: 0rem;
+        line-height: 1.75;
+        border: 0px solid #495961;
+    }
+}
+
 html {
     scroll-behavior: smooth;
-	    -webkit-font-smoothing: antialiased;
+    -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-        overflow-y: scroll;
+    overflow-y: scroll;
 }
 #banner {
     display: flex;
@@ -19,9 +40,9 @@ html {
 
 /* Front article */
 article.front {
-   /* max-width: 100ch; */
+    /* max-width: 100ch; */
     margin-left: 1.5rem;
-    margin-right: 1.5rem; 
+    margin-right: 1.5rem;
     line-height: 1.5;
     font-size: 1.25rem;
 }
@@ -31,12 +52,11 @@ article.front h1 {
     font-size: 2.5rem;
 }
 
-aside li{
-  margin: 10px 0;
+aside li {
+    margin: 10px 0;
 }
 
 /* Cards */
-
 .cards {
     display: flex;
     flex-direction: row;
@@ -57,54 +77,54 @@ aside li{
 .card {
     margin: 0.3rem;
     padding: 0.5em;
-	border-radius: 0.5rem;
+    border-radius: 0.5rem;
 }
 ul.cards {
     margin-bottom: 0rem;
 }
 
-  
-  
-/* Start of moving the image above the heading */
 
+
+/* Start of moving the image above the heading */
 .reorder {
-  /*display: flex;
+    /*display: flex;
   flex-direction: column; */
 }
 
 .reorder img {
-   max-width: 100%;
-   order: -1;
+    max-width: 100%;
+    order: -1;
 }
 
 /* End of moving the image above the heading */
-
-.card > * a, .card > .cta {
-  display: block;
+.card > * a,
+.card > .cta {
+    display: block;
 }
 
 .card h2 > a {
-  text-decoration: none;
-  color: inherit;
+    text-decoration: none;
+    color: inherit;
 }
 
 
 .linkify:hover {
-  cursor: pointer;
+    cursor: pointer;
 }
 
 .card img {
-  width: 100%;
-  height: auto;
-  border-radius: 0.5rem; 
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
 }
 
 .cards .isfocused {
-  outline: 0;}
-  
+    outline: 0;
+}
+
 .card .cta {
-  text-decoration: underline;
-  font-weight: bold;
+    text-decoration: underline;
+    font-weight: bold;
 }
 
 /* Post source */
@@ -132,10 +152,10 @@ dd.from {
 
 /* article styling */
 article.standard {
-   /* max-width: 80ch;
+    /* max-width: 80ch;
 
     margin: auto; */
-	    padding: 0rem 2rem 0rem 2rem;
+    padding: 0rem 2rem 0rem 2rem;
     line-height: 1.5;
     font-size: 1.25rem;
 }
@@ -227,7 +247,7 @@ ul.relUL {
 
 aside.related {
     padding: 0.5rem;
-   /* margin-bottom: 0.5rem; */
+    /* margin-bottom: 0.5rem; */
 }
 
 section.related {
@@ -248,7 +268,8 @@ section.related {
     div#aboutFoot {
         float: none;
     }
-    div#YouTubeChannelFoot, div#SiteMap,
+    div#YouTubeChannelFoot,
+    div#SiteMap,
     div#twitterFoot,
     div#AccessibilityFoot {
         float: none;
@@ -291,22 +312,21 @@ section.related {
     dd {
         margin: 0;
     }
-	
-	dd {
+
+    dd {
         margin-bottom: 1rem;
     }
-	dd.from {
-    margin-bottom: 1.5rem !important;
-}
-	img.articleImage,img.articleImageLeft {
-    width: 100% !important;
-	margin-bottom: 1.5rem !important;
-	}
-	    div#titleLink {
+    dd.from {
+        margin-bottom: 1.5rem !important;
+    }
+    img.articleImage,
+    img.articleImageLeft {
+        width: 100% !important;
+        margin-bottom: 1.5rem !important;
+    }
+    div#titleLink {
         display: none;
     }
-
-
 }
 
 @media only screen and (max-width: 300px) {
@@ -351,11 +371,11 @@ div#titleLink,
 div#logo {
     border: 0.2rem solid black;
     box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, .70);
-    
+
     border-radius: 0.5rem;
 }
 div#logo {
-	padding: 0.5rem;
+    padding: 0.5rem;
 }
 div#titleLink {
     padding: 1rem;
@@ -652,7 +672,7 @@ img.articleImage {
 img.articleImageLeft {
     width: 40%;
     float: left;
-    margin: 1rem  ;
+    margin: 1rem;
     border-radius: 0.5rem;
 }
 
