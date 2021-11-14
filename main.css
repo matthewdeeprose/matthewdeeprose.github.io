@@ -1,9 +1,9 @@
 /* Components - NO COLOURS*/
 @media (min-width: 60rem) {
-  /*  html {
+   html {
         margin: 0 10% 0 10%;
     } 
-*/
+
 }
 html {
     scroll-behavior: smooth;
