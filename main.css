@@ -1,6 +1,6 @@
 /* Components - NO COLOURS*/
 @media (min-width: 60rem) {
-   html {
+   .page-wrap {
         margin: 0 10% 0 10%;
     } 
 
