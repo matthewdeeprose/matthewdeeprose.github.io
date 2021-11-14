@@ -1,8 +1,9 @@
 /*Light mode */
 body {
-    background: #FFFFF4 !important;
     color: #00131D;
+	background: #F0F2E8 !important;
 }
+
 /* cards */
 .card {
   border: 2px solid #9FB1BD;
