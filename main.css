@@ -1,4 +1,14 @@
 /* Components - NO COLOURS*/
+/*Tick list */
+ul.tick {
+     list-style: none;
+}
+
+ul.tick li:before {
+  content: '✓ ';
+}
+/* border */
+
 @media (min-width: 60rem) {
     .page-wrap {
         margin: 0 10% 0 10%;
