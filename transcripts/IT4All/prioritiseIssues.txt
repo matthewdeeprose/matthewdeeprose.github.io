@@ -1,0 +1,8 @@
+While all accessibility objectives will need to be met, prioritising can help you achieve them more effectively. It’s important to build motivation by demonstrating initial success, finding issues that are straight-forward to fix can be an effective way to do this. Examples might be adding really clear focus indicators that meet the new WCAG 2.2 criteria, or changing “click here” links to be more descriptive. We discussed a little already about how the accessibility of templates, components, and visual design can help to scale improvements and drive efficiencies. Changes in the organisation can also bring opportunities, for example the adoption of a new brand. Procurement and recruitment are also important for scalability and sustainability. It probably goes without saying that if we plan to retire systems we can deprioritise fixing accessibility issues we find. How can we prioritise the accessibility issues we find in general? The Agile Accessibility Handbook has an excellent methodology for prioritising accessibility defects. Critical issues are when a business-critical function cannot be used by someone with a disability. Think of it in the same way as you would if the whole organisation could not perform this function. Serious issues are like critical issues but where there is a workaround. Moderate issues affect non-essential functions and that have a workaround. Minor issues are those that would be distracting but do not affect functionality.
+
+
+
+
+
+
+
