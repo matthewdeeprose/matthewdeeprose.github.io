@@ -199,10 +199,10 @@ button:focus {
 }
 
 .topnav a {
-    color: black;
+    color: #FFFFF4;
     border: 0.1rem solid black;
     margin: 0.1rem;
-    background-color: #E1E8EC;
+    background-color: #00131D;
 }
 
 
