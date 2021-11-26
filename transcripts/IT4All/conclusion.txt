@@ -1,0 +1,12 @@
+Let’s conclude by summing up what we’ve covered and some final thoughts. We put some accessibility trends in context and introduced you to a pathway for implementing digital accessibility within your IT department, sharing practical examples. We didn’t have all the answers – we’re all at different stages of this journey, but as a community we can share practices and progress. We covered some aspects of the “Planning and Managing Digital Accessibility” pathway. The full slide deck covers all aspects of that pathway, made relevant to University IT departments and it’s available on our presentation support site. There you can find a number of further artefacts we have produced or collated, along with all the links we refer to in the slide deck. In a few weeks, the video of today’s session with corrected captions and a transcript will be available on the site. Time for a few final thoughts. In a recent interview, Karl Groves founder of accessibility agency Tenon.io, said, “From a security perspective … you've got that pattern in your head ‘filter, validate, escape’. It's how you do things all the time. Same thing goes for accessibility, once you start doing accessibility it becomes how things get done and then it’s not extra work”. As we’ve attempted to show, embedding accessibility within our processes and practices makes it become just something that we do. The expected baseline. We can go further, Alistair McNaught, the accessibility consultant says “…compliance does not guarantee a good experience any more than non-compliance guarantees a bad one”. It’s through the communication, partnership, and co-design that we can go beyond standards to make for a truly inclusive experience. At the end of the full slide deck we’ve added a suggested roadmap for your next steps. We’ll try and follow up any questions we could not answer in a follow up sent to you in a few days. Continue the conversation on the JISC accessibility community and make sure to join their monthly drop-in sessions. Thank you for your time today, and thanks especially to Sian Thomas at UCISA for working so hard in the background to make this event a success. We’ll use the remaining time to go through any questions in the chat and open up for further discussion. If you have a question you would like to ask “in person” feel free to put up your hand on Teams.
+
+
+
+
+
+
+
+
+
+
+
