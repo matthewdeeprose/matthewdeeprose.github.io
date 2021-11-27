@@ -1,4 +1,6 @@
 /* Components - NO COLOURS*/
+
+
 /*Tick list */
 ul.tick {
      list-style: none;
@@ -505,6 +507,11 @@ a:hover {
 }
 
 /* Details and Summary styling */
+details summary > * { 
+  display: inline;
+}
+summary h2 {font-size: 1.3rem;}
+
 details {
     border-radius: 0.5rem;
     padding: .5em .5em 0;
