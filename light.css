@@ -67,6 +67,7 @@ a#home {
 a#home:hover,
 a#home:focus {
     color: #FCBC00 !important;
+	    transition: .3s linear;
 }
 a#home:focus {
     outline: none;
@@ -126,35 +127,44 @@ a:hover {
 
 /* Details and Summary styling */
 details {
-    outline: 0.3rem solid #495961;
-}
-summary:hover {
-    background: #E1E8EC;
-    outline: 0.2rem solid black;
-}
-summary:focus {
-    background: #E1E8EC;
-    outline: 0.2rem solid black;
-}
-summary:active {
-    background: #002E3B;
-    border: 2px solid #E1E8EC;
-}
-summary {
-    border: 2px solid #E1E8EC;
+    outline: 0.1rem solid #495961;
 }
 
+
+summary:hover {
+    background: #231F20;
+    color:#FFFFF4;
+    outline: 0.2rem solid black;
+	     transition: all 0.3s ease-in-out !important;
+}
+
+summary:focus{
+    background: #231F20;
+    color:#FFFFF4;
+    border: 0.2rem dotted white;
+	    transition: all 0.3s ease-in-out !important;
+}
+
+summary:active {
+    background: #231F20;
+    border: 0px solid #E1E8EC;
+}
+
+
 button {
-    color: #231F20;
-    border: 1px solid #E1E8EC;
+    color: #FFFFF4;
+    border: 0.1rem solid #00131D;
+    margin: 0.1rem;
+    background-color: #00131D;
 }
 
 button:hover,
 button:focus {
-    color: #E1E8EC;
-    background-color: #231F20;
-    box-shadow: 0 0 0 3pt #FCBC00;
-    border: 1px solid #FCBC00;
+    background-color: #FFFFF4;
+    color: black;
+    box-shadow: 0 0 0 4pt #005C84;
+    outline: 0.0rem solid #FFFFF4 !important;
+	transition: .3s linear !important;
 }
 
 
@@ -200,7 +210,7 @@ button:focus {
 
 .topnav a {
     color: #FFFFF4;
-    border: 0.1rem solid black;
+    border: 0.1rem solid #00131D;
     margin: 0.1rem;
     background-color: #00131D;
 }

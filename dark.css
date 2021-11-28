@@ -71,6 +71,7 @@ a#home {
 a#home:hover,
 a#home:focus {
     color: #FCBC00 !important;
+	    transition: .3s linear;
 }
 a#home:focus {
     outline: none;
@@ -118,7 +119,7 @@ section.related:last-child {
     .skip-link {
         color: #E1E8EC;
         background-color: #161415;
-        border: 1px solid black;
+        border: 1px solid #00131D;
         -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
         -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
         box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
@@ -130,48 +131,64 @@ section.related:last-child {
     }
 
     /* Details and Summary styling */
-    details {
-        outline: 0.3rem solid #E1E8EC;
-        background: #231F20;
-    }
-    summary:hover {
-        background: #00131D;
-        outline: 0.3rem solid #FCBC00;
-    }
-    summary:focus {
-        background: #E1E8EC;
-		color: black;
-        outline: 0.3rem solid #FCBC00;
-    }
-    summary:active {
-        background: #002E3B;
-		color: #E1E8EC;
-        outline: 0.3rem solid #E1E8EC;
-    }
+ 
+
     summary {
-        outline: 0.3rem solid #E1E8EC;
-        background: #00131D;
+        outline: 0em solid #E1E8EC;
+        background: #231F20;
 		color: #E1E8EC;
     }
 	    summary:visited {
-        outline: 0.3rem solid #E1E8EC;
-        background: #00131D;
+        outline: 0.1rem solid #E1E8EC;
+        background: #231F20;
 		color: #E1E8EC;
     }
 	
-button {
-    color: #231F20;
+
+
+details {
+    outline: 0.1rem solid #FFFFF4;
+}
+
+
+summary:hover {
     background-color: #E1E8EC;
-    border: 1px solid #E1E8EC;
+    color: #00131D;
+    box-shadow: 0 0 0 4pt #4BB694 !important;
+	outline: 0.0rem solid #161415 !important;
+    transition: all 0.3s ease-in-out !important;
+}
+
+summary:focus{
+    background-color: #E1E8EC;
+    color: #00131D;
+    box-shadow: 0 0 0 4pt #4BB694 !important;
+	outline: 0.0rem solid #161415 !important;
+    border: 0.2rem dotted #00131D;
+    transition: all 0.3s ease-in-out !important;
+}
+
+summary:active {
+    border: 0px solid #E1E8EC;
+}
+summary {
+    border: 0px solid #E1E8EC;
+}
+	
+button {
+    color: #E1E8EC;
+	background: #231F20;
+    border: 0.1rem solid #E1E8EC !important;
 }
 
 button:hover,
 button:focus {
-    color: #E1E8EC;
-    background-color: #231F20;
-    box-shadow: 0 0 0 3pt #FCBC00;
-    border: 1px solid #FCBC00;
+    background-color: #E1E8EC;
+    color: #00131D;
+    box-shadow: 0 0 0 4pt #4BB694 !important;
+	outline: 0.0rem solid #161415 !important;
 }
+
 
 body {
     background: #161415 !important;
@@ -224,7 +241,7 @@ body {
 .topnav a.active:focus,
 .topnav a.active:hover {
     background-color: #E1E8EC;
-    color: black;
+    color: #00131D;
     box-shadow: 0 0 0 4pt #4BB694 !important;
 	outline: 0.0rem solid #161415 !important;
 }
