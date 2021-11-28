@@ -515,7 +515,7 @@ summary h2 {font-size: 1.3rem;}
 details {
     border-radius: 0.5rem;
     padding: .5em .5em 0;
-    margin: 1rem;
+    margin: 1rem 0rem 1rem 0rem;
     cursor: pointer;
 }
 

@@ -138,9 +138,50 @@ div#titleLink {display:none;}
 <li>examples from within the Higher Education and wider IT sectors.</li>
 </ul>
 </details>
-<h2>Preview</h2>
+
+
+<details open>
+<summary id="Preview"><h2>Preview</h2></summary>
 	<p>Our live presentation will be delivered using Microsoft Teams. Only automated captions will be available. We're sharing  preview videos of different sections of our presentation. Each is already subtitled and a transcript is also available. This is an opportunity to become familar with some of the content ahead of the live presentation. It's likely the there will be small changes in the live version.</p>
 	<p><a href="makeITaccessible_preview.html">View the preview videos and transcripts</a></p>
+	
+	
+	</details>
+	
+	
+		<details>
+<summary id="Acronyms"><h2>Acronyms and Jargon</h2></summary>
+    <dt>WCAG</dt>
+    <dd><a href="https://www.w3.org/WAI/WCAG21/quickref/?currentsidebar=%23col_customize">Web Content Accessibility Guidelines</a></dd>
+		    <dt>PSBAR</dt>
+    <dd><a href="https://www.legislation.gov.uk/uksi/2018/952/made?view=plain">The Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018</a></dd>
+		    <dt>Terms</dt>
+    <dd><a href="https://">Definition</a></dd>
+		    <dt>Terms</dt>
+    <dd><a href="https://">Definition</a></dd>
+		    <dt>Terms</dt>
+    <dd><a href="https://">Definition</a></dd>
+	
+	    <dt>Terms</dt>
+    <dd><a href="https://">Definition</a></dd>
+	
+	</details>
+	
+	<details>
+	
+	<summary id="Files"><h2>Presentation Files and other assets</h2></summary>
+<p>text</p>
+	
+	
+	</details>
+
+	<details>	
+<summary id="Summary"><h2>Summary</h2></summary>
+<p>text</p>
+	
+	
+	</details>
+	
 	
 		<div class="expandContractControls">
 	<button id="expandAll" aria-labelledby="expandAll" type="button" onclick="openAll()">Expand all</button>
@@ -240,22 +281,9 @@ div#titleLink {display:none;}
 </div>
 
 <script>
-function menuAction() {
-    let x = document.getElementById("myTopnav");
-    if (x.className === "topnav") {
-        x.className += " responsive";
-        document.getElementById('homeMenu').focus();
-    } else {
-        x.className = "topnav";
-    }
-    let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-    if (menuAriaAttrib == "true") {
-        menuAriaAttrib = "false"
-    } else {
-        menuAriaAttrib = "true"
-    }
-    document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-}
+function menuAction(){let x=document.getElementById("myTopnav");if(x.className==="topnav"){x.className+=" responsive";document.getElementById('homeMenu').focus()}else{x.className="topnav"}
+let menuAriaAttrib=document.getElementById("menu").getAttribute("aria-expanded");if(menuAriaAttrib=="true"){menuAriaAttrib="false"}else{menuAriaAttrib="true"}
+document.getElementById("menu").setAttribute("aria-expanded",menuAriaAttrib)}
 // Responsive menu hamburger changes
 // Set constant
 const menu = document.getElementById('menu');
@@ -275,79 +303,18 @@ menu.onmouseout = showHamburger;
 menu.onblur = showHamburger;
 </script>
 <script>
-
-let mybutton = document.getElementById("myBtn");
-let mybutton2 = document.getElementById("myBtn2");
-
-
-window.onscroll = function() {
-    scrollFunction()
-};
-
-function scrollFunction() {
-    if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
-        mybutton.style.display = "block";
-		mybutton2.style.display = "block";
-    } else {
-        mybutton.style.display = "none";
-		mybutton2.style.display = "none";
-    }
-}
-
-
-
-function topFunction() {
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-}
-
-function bottomFunction() {
-window.scrollTo(0,document.body.scrollHeight);
-}
+let mybutton=document.getElementById("myBtn");let mybutton2=document.getElementById("myBtn2");window.onscroll=function(){scrollFunction()};function scrollFunction(){if(document.body.scrollTop>660||document.documentElement.scrollTop>660){mybutton.style.display="block";mybutton2.style.display="block"}else{mybutton.style.display="none";mybutton2.style.display="none"}}
+function topFunction(){document.body.scrollTop=0;document.documentElement.scrollTop=0}
+function bottomFunction(){window.scrollTo(0,document.body.scrollHeight)}
 </script>
 <script src="scripts/jquery-3.6.0.slim.min.js"></script>
 		<script src="scripts/details.js"></script>
 		<script>
-			window.console || (window.console = { 'log': alert });
-			$(function() {
-
-				// Add conditional classname based on support
-				$('html').addClass($.fn.details.support ? 'details' : 'no-details');
-
-				
-				
-
-				// Emulate <details> where necessary and enable open/close event handlers
-				$('details').details();
-
-				// Bind some example event handlers
-				$('details').on({
-					'open.details': function() {
-						console.log('opened');
-					},
-					'close.details': function() {
-						console.log('closed');
-					}
-				});
-
-			});
+window.console || (window.console={'log':alert});$(function(){$('html').addClass($.fn.details.support ? 'details' :'no-details');$('details').details();$('details').on({'open.details':function(){console.log('opened')},'close.details':function(){console.log('closed')}})});
 		</script>
 	<script>
-	function openAll() {
-    var x = document.getElementsByTagName("details");
-    var i;
-    for (i = 0; i < x.length; i++) {
-         x[i].setAttribute("open", "true");
-    }
-}
-
-	function collapseAll() {
-    var y = document.getElementsByTagName("details");
-    var j;
-    for (j = 0; j < y.length; j++) {
-         y[j].removeAttribute("open");;
-    }
-}
+function openAll(){var x=document.getElementsByTagName("details");var i;for(i=0;i<x.length;i++){x[i].setAttribute("open","true")}}
+function collapseAll(){var y=document.getElementsByTagName("details");var j;for(j=0;j<y.length;j++){y[j].removeAttribute("open")}}
 	</script>
 </body>
 
