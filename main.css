@@ -78,7 +78,7 @@ aside li {
     border-radius: 3px;
     margin: 0;
     padding: 0;
-    border-radius: .6em;
+    /* border-radius: .6em; */
 }
 
 .cards > * {
@@ -90,6 +90,7 @@ aside li {
     margin: 0.3rem 0.3rem 1rem 0.3rem;
     padding: 0.5em;
     border-radius: 0.5rem;
+	    min-height:33rem;
 }
 ul.cards {
     margin-bottom: 0rem;
