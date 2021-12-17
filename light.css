@@ -274,3 +274,10 @@ input:focus {
 .wrapper2 input:focus + label::before {
     box-shadow: 0 0 0 3px #00131D;
 }
+
+/* Remove focus from mouse, replace with box shadow */
+:focus:not(:focus-visible) {
+    outline: none !important;
+    border: 0px solid #ffffff;
+    box-shadow: -1px 1px 30px 9px rgba(0, 0, 0, .27);
+}
