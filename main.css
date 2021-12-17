@@ -657,11 +657,12 @@ div#myTopnav {
     font-size: 17px;
     border-radius: 0.5rem;
     margin-right: 0.3rem;
+	text-decoration: none;
 }
 
 .topnav a:hover,
 .topnav a:focus {
-    text-decoration: none;
+    text-decoration: underline;
 	   transition: .3s linear;
 }
 
