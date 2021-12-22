@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="ally-dark.css" rel="stylesheet" />
+</head>
+<body class="no-keep-markup">
+	...
+	<script src="prism.js"></script>
+	
+	<pre><code class="language-css">p { color: red }</code></pre>
+	
+	<pre><code class="language-html">&lt;h2>Sidebar&lt;/h2></code></pre>
+
+	<pre><code class="language-javascript">function menuAction() {
+    let x = document.getElementById("myTopnav");
+    if (x.className === "topnav") {
+        x.className += " responsive";
+        document.getElementById('homeMenu').focus();
+    } else {
+        x.className = "topnav";
+    }
+    let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+    if (menuAriaAttrib == "true") {
+        menuAriaAttrib = "false"
+    } else {
+        menuAriaAttrib = "true"
+    }
+    document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+}</code></pre>
+</body>
+</html>
