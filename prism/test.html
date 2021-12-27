@@ -2,15 +2,57 @@
 <html>
 <head>
 	<link href="ally-dark.css" rel="stylesheet" />
+	<style>
+	
+         pre,code {
+            white-space: pre-wrap !important;
+            word-wrap: break-word;
+         }
+	</style>
 </head>
 <body>
 	
 	<script src="prism.js"></script>
-	
-	<pre><code class="language-css">p { color: red }</code></pre>
-	
-	<pre><code class="language-html">&lt;h2>Sidebar&lt;/h2></code></pre>
+		<div class="codeWrapper">
+	<pre><code class="language-css">.page-wrap {
+    height: calc(10vh - 10px);
+    display: grid;
+    grid-template-columns: minmax(10px, 2fr) minmax(10px, 3fr);
+    grid-template-rows: min-content min-content 1fr min-content;
+    gap: 1px;
+}
+.page-wrap > * {
+    padding: 0.5rem;
+    text-align: left;
+}
 
+.page-header {
+    grid-column: 1/-1;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    font-size: 2rem;
+}
+.page-sidebar {
+    grid-column: 1/2;
+    grid-row: 3/4;
+}
+.page-nav {
+    grid-column: 1/3;
+}
+
+.page-main {
+    grid-column: 2/3;
+}
+
+.page-footer {
+    grid-column: 1/-1;
+}</code></pre>
+</div>
+			<div class="codeWrapper">
+	<pre><code class="language-html">&lt;h2>Sidebar&lt;/h2></code></pre>
+	</div>
+<div class="codeWrapper">
 	<pre><code class="language-javascript">function menuAction() {
     let x = document.getElementById("myTopnav");
     if (x.className === "topnav") {
@@ -27,5 +69,6 @@
     }
     document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
 }</code></pre>
+	</div>
 </body>
 </html>

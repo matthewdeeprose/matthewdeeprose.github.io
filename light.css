@@ -57,7 +57,7 @@ footer a:focus {
 
 div#titleLink,
 div#logo {
-    border: 0.2rem solid black;
+    border: 0.2rem solid #00131D;
 }
 
 /* Logo things */
@@ -112,16 +112,16 @@ a:hover {
 
 /* skip link */
 .skip-link {
-    color: black;
+    color: #00131D;
     background-color: #FFFFEE;
-    border: 1px solid black;
+    border: 1px solid #00131D;
     -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
     -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
     box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
 }
 
 .skip-link:focus {
-    border: black solid .25rem;
+    border: #00131D solid .25rem;
     outline: 0px solid #74C9E5;
 }
 
@@ -134,7 +134,7 @@ details {
 summary:hover {
     background: #231F20;
     color:#FFFFF4;
-    outline: 0.2rem solid black;
+    outline: 0.2rem solid #00131D;
 	     transition: all 0.3s ease-in-out !important;
 }
 
@@ -161,7 +161,7 @@ button {
 button:hover,
 button:focus {
     background-color: #FFFFF4;
-    color: black;
+    color: #00131D;
     box-shadow: 0 0 0 4pt #005C84;
     outline: 0.0rem solid #FFFFF4 !important;
 	transition: .3s linear !important;
@@ -178,29 +178,29 @@ button:focus {
 .page-header {
     background-image: url("lightbg.png") !important;
     color: white;
-    border: 0px black solid;
+    border: 0px #00131D solid;
 }
 
 
 
 .page-sidebar {
     background: #FFFFF4;
-    border: 0px black solid;
+    border: 0px #00131D solid;
 }
 
 .page-nav {
     background: #FFFFF4;
-    border: 0px black solid;
+    border: 0px #00131D solid;
 }
 
 .page-main {
     background: #FFFFF4;
-    border: 0px black solid;
+    border: 0px #00131D solid;
 }
 
 .page-footer {
     background: #FFFFF4;
-    border: 0px black solid;
+    border: 0px #00131D solid;
     border-top: 0.2rem #002E3B solid;
 }
 
@@ -225,7 +225,7 @@ button:focus {
 .topnav a.active:focus,
 .topnav a.active:hover {
     background-color: #FFFFF4;
-    color: black;
+    color: #00131D;
     box-shadow: 0 0 0 2pt #005C84;
     outline: 0.0rem solid #FFFFF4 !important;
 }
@@ -235,13 +235,13 @@ button:focus {
 .topnav a.active {
     background-color: #FCBC00;
     color: #00131D;
-    border: 0.1rem solid black;
+    border: 0.1rem solid #00131D;
 }
 
 
 
 img.articleImage, img.articleImageLeft {
-    border: 2px solid black;
+    border: 2px solid #00131D;
 }
 
 
