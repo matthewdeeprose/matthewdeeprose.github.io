@@ -301,9 +301,6 @@ section.related {
         float: right;
         display: block;
     }
-}
-
-@media screen and (max-width: 620px) {
     .topnav.responsive {
         position: relative;
     }
