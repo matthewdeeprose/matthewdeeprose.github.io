@@ -186,12 +186,12 @@
 
 <script>
 function menuAction() {
-    let x = document.getElementById("myTopnav");
-    if (x.className === "topnav") {
-        x.className += " responsive";
+    let menuSwitch = document.getElementById("myTopnav");
+    if (menuSwitch.className === "topnav") {
+        menuSwitch.className += " responsive";
         document.getElementById('homeMenu').focus();
     } else {
-        x.className = "topnav";
+        menuSwitch.className = "topnav";
     }
     let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
     if (menuAriaAttrib == "true") {

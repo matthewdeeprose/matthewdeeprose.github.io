@@ -902,9 +902,22 @@ Reviewing a design for accessibility</a>
 </div>
 
 <script>
-function menuAction(){let x=document.getElementById("myTopnav");if(x.className==="topnav"){x.className+=" responsive";document.getElementById('homeMenu').focus()}else{x.className="topnav"}
-let menuAriaAttrib=document.getElementById("menu").getAttribute("aria-expanded");if(menuAriaAttrib=="true"){menuAriaAttrib="false"}else{menuAriaAttrib="true"}
-document.getElementById("menu").setAttribute("aria-expanded",menuAriaAttrib)}
+function menuAction() {
+    let menuSwitch = document.getElementById("myTopnav");
+    if (menuSwitch.className === "topnav") {
+        menuSwitch.className += " responsive";
+        document.getElementById('homeMenu').focus();
+    } else {
+        menuSwitch.className = "topnav";
+    }
+    let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+    if (menuAriaAttrib == "true") {
+        menuAriaAttrib = "false"
+    } else {
+        menuAriaAttrib = "true"
+    }
+    document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+}
 // Responsive menu hamburger changes
 // Set constant
 const menu = document.getElementById('menu');

@@ -14,52 +14,109 @@
 	
 	<script src="prism.js"></script>
 		<div class="codeWrapper">
-	<pre><code class="language-css">.page-wrap {
-    height: calc(10vh - 10px);
-    display: grid;
-    grid-template-columns: minmax(10px, 2fr) minmax(10px, 3fr);
-    grid-template-rows: min-content min-content 1fr min-content;
-    gap: 1px;
+	<pre><code class="language-css">.topnav a:hover,
+.topnav a:focus {
+    text-decoration: underline;
+	   transition: .3s linear;
 }
-.page-wrap > * {
-    padding: 0.5rem;
+
+.topnav a {
+    float: left;
+    display: block;
     text-align: left;
+    padding: 14px 16px;
+    font-size: 17px;
+    border-radius: 0.5rem;
+    margin-right: 0.3rem;
+    text-decoration: none;
 }
 
-.page-header {
-    grid-column: 1/-1;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    font-size: 2rem;
-}
-.page-sidebar {
-    grid-column: 1/2;
-    grid-row: 3/4;
-}
-.page-nav {
-    grid-column: 1/3;
+
+.topnav a.active {
+    color: #00131D;
 }
 
-.page-main {
-    grid-column: 2/3;
+.topnav .icon {
+    display: none;
+}
+.topnav a.icon {
+    padding: 10px;
+    border-radius: 0.5rem;
+    border: 0.1rem #00131D double !important;
+    margin-right: 0.3rem;
 }
 
-.page-footer {
-    grid-column: 1/-1;
-}</code></pre>
+@media screen and (max-width: 620px) {
+    .topnav a:not(:first-child) {
+        display: none;
+    }
+    .topnav a.icon {
+        float: right;
+        display: block;
+    }
+}
+
+@media screen and (max-width: 620px) {
+    .topnav.responsive {
+        position: relative;
+    }
+    .topnav.responsive .icon {
+        position: absolute;
+        right: 0;
+        top: 0;
+    }
+    .topnav.responsive a {
+        float: none;
+        display: block;
+        text-align: left;
+        margin-bottom: 0.7rem;
+    }
+}
+
+</code></pre>
 </div>
 			<div class="codeWrapper">
-	<pre><code class="language-html">&lt;h2>Sidebar&lt;/h2></code></pre>
+	<pre><code class="language-html">
+&lt;div class="topnav" id="myTopnav">
+   &lt;a id="homeMenu" href="index.html">Home&lt;/a>
+   &lt;a href="presentations.html" class="active">Presentations&lt;/a>
+   &lt;a href="posts.html">Blog Posts&lt;/a>
+   &lt;a href="projects.html">Projects&lt;/a>
+   &lt;a href="about.html">About&lt;/a>
+   &lt;a id="menu" href="javascript:void(0);"  aria-label="Menu"  aria-expanded="false" class="icon" role="button" aria-haspopup="menu" onclick="menuAction()">
+      &lt;span id="hamburger">
+         &lt;svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">
+            &lt;title id="hamSVGTitle">Menu&lt;/title>
+            &lt;desc id="hamSVGDesc">Select to open the menu&lt;/desc>
+            &lt;rect width="100" height="20">&lt;/rect>
+            &lt;rect y="30" width="100" height="20">&lt;/rect>
+            &lt;rect y="60" width="100" height="20">&lt;/rect>
+         &lt;/svg>
+      &lt;/span>
+      &lt;span id="arrow">
+         &lt;svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arrowSVGTitle arrowSVGDesc">
+            &lt;title id="arrowSVGTitle">Menu&lt;/title>
+            &lt;desc id="arrowSVGDesc">Select to open the menu&lt;/desc>
+            &lt;g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+               &lt;path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+               &lt;path  d="m16.5,10.5l-13,0"/>
+            &lt;/g>
+         &lt;/svg>
+      &lt;/span>
+   &lt;/a>
+&lt;/div>
+	
+	</code></pre>
 	</div>
 <div class="codeWrapper">
-	<pre><code class="language-javascript">function menuAction() {
-    let x = document.getElementById("myTopnav");
-    if (x.className === "topnav") {
-        x.className += " responsive";
+	<pre><code class="language-javascript">
+function menuAction() {
+    let menuSwitch = document.getElementById("myTopnav");
+    if (menuSwitch.className === "topnav") {
+        menuSwitch.className += " responsive";
         document.getElementById('homeMenu').focus();
     } else {
-        x.className = "topnav";
+        menuSwitch.className = "topnav";
     }
     let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
     if (menuAriaAttrib == "true") {
@@ -68,7 +125,8 @@
         menuAriaAttrib = "true"
     }
     document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-}</code></pre>
+}
+</code></pre>
 	</div>
 </body>
 </html>
