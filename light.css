@@ -208,7 +208,7 @@ button:focus {
     background-color: #FFFFF4;
 }
 
-.topnav a {
+.topnav a, .topnav button {
     color: #FFFFF4;
     border: 0.1rem solid #00131D;
     margin: 0.1rem;
@@ -216,14 +216,18 @@ button:focus {
 }
 
 
-.topnav a.icon {
+.topnav a.icon, .topnav button.icon {
     background: #FCBC00;
 }
 
 .topnav a:hover,
 .topnav a:focus,
 .topnav a.active:focus,
-.topnav a.active:hover {
+.topnav a.active:hover,
+.topnav button:hover,
+.topnav button:focus,
+.topnav button.active:focus,
+.topnav button.active:hover  {
     background-color: #FFFFF4;
     color: #00131D;
     box-shadow: 0 0 0 2pt #005C84;
@@ -232,7 +236,7 @@ button:focus {
 
 
 
-.topnav a.active {
+.topnav a.active, .topnav button.active {
     background-color: #FCBC00;
     color: #00131D;
     border: 0.1rem solid #00131D;

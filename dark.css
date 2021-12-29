@@ -215,28 +215,32 @@
         background-color: #231F20;
     }
 
-    .topnav a {
+    .topnav a, .topnav button {
         color: #E1E8EC;
         background: #231F20;
         border: 0.1rem solid #E1E8EC !important;
         margin: 0.2rem;
     }
 
-    .topnav a:hover,
-    .topnav a:focus,
-    .topnav a.active:focus,
-    .topnav a.active:hover {
+.topnav a:hover,
+.topnav a:focus,
+.topnav a.active:focus,
+.topnav a.active:hover,
+.topnav button:hover,
+.topnav button:focus,
+.topnav button.active:focus,
+.topnav button.active:hover  {
         background-color: #E1E8EC;
         color: #00131D;
         box-shadow: 0 0 0 4pt #4BB694 !important;
         outline: 0.0rem solid #161415 !important;
     }
 
-    .topnav a.icon {
+    .topnav a.icon, .topnav button.icon  {
         background: #9FB1BD;
     }
 	
-    .topnav a.active {
+    .topnav a.active, .topnav button.active {
         background-color: #FCBC00;
         color: #00131D;
         border: 0.1rem solid #231F20 !important;

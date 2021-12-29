@@ -297,7 +297,7 @@ section.related {
     .topnav a:not(:first-child) {
         display: none;
     }
-    .topnav a.icon {
+    .topnav a.icon, .topnav button.icon  {
         float: right;
         display: block;
     }
@@ -661,20 +661,22 @@ div#myTopnav {
 }
 
 .topnav a:hover,
-.topnav a:focus {
+.topnav a:focus,
+.topnav button:hover,
+.topnav button:focus  {
     text-decoration: underline;
 	   transition: .3s linear;
 }
 
 
-.topnav a.active {
+.topnav a.active, .topnav button.active {
     color: #00131D;
 }
 
 .topnav .icon {
     display: none;
 }
-.topnav a.icon {
+.topnav a.icon, .topnav button.icon {
     padding: 10px;
     border-radius: 0.5rem;
     border: 0.1rem #00131D double !important;
