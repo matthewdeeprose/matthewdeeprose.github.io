@@ -78,6 +78,17 @@
 </div>
 			<div class="codeWrapper">
 	<pre><code class="language-html">
+
+&lt;a href="javascript:void(0);" class="icon" onclick="myFunction()">
+
+
+&lt;button id="menu" aria-label="Menu" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+	
+	
+	
+	
+	
+	
 &lt;div class="topnav" id="myTopnav">
    &lt;a id="homeMenu" href="index.html">Home&lt;/a>
    &lt;a href="presentations.html" class="active">Presentations&lt;/a>
@@ -111,6 +122,18 @@
 	</div>
 <div class="codeWrapper">
 	<pre><code class="language-javascript">
+	
+function myFunction() {
+  var x = document.getElementById("myTopnav");
+  if (x.className === "topnav") {
+    x.className += " responsive";
+  } else {
+    x.className = "topnav";
+  }
+}
+	
+	
+	
 function menuAction() {
     let menuSwitch = document.getElementById("myTopnav");
     if (menuSwitch.className === "topnav") {
