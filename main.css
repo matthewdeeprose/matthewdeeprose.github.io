@@ -294,7 +294,7 @@ section.related {
     }
 }
 @media screen and (max-width: 620px) {
-    .topnav a:not(:first-child) {
+    .topnav a:nth-child(n+3) {
         display: none;
     }
     .topnav a.icon, .topnav button.icon  {
@@ -308,6 +308,7 @@ section.related {
         position: absolute;
         right: 0;
         top: 0;
+		margin: 0.3rem 0.5rem 0 0;
     }
     .topnav.responsive a {
         float: none;
@@ -637,7 +638,7 @@ details p {
     text-align: left;
 }
 
-div#myTopnav {
+nav#myTopnav {
     padding: 0.1rem 0.1rem 0.1rem 0.2rem;
 }
 

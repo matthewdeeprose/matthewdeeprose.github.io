@@ -63,7 +63,7 @@ body {
 .topnav .icon {
     display: none;
 }
-.topnav a.icon {
+.topnav a.icon, .topnav button.icon {
     padding: 10px;
     border-radius: 0.5rem;
     border: 0.1rem #00131D double !important;
@@ -71,16 +71,14 @@ body {
 }
 
 @media screen and (max-width: 620px) {
-    .topnav a:not(:first-child) {
+    .topnav a:nth-child(n+3) {
         display: none;
     }
-    .topnav a.icon {
+    .topnav a.icon,.topnav button.icon  {
         float: right;
         display: block;
     }
-}
 
-@media screen and (max-width: 620px) {
     .topnav.responsive {
         position: relative;
     }
@@ -88,6 +86,7 @@ body {
         position: absolute;
         right: 0;
         top: 0;
+		margin: 0.3rem 0.5rem 0 0;
     }
     .topnav.responsive a {
         float: none;
@@ -108,12 +107,7 @@ body {
   
   <div id="main-navigation" class="page-nav">
 <nav class="topnav" id="myTopnav">
-  <a id="homeMenu" href="index.html">Home</a>
-  <a href="presentations.html" class="active">Presentations</a>
-  <a href="posts.html">Blog Posts</a>
-  <a href="projects.html">Projects</a>
-  <a href="about.html">About</a>
-  <a id="menu" href="javascript:void(0);"  aria-label="Menu"  aria-expanded="false" class="icon" role="button" aria-haspopup="menu" onclick="menuAction()">
+<button id="menu" aria-label="Menu" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
        <span id="hamburger">
 	   <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">  <title id="hamSVGTitle">Menu</title>
   <desc id="hamSVGDesc">Select to open the menu</desc>
@@ -142,7 +136,13 @@ body {
 </svg>
 	   </span>
 	      
-  </a>
+  </button>
+  <a id="homeMenu" href="index.html">Home</a>
+  <a href="presentations.html" class="active">Presentations</a>
+  <a href="posts.html">Blog Posts</a>
+  <a href="projects.html">Projects</a>
+  <a href="about.html">About</a>
+  
 </nav>
 
 
@@ -166,7 +166,7 @@ function menuAction() {
     let menuSwitch = document.getElementById("myTopnav");
     if (menuSwitch.className === "topnav") {
         menuSwitch.className += " responsive";
-        document.getElementById('homeMenu').focus();
+
     } else {
         menuSwitch.className = "topnav";
     }

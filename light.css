@@ -1,5 +1,5 @@
 /*Light mode */
-
+@media (prefers-color-scheme: light) {
 
 body {
     color: #00131D;
@@ -284,4 +284,5 @@ input:focus {
     outline: none !important;
     border: 0px solid #ffffff;
     box-shadow: -1px 1px 30px 9px rgba(0, 0, 0, .27);
+}
 }

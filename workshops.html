@@ -6,9 +6,9 @@
 
 
 <title>Accessibility Workshop Materials</title>
-<link rel="stylesheet" href="light.css">
-<link rel="stylesheet" href="main.css">
-<link rel="stylesheet" href="dark.css">
+<link rel="stylesheet" href="light.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="main.css" media="all">
+<link rel="stylesheet" href="dark.css" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="print.css" media="print">
 
 
@@ -59,14 +59,10 @@
 	 <div id="titleLink">Matthew Deeprose</div></div>
 
   </header>
-  <nav id="main-navigation" class="page-nav">
-<div class="topnav" id="myTopnav">
-  <a id="homeMenu" href="index.html">Home</a>
-  <a href="presentations.html">Presentations</a>
-  <a href="posts.html">Blog Posts</a>
-  <a href="projects.html" class="active">Projects</a>
-  <a href="about.html">About</a>
-  <button id="menu" aria-label="Menu" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+  <div id="main-navigation" class="page-nav">
+<nav class="topnav" id="myTopnav">
+
+<button id="menu" aria-label="Menu" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
        <span id="hamburger">
 	   <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">  <title id="hamSVGTitle">Menu</title>
   <desc id="hamSVGDesc">Select to open the menu</desc>
@@ -96,8 +92,14 @@
 	   </span>
 	      
   </button>
-</div>
-  </nav>
+  <a id="homeMenu" href="index.html">Home</a>
+  <a href="presentations.html">Presentations</a>
+  <a href="posts.html">Blog Posts</a>
+  <a href="projects.html" class="active">Projects</a>
+  <a href="about.html">About</a>
+  
+</nav>
+  </div>
   <main class="page-main" id="main">
 
     <article class="standard">
@@ -200,7 +202,7 @@ function menuAction() {
     let menuSwitch = document.getElementById("myTopnav");
     if (menuSwitch.className === "topnav") {
         menuSwitch.className += " responsive";
-        document.getElementById('homeMenu').focus();
+        
     } else {
         menuSwitch.className = "topnav";
     }
