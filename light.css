@@ -1,288 +1,226 @@
 /*Light mode */
+
 @media (prefers-color-scheme: light) {
-
-body {
-    color: #00131D;
-	background: #F0F2E8 !important;
-}
-
-/* cards */
-.card {
-  border: 2px solid #9FB1BD;
-}
-
-.linkify:hover {
-  box-shadow: 0 0 0 3px #005051;
-}
-
-.cards .isfocused {
-   box-shadow: 0 0 0 3px #005051;
-}
-
-.card .cta {
-  color: #005051;
-}
-
-
-#Example {
-    border: 0.2rem solid #00131D;
-}
-.videoWrapper iframe {
-    border: 0.3rem solid #495961;
-}
-/* Post source */
-dd.from {
-    color: #002E3B;
-}
-
-/* Presentations */
-.presentations {
-    border: 1px solid #495961;
-    background: #fefeef;
-}
-
-@media only screen and (max-width: 600px) {
-    .presentations {
-        border: 0px solid #495961 !important;
-    }
-}
-
-
-main a:focus,
-aside a:focus,
-footer a:focus {
-    outline: 3px solid #00131D;
-    transition: outline-offset .2s linear !important;
-}
-
-div#titleLink,
-div#logo {
-    border: 0.2rem solid #00131D;
-}
-
-/* Logo things */
-a#home {
-    color: white !important;
-}
-a#home:hover,
-a#home:focus {
-    color: #FCBC00 !important;
-	    transition: .3s linear;
-}
-a#home:focus {
-    outline: none;
-    border-bottom: 0.2rem white dotted;
-}
-/* Logo things ends */
-section.related {
-    border-bottom: 0.1rem solid #002E3B;
-}
-section.related:last-child {
-    border-bottom: 0rem solid #002E3B;
-}
-
-
-
-a,
-a:visited {
-    color: #005051;
-}
-
-a:hover {
-    color: #8D3970;
-    text-decoration: none;
-}
-#myBtn,
-#myBtn2,
-#myBtn:active,
-#myBtn2:active {
-    background-color: #002E3B;
-    color: white;
-    border: 1px solid #9FB1BD;
-}
-
-#myBtn:hover,
-#myBtn:focus,
-#myBtn2:hover,
-#myBtn2:focus {
-    color: #231F20;
-    background-color: #FEFFF4;
-    box-shadow: 0 0 0 2pt #005C84;
-}
-
-/* skip link */
-.skip-link {
-    color: #00131D;
-    background-color: #FFFFEE;
-    border: 1px solid #00131D;
-    -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-    -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-    box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-}
-
-.skip-link:focus {
-    border: #00131D solid .25rem;
-    outline: 0px solid #74C9E5;
-}
-
-/* Details and Summary styling */
-details {
-    outline: 0.1rem solid #495961;
-}
-
-
-summary:hover {
-    background: #231F20;
-    color:#FFFFF4;
-    outline: 0.2rem solid #00131D;
-	     transition: all 0.3s ease-in-out !important;
-}
-
-summary:focus{
-    background: #231F20;
-    color:#FFFFF4;
-    border: 0.2rem dotted white;
-	    transition: all 0.3s ease-in-out !important;
-}
-
-summary:active {
-    background: #231F20;
-    border: 0px solid #E1E8EC;
-}
-
-
-button {
-    color: #FFFFF4;
-    border: 0.1rem solid #00131D;
-    margin: 0.1rem;
-    background-color: #00131D;
-}
-
-button:hover,
-button:focus {
-    background-color: #FFFFF4;
-    color: #00131D;
-    box-shadow: 0 0 0 4pt #005C84;
-    outline: 0.0rem solid #FFFFF4 !important;
-	transition: .3s linear !important;
-}
-
-
-
-.page-wrap {
-    background: #FFFFF4;
-    box-shadow: 0 0 3px rgba(0, 0, 0, 0.33);
-}
-
-
-.page-header {
-    background-image: url("lightbg.png") !important;
-    color: white;
-    border: 0px #00131D solid;
-}
-
-
-
-.page-sidebar {
-    background: #FFFFF4;
-    border: 0px #00131D solid;
-}
-
-.page-nav {
-    background: #FFFFF4;
-    border: 0px #00131D solid;
-}
-
-.page-main {
-    background: #FFFFF4;
-    border: 0px #00131D solid;
-}
-
-.page-footer {
-    background: #FFFFF4;
-    border: 0px #00131D solid;
-    border-top: 0.2rem #002E3B solid;
-}
-
-.topnav {
-    background-color: #FFFFF4;
-}
-
-.topnav a, .topnav button {
-    color: #FFFFF4;
-    border: 0.1rem solid #00131D;
-    margin: 0.1rem;
-    background-color: #00131D;
-}
-
-
-.topnav a.icon, .topnav button.icon {
-    background: #FCBC00;
-}
-
-.topnav a:hover,
-.topnav a:focus,
-.topnav a.active:focus,
-.topnav a.active:hover,
-.topnav button:hover,
-.topnav button:focus,
-.topnav button.active:focus,
-.topnav button.active:hover  {
-    background-color: #FFFFF4;
-    color: #00131D;
-    box-shadow: 0 0 0 2pt #005C84;
-    outline: 0.0rem solid #FFFFF4 !important;
-}
-
-
-
-.topnav a.active, .topnav button.active {
-    background-color: #FCBC00;
-    color: #00131D;
-    border: 0.1rem solid #00131D;
-}
-
-
-
-img.articleImage, img.articleImageLeft {
-    border: 2px solid #00131D;
-}
-
-
-
-input:focus {
-    outline: 3px solid #00131D;
-}
-
-
-
-
-
-/*position new box*/
-.wrapper input + label::before {
-    background: #E1E8EC;
-}
-
-
-
-
-/*focus styles*/
-.wrapper input:focus + label::before {
-    box-shadow: 0 0 0 3px #00131D;
-}
-
-
-
-
-/*focus styles*/
-.wrapper2 input:focus + label::before {
-    box-shadow: 0 0 0 3px #00131D;
-}
-
-/* Remove focus from mouse, replace with box shadow */
-:focus:not(:focus-visible) {
-    outline: none !important;
-    border: 0px solid #ffffff;
-    box-shadow: -1px 1px 30px 9px rgba(0, 0, 0, .27);
-}
+	body {
+		color: #00131D;
+		background: #F0F2E8 !important;
+	}
+	/* cards */
+	.card {
+		border: 2px solid #9FB1BD;
+	}
+	.linkify:hover {
+		box-shadow: 0 0 0 3px #005051;
+	}
+	.cards .isfocused {
+		box-shadow: 0 0 0 3px #005051;
+	}
+	.card .cta {
+		color: #005051;
+	}
+	#Example {
+		border: 0.2rem solid #00131D;
+	}
+	.videoWrapper iframe {
+		border: 0.3rem solid #495961;
+	}
+	/* Post source */
+	dd.from {
+		color: #002E3B;
+	}
+	/* Presentations */
+	.presentations {
+		border: 1px solid #495961;
+		background: #fefeef;
+	}
+	@media only screen and (max-width: 600px) {
+		.presentations {
+			border: 0px solid #495961 !important;
+		}
+	}
+	main a:focus,
+	aside a:focus,
+	footer a:focus {
+		outline: 3px solid #00131D;
+		transition: outline-offset .2s linear !important;
+	}
+	div#titleLink,
+	div#logo {
+		border: 0.2rem solid #00131D;
+	}
+	/* Logo things */
+	a#home {
+		color: white !important;
+	}
+	a#home:hover,
+	a#home:focus {
+		color: #FCBC00 !important;
+		transition: .3s linear;
+	}
+	a#home:focus {
+		outline: none;
+		border-bottom: 0.2rem white dotted;
+	}
+	/* Logo things ends */
+	section.related {
+		border-bottom: 0.1rem solid #002E3B;
+	}
+	section.related:last-child {
+		border-bottom: 0rem solid #002E3B;
+	}
+	a,
+	a:visited {
+		color: #005051;
+	}
+	a:hover {
+		color: #8D3970;
+		text-decoration: none;
+	}
+	#myBtn,
+	#myBtn2,
+	#myBtn:active,
+	#myBtn2:active {
+		background-color: #002E3B;
+		color: white;
+		border: 1px solid #9FB1BD;
+	}
+	#myBtn:hover,
+	#myBtn:focus,
+	#myBtn2:hover,
+	#myBtn2:focus {
+		color: #231F20;
+		background-color: #FEFFF4;
+		box-shadow: 0 0 0 2pt #005C84;
+	}
+	/* skip link */
+	.skip-link {
+		color: #00131D;
+		background-color: #FFFFEE;
+		border: 1px solid #00131D;
+		-webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+		-moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+		box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+	}
+	.skip-link:focus {
+		border: #00131D solid .25rem;
+		outline: 0px solid #74C9E5;
+	}
+	/* Details and Summary styling */
+	details {
+		outline: 0.1rem solid #495961;
+	}
+	summary:hover {
+		background: #231F20;
+		color: #FFFFF4;
+		outline: 0.2rem solid #00131D;
+		transition: all 0.3s ease-in-out !important;
+	}
+	summary:focus {
+		background: #231F20;
+		color: #FFFFF4;
+		border: 0.2rem dotted white;
+		transition: all 0.3s ease-in-out !important;
+	}
+	summary:active {
+		background: #231F20;
+		border: 0px solid #E1E8EC;
+	}
+	button {
+		color: #FFFFF4;
+		border: 0.1rem solid #00131D;
+		margin: 0.1rem;
+		background-color: #00131D;
+	}
+	button:hover,
+	button:focus {
+		background-color: #FFFFF4;
+		color: #00131D;
+		box-shadow: 0 0 0 4pt #005C84;
+		outline: 0.0rem solid #FFFFF4 !important;
+		transition: .3s linear !important;
+	}
+	.page-wrap {
+		background: #FFFFF4;
+		box-shadow: 0 0 3px rgba(0, 0, 0, 0.33);
+	}
+	.page-header {
+		background-image: url("lightbg.png") !important;
+		color: white;
+		border: 0px #00131D solid;
+	}
+	.page-sidebar {
+		background: #FFFFF4;
+		border: 0px #00131D solid;
+	}
+	.page-nav {
+		background: #FFFFF4;
+		border: 0px #00131D solid;
+	}
+	.page-main {
+		background: #FFFFF4;
+		border: 0px #00131D solid;
+	}
+	.page-footer {
+		background: #FFFFF4;
+		border: 0px #00131D solid;
+		border-top: 0.2rem #002E3B solid;
+	}
+	.topnav {
+		background-color: #FFFFF4;
+	}
+	.topnav a,
+	.topnav button {
+		color: #FFFFF4;
+		border: 0.1rem solid #00131D;
+		margin: 0.1rem;
+		background-color: #00131D;
+	}
+	.topnav a.icon,
+	.topnav button.icon {
+		background: #FCBC00;
+	}
+	.topnav a:hover,
+	.topnav a:focus,
+	.topnav a.active:focus,
+	.topnav a.active:hover,
+	.topnav button:hover,
+	.topnav button:focus,
+	.topnav button.active:focus,
+	.topnav button.active:hover {
+		background-color: #FFFFF4;
+		color: #00131D;
+		box-shadow: 0 0 0 2pt #005C84;
+		outline: 0.0rem solid #FFFFF4 !important;
+	}
+	.topnav a.active,
+	.topnav button.active {
+		background-color: #FCBC00;
+		color: #00131D;
+		border: 0.1rem solid #00131D;
+	}
+	img.articleImage,
+	img.articleImageLeft {
+		border: 2px solid #00131D;
+	}
+	input:focus {
+		outline: 3px solid #00131D;
+	}
+	/*position new box*/
+	.wrapper input+label::before {
+		background: #E1E8EC;
+	}
+	/*focus styles*/
+	.wrapper input:focus+label::before {
+		box-shadow: 0 0 0 3px #00131D;
+	}
+	/*focus styles*/
+	.wrapper2 input:focus+label::before {
+		box-shadow: 0 0 0 3px #00131D;
+	}
+	/* Remove focus from mouse, replace with box shadow */
+	:focus:not(:focus-visible) {
+		outline: none !important;
+		border: 0px solid #ffffff;
+		box-shadow: -1px 1px 30px 9px rgba(0, 0, 0, .27);
+	}
 }
