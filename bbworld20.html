@@ -1,450 +1,353 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-<title>The Practical "Bluffer's Guide" to Blackboard Theme Accessibility</title>
-<link rel="stylesheet" href="light.css" media="(prefers-color-scheme: light)">
-<link rel="stylesheet" href="main.css" media="all">
-<link rel="stylesheet" href="dark.css" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="print.css" media="print">
-
-
-<meta property="og:title" content="The Practical Bluffer's Guide to Blackboard Theme Accessibility - Matthew Deeprose">
-<meta property="og:description" content="With the rapid move to online teaching in the current climate of COVID-19, ensuring equitable access to our learning environment has never been more important. When we customise the Blackboard theme (original experience) to align it with our institutional colours, we must consider accessibility. Based on my own experience at the University of Southampton (in the UK) I will share practical lessons and recommendations, of how to ensure your theme customisation complies with web content accessibility guidelines.">
-<meta property="og:image" content="https://matthewdeeprose.github.io/image.png"><meta property="og:image:alt" content=""><meta property="og:locale" content="en_GB">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://matthewdeeprose.github.io/bbworld20.html">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-<link rel="icon" href="favicon.ico">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="The Practical Bluffer's Guide to Blackboard Theme Accessibility - Matthew Deeprose" />
-<meta name="twitter:description" content="With the rapid move to online teaching in the current climate of COVID-19, ensuring equitable access to our learning environment has never been more important. When we customise the Blackboard theme (original experience) to align it with our institutional colours, we must consider accessibility. Based on my own experience at the University of Southampton (in the UK) I will share practical lessons and recommendations, of how to ensure your theme customisation complies with web content accessibility guidelines."/>
-<meta name="twitter:creator" content="@VLEguru"/>
-<meta name="twitter:site" content="@VLEguru"/>
-<meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
-<meta name="twitter:image:alt" content=""/>
-
-
-
-</head>
-<body>
-
-
-<div class="page-wrap"><a class="skip-link" href='#main'>Skip to content</a>
-  <header class="page-header">
-     <div id="banner"><div id="logo">
-	 <a id="home" title="Return to home" href="index.html">
-	 <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
-  <title id="svgTitle">Home</title>
-  <desc id="svgDesc">Select to return to the home page</desc><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)"><path d="m6.5 17.5h4"/><path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/><path d="m8.5 1.5v-1"/><path d="m13.5 3.5 1-1"/><path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/><path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/><path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/><path d="m1.5 7.5h-1"/><path d="m16.5 7.5h-1"/></g>
-</svg></a>
-	 
-	 </div>
-	 
-	 <div id="titleLink">Matthew Deeprose</div></div>
-
-  </header>
-  <div id="main-navigation" class="page-nav">
-<nav class="topnav" id="myTopnav">
-
-  <button id="menu" aria-label="Menu" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
-       <span id="hamburger">
-	   <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">  <title id="hamSVGTitle">Menu</title>
-  <desc id="hamSVGDesc">Select to open the menu</desc>
-  <rect width="100" height="20"></rect>
-  <rect y="30" width="100" height="20"></rect>
-  <rect y="60" width="100" height="20"></rect>
-</svg> </span>
-
-	   
-	   
-	   
-	   
-	   
-	   <span id="arrow">
-<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arrowSVGTitle arrowSVGDesc">
- <title id="arrowSVGTitle">Menu</title>
-
- <desc id="arrowSVGDesc">Select to open the menu</desc>
-
-  
-  <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
-   <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
-   <path  d="m16.5,10.5l-13,0"/>
-  </g>
-
-</svg>
-	   </span>
-	      
-  </button>
-  
-  <a id="homeMenu" href="index.html">Home</a>
-  <a href="presentations.html" class="active">Presentations</a>
-  <a href="posts.html">Blog Posts</a>
-  <a href="projects.html">Projects</a>
-  <a href="about.html">About</a>
-
-</nav>
-  </div>
-  <main class="page-main" id="main">
-    <article class="standard">
-	  	<h1 id="top">The Practical “Bluffer’s Guide” to Blackboard Theme Accessibility</h1>
-	<div id="vidPres">
-	<h2 id="video">Watch the presentation</h2>
-	<div class="videoWrapper">
-<iframe width="853" height="480" src="https://www.youtube.com/embed/z0x2zGLkiaE" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture allowfullscreen"></iframe>
-</div>
-</div>
-<br />
-<span class="style-scope yt-formatted-string" dir="auto">Moderator's introduction </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=0s">0:00</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Matt's introduction </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=70s">1:10</a><br /><span class="style-scope yt-formatted-string" dir="auto"> An exercise in colour </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=82s">1:22</a><br /><span class="style-scope yt-formatted-string" dir="auto"> My Blackboard theme story </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=143s">2:23</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Agenda </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=244s">4:04</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Supporting website </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=272s">4:32</a><br /><span class="style-scope yt-formatted-string" dir="auto"> About me </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=286s">4:46</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Getting started with theme customisation </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=357s">5:57</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Using my shared theme </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=538s">8:58</a><br /><span class="style-scope yt-formatted-string" dir="auto"> COVID-19 and Digital Inclusion </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=678s">11:18</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Relevance to you and your students </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=711s">11:51</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Introducing WCAG </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=758s">12:38</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Colour and Contrast </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=982s">16:22</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Complexity </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1329s">22:09</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Course menus </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1410s">23:30</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Focus and Focus Indicators </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1580s">26:20</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Conclusion </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1756s">29:16</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Questions and Answers </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1895s">31:35</a><br /><span class="style-scope yt-formatted-string" dir="auto"> -Q1: What led to your interest in accessibility? </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1924s">32:04</a><br /><span class="style-scope yt-formatted-string" dir="auto"> -Q2: Is your practice replicated elsewhere at the University of Southampton? </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=2012s">33:32</a><br /><span class="style-scope yt-formatted-string" dir="auto"> -Q3: Can students change their theme? What about Ultra base navigation? </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=2120s">35:20</a><br /><span class="style-scope yt-formatted-string" dir="auto"> -Q4: If you could recommend one resource to those looking to get started in web accessibility, what would it be? </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=2293s">38:13</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Final thoughts </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=2371s">39:31</a><br />
-
-
-<h2>About me</h2>
-<ul>
-<li><a href="https://www.linkedin.com/in/mattdeeprose/">Connect with me on LinkedIn.</a></li>
-<li><a href="https://thevleguru.blogspot.com/">My old Blackboard blog</a></li>
-<li><a href="https://twitter.com/vleguru">@vleguru on twitter</a></li>
-<li><a href="https://community.blackboard.com/profile/27">My profile on the Blackboard Community Site.</a></li>
-<li><a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">My YouTube Channel</a></li>
-
-
-
-</ul>
-<h2>Synopsis</h2>
-    <p><b>Relevant to: Blackboard Learn Original Experience. Self/Managed Hosted or SaaS deployment.</b> <br />
-	With the rapid move to online teaching in the current climate of COVID-19, ensuring equitable access to our learning environment has never been more important. </p><p>When we customise the Blackboard theme (original experience) to align it with our institutional colours, we must consider accessibility. Based on my own experience at the University of Southampton (in the UK) I will share practical lessons and recommendations, of how to ensure your theme customisation complies with web content accessibility guidelines.</p> <p>I do recommend that you watch my earlier presentation "The Bluffer's Guide to Customising the Blackboard Responsive Theme" before attending: <a href="https://youtu.be/R7Apm_K2808">https://youtu.be/R7Apm_K2808</a> Doing so will help you to get the most out of this first "Bluffer's Guide" delivered at Bb World.</p>
-	
-<h2>View the slides on SlideShare</h2>
-	<div class="videoWrapper">
-<iframe src="//www.slideshare.net/slideshow/embed_code/key/1oj3WXkeehKaQq" title="SlideShare Player"  width="853" height="480" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="border:1px solid #CCC; border-width:1px; margin-bottom:5px; max-width: 100%;" allowfullscreen> </iframe> 
-</div>
-
-<h2>Presentation Files</h2>
-<ul>
-<li><a href="https://docs.google.com/presentation/d/1dg8VA9DdjcRuCje2QZ7MrvJ08MDyPIv3/edit?usp=sharing&ouid=110660768510456514151&rtpof=true&sd=true">PowerPoint deck</a></li>
-<li><a href="https://drive.google.com/file/d/1ERZbILFiVQW1Qk0CmXAt8d1FWxvXS-Xs/view?usp=sharing">PDF version</a></li>
-</ul>
-
-
-
-<h2>Video Clips used during the presentation</h2>
-<ul>
-<li><a href="https://youtu.be/DyZuOkavHtA">Preview of the Bluffer's Guide to Blackboard Theme Customisation</a></li>
-<li><a href="https://www.youtube.com/watch?v=R7Apm_K2808">Full version of the Bluffer's Guide to Blackboard Theme Customisation</a></li>
-<li><a href="https://youtu.be/zIftt9Lxm-M">Demonstration of using Stylus with the shared theme.</a></li>
-<li><a href="https://youtu.be/jmof8-b23c0">The Course Menu Workaround</a></li>
-
-
-</ul>
-
-<h2>Files and related posts</h2>
-
-<ul>
-<li><a href="https://thevleguru.blogspot.com/2020/07/my-updated-theme-for-blackboard-380013.html">Get my full set of theme files (from my blog).</a></li>
-<li><a href="https://community.blackboard.com/blogs/14/326">Get my full set of theme files (from the Blackboard Community site - requires login).</a></li>
-<li><a href="https://drive.google.com/file/d/1gvGDMpafNnzFjWCOA_kRwDT3P-Cw7fp-/view?usp=sharing">JSHack to make course menus accessible when hovering and focussing.</a></li>
-</ul>
-<h2>JS Hack</h2>
-<ul>
-<li><a href="https://github.com/AllTheDucks/jshack-v1/releases/download/v1.1.13/oslt-jshack-1.0.13.war">Download JSHack 1.0.13</a></li>
-<li><a href="https://github.com/AllTheDucks/jshack-v1/wiki">JS Hacks wiki.</a></li>
-<li><a href="https://github.com/AllTheDucks/jshack-v1/wiki/Uploading-a-Hack-Package">How to upload a JSHack package.</a></li>
-</ul>
-
-<h2>Links from the presentation</h2>
-<h3>If I had to pick one resource</h3>
-During the presentation, Louise asked if I could pick one resource for someone wanting to start in accessibility what would I choose?  My pick was <a href="https://a11y-with-lindsey.ck.page/b4e437f629">10 Days of a11y</a> by <a href="https://twitter.com/LittleKope">Lindsey Kopacz</a>.
-
-<h3>News items</h3>
-<ul>
-<li><a href="https://www.nbcnews.com/news/education/i-hate-covid-19-kids-disabilities-struggle-adjust-schools-close-n1172906">'I hate COVID-19': Kids with disabilities struggle to adjust as schools close</a></li>
-<li><a href="https://modelviewculture.com/pieces/in-the-middle-of-a-pandemic-covid-19-information-remains-inaccessible-to-visually-impaired-people">In The Middle of A Pandemic, COVID-19 Information Remains Inaccessible to Visually Impaired People</a></li>
-
-
-<li><a href="https://medium.com/age-of-awareness/people-with-disabilities-will-remember-your-words-and-actions-when-covid-19-is-over-ecc507480137">People with disabilities will remember your words and actions when COVID-19 is over</a>
-</li>
-
-<li><a href="https://www.edsurge.com/news/2020-04-02-the-3-biggest-remote-teaching-concerns-we-need-to-solve-now">The 3 Biggest Remote Teaching Concerns We Need to Solve Now</a>
-</li>
-
-<li><a href="https://www.essentialaccessibility.com/blog/covid-19-highlights-the-importance-of-digital-accessibility-and-inclusion/">COVID-19 Highlights the Importance of Digital Accessibility and Inclusion</a>
-</li>
-
-<li><a href="https://knowbility.org/blog/2020/accessibility-in-your-covid-response/">Accessibility must be part of your COVID-19 response</a></li>
-
-<li><a href="https://www.deque.com/blog/covid-19-crisis-driving-digital-accessibility-awareness/">Report: COVID-19 Crisis is Driving Digital Accessibility Awareness</a></li>
-
-<li><a href="https://www.deque.com/covid-19-digital-accessibility-report/">How is COVID-19 Impacting Digital Accessibility?</a>
-
-</li>
-
-<li><a href="https://cdn2.hubspot.net/hubfs/153358/Deque-COVID-19-Report.pdf">How is COVID-19 Impacting Digital Accessibility? [Report in PDF format (637 kb)</a>
-
-</li>
-</ul>
-
-
-
-
-
-<h3>WCAG</h3>
-<ul>
-<li><a href="https://www.w3.org/TR/WCAG21/">WCAG 2.1.</a></li>
-<li><a href="https://www.w3.org/TR/WCAG22/">WCAG 2.2 (first draft available).</a></li>
-<li><a href="https://www.w3.org/WAI/GL/task-forces/silver/wiki/Main_Page">Information about the next generation of WCAG known as "Silver".</a></li>
-<li><a href="https://www.levelaccess.com/wcag-a-and-wcag-aa-conformance/">Levels of WCAG Conformance</a></li>
-
-</ul>
-
-<h3>Blackboard Community</h3>
-<ul>
-<li><a href="https://bit.ly/2zpXQ84">Show us your accessibility statement.</a></li>
-
-
-<li><a href="https://community.blackboard.com/blogs/14/85">Let me show you our Blackboard.</a> - Blog post where I demonstrate some enhancements I have made in the past year to our Blackboard interface.</li>
-<li><a href="https://thevleguru.blogspot.com/2020/01/let-me-show-you-our-blackboard.html">Let me show you our Blackboard.</a> - version of this post on my own blog, so no Community login required.</li>
-
-</ul>
-
-<h3>Tools</h3>
-<ul>
-
-<li><a href="https://accessibilityinsights.io/">Microsofts Accessibility Insights browser add on.</a></li>
-
-
-</ul>
-
-
-<h3>About Colour Blindness</h3>
-
-<ul>
-<li><a href="https://abilitynet.org.uk/blog/visual-impairment-and-computing-common-questions">Visual impairment and computing - common questions.</a></li>
-<li><a href="http://www.colourblindawareness.org/colour-blindness/">Colour blind awareness.</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Color_blindness">Colour blindness on Wikipedia.</a></li>
-
-
-</ul>
-
-<h3>Colour Contrast</h3>
-
-<ul>
-<li><a href="https://www.w3.org/WAI/GL/wiki/Relative_luminance">Relative Luminance.</a></li>
-<li><a href="https://vanseodesign.com/web-design/color-luminance/">Comparing Luminance.</a></li>
-<li><a href="https://planetcalc.com/7779/">Relative luminance and contrast ratio.</a></li>
-<li><a href="https://www.24a11y.com/2019/color-theory-and-contrast-ratios/">Color Theory and Contrast Ratios.</a></li>
-<li><a href="https://webaim.org/resources/contrastchecker/">WebAIM Colour Contrast Checker.</a></li>
-<li><a href="https://accessible-colors.com/">Accessible Colour Suggester.</a></li>
-<li><a href="https://whocanuse.com">Who can use? (My recommended colour contrast checker).</a></li>
-<li><a href="https://developer.mozilla.org/en-US/docs/Tools/Page_Inspector/How_to/Inspect_and_select_colors">Using Inspect Element to check colour contrasts.</a></li>
-<li><a href="https://github.com/w3c/wcag/issues/695">Enthusiastic discussion about how colour contrast should be calculated in the future.</a></li>
-<li><a href="https://webaim.org/projects/million/#wcag">WebAIM accessibility analysis of the top 1,000,000 home pages</a></li>
-
-
-
-</ul>
-
-<h3>Example of enforcing a colour scheme based on Blackboard Course IDs using JSHack</h3>
-<ul>
-<li><a href="https://github.com/AllTheDucks/jshack-v1/releases/download/v1.1.13/oslt-jshack-1.0.13.war">Download JSHack 1.0.13.</a></li>
-<li><a href="https://github.com/AllTheDucks/jshack-v1/wiki">JS Hacks wiki.</a></li>
-<li><a href="ARCH-CSS-TEMPL.zip">Example JS Hack that loads CSS on ARCH courses that forces course menus to a certain colour scheme based on the course id.</a></li>
-</ul>
-
-<h3>University of Southampton resources</h3>
-<ul>
-
-<li><a href="https://www.southampton.ac.uk/brand/category/colour/">UoS Brand Colour Palette.</a></li>
-<li><a href="http://elearn.southampton.ac.uk/accessibility/colours">Using Colours Accessibly</a> - this is where you can find my colour accessibility matrix and other examples.</li>
-
-</ul>
-
-
-
-<h3>Recommended Links for personal development</h3>
-<ul>
-<li><a href="https://developer.mozilla.org/en-US/docs/Learn">Learn HTML, CSS, and Javascript</a></li>
-<li><a href="https://css-tricks.com/">CSS Tricks</a></li>
-<li><a href="https://www.a11ywithlindsey.com/">Accessibility with Lindsey</a></li>
-<li><a href="https://groups.google.com/a/d.umn.edu/forum/?hl=en#!forum/webdev">Laura L. Carlson's weekly newsletter with selected links to new Accessibility and CSS content from around the web.</a></li>
-
-<li><a href="https://www.microsoft.com/design/inclusive/">Microsoft Inclusive Design Toolkit</a></li>
-<li><a href="https://websitesetup.org/web-accessibility-checklist/">Web Accessibility checklist</a></li>
-
-
-</ul>
-
-<h3>CSS</h3>
-
-<ul>
-<li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:hover">About hover</a></li>
-<li><a href="https://css-tricks.com/almanac/selectors/h/hover/">More about hover</a></li>
-<li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:focus">About focus</a></li>
-<li><a href="https://css-tricks.com/focusing-on-focus-styles/">More about focus</a></li>
-<li><a href="https://elijahmanor.com/prefers-reduced-motion/">Reducing motion</a></li>
-
-
-</ul>
-	
-    </article>
-  </main>
-  <aside class="page-sidebar related">
-
-   
-   <h2>Related content</h2>
-   
-   <section class="related">
-   <h3>Presentations</h3>
-   <ul class="relUL">
-   <li><a href="bluffer2019.html">A Bluffer's Guide to Customising the 2016 Blackboard Theme</a></li>
-   <li><a href="bluffer2020.html">The Bluffer's Guide to Blackboard Theme Accessibility</a></li>
-   <li><a href="colormeimpressed.html">Color Me Impressed?</a></li>
-   </ul>
-   </section>
-   
-   <section class="related">
-   <h3>Blog posts</h3>
-      <ul class="relUL">
-   <li><a href="https://thevleguru.blogspot.com/2020/07/my-updated-theme-for-blackboard-380013.html">My updated theme for Blackboard 3800.13</a> </li>
-   <li><a href="https://thevleguru.blogspot.com/2020/01/let-me-show-you-our-blackboard.html">Let me show you our Blackboard</a> </li>
-   <li><a href="https://www.linkedin.com/pulse/making-enhanced-accessibility-toolbar-blackboard-matthew-deeprose/">Making an enhanced Accessibility Toolbar for Blackboard"</a> </li>
-   </ul>
-   </section>
-   
-   
-   </aside>
-   
-   
-
-   
-   
-
-   
-
-  <footer class="page-footer">
-  
-
- <div id="SiteMap"><a href="siteMap.html">Site map</a></div><div id="AccessibilityFoot">
-	<a href="Accessibility_Statement.html">Accessibility Statement</a>
-</div>
-
-
-<div id="twitterFoot">
-
-	<a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on twitter</a>
-	</div>
-	
-	
-<div id="YouTubeChannelFoot">
-<a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
-</div>	
-  <div id="aboutFoot">
-    <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
-	</div>
-
-  </footer>
-</div>
-<div id="panel">
-<button class="panelButton" onclick="topFunction()" id="myBtn" title="Go to top."><svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
- <title id="svgTitle2">Top.</title>
-
- <desc id="svgDesc2">Move to the top of the page.</desc>
- <g>
-
-  <g stroke="currentColor"  stroke-linejoin="round" stroke-linecap="round" fill-rule="evenodd" fill="none">
-   <circle stroke="null"  r="23.5" cy="25" cx="25"/>
-   <path stroke="null"  d="m33.8125,22.0625l-8.8125,-8.8125l-8.8125,8.8125"/>
-   <path stroke="null"  d="m25,13.25l0,23.5"/>
-  </g>
- </g>
-</svg></button>
-<button class="panelButton" onclick="bottomFunction()" id="myBtn2" title="Go to bottom."><svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
- <title id="svgTitle3">Bottom.</title>
- <desc id="svgDesc3">Move to the bottom of the page.</desc>
- <g>
-  <g stroke="currentColor"  stroke-linejoin="round" stroke-linecap="round" fill-rule="evenodd" fill="none">
-   <circle stroke="null"  r="24.5" cy="24.5" cx="25"/>
-   <path stroke="null" d="m15.625,27.5625l9.375,9.1875l9.375,-9.1875"/>
-   <path stroke="null"  d="m25,36.75l0,-24.5"/>
-  </g>
- </g>
-</svg></button>
-</div>
-
-<script>
-function menuAction() {
-    let menuSwitch = document.getElementById("myTopnav");
-    if (menuSwitch.className === "topnav") {
-        menuSwitch.className += " responsive";
-        
-    } else {
-        menuSwitch.className = "topnav";
-    }
-    let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-    if (menuAriaAttrib === "true") {
-        menuAriaAttrib = "false"
-    } else {
-        menuAriaAttrib = "true"
-    }
-    document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-}
-// Responsive menu hamburger changes
-// Set constant
-const menu = document.getElementById('menu');
-// Functions
-function showHamburger() { 
-document.getElementById("hamburger").style.display = "inline-block";
-document.getElementById("arrow").style.display = "none"; 
-	} 
-function showArrow() { 
-document.getElementById("hamburger").style.display = "none";
-document.getElementById("arrow").style.display = "inline-block"; 
-	} 
-// Use events to change hamburger icon
-menu.onmouseover = showArrow; 
-menu.onfocus = showArrow; 
-menu.onmouseout = showHamburger;
-menu.onblur = showHamburger;
-</script>
-<script>
-
-let mybutton = document.getElementById("myBtn");
-let mybutton2 = document.getElementById("myBtn2");
-
-
-window.onscroll = function() {
-    scrollFunction()
-};
-
-function scrollFunction() {
-    if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
-        mybutton.style.display = "block";
-		mybutton2.style.display = "block";
-    } else {
-        mybutton.style.display = "none";
-		mybutton2.style.display = "none";
-    }
-}
-
-
-
-function topFunction() {
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-}
-
-function bottomFunction() {
-window.scrollTo(0,document.body.scrollHeight);
-}
-</script>
-
-</body>
-
-
+   <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>The Practical "Bluffer's Guide" to Blackboard Theme Accessibility</title>
+      <link rel="stylesheet" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" href="main.css" media="all">
+      <link rel="stylesheet" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" href="print.css" media="print">
+      <meta property="og:title" content="The Practical Bluffer's Guide to Blackboard Theme Accessibility - Matthew Deeprose">
+      <meta property="og:description" content="With the rapid move to online teaching in the current climate of COVID-19, ensuring equitable access to our learning environment has never been more important. When we customise the Blackboard theme (original experience) to align it with our institutional colours, we must consider accessibility. Based on my own experience at the University of Southampton (in the UK) I will share practical lessons and recommendations, of how to ensure your theme customisation complies with web content accessibility guidelines.">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/bbworld20.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="The Practical Bluffer's Guide to Blackboard Theme Accessibility - Matthew Deeprose" />
+      <meta name="twitter:description" content="With the rapid move to online teaching in the current climate of COVID-19, ensuring equitable access to our learning environment has never been more important. When we customise the Blackboard theme (original experience) to align it with our institutional colours, we must consider accessibility. Based on my own experience at the University of Southampton (in the UK) I will share practical lessons and recommendations, of how to ensure your theme customisation complies with web content accessibility guidelines."/>
+      <meta name="twitter:creator" content="@VLEguru"/>
+      <meta name="twitter:site" content="@VLEguru"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
+      <meta name="twitter:image:alt" content=""/>
+   </head>
+   <body>
+      <div class="page-wrap">
+         <a class="skip-link" href='#main'>Skip to content</a>
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <a id="home" title="Return to home" href="index.html">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Home</title>
+                        <desc id="svgDesc">Select to return to the home page</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4"/>
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                           <path d="m8.5 1.5v-1"/>
+                           <path d="m13.5 3.5 1-1"/>
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
+                           <path d="m1.5 7.5h-1"/>
+                           <path d="m16.5 7.5h-1"/>
+                        </g>
+                     </svg>
+                  </a>
+               </div>
+               <div id="titleLink">Matthew Deeprose</div>
+            </div>
+         </header>
+         <div id="main-navigation" class="page-nav">
+            <nav role="navigation" class="topnav" id="myTopnav">
+               <button id="menu" aria-label="Menu" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+                  <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span>
+                  <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arrowSVGTitle arrowSVGDesc">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+                           <path  d="m16.5,10.5l-13,0"/>
+                        </g>
+                     </svg>
+                  </span>
+               </button>
+               <a id="homeMenu" href="index.html">Home</a>
+               <a href="presentations.html" class="active">Presentations</a>
+               <a href="posts.html">Blog Posts</a>
+               <a href="projects.html">Projects</a>
+               <a href="about.html">About</a>
+            </nav>
+         </div>
+         <main class="page-main" id="main">
+            <article class="standard">
+               <h1 id="top">The Practical “Bluffer’s Guide” to Blackboard Theme Accessibility</h1>
+               <div id="vidPres">
+                  <h2 id="video">Watch the presentation</h2>
+                  <div class="videoWrapper">
+                     <iframe width="853" height="480" src="https://www.youtube.com/embed/z0x2zGLkiaE" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture allowfullscreen"></iframe>
+                  </div>
+               </div>
+               <br />
+               <span class="style-scope yt-formatted-string" dir="auto">Moderator's introduction </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=0s">0:00</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Matt's introduction </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=70s">1:10</a><br /><span class="style-scope yt-formatted-string" dir="auto"> An exercise in colour </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=82s">1:22</a><br /><span class="style-scope yt-formatted-string" dir="auto"> My Blackboard theme story </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=143s">2:23</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Agenda </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=244s">4:04</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Supporting website </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=272s">4:32</a><br /><span class="style-scope yt-formatted-string" dir="auto"> About me </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=286s">4:46</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Getting started with theme customisation </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=357s">5:57</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Using my shared theme </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=538s">8:58</a><br /><span class="style-scope yt-formatted-string" dir="auto"> COVID-19 and Digital Inclusion </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=678s">11:18</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Relevance to you and your students </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=711s">11:51</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Introducing WCAG </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=758s">12:38</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Colour and Contrast </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=982s">16:22</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Complexity </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1329s">22:09</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Course menus </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1410s">23:30</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Focus and Focus Indicators </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1580s">26:20</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Conclusion </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1756s">29:16</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Questions and Answers </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1895s">31:35</a><br /><span class="style-scope yt-formatted-string" dir="auto"> -Q1: What led to your interest in accessibility? </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=1924s">32:04</a><br /><span class="style-scope yt-formatted-string" dir="auto"> -Q2: Is your practice replicated elsewhere at the University of Southampton? </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=2012s">33:32</a><br /><span class="style-scope yt-formatted-string" dir="auto"> -Q3: Can students change their theme? What about Ultra base navigation? </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=2120s">35:20</a><br /><span class="style-scope yt-formatted-string" dir="auto"> -Q4: If you could recommend one resource to those looking to get started in web accessibility, what would it be? </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=2293s">38:13</a><br /><span class="style-scope yt-formatted-string" dir="auto"> Final thoughts </span><a class="yt-simple-endpoint style-scope yt-formatted-string" dir="auto" spellcheck="false" href="https://www.youtube.com/watch?v=z0x2zGLkiaE&amp;t=2371s">39:31</a><br />
+               <h2>About me</h2>
+               <ul>
+                  <li><a href="https://www.linkedin.com/in/mattdeeprose/">Connect with me on LinkedIn.</a></li>
+                  <li><a href="https://thevleguru.blogspot.com/">My old Blackboard blog</a></li>
+                  <li><a href="https://twitter.com/vleguru">@vleguru on twitter</a></li>
+                  <li><a href="https://community.blackboard.com/profile/27">My profile on the Blackboard Community Site.</a></li>
+                  <li><a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">My YouTube Channel</a></li>
+               </ul>
+               <h2>Synopsis</h2>
+               <p><b>Relevant to: Blackboard Learn Original Experience. Self/Managed Hosted or SaaS deployment.</b> <br />
+                  With the rapid move to online teaching in the current climate of COVID-19, ensuring equitable access to our learning environment has never been more important. 
+               </p>
+               <p>When we customise the Blackboard theme (original experience) to align it with our institutional colours, we must consider accessibility. Based on my own experience at the University of Southampton (in the UK) I will share practical lessons and recommendations, of how to ensure your theme customisation complies with web content accessibility guidelines.</p>
+               <p>I do recommend that you watch my earlier presentation "The Bluffer's Guide to Customising the Blackboard Responsive Theme" before attending: <a href="https://youtu.be/R7Apm_K2808">https://youtu.be/R7Apm_K2808</a> Doing so will help you to get the most out of this first "Bluffer's Guide" delivered at Bb World.</p>
+               <h2>View the slides on SlideShare</h2>
+               <div class="videoWrapper">
+                  <iframe src="//www.slideshare.net/slideshow/embed_code/key/1oj3WXkeehKaQq" title="SlideShare Player"  width="853" height="480" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="border:1px solid #CCC; border-width:1px; margin-bottom:5px; max-width: 100%;" allowfullscreen> </iframe> 
+               </div>
+               <h2>Presentation Files</h2>
+               <ul>
+                  <li><a href="https://docs.google.com/presentation/d/1dg8VA9DdjcRuCje2QZ7MrvJ08MDyPIv3/edit?usp=sharing&ouid=110660768510456514151&rtpof=true&sd=true">PowerPoint deck</a></li>
+                  <li><a href="https://drive.google.com/file/d/1ERZbILFiVQW1Qk0CmXAt8d1FWxvXS-Xs/view?usp=sharing">PDF version</a></li>
+               </ul>
+               <h2>Video Clips used during the presentation</h2>
+               <ul>
+                  <li><a href="https://youtu.be/DyZuOkavHtA">Preview of the Bluffer's Guide to Blackboard Theme Customisation</a></li>
+                  <li><a href="https://www.youtube.com/watch?v=R7Apm_K2808">Full version of the Bluffer's Guide to Blackboard Theme Customisation</a></li>
+                  <li><a href="https://youtu.be/zIftt9Lxm-M">Demonstration of using Stylus with the shared theme.</a></li>
+                  <li><a href="https://youtu.be/jmof8-b23c0">The Course Menu Workaround</a></li>
+               </ul>
+               <h2>Files and related posts</h2>
+               <ul>
+                  <li><a href="https://thevleguru.blogspot.com/2020/07/my-updated-theme-for-blackboard-380013.html">Get my full set of theme files (from my blog).</a></li>
+                  <li><a href="https://community.blackboard.com/blogs/14/326">Get my full set of theme files (from the Blackboard Community site - requires login).</a></li>
+                  <li><a href="https://drive.google.com/file/d/1gvGDMpafNnzFjWCOA_kRwDT3P-Cw7fp-/view?usp=sharing">JSHack to make course menus accessible when hovering and focussing.</a></li>
+               </ul>
+               <h2>JS Hack</h2>
+               <ul>
+                  <li><a href="https://github.com/AllTheDucks/jshack-v1/releases/download/v1.1.13/oslt-jshack-1.0.13.war">Download JSHack 1.0.13</a></li>
+                  <li><a href="https://github.com/AllTheDucks/jshack-v1/wiki">JS Hacks wiki.</a></li>
+                  <li><a href="https://github.com/AllTheDucks/jshack-v1/wiki/Uploading-a-Hack-Package">How to upload a JSHack package.</a></li>
+               </ul>
+               <h2>Links from the presentation</h2>
+               <h3>If I had to pick one resource</h3>
+               During the presentation, Louise asked if I could pick one resource for someone wanting to start in accessibility what would I choose?  My pick was <a href="https://a11y-with-lindsey.ck.page/b4e437f629">10 Days of a11y</a> by <a href="https://twitter.com/LittleKope">Lindsey Kopacz</a>.
+               <h3>News items</h3>
+               <ul>
+                  <li><a href="https://www.nbcnews.com/news/education/i-hate-covid-19-kids-disabilities-struggle-adjust-schools-close-n1172906">'I hate COVID-19': Kids with disabilities struggle to adjust as schools close</a></li>
+                  <li><a href="https://modelviewculture.com/pieces/in-the-middle-of-a-pandemic-covid-19-information-remains-inaccessible-to-visually-impaired-people">In The Middle of A Pandemic, COVID-19 Information Remains Inaccessible to Visually Impaired People</a></li>
+                  <li><a href="https://medium.com/age-of-awareness/people-with-disabilities-will-remember-your-words-and-actions-when-covid-19-is-over-ecc507480137">People with disabilities will remember your words and actions when COVID-19 is over</a></li>
+                  <li><a href="https://www.edsurge.com/news/2020-04-02-the-3-biggest-remote-teaching-concerns-we-need-to-solve-now">The 3 Biggest Remote Teaching Concerns We Need to Solve Now</a></li>
+                  <li><a href="https://www.essentialaccessibility.com/blog/covid-19-highlights-the-importance-of-digital-accessibility-and-inclusion/">COVID-19 Highlights the Importance of Digital Accessibility and Inclusion</a></li>
+                  <li><a href="https://knowbility.org/blog/2020/accessibility-in-your-covid-response/">Accessibility must be part of your COVID-19 response</a></li>
+                  <li><a href="https://www.deque.com/blog/covid-19-crisis-driving-digital-accessibility-awareness/">Report: COVID-19 Crisis is Driving Digital Accessibility Awareness</a></li>
+                  <li><a href="https://www.deque.com/covid-19-digital-accessibility-report/">How is COVID-19 Impacting Digital Accessibility?</a>
+                  </li>
+                  <li><a href="https://cdn2.hubspot.net/hubfs/153358/Deque-COVID-19-Report.pdf">How is COVID-19 Impacting Digital Accessibility? [Report in PDF format (637 kb)</a>
+                  </li>
+               </ul>
+               <h3>WCAG</h3>
+               <ul>
+                  <li><a href="https://www.w3.org/TR/WCAG21/">WCAG 2.1.</a></li>
+                  <li><a href="https://www.w3.org/TR/WCAG22/">WCAG 2.2 (first draft available).</a></li>
+                  <li><a href="https://www.w3.org/WAI/GL/task-forces/silver/wiki/Main_Page">Information about the next generation of WCAG known as "Silver".</a></li>
+                  <li><a href="https://www.levelaccess.com/wcag-a-and-wcag-aa-conformance/">Levels of WCAG Conformance</a></li>
+               </ul>
+               <h3>Blackboard Community</h3>
+               <ul>
+                  <li><a href="https://bit.ly/2zpXQ84">Show us your accessibility statement.</a></li>
+                  <li><a href="https://community.blackboard.com/blogs/14/85">Let me show you our Blackboard.</a> - Blog post where I demonstrate some enhancements I have made in the past year to our Blackboard interface.</li>
+                  <li><a href="https://thevleguru.blogspot.com/2020/01/let-me-show-you-our-blackboard.html">Let me show you our Blackboard.</a> - version of this post on my own blog, so no Community login required.</li>
+               </ul>
+               <h3>Tools</h3>
+               <ul>
+                  <li><a href="https://accessibilityinsights.io/">Microsofts Accessibility Insights browser add on.</a></li>
+               </ul>
+               <h3>About Colour Blindness</h3>
+               <ul>
+                  <li><a href="https://abilitynet.org.uk/blog/visual-impairment-and-computing-common-questions">Visual impairment and computing - common questions.</a></li>
+                  <li><a href="http://www.colourblindawareness.org/colour-blindness/">Colour blind awareness.</a></li>
+                  <li><a href="https://en.wikipedia.org/wiki/Color_blindness">Colour blindness on Wikipedia.</a></li>
+               </ul>
+               <h3>Colour Contrast</h3>
+               <ul>
+                  <li><a href="https://www.w3.org/WAI/GL/wiki/Relative_luminance">Relative Luminance.</a></li>
+                  <li><a href="https://vanseodesign.com/web-design/color-luminance/">Comparing Luminance.</a></li>
+                  <li><a href="https://planetcalc.com/7779/">Relative luminance and contrast ratio.</a></li>
+                  <li><a href="https://www.24a11y.com/2019/color-theory-and-contrast-ratios/">Color Theory and Contrast Ratios.</a></li>
+                  <li><a href="https://webaim.org/resources/contrastchecker/">WebAIM Colour Contrast Checker.</a></li>
+                  <li><a href="https://accessible-colors.com/">Accessible Colour Suggester.</a></li>
+                  <li><a href="https://whocanuse.com">Who can use? (My recommended colour contrast checker).</a></li>
+                  <li><a href="https://developer.mozilla.org/en-US/docs/Tools/Page_Inspector/How_to/Inspect_and_select_colors">Using Inspect Element to check colour contrasts.</a></li>
+                  <li><a href="https://github.com/w3c/wcag/issues/695">Enthusiastic discussion about how colour contrast should be calculated in the future.</a></li>
+                  <li><a href="https://webaim.org/projects/million/#wcag">WebAIM accessibility analysis of the top 1,000,000 home pages</a></li>
+               </ul>
+               <h3>Example of enforcing a colour scheme based on Blackboard Course IDs using JSHack</h3>
+               <ul>
+                  <li><a href="https://github.com/AllTheDucks/jshack-v1/releases/download/v1.1.13/oslt-jshack-1.0.13.war">Download JSHack 1.0.13.</a></li>
+                  <li><a href="https://github.com/AllTheDucks/jshack-v1/wiki">JS Hacks wiki.</a></li>
+                  <li><a href="ARCH-CSS-TEMPL.zip">Example JS Hack that loads CSS on ARCH courses that forces course menus to a certain colour scheme based on the course id.</a></li>
+               </ul>
+               <h3>University of Southampton resources</h3>
+               <ul>
+                  <li><a href="https://www.southampton.ac.uk/brand/category/colour/">UoS Brand Colour Palette.</a></li>
+                  <li><a href="http://elearn.southampton.ac.uk/accessibility/colours">Using Colours Accessibly</a> - this is where you can find my colour accessibility matrix and other examples.</li>
+               </ul>
+               <h3>Recommended Links for personal development</h3>
+               <ul>
+                  <li><a href="https://developer.mozilla.org/en-US/docs/Learn">Learn HTML, CSS, and Javascript</a></li>
+                  <li><a href="https://css-tricks.com/">CSS Tricks</a></li>
+                  <li><a href="https://www.a11ywithlindsey.com/">Accessibility with Lindsey</a></li>
+                  <li><a href="https://groups.google.com/a/d.umn.edu/forum/?hl=en#!forum/webdev">Laura L. Carlson's weekly newsletter with selected links to new Accessibility and CSS content from around the web.</a></li>
+                  <li><a href="https://www.microsoft.com/design/inclusive/">Microsoft Inclusive Design Toolkit</a></li>
+                  <li><a href="https://websitesetup.org/web-accessibility-checklist/">Web Accessibility checklist</a></li>
+               </ul>
+               <h3>CSS</h3>
+               <ul>
+                  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:hover">About hover</a></li>
+                  <li><a href="https://css-tricks.com/almanac/selectors/h/hover/">More about hover</a></li>
+                  <li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:focus">About focus</a></li>
+                  <li><a href="https://css-tricks.com/focusing-on-focus-styles/">More about focus</a></li>
+                  <li><a href="https://elijahmanor.com/prefers-reduced-motion/">Reducing motion</a></li>
+               </ul>
+            </article>
+         </main>
+         <aside class="page-sidebar related">
+            <h2>Related content</h2>
+            <section class="related">
+               <h3>Presentations</h3>
+               <ul class="relUL">
+                  <li><a href="bluffer2019.html">A Bluffer's Guide to Customising the 2016 Blackboard Theme</a></li>
+                  <li><a href="bluffer2020.html">The Bluffer's Guide to Blackboard Theme Accessibility</a></li>
+                  <li><a href="colormeimpressed.html">Color Me Impressed?</a></li>
+               </ul>
+            </section>
+            <section class="related">
+               <h3>Blog posts</h3>
+               <ul class="relUL">
+                  <li><a href="https://thevleguru.blogspot.com/2020/07/my-updated-theme-for-blackboard-380013.html">My updated theme for Blackboard 3800.13</a> </li>
+                  <li><a href="https://thevleguru.blogspot.com/2020/01/let-me-show-you-our-blackboard.html">Let me show you our Blackboard</a> </li>
+                  <li><a href="https://www.linkedin.com/pulse/making-enhanced-accessibility-toolbar-blackboard-matthew-deeprose/">Making an enhanced Accessibility Toolbar for Blackboard"</a> </li>
+               </ul>
+            </section>
+         </aside>
+         <footer class="page-footer">
+            <div id="SiteMap"><a href="siteMap.html">Site map</a></div>
+            <div id="AccessibilityFoot">
+               <a href="Accessibility_Statement.html">Accessibility Statement</a>
+            </div>
+            <div id="twitterFoot">
+               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on twitter</a>
+            </div>
+            <div id="YouTubeChannelFoot">
+               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+            </div>
+            <div id="aboutFoot">
+               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
+            </div>
+         </footer>
+      </div>
+      <div id="panel">
+         <button class="panelButton" onclick="topFunction()" id="myBtn" title="Go to top.">
+            <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+               <title id="svgTitle2">Top.</title>
+               <desc id="svgDesc2">Move to the top of the page.</desc>
+               <g>
+                  <g stroke="currentColor"  stroke-linejoin="round" stroke-linecap="round" fill-rule="evenodd" fill="none">
+                     <circle stroke="null"  r="23.5" cy="25" cx="25"/>
+                     <path stroke="null"  d="m33.8125,22.0625l-8.8125,-8.8125l-8.8125,8.8125"/>
+                     <path stroke="null"  d="m25,13.25l0,23.5"/>
+                  </g>
+               </g>
+            </svg>
+         </button>
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2" title="Go to bottom.">
+            <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+               <title id="svgTitle3">Bottom.</title>
+               <desc id="svgDesc3">Move to the bottom of the page.</desc>
+               <g>
+                  <g stroke="currentColor"  stroke-linejoin="round" stroke-linecap="round" fill-rule="evenodd" fill="none">
+                     <circle stroke="null"  r="24.5" cy="24.5" cx="25"/>
+                     <path stroke="null" d="m15.625,27.5625l9.375,9.1875l9.375,-9.1875"/>
+                     <path stroke="null"  d="m25,36.75l0,-24.5"/>
+                  </g>
+               </g>
+            </svg>
+         </button>
+      </div>
+      <script>
+         function menuAction() {
+             let menuSwitch = document.getElementById("myTopnav");
+             if (menuSwitch.className === "topnav") {
+                 menuSwitch.className += " responsive";
+                 
+             } else {
+                 menuSwitch.className = "topnav";
+             }
+             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+             if (menuAriaAttrib === "true") {
+                 menuAriaAttrib = "false"
+             } else {
+                 menuAriaAttrib = "true"
+             }
+             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+         // Responsive menu hamburger changes
+         // Set constant
+         const menu = document.getElementById('menu');
+         // Functions
+         function showHamburger() { 
+         document.getElementById("hamburger").style.display = "inline-block";
+         document.getElementById("arrow").style.display = "none"; 
+         	} 
+         function showArrow() { 
+         document.getElementById("hamburger").style.display = "none";
+         document.getElementById("arrow").style.display = "inline-block"; 
+         	} 
+         // Use events to change hamburger icon
+         menu.onmouseover = showArrow; 
+         menu.onfocus = showArrow; 
+         menu.onmouseout = showHamburger;
+         menu.onblur = showHamburger;
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");
+         
+         
+         window.onscroll = function() {
+             scrollFunction()
+         };
+         
+         function scrollFunction() {
+             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+                 mybutton.style.display = "block";
+         		mybutton2.style.display = "block";
+             } else {
+                 mybutton.style.display = "none";
+         		mybutton2.style.display = "none";
+             }
+         }
+         
+         
+         
+         function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0;
+         }
+         
+         function bottomFunction() {
+         window.scrollTo(0,document.body.scrollHeight);
+         }
+      </script>
+   </body>
 </html>

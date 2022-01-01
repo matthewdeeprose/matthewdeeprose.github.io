@@ -1,194 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-
-
-<title>Presentation Template</title>
-<link rel="stylesheet" href="light .css">
-<link rel="stylesheet" href="main .css">
-<link rel="stylesheet" href="dark .css">
-<link rel="stylesheet" href="print.css" media="print">
-
-
-<meta property="og:title" content="Presentation Template - Matthew Deeprose">
-<meta property="og:description" content="">
-<meta property="og:image" content="https://matthewdeeprose.github.io/image.png"><meta property="og:image:alt" content=""><meta property="og:locale" content="en_GB">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://matthewdeeprose.github.io/pres.html">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-<link rel="icon" href="favicon.ico">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Presentation Template - Matthew Deeprose" />
-<meta name="twitter:description" content=""/>
-<meta name="twitter:creator" content="@VLEguru"/>
-<meta name="twitter:site" content="@VLEguru"/>
-<meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
-<meta name="twitter:image:alt" content=""/>
-<meta name="twitter:card" content="summary_large_image"/>
-
-<style>
-.page-header {
-    background-image: url("https://cdn.wallpapersafari.com/17/83/1iOFC8.png") !important;
-    color: white !important;
-    border: 0px black solid !important;
-}
-.page-header {
-    color: white !important;
-    border:  0.2rem black solid !important;
-}
-
-.page-sidebar {
-    background: #e3e303 !important;
-    border:  0.2rem black solid !important;
-	color: black !important;
-}
-
-.page-nav {
-    background: #00ffb7 !important;
-    border:  0.2rem black solid !important;
-	color: black !important;
-}
-
-.page-main {
-    background: #c4c4babf !important;
-    border:  0.2rem black solid !important;
-	color: black !important;
-}
-
-.page-footer {
-    background: #d9bace !important;
-    border:  0.2rem black solid !important;
-	color: black !important;
-
-}
-</style>
-
-</head>
-<body>
-
-
-<div class="page-wrap">
-
- <header class="page-header">
-     <div id="banner"><div id="logo">
-	 <a id="home" title="Return to home" href="index.html">
-	 <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
-  <title id="svgTitle">Home</title>
-  <desc id="svgDesc">Select to return to the home page</desc><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)"><path d="m6.5 17.5h4"/><path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/><path d="m8.5 1.5v-1"/><path d="m13.5 3.5 1-1"/><path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/><path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/><path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/><path d="m1.5 7.5h-1"/><path d="m16.5 7.5h-1"/></g>
-</svg></a>
-	 
-	 </div>
-	 
-	 <div id="titleLink">Title</div></div>
-
-  </header>
-  <nav id="main-navigation" class="page-nav">
-
-  <h2>Navigation Bar</h2>
-
-  </nav>
-  <main class="page-main" id="main">
-
-    <article class="standard">
-  	<h1 id="top">Content</h1>
-
-	
-    </article>
-  </main>
-  <aside class="page-sidebar related">
-
-   
-   <h2>Sidebar</h2>
-   
-   </aside>
-   
-   
-
-   
-   
-
-   
-
-  <footer class="page-footer">
-  <h2>Footer</h2>
-  </footer>
-</div>
-
-
-<script>
-function menuAction() {
-    let menuSwitch = document.getElementById("myTopnav");
-    if (menuSwitch.className === "topnav") {
-        menuSwitch.className += " responsive";
-        
-    } else {
-        menuSwitch.className = "topnav";
-    }
-    let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-    if (menuAriaAttrib === "true") {
-        menuAriaAttrib = "false"
-    } else {
-        menuAriaAttrib = "true"
-    }
-    document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-}
-// Responsive menu hamburger changes
-// Set constant
-const menu = document.getElementById('menu');
-// Functions
-function showHamburger() { 
-document.getElementById("hamburger").style.display = "inline-block";
-document.getElementById("arrow").style.display = "none"; 
-	} 
-function showArrow() { 
-document.getElementById("hamburger").style.display = "none";
-document.getElementById("arrow").style.display = "inline-block"; 
-	} 
-// Use events to change hamburger icon
-menu.onmouseover = showArrow; 
-menu.onfocus = showArrow; 
-menu.onmouseout = showHamburger;
-menu.onblur = showHamburger;
-</script>
-<script>
-
-let mybutton = document.getElementById("myBtn");
-let mybutton2 = document.getElementById("myBtn2");
-
-
-window.onscroll = function() {
-    scrollFunction()
-};
-
-function scrollFunction() {
-    if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
-        mybutton.style.display = "block";
-		mybutton2.style.display = "block";
-    } else {
-        mybutton.style.display = "none";
-		mybutton2.style.display = "none";
-    }
-}
-
-
-
-function topFunction() {
-    document.body.scrollTop = 0;
-    document.documentElement.scrollTop = 0;
-}
-
-function bottomFunction() {
-window.scrollTo(0,document.body.scrollHeight);
-}
-</script>
-
-</body>
-
-
+   <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Presentation Template</title>
+      <link rel="stylesheet" href="light .css">
+      <link rel="stylesheet" href="main .css">
+      <link rel="stylesheet" href="dark .css">
+      <link rel="stylesheet" href="print.css" media="print">
+      <meta property="og:title" content="Presentation Template - Matthew Deeprose">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/pres.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="Presentation Template - Matthew Deeprose" />
+      <meta name="twitter:description" content=""/>
+      <meta name="twitter:creator" content="@VLEguru"/>
+      <meta name="twitter:site" content="@VLEguru"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
+      <meta name="twitter:image:alt" content=""/>
+      <meta name="twitter:card" content="summary_large_image"/>
+      <style>
+         .page-header {
+         background-image: url("https://cdn.wallpapersafari.com/17/83/1iOFC8.png") !important;
+         color: white !important;
+         border: 0px black solid !important;
+         }
+         .page-header {
+         color: white !important;
+         border:  0.2rem black solid !important;
+         }
+         .page-sidebar {
+         background: #e3e303 !important;
+         border:  0.2rem black solid !important;
+         color: black !important;
+         }
+         .page-nav {
+         background: #00ffb7 !important;
+         border:  0.2rem black solid !important;
+         color: black !important;
+         }
+         .page-main {
+         background: #c4c4babf !important;
+         border:  0.2rem black solid !important;
+         color: black !important;
+         }
+         .page-footer {
+         background: #d9bace !important;
+         border:  0.2rem black solid !important;
+         color: black !important;
+         }
+      </style>
+   </head>
+   <body>
+      <div class="page-wrap">
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <a id="home" title="Return to home" href="index.html">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Home</title>
+                        <desc id="svgDesc">Select to return to the home page</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4"/>
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                           <path d="m8.5 1.5v-1"/>
+                           <path d="m13.5 3.5 1-1"/>
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
+                           <path d="m1.5 7.5h-1"/>
+                           <path d="m16.5 7.5h-1"/>
+                        </g>
+                     </svg>
+                  </a>
+               </div>
+               <div id="titleLink">Title</div>
+            </div>
+         </header>
+         <nav id="main-navigation" class="page-nav">
+            <h2>Navigation Bar</h2>
+         </nav>
+         <main class="page-main" id="main">
+            <article class="standard">
+               <h1 id="top">Content</h1>
+            </article>
+         </main>
+         <aside class="page-sidebar related">
+            <h2>Sidebar</h2>
+         </aside>
+         <footer class="page-footer">
+            <h2>Footer</h2>
+         </footer>
+      </div>
+      <script>
+         function menuAction() {
+             let menuSwitch = document.getElementById("myTopnav");
+             if (menuSwitch.className === "topnav") {
+                 menuSwitch.className += " responsive";
+                 
+             } else {
+                 menuSwitch.className = "topnav";
+             }
+             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+             if (menuAriaAttrib === "true") {
+                 menuAriaAttrib = "false"
+             } else {
+                 menuAriaAttrib = "true"
+             }
+             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+         // Responsive menu hamburger changes
+         // Set constant
+         const menu = document.getElementById('menu');
+         // Functions
+         function showHamburger() { 
+         document.getElementById("hamburger").style.display = "inline-block";
+         document.getElementById("arrow").style.display = "none"; 
+         	} 
+         function showArrow() { 
+         document.getElementById("hamburger").style.display = "none";
+         document.getElementById("arrow").style.display = "inline-block"; 
+         	} 
+         // Use events to change hamburger icon
+         menu.onmouseover = showArrow; 
+         menu.onfocus = showArrow; 
+         menu.onmouseout = showHamburger;
+         menu.onblur = showHamburger;
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");
+         
+         
+         window.onscroll = function() {
+             scrollFunction()
+         };
+         
+         function scrollFunction() {
+             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+                 mybutton.style.display = "block";
+         		mybutton2.style.display = "block";
+             } else {
+                 mybutton.style.display = "none";
+         		mybutton2.style.display = "none";
+             }
+         }
+         
+         
+         
+         function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0;
+         }
+         
+         function bottomFunction() {
+         window.scrollTo(0,document.body.scrollHeight);
+         }
+      </script>
+   </body>
 </html>
