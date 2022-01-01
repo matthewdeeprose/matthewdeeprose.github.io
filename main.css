@@ -421,9 +421,8 @@ a:hover {
     font-family: Arial, Helvetica, sans-serif;
 }
 
-#myBtn {
+#myBtn,#myBtn2  {
     display: none;
-
     font-size: 18px;
     border: none;
     outline: none;
@@ -431,35 +430,35 @@ a:hover {
     cursor: pointer;
     padding: 10px;
     border-radius: 0.5rem;
-    float: left;
 }
+#myBtn {
+    float: left;
+	}
+	
+#myBtn2 {
+    float: right;
+	}
 
 #myBtn:hover,
-#myBtn:focus {
+#myBtn:focus,#myBtn2:hover,
+#myBtn2:focus  {
     transition: .3s linear;
     cursor: pointer;
     outline: none !important;
 }
 
-#myBtn2 {
-    display: none;
-
-    font-size: 18px;
-    border: none;
-    outline: none;
-    color: white;
-    cursor: pointer;
-    padding: 10px;
-    border-radius: 0.5rem;
-    float: right;
-}
-
-#myBtn2:hover,
+@media (prefers-reduced-motion: reduce) {
+#myBtn:hover,
+#myBtn:focus,#myBtn2:hover,
 #myBtn2:focus {
-    transition: .3s linear;
-    cursor: pointer;
-    outline: none !important;
+    transition: .0s linear !important;
 }
+
+}
+
+
+
+
 
 @media screen and (max-width: 500px) {
     #panel {
@@ -564,9 +563,9 @@ button:focus {
     outline: none !important;
 }
 
-button:active {
+/*button:active {
     transform: translateY(4px) !important;
-}
+}*/
 
 body {
     padding: 5px;
@@ -851,17 +850,14 @@ form {
 }
 
 /* For those who prefer reduced motion */
-@media (prefers-reduced-motion) {
-    .skip-link,
-    .skip-link:focus,
-    summary:focus,
-    summary:hover,
-    button:hover,
-    button:focus,
-    a:focus {
-        transition-duration: 0s;
-    }
-    html {
-        scroll-behavior: auto;
-    }
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
 }

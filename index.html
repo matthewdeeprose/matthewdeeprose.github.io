@@ -270,7 +270,7 @@ function menuAction() {
         menuSwitch.className = "topnav";
     }
     let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-    if (menuAriaAttrib == "true") {
+    if (menuAriaAttrib === "true") {
         menuAriaAttrib = "false"
     } else {
         menuAriaAttrib = "true"

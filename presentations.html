@@ -108,7 +108,7 @@
 <section class="presentations" id="accessibility">
 <h2>Accessibility Presentations</h2>
 <dl>
-	<dt><a href="makeITaccessible">Making IT accessible for all!</a></dt>
+	<dt><a href="makeITaccessible.html">Making IT accessible for all!</a></dt>
     <dd>University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?</dd>
 
 
@@ -258,7 +258,7 @@ function menuAction() {
         menuSwitch.className = "topnav";
     }
     let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-    if (menuAriaAttrib == "true") {
+    if (menuAriaAttrib === "true") {
         menuAriaAttrib = "false"
     } else {
         menuAriaAttrib = "true"
