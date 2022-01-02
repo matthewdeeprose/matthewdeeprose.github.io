@@ -619,7 +619,7 @@ body {
 	display: grid;
 	grid-template-columns: minmax(10px, 1fr) minmax(10px, 3fr);
 	grid-template-rows: min-content min-content 1fr min-content;
-	gap: 1px;
+	gap: 0px;
 }
 
 .page-wrap>* {
