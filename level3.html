@@ -63,9 +63,9 @@
          </header>
          <div id="main-navigation" class="page-nav">
             <nav role="navigation" aria-label="Main menu" class="topnav" id="myTopnav">
-               <button id="menu" aria-label="Menu" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
                   <span id="hamburger">
-                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
                         <title id="hamSVGTitle">Menu</title>
                         <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
                         <rect width="100" height="20"></rect>
@@ -74,7 +74,7 @@
                      </svg>
                   </span>
                   <span id="arrow">
-                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arrowSVGTitle arrowSVGDesc">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
                         <title id="arrowSVGTitle">Menu</title>
                         <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
                         <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
