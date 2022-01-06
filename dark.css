@@ -52,7 +52,7 @@
     }
     /* Logo things */
     a#home {
-        color: #FFFFF4 !important;
+        color: #E1E8EC !important;
     }
     a#home:hover,
     a#home:focus {
@@ -61,7 +61,7 @@
     }
     a#home:focus {
         outline: none;
-        border-bottom: 0.3rem #FFFFF4 dotted;
+        border-bottom: 0.3rem #E1E8EC dotted;
     }
     /* Logo things ends */
     section.related {
@@ -117,7 +117,7 @@
         color: #E1E8EC;
     }
     details {
-        outline: 0.1rem solid #FFFFF4;
+        outline: 0.1rem solid #E1E8EC;
     }
     summary:hover {
         background-color: #E1E8EC;
@@ -162,7 +162,7 @@
     }
     .page-header {
         background-image: url('bg2.png') !important;
-        color: #FFFFF4;
+        color: #E1E8EC;
     }
     .page-sidebar {
         background: #231F20;
@@ -212,7 +212,7 @@
     }
     img.articleImage,
     img.articleImageLeft {
-        border: 2px solid #FFFFF4;
+        border: 2px solid #E1E8EC;
     }
     input:focus {
         outline: 3px solid #4BB694;
