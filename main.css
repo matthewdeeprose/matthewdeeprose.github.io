@@ -411,7 +411,7 @@ div#titleLink {
 div#titleLink,
 div#logo {
 	border: 0.2rem solid #00131D;
-	box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, .70);
+	box-shadow: inset 0 0 0 1000px rgba(0, 19, 29, .7);
 	border-radius: 0.5rem;
 }
 

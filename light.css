@@ -9,7 +9,7 @@
     }
     /* cards */
     .card {
-        border: 2px solid #9FB1BD;
+        border: 2px solid #00131D;
     }
     .linkify:hover {
         box-shadow: 0 0 0 3px #005051;
@@ -28,7 +28,7 @@
     }
     /* Post source */
     dd.from {
-        color: #002E3B;
+        color: #00131D;
     }
     /* Presentations */
     .presentations {
@@ -65,10 +65,10 @@
     }
     /* Logo things ends */
     section.related {
-        border-bottom: 0.1rem solid #002E3B;
+        border-bottom: 0.1rem solid #00131D;
     }
     section.related:last-child {
-        border-bottom: 0rem solid #002E3B;
+        border-bottom: 0rem solid #00131D;
     }
     a,
     a:visited {
@@ -82,9 +82,9 @@
     #myBtn2,
     #myBtn:active,
     #myBtn2:active {
-        background-color: #002E3B;
+        background-color: #00131D;
         color: #FFFFF4;
-        border: 1px solid #9FB1BD;
+        border: 1px solid #00131D;
     }
     #myBtn:hover,
     #myBtn:focus,
@@ -165,7 +165,7 @@
     .page-footer {
         background: #FFFFF4;
         border: 0px #00131D solid;
-        border-top: 0.2rem #002E3B solid;
+        border-top: 0.2rem #00131D solid;
     }
     .topnav {
         background-color: #FFFFF4;
