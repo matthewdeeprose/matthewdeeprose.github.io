@@ -12,10 +12,10 @@
         border: 2px solid #00131D;
     }
     .linkify:hover {
-        box-shadow: 0 0 0 3px #005051;
+        box-shadow: 0 0 0 .4rem #005051;
     }
     .cards .isfocused {
-        box-shadow: 0 0 0 3px #005051;
+        box-shadow: 0 0 0 .4rem #005051;
     }
     .card .cta {
         color: #005051;
@@ -43,7 +43,7 @@
     main a:focus,
     aside a:focus,
     footer a:focus {
-        outline: 3px solid #00131D;
+        outline: 0.3rem solid #00131D;
         transition: outline-offset .2s linear !important;
     }
     div#titleLink,
@@ -61,7 +61,7 @@
     }
     a#home:focus {
         outline: none;
-        border-bottom: 0.2rem #FFFFF4 dotted;
+        border-bottom: 0.3rem #FFFFF4 dotted;
     }
     /* Logo things ends */
     section.related {
@@ -92,7 +92,7 @@
     #myBtn2:focus {
         color: #231F20;
         background-color: #FEFFF4;
-        box-shadow: 0 0 0 2pt #005C84;
+        box-shadow: 0 0 0 0.3rem #005C84;
     }
     /* skip link */
     .skip-link {
@@ -104,7 +104,7 @@
         box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
     }
     .skip-link:focus {
-        border: #00131D solid .25rem;
+        border: #00131D solid .3rem;
         outline: 0px solid #74C9E5;
     }
     /* Details and Summary styling */
@@ -137,7 +137,7 @@
     button:focus {
         background-color: #FFFFF4;
         color: #00131D;
-        box-shadow: 0 0 0 4pt #005C84;
+        box-shadow: 0 0 0 0.3rem #005C84;
         outline: 0.0rem solid #FFFFF4 !important;
         transition: .3s linear !important;
     }

@@ -1,238 +1,238 @@
 @media (prefers-color-scheme: dark) {
-	/* Post source */
-	dd.from {
-		color: #E1E8EC;
-	}
-	/* cards */
-	.card img {
-		/* border: 2px solid #231F20; */
-	}
-	.plainBlack {
-		background-color: #231F20 !important;
-	}
-	.card {
-		border: 2px solid #E1E8EC;
-		background-color: #00131D;
-	}
-	.linkify:hover {
-		box-shadow: 0 0 0 3px #FCBC00;
-		border: 2px solid #231F20;
-	}
-	.cards .isfocused {
-		box-shadow: 0 0 0 3px #FCBC00;
-		border: 2px solid #231F20;
-	}
-	.card .cta {
-		color: #FCBC00;
-	}
-	#Example {
-		border: 0.2rem solid #E1E8EC !important;
-	}
-	.videoWrapper iframe {
-		border: 0.3rem solid #E1E8EC;
-	}
-	.presentations {
-		border: 0.1rem solid #495961;
-		background: none;
-	}
-	@media only screen and (max-width: 600px) {
-		.presentations {
-			border: 0px solid #495961 !important;
-		}
-	}
-	main a:focus,
-	aside a:focus,
-	footer a:focus {
-		outline: 0.3rem solid #4BB694 !important;
-		transition: outline-offset .2s linear !important;
-	}
-	div#titleLink,
-	div#logo {
-		border: 0.2rem solid #758D9A;
-	}
-	/* Logo things */
-	a#home {
-		color: white !important;
-	}
-	a#home:hover,
-	a#home:focus {
-		color: #FCBC00 !important;
-		transition: .3s linear;
-	}
-	a#home:focus {
-		outline: none;
-		border-bottom: 0.2rem white dotted;
-	}
-	/* Logo things ends */
-	section.related {
-		border-bottom: 0.1rem solid #758D9A;
-	}
-	section.related:last-child {
-		border-bottom: 0rem solid #758D9A;
-	}
-	a,
-	a:visited {
-		color: #FCBC00;
-	}
-	a:hover {
-		color: #3CBAC6;
-	}
-	#myBtn,
-	#myBtn2 {
-		color: #231F20;
-		background-color: #E1E8EC;
-		border: 1px solid #9FB1BD;
-	}
-	#myBtn:hover,
-	#myBtn:focus,
-	#myBtn2:hover,
-	#myBtn2:focus {
-		color: #E1E8EC;
-		background-color: #161415;
-		box-shadow: 0 0 0 3pt #FCBC00;
-		border: 1px solid #FCBC00;
-	}
-	/* skip link */
-	.skip-link {
-		color: #E1E8EC;
-		background-color: #161415;
-		border: 1px solid #00131D;
-		-webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-		-moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-		box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-	}
-	.skip-link:focus {
-		border: #FCBC00 solid 1rem;
-		outline: 0px solid #74C9E5;
-	}
-	/* Details and Summary styling */
-	summary {
-		outline: 0em solid #E1E8EC;
-		background: #231F20;
-		color: #E1E8EC;
-	}
-	summary:visited {
-		outline: 0.1rem solid #E1E8EC;
-		background: #231F20;
-		color: #E1E8EC;
-	}
-	details {
-		outline: 0.1rem solid #FFFFF4;
-	}
-	summary:hover {
-		background-color: #E1E8EC;
-		color: #00131D;
-		box-shadow: 0 0 0 4pt #4BB694 !important;
-		outline: 0.0rem solid #161415 !important;
-		transition: all 0.3s ease-in-out !important;
-	}
-	summary:focus {
-		background-color: #E1E8EC;
-		color: #00131D;
-		box-shadow: 0 0 0 4pt #4BB694 !important;
-		outline: 0.0rem solid #161415 !important;
-		border: 0.2rem dotted #00131D;
-		transition: all 0.3s ease-in-out !important;
-	}
-	summary:active {
-		border: 0px solid #E1E8EC;
-	}
-	summary {
-		border: 0px solid #E1E8EC;
-	}
-	button {
-		color: #E1E8EC;
-		background: #231F20;
-		border: 0.1rem solid #E1E8EC !important;
-	}
-	button:hover,
-	button:focus {
-		background-color: #E1E8EC;
-		color: #00131D;
-		box-shadow: 0 0 0 4pt #4BB694 !important;
-		outline: 0.0rem solid #161415 !important;
-	}
-	body {
-		background: #161415 !important;
-		color: #E1E8EC;
-	}
-	.page-wrap {
-		background: #231F20;
-		box-shadow: none !important;
-	}
-	.page-header {
-		background-image: url('bg2.png') !important;
-		color: white;
-	}
-	.page-sidebar {
-		background: #231F20;
-	}
-	.page-nav {
-		background: #231F20;
-	}
-	.page-main {
-		background: #231F20;
-	}
-	.page-footer {
-		background: #231F20;
-		border-top: 0.2rem #758D9A solid;
-	}
-	.topnav {
-		background-color: #231F20;
-	}
-	.topnav a,
-	.topnav button {
-		color: #E1E8EC;
-		background: #231F20;
-		border: 0.1rem solid #E1E8EC !important;
-		margin: 0.2rem;
-	}
-	.topnav a:hover,
-	.topnav a:focus,
-	.topnav a.active:focus,
-	.topnav a.active:hover,
-	.topnav button:hover,
-	.topnav button:focus,
-	.topnav button.active:focus,
-	.topnav button.active:hover {
-		background-color: #E1E8EC;
-		color: #00131D;
-		box-shadow: 0 0 0 4pt #4BB694 !important;
-		outline: 0.0rem solid #161415 !important;
-	}
-	.topnav a.icon,
-	.topnav button.icon {
-		background: #9FB1BD;
-	}
-	.topnav a.active,
-	.topnav button.active {
-		background-color: #FCBC00;
-		color: #00131D;
-		border: 0.1rem solid #231F20 !important;
-	}
-	img.articleImage,
-	img.articleImageLeft {
-		border: 2px solid white;
-	}
-	input:focus {
-		outline: 3px solid #4BB694;
-	}
-	/*position new box*/
-	.wrapper input+label::before {
-		background: #E1E8EC;
-	}
-	/*focus styles*/
-	.wrapper input:focus+label::before {
-		box-shadow: 0 0 0 3px #1E8765;
-	}
-	/*focus styles*/
-	.wrapper2 input:focus+label::before {
-		box-shadow: 0 0 0 3px #1E8765;
-	}
-	/* Remove focus from mouse, replace with box shadow */
-	:focus:not(:focus-visible) {
-		outline: none !important;
-		border: 0px solid #ffffff;
-		box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12);
-	}
+    /* Post source */
+    dd.from {
+        color: #E1E8EC;
+    }
+    /* cards */
+    .card img {
+        /* border: 2px solid #231F20; */
+    }
+    .plainBlack {
+        background-color: #231F20 !important;
+    }
+    .card {
+        border: 2px solid #E1E8EC;
+        background-color: #00131D;
+    }
+    .linkify:hover {
+        box-shadow: 0 0 0 0.4rem #FCBC00;
+        border: 2px solid #231F20;
+    }
+    .cards .isfocused {
+        box-shadow: 0 0 0 0.4rem #FCBC00;
+        border: 2px solid #231F20;
+    }
+    .card .cta {
+        color: #FCBC00;
+    }
+    #Example {
+        border: 0.2rem solid #E1E8EC !important;
+    }
+    .videoWrapper iframe {
+        border: 0.3rem solid #E1E8EC;
+    }
+    .presentations {
+        border: 0.1rem solid #495961;
+        background: none;
+    }
+    @media only screen and (max-width: 600px) {
+        .presentations {
+            border: 0px solid #495961 !important;
+        }
+    }
+    main a:focus,
+    aside a:focus,
+    footer a:focus {
+        outline: 0.3rem solid #4BB694 !important;
+        transition: outline-offset .2s linear !important;
+    }
+    div#titleLink,
+    div#logo {
+        border: 0.2rem solid #758D9A;
+    }
+    /* Logo things */
+    a#home {
+        color: #FFFFF4 !important;
+    }
+    a#home:hover,
+    a#home:focus {
+        color: #FCBC00 !important;
+        transition: .3s linear;
+    }
+    a#home:focus {
+        outline: none;
+        border-bottom: 0.3rem #FFFFF4 dotted;
+    }
+    /* Logo things ends */
+    section.related {
+        border-bottom: 0.1rem solid #758D9A;
+    }
+    section.related:last-child {
+        border-bottom: 0rem solid #758D9A;
+    }
+    a,
+    a:visited {
+        color: #FCBC00;
+    }
+    a:hover {
+        color: #3CBAC6;
+    }
+    #myBtn,
+    #myBtn2 {
+        color: #231F20;
+        background-color: #E1E8EC;
+        border: 1px solid #9FB1BD;
+    }
+    #myBtn:hover,
+    #myBtn:focus,
+    #myBtn2:hover,
+    #myBtn2:focus {
+        color: #E1E8EC;
+        background-color: #161415;
+        box-shadow: 0 0 0 0.3rem #FCBC00;
+        border: 1px solid #FCBC00;
+    }
+    /* skip link */
+    .skip-link {
+        color: #E1E8EC;
+        background-color: #161415;
+        border: 1px solid #00131D;
+        -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+        -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+        box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+    }
+    .skip-link:focus {
+        border: #FCBC00 solid .3rem;
+        outline: 0px solid #74C9E5;
+    }
+    /* Details and Summary styling */
+    summary {
+        outline: 0em solid #E1E8EC;
+        background: #231F20;
+        color: #E1E8EC;
+    }
+    summary:visited {
+        outline: 0.1rem solid #E1E8EC;
+        background: #231F20;
+        color: #E1E8EC;
+    }
+    details {
+        outline: 0.1rem solid #FFFFF4;
+    }
+    summary:hover {
+        background-color: #E1E8EC;
+        color: #00131D;
+        box-shadow: 0 0 0 0.4rem #4BB694 !important;
+        outline: 0.0rem solid #161415 !important;
+        transition: all 0.3s ease-in-out !important;
+    }
+    summary:focus {
+        background-color: #E1E8EC;
+        color: #00131D;
+        box-shadow: 0 0 0 0.4rem #4BB694 !important;
+        outline: 0.0rem solid #161415 !important;
+        border: 0.2rem dotted #00131D;
+        transition: all 0.3s ease-in-out !important;
+    }
+    summary:active {
+        border: 0px solid #E1E8EC;
+    }
+    summary {
+        border: 0px solid #E1E8EC;
+    }
+    button {
+        color: #E1E8EC;
+        background: #231F20;
+        border: 0.1rem solid #E1E8EC !important;
+    }
+    button:hover,
+    button:focus {
+        background-color: #E1E8EC;
+        color: #00131D;
+        box-shadow: 0 0 0 0.3rem #4BB694 !important;
+        outline: 0.0rem solid #161415 !important;
+    }
+    body {
+        background: #161415 !important;
+        color: #E1E8EC;
+    }
+    .page-wrap {
+        background: #231F20;
+        box-shadow: none !important;
+    }
+    .page-header {
+        background-image: url('bg2.png') !important;
+        color: #FFFFF4;
+    }
+    .page-sidebar {
+        background: #231F20;
+    }
+    .page-nav {
+        background: #231F20;
+    }
+    .page-main {
+        background: #231F20;
+    }
+    .page-footer {
+        background: #231F20;
+        border-top: 0.2rem #758D9A solid;
+    }
+    .topnav {
+        background-color: #231F20;
+    }
+    .topnav a,
+    .topnav button {
+        color: #E1E8EC;
+        background: #231F20;
+        border: 0.1rem solid #E1E8EC !important;
+        margin: 0.2rem;
+    }
+    .topnav a:hover,
+    .topnav a:focus,
+    .topnav a.active:focus,
+    .topnav a.active:hover,
+    .topnav button:hover,
+    .topnav button:focus,
+    .topnav button.active:focus,
+    .topnav button.active:hover {
+        background-color: #E1E8EC;
+        color: #00131D;
+        box-shadow: 0 0 0 4pt #4BB694 !important;
+        outline: 0.0rem solid #161415 !important;
+    }
+    .topnav a.icon,
+    .topnav button.icon {
+        background: #9FB1BD;
+    }
+    .topnav a.active,
+    .topnav button.active {
+        background-color: #FCBC00;
+        color: #00131D;
+        border: 0.1rem solid #231F20 !important;
+    }
+    img.articleImage,
+    img.articleImageLeft {
+        border: 2px solid #FFFFF4;
+    }
+    input:focus {
+        outline: 3px solid #4BB694;
+    }
+    /*position new box*/
+    .wrapper input + label::before {
+        background: #E1E8EC;
+    }
+    /*focus styles*/
+    .wrapper input:focus + label::before {
+        box-shadow: 0 0 0 3px #1E8765;
+    }
+    /*focus styles*/
+    .wrapper2 input:focus + label::before {
+        box-shadow: 0 0 0 3px #1E8765;
+    }
+    /* Remove focus from mouse, replace with box shadow */
+    :focus:not(:focus-visible) {
+        outline: none !important;
+        border: 0px solid #ffffff;
+        box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12);
+    }
 }
