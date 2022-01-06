@@ -52,7 +52,7 @@
     }
     /* Logo things */
     a#home {
-        color: white !important;
+        color: #FFFFF4 !important;
     }
     a#home:hover,
     a#home:focus {
@@ -61,7 +61,7 @@
     }
     a#home:focus {
         outline: none;
-        border-bottom: 0.2rem white dotted;
+        border-bottom: 0.2rem #FFFFF4 dotted;
     }
     /* Logo things ends */
     section.related {
@@ -83,7 +83,7 @@
     #myBtn:active,
     #myBtn2:active {
         background-color: #002E3B;
-        color: white;
+        color: #FFFFF4;
         border: 1px solid #9FB1BD;
     }
     #myBtn:hover,
@@ -120,7 +120,7 @@
     summary:focus {
         background: #231F20;
         color: #FFFFF4;
-        border: 0.2rem dotted white;
+        border: 0.2rem dotted #FFFFF4;
         transition: all 0.3s ease-in-out !important;
     }
     summary:active {
@@ -147,7 +147,7 @@
     }
     .page-header {
         background-image: url("lightbg.png") !important;
-        color: white;
+        color: #FFFFF4;
         border: 0px #00131D solid;
     }
     .page-sidebar {
