@@ -374,7 +374,7 @@ section.related {
 	}
 }
 
-@media only screen and (max-width: 300px) {
+@media only screen and (max-width: 400px) {
 	#panel {
 		display: none !important;
 	}
@@ -493,17 +493,19 @@ a:hover {
 }
 
 @media screen and (max-width: 500px) {
-	#panel {
-		bottom: 1rem;
+#panel {
+		bottom: 0.5rem;
 		right: 1rem;
 	}
 	#myBtn,
 	#myBtn2 {
 		font-size: 1px;
-		padding: 0.2rem;
-		margin-left: 1.5rem;
+		padding: 0.02rem;
+		margin-left: 0.5rem;
+        border-radius: 1.5rem;
 	}
 }
+
 
 
 /* skip link */
