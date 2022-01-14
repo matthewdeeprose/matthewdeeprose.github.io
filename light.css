@@ -1,5 +1,9 @@
 /*Light mode */
 @media (prefers-color-scheme: light) {
+    .transcriptSpeaker {
+        color: #8D3970;
+        font-weight: bold;
+    }
     html {
         color: #00131D;
     }

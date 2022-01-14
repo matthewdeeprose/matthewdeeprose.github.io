@@ -1,4 +1,9 @@
 @media (prefers-color-scheme: dark) {
+	.transcriptSpeaker {
+        color: #C1D100;
+        font-weight: bold;
+    }
+
     /* Post source */
     dd.from {
         color: #E1E8EC;
