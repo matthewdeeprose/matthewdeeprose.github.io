@@ -374,7 +374,7 @@ section.related {
 	}
 }
 
-@media only screen and (max-width: 400px) {
+@media only screen and (max-width: 300px) {
 	#panel {
 		display: none !important;
 	}
