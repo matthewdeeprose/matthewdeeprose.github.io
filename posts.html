@@ -38,8 +38,8 @@
       </style>
    </head>
    <body>
-      <div class="page-wrap">
-         <a class="skip-link" href='#main'>Skip to content</a>
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
          <header class="page-header">
             <div id="banner">
                <div id="logo">
@@ -245,7 +245,7 @@
             </article>
          </main>
          <footer class="page-footer">
-            <div id="SiteMap"><a href="siteMap.html">Site map</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
             <div id="AccessibilityFoot">
                <a href="Accessibility_Statement.html">Accessibility Statement</a>
             </div>
@@ -346,7 +346,7 @@
          
          function topFunction() {
              document.body.scrollTop = 0;
-             document.documentElement.scrollTop = 0;
+             document.documentElement.scrollTop = 0; document.getElementById('start').focus();
          }
          
          function bottomFunction() {

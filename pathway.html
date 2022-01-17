@@ -32,8 +32,8 @@
       <meta name="twitter:image:alt" content="Determine which services are in-scope. Identify which parts of each in-scope service and content hosted within each in-scope service do NOT meet the new accessibility regulations and why.  Baseline the accessibility of all content held within each in-scope service. Prioritise which non-accessible content should be made accessible first. Build a programme for making inaccessible content accessible, assign and report on progress.  Initiate staff development on the creation of accessible content. Design a mechanism where those with access needs can obtain alternative accessible versions of inaccessible content hosted within in-scope services. Establish method for users to report accessibility problems to the University and how they can escalate to a government website if they are not satisfied with the University’s response. Create template accessibility statement to be used for in-scope services.  Legal Services / other board to approve accessibility statement template. Embed these new processes within the procedures for initiating new/future services. This includes a process for checking changes to existing services. Service owners of relevant services to complete the template to suit each of the services for which they are responsible. Legal services / other board to approve the accessibility statements of each service. Service owners to arrange for publication of accessibility statements on each in-scope service."/>
    </head>
    <body>
-      <div class="page-wrap">
-         <a class="skip-link" href='#main'>Skip to content</a>
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
          <header class="page-header">
             <div id="banner">
                <div id="logo">
@@ -120,7 +120,7 @@
             </section>
          </aside>
          <footer class="page-footer">
-            <div id="SiteMap"><a href="siteMap.html">Site map</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
             <div id="AccessibilityFoot">
                <a href="Accessibility_Statement.html">Accessibility Statement</a>
             </div>
@@ -221,7 +221,7 @@
          
          function topFunction() {
              document.body.scrollTop = 0;
-             document.documentElement.scrollTop = 0;
+             document.documentElement.scrollTop = 0; document.getElementById('start').focus();
          }
          
          function bottomFunction() {
