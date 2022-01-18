@@ -344,7 +344,7 @@ section.related {
 		position: absolute;
 		right: 0;
 		top: 0;
-		margin: 0.3rem 0.5rem 0 0;
+		margin: 0.5rem 0.6rem 0 0;
 	}
 	.topnav.responsive a {
 		float: none;
@@ -682,9 +682,7 @@ nav#myTopnav {
 }
 
 .topnav a:hover,
-.topnav a:focus,
-.topnav button:hover,
-.topnav button:focus {
+.topnav a:focus {
 	text-decoration: underline;
 	transition: .3s linear;
 }
@@ -703,7 +701,7 @@ nav#myTopnav {
 	padding: 10px;
 	border-radius: 0.5rem;
 	border: 0.1rem #00131D double !important;
-	margin: 0.5rem 0.6rem 0 0;
+	
 }
 
 img.articleImage {
