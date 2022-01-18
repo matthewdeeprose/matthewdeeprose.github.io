@@ -113,7 +113,7 @@
     }
     /* Details and Summary styling */
     details {
-        outline: 0.1rem solid #495961;
+        outline: 0.2rem solid #495961;
     }
     summary:hover {
         background-color: #231F20;

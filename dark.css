@@ -118,12 +118,12 @@
         border: 0.2rem solid #231F20 !important; 
     }
     summary:visited {
-        outline: 0.1rem solid #E1E8EC;
+        outline: 0.2rem solid #E1E8EC;
         background: #231F20;
         color: #E1E8EC;
     }
     details {
-        outline: 0.1rem solid #E1E8EC;
+        outline: 0.2rem solid #E1E8EC;
     }
     summary:hover {
         background-color: #E1E8EC;
