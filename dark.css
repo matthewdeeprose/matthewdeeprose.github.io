@@ -48,7 +48,7 @@
     main a:focus,
     aside a:focus,
     footer a:focus {
-        outline: 0.3rem solid #4BB694 !important;
+        outline: 0.3rem solid #C1D100 !important;
         transition: outline-offset .2s linear !important;
     }
     div#titleLink,
@@ -80,7 +80,7 @@
         color: #FCBC00;
     }
     a:hover {
-        color: #3CBAC6;
+        color: #C1D100;
     }
     #myBtn,
     #myBtn2 {
@@ -115,6 +115,7 @@
         outline: 0em solid #E1E8EC;
         background: #231F20;
         color: #E1E8EC;
+        border: 0.2rem solid #231F20 !important; 
     }
     summary:visited {
         outline: 0.1rem solid #E1E8EC;
@@ -127,20 +128,21 @@
     summary:hover {
         background-color: #E1E8EC;
         color: #00131D;
-        box-shadow: 0 0 0 0.4rem #4BB694 !important;
+        box-shadow: 0 0 0 0.4rem #C1D100 !important;
         outline: 0.0rem solid #161415 !important;
+        border: 0.2rem solid #00131D;
         transition: all 0.3s ease-in-out !important;
     }
     summary:focus {
         background-color: #E1E8EC;
         color: #00131D;
-        box-shadow: 0 0 0 0.4rem #4BB694 !important;
+        box-shadow: 0 0 0 0.4rem #C1D100 !important;
         outline: 0.0rem solid #161415 !important;
-        border: 0.2rem dotted #00131D;
+        border: 0.2rem solid #00131D;
         transition: all 0.3s ease-in-out !important;
     }
     summary:active {
-        border: 0px solid #E1E8EC;
+        border: 0px solid #E1E8EC !important;
     }
     summary {
         border: 0px solid #E1E8EC;
@@ -154,8 +156,9 @@
     button:focus {
         background-color: #E1E8EC;
         color: #00131D;
-        box-shadow: 0 0 0 0.3rem #4BB694 !important;
+        box-shadow: 0 0 0 0.3rem #C1D100 !important;
         outline: 0.0rem solid #161415 !important;
+        border: 0.1rem solid #231F20 !important;
     }
     body {
         background: #161415 !important;
@@ -189,7 +192,7 @@
     .topnav button {
         color: #E1E8EC;
         background: #231F20;
-        border: 0.1rem solid #E1E8EC !important;
+        border: 0.2rem solid #E1E8EC !important;
         margin: 0.2rem;
     }
     .topnav a:hover,
@@ -202,8 +205,10 @@
     .topnav button.active:hover {
         background-color: #E1E8EC;
         color: #00131D;
-        box-shadow: 0 0 0 4pt #4BB694 !important;
+        box-shadow: 0 0 0 4pt #C1D100 !important;
         outline: 0.0rem solid #161415 !important;
+		border: 0.2rem solid #231F20 !important;
+		
     }
     .topnav a.icon,
     .topnav button.icon {
@@ -213,14 +218,14 @@
     .topnav button.active {
         background-color: #FCBC00;
         color: #00131D;
-        border: 0.1rem solid #231F20 !important;
+        border: 0.2rem solid #231F20 !important;
     }
     img.articleImage,
     img.articleImageLeft {
         border: 2px solid #E1E8EC;
     }
     input:focus {
-        outline: 3px solid #4BB694;
+        outline: 3px solid #C1D100;
     }
     /*position new box*/
     .wrapper input + label::before {

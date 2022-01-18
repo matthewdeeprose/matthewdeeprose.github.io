@@ -530,8 +530,8 @@ a:hover {
 .videoWrapper {
 	position: relative;
 	padding-bottom: 56.25%;
-	/* 16:9 */
 	height: 0;
+	margin-right: 0.5rem;
 }
 
 .videoWrapper iframe {
@@ -663,6 +663,7 @@ details p {
 
 nav#myTopnav {
 	padding: 0.1rem 0.1rem 0.1rem 0.2rem;
+	margin: 0.1rem 0rem 0.2rem 0rem;
 }
 
 .topnav {
@@ -676,7 +677,7 @@ nav#myTopnav {
 	padding: 14px 16px;
 	font-size: 17px;
 	border-radius: 0.5rem;
-	margin-right: 0.3rem;
+	margin-right: 0.3rem !important;
 	text-decoration: none;
 }
 

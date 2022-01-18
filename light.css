@@ -116,14 +116,18 @@
         outline: 0.1rem solid #495961;
     }
     summary:hover {
-        background: #231F20;
+        background-color: #231F20;
         color: #FFFFF4;
-        outline: 0.2rem solid #00131D;
+        box-shadow: 0 0 0 0.4rem #005C84 !important;
+        outline: 0.0rem solid #161415 !important;
+        border: 0.2rem solid #FFFFF4;
         transition: all 0.3s ease-in-out !important;
     }
     summary:focus {
-        background: #231F20;
+        background-color: #231F20;
         color: #FFFFF4;
+        box-shadow: 0 0 0 0.4rem #005C84 !important;
+        outline: 0.0rem solid #161415 !important;
         border: 0.2rem dotted #FFFFF4;
         transition: all 0.3s ease-in-out !important;
     }
@@ -144,6 +148,7 @@
         box-shadow: 0 0 0 0.3rem #005C84;
         outline: 0.0rem solid #FFFFF4 !important;
         transition: .3s linear !important;
+        border: 0.1rem solid #FFFFF4;
     }
     .page-wrap {
         background: #FFFFF4;
@@ -177,8 +182,8 @@
     .topnav a,
     .topnav button {
         color: #FFFFF4;
-        border: 0.1rem solid #00131D;
-        margin: 0.1rem;
+        border: 0.2rem solid #00131D;
+        margin: 0.2rem;
         background-color: #00131D;
     }
     .topnav a.icon,
@@ -195,14 +200,15 @@
     .topnav button.active:hover {
         background-color: #FFFFF4;
         color: #00131D;
-        box-shadow: 0 0 0 2pt #005C84;
+        box-shadow: 0 0 0 4pt #005C84;
         outline: 0.0rem solid #FFFFF4 !important;
+		border: 0.2rem solid #FFFFF4;
     }
     .topnav a.active,
     .topnav button.active {
         background-color: #FCBC00;
         color: #00131D;
-        border: 0.1rem solid #00131D;
+        border: 0.2rem solid #00131D;
     }
     img.articleImage,
     img.articleImageLeft {
