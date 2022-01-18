@@ -150,7 +150,7 @@
     button {
         color: #E1E8EC;
         background: #231F20;
-        border: 0.1rem solid #E1E8EC !important;
+        border: 0.2rem solid #E1E8EC !important;
     }
     button:hover,
     button:focus {
