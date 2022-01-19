@@ -133,11 +133,15 @@
         border: 0.2rem solid #00131D;
         transition: all 0.3s ease-in-out !important;
     }
+    details:hover {
+        outline: 0.2rem solid #C1D100;
+    }
     summary:focus {
         background-color: #E1E8EC;
         color: #00131D;
-        box-shadow: 0 0 0 0.4rem #C1D100 !important;
-        outline: 0.0rem solid #161415 !important;
+        box-shadow: 0 0 0 0.0rem #C1D100 !important;
+        outline: 0.3rem dotted #E1E8EC !important;
+        outline-offset: .5rem !important;
         border: 0.2rem solid #00131D;
         transition: all 0.3s ease-in-out !important;
     }
