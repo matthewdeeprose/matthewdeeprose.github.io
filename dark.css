@@ -86,7 +86,6 @@
     #myBtn2 {
         color: #231F20;
         background-color: #E1E8EC;
-        border: 1px solid #9FB1BD;
     }
     #myBtn:hover,
     #myBtn:focus,
@@ -95,7 +94,6 @@
         color: #E1E8EC;
         background-color: #161415;
         box-shadow: 0 0 0 0.3rem #FCBC00;
-        border: 1px solid #FCBC00;
     }
     /* skip link */
     .skip-link {
@@ -108,7 +106,7 @@
     }
     .skip-link:focus {
         border: #FCBC00 solid .3rem;
-        outline: 0px solid #74C9E5;
+
     }
     /* Details and Summary styling */
     summary {

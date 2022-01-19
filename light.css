@@ -37,7 +37,7 @@
     /* Presentations */
     .presentations {
         border: 1px solid #495961;
-        background: #fefeef;
+        background: #F0F2E8;
     }
     @media only screen and (max-width: 600px) {
         .presentations {
@@ -95,7 +95,7 @@
     #myBtn2:hover,
     #myBtn2:focus {
         color: #00131D;
-        background-color: #FEFFF4;
+        background-color: #FFFFF4;
         box-shadow: 0 0 0 0.3rem #005C84;
     }
     /* skip link */
@@ -109,7 +109,6 @@
     }
     .skip-link:focus {
         border: #00131D solid .3rem;
-        outline: 0px solid #74C9E5;
     }
     /* Details and Summary styling */
     details {
@@ -119,7 +118,7 @@
         background-color: #00131D;
         color: #FFFFF4;
         box-shadow: 0 0 0 0.4rem #005C84 !important;
-        outline: 0.0rem solid #161415 !important;
+        outline: 0.0rem solid #00131D !important;
         border: 0.2rem solid #FFFFF4;
         transition: all 0.3s ease-in-out !important;
     }
@@ -219,7 +218,7 @@
     }
     /*position new box*/
     .wrapper input + label::before {
-        background: #E1E8EC;
+        background: #495961;
     }
     /*focus styles*/
     .wrapper input:focus + label::before {
