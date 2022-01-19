@@ -94,7 +94,7 @@
     #myBtn:focus,
     #myBtn2:hover,
     #myBtn2:focus {
-        color: #231F20;
+        color: #00131D;
         background-color: #FEFFF4;
         box-shadow: 0 0 0 0.3rem #005C84;
     }
@@ -116,24 +116,24 @@
         outline: 0.2rem solid #495961;
     }
     summary:hover {
-        background-color: #231F20;
+        background-color: #00131D;
         color: #FFFFF4;
         box-shadow: 0 0 0 0.4rem #005C84 !important;
         outline: 0.0rem solid #161415 !important;
         border: 0.2rem solid #FFFFF4;
         transition: all 0.3s ease-in-out !important;
     }
-    summary:focus {
-        background-color: #231F20;
-        color: #FFFFF4;
-        box-shadow: 0 0 0 0.4rem #005C84 !important;
-        outline: 0.0rem solid #161415 !important;
-        border: 0.2rem dotted #FFFFF4;
-        transition: all 0.3s ease-in-out !important;
+    details:hover {
+        outline: 0.2rem solid #005C84;
     }
-    summary:active {
-        background: #231F20;
-        border: 0px solid #E1E8EC;
+    summary:focus {
+        background-color: #00131D;
+        color: #FFFFF4;
+        box-shadow: 0 0 0 0.0rem #005C84 !important;
+        outline: 0.3rem dotted #00131D !important;
+        outline-offset: .5rem !important;
+        border: 0.2rem solid #00131D;
+        transition: all 0.3s ease-in-out !important;
     }
     button {
         color: #FFFFF4;
