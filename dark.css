@@ -37,12 +37,12 @@
         border: 0.3rem solid #E1E8EC;
     }
     .presentations {
-        border: 0.1rem solid #495961;
+        border: 0.1rem solid #E1E8EC;
         background: none;
     }
     @media only screen and (max-width: 600px) {
         .presentations {
-            border: 0px solid #495961 !important;
+            border: 0px solid #E1E8EC !important;
         }
     }
     main a:focus,
@@ -53,7 +53,7 @@
     }
     div#titleLink,
     div#logo {
-        border: 0.2rem solid #758D9A;
+        border: 0.2rem solid #E1E8EC;
     }
     /* Logo things */
     a#home {
@@ -70,10 +70,10 @@
     }
     /* Logo things ends */
     section.related {
-        border-bottom: 0.1rem solid #758D9A;
+        border-bottom: 0.1rem solid #E1E8EC;
     }
     section.related:last-child {
-        border-bottom: 0rem solid #758D9A;
+        border-bottom: 0rem solid #E1E8EC;
     }
     a,
     a:visited {
@@ -187,7 +187,7 @@
     }
     .page-footer {
         background: #231F20;
-        border-top: 0.2rem #758D9A solid;
+        border-top: 0.2rem #E1E8EC solid;
     }
     .topnav {
         background-color: #231F20;
@@ -216,7 +216,7 @@
     }
     .topnav a.icon,
     .topnav button.icon {
-        background: #9FB1BD;
+        background: #E1E8EC;
     }
     .topnav a.active,
     .topnav button.active {
