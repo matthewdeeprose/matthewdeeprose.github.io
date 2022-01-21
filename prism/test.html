@@ -79,44 +79,58 @@
 			<div class="codeWrapper">
 	<pre><code class="language-html">
 
-&lt;a href="javascript:void(0);" class="icon" onclick="myFunction()">
-
-
-&lt;button id="menu" aria-controls="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
-	
-	
-	
-	
-	
-	
-&lt;div class="topnav" id="myTopnav">
-   &lt;a id="homeMenu" href="index.html">Home&lt;/a>
-   &lt;a href="presentations.html" class="active">Presentations&lt;/a>
-   &lt;a href="posts.html">Blog Posts&lt;/a>
-   &lt;a href="projects.html">Projects&lt;/a>
-   &lt;a href="about.html">About&lt;/a>
-   &lt;a id="menu" href="javascript:void(0);"  aria-label="Menu"  aria-expanded="false" class="icon" role="button" aria-haspopup="menu" onclick="menuAction()">
-      &lt;span id="hamburger">
-         &lt;svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-labelledby="hamSVGTitle hamSVGDesc" role="img">
-            &lt;title id="hamSVGTitle">Menu&lt;/title>
-            &lt;desc id="hamSVGDesc">Select to open the menu&lt;/desc>
-            &lt;rect width="100" height="20">&lt;/rect>
-            &lt;rect y="30" width="100" height="20">&lt;/rect>
-            &lt;rect y="60" width="100" height="20">&lt;/rect>
+  &lt;nav class="page-nav">
+    &lt;div class="topnav" id="myTopnav">
+      &lt;a href="index.html" class="active">Home&lt;/a>
+      &lt;a href="presentations.html">Presentations&lt;/a>
+      &lt;a href="posts.html">Blog Posts&lt;/a>
+      &lt;a href="projects.html">Projects&lt;/a>
+      &lt;a href="about.html">About&lt;/a>
+      &lt;a href="javascript:void(0);" aria-label="Menu" class="icon" role="button" aria-haspopup="menu" onclick="menuAction()">
+        &lt;i class="fa fa-bars" aria-hidden="true">&lt;/i>
+      &lt;/a>
+    &lt;/div>
+  &lt;/nav>
+  
+  
+ &lt;div id="main-navigation" class="page-nav">
+   &lt;nav aria-label="Main menu" class="topnav" id="myTopnav">
+     &lt;button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+       &lt;span id="hamburger">
+         &lt;svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+           &lt;title id="hamSVGTitle">Menu&lt;/title>
+           &lt;desc id="hamSVGDesc">Select to expand or collapse the menu&lt;/desc>
+           &lt;rect width="100" height="20">&lt;/rect>
+           &lt;rect y="30" width="100" height="20">&lt;/rect>
+           &lt;rect y="60" width="100" height="20">&lt;/rect>
          &lt;/svg>
-      &lt;/span>
-      &lt;span id="arrow">
-         &lt;svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arrowSVGTitle arrowSVGDesc">
-            &lt;title id="arrowSVGTitle">Menu&lt;/title>
-            &lt;desc id="arrowSVGDesc">Select to open the menu&lt;/desc>
-            &lt;g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
-               &lt;path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
-               &lt;path  d="m16.5,10.5l-13,0"/>
-            &lt;/g>
+       &lt;/span>
+     &lt;/button>
+     &lt;a id="homeMenu" href="index.html" class="active">Home&lt;/a>
+     &lt;a href="presentations.html">Presentations&lt;/a>
+     &lt;a href="posts.html">Blog Posts&lt;/a>
+     &lt;a href="projects.html">Projects&lt;/a>
+     &lt;a href="about.html">About&lt;/a>
+   &lt;/nav>
+ &lt;/div>
+ 
+ 
+  &lt;div id="main-navigation" class="page-nav">
+   &lt;nav aria-label="Main menu" class="topnav" id="myTopnav">
+     &lt;button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+       &lt;span id="hamburger">
+         &lt;svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+			...
          &lt;/svg>
-      &lt;/span>
-   &lt;/a>
-&lt;/div>
+       &lt;/span>
+     &lt;/button>
+     &lt;a id="homeMenu" href="index.html" class="active">Home&lt;/a>
+     &lt;a href="presentations.html">Presentations&lt;/a>
+     &lt;a href="posts.html">Blog Posts&lt;/a>
+     &lt;a href="projects.html">Projects&lt;/a>
+     &lt;a href="about.html">About&lt;/a>
+   &lt;/nav>
+ &lt;/div>
 	
 	</code></pre>
 	</div>
