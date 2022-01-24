@@ -2,7 +2,9 @@
 .page-nav,
 .page-sidebar,
 .page-footer,
-div#vidPres {
+div#vidPres,
+#panel,
+button {
 	display: none;
 }
 
@@ -18,4 +20,29 @@ div#vidPres {
 
 body {
 	background: none !important;
+}
+
+
+.presentations {
+    border-radius: 0rem;
+    padding: 0rem 0rem 0rem 0rem;
+    margin: 0rem;
+    line-height: 1.75;
+    border: 0px;
+	background: white;
+}
+
+
+.page-main {
+        background-color: white;
+        color: black;
+}
+
+.page-main a, dd.from  {
+    color: black;
+}
+
+summary, details {
+	border: 0px;
+	outline: 0px;
 }

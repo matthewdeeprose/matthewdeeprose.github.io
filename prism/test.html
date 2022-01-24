@@ -137,27 +137,26 @@
 <div class="codeWrapper">
 	<pre><code class="language-javascript">
 	
-function myFunction() {
-  var x = document.getElementById("myTopnav");
-  if (x.className === "topnav") {
-    x.className += " responsive";
-  } else {
-    x.className = "topnav";
-  }
-}
-	
-	
-	
 function menuAction() {
     let menuSwitch = document.getElementById("myTopnav");
     if (menuSwitch.className === "topnav") {
         menuSwitch.className += " responsive";
-        document.getElementById('homeMenu').focus();
+    } else {
+        menuSwitch.className = "topnav";
+    }
+}
+
+
+
+function menuAction() {
+    let menuSwitch = document.getElementById("myTopnav");
+    if (menuSwitch.className === "topnav") {
+        menuSwitch.className += " responsive";
     } else {
         menuSwitch.className = "topnav";
     }
     let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-    if (menuAriaAttrib == "true") {
+    if (menuAriaAttrib === "true") {
         menuAriaAttrib = "false"
     } else {
         menuAriaAttrib = "true"
