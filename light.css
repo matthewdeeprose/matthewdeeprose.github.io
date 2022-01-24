@@ -16,15 +16,15 @@
         border: 0.1rem solid #00131D;
     }
     .linkify:hover {
-        box-shadow: 0 0 0 .4rem #005051;
+        box-shadow: 0 0 0 .4rem #005C84;
         border:0.1rem solid #00131D;
         outline: #FFFFF4 double 0.5rem;        
     }
     .cards .isfocused {
-        box-shadow: 0 0 0 .4rem #005051;
+        box-shadow: 0 0 0 .4rem #005C84;
     }
     .card .cta {
-        color: #005051;
+        color: #005C84;
     }
     #Example {
         border: 0.2rem solid #00131D;
