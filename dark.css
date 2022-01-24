@@ -16,12 +16,13 @@
         background-color: #231F20 !important;
     }
     .card {
-        border: 2px solid #E1E8EC;
+        border: 0.1rem solid #E1E8EC;
         background-color: #00131D;
     }
     .linkify:hover {
         box-shadow: 0 0 0 0.4rem #FCBC00;
-        border: 2px solid #231F20;
+        border:0.1rem solid #E1E8EC;
+        outline: #00131D double 0.5rem;
     }
     .cards .isfocused {
         box-shadow: 0 0 0 0.4rem #FCBC00;
@@ -235,11 +236,11 @@
     }
     /*focus styles*/
     .wrapper input:focus + label::before {
-        box-shadow: 0 0 0 3px #1E8765;
+        box-shadow: 0 0 0 3px #C1D100;
     }
     /*focus styles*/
     .wrapper2 input:focus + label::before {
-        box-shadow: 0 0 0 3px #1E8765;
+        box-shadow: 0 0 0 3px #C1D100;
     }
     /* Remove focus from mouse, replace with box shadow */
     :focus:not(:focus-visible) {
