@@ -13,10 +13,12 @@
     }
     /* cards */
     .card {
-        border: 2px solid #00131D;
+        border: 0.1rem solid #00131D;
     }
     .linkify:hover {
         box-shadow: 0 0 0 .4rem #005051;
+        border:0.1rem solid #00131D;
+        outline: #FFFFF4 double 0.5rem;        
     }
     .cards .isfocused {
         box-shadow: 0 0 0 .4rem #005051;
