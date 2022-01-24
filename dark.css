@@ -20,12 +20,12 @@
         background-color: #00131D;
     }
     .linkify:hover {
-        box-shadow: 0 0 0 0.4rem #FCBC00;
+        box-shadow: 0 0 0 0.4rem #C1D100;
         border:0.1rem solid #E1E8EC;
         outline: #00131D double 0.5rem;
     }
     .cards .isfocused {
-        box-shadow: 0 0 0 0.4rem #FCBC00;
+        box-shadow: 0 0 0 0.4rem #C1D100;
         border: 2px solid #231F20;
     }
     .card .cta {
