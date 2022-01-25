@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <generator>RSS Builder by B!Soft</generator>
+    <title>Matthew Deeprose, accessibility and edtech presentations, blog posts, and projects</title>
+    <link>https://matthewdeeprose.github.io</link>
+    <description>Aaccessibility and edtech presentations, blog posts, and projects by Matthew Deeprose</description>
+    <language>en-gb</language>
+    <copyright>Matthew Deeprose</copyright>
+    <image>
+      <title>Matthew Deeprose, accessibility and edtech presentations, blog posts, and projects</title>
+      <link>https://matthewdeeprose.github.io</link>
+      <url>https://matthewdeeprose.github.io/image.png</url>
+      <width>2000</width>
+      <height>1125</height>
+    </image>
+    <item>
+      <title>iSolutions Digital Accessibility Community of Practice: what did we do in 2021 and what was the impact?</title>
+      <pubDate>Tue, 18 Jan 2022 08:29:38 GMT</pubDate>
+      <link>https://generic.wordpress.soton.ac.uk/digital-learning/2022/01/17/da_cop_2021_review/</link>
+      <category>Blog post</category>
+      <description><![CDATA[]]></description>
+    </item>
+    <item>
+      <title>Making IT accessible for all!</title>
+      <pubDate>Fri, 3 Dec 2021 08:28:46 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/makeITaccessible.html</link>
+      <category>Presentation</category>
+      <description><![CDATA[Recent experiences have demonstrated that University staff and students expect to use online resources with a variety of devices, making full use of accessibility features such as reflow, captions, and text-to-speech.
+
+Such features benefit everyone, but especially the increasing proportion of university students who self-report a disability.
+
+University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?
+
+In this presentation, we will share:
+
+approaches to building a digital accessibility policy for university IT departments.
+techniques for embedding accessibility within IT development processes by ‘shifting left’.
+examples from within the Higher Education and wider IT sectors.]]></description>
+    </item>
+    <item>
+      <title>Accessibility Allies Resources</title>
+      <pubDate>Wed, 3 Nov 2021 08:27:28 GMT</pubDate>
+      <link>https://generic.wordpress.soton.ac.uk/digital-learning/accessibility-allies/</link>
+      <category>Resources</category>
+      <description><![CDATA[We share these materials as part of our presentation Accessibility Allies at the University of Southampton. The content may contain errors or omissions. We share this on a best-efforts basis.]]></description>
+    </item>
+    <item>
+      <title>Worldwide Digital Accessibility - 001 - Just sit down and do it!</title>
+      <pubDate>Wed, 3 Nov 2021 08:26:06 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/WDA001.html</link>
+      <category>Interview</category>
+      <description><![CDATA[Not a presentation as such, but the magnificent Cam Beaudoin invited Peter J. Jonas and I to take part in the first Worldwide Digital Accessibility vodcast.]]></description>
+    </item>
+    <item>
+      <title>Accessibility Allies at the University of Southampton</title>
+      <pubDate>Tue, 2 Nov 2021 08:24:56 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/allies.html</link>
+      <category>Presentation</category>
+      <description><![CDATA[The University of Southampton introduced Blackboard Ally (a tool that provides insight into an institution's accessibility) in Summer 2021. To support the rollout, five student interns were employed over the summer as “Accessibility Allies”.
+
+In this webinar, the University's Digital Learning Team shared how they organised the project and provided information about the work undertaken by the students and outlined how they achieved impressive results.
+
+Students were involved with remediating course content to make it more digitally accessible, and advised academic staff about how to improve accessibility, among other things. Their work resulted in an average 87% increase in course file accessibility score, benefiting more than 6,000 students.]]></description>
+    </item>
+    <item>
+      <title>Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</title>
+      <pubDate>Wed, 22 Sep 2021 08:21:46 GMT</pubDate>
+      <link>https://generic.wordpress.soton.ac.uk/digital-learning/author/matthew-deeprose/</link>
+      <category>Blog post</category>
+      <description><![CDATA[A common misconception is that Digital Accessibility slows down and impedes IT development process, making them less agile. In this post we cover six aspects we learned in our Agile training course and how they relate to accessibility.]]></description>
+    </item>
+    <item>
+      <title>Three ways PowerPoint’s "Design Ideas" excludes your audience, and how to fix it.</title>
+      <pubDate>Tue, 20 Jul 2021 08:10:52 GMT</pubDate>
+      <link>https://generic.wordpress.soton.ac.uk/digital-learning/2021/07/20/design-ideas-three-ways-overview/</link>
+      <category>Blog post</category>
+      <description><![CDATA[PowerPoint’s Design Ideas feature helps us create attractive slides quickly. Unfortunately, some of its suggestions do not follow accessibility best practice, creating barriers that may exclude members of your audience. In this blog post we explain three issues and how to fix them.]]></description>
+    </item>
+    <item>
+      <title>Toward amazing accessibility!</title>
+      <pubDate>Thu, 20 May 2021 08:07:44 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/amazing.html</link>
+      <category>Presentation</category>
+      <description><![CDATA[IT departments in the Higher Education sector and elsewhere know they must commit to accessibility, but how can we take this ambition and embed it within our operations?
+
+Within the University of Southampton IT department (which is named iSolutions) senior leadership committed to delivering "amazing accessibility" but has not yet set out how this might happen.
+
+In this internal presentation within the department, held on Global Accessibility Awareness Day on 20 May 2021, I attempt to show how we could start that journey.]]></description>
+    </item>
+  </channel>
+</rss>

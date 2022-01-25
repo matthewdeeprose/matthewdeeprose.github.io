@@ -264,13 +264,14 @@ div#aboutFoot {
 	float: right;
 }
 
+div#RSS,
 div#YouTubeChannelFoot,
 div#SiteMap,
 div#twitterFoot,
 div#AccessibilityFoot {
 	float: left;
 }
-
+div#RSS,
 div#YouTubeChannelFoot,
 div#SiteMap,
 div#twitterFoot,
@@ -317,6 +318,7 @@ section.related {
 	}
 	div#YouTubeChannelFoot,
 	div#SiteMap,
+	div#RSS,
 	div#twitterFoot,
 	div#AccessibilityFoot {
 		float: none;
