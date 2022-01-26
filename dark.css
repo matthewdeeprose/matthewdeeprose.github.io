@@ -158,6 +158,12 @@
         outline: 0.0rem solid #161415 !important;
         border: 0.2rem solid #231F20 !important;
     }
+	button:focus:not(:focus-visible) {
+        color: #E1E8EC;
+        background: #231F20;
+        border: 0.2rem solid #E1E8EC !important;
+        box-shadow: 0 0 0 0rem #C1D100 !important;
+	}
     body {
         background: #161415 !important;
         color: #E1E8EC;
