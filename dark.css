@@ -1,5 +1,5 @@
 @media (prefers-color-scheme: dark) {
-	.transcriptSpeaker {
+    .transcriptSpeaker {
         color: #C1D100;
         font-weight: bold;
     }
@@ -21,7 +21,7 @@
     }
     .linkify:hover {
         box-shadow: 0 0 0 0.4rem #C1D100;
-        border:0.1rem solid #E1E8EC;
+        border: 0.1rem solid #E1E8EC;
         outline: #00131D double 0.5rem;
     }
     .cards .isfocused {
@@ -50,7 +50,6 @@
     aside a:focus,
     footer a:focus {
         outline: 0.3rem solid #C1D100 !important;
-        transition: outline-offset .2s linear !important;
     }
     div#titleLink,
     div#logo {
@@ -63,7 +62,6 @@
     a#home:hover,
     a#home:focus {
         color: #FCBC00 !important;
-        transition: .3s linear;
     }
     a#home:focus {
         outline: none;
@@ -107,14 +105,13 @@
     }
     .skip-link:focus {
         border: #FCBC00 solid .3rem;
-
     }
     /* Details and Summary styling */
     summary {
         outline: 0em solid #E1E8EC;
         background: #231F20;
         color: #E1E8EC;
-        border: 0.2rem solid #231F20 !important; 
+        border: 0.2rem solid #231F20 !important;
     }
     summary:visited {
         outline: 0.2rem solid #E1E8EC;
@@ -130,7 +127,6 @@
         box-shadow: 0 0 0 0.4rem #C1D100 !important;
         outline: 0.0rem solid #161415 !important;
         border: 0.2rem solid #00131D;
-        transition: all 0.3s ease-in-out !important;
     }
     details:hover {
         outline: 0.2rem solid #C1D100;
@@ -142,7 +138,6 @@
         outline: 0.3rem dotted #E1E8EC !important;
         outline-offset: .5rem !important;
         border: 0.2rem solid #00131D;
-        transition: all 0.3s ease-in-out !important;
     }
     summary:active {
         border: 0px solid #E1E8EC !important;
@@ -210,8 +205,7 @@
         color: #00131D;
         box-shadow: 0 0 0 4pt #C1D100 !important;
         outline: 0.0rem solid #161415 !important;
-		border: 0.2rem solid #231F20 !important;
-		
+        border: 0.2rem solid #231F20 !important;
     }
     .topnav a.icon,
     .topnav button.icon {

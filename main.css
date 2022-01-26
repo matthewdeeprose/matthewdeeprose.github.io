@@ -468,19 +468,11 @@ a:hover {
 #myBtn:focus,
 #myBtn2:hover,
 #myBtn2:focus {
-    transition: .3s linear;
+    transition: .3s linear !important;
     cursor: pointer;
     outline: none !important;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    #myBtn:hover,
-    #myBtn:focus,
-    #myBtn2:hover,
-    #myBtn2:focus {
-        transition: .0s linear !important;
-    }
-}
 
 @media screen and (max-width: 800px) {
     #panel {
@@ -510,7 +502,7 @@ a:hover {
 
 .skip-link:focus {
     transform: translate3d(1.25rem, 1.25rem, 0);
-    transition: transform .3s ease-out;
+    transition: transform .3s ease-out !important;
 }
 
 
@@ -557,12 +549,13 @@ summary {
 }
 
 summary:hover {
-    transition: .3s linear;
+    transition: all 0.3s ease-in-out !important;
     text-decoration: none;
 }
 
 summary:focus {
     text-decoration: none;
+    transition: all 0.3s ease-in-out !important;
 }
 
 details[open] {
@@ -588,7 +581,7 @@ button {
 
 button:hover,
 button:focus {
-    transition: .3s linear;
+    transition: .3s linear !important;
     cursor: pointer;
     outline: none !important;
 }
@@ -609,6 +602,13 @@ body {
     grid-template-rows: min-content min-content 1fr min-content;
     gap: 0px;
 }
+a#home:hover,
+a#home:focus {
+
+    transition: .3s linear !important;
+}
+
+
 
 .page-wrap > * {
     padding: 0.5rem;
@@ -671,7 +671,7 @@ nav#myTopnav {
 .topnav a:hover,
 .topnav a:focus {
     text-decoration: underline;
-    transition: .3s linear;
+    transition: all 0.2s ease-in-out !important;
 }
 
 .topnav a.active,
@@ -846,6 +846,7 @@ form {
 }
 
 
+
 /*radio pseudo element styles*/
 .wrapper2 input + label::after {
     content: "";
@@ -882,7 +883,42 @@ form {
         animation-iteration-count: 1 !important;
         background-attachment: initial !important;
         scroll-behavior: auto !important;
+        transition: .0s linear !important;
         transition-duration: 0s !important;
         transition-delay: 0s !important;
+    }
+    #myBtn:hover,
+    #myBtn:focus,
+    #myBtn2:hover,
+    #myBtn2:focus {
+        transition: .0s linear !important;
+    }
+    a:focus {
+        outline-offset: 5px;
+        transition: all 0s ease-in-out !important;
+    }
+    .topnav a:hover,
+    .topnav a:focus {
+        transition: all 0.0s ease-in-out !important;
+    }
+    .skip-link:focus {
+        transition: transform 0s ease-out !important;
+    }
+    summary:hover {
+        transition: all 0s ease-in-out !important;
+    }
+    input:focus {
+        transition: outline-offset 0s linear !important;
+    }
+    summary:focus {
+        transition: all 0s ease-in-out !important;
+    }
+    button:hover,
+    button:focus {
+        transition: 0s linear !important;
+    }
+    a#home:hover,
+    a#home:focus {
+        transition: 0s linear !important;
     }
 }
