@@ -723,6 +723,9 @@ input:focus {
 html {
     box-sizing: border-box;
 }
+.linkify:hover,.cards .isfocused,a:hover {
+    transition: all 0.3s ease-in-out !important;
+}
 
 
 /* Inherit box-sizing to make it easier to change the property
@@ -921,4 +924,7 @@ form {
     a#home:focus {
         transition: 0s linear !important;
     }
+	.linkify:hover,.cards .isfocused,a:hover {
+    transition: all 0s ease-in-out !important;
+	}
 }
