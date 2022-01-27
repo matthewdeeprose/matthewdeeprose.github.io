@@ -586,6 +586,10 @@ button:focus {
     outline: none !important;
 }
 
+.actionButton:active {
+    transform: translateY(0.5rem) !important;
+}
+
 body {
     padding: 5px;
     height: 100vh;
@@ -723,7 +727,9 @@ input:focus {
 html {
     box-sizing: border-box;
 }
-.linkify:hover,.cards .isfocused,a:hover {
+.linkify:hover,
+.cards .isfocused,
+a:hover {
     transition: all 0.3s ease-in-out !important;
 }
 
@@ -924,7 +930,12 @@ form {
     a#home:focus {
         transition: 0s linear !important;
     }
-	.linkify:hover,.cards .isfocused,a:hover {
-    transition: all 0s ease-in-out !important;
-	}
+    .linkify:hover,
+    .cards .isfocused,
+    a:hover {
+        transition: all 0s ease-in-out !important;
+    }
+    .actionButton:active {
+        transform: translateY(0rem) !important;
+    }
 }
