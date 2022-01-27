@@ -53,7 +53,7 @@
     }
     div#titleLink,
     div#logo {
-        border: 0.2rem solid #E1E8EC;
+        border: 0.2rem solid #E1E8EC !important;
     }
     /* Logo things */
     a#home {
