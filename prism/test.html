@@ -168,10 +168,45 @@
  &lt;/div>
  
  
- 	<link rel="stylesheet" href="main.css" media="all">
-    <link rel="stylesheet" href="light.css" media="(prefers-color-scheme: light)">
-    <link rel="stylesheet" href="dark.css" media="(prefers-color-scheme: dark)">
-    <link rel="stylesheet" href="print.css" media="print">
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+&lt;svg height="21" viewBox="0 0 21 21" width="21"
+	xmlns="http://www.w3.org/2000/svg">
+	&lt;defs>
+		&lt;style>
+      svg {
+        background-color: white;
+        color-scheme:light dark;
+      }
+      @media (prefers-color-scheme:dark) {
+        svg {
+          background-color: black;
+        }
+      }
+    &lt;/style>
+	&lt;/defs>
+	&lt;g>
+	...
+	&lt;/g>
+&lt;/svg>
+
+
+
+
+
+
+
+      &lt;link rel="icon" href="favicon.ico"> 
+      &lt;link rel="icon" href="favicon.svg" type="image/svg+xml">
+	  
+	  
+	  
 	
 	</code></pre>
 	</div>
