@@ -285,9 +285,32 @@ section.related {
     grid-template-columns: 1fr 1fr;
     grid-gap: 20px;
 }
+.posts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "one top" "one center";
+}
+
+#accessibility {
+    grid-area: one;
+}
+#EdTech {
+    grid-area: top;
+}
+#Blackboard {
+    grid-area: center;
+}
+
 
 /* Resource List Ends*/
 @media (max-width: 800px) {
+    .posts {
+        display: inline;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 1fr;
+        grid-gap: 20px;
+    }
     .resourseList {
         display: grid;
         grid-template-columns: 1fr;
