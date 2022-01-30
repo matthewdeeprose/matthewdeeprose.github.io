@@ -285,7 +285,7 @@ section.related {
     grid-template-columns: 1fr 1fr;
     grid-gap: 20px;
 }
-.posts {
+/*.posts {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto 1fr;
@@ -300,17 +300,17 @@ section.related {
 }
 #Blackboard {
     grid-area: center;
-}
+} */
 
 
 /* Resource List Ends*/
 @media (max-width: 800px) {
-    .posts {
+ /*   .posts {
         display: inline;
         grid-template-columns: 1fr !important;
         grid-template-rows: 1fr;
         grid-gap: 20px;
-    }
+    } */
     .resourseList {
         display: grid;
         grid-template-columns: 1fr;
