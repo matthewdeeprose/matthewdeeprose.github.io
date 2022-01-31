@@ -393,7 +393,7 @@ section.related {
     }
     article.front {
         margin-left: 0rem !important;
-        margin-right: 0rem!important;
+        margin-right: 0rem !important;
         line-height: 1.5;
         font-size: 1.25rem;
     }
