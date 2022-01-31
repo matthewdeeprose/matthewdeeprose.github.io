@@ -523,7 +523,7 @@ a:hover {
 }
 
 .skip-link:focus {
-    transform: translate3d(1.25rem, 1.25rem, 0);
+    transform: translate3d(6.25rem, 0.5rem, 0);
     transition: transform .3s ease-out !important;
 }
 
