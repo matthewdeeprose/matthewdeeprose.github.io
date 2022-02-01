@@ -3,9 +3,9 @@
    <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1">
-	  <meta name="description" content="Blog posts and articles by Matthew Deeprose">
-	  <meta name="keywords" content="Matthew Deeprose, Blog posts, blog, articles, guides, accessibility, Blackboard, Education">
-	  <meta name="author" content="Matthew Deeprose">
+      <meta name="description" content="Blog posts and articles by Matthew Deeprose">
+      <meta name="keywords" content="Matthew Deeprose, Blog posts, blog, articles, guides, accessibility, Blackboard, Education">
+      <meta name="author" content="Matthew Deeprose">
       <title>Blog posts and articles - Matthew Deeprose</title>
       <link rel="stylesheet" href="light.css" media="(prefers-color-scheme: light)">
       <link rel="stylesheet" href="main.css" media="all">
@@ -28,7 +28,8 @@
       <meta name="twitter:card" content="summary_large_image"/>
       <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#231F20">
       <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFF4">
-      <link rel="icon" href="favicon.ico"> <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
       <link rel="icon" href="favicon.svg" type="image/svg+xml">
       <style>
          .page-wrap > * {
@@ -101,10 +102,10 @@
                   <section class="presentations" id="accessibility">
                      <h2 class="accessibility">Topic: Accessibility</h2>
                      <dl class="accessibility">
-						<dt><a href="https://www.textboxdigital.com/lunchbox-011">Interview with textBOX</a></dt>
+                        <dt><a href="https://www.textboxdigital.com/lunchbox-011">Interview with textBOX</a></dt>
                         <dd>TextBox are well know for their accessibility work, most recently the ASPIRE awards. Huw Alexander from TextBox invited me to do an interview for their Lunchbox series.</dd>
                         <dd class="from">Published on textBOX</dd>
-						<dt><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2022/01/17/da_cop_2021_review/">iSolutions Digital Accessibility Community of Practice: what did we do in 2021 and what was the impact?</a></dt>
+                        <dt><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2022/01/17/da_cop_2021_review/">iSolutions Digital Accessibility Community of Practice: what did we do in 2021 and what was the impact?</a></dt>
                         <dd>The iSolutions Digital Accessibility Community of Practice began in December 2020. It aims to share practices, provide peer support, and raise awareness of digital accessibility within the department. Using results from a survey of community members, in this post I review the past year and looks forward to the year to come.</dd>
                         <dd class="from">Published on The University of Southampton Digital Learning Blog</dd>
                         <dt><a href="https://generic.wordpress.soton.ac.uk/digital-learning/accessibility-allies/">Accessibility Allies</a></dt>
@@ -127,7 +128,7 @@
                         <dd class="from">Published by AbilityNet</dd>
                      </dl>
                   </section>
-				  <section class="presentations" id="EdTech">
+                  <section class="presentations" id="EdTech">
                      <h2 class="EdTech">Topic: Educational Technology</h2>
                      <dl class="EdTech">
                         <dt><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2020/11/16/virtual-backgrounds-when-creating-powerpoint-recordings/">Virtual backgrounds when creating PowerPoint Recordings</a></dt>
@@ -247,12 +248,12 @@
                         <dd class="from">Published on The VLE Guru Blog</dd>
                      </dl>
                   </section>
-
                </div>
             </article>
          </main>
          <footer class="page-footer">
-            <div id="RSS"><a href="feed.rss">RSS</a></div><div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
             <div id="AccessibilityFoot">
                <a href="Accessibility_Statement.html">Accessibility Statement</a>
             </div>
@@ -268,8 +269,8 @@
          </footer>
       </div>
       <div id="panel">
-         <button class="panelButton" onclick="topFunction()" id="myBtn" title="Go to top.">
-            <svg width="50" height="50" xmlns="https://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+         <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
                <title id="svgTitle2">Top.</title>
                <desc id="svgDesc2">Move to the top of the page.</desc>
                <g>
@@ -280,19 +281,23 @@
                   </g>
                </g>
             </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
          </button>
-         <button class="panelButton" onclick="bottomFunction()" id="myBtn2" title="Go to bottom.">
-            <svg width="50" height="50" xmlns="https://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
                <title id="svgTitle3">Bottom.</title>
                <desc id="svgDesc3">Move to the bottom of the page.</desc>
                <g>
                   <g stroke="currentColor"  stroke-linejoin="round" stroke-linecap="round" fill-rule="evenodd" fill="none">
                      <circle stroke="null"  r="24.5" cy="24.5" cx="25"/>
-                     <path stroke="null"  d="m15.625,27.5625l9.375,9.1875l9.375,-9.1875"/>
+                     <path stroke="null" d="m15.625,27.5625l9.375,9.1875l9.375,-9.1875"/>
                      <path stroke="null"  d="m25,36.75l0,-24.5"/>
                   </g>
                </g>
             </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
          </button>
       </div>
       <script>
@@ -353,11 +358,13 @@
          
          function topFunction() {
              document.body.scrollTop = 0;
-             document.documentElement.scrollTop = 0; document.getElementById('skipToContent').focus();
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
          }
          
          function bottomFunction() {
          window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
          }
       </script>
    </body>

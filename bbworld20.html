@@ -3,9 +3,9 @@
    <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1">
-	  <meta name="description" content="With the rapid move to online teaching in the current climate of COVID-19, ensuring equitable access to our learning environment has never been more important. When we customise the Blackboard theme (original experience) to align it with our institutional colours, we must consider accessibility. Based on my own experience at the University of Southampton (in the UK) I will share practical lessons and recommendations, of how to ensure your theme customisation complies with web content accessibility guidelines.">
-	  <meta name="keywords" content="blackboard, vle, lms, theme, accessibility, WCAG, Bb World">
-	  <meta name="author" content="Matthew Deeprose">
+      <meta name="description" content="With the rapid move to online teaching in the current climate of COVID-19, ensuring equitable access to our learning environment has never been more important. When we customise the Blackboard theme (original experience) to align it with our institutional colours, we must consider accessibility. Based on my own experience at the University of Southampton (in the UK) I will share practical lessons and recommendations, of how to ensure your theme customisation complies with web content accessibility guidelines.">
+      <meta name="keywords" content="blackboard, vle, lms, theme, accessibility, WCAG, Bb World">
+      <meta name="author" content="Matthew Deeprose">
       <title>The Practical "Bluffer's Guide" to Blackboard Theme Accessibility</title>
       <link rel="stylesheet" href="light.css" media="(prefers-color-scheme: light)">
       <link rel="stylesheet" href="main.css" media="all">
@@ -21,7 +21,8 @@
       <meta name="twitter:card" content="summary_large_image">
       <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
       <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-      <link rel="icon" href="favicon.ico"> <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
       <link rel="icon" href="favicon.svg" type="image/svg+xml">
       <meta name="twitter:card" content="summary_large_image">
       <meta name="twitter:title" content="The Practical Bluffer's Guide to Blackboard Theme Accessibility - Matthew Deeprose" />
@@ -244,7 +245,8 @@
             </section>
          </aside>
          <footer class="page-footer">
-            <div id="RSS"><a href="feed.rss">RSS</a></div><div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
             <div id="AccessibilityFoot">
                <a href="Accessibility_Statement.html">Accessibility Statement</a>
             </div>
@@ -260,7 +262,7 @@
          </footer>
       </div>
       <div id="panel">
-         <button class="panelButton" onclick="topFunction()" id="myBtn" title="Go to top.">
+         <button class="panelButton" onclick="topFunction()" id="myBtn">
             <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
                <title id="svgTitle2">Top.</title>
                <desc id="svgDesc2">Move to the top of the page.</desc>
@@ -272,8 +274,10 @@
                   </g>
                </g>
             </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
          </button>
-         <button class="panelButton" onclick="bottomFunction()" id="myBtn2" title="Go to bottom.">
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
             <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
                <title id="svgTitle3">Bottom.</title>
                <desc id="svgDesc3">Move to the bottom of the page.</desc>
@@ -285,6 +289,8 @@
                   </g>
                </g>
             </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
          </button>
       </div>
       <script>
@@ -345,11 +351,13 @@
          
          function topFunction() {
              document.body.scrollTop = 0;
-             document.documentElement.scrollTop = 0; document.getElementById('skipToContent').focus();
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
          }
          
          function bottomFunction() {
          window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
          }
       </script>
    </body>

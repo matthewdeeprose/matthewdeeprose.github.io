@@ -476,6 +476,7 @@ a:hover {
     cursor: pointer;
     padding: 10px;
     border-radius: 0.5rem;
+	width: 6rem;
 }
 
 #myBtn {
@@ -503,13 +504,27 @@ a:hover {
     }
     #myBtn,
     #myBtn2 {
-        font-size: 1px;
-        padding: 1.rem;
+        font-size: 0.7rem;
+        padding: 0.5rem;
         margin: 0.5rem 1rem .2rem .5rem;
         border-radius: 2.5rem;
+		width: auto;
     }
+	.panelLabel {display:none;}
+
 }
 
+@media screen and (max-width: 400px) {
+    #myBtn,
+    #myBtn2 {
+        padding: 0.1rem;
+        margin: 0.5rem 1rem .2rem .5rem;
+        border-radius: 3rem;
+		width: auto;
+    }
+	.panelLabel {display:none;}
+
+}
 
 /* skip link */
 .skip-link {

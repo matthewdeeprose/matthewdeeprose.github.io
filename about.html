@@ -2,9 +2,9 @@
 <html lang="en-GB">
    <head>
       <meta charset="utf-8" />
-	  <meta name="description" content="Matthew Deeprose works at the University of Southampton as a 
-	  Senior Learning Designer. His presentations attempt to make complex accessibility topics actionable and understandable.">
-	  <meta name="keywords" content="Matthew Deeprose, University of Southampton, accessibility, a11y">
+      <meta name="description" content="Matthew Deeprose works at the University of Southampton as a 
+         Senior Learning Designer. His presentations attempt to make complex accessibility topics actionable and understandable.">
+      <meta name="keywords" content="Matthew Deeprose, University of Southampton, accessibility, a11y">
       <meta name="author" content="Matthew Deeprose">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>About Matthew Deeprose</title>
@@ -20,9 +20,10 @@
       <meta property="og:type" content="website">
       <meta property="og:url" content="https://matthewdeeprose.github.io/about.html">
       <meta name="twitter:card" content="summary_large_image">
-      <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#231F20"> 
+      <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#231F20">
       <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFF4">
-      <link rel="icon" href="favicon.ico"> <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
       <link rel="icon" href="favicon.svg" type="image/svg+xml">
       <meta name="twitter:card" content="summary_large_image">
       <meta name="twitter:title" content="About - Matthew Deeprose" />
@@ -107,12 +108,13 @@
          </main>
          <aside class="page-sidebar related">
             <section class="related">
-			<h2>Latest tweets</h2>            
+               <h2>Latest tweets</h2>
                <a class="twitter-timeline" data-height="600" data-theme="dark" href="https://twitter.com/VLEguru?ref_src=twsrc%5Etfw">Tweets by VLEguru</a> <script async src="https://platform.twitter.com/widgets.js"></script>
             </section>
          </aside>
          <footer class="page-footer">
-            <div id="RSS"><a href="feed.rss">RSS</a></div><div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
             <div id="AccessibilityFoot">
                <a href="Accessibility_Statement.html">Accessibility Statement</a>
             </div>
@@ -128,7 +130,7 @@
          </footer>
       </div>
       <div id="panel">
-         <button class="panelButton" onclick="topFunction()" id="myBtn" title="Go to top.">
+         <button class="panelButton" onclick="topFunction()" id="myBtn">
             <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
                <title id="svgTitle2">Top.</title>
                <desc id="svgDesc2">Move to the top of the page.</desc>
@@ -140,8 +142,10 @@
                   </g>
                </g>
             </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
          </button>
-         <button class="panelButton" onclick="bottomFunction()" id="myBtn2" title="Go to bottom.">
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
             <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
                <title id="svgTitle3">Bottom.</title>
                <desc id="svgDesc3">Move to the bottom of the page.</desc>
@@ -153,6 +157,8 @@
                   </g>
                </g>
             </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
          </button>
       </div>
       <script>
@@ -213,11 +219,13 @@
          
          function topFunction() {
              document.body.scrollTop = 0;
-             document.documentElement.scrollTop = 0; document.getElementById('skipToContent').focus();
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
          }
          
          function bottomFunction() {
          window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
          }
       </script>
    </body>
