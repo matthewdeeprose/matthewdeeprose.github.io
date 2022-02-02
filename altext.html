@@ -7,10 +7,10 @@
       <meta name="keywords" content="accessibility, a11y, teaching, learning, resources, alternative text, alt text, alt-text">
       <meta name="author" content="Matthew Deeprose">
       <title>Introduction to Alternative Text</title>
-      <link rel="stylesheet" href="light.css" media="(prefers-color-scheme: light)">
-      <link rel="stylesheet" href="main.css" media="all">
-      <link rel="stylesheet" href="dark.css" media="(prefers-color-scheme: dark)">
-      <link rel="stylesheet" href="print.css" media="print">
+      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" id="main" href="main.css" media="all">
+      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" id="print" href="print.css" media="print">
       <meta property="og:title" content="Introduction to Alternative Text - Matthew Deeprose">
       <meta property="og:description" content="A presentation, lesson plan, video, and breakout materials created for running an interactive webinar on alternative text.">
       <meta property="og:image" content="https://matthewdeeprose.github.io/Introducing_Alt_Text.png">
@@ -38,10 +38,10 @@
          <header class="page-header">
             <div id="banner">
                <div id="logo">
-                  <a id="home" title="Return to home" href="index.html">
+                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
                      <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
-                        <title id="svgTitle">Home</title>
-                        <desc id="svgDesc">Select to return to the home page</desc>
+                        <title id="svgTitle">Change theme</title>
+                        <desc id="svgDesc">Select to switch between the dark and light theme</desc>
                         <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
                            <path d="m6.5 17.5h4"/>
                            <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
@@ -54,7 +54,8 @@
                            <path d="m16.5 7.5h-1"/>
                         </g>
                      </svg>
-                  </a>
+                     <span id="lightDark"></span>
+                  </button>
                </div>
                <div id="titleLink">Matthew Deeprose</div>
             </div>
@@ -248,6 +249,42 @@
          window.scrollTo(0,document.body.scrollHeight);
          document.getElementById('rssA').focus();
          }
+      </script>
+	        <script>
+         function setLight() {
+         	  let buttonStatus = document.getElementById("lightDark");
+         	  let theButton = document.getElementById("modeToggle");
+            const d = matchMedia('(prefers-color-scheme: dark)');
+             let dt;
+            if (d.matches) {
+                dt = 'dark';
+            } else {
+                dt = 'light'
+            }
+            console.log(dt);
+            if (dt == 'dark') {
+            		theButton.setAttribute("aria-pressed", "false");
+         	  } else {	  	
+         		theButton.setAttribute("aria-pressed", "true");
+         	  }
+         }
+         setLight();
+         
+         function toggle(btnID) {
+           let buttonStatus = document.getElementById("lightDark");
+           let theButton = document.getElementById(btnID);
+           if (theButton.getAttribute("aria-pressed") == "false") {
+             theButton.setAttribute("aria-pressed", "true");
+         	document.getElementById('lightCSS').href='light.css';
+         	document.getElementById('darkCSS').href='light.css';
+         	document.getElementById("logoSVG").style.color = '#FFFFF4';
+           } else {
+             theButton.setAttribute("aria-pressed", "false");
+         	document.getElementById('lightCSS').href='dark.css';
+         	document.getElementById('darkCSS').href='dark.css';
+         	document.getElementById("logoSVG").style.color = '#FCBC00';
+           }
+         } 
       </script>
    </body>
 </html>

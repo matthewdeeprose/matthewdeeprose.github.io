@@ -1,4 +1,28 @@
 /* Components - NO COLOURS */
+/* Theme toggler */
+#modeToggle, #modeToggle:active {
+    color: #FFFFF4;
+    border: 0px solid #E1E8EC !important;
+    margin: 0rem;
+    background-color: rgba(0, 19, 29, 0);
+    padding: 0.3rem;
+    border-radius:0rem
+}
+
+#modeToggle:focus:not(:focus-visible) {
+	color: #E1E8EC;
+	background: rgba(0, 19, 29, 0);
+	border: 0.0rem solid #E1E8EC !important;
+	box-shadow: 0 0 0 0rem #C1D100 !important;
+    outline: 0.0rem #E1E8EC dotted !important;
+}
+
+#modeToggle:hover,
+#modeToggle:focus {
+	outline: 0.3rem #E1E8EC dotted !important;
+    box-shadow: 0 0 0 0rem #C1D100 !important;
+}
+
 /* Tick list */
 ul.tick {
     list-style: none;
@@ -470,13 +494,13 @@ a:hover {
 #myBtn2 {
     display: none;
     font-size: 18px;
-    border: none;
-    outline: none;
     color: white;
     cursor: pointer;
     padding: 10px;
     border-radius: 0.5rem;
 	width: 6rem;
+	border: 1px solid #00131D;
+	outline: 1px solid #FFFFF4;
 }
 
 #myBtn {

@@ -1,5 +1,8 @@
 /*Light mode */
 
+/* Turn on the light */
+#logoSVG {color:#FFFFF4}
+
 .transcriptSpeaker {
 	color: #8D3970;
 	font-weight: bold;
@@ -120,6 +123,7 @@ a:hover {
 	background-color: #00131D;
 	color: #FFFFF4;
 	border: 1px solid #00131D;
+	outline: 1px solid #FFFFF4 !important;
 }
 
 #myBtn:hover,

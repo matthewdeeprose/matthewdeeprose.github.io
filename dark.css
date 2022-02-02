@@ -1,5 +1,8 @@
 /* Dark mode */
 
+/* Turn on the light */
+#logoSVG {color:#FCBC00}
+
 .transcriptSpeaker {
 	color: #C1D100;
 	font-weight: bold;
