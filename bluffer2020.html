@@ -54,10 +54,10 @@
                            <path d="m16.5 7.5h-1"/>
                         </g>
                      </svg>
-                     <span id="lightDark"></span>
+                     
                   </button>
                </div>
-               <div id="titleLink">Matthew Deeprose</div>
+               <span role="alert" class="sr-only" aria-live="polite" id="lightDark"></span><div id="titleLink">Matthew Deeprose</div>
             </div>
          </header>
          <div id="main-navigation" class="page-nav">
@@ -399,11 +399,13 @@
          	document.getElementById('lightCSS').href='light.css';
          	document.getElementById('darkCSS').href='light.css';
          	document.getElementById("logoSVG").style.color = '#FFFFF4';
+         	document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
            } else {
              theButton.setAttribute("aria-pressed", "false");
          	document.getElementById('lightCSS').href='dark.css';
          	document.getElementById('darkCSS').href='dark.css';
          	document.getElementById("logoSVG").style.color = '#FCBC00';
+         	document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
            }
          } 
       </script>
