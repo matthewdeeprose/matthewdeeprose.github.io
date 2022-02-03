@@ -116,23 +116,11 @@ a:hover {
 	text-decoration: none;
 }
 
-#myBtn,
-#myBtn2,
-#myBtn:active,
-#myBtn2:active {
-	background-color: #00131D;
-	color: #FFFFF4;
-	border: 1px solid #00131D;
-	outline: 1px solid #FFFFF4 !important;
-}
-
 #myBtn:hover,
 #myBtn:focus,
 #myBtn2:hover,
 #myBtn2:focus {
-	color: #00131D;
-	background-color: #FFFFF4;
-	box-shadow: 0 0 0 0.3rem #005C84;
+	box-shadow: 0 0 0 0.3rem #005C84 !important;
 }
 
 

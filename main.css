@@ -1,3 +1,29 @@
+/* Buttons with colours set for both themes */
+#myBtn,
+#myBtn2,
+#myBtn:active,
+#myBtn2:active {
+    display: none;
+    font-size: 100%;
+	color: #FFFFF4 !important;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 0.5rem;
+	width: 6rem;
+	border: 0.3rem solid #FFFFF4;
+	outline: 0.3rem solid #00131D;
+	background-color: #231F20 !important;
+
+}
+
+#myBtn:hover,
+#myBtn:focus,
+#myBtn2:hover,
+#myBtn2:focus {
+	color: #00131D !important;
+	background-color: #FFFFF4 !important;
+}
+
 /* Components - NO COLOURS */
 /* Theme toggler */
 #modeToggle, #modeToggle:active {
@@ -490,18 +516,7 @@ a:hover {
     font-family: Arial, Helvetica, sans-serif;
 }
 
-#myBtn,
-#myBtn2 {
-    display: none;
-    font-size: 18px;
-    color: white;
-    cursor: pointer;
-    padding: 10px;
-    border-radius: 0.5rem;
-	width: 6rem;
-	border: 1px solid #00131D;
-	outline: 1px solid #FFFFF4;
-}
+
 
 #myBtn {
     float: left;
@@ -533,6 +548,8 @@ a:hover {
         margin: 0.5rem 1rem .2rem .5rem;
         border-radius: 2.5rem;
 		width: auto;
+		border: 0.1rem solid #FFFFF4;
+		outline: 0.1rem solid #00131D;
     }
 	.panelLabel {display:none;}
 

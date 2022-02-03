@@ -113,18 +113,12 @@ a:hover {
 	color: #C1D100;
 }
 
-#myBtn,
-#myBtn2 {
-	color: #231F20;
-	background-color: #E1E8EC;
-}
+
 
 #myBtn:hover,
 #myBtn:focus,
 #myBtn2:hover,
 #myBtn2:focus {
-	color: #E1E8EC;
-	background-color: #161415;
 	box-shadow: 0 0 0 0.3rem #FCBC00;
 }
 
