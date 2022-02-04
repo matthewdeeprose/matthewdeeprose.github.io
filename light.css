@@ -229,7 +229,7 @@ button:focus {
 .topnav a,
 .topnav button {
 	color: #FFFFF4;
-	border: 0.2rem solid #00131D;
+	border: 0.2rem solid #00131D !important;
 	margin: 0.2rem;
 	background-color: #00131D;
 }
