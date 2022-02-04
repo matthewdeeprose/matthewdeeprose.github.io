@@ -245,22 +245,24 @@ body {
 	background-color: #231F20;
 }
 
-.topnav a,
-.topnav button {
+.topnav a {
 	color: #E1E8EC;
 	background: #231F20;
 	border: 0.2rem solid #E1E8EC !important;
 	margin: 0.2rem;
 }
 
+.topnav button {
+	background-color: #FCBC00;
+	color: #00131D;
+	border: 0.2rem solid #231F20 !important;
+	outline: 0.2rem solid #E1E8EC;
+}
+
 .topnav a:hover,
 .topnav a:focus,
 .topnav a.active:focus,
-.topnav a.active:hover,
-.topnav button:hover,
-.topnav button:focus,
-.topnav button.active:focus,
-.topnav button.active:hover {
+.topnav a.active:hover {
 	background-color: #E1E8EC;
 	color: #00131D;
 	box-shadow: 0 0 0 4pt #C1D100 !important;
@@ -268,16 +270,39 @@ body {
 	border: 0.2rem solid #231F20 !important;
 }
 
-.topnav a.icon,
-.topnav button.icon {
+.topnav a.icon {
 	background: #E1E8EC;
 }
 
-.topnav a.active,
+.topnav a.active {
+	background-color: #FCBC00;
+	color: #00131D;
+	border: 0.2rem solid #231F20 !important;
+	outline: 0.2rem solid #E1E8EC;
+}
+
+.topnav button:hover,
+.topnav button:focus,
+.topnav button.active:focus,
+.topnav button.active:hover {
+	background-color: #E1E8EC;
+	color: #00131D;
+	box-shadow: 0 0 0 6pt #231F20 !important;
+	outline: 0.2rem solid #C1D100 !important;
+	border: 0.2rem solid #231F20 !important;
+}
+
+.topnav button.icon {
+	background: #E1E8EC;
+	outline: 0.2rem solid #231F20;
+	border: 0.2rem solid #231F20 !important;
+}
+
 .topnav button.active {
 	background-color: #FCBC00;
 	color: #00131D;
 	border: 0.2rem solid #231F20 !important;
+	outline: 0.2rem solid #E1E8EC;
 }
 
 img.articleImage,

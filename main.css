@@ -25,6 +25,11 @@
 }
 
 /* Components - NO COLOURS */
+
+h1#top {
+    margin-top: 1.5rem;
+}
+
 /* Theme toggler */
 #modeToggle, #modeToggle:active {
     color: #FFFFF4;
@@ -391,7 +396,7 @@ section.related {
     }
 }
 
-@media screen and (max-width: 620px) {
+@media screen and (max-width: 650px) {
     .topnav a:nth-child(n+3) {
         display: none;
     }
@@ -731,8 +736,8 @@ details p {
 }
 
 nav#myTopnav {
-    padding: 0.1rem 0.1rem 0.1rem 0.2rem;
-    margin: 0.1rem 0rem 0.2rem 0rem;
+    padding: 0.3rem 0.3rem 0.3rem 0.3rem;
+    margin: 0.1rem 0rem 0rem 0rem;
 }
 
 .topnav {
@@ -744,9 +749,9 @@ nav#myTopnav {
     display: block;
     text-align: left;
     padding: 14px 16px;
-    font-size: 17px;
+    font-size: 100%;
     border-radius: 0.5rem;
-    margin-right: 0.3rem !important;
+    margin-right: 0.5rem !important;
     text-decoration: none;
 }
 
@@ -769,7 +774,7 @@ nav#myTopnav {
 .topnav button.icon {
     padding: 10px;
     border-radius: 0.5rem;
-    border: 0.1rem #00131D double !important;
+    border: 0.2rem #00131D solid;
 }
 
 img.articleImage {
