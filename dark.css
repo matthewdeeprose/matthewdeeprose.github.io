@@ -2,6 +2,7 @@
 
 /* Turn on the light */
 #logoSVG {color:#FCBC00}
+#logoSVG-Off {display:none;}
 
 .transcriptSpeaker {
 	color: #C1D100;

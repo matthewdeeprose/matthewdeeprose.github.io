@@ -1,7 +1,8 @@
 /*Light mode */
 
-/* Turn on the light */
-#logoSVG {color:#FFFFF4}
+/* Turn off the light */
+#logoSVG {display:none;}
+
 
 .transcriptSpeaker {
 	color: #8D3970;
