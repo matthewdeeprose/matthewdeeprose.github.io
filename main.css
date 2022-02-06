@@ -531,6 +531,9 @@ a:hover {
     float: right;
 }
 
+#svgDOWN {margin-right:5px;}
+#svgUP {margin-right:2px;margin-left:2px;}
+
 #myBtn:hover,
 #myBtn:focus,
 #myBtn2:hover,
@@ -548,10 +551,9 @@ a:hover {
     }
     #myBtn,
     #myBtn2 {
-        font-size: 0.7rem;
-        padding: 0.5rem;
+        padding: 0rem;
         margin: 0.5rem 1rem .2rem .5rem;
-        border-radius: 2.5rem;
+        border-radius: 0.5rem;
 		width: auto;
 		border: 0.1rem solid #FFFFF4;
 		outline: 0.1rem solid #00131D;
@@ -563,9 +565,9 @@ a:hover {
 @media screen and (max-width: 400px) {
     #myBtn,
     #myBtn2 {
-        padding: 0.1rem;
+        padding: 0rem;
         margin: 0.5rem 1rem .2rem .5rem;
-        border-radius: 3rem;
+        border-radius: 0.5rem;
 		width: auto;
     }
 	.panelLabel {display:none;}

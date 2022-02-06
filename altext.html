@@ -161,7 +161,7 @@
       </div>
       <div id="panel">
          <button class="panelButton" onclick="topFunction()" id="myBtn">
-            <svg height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
                <title id="svgTitle2">Top.</title>
                <desc id="svgDesc2">Move to the top of the page.</desc>
                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
@@ -174,9 +174,8 @@
             <span id="myBtnTop" class="panelLabel">Top</span>
          </button>
          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
-            <svg height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3>
-               <title id="svgTitle3">
-               Bottom.</title>
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+               <title id="svgTitle3">Bottom.</title>
                <desc id="svgDesc3">Move to the bottom of the page.</desc>
                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
                   <circle cx="8.5" cy="8.5" r="8"/>
@@ -205,23 +204,23 @@
              }
              document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
          }
-         // Responsive menu hamburger changes
-         // Set constant
-         const menu = document.getElementById('menu');
-         // Functions
-         function showHamburger() { 
-         document.getElementById("hamburger").style.display = "inline-block";
-         document.getElementById("arrow").style.display = "none"; 
-         	} 
-         function showArrow() { 
-         document.getElementById("hamburger").style.display = "none";
-         document.getElementById("arrow").style.display = "inline-block"; 
-         	} 
-         // Use events to change hamburger icon
-         //menu.onmouseover = showArrow; 
-         //menu.onfocus = showArrow; 
-         //menu.onmouseout = showHamburger;
-         //menu.onblur = showHamburger;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       </script>
       <script>
          let mybutton = document.getElementById("myBtn");
@@ -266,7 +265,7 @@
             } else {
                 dt = 'light'
             }
-            console.log(dt);
+            
             if (dt == 'dark') {
             		theButton.setAttribute("aria-pressed", "false");
          	  } else {	  	
@@ -282,13 +281,13 @@
              theButton.setAttribute("aria-pressed", "true");
          	document.getElementById('lightCSS').href='light.css';
          	document.getElementById('darkCSS').href='light.css';
-         	document.getElementById("logoSVG").style.color = '#FFFFF4';
+
          	document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
            } else {
              theButton.setAttribute("aria-pressed", "false");
          	document.getElementById('lightCSS').href='dark.css';
          	document.getElementById('darkCSS').href='dark.css';
-         	document.getElementById("logoSVG").style.color = '#FCBC00';
+
          	document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
            }
          } 
