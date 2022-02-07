@@ -16,6 +16,23 @@
 		<div class="codeWrapper">
 	<pre><code class="language-css">
 	
+	
+	
+html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-y: scroll;
+}
+	
+	
+	
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto !important;
+	}
+}
+	
 @media (min-width: 60rem) {
     .page-wrap {
         margin: 0 10% 0 10%;
@@ -98,6 +115,25 @@
 </div>
 			<div class="codeWrapper">
 	<pre><code class="language-html">
+	
+		&lt;button class="panelButton" onclick="topFunction()" id="myBtn">
+            &lt;svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+               &lt;title id="svgTitle2">Top.&lt;/title>
+               &lt;desc id="svgDesc2">Move to the top of the page.&lt;/desc>
+               &lt;g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                  &lt;circle cx="8.5" cy="8.5" r="8"/>
+                  &lt;path d="m11.5 7.5-3-3-3 3"/>
+                  &lt;path d="m8.5 4.5v8"/>
+               &lt;/g>
+            &lt;/svg>
+            &lt;br />
+            &lt;span id="myBtnTop" class="panelLabel">Top&lt;/span>
+         &lt;/button>
+	
+	
+
+	
+	
 	
 	
 	&lt;link rel="stylesheet" href="main.css"  media="all">
@@ -211,6 +247,18 @@
 	</div>
 <div class="codeWrapper">
 	<pre><code class="language-javascript">
+	
+	    function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0; 
+			 document.getElementById('skipToContent').focus();
+         }
+         
+	
+	
+	
+	
+	
 	
 function menuAction() {
     let menuSwitch = document.getElementById("myTopnav");
