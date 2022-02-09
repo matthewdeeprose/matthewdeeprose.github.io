@@ -71,7 +71,7 @@
                      </svg>
                   </button>
                </div>
-               <span role="alert" class="sr-only" aria-live="polite" id="lightDark"></span>
+               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
                <div id="titleLink">Matthew Deeprose</div>
             </div>
          </header>
@@ -118,7 +118,7 @@
                               Accessibility related
                               <ul id="accPres">
                                  <li><a href="makeITaccessible.html">Making IT accessible for all!</a></li>
-                                 <li><a href="makeITaccessible_transcript">Making IT accessible for all! (Transcript)</a></li>
+                                 <li><a href="makeITaccessible_transcript.html">Making IT accessible for all! (Transcript)</a></li>
                                  <li><a href="makeITaccessible_preview.html">Making IT accessible for all! (Preview)</a></li>
                                  <li><a href="allies.html">Accessibility Allies at the University of Southampton</a></li>
                                  <li><a href="WDA001.html">Worldwide Digital Accessibility - 001 - Just sit down and do it!</a></li>
@@ -384,7 +384,7 @@
          });
          
       </script>
-	        <script>
+      <script>
          function setLight() {
          	  let buttonStatus = document.getElementById("lightDark");
          	  let theButton = document.getElementById("modeToggle");
@@ -397,9 +397,9 @@
             }
             
             if (dt == 'dark') {
-            		theButton.setAttribute("aria-pressed", "false");
+            		theButton.setAttribute("aria-pressed", "true");
          	  } else {	  	
-         		theButton.setAttribute("aria-pressed", "true");
+         		theButton.setAttribute("aria-pressed", "false");
          	  }
          }
          setLight();
@@ -407,14 +407,14 @@
          function toggle(btnID) {
            let buttonStatus = document.getElementById("lightDark");
            let theButton = document.getElementById(btnID);
-           if (theButton.getAttribute("aria-pressed") == "false") {
-             theButton.setAttribute("aria-pressed", "true");
+           if (theButton.getAttribute("aria-pressed") == "true") {
+             theButton.setAttribute("aria-pressed", "false");
          	document.getElementById('lightCSS').href='light.css';
          	document.getElementById('darkCSS').href='light.css';
 
          	document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
            } else {
-             theButton.setAttribute("aria-pressed", "false");
+             theButton.setAttribute("aria-pressed", "true");
          	document.getElementById('lightCSS').href='dark.css';
          	document.getElementById('darkCSS').href='dark.css';
 
