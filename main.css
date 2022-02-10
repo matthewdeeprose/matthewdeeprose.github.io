@@ -78,6 +78,9 @@ ul.tick li:before {
         line-height: 1.5;
         font-size: 1.25rem;
     }
+	aside.page-sidebar.related {
+		padding-left: 0.5rem;
+	}
     article.standard {
         padding: 0rem 0rem 0rem 0rem !important;
     }
@@ -274,6 +277,10 @@ aside img {
     border-radius: 0.5rem;
 }
 
+aside.page-sidebar.related {
+	padding-left: 1rem;
+}
+
 
 /* testing hamburger things */
 #arrow {
@@ -409,10 +416,10 @@ section.related {
         position: relative;
     }
     .topnav.responsive .icon {
-        position: absolute;
+        /* position: absolute;
         right: 0;
         top: 0;
-        margin: 0.5rem 0.6rem 0 0;
+        margin: 0.5rem 0.6rem 0 0; */
     }
     .topnav.responsive a {
         float: none;
@@ -440,6 +447,9 @@ section.related {
     div#titleLink {
         display: none;
     }
+	nav#myTopnav {
+		padding: 0.5rem 1rem 0.5rem 0.4rem !important;
+	}	
 }
 
 @media only screen and (max-width: 300px) {
@@ -484,11 +494,14 @@ div#logo {
 
 div#logo {
     padding: 0.5rem;
+	    margin-left: 0.5rem;
 }
 
 div#titleLink {
     padding: 1rem;
+	margin-right: 0.5rem;
 }
+
 
 * {
     overflow-wrap: break-word;
@@ -711,7 +724,6 @@ a#home:focus {
     background-repeat: no-repeat;
     background-size: cover;
     font-size: 2rem;
-	transition: 2s ease-in-out;
 }
 
 .page-sidebar {
@@ -737,7 +749,7 @@ details p {
 }
 
 nav#myTopnav {
-    padding: 0.3rem 0.3rem 0.3rem 0.3rem;
+    padding: 0.5rem 0rem 0.5rem 0.4rem;
     margin: 0.1rem 0rem 0rem 0rem;
 }
 
@@ -1036,7 +1048,5 @@ form {
 	body {
 		transition: background 0ms ease-in-out, color 0ms ease !important;
 	}
-	.page-header {
-		transition: 0s ease-in-out !important;
-	}
+
 }

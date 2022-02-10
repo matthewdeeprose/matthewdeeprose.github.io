@@ -171,24 +171,25 @@ summary:focus {
 button {
 	color: #FFFFF4;
 	border: 0.2rem solid #00131D;
-	margin: 0.1rem;
+	margin-right: 0.3rem;
 	background-color: #00131D;
+
 }
 
 button:focus:not(:focus-visible) {
 	color: #FFFFF4;
 	background-color: #00131D;
 	border: 0.2rem solid #00131D;
-	box-shadow: 0 0 0 0rem #C1D100 !important;
+	box-shadow: 0 0 0 0rem #005C84 !important;
 }
 
 button:hover,
 button:focus {
 	background-color: #FFFFF4;
 	color: #00131D;
-	box-shadow: 0 0 0 0.3rem #005C84;
-	outline: 0.0rem solid #FFFFF4 !important;
-	border: 0.2rem solid #FFFFF4;
+	box-shadow: 0 0 0 0.4rem #005C84;
+	outline: 0.2rem solid #FFFFF4 !important;
+	border: 0.2rem solid #00131D;
 }
 
 .page-wrap {
@@ -240,21 +241,48 @@ button:focus {
 	background: #FCBC00;
 }
 
+.topnav button {
+	margin: 0.2rem 0.5rem 0.2rem 0.2rem ;
+}
+button#menu.icon {
+	outline: 0.2rem solid #FEFFFF !important;
+}
+
 .topnav a:hover,
-.topnav a:focus,
-.topnav a.active:focus,
-.topnav a.active:hover,
-.topnav button:hover,
-.topnav button:focus,
-.topnav button.active:focus,
-.topnav button.active:hover {
+.topnav a.active:hover {
 	background-color: #FFFFF4;
 	color: #00131D;
-	box-shadow: 0 0 0 4pt #005C84;
-	outline: 0.0rem solid #FFFFF4 ;
+	box-shadow: 0 0 0 5pt #005C84;
+	outline: 0.2rem solid #FFFFF4;
 	border: 0.2rem solid #FFFFF4;
 }
 
+.topnav a:focus,
+.topnav a.active:focus {
+	background-color: #FFFFF4;
+	color: #00131D;
+	box-shadow: 0 0 0 0pt #005C84;
+	outline: 0.2rem solid #005C84;
+	border: 0.2rem solid #FFFFF4;
+}
+
+
+
+button#menu.icon:hover {
+	background-color: #FFFFF4;
+	color: #00131D;
+	box-shadow: 0 0 0 5pt #005C84;
+	outline: 0.2rem solid #FEFFFF !important;
+	border: 0.2rem solid #00131D !important;
+}
+
+button#menu.icon:focus {
+	background-color: #FFFFF4;
+	color: #00131D;
+	box-shadow: 0 0 0 5pt #005C84;
+	outline: 0.2rem solid #FEFFFF !important;
+	border: 0.2rem solid #00131D !important;
+}
 .topnav a.active,
 .topnav button.active {
 	background-color: #FCBC00;

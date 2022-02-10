@@ -1,4 +1,5 @@
 /* Dark mode */
+/* Dark mode */
 
 /* Turn on the light */
 #logoSVG {color:#FCBC00}
@@ -258,6 +259,7 @@ body {
 	color: #00131D;
 	border: 0.2rem solid #231F20 !important;
 	outline: 0.2rem solid #E1E8EC;
+	margin: 0.2rem 1.2rem 0.2rem 0.2rem ;
 }
 
 .topnav a:hover,
@@ -288,7 +290,7 @@ body {
 .topnav button.active:hover {
 	background-color: #E1E8EC;
 	color: #00131D;
-	box-shadow: 0 0 0 6pt #231F20 !important;
+	box-shadow: 0 0 0 8pt #231F20 !important;
 	outline: 0.2rem solid #C1D100 !important;
 	border: 0.2rem solid #231F20 !important;
 }
