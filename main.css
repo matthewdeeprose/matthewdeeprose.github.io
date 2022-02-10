@@ -1036,4 +1036,7 @@ form {
 	body {
 		transition: background 0ms ease-in-out, color 0ms ease !important;
 	}
+	.page-header {
+		transition: 0s ease-in-out !important;
+	}
 }
