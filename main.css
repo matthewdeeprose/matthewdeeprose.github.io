@@ -708,12 +708,10 @@ a#home:focus {
 .page-header {
     grid-column: 1/-1;
     background-position: center;
-    /* Center the image */
     background-repeat: no-repeat;
-    /* Do not repeat the image */
     background-size: cover;
-    /* Resize the background image to cover the entire container */
     font-size: 2rem;
+	transition: 2s ease-in-out;
 }
 
 .page-sidebar {
