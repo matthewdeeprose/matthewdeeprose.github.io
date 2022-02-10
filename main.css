@@ -724,6 +724,7 @@ a#home:focus {
     background-repeat: no-repeat;
     background-size: cover;
     font-size: 2rem;
+	transition: 2s ease-in-out;
 }
 
 .page-sidebar {
@@ -1048,5 +1049,7 @@ form {
 	body {
 		transition: background 0ms ease-in-out, color 0ms ease !important;
 	}
-
+	.page-header {
+		transition: 0s ease-in-out !important;
+	}
 }
