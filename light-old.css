@@ -1,8 +1,7 @@
 /*Light mode */
+
 /* Turn off the light */
-#logoSVG {
-	display: none;
-}
+#logoSVG {display:none;}
 
 
 .transcriptSpeaker {
@@ -21,6 +20,7 @@ body {
 
 
 /* cards */
+
 .card {
 	border: 0.1rem solid #00131D;
 }
@@ -49,12 +49,14 @@ body {
 
 
 /* Post source */
+
 dd.from {
 	color: #00131D;
 }
 
 
 /* Presentations */
+
 .presentations {
 	border: 1px solid #495961;
 	background: #F0F2E8;
@@ -79,6 +81,7 @@ div#logo {
 
 
 /* Logo things */
+
 a#home {
 	color: #FFFFF4 !important;
 }
@@ -95,6 +98,7 @@ a#home:focus {
 
 
 /* Logo things ends */
+
 section.related {
 	border-bottom: 0.1rem solid #00131D;
 }
@@ -122,6 +126,7 @@ a:hover {
 
 
 /* skip link */
+
 .skip-link {
 	color: #00131D;
 	background-color: #FFFFF4;
@@ -137,6 +142,7 @@ a:hover {
 
 
 /* Details and Summary styling */
+
 details {
 	outline: 0.2rem solid #495961;
 }
@@ -167,6 +173,7 @@ button {
 	border: 0.2rem solid #00131D;
 	margin-right: 0.3rem;
 	background-color: #00131D;
+
 }
 
 button:focus:not(:focus-visible) {
@@ -235,14 +242,10 @@ button:focus {
 }
 
 .topnav button {
-	margin: 0.2rem 0.5rem 0.2rem 0.2rem;
+	margin: 0.2rem 0.5rem 0.2rem 0.2rem ;
 }
-button#menu.icon,
-button#menu.icon:active,
-button#menu.icon:hover,
-button#menu.icon:focus,
-.topnav button.active {
-	outline: 1.2rem solid #FEFFFF !important;
+button#menu.icon {
+	outline: 0.2rem solid #FEFFFF !important;
 }
 
 .topnav a:hover,
@@ -268,16 +271,17 @@ button#menu.icon:focus,
 button#menu.icon:hover {
 	background-color: #FFFFF4;
 	color: #00131D;
-	border: 0.2rem solid #FFFFF4 !important;
-	outline: 0.2rem dotted #005C84 !important;
-	box-shadow: 0 0 0 1.5rem #FFFFF4 !important;
+	box-shadow: 0 0 0 5pt #005C84;
+	outline: 0.2rem solid #FEFFFF !important;
+	border: 0.2rem solid #00131D !important;
 }
+
 button#menu.icon:focus {
 	background-color: #FFFFF4;
 	color: #00131D;
-	border: 0.2rem solid #FFFFF4 !important;
-	outline: 0.2rem dotted #005C84 !important;
-	box-shadow: 0 0 0 1.5rem #FFFFF4 !important;
+	box-shadow: 0 0 0 5pt #005C84;
+	outline: 0.2rem solid #FEFFFF !important;
+	border: 0.2rem solid #00131D !important;
 }
 .topnav a.active,
 .topnav button.active {
@@ -297,25 +301,29 @@ input:focus {
 
 
 /*position new box*/
-.wrapper input + label::before {
+
+.wrapper input+label::before {
 	background: #495961;
 }
 
 
 /*focus styles*/
-.wrapper input:focus + label::before {
+
+.wrapper input:focus+label::before {
 	box-shadow: 0 0 0 3px #00131D;
 }
 
 
 /*focus styles*/
-.wrapper2 input:focus + label::before {
+
+.wrapper2 input:focus+label::before {
 	box-shadow: 0 0 0 3px #00131D;
 }
 
 
 /* Remove focus from mouse, replace with box shadow */
-:focus:not(:focus-visible) {
+
+ :focus:not(:focus-visible) {
 	outline: none !important;
 	border: 0px solid #ffffff;
 	box-shadow: -1px 1px 30px 9px rgba(0, 0, 0, .27);

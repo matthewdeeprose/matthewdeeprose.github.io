@@ -1,11 +1,8 @@
 /* Dark mode */
+
 /* Turn on the light */
-#logoSVG {
-	color: #FCBC00
-}
-#logoSVG-Off {
-	display: none;
-}
+#logoSVG {color:#FCBC00}
+#logoSVG-Off {display:none;}
 
 .transcriptSpeaker {
 	color: #C1D100;
@@ -14,12 +11,14 @@
 
 
 /* Post source */
+
 dd.from {
 	color: #E1E8EC;
 }
 
 
 /* cards */
+
 .card img {
 	/* border: 2px solid #231F20; */
 }
@@ -80,6 +79,7 @@ div#logo {
 
 
 /* Logo things */
+
 a#home {
 	color: #E1E8EC !important;
 }
@@ -96,6 +96,7 @@ a#home:focus {
 
 
 /* Logo things ends */
+
 section.related {
 	border-bottom: 0.1rem solid #E1E8EC;
 }
@@ -124,6 +125,7 @@ a:hover {
 
 
 /* skip link */
+
 .skip-link {
 	color: #E1E8EC;
 	background-color: #161415;
@@ -139,6 +141,7 @@ a:hover {
 
 
 /* Details and Summary styling */
+
 summary {
 	outline: 0em solid #E1E8EC;
 	background: #231F20;
@@ -249,39 +252,13 @@ body {
 	border: 0.2rem solid #E1E8EC !important;
 	margin: 0.2rem;
 }
-button#menu.icon,
-button#menu.icon:active,
-button#menu.icon:hover,
-button#menu.icon:focus,
-.topnav button.active {
-	outline: 1.5rem solid #231F20 !important;
-}
 
 .topnav button {
-	color: #E1E8EC;
-	border: 0.rem solid #231F20 !important;
-	background-color: #231F20;
-	margin: 0.2rem 0.5rem 0.2rem 0.2rem;
-}
-
-button#menu.icon:hover {
-	background-color: #E1E8EC;
-	color: #231F20;
-	border: 0.2rem solid #231F20 !important;
-	outline: 0.2rem solid #C1D100 !important;
-	box-shadow: 0 0 0 1.5rem #231F20 !important;
-}
-button#menu.icon:focus {
-	background-color: #E1E8EC;
-	color: #231F20;
-	border: 0.2rem solid #231F20 !important;
-	outline: 0.2rem solid #C1D100 !important;
-	box-shadow: 0 0 0 1.5rem #231F20 !important;
-}
-.topnav button.active {
 	background-color: #FCBC00;
-	color: #231F20;
-	border: 0.2rem solid #231F20;
+	color: #00131D;
+	border: 0.2rem solid #231F20 !important;
+	outline: 0.2rem solid #E1E8EC;
+	margin: 0.2rem 1.2rem 0.2rem 0.2rem ;
 }
 
 .topnav a:hover,
@@ -301,10 +278,9 @@ button#menu.icon:focus {
 
 .topnav a.active {
 	background-color: #FCBC00;
-	color: #231F20;
+	color: #00131D;
 	border: 0.2rem solid #231F20 !important;
-	outline: 0rem solid #E1E8EC;
-	box-shadow: 0 0 0 0.2rem #E1E8EC;
+	outline: 0.2rem solid #E1E8EC;
 }
 
 .topnav button:hover,
@@ -319,8 +295,9 @@ button#menu.icon:focus {
 }
 
 .topnav button.icon {
-	background: #FCBC00;
-	border: 0.2rem solid #FCBC00 !important;
+	background: #E1E8EC;
+	outline: 0.2rem solid #231F20;
+	border: 0.2rem solid #231F20 !important;
 }
 
 .topnav button.active {
@@ -341,25 +318,29 @@ input:focus {
 
 
 /*position new box*/
-.wrapper input + label::before {
+
+.wrapper input+label::before {
 	background: #E1E8EC;
 }
 
 
 /*focus styles*/
-.wrapper input:focus + label::before {
+
+.wrapper input:focus+label::before {
 	box-shadow: 0 0 0 3px #C1D100;
 }
 
 
 /*focus styles*/
-.wrapper2 input:focus + label::before {
+
+.wrapper2 input:focus+label::before {
 	box-shadow: 0 0 0 3px #C1D100;
 }
 
 
 /* Remove focus from mouse, replace with box shadow */
-:focus:not(:focus-visible) {
+
+ :focus:not(:focus-visible) {
 	outline: none !important;
 	border: 0px solid #ffffff;
 	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12);
