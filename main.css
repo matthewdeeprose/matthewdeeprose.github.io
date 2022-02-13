@@ -212,7 +212,7 @@ dd.from {
 .presentations {
     border-radius: 0.5rem;
     padding: 0rem 1rem 1rem 1rem;
-    margin: 0.5rem;
+    margin: 0rem 0rem 1rem 0rem;
     line-height: 1.75;
 }
 
@@ -277,9 +277,9 @@ aside img {
     border-radius: 0.5rem;
 }
 
-aside.page-sidebar.related {
+/* aside.page-sidebar.related {
 	padding-left: 1rem;
-}
+}*/
 
 
 /* testing hamburger things */
@@ -401,6 +401,10 @@ section.related {
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         grid-gap: 1rem;
     }
+	article.front {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+}
 }
 
 @media screen and (max-width: 650px) {
@@ -448,7 +452,7 @@ section.related {
         display: none;
     }
 	nav#myTopnav {
-		padding: 0.5rem 1rem 0.5rem 0.4rem !important;
+		padding: 0.5rem 0.5rem 0.5rem 0.4rem !important;
 	}	
 }
 
