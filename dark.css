@@ -220,6 +220,7 @@ body {
 .page-header {
 	background-image: url('bg2.png') !important;
 	color: #E1E8EC;
+	background-color: #231F20;
 }
 
 .page-sidebar {

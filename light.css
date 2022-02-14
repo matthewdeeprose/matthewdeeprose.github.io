@@ -193,6 +193,7 @@ button:focus {
 	background-image: url("lightbg.png") !important;
 	color: #FFFFF4;
 	border: 0px #00131D solid;
+	background-color: #FFFFF4;
 }
 
 .page-sidebar {
