@@ -241,7 +241,7 @@ button#menu.icon:active,
 button#menu.icon:hover,
 button#menu.icon:focus,
 .topnav button.active {
-	outline: 1.2rem solid #FEFFFF !important;
+	outline: 1.2rem solid #FFFFF4 !important;
 }
 
 .topnav a:hover,
