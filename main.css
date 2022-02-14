@@ -724,9 +724,9 @@ a#home:focus {
 
 .page-header {
     grid-column: 1/-1;
-    background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
+	background-position: center;
     font-size: 2rem;
 	transition: 2s ease-in-out;
 }
