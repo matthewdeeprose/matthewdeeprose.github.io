@@ -698,7 +698,7 @@ body {
     margin: 0;
     font: 500 100% system-ui, sans-serif;
     text-transform: none;
-	transition: background 0.3s ease-in-out, color 0.5s ease-in-out;
+	/* transition: background 0.3s ease-in-out, color 0.5s ease-in-out; */
 }
 
 .page-wrap {
@@ -728,7 +728,7 @@ a#home:focus {
     background-size: cover;
 	background-position: center;
     font-size: 2rem;
-	transition: 2s ease-in-out;
+	/* transition: 2s ease-in-out; */
 }
 
 .page-sidebar {

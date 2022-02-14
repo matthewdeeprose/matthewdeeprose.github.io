@@ -346,42 +346,80 @@
          });
       </script>
       <script>
+         let themePref = localStorage.getItem("theme");
+         console.log("Has a theme preference been saved?", themePref);        
+         
+         
          function setLight() {
-         	  let buttonStatus = document.getElementById("lightDark");
-         	  let theButton = document.getElementById("modeToggle");
-            const d = matchMedia('(prefers-color-scheme: dark)');
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById("modeToggle");
+             const d = matchMedia('(prefers-color-scheme: dark)');
              let dt;
-            if (d.matches) {
-                dt = 'dark';
-            } else {
-                dt = 'light'
-            }
-            
-            if (dt == 'dark') {
-            		theButton.setAttribute("aria-pressed", "true");
-         	  } else {	  	
-         		theButton.setAttribute("aria-pressed", "false");
-         	  }
+             if (d.matches) {
+                 dt = 'dark';
+                 console.log("Prefers dark theme in OS");
+             } else {
+                 dt = 'light'
+                 console.log("Prefers light theme in OS");
+             }
+             if (dt == 'dark' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'light' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'dark' && !themePref) {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else {
+                 theButton.setAttribute("aria-pressed", "false");
+             }
          }
          setLight();
          
          function toggle(btnID) {
-           let buttonStatus = document.getElementById("lightDark");
-           let theButton = document.getElementById(btnID);
-           if (theButton.getAttribute("aria-pressed") == "true") {
-             theButton.setAttribute("aria-pressed", "false");
-         	document.getElementById('lightCSS').href='light.css';
-         	document.getElementById('darkCSS').href='light.css';
-
-         	document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
-           } else {
-             theButton.setAttribute("aria-pressed", "true");
-         	document.getElementById('lightCSS').href='dark.css';
-         	document.getElementById('darkCSS').href='dark.css';
-
-         	document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
-           }
-         } 
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById(btnID);
+             if (theButton.getAttribute("aria-pressed") == "true") {
+                 theButton.setAttribute("aria-pressed", "false");
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 console.log("Turned on light mode");
+                 localStorage.setItem("theme", "Light");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+                 let theButton2 = document.getElementById('modeToggle');
+                 theButton2.removeAttribute("aria-pressed");
+                 theButton2.setAttribute("aria-pressed", "false");
+             } else {
+                 theButton.setAttribute("aria-pressed", "true");
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 console.log("Turned on dark mode");
+                 localStorage.setItem("theme", "Dark");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference set to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+                 let theButton2 = document.getElementById('modeToggle');
+                 theButton2.removeAttribute("aria-pressed");
+                 theButton2.setAttribute("aria-pressed", "true");
+             }
+         }
+         
+         function applyThemePreference() {
+             if (themePref == 'Dark') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 theButton.setAttribute("aria-pressed", "true");
+                 console.log("Applied dark theme because site theme preference is set to", themePref);
+             } else if (themePref == 'Light') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 theButton.setAttribute("aria-pressed", "false");
+                 console.log("Applied dark theme because site theme preference is set to", themePref);
+             }
+         }
+         applyThemePreference();                
       </script>
    </body>
 </html>
