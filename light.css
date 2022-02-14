@@ -57,8 +57,7 @@ dd.from {
 /* Presentations */
 .presentations {
 	border: 1px solid #495961;
-	background: #F0F2E8;
-}
+	}
 
 @media only screen and (max-width: 600px) {
 	.presentations {
