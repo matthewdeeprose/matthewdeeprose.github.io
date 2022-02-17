@@ -124,7 +124,7 @@ html {
    &lt;svg id="logoSVG-Off">...
    &lt;/svg>
 &lt;/button>
-&lt;/div>
+
 &lt;span role="alert" class="hidden" aria-live="polite" id="lightDark">&lt;/span>
 	
 	
@@ -305,6 +305,47 @@ function menuAction() {
     }
     document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
 }
+
+
+			...
+             if (dt == 'dark' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'light' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'dark' && !themePref) {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else {
+                 theButton.setAttribute("aria-pressed", "false");
+             }
+			...
+			
+			
+			
+         function toggle(btnID) {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById(btnID);
+             if (theButton.getAttribute("aria-pressed") == "true") {
+                 theButton.setAttribute("aria-pressed", "false");
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 localStorage.setItem("theme", "Light");
+                 document.getElementById('lightDark').innerHTML = 'Light 
+				 theme enabled, the button is now';
+             } else {
+			 ...
+			 
+			 
+		let themePref = localStorage.getItem("theme");
+        function applyThemePreference() {
+             if (themePref == 'Dark') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (themePref == 'Light') {
+				...
+				
+				
 </code></pre>
 	</div>
 </body>
