@@ -17,6 +17,27 @@
 	<pre><code class="language-css">
 	
 	
+:focus:not(:focus-visible) {
+	outline: none !important;
+	border: 0px solid #ffffff;
+	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12);
+}
+
+
+:focus:not(:focus-visible) {
+	outline: none !important;
+	border: 0px solid #ffffff;
+	box-shadow: -1px 1px 30px 9px rgba(0, 0, 0, .27);
+}	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 html {
     scroll-behavior: smooth;
@@ -190,11 +211,10 @@ html {
 	
 	
 	
-	
-	&lt;link rel="stylesheet" href="main.css"  media="all">
-    &lt;link rel="stylesheet" href="light.css" media="(prefers-color-scheme: light)">
-    &lt;link rel="stylesheet" href="dark.css"  media="(prefers-color-scheme: dark)">
-    &lt;link rel="stylesheet" href="print.css" media="print">
+	  &lt;link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+      &lt;link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      &lt;link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      &lt;link rel="stylesheet" id="printCSS" href="print.css" media="print">
 	
 	
 	
