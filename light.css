@@ -1,9 +1,14 @@
 /*Light mode */
+
+lite-youtube {
+	border: 0.3rem solid #495961;
+}
+
+
 /* Turn off the light */
 #logoSVG {
 	display: none;
 }
-
 
 .transcriptSpeaker {
 	color: #8D3970;
@@ -43,9 +48,7 @@ body {
 	border: 0.2rem solid #00131D;
 }
 
-.videoWrapper iframe {
-	border: 0.3rem solid #495961;
-}
+
 
 
 /* Post source */

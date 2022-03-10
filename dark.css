@@ -1,4 +1,9 @@
 /* Dark mode */
+lite-youtube {
+    border: 0.3rem solid #E1E8EC;
+}
+
+
 /* Turn on the light */
 #logoSVG {
 	color: #FCBC00
@@ -52,9 +57,7 @@ dd.from {
 	border: 0.2rem solid #E1E8EC !important;
 }
 
-.videoWrapper iframe {
-	border: 0.3rem solid #E1E8EC;
-}
+
 
 .presentations {
 	border: 0.1rem solid #E1E8EC;
