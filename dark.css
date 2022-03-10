@@ -2,7 +2,9 @@
 lite-youtube {
     border: 0.3rem solid #E1E8EC !important;
 }
-
+lite-youtube > .lty-playbtn {
+	border: none !important;
+}
 
 /* Turn on the light */
 #logoSVG {
