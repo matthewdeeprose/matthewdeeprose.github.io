@@ -624,7 +624,7 @@ a:hover {
     height: 100%;
 }
 lite-youtube {
-	border-radius: 0.5rem;
+	border-radius: 0.5rem !important;
 }
 
 
