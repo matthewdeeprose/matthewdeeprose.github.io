@@ -1,318 +1,601 @@
 <!DOCTYPE html>
 <html lang="en-GB">
-   <head>
-      <meta charset="utf-8" />
-      <meta name="description" content="Presentation Template">
-      <meta name="keywords" content="accessibility, presentation, blog">
-      <meta name="author" content="Matthew Deeprose">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Presentation Template</title>
-      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
-      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
-      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
-      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-      <meta property="og:title" content="Presentation Template - Matthew Deeprose">
-      <meta property="og:description" content="">
-      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
-      <meta property="og:image:alt" content="">
-      <meta property="og:locale" content="en_GB">
-      <meta property="og:type" content="website">
-      <meta property="og:url" content="https://matthewdeeprose.github.io/pres.html">
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
-      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-      <link rel="icon" href="favicon.ico">
-      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
-      <link rel="icon" href="favicon.svg" type="image/svg+xml">
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Presentation Template - Matthew Deeprose" />
-      <meta name="twitter:description" content=""/>
-      <meta name="twitter:creator" content="@VLEguru"/>
-      <meta name="twitter:site" content="@VLEguru"/>
-      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
-      <meta name="twitter:image:alt" content=""/>
-      <meta name="twitter:card" content="summary_large_image"/>
-   </head>
-   <body>
-      <div class="page-wrap" id="start">
-         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
-         <header class="page-header">
-            <div id="banner">
-               <div id="logo">
-                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
-                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
-                        <title id="svgTitle">Change theme</title>
-                        <desc id="svgDesc">Select to switch to light theme</desc>
-                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
-                           <path d="m6.5 17.5h4"/>
-                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
-                           <path d="m8.5 1.5v-1"/>
-                           <path d="m13.5 3.5 1-1"/>
-                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
-                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
-                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
-                           <path d="m1.5 7.5h-1"/>
-                           <path d="m16.5 7.5h-1"/>
-                        </g>
-                     </svg>
-                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
-                        <title id="svgTitleX">Change theme</title>
-                        <desc id="svgDescX">Select to switch to dark theme</desc>
-                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
-                           <path d="m2.5 13.5h4"/>
-                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
-                        </g>
-                     </svg>
-                  </button>
-               </div>
-               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
-               <div id="titleLink">Matthew Deeprose</div>
-            </div>
-         </header>
-         <div id="main-navigation" class="page-nav">
-            <nav aria-label="Main menu" class="topnav" id="myTopnav">
-               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
-                  <span id="hamburger">
-                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
-                        <title id="hamSVGTitle">Menu</title>
-                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
-                        <rect width="100" height="20"></rect>
-                        <rect y="30" width="100" height="20"></rect>
-                        <rect y="60" width="100" height="20"></rect>
-                     </svg>
-                  </span>
-                  <span id="arrow">
-                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
-                        <title id="arrowSVGTitle">Menu</title>
-                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
-                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
-                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
-                           <path  d="m16.5,10.5l-13,0"/>
-                        </g>
-                     </svg>
-                  </span>
-               </button>
-               <a id="homeMenu" href="index.html">Home</a>
-               <a href="presentations.html" class="active">Presentations</a>
-               <a href="posts.html">Blog Posts</a>
-               <a href="projects.html">Projects</a>
-               <a href="about.html">About</a>
-            </nav>
-         </div>
-         <main class="page-main" id="main">
-            <article class="standard">
-               <h1 id="top">Presentation template</h1>
-            </article>
-			      <div id="panel">
-         <button class="panelButton" onclick="topFunction()" id="myBtn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="The impact that high quality mark-up can have on accessibility, performance, and discoverability.">
+    <meta name="keywords" content="accessibility, presentation, WCAG, Accessible Perceptual Contrast Algorithm, APCA, dark theme, dark mode, theme toggle, ARIA, javascript, semantic HTML, landmarks, NVDA, screen reader, vestibular disorder, reduced motion, page load time analysis, critical render block, open graph, lighthouse, twitter card">
+    <meta name="author" content="Matthew Deeprose">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>The impact that high quality mark-up can have on accessibility, performance, and discoverability.</title>
+    <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+    <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+    <meta property="og:title" content="The impact that high quality mark-up can have on accessibility, performance, and discoverability.">
+    <meta property="og:description" content="">
+    <meta property="og:image" content="https://matthewdeeprose.github.io/high_quality-markup_impact.png">
+    <meta property="og:image:alt" content="">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://matthewdeeprose.github.io/high_quality-markup_impact.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="favicon.ico">
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The impact that high quality mark-up can have on accessibility, performance, and discoverability." />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta name="twitter:image" content="https://matthewdeeprose.github.io/high_quality-markup_impact.png"/>
+    <meta name="twitter:image:alt" content="" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+              <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                  <path d="m6.5 17.5h4" />
+                  <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                  <path d="m2.5 13.5h4" />
+                  <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+            <span id="hamburger">
+              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html" class="active">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html">Projects</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 id="top">Presentation template</h1>
+          <h2>Resources and links</h2>
+          <h3 id="githubpages">Github pages</h3>
+          <ul>
+            <li>
+              <a href="https://docs.github.com/en/pages/quickstart">Quickstart for GitHub Pages</a>
+            </li>
+          </ul>
+          <h3 id="WCAG">WCAG success criteria to which I refer</h3>
+          <ul>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html">1.3.1: Info and Relationships</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/use-of-color.html">1.4.1: Use of Color</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html">1.4.6: Contrast (Enhanced)</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/reflow.html">1.4.10: Reflow</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/keyboard.html">2.1.1: Keyboard</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/keyboard-no-exception.html">2.1.3: Keyboard (No Exception)</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/animation-from-interactions.html">2.3.3: Animation from Interactions</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/focus-order.html">2.4.3: Focus Order</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-enhanced">2.4.12Focus Appearance (Enhanced)</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html">4.1.2: Name, Role, Value</a>
+            </li>
+          </ul>
+          <h3 id="author">Authoring</h3>
+          <ul>
+            <li>
+              <a href="https://www.w3.org/WAI/standards-guidelines/atag/">Authoring Tool Accessibility Guidelines (ATAG) Overview</a>
+            </li>
+          </ul>
+          <h3 id="CSSguides">CSS</h3>
+          <ul>
+            <li>
+              <a href="https://css-tricks.com/the-holy-grail-layout-with-css-grid/">The Holy Grail Layout with CSS Grid</a>
+            </li>
+            <li>
+              <a href="https://www.youtube.com/watch?v=qm0IfG1GyZU">10 modern layouts in 1 line of CSS</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/TR/wai-aria-practices/examples/landmarks/main.html">ARIA vs HTML landmarks</a>
+            </li>
+            <li>
+              <a href="https://www.sarasoueidan.com/blog/tips-for-reader-modes/">Design for reading: tips for optimizing content for Reader modes and reading apps</a>
+            </li>
+            <li>
+              <a href="http://html5accessibility.com/">HTML5 Accessibility</a>
+            </li>
+            <li>
+              <a href="https://en.wikipedia.org/wiki/Semantic_HTML">Semantic HTML</a>
+            </li>
+            <li>
+              <a href="https://www.w3schools.com/cssref/pr_scroll-behavior.asp">Scroll-behavior</a>
+            </li>
+          </ul>
+          <h3 id="NavigationGuides">Navigation</h3>
+          <ul>
+            <li>
+              <a href="https://www.w3schools.com/howto/howto_js_topnav_responsive.asp">W3 Schools: How To - Responsive Top Navigation</a>
+            </li>
+            <li>
+              <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/nav">The nav element</a>
+            </li>
+            <li>
+              <a href="https://www.accede-web.com/en/guidelines/rich-interface-components/hamburger-menu/">Rich interface components accessibility guidelines &gt; Hamburger menu</a>
+            </li>
+            <li>
+              <a href="https://marcysutton.com/links-vs-buttons-in-modern-web-applications">Links vs. Buttons in Modern Web Applications</a>
+            </li>
+            <li>
+              <a href="https://www.digitala11y.com/scroll-to-top-where-should-the-focus-land/">Scroll to top: Where should the focus land?</a>
+            </li>
+            <li>
+              <a href="https://www.digitala11y.com/scroll-to-top-does-it-need-to-be-accessible/">Scroll to top: Does it need to be accessible?</a>
+            </li>
+            <li>
+              <a href="Accessible%20Icon%20Buttons">Accessible icon buttons</a>
+            </li>
+            <li>
+              <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button">The button element</a>
+            </li>
+          </ul>
+          <h3 id="ARIAdetails">ARIA</h3>
+          <ul>
+            <li>
+              <a href="https://www.w3.org/WAI/standards-guidelines/aria/">WAI-ARIA Overview</a>
+            </li>
+            <li>
+              <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-label">aria-label</a>
+            </li>
+            <li>
+              <a href="https://tink.uk/using-the-aria-controls-attribute/">Using the aria-controls attribute</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA16">Using aria-labelledby to provide a name for user interface controls</a>
+            </li>
+            <li>The <a href="https://www.digitala11y.com/aria-expanded-state/">aria-expanded</a>attribute
+            </li>
+            <li>
+              <a href="http://www.davidmacd.com/blog/toggle-aria-expanded-javascript.html">How to toggle aria-expanded and other WAI-ARIA values with JavaScript</a>
+            </li>
+            <li>
+              <a href="https://www.scottohara.me/blog/2018/05/05/hidden-vs-none.html">Know your ARIA: &#39;Hidden&#39; vs &#39;None&#39;</a>
+            </li>
+            <li>
+              <a href="https://www.a11y-collective.com/the-first-rule-for-using-aria/">The first rule of ARIA</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/TR/wai-aria-practices-1.2/">WAI-ARIA Authoring Practices 1.2</a>
+            </li>
+            <li>The <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-pressed">aria-pressed</a> attribute </li>
+            <li>
+              <a href="https://www.scottohara.me/blog/2022/02/05/are-we-live.html">Are we live?</a>
+            </li>
+            <li>
+              <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Live_Regions">The aria-live region</a>
+            </li>
+          </ul>
+          <h3 id="SVGguides">SVGs</h3>
+          <ul>
+            <li>
+              <a href="https://www.scottohara.me/blog/2019/05/22/contextual-images-svgs-and-a11y.html">Contextually Marking up accessible images and SVGs</a>
+            </li>
+            <li>
+              <a href="https://systemuicons.com/">SystemUIcons</a> &ndash; &ldquo;A growing collection of simple and consistent icons specifically designed for systems and products. Use how you want, without attribution.&rdquo;
+            </li>
+            <li>
+              <a href="https://css-tricks.com/svg-favicons-and-all-the-fun-things-we-can-do-with-them/">SVG, Favicons, and All the Fun Things We Can Do With Them</a>
+            </li>
+          </ul>
+          <h3 id="reducedMotion">Reducing motion</h3>
+          <ul>
+            <li>
+              <a href="https://alistapart.com/article/designing-safer-web-animation-for-motion-sensitivity/">Designing Safer Web Animation For Motion Sensitivity</a>
+            </li>
+            <li>
+              <a href="https://css-tricks.com/introduction-reduced-motion-media-query/">An Introduction to the Reduced Motion Media Query</a>
+            </li>
+            <li>
+              <a href="https://css-tricks.com/revisiting-prefers-reduced-motion/">Revisiting prefers-reduced-motion, the reduced motion media query</a>
+            </li>
+            <li>
+              <a href="https://vestibular.org/article/what-is-vestibular/about-vestibular-disorders/">About vestibular disorders</a>
+            </li>
+            <li>
+              <a href="https://developer.chrome.com/blog/new-in-devtools-79/#:~:text=%23-,Simulate%20different%20prefers%2Dcolor%2Dscheme%20and%20prefers%2Dreduced%2Dmotion%20preferences,-The%20prefers%2Dcolor">Simulate different prefers-reduced-motion preferences in Chrome Dev Tools</a>
+            </li>
+            <li>
+              <a href="https://mcmw.abilitynet.org.uk/how-to-turn-off-animations-in-windows-10">How to turn off animations in Windows 10</a>
+            </li>
+          </ul>
+          <h3 id="DarkModeGuides">Dark mode</h3>
+          <ul>
+            <li>
+              <a href="https://support.microsoft.com/en-us/windows/change-colors-in-windows-d26ef4d6-819a-581c-1581-493cfcc005fe#:~:text=in%20Custom%20mode-,Select%20Start%20%3E%20Settings,Select%20Personalization%20%3E%20Colors.&amp;text=Under%20Choose%20your%20color%2C%20select%20Custom.,default%20Windows%20mode%2C%20select%20Dark.">Change colors in Windows</a>
+            </li>
+            <li>
+              <a href="https://developer.chrome.com/blog/new-in-devtools-79/#:~:text=Open%20the%20Command%20Menu%2C%20run%20the%20Show%20Rendering%20command%2C%20and%20then%20set%20the%20Emulate%20CSS%20media%20feature%20prefers%2Dcolor%2Dscheme%20dropdown%20to%20debug%20your%20prefers%2Dcolor%2Dscheme%3A%20dark%20and%20prefers%2Dcolor%2Dscheme%3A%20light%20styles.">Simulate different prefers-color-scheme in Chrome dev tools</a>
+            </li>
+            <li>
+              <a href="https://www.boia.org/blog/dark-mode-can-improve-text-readability-but-not-for-everyone">Dark Mode Can Improve Text Readability &mdash; But Not for Everyone</a>
+            </li>
+            <li>
+              <a href="https://gomakethings.com/design-tip-never-use-black/">Design Tip: Never Use Black</a>
+              <ul style="list-style-type:circle">
+                <li>Note that it&rsquo;s never simple and no one would ever agree on everything, and no single solution will work for everyone. My view is that pure black is fine for high contrast mode which you can design for using the prefers high contrast media query, but for regular dark mode avoid pure black, but that doesn&rsquo;t mean that a lighter grey is going to be ok. As a rule of thumb I would recommend aiming for a contrast ratio between 16:1 and 19:1 for body text, or between 90 and 100 Lc.</li>
+              </ul>
+            </li>
+            <li>
+              <a href="https://www.essentialaccessibility.com/blog/accessibility-for-people-with-astigmatism">Accessibility for People with Astigmatism</a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/RD/2012/text-customization/r11">Optimal colors to improve readability for people with dyslexia</a>
+            </li>
+            <li>
+              <a href="https://blog.tomayac.com/2019/09/21/prefers-color-scheme-in-svg-favicons-for-dark-mode-icons/">prefers-color-scheme in SVG favicons for dark mode icons</a>
+            </li>
+            <li>
+              <a href="https://css-tricks.com/the-focus-visible-trick/">The :focus-visible Trick</a>
+            </li>
+            <li>
+              <a href="https://web.dev/prefers-color-scheme/">prefers-color-scheme: Hello darkness, my old friend</a>
+            </li>
+            <li>
+              <a href="https://www.scottohara.me/blog/2021/10/01/detect-high-contrast-and-dark-modes.html">Using JavaScript to detect high contrast and dark modes</a>
+            </li>
+            <li>
+              <a href="https://www.sarasoueidan.com/blog/prefers-color-scheme-browser-vs-os/">The CSS prefers-color-scheme user query and order of preference</a>
+            </li>
+            <li>
+              <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage">localStorage</a>
+            </li>
+            <li>
+              <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-pressed">aria-pressed</a>
+            </li>
+          </ul>
+          <h3 id="contrastInfo">Contrast</h3>
+          <ul>
+            <li>
+              <a href="https://planetcalc.com/7779/">Relative luminance and contrast ratio</a>
+            </li>
+            <li>
+              <a href="https://github.com/Myndex/SAPC-APCA/blob/master/documentation/WhyAPCA.md">New Contrast Method APCA</a>
+            </li>
+            <li>
+              <a href="https://atangledwebweweave.com/a-contrast-of-errors-373c2665d42a">A Contrast of Errors</a>
+            </li>
+            <li>
+              <a href="https://matthewdeeprose.github.io/matrix/matrix.html">Accessibility Matrix for University of Southampton Brand Colour Palette</a>
+            </li>
+            <li>
+              <a href="https://developer.chrome.com/blog/new-in-devtools-89/#apca">Enable new Advanced Perceptual Contrast Algorithm (APCA) in Chrome Dev Tools</a>
+            </li>
+            <li>
+              <a href="https://developer.chrome.com/blog/new-in-devtools-96/#css-overview">Chrome Dev Tools CSS Overview</a>
+            </li>
+          </ul>
+          <h3 id="Performance">Performance</h3>
+          <ul>
+            <li>
+              <a href="https://validator.w3.org/">W3C Markup Validation Service</a>
+            </li>
+            <li>
+              <a href="https://webpagetest.org">Web page test</a>
+            </li>
+            <li>
+              <a href="https://web.dev/render-blocking-resources/">Eliminate render-blocking resources</a>
+            </li>
+            <li>
+              <a href="https://developers.google.com/web/tools/lighthouse">Using Google Lighthouse</a>
+            </li>
+            <li>
+              <a href="https://www.matuzo.at/blog/building-the-most-inaccessible-site-possible-with-a-perfect-lighthouse-score/">Building the most inaccessible site possible with a perfect Lighthouse score</a>
+            </li>
+            <li>
+              <a href="https://tinypng.com/">TinyPNG</a>
+            </li>
+            <li>
+              <a href="https://tinyjpg.com/">TinyJPG</a>
+            </li>
+            <li>
+              <a href="https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading">Lazy loading</a>
+            </li>
+            <li>
+              <a href="https://www.smashingmagazine.com/2022/02/reducing-web-carbon-footprint-optimizing-social-media-embeds/">Reducing The Web&rsquo;s Carbon Footprint: Optimizing Social Media Embeds</a>
+            </li>
+          </ul>
+          <h3 id="Discovering">Discoverability</h3>
+          <ul>
+            <li>
+              <a href="https://search.google.com/search-console/">Google Search Console</a>
+            </li>
+            <li>
+              <a href="https://www.makeuseof.com/tag/how-to-create-an-rss-feed-for-your-site-from-scratch/">Create an RSS feed from scratch</a>
+            </li>
+            <li>
+              <a href="https://ogp.me/">The Open Graph protocol</a>
+            </li>
+            <li>
+              <a href="https://developer.twitter.com/en/docs/twitter-for-websites/cards/overview/markup">Twitter card markup</a>
+            </li>
+          </ul>
+          <h3 id="CardValidators">Card Validators</h3>
+          <ul>
+            <li>
+              <a href="https://cards-dev.twitter.com/validator">Twitter card validator</a>
+            </li>
+            <li>
+              <a href="https://www.linkedin.com/post-inspector/inspect/">LinkedIn post inspector</a>
+            </li>
+          </ul>
+          <h3 id="Snippets">For code snippets</h3>
+          <ul>
+            <li>
+              <a href="https://prismjs.com/">Prism - a lightweight, extensible syntax highlighter</a>
+            </li>
+            <li>
+              <a href="https://github.com/ericwbailey/a11y-syntax-highlighting">a11y syntax highlighting by Eric W Bailey</a>
+            </li>
+          </ul>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
             <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
-               <title id="svgTitle2">Top.</title>
-               <desc id="svgDesc2">Move to the top of the page.</desc>
-               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
-                  <circle cx="8.5" cy="8.5" r="8"/>
-                  <path d="m11.5 7.5-3-3-3 3"/>
-                  <path d="m8.5 4.5v8"/>
-               </g>
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
             </svg>
             <br />
             <span id="myBtnTop" class="panelLabel">Top</span>
-         </button>
-         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
             <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
-               <title id="svgTitle3">Bottom.</title>
-               <desc id="svgDesc3">Move to the bottom of the page.</desc>
-               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
-                  <circle cx="8.5" cy="8.5" r="8"/>
-                  <path d="m5.5 9.5 3 3 3-3"/>
-                  <path d="m8.5 12.5v-8"/>
-               </g>
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
             </svg>
             <br />
             <span id="myBtnBottom" class="panelLabel">Bottom</span>
-         </button>
-      </div>
-         </main>
-         <aside class="page-sidebar related">
-            <section class="related">
-			<h2>Related content</h2>
-			</section>
-            <section class="related">
-               <h3>Presentations</h3>
-               <ul class="relUL">
-                  <li><a href="#">Using Colours</a></li>
-                  <li><a href="#">Future Teacher</a></li>
-                  <li><a href="#">Bluffers guide to Blackboard theme accessibility</a></li>
-               </ul>
-            </section>
-            <section class="related">
-               <h3>Blog posts</h3>
-               <ul class="relUL">
-                  <li><a href="#">Using Colours</a></li>
-                  <li><a href="#">Future Teacher</a></li>
-                  <li><a href="#">Bluffers guide to Blackboard theme accessibility</a></li>
-               </ul>
-            </section>
-         </aside>
-         <footer class="page-footer">
-            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
-            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
-            <div id="AccessibilityFoot">
-               <a href="Accessibility_Statement.html">Accessibility Statement</a>
-            </div>
-            <div id="twitterFoot">
-               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
-            </div>
-            <div id="YouTubeChannelFoot">
-               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
-            </div>
-            <div id="aboutFoot">
-               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
-            </div>
-         </footer>
-      </div>
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related content</h2>
+        </section>
+        <section class="related">
+          <h3>Presentations</h3>
+          <ul class="relUL">
+            <li>
+              <a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a>
+            </li>
+            <li>
+              <a href="makeITaccessible.html">Making IT accessible for all!</a>
+            </li>
+            <li>
+              <a href="keyboardnav.html">Introduction to Keyboard Navigation and Accessibility</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h3>Blog posts</h3>
+          <ul class="relUL">
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/09/22/six-ways-that-digital-accessibility-maps-to-agile-practices/">Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</a>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS">
+          <a id="rssA" href="feed.rss">RSS</a>
+        </div>
+        <div id="SiteMap">
+          <a href="siteMap.html">Site Map</a>
+        </div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
+        </div>
+      </footer>
+    </div>
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false"
+        } else {
+          menuAriaAttrib = "true"
+        }
+        document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
+      window.onscroll = function() {
+        scrollFunction()
+      };
 
-      <script>
-         function menuAction() {
-             let menuSwitch = document.getElementById("myTopnav");
-             if (menuSwitch.className === "topnav") {
-                 menuSwitch.className += " responsive";
-                 
-             } else {
-                 menuSwitch.className = "topnav";
-             }
-             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-             if (menuAriaAttrib === "true") {
-                 menuAriaAttrib = "false"
-             } else {
-                 menuAriaAttrib = "true"
-             }
-             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-         }
+      function scrollFunction() {
+        if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
 
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById('skipToContent').focus();
+      }
 
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById('rssA').focus();
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
 
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia('(prefers-color-scheme: dark)');
+        let dt;
+        if (d.matches) {
+          dt = 'dark';
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = 'light'
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == 'dark' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'light' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'dark' && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
 
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
 
-
-
-
-
-
-
-
-
-
-
-
-
-      </script>
-      <script>
-         let mybutton = document.getElementById("myBtn");
-         let mybutton2 = document.getElementById("myBtn2");
-         
-         
-         window.onscroll = function() {
-             scrollFunction()
-         };
-         
-         function scrollFunction() {
-             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
-                 mybutton.style.display = "block";
-         		mybutton2.style.display = "block";
-             } else {
-                 mybutton.style.display = "none";
-         		mybutton2.style.display = "none";
-             }
-         }
-         
-         
-         
-         function topFunction() {
-             document.body.scrollTop = 0;
-             document.documentElement.scrollTop = 0; 
-         document.getElementById('skipToContent').focus();
-         }
-         
-         function bottomFunction() {
-         window.scrollTo(0,document.body.scrollHeight);
-         document.getElementById('rssA').focus();
-         }
-      </script>
-      <script>
-         let themePref = localStorage.getItem("theme");
-         console.log("Has a theme preference been saved?", themePref);        
-         
-         
-         function setLight() {
-             let buttonStatus = document.getElementById("lightDark");
-             let theButton = document.getElementById("modeToggle");
-             const d = matchMedia('(prefers-color-scheme: dark)');
-             let dt;
-             if (d.matches) {
-                 dt = 'dark';
-                 console.log("Prefers dark theme in OS");
-             } else {
-                 dt = 'light'
-                 console.log("Prefers light theme in OS");
-             }
-             if (dt == 'dark' && themePref == 'Dark') {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else if (dt == 'light' && themePref == 'Dark') {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else if (dt == 'dark' && !themePref) {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else {
-                 theButton.setAttribute("aria-pressed", "false");
-             }
-         }
-         setLight();
-         
-         function toggle(btnID) {
-             let buttonStatus = document.getElementById("lightDark");
-             let theButton = document.getElementById(btnID);
-             if (theButton.getAttribute("aria-pressed") == "true") {
-                 theButton.setAttribute("aria-pressed", "false");
-                 document.getElementById('lightCSS').href = 'light.css';
-                 document.getElementById('darkCSS').href = 'light.css';
-                 console.log("Turned on light mode");
-                 localStorage.setItem("theme", "Light");
-                 let themePref = localStorage.getItem("theme");
-                 console.log("Site theme preference to ", themePref);
-                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
-                 let toggleButton = document.getElementById('modeToggle');
-                 toggleButton.removeAttribute("aria-pressed");
-                 toggleButton.setAttribute("aria-pressed", "false");
-             } else {
-                 theButton.setAttribute("aria-pressed", "true");
-                 document.getElementById('lightCSS').href = 'dark.css';
-                 document.getElementById('darkCSS').href = 'dark.css';
-                 console.log("Turned on dark mode");
-                 localStorage.setItem("theme", "Dark");
-                 let themePref = localStorage.getItem("theme");
-                 console.log("Site theme preference set to ", themePref);
-                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
-                 let toggleButton = document.getElementById('modeToggle');
-                 toggleButton.removeAttribute("aria-pressed");
-                 toggleButton.setAttribute("aria-pressed", "true");
-             }
-         }
-         
-         function applyThemePreference() {
-             if (themePref == 'Dark') {
-                 let theButton = document.getElementById('modeToggle');
-                 document.getElementById('lightCSS').href = 'dark.css';
-                 document.getElementById('darkCSS').href = 'dark.css';
-                 theButton.setAttribute("aria-pressed", "true");
-                 console.log("Applied dark theme because site theme preference is set to", themePref);
-             } else if (themePref == 'Light') {
-                 let theButton = document.getElementById('modeToggle');
-                 document.getElementById('lightCSS').href = 'light.css';
-                 document.getElementById('darkCSS').href = 'light.css';
-                 theButton.setAttribute("aria-pressed", "false");
-                 console.log("Applied dark theme because site theme preference is set to", themePref);
-             }
-         }
-         applyThemePreference();                
-      </script>
-   </body>
+      function applyThemePreference() {
+        if (themePref == 'Dark') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          theButton.setAttribute("aria-pressed", "true");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        } else if (themePref == 'Light') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          theButton.setAttribute("aria-pressed", "false");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        }
+      }
+      applyThemePreference();
+    </script>
+	<script src="scripts/lite-yt-embed.js"></script>
+	<link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
+  </body>
 </html>
