@@ -1,448 +1,456 @@
 <!DOCTYPE html>
 <html lang="en-GB">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="description" content="Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability.">
-    <meta name="keywords" content="accessibility, presentation, WCAG, Accessible Perceptual Contrast Algorithm, APCA, dark theme, dark mode, theme toggle, ARIA, javascript, semantic HTML, landmarks, NVDA, screen reader, vestibular disorder, reduced motion, page load time analysis, critical render block, open graph, lighthouse, twitter card">
-    <meta name="author" content="Matthew Deeprose">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability.</title>
-    <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
-    <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
-    <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
-    <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-    <meta property="og:title" content="Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability.">
-    <meta property="og:description" content="">
-    <meta property="og:image" content="https://matthewdeeprose.github.io/high_quality-markup_impact.png">
-    <meta property="og:image:alt" content="">
-    <meta property="og:locale" content="en_GB">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://matthewdeeprose.github.io/high_quality-markup_impact.html">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
-    <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-    <link rel="icon" href="favicon.ico">
-    <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability." />
-    <meta name="twitter:description" content="" />
-    <meta name="twitter:creator" content="@VLEguru" />
-    <meta name="twitter:site" content="@VLEguru" />
-    <meta name="twitter:image" content="https://matthewdeeprose.github.io/high_quality-markup_impact.png" />
-    <meta name="twitter:image:alt" content="" />
-    <meta name="twitter:card" content="summary_large_image" />
-  </head>
-  <body>
-    <div class="page-wrap" id="start">
-      <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
-      <header class="page-header">
-        <div id="banner">
-          <div id="logo">
-            <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
-              <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
-                <title id="svgTitle">Change theme</title>
-                <desc id="svgDesc">Select to switch to light theme</desc>
-                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
-                  <path d="m6.5 17.5h4" />
-                  <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
-                  <path d="m8.5 1.5v-1" />
-                  <path d="m13.5 3.5 1-1" />
-                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
-                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
-                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
-                  <path d="m1.5 7.5h-1" />
-                  <path d="m16.5 7.5h-1" />
-                </g>
-              </svg>
-              <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
-                <title id="svgTitleX">Change theme</title>
-                <desc id="svgDescX">Select to switch to dark theme</desc>
-                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
-                  <path d="m2.5 13.5h4" />
-                  <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
-                </g>
-              </svg>
-            </button>
-          </div>
-          <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
-          <div id="titleLink">Matthew Deeprose</div>
-        </div>
-      </header>
-      <div id="main-navigation" class="page-nav">
-        <nav aria-label="Main menu" class="topnav" id="myTopnav">
-          <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
-            <span id="hamburger">
-              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
-                <title id="hamSVGTitle">Menu</title>
-                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
-                <rect width="100" height="20"></rect>
-                <rect y="30" width="100" height="20"></rect>
-                <rect y="60" width="100" height="20"></rect>
-              </svg>
-            </span>
-            <span id="arrow">
-              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
-                <title id="arrowSVGTitle">Menu</title>
-                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
-                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
-                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
-                  <path d="m16.5,10.5l-13,0" />
-                </g>
-              </svg>
-            </span>
-          </button>
-          <a id="homeMenu" href="index.html">Home</a>
-          <a href="presentations.html" class="active">Presentations</a>
-          <a href="posts.html">Blog Posts</a>
-          <a href="projects.html">Projects</a>
-          <a href="about.html">About</a>
-        </nav>
+   <head>
+      <meta charset="utf-8" />
+      <meta name="description" content="Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability.">
+      <meta name="keywords" content="accessibility, presentation, WCAG, Accessible Perceptual Contrast Algorithm, APCA, dark theme, dark mode, theme toggle, ARIA, javascript, semantic HTML, landmarks, NVDA, screen reader, vestibular disorder, reduced motion, page load time analysis, critical render block, open graph, lighthouse, twitter card">
+      <meta name="author" content="Matthew Deeprose">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability.</title>
+      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+      <meta property="og:title" content="Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability.">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/high_quality-markup_impact.png">
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/high_quality-markup_impact.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability." />
+      <meta name="twitter:description" content="" />
+      <meta name="twitter:creator" content="@VLEguru" />
+      <meta name="twitter:site" content="@VLEguru" />
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/high_quality-markup_impact.png" />
+      <meta name="twitter:image:alt" content="" />
+      <meta name="twitter:card" content="summary_large_image" />
+   </head>
+   <body>
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Change theme</title>
+                        <desc id="svgDesc">Select to switch to light theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4" />
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                           <path d="m8.5 1.5v-1" />
+                           <path d="m13.5 3.5 1-1" />
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                           <path d="m1.5 7.5h-1" />
+                           <path d="m16.5 7.5h-1" />
+                        </g>
+                     </svg>
+                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                        <title id="svgTitleX">Change theme</title>
+                        <desc id="svgDescX">Select to switch to dark theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                           <path d="m2.5 13.5h4" />
+                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                        </g>
+                     </svg>
+                  </button>
+               </div>
+               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+               <div id="titleLink">Matthew Deeprose</div>
+            </div>
+         </header>
+         <div id="main-navigation" class="page-nav">
+            <nav aria-label="Main menu" class="topnav" id="myTopnav">
+               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+                  <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span>
+                  <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                           <path d="m16.5,10.5l-13,0" />
+                        </g>
+                     </svg>
+                  </span>
+               </button>
+               <a id="homeMenu" href="index.html">Home</a>
+               <a href="presentations.html" class="active">Presentations</a>
+               <a href="posts.html">Blog Posts</a>
+               <a href="projects.html">Projects</a>
+               <a href="about.html">About</a>
+            </nav>
+         </div>
+         <main class="page-main" id="main">
+            <article class="standard">
+               <h1 id="top">Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability</h1>
+               <ul>
+                  <li>
+                     <a href="https://www.youtube.com/watch?v=U8otEr0vYOU">Presentation recording</a>
+                  </li>
+                  <li>
+                     <a href="high_quality-markup_impact.html">Presentation resources</a>
+                  </li>
+               </ul>
+               <p>If you are interested in web accessibility, building a personal web site is a great way to get practical experience. You don't need to use frameworks or content management systems. Using Semantic HTML, CSS, and a little JavaScript we can address some web accessibility fundamentals. </p>
+               <p>I've recently made my own simple web site and learned a lot.</p>
+               <p>In this video I share what I learned about:</p>
+               <ul>
+                  <li>Using GitHub pages to host a site.</li>
+                  <li>Landmarks and their benefits for those who use screen readers.</li>
+                  <li>Making a hamburger menu accessible through using Accessible Rich Internet Application attributes (ARIA).</li>
+                  <li>Scroll to top buttons and the important of accounting for those who prefer reduced motion</li>
+                  <li>Creating a light and a dark theme that accounts for operating system preference and also allows viewers to toggle between them.</li>
+                  <li>How I attempted to future-proof my colour choices by accounting for the Accessible Perceptual Contrast Algorithm (APCA) which will be used in the next generation of the Web Content Accessibility Guidelines.</li>
+                  <li>How to use JavaScript to change ARIA attributes.</li>
+               </ul>
+               <p>I'll be referring to the Web Content Accessibility Guidelines, using worked examples, and giving demonstrations using the NVDA screen reader. </p>
+               <p>
+                  <span class="transcriptSpeaker">NVDA:</span> Main menu, menu button, collapsed, sub-menu. Expanded.
+               </p>
+               <p>I'll also share what I learned on the way about performance and discoverability.</p>
+               <p>I'm still learning. No doubt there are mistakes or errors, so let me know in the comments. This video has captions. On my web site you can find all the links I refer to and a full, hyperlinked transcript. Originally, I gave this presentation as part of a "show and tell" for my colleagues, I've edited the presentation to share here on YouTube.</p>
+               <p>Alright! Let's get started!</p>
+               <p>Hi everyone, today were going to consider the impact that high quality mark-up can have on accessibility, performance, and discoverability. This is based on my real-world experiences from building a personal site on <a href="https://pages.github.com/">GitHub pages</a>. Here's a brief list of what I will cover and give practical examples of. </p>
+               <p>Now, I chose <a href="https://pages.github.com/">GitHub pages</a> because the URL you get has some credibility even though it's free, and the site is really fast due to their Content Delivery Network. My workflow was really simple: I prepare files in Notepad, save them in a shared directory I could access from different devices, and GitHub has a desktop app that will publish the pages online. It's just like the old days but you're not using FTP, you're using the GitHub desktop app. </p>
+               <p>So, what did I learn? </p>
+               <p>Let's start with layout. It's your typical responsive layout. I've used colours to make the different sections a bit clearer for you. Responsiveness brings to mind this important Web Content Accessibility Criterion. <a href="https://www.w3.org/WAI/WCAG21/Understanding/reflow.html">Reflow is expected now</a>. We're responsible for ensuring that our services at the University of Southampton deliver this basic requirement. </p>
+               <p>The brilliant <a href="https://una.im/">Una Kravets</a> has a wonderful video on YouTube sharing <a href="https://www.youtube.com/watch?v=qm0IfG1GyZU">10 modern layouts in a line of CSS</a>. </p>
+               <p>Let's consider one way that high quality semantic mark-up impacts accessibility.</p>
+               <p>We can <a href="https://www.w3.org/TR/wai-aria-practices/examples/landmarks/HTML5.html">use semantic HTML to declare landmarks</a> for different parts of a page. So, we could say this is the header and footer. This is the navigation. This is the main content. And a defined article within it. And this is the sidebar, tagged as an aside. In my case I've broken this down into sections. </p>
+               <p>It's easy to forget what we lose if we cannot view a site, we miss having that "at a glance" view of the structure and nature of the content. <a href="https://www.accessibilityoz.com/2020/02/html5-sectioning-elements-and-screen-readers/">Using a screen reader, we can navigate between these landmarks</a>, as long as they have been declared &ndash; either with semantic HTML or using ARIA roles. This can help a screen reader user to get a feel for the structure of a page and to move quickly between landmarks. A course page on Blackboard, for example, has three navigational landmarks to traverse before you get to the content. </p>
+               <p>Using the NVDA screen reader, the header is declared the "banner landmark". Navigation is "navigation landmark". The main section is "main landmark". The aside or sidebar is the "complementary landmark". And the footer is the content info landmark.</p>
+               <p>The success criterion <a href="https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html">Info and Relationships</a> is intended to ensure that information and relationships that are implied by visual or auditory formatting are preserved when the presentation format changes. <a href="https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA11">Using landmarks to identify regions of a page</a> is one of the &lsquo;sufficient techniques' for meeting this criterion. </p>
+               <p>The <a href="https://accessibilityinsights.io/docs/en/web/overview/">accessibility insights</a> browser plugin has a tool that reveals how landmarks are used on a page. Why not try it out on the sites you use, maintain, or support? </p>
+               <p>36% said you use simplified views or reader modes. Using <a href="https://www.sarasoueidan.com/blog/tips-for-reader-modes/">semantic landmarks is an effective way</a> to ensure that the content that should be shown is identified. </p>
+               <p>To conclude our look at layout, reflow is an obvious requirement. Use of landmarks has many benefits, particularly for screen reader users and reader modes.</p>
+               <p>On to navigation. I followed this guide from W3 Schools on <a href="https://www.w3schools.com/howto/howto_js_topnav_responsive.asp">implementing a responsive navigation menu</a>. My site is really basic and simple, there's only five links in the menu. On a smaller screen a hamburger button is used to reveal the menu. </p>
+               <p>Using the method was a good way to identify what was missing, in this video I test it with a screen reader. Listen carefully to what the screen reader announces and pay attention to the focus order. Let's take a look.</p>
+               <p>
+                  <span class="transcriptSpeaker">NVDA:</span> "Menu, menu button, submenu".
+               </p>
+               <p>So, I've selected the button but how would a screen reader know that anything has actually happened. And look! The focus has moved to the browser controls instead of the next menu item. </p>
+               <p>
+                  <span class="transcriptSpeaker">NVDA:</span> "Tab bar, tab control, tab actions menu, nav demo, new tab, toolbar, address, zoom, add this, in private settings and more, nav demo document, home link"
+               </p>
+               <p>So, we saw that when the hamburger menu is activated there is no confirmation that something has changed, and when we tab from the hamburger button, we had to tab all through the browser controls until we got to the menu items.</p>
+               <p>Here is the mark-up I had already done a bit of tidying and made some initial improvements. The hamburger is a link with a role of button, which isn't necessarily bad but it's definitely not best practice. Using a semantic button would be more appropriate. It also appears at the end of the list, explaining why focus moves out of the navigation after the hamburger was selected. The hamburger icon uses <a href="https://fontawesome.com/">font awesome</a> which is a third-party font hosted externally. </p>
+               <p>So, lets review my updated implementation. I'll talk more about <a href="https://www.w3.org/WAI/standards-guidelines/aria/">ARIA</a> (Accessible Rich Internet Applications) later, but I've given the navigation menu the semantic " <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/nav">nav</a>" tag and an <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-label">aria label</a> that screen reader users will hear. I've used <a href="https://a11y-101.com/design/button-vs-link">a button instead of a link</a>, and put that button at the beginning so the following tab will be to the menu items, and added <a href="https://tink.uk/using-the-aria-controls-attribute/">aria properties</a> to <a href="https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA16">link it semantically</a> to the navigation. </p>
+               <p>Most importantly I've given it an <a href="https://www.digitala11y.com/aria-expanded-state/">expanded aria attribute,</a> so I can show whether the menu is expanded or not, and assistive technology will now understand that. When the hamburger is initially shown we know that it will not be expanded, and <a href="http://www.davidmacd.com/blog/toggle-aria-expanded-javascript.html">we can change that attribute with JavaScript</a>. </p>
+               <p>I got rid of font awesome and used an <a href="https://systemuicons.com/">inline scalable vector graphic or SVG to</a> represent the hamburger, and made that <a href="https://www.scottohara.me/blog/2018/05/05/hidden-vs-none.html">hidden to screen reader users</a> because the button itself has all the information they need. </p>
+               <p>This is the initial JavaScript for the action that takes place when you press the button. Originally it was to change a CSS class that would reveal the menu items. I added a few lines in the same vein that would change the value of the aria-expanded attribute from false, meaning it is collapsed, to true, meaning it is expanded. This is really simple because I don't need to know what the original value was, I just assumed that whenever the button is selected we're going to toggle between one or the other.</p>
+               <p>This then recalls the <a href="https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html">Name, role, value success criterion</a> which states that for all UI components: the name and role can be identified by using a computer program, the aspects that a user can change can be changed by a computer program, and users of assistive technology are made aware of that change. The expanding / collapsing menu is a nice simple example of this in action. I'll share another one later. </p>
+               <p>So, lets revisit our example with the screen reader, listen again carefully to the experience, and observe the focus order.</p>
+               <p>
+                  <span class="transcriptSpeaker">NVDA:</span> "Main menu, menu button, collapsed, sub menu." "Expanded"
+               </p>
+               <p>So, the screen reader knows that the menu has been expanded.</p>
+               <p>
+                  <span class="transcriptSpeaker">NVDA:</span> "Collapsed"
+               </p>
+               <p>&hellip;and then it's been collapsed.</p>
+               <p>
+                  <span class="transcriptSpeaker">NVDA:</span> "Expanded, home link"
+               </p>
+               <p>Look the focus is moved to the next menu item.</p>
+               <p>
+                  <span class="transcriptSpeaker">NVDA:</span> "Presentations link, blog posts link, projects link, about link."
+               </p>
+               <p>So, that was a much improved experience wasn't it? But it is quite a simple one. Maybe so simple you might not have thought of it before?</p>
+               <p>A common mistake in accessibility is not testing the experience of components that only appear in "mobile mode" or when the screen is zoomed in. It's common across our sites at the University of Southampton to find hamburger design patterns that cannot be used with a keyboard. </p>
+               <p>We must remember that impairments and disabilities can be <a href="https://www.accessibility.com/blog/disability-language-intersectionality">intersectional</a>. I may prefer to use a keyboard than a mouse or trackpad, and I may also like to zoom content in. Not everyone who uses a hamburger menu is tapping a mobile phone. </p>
+               <p>If you haven't heard or <a href="https://www.w3.org/TR/wai-aria-1.1/">ARIA</a> (Accessible Rich Internet Applications) <strong></strong>before it's used to modify the "accessibility tree" that the browser creates and affects only assistive technology, what we call "AT". </p>
+               <p>It's used to add extra information, express semantic relationships and inform assistive technology of changes.</p>
+               <p>This meme shows a &quot;full stack developer&quot; applying a massive bottle of olive oil labelled &quot;ARIA&quot; to a salad that is labelled &quot;accessible website&quot;. The <a href="https://www.w3.org/TR/using-aria/#rule1">first rule of ARIA</a> is to use native elements where possible, and only to use ARIA if you have to. <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button">That button was a semantic element</a>, but we had to add an ARIA attribute to inform AT users of a menu <a href="https://www.accessibility-developer-guide.com/examples/sensible-aria-usage/expanded/">collapsing or expanding</a>. </p>
+               <p>A key thing for learning designers to be aware of is that <a href="https://www.w3.org/TR/wai-aria-practices-1.2/">ARIA brings numerous techniques</a> for making interactive learning objects work well with AT - but they may not have been <a href="https://www.w3.org/WAI/standards-guidelines/atag/">implemented in our authoring tools</a>. </p>
+               <p>Learning how to test for accessibility is important. As is building our understanding of what's possible so we can identify good practice.</p>
+               <p>It's fairly common to find "scroll to top" buttons on website. Personally, I find them useful as I'm often reading lengthy web pages. The presentation support pages I make also tend have long lists of resources, so I added scroll to top and scroll to bottom on my site.</p>
+               <p>This is another aspect that is frequently missed in terms of keyboard navigation. It's nice to use the <a href="https://www.w3schools.com/cssref/pr_scroll-behavior.asp">scroll-behavior</a> setting to give a smooth scrolling experience, but we should give a choice to turn this off for those with vestibular issues. And it's no use being keyboard navigable if the focus on the page is not also moved to the top of the page. It's not just me saying this, these are <a href="https://www.w3.org/WAI/WCAG21/Understanding/keyboard.html">clear instructions in the Web Content Accessibility Guidelines</a>. </p>
+               <p>So, here's my implementation. I'm using a button. I think it's debatable if it should be a link, but I see this as more of performing an action. The button calls a function that we will look at in a moment. I'm using <a href="https://www.scottohara.me/blog/2019/05/22/contextual-images-svgs-and-a11y.html">the recommended ARIA pattern for alt text to an SVG.</a> The function sets where the focus should land as well as scrolling to the top. You have to set the focus to something that is interactive. I've picked the skip link. The scroll-behavior is set to smooth in CSS. And for those who have set to prefer reduced motion the automatic behaviour is set, <a href="https://css-tricks.com/introduction-reduced-motion-media-query/">using this CSS media query</a>. </p>
+               <p>This is where users can choose <a href="https://mcmw.abilitynet.org.uk/how-to-turn-off-animations-in-windows-10">to disable animations in Windows</a>, and in Chrome you can emulate this preference from <a href="https://developer.chrome.com/blog/new-in-devtools-79/#:~:text=You%20can%20also%20simulate%20prefers%2Dreduced%2Dmotion%3A%20reduce">the rendering options in dev tools</a>. </p>
+               <p>If you're still not sure what I mean by the differences in scroll behaviour I've made this video. Watch on the left the smooth scroll of a user who has not set a preference, in comparison with a user on the right who has turned off animations on their computer.</p>
+               <p>The AAA success criterion <a href="https://www.w3.org/WAI/WCAG21/Understanding/animation-from-interactions.html">Animations from Interactions</a> requires us to allow users to prevent animations from being displayed on web pages. That's because some users find that fancy scroll effects like parallax or animations in general can cause nausea and migraines. </p>
+               <p>More than <a href="https://vestibular.org/article/what-is-vestibular/about-vestibular-disorders/">70 million people are affected by vestibular disorders</a>. Effects can include vertigo and hearing loss. Using the web when you have these experiences can be really tough, and that's what this success criterion is designed to accommodate. </p>
+               <p>Reviewing a few University of Southampton sites, none meet all the good practices that I have identified. Why not go back and check your sites?</p>
+               <p>Some final thoughts about navigation. We saw that the small details like hamburgers and scroll to top buttons have accessibility considerations. We saw there are opportunities to respect user preference with animations and we'll see more of this next. Hopefully, I've shown the importance of really listening to and considering the screen reader experience.</p>
+               <p>Next, we're onto colour. Just like reflow, providing a dark and light mode is expected on modern sites. When I last checked the results, 40% of you prefer to use dark mode, 20% prefer light mode and 40% will swap between themes based on your preference and circumstance. In <a href="https://support.microsoft.com/en-us/windows/change-colors-in-windows-d26ef4d6-819a-581c-1581-493cfcc005fe#:~:text=in%20Custom%20mode-,Select%20Start%20%3E%20Settings,Select%20Personalization%20%3E%20Colors.&amp;text=Under%20Choose%20your%20color%2C%20select%20Custom.,default%20Windows%20mode%2C%20select%20Dark.">Windows we can set what colour scheme we prefer</a>, and in <a href="https://developer.chrome.com/blog/new-in-devtools-79/#:~:text=Open%20the%20Command%20Menu%2C%20run%20the%20Show%20Rendering%20command%2C%20and%20then%20set%20the%20Emulate%20CSS%20media%20feature%20prefers%2Dcolor%2Dscheme%20dropdown%20to%20debug%20your%20prefers%2Dcolor%2Dscheme%3A%20dark%20and%20prefers%2Dcolor%2Dscheme%3A%20light%20styles.">Chome DevTools we can emulate the preference</a>. </p>
+               <p>
+                  <a href="https://www.boia.org/blog/dark-mode-can-improve-text-readability-but-not-for-everyone">There are benefits to both modes.</a> Dark mode has become popular because it can save energy on LED displays and has some accessibility benefits. There's just as many benefits for light mode. It's important to provide users with a choice.
+               </p>
+               <p>It should be well accepted now that <a href="https://gomakethings.com/design-tip-never-use-black/">maximalist contrast should be avoided in digital.</a> There is such a thing as <a href="https://www.essentialaccessibility.com/blog/accessibility-for-people-with-astigmatism#:~:text=impairments%20occurring%20globally.-,Why%20is%20this%20important%3F,with%20astigmatism%20called%20%E2%80%9Chalation%E2%80%9D.">too much contrast</a> when we're presenting information in digital formats. </p>
+               <p>A typical way to respect colour scheme preference is to use CSS media queries. For my site I split the colour information into two CSS files (one for dark and one for light) and added a media query to them. This meant that the browser only loads one of those two CSS files. </p>
+               <p>Picking colours from the <a href="https://matthewdeeprose.github.io/matrix/matrix.html">University of Southampton palette</a> for dark mode I settled on these. "Plain black" for background, "Neutral 4" for text, "Marine 6" for focus indicators and hover states, and "Horizon 1" for links. Of course, all are at <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html">AAA levels of contrast</a>. I used University colours because I'm still building my understanding of colour combinations that work well. </p>
+               <p>You might wonder why I have three shades of black. While I retained "Rich Black" for legacy reasons because I had used it in previous PowerPoint templates, I added a non-University black which was a 10% tint from the University colour "Plain Black". I used that to add some borders to the site when it's over a certain width. I noticed <a href="https://speckyboy.com/negative-space-web-design/">this is a common practice on many sites</a> and it helps make content more readable on larger screens. At the moment I have it set to a 10% margin. There's probably a better method, so do let me know if you have any suggestions. </p>
+               <p>For light mode I had a bit less flexibility from our University palette and I wasn't to use as many colours as I would have wanted. I wanted to have a creamier white than pure white. The new University corporate PowerPoint templates have this kind of dull grey, white, but I wasn't very keen on that. I wanted a more creamy one. I had two shades of white because I was using them for margins.</p>
+               <p>In light mode, I chose "Rich Black" with an "Ivory" creamy white. <a href="https://www.w3.org/WAI/RD/2012/text-customization/r11">Research presented in 2012</a> found that this combination was almost equally preferred by dyslexic readers and those without dyslexia, it also had low fixation durations for each group. Shorter fixations are preferred to longer ones. People who tend to make fewer eye fixations during reading usually have a higher reading pace than people who make more frequent fixations. </p>
+               <p>Using SVG favicons you can even set them to have different colour schemes depending on theme choice, <a href="https://blog.tomayac.com/2019/09/21/prefers-color-scheme-in-svg-favicons-for-dark-mode-icons/">by adding CSS styles within the SVG</a>. </p>
+               <p>Here are examples from my personal site of clear WCAG 2.2 compliant focus indicators in dark mode. Here you can see focus indicators for an unselected button on the left and the selected button on the right, and on the left we have two links and on the right one of those links has been selected. You can see the same approach in light mode. </p>
+               <p>One of the reasons designers may remove focus indicators is that users see them when they use a mouse or touch pad to click on links. I used <a href="https://css-tricks.com/the-focus-visible-trick/">this CSS to apply a different style for mouse clicks</a>, you may be able to see a little drop shadow added around the link and no outline. </p>
+               <p>In WCAG 2.2 which is expected to be finalised soon, <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-enhanced">to reach the AAA success criterion for focus indicators</a>, we need at least 2 CSS pixel border, with a contrast of 4.5:1 or above, and the focus to not be hidden by author created content. </p>
+               <p>It wouldn't be an accessibility presentation without talking about contrast. In WCAG 2.1 and 2.2 we're used to thinking in terms of contrast ratios. <a href="https://www.w3.org/TR/wcag-3.0/#visual-contrast-of-text">WCAG 3.0</a>, which is probably a few years down the line, uses the <a href="https://github.com/Myndex/SAPC-APCA/blob/master/documentation/WhyAPCA.md">Accessible Perceptual Contrast Algorithm</a>. It's still in development and it's going to be a very big change. It's much more sophisticated than the previous measure of contrast and is <a href="https://atangledwebweweave.com/a-contrast-of-errors-373c2665d42a">arguably more accurate</a>. It produces a <a href="https://github.com/Myndex/SAPC-APCA/raw/master/images/Jan27_2022LUT_legend.jpg">Lightness contrast rating</a>, the higher the better. </p>
+               <p>We will find that some combinations that met WCAG 2 will fail under the new measurement. You can see here two examples from the <a href="https://matthewdeeprose.github.io/matrix/matrix.html">University colour palette</a>. </p>
+               <p>For this site I decided to future proof by ensuring colours I chose would meet both WCAG 2 and APCA. Chrome Dev tools can be <a href="https://developer.chrome.com/blog/new-in-devtools-89/#apca">configured to measure for APCA</a>, and you can use the <a href="https://developer.chrome.com/blog/new-in-devtools-96/#css-overview">CSS overview</a> to find all failing examples. Using this in combination with the <a href="https://matthewdeeprose.github.io/matrix/matrix.html">colour matrix script</a> I had written was really useful for identifying which colours would work. So, in dark mode, the body text is above 90 Lc and the same in Light mode. I do find that when you're in <a href="https://github.com/Myndex/SAPC-APCA/tree/master/documentation#:~:text=APCA%20is%20polarity%20aware">light mode you are going to get higher contrast ratings under APCA.</a>
+               </p>
+               <p>It's good practice not to make design decisions based on presumptions. Some may not know how to change their colour scheme at OS level or might not be aware that it's possible. Some might not like an implementation of dark or light theme that you've decided upon on your site. So, it's good to give people a choice. </p>
+               <p>I had already put a light bulb icon in the top left of the site to represent "ideas and thinking", but it looked like a good fit for putting in as a colour theme toggle. The idea is that it's going to set a preference using <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage">localStorage</a>. I'm using the UI pattern of an on / off button, mainly because at home I have dimmer switches and you push them in and out to turn them on and off, so I settled on using <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-pressed">aria-pressed</a>. I needed to be sure that changes <a href="https://www.scottohara.me/blog/2022/02/05/are-we-live.html">were announced to the screen reader</a>. We need to <a href="https://www.w3.org/WAI/WCAG21/Understanding/use-of-color.html">use more than colour alone</a> to represent the difference, so in dark mode the light is on and you can tell because of those little lines coming out around the bulb. </p>
+               <p>This was an interesting challenge for me and i'm going to talk you through the details. Now, this is my implementation. If you've spot any issues or have suggestions on how to make it better please do let me know in the comments.</p>
+               <p>Here's the button, when it loads it's set to not pressed, so when the web page loads the button this aria state is set to not pressed that's only going to be the correct state if you are in light mode. I also have a span here with an <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Live_Regions">aria-live region</a> that I will populate to announce changes. </p>
+               <p>So, I needed to do three things. First set whether the button was actually pressed or not depending on whether it was light or dark mode. When changing themes, the preference had to be saved, the change announced to the screen reader, and the value of the pressed attribute to be changed when. If a preference had been saved to load the desired theme instead of that preferred at Operating System level. broke it down into these three parts because it helped me make a solution piece by piece.</p>
+               <p>This part is setting whether the button is pressed or not on page load, it depends on what theme is being used. <a href="https://www.scottohara.me/blog/2021/10/01/detect-high-contrast-and-dark-modes.html">Dt is the operating system preference</a>, and themePref is the site-specific preference if there is one. So, if the OS preference is dark, and the local site preference is dark, then the button is pressed. Likewise, if the OS preference is light but the local site preference is dark, then that means the user wants dark mode and the button's going to be pressed. If the OS preference is dark and there's no local site preference, then the button is pressed. In all other cases we're going to be in light mode, the button isn't pressed. </p>
+               <p>Once we press that button, we want it to change themes, change the value of aria pressed, and save the preference. This the function that is performed when the light bulb icon is selected. It's based on a choice, if at the beginning the button was pressed, that means it was in dark mode, so the user wants to change to light mode so we're going to change aria pressed to not pressed. Change the CSS loaded in the head to be the light.CSS colours. I appreciate this is a bit of a hack. We're going to set the choice in localStorage and add a notification to the screen reader and if the button was not pressed at the beginning meaning we're in light mode, then the user wants to go into dark mode and the rest of the function is going to do the opposite. I'm not going to show you it here because it's the kind of it's the same thing that we saw above but everything's just swapped around.</p>
+               <p>This is the hidden text for screen reader users, there's a CSS class that hides it from view, and it's an aria-live region so the text created by the function is squirted into that span tag and then announced to the screen reader.</p>
+               <p>The final piece is respecting the choice of themes, it checks if there is a preference from the user; have they pressed the button and it saved their preference? So then when they go to other pages on the site, we need to make sure that their preference is respected. So, here we check if there is that local preference, we set the theme accordingly, and set the state of the button.</p>
+               <p>So, let's hear and see how this works from the screen reader's perspective.</p>
+               <p> <span class="transcriptSpeaker">NVDA:</span> "Welcome document. Visited link; skip to content. Banner landmark. Change between light and dark theme; toggle button: not pressed. Dark theme enabled, the button is now pressed." </p>
+               <p>You might think, "Hang on Matt, do we really need to make this compatible with screen readers - changing between light and dark mode? Because they're not going to see it right?" Well, remember what we said about intersectionality, not everyone who uses a screen reader is blind and there are different levels of sight that people might have. Who are we to say what functionality anyone can and can't use on our site? Perhaps the screen reader user is navigating our page using the screen reader but they have others in the among them, perhaps members of the family who prefer a different mode, and so the screen reader user is changing the theme on the page? We don't know what people are going to be using on our website. <a href="https://www.a11yproject.com/about/">Accessibility is about removing barriers</a> to using our services and sites for everyone. We're reminded of that <a href="https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html">basic success criterion</a> about names and roles, states and properties, and notification of changes. </p>
+               <p>My site was really simple so there was no excuse for it not to be performant, but here's what Ii learned that i think you might find useful for me to share with you</p>
+               <p>As well as using the <a href="https://validator.w3.org/">W3C Validator</a> to test for conformant HTML, I used the <a href="https://webpagetest.org/">webpagetest.org</a> to run performance tests on my website as I built it. Out of curiosity, I had a look at a few other services at the University of Southampton that are well known for our audience. </p>
+               <p>One of the options on webpagetest.org is that you can test from different locations and on different devices, here is a set of tests that were run on 3G connected mobile in Mumbai. If the experience is good in Mumbai on a 3G phone, then it's probably going to be good everywhere. I'm going to give you a quick review of what these features are about.</p>
+               <ul>
+                  <li>First byte is how long it takes from requesting the page to getting the first byte of data.</li>
+                  <li>Start Rendermarks the moment when a web page displays the first asset.</li>
+                  <li>First Contentful Paint (FCP) is when the browser renders the first bit of content, providing the first feedback to the user that the page is actually loading.</li>
+                  <li>Speed Index (SI) is how quickly the contents of a page are visibly populated. </li>
+                  <li>LCP stands for Largest Contentful Paint and tracks the time it takes for the largest visual part of the page to load. It's a measure of how long it takes for a user to start working with our site.</li>
+                  <li>TBT Total Blocking Time, TBT is the total time between the <a href="https://web.dev/first-contentful-paint/">First </a>
+                     <a href="https://web.dev/first-contentful-paint/">Contentful</a>
+                     <a href="https://web.dev/first-contentful-paint/"> Paint (FCP)</a>and <a href="https://web.dev/interactive/">Time to Interactive (TTI)</a>.
+                  </li>
+                  <li>Total bytes is the amount of data downloaded. When you pay for your data, you don't want to be paying for things that aren't going to be giving you value.</li>
+               </ul>
+               <p>From a sustainability point of view, it's worth paying attention to how much content is downloaded to users, some might be on metered connections. The reason this number is so high on the site, the <a href="https://generic.wordpress.soton.ac.uk/digital-learning/">Digital Learning Blog</a>, is that there's an auto playing YouTube video at the beginning, so we've already downloaded 12 megabytes in the time that webpagetest.org has initiated and completed its its testing of that page. That's quite a lot of data particularly if you're paying for it, byte by byte. </p>
+               <p>WebPage test also shows us what parts are being loaded on the page and how long each individual part takes. <a href="https://web.dev/render-blocking-resources/">Render-blocking resources</a>, marked here with an X, arethings that block or delay the browser from rendering page content to the screen. Do we need the H5P plugin? Do we need to load both font-awesome and google fonts, which is a <a href="https://rewis.io/urteile/urteil/lhm-20-01-2022-3-o-1749320/">GDPR risk</a>? These may all be legitimate, but has anyone actually sat down and thought about this before? </p>
+               <p>Chrome has a feature called <a href="https://developers.google.com/web/tools/lighthouse">Lighthouse</a>. As this brilliant article explains, <a href="https://www.matuzo.at/blog/building-the-most-inaccessible-site-possible-with-a-perfect-lighthouse-score/">you can trick the results of Google Lighthouse</a> but still it is worth using. You get ratings for Performance, Accessibility, Best Practice and <a href="https://en.wikipedia.org/wiki/Search_engine_optimization">SEO</a>. My site is very, very simple, so getting 100 isn't special, but it did make me want to look at the scores of other sites. </p>
+               <p>I expect that our corporate communications team will be monitoring regularly the lighthouse scores for the <a href="https://www.soton.ac.uk/">corporate site</a> because it's so important. It's the page that new people who want to find out about the University are going to be accessing so it needs to be performant, accessible, follow best practices, and have great Search Engine Optimisation. </p>
+               <p>This is our <a href="https://elearn.southampton.ac.uk/">e-learning support resources</a> it's soon going to be replaced with a new version so we definitely want to be monitoring performance, and we can definitely do better than 58 for performance can't we? In fact, all of our WordPress sites have terrible scores for performance. The <a href="https://generic.wordpress.soton.ac.uk/digital-learning/">Digital Learning Blog</a> has only got 54. </p>
+               <p>I'm going to take us on a little side-track now to talk about accessibility of the Digital Learning Blog. The thing about WordPress sites is quite often once you've picked a theme, you're kind of locked in to the accessibility that that theme provides and it can be quite hard to make improvements without changing the whole theme. <a href="https://www.linkedin.com/in/tamsynmsmith/">Tamsyn Smith</a> and I looked into this. There was lots we couldn't fix: there's still a hamburger button that cannot be used with the keyboard - but we were able to use the <a href="https://www.wpbeginner.com/plugins/how-to-easily-add-custom-css-to-your-wordpress-site/">Additional CSS</a> option in WordPress to make a lot of changes. In fact, <a href="https://generic.wordpress.soton.ac.uk/digital-learning/?custom-css=a631ef4e07">325 lines is what we did in total</a>. </p>
+               <p>Let's take a look at a few examples so we've got before on the left and after on the right. So, this is the masthead which you can see on the left this before state was pretty much unreadable, but this was fixed by adding background colour with a little opacity and changing the text colour. That footer is also pretty terrible on the left isn't it? We're able to fix that and also remove a few details that just weren't needed. My favourite is this the menu, the mega menu along the top. Obviously, no one had ever tested it with a keyboard before, because as you can see the menu items appear behind the content on the left, the before state. On the right there you can see that a change to the <a href="https://www.w3schools.com/cssref/pr_pos_z-index.asp">z- index</a> brought the menu on top. We've made numerous other improvements to the menu since then but that was definitely the biggest. </p>
+               <p>What did i do on my site in terms of performance? Well i used <a href="https://tinypng.com/">TinyPNG</a> and <a href="https://tinyjpg.com/">TinyJPG</a> to optimise image size, and i added <a href="https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading">lazy loading on images and YouTube embeds</a> so that they would only be loaded up once you got to that point on the page. Where i had used extra scripts like jQuery I only loaded those on the pages where they were actually going to be used because it's only on about two of the pages that i'm actually using any jQuery. I reduced critical chaining requests by using media queries for the light and dark CSS files in the head of the page. </p>
+               <p>So, to summarize we just need to be using some of these free management tools to get an understanding of whether users will find our site slow or fast. There's a little bit of automated accessibility checking and this isn't talking about load testing or anything like that this is simple tests that we can do and if we find any issues then we need to be talking to the site managers to find out why is&hellip; what is the justification for poor performance? Why are our WordPress sites so terrible at performance?</p>
+               <p>In terms of discoverability on my site. I added a site map, registered the site on the <a href="https://search.google.com/search-console/">google search console</a>, and added an <a href="https://www.makeuseof.com/tag/how-to-create-an-rss-feed-for-your-site-from-scratch/">RSS feed</a>. I could still add a local search and breadcrumb navigation &ndash; but this is really simple site. Right now, there's only 34 pages, but I'll try and get to adding a few more of those later. </p>
+               <p>Let's put the meh in meta, here's a look at some of the meta tags. Here you can I've added some I <a href="https://ogp.me/">open graph</a> tags and Twitter card tags. It's expected now that when we share a link on teams, Twitter, LinkedIn and so on that we're going to get a nice preview It also can help to build awareness of our site and establish credibility. We want people to share our content and we want it to look good wherever it appears. There are validators online that can help you to check how the previews will look. It's great to see it happening, here accessibility legend <a href="https://www.learningapps.co.uk/moodle/xertetoolkits/play.php?template_id=2196#page1">Alistair McNaught</a> is sharing a page on Twitter, and on the right is a connection request on LinkedIn from someone who found me through my personal site. I recommend using card validators to fine tune how your links will look when they are shared. </p>
+               <p>In terms of what's next, I would like to move the build process into a <a href="https://jamstack.org/generators/">static site generator</a> like <a href="https://www.11ty.dev/">eleventy</a>, that will make updating the site template much more efficient. I would like to hide videos embeds behind a <a href="https://web.dev/third-party-facades/">click to load pattern</a>, for both privacy and performance reasons. The traditional approach to dark mode is to use <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_custom_properties">CSS variables</a> and then build classes from them, so if I ever find the time to look at that and refactor then I definitely want to do that because I haven't used CSS variables before and it looks really powerful. As I think of more things I want to share on the site I will be building up that component library that I've started for different design patterns, (like soon I want to do a responsive table pattern) with appropriate ARIA where necessary and light/dark colour schemes. I've got lots of accessibility related projects I have in mind that I want to build and now I've got a platform to put build them on. So, in a way the hard work is done, and the fun begins! </p>
+               <p>In this presentation I really wanted to share my struggles to deepen my understanding of accessibility and to share some concrete examples and my approach to solving them. I hope that has helped. I also know that I'm still learning and there's probably some mistakes in there. So, if I've got anything wrong or you have any suggestions for improvements, please let me know in the comments.</p>
+               <p>We've reached the end of the video. Remember: <a href="https://matthewdeeprose.github.io/high_quality-markup_impact.html">everything I refer to is listed on this web page</a>. The <a href="https://matthewdeeprose.github.io/high_quality-markup_impact__transcript.html">transcript also has handy hyperlinks</a> to these resources.</p>
+               <p>The code snippets were created using <a href="https://prismjs.com/">PrismJS</a> and styled using <a href="https://github.com/ericwbailey/a11y-syntax-highlighting">a11y syntax highlighting CSS</a> by <a href="https://twitter.com/ericwbailey">Eric Bailey</a>. A big thank you to Eric for making that, and also for his articles about <a href="https://css-tricks.com/introduction-reduced-motion-media-query/">vestibular issues and the "prefers reduced motion media query"</a>, which I quoted from earlier in this presentation.</p>
+               <p>You can <a href="https://matthewdeeprose.github.io/high_quality-markup_impact.html">download the slide deck and other resources at this link</a>. <a href="https://matthewdeeprose.github.io">Visit my site for other presentations</a>. Thanks for watching! Let me know your feedback, good or bad. See you in the next one.</p>
+            </article>
+            <div id="panel">
+               <button class="panelButton" onclick="topFunction()" id="myBtn">
+                  <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+                     <title id="svgTitle2">Top.</title>
+                     <desc id="svgDesc2">Move to the top of the page.</desc>
+                     <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                        <circle cx="8.5" cy="8.5" r="8" />
+                        <path d="m11.5 7.5-3-3-3 3" />
+                        <path d="m8.5 4.5v8" />
+                     </g>
+                  </svg>
+                  <br />
+                  <span id="myBtnTop" class="panelLabel">Top</span>
+               </button>
+               <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+                  <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+                     <title id="svgTitle3">Bottom.</title>
+                     <desc id="svgDesc3">Move to the bottom of the page.</desc>
+                     <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                        <circle cx="8.5" cy="8.5" r="8" />
+                        <path d="m5.5 9.5 3 3 3-3" />
+                        <path d="m8.5 12.5v-8" />
+                     </g>
+                  </svg>
+                  <br />
+                  <span id="myBtnBottom" class="panelLabel">Bottom</span>
+               </button>
+            </div>
+         </main>
+         <aside class="page-sidebar related">
+            <section class="related">
+               <h2>Related content</h2>
+            </section>
+            <section class="related">
+               <h3>Presentations</h3>
+               <ul class="relUL">
+                  <li>
+                     <a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a>
+                  </li>
+                  <li>
+                     <a href="makeITaccessible.html">Making IT accessible for all!</a>
+                  </li>
+                  <li>
+                     <a href="keyboardnav.html">Introduction to Keyboard Navigation and Accessibility</a>
+                  </li>
+               </ul>
+            </section>
+            <section class="related">
+               <h3>Blog posts</h3>
+               <ul class="relUL">
+                  <li>
+                     <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/09/22/six-ways-that-digital-accessibility-maps-to-agile-practices/">Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</a>
+                  </li>
+               </ul>
+            </section>
+         </aside>
+         <footer class="page-footer">
+            <div id="RSS">
+               <a id="rssA" href="feed.rss">RSS</a>
+            </div>
+            <div id="SiteMap">
+               <a href="siteMap.html">Site Map</a>
+            </div>
+            <div id="AccessibilityFoot">
+               <a href="Accessibility_Statement.html">Accessibility Statement</a>
+            </div>
+            <div id="twitterFoot">
+               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+            </div>
+            <div id="YouTubeChannelFoot">
+               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+            </div>
+            <div id="aboutFoot">
+               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
+            </div>
+         </footer>
       </div>
-      <main class="page-main" id="main">
-        <article class="standard">
-          <h1 id="top">Transcript: The impact that high quality mark-up can have on accessibility, performance, and discoverability</h1>
-          <ul>
-            <li>
-              <a href="https://www.youtube.com/watch?v=g59mIZ2M2lU">Presentation recording</a>
-            </li>
-            <li>
-              <a href="makeITaccessible.html">Presentation resources</a>
-            </li>
-          </ul>
-          <p>You don't have to be a professional developer to make web pages. Anyone can dabble with a bit of HTML and make their own page, be it for a blog, a professional portfolio, a hobby, or whatever else you want. If you are interested in web accessibility, building a personal site is a great way to get some practical experience and go beyond the simple checklists you find online. I've recently made my own simple web site. </p>
-          <p>In this video I share what I learned about:</p>
-          <ul>
-            <li>Landmarks and their benefits for those who use screen readers.</li>
-            <li>Making a hamburger menu accessible through using Accessible Rich Internet Application attributes (ARIA).</li>
-            <li>Scroll to top buttons and the important of accounting for those who prefer reduced motion</li>
-            <li>Creating a light and a dark theme that accounts for operating system preference and also allows viewers to toggle between them.</li>
-            <li>How I attempted to future proof my theme choices by accounting for the Accessible Perceptual Contrast Algorithm (APCA) which will be used the next generation of the Web Content Accessibility Guidelines.</li>
-          </ul>
-          <p>I'll use worked examples and demonstrations using the NVDA screen reader. I'll also share what I learned on the way about performance and discoverability. &nbsp;</p>
-          <p>I originally made this presentation for my group at work in the IT department at the University of Southampton in the UK. It's important to be clear that this is based on my own experiences from creating a personal website. </p>
-          <p>I'm still learning. No doubt there are mistakes or errors, so let me know if the comments. The video has captions. On my web site you can find all the links I refer to and full, hyperlinked transcript.</p>
-          <p>Alright! Let's get started!</p>
-          <p>Hi everyone, today were going to consider the impact that high quality mark-up can have on accessibility, performance, and discoverability. This is based on my real-world experiences from building a personal site on <a href="https://pages.github.com/">GitHub pages</a>. Here's a brief list of what I will cover and give practical examples of. </p>
-          <p>Now, I chose <a href="https://pages.github.com/">GitHub pages</a> because the URL you get has some credibility even though it's free, and the site is really fast due to their Content Delivery Network. My workflow was really simple: I prepare files in Notepad, save them in a shared directory I could access from different devices, and GitHub has a desktop app that will publish the pages online. It's just like the old days but you're not using FTP, you're using the GitHub desktop app. </p>
-          <p>So, what did I learn? </p>
-          <p>Let's start with layout. It's your typical responsive layout. I've used colours to make the different sections a bit clearer for you. Responsiveness brings to mind this important Web Content Accessibility Criterion. <a href="https://www.w3.org/WAI/WCAG21/Understanding/reflow.html">Reflow is expected now</a>. We're responsible for ensuring that our services at the University of Southampton deliver this basic requirement. </p>
-          <p>The brilliant <a href="https://una.im/">Una Kravets</a> has a wonderful video on YouTube sharing <a href="https://www.youtube.com/watch?v=qm0IfG1GyZU">10 modern layouts in a line of CSS</a>. </p>
-          <p>Let's consider one way that high quality semantic mark-up impacts accessibility.</p>
-          <p>We can <a href="https://www.w3.org/TR/wai-aria-practices/examples/landmarks/HTML5.html">use semantic HTML to declare landmarks</a> for different parts of a page. So, we could say this is the header and footer. This is the navigation. This is the main content. And a defined article within it. And this is the sidebar, tagged as an aside. In my case I've broken this down into sections. </p>
-          <p>It's easy to forget what we lose if we cannot view a site, we miss having that "at a glance" view of the structure and nature of the content. <a href="https://www.accessibilityoz.com/2020/02/html5-sectioning-elements-and-screen-readers/">Using a screen reader, we can navigate between these landmarks</a>, as long as they have been declared &ndash; either with semantic HTML or using ARIA roles. This can help a screen reader user to get a feel for the structure of a page and to move quickly between landmarks. A course page on Blackboard, for example, has three navigational landmarks to traverse before you get to the content. </p>
-          <p>Using the NVDA screen reader, the header is declared the "banner landmark". Navigation is "navigation landmark". The main section is "main landmark". The aside or sidebar is the "complementary landmark". And the footer is the content info landmark.</p>
-          <p>The success criterion <a href="https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html">Info and Relationships</a> is intended to ensure that information and relationships that are implied by visual or auditory formatting are preserved when the presentation format changes.&nbsp; <a href="https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA11">Using landmarks to identify regions of a page</a> is one of the &lsquo;sufficient techniques' for meeting this criterion. </p>
-          <p>The <a href="https://accessibilityinsights.io/docs/en/web/overview/">accessibility insights</a> browser plugin has a tool that reveals how landmarks are used on a page. Why not try it out on the sites you use, maintain, or support? </p>
-          <p>36% said you use simplified views or reader modes. Using <a href="https://www.sarasoueidan.com/blog/tips-for-reader-modes/">semantic landmarks is an effective way</a> to ensure that the content that should be shown is identified. </p>
-          <p>To conclude our look at layout, reflow is an obvious requirement. Use of landmarks has many benefits, particularly for screen reader users and reader modes.</p>
-          <p>On to navigation. I followed this guide from W3 Schools on <a href="https://www.w3schools.com/howto/howto_js_topnav_responsive.asp">implementing a responsive navigation menu</a>. My site is really basic and simple, there's only five links in the menu. On a smaller screen a hamburger button is used to reveal the menu. </p>
-          <p>Using the method was a good way to identify what was missing, in this video I test it with a screen reader. Listen carefully to what the screen reader announces and pay attention to the focus order. Let's take a look.</p>
-          <p>
-            <span class="transcriptSpeaker">NVDA:</span> "Menu, menu button, submenu".
-          </p>
-          <p>So, I've selected the button but how would a screen reader know that anything has actually happened. And look! The focus has moved to the browser controls instead of the next menu item. </p>
-          <p>
-            <span class="transcriptSpeaker">NVDA:</span> "Tab bar, tab control, tab actions menu, nav demo, new tab, toolbar, address, zoom, add this, in private settings and more, nav demo document, home link"
-          </p>
-          <p>So, we saw that when the hamburger menu is activated there is no confirmation that something has changed, and when we tab from the hamburger button, we had to tab all through the browser controls until we got to the menu items.</p>
-          <p>Here is the mark-up I had already done a bit of tidying and made some initial improvements. The hamburger is a link with a role of button, which isn't necessarily bad but it's definitely not best practice. &nbsp;Using a semantic button would be more appropriate. It also appears at the end of the list, explaining why focus moves out of the navigation after the hamburger was selected. The hamburger icon uses <a href="https://fontawesome.com/">font awesome</a> which is a third-party font hosted externally. </p>
-          <p>So, lets review my updated implementation. I'll talk more about <a href="https://www.w3.org/WAI/standards-guidelines/aria/">ARIA</a> (Accessible Rich Internet Applications) later, but I've given the navigation menu the semantic " <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/nav">nav</a>" tag and an <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-label">aria label</a> that screen reader users will hear. I've used <a href="https://a11y-101.com/design/button-vs-link">a button instead of a link</a>, and put that button at the beginning so the following tab will be to the menu items, and added <a href="https://tink.uk/using-the-aria-controls-attribute/">aria properties</a> to <a href="https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA16">link it semantically</a> to the navigation. </p>
-          <p>Most importantly I've given it an <a href="https://www.digitala11y.com/aria-expanded-state/">expanded aria attribute,</a> so I can show whether the menu is expanded or not, and assistive technology will now understand that. When the hamburger is initially shown we know that it will not be expanded, and <a href="http://www.davidmacd.com/blog/toggle-aria-expanded-javascript.html">we can change that attribute with JavaScript</a>. </p>
-          <p>I got rid of font awesome and used an <a href="https://systemuicons.com/">inline scalable vector graphic or SVG to</a> represent the hamburger, and made that <a href="https://www.scottohara.me/blog/2018/05/05/hidden-vs-none.html">hidden to screen reader users</a> because the button itself has all the information they need. </p>
-          <p>This is the initial JavaScript for the action that takes place when you press the button. Originally it was to change a CSS class that would reveal the menu items. I added a few lines in the same vein that would change the value of the aria-expanded attribute from false, meaning it is collapsed, to true, meaning it is expanded. This is really simple because I don't need to know what the original value was, I just assumed that whenever the button is selected we're going to toggle between one or the other.</p>
-          <p>This then recalls the <a href="https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html">Name, role, value success criterion</a> which states that for all UI components: the name and role can be identified by using a computer program, the aspects that a user can change can be changed by a computer program, and users of assistive technology are made aware of that change. The expanding / collapsing menu is a nice simple example of this in action. I'll share another one later. </p>
-          <p>So, lets revisit our example with the screen reader, listen again carefully to the experience, and observe the focus order.</p>
-          <p>
-            <span class="transcriptSpeaker">NVDA:</span> "Main menu, menu button, collapsed, sub menu." "Expanded"
-          </p>
-          <p>So, the screen reader knows that the menu has been expanded.</p>
-          <p>
-            <span class="transcriptSpeaker">NVDA:</span> "Collapsed"
-          </p>
-          <p>&hellip;and then it's been collapsed.</p>
-          <p>
-            <span class="transcriptSpeaker">NVDA:</span> "Expanded, home link"
-          </p>
-          <p>Look the focus is moved to the next menu item.</p>
-          <p>
-            <span class="transcriptSpeaker">NVDA:</span> "Presentations link, blog posts link, projects link, about link."
-          </p>
-          <p>So, that was a much improved experience wasn't it? But it is quite a simple one. Maybe so simple you might not have thought of it before?</p>
-          <p>A common mistake in accessibility is not testing the experience of components that only appear in "mobile mode" or when the screen is zoomed in. It's common across our sites at the University of Southampton to find hamburger design patterns that cannot be used with a keyboard. </p>
-          <p>We must remember that impairments and disabilities can be <a href="https://www.accessibility.com/blog/disability-language-intersectionality">intersectional</a>.&nbsp; I may prefer to use a keyboard than a mouse or trackpad, and I may also like to zoom content in. Not everyone who uses a hamburger menu is tapping a mobile phone. </p>
-          <p>If you haven't heard or <a href="https://www.w3.org/TR/wai-aria-1.1/">ARIA</a> (Accessible Rich Internet Applications) <strong></strong>before it's used to modify the "accessibility tree" that the browser creates and affects only assistive technology, what we call "AT". </p>
-          <p>It's used to add extra information, express semantic relationships and inform assistive technology of changes.</p>
-          <p>This meme shows a &quot;full stack developer&quot; applying a massive bottle of olive oil labelled &quot;ARIA&quot; to a salad that is labelled &quot;accessible website&quot;. The <a href="https://www.w3.org/TR/using-aria/#rule1">first rule of ARIA</a> is to use native elements where possible, and only to use ARIA if you have to. <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button">That button was a semantic element</a>, but we had to add an ARIA attribute to inform AT users of a menu <a href="https://www.accessibility-developer-guide.com/examples/sensible-aria-usage/expanded/">collapsing or expanding</a>. </p>
-          <p>A key thing for learning designers to be aware of is that <a href="https://www.w3.org/TR/wai-aria-practices-1.2/">ARIA brings numerous techniques</a> for making interactive learning objects work well with AT -&nbsp; but they may not have been <a href="https://www.w3.org/WAI/standards-guidelines/atag/">implemented in our authoring tools</a>. </p>
-          <p>Learning how to test for accessibility is important. As is building our understanding of what's possible so we can identify good practice.</p>
-          <p>It's fairly common to find "scroll to top" buttons on website. Personally, I find them useful as I'm often reading lengthy web pages. The presentation support pages I make also tend have long lists of resources, so I added scroll to top and scroll to bottom on my site.</p>
-          <p>This is another aspect that is frequently missed in terms of keyboard navigation. &nbsp;It's nice to use the <a href="https://www.w3schools.com/cssref/pr_scroll-behavior.asp">scroll-behavior</a> setting to give a smooth scrolling experience, but we should give a choice to turn this off for those with vestibular issues. And it's no use being keyboard navigable if the focus on the page is not also moved to the top of the page. It's not just me saying this, these are <a href="https://www.w3.org/WAI/WCAG21/Understanding/keyboard.html">clear instructions in the Web Content Accessibility Guidelines</a>. </p>
-          <p>So, here's my implementation. I'm using a button. I think it's debatable if it should be a link, but I see this as more of performing an action. The button calls a function that we will look at in a moment. I'm using <a href="https://www.scottohara.me/blog/2019/05/22/contextual-images-svgs-and-a11y.html">the recommended ARIA pattern for alt text to an SVG.</a> The function sets where the focus should land as well as scrolling to the top. You have to set the focus to something that is interactive. I've picked the skip link. The scroll-behavior is set to smooth in CSS. And for those who have set to prefer reduced motion the automatic behaviour is set, <a href="https://css-tricks.com/introduction-reduced-motion-media-query/">using this CSS media query</a>. </p>
-          <p>This is where users can choose <a href="https://mcmw.abilitynet.org.uk/how-to-turn-off-animations-in-windows-10">to disable animations in Windows</a>, and in Chrome you can emulate this preference from <a href="https://developer.chrome.com/blog/new-in-devtools-79/#:~:text=You%20can%20also%20simulate%20prefers%2Dreduced%2Dmotion%3A%20reduce">the rendering options in dev tools</a>. </p>
-          <p>If you're still not sure what I mean by the differences in scroll behaviour I've made this video. Watch on the left the smooth scroll of a user who has not set a preference, in comparison with a user on the right who has turned off animations on their computer.</p>
-          <p>The AAA success criterion <a href="https://www.w3.org/WAI/WCAG21/Understanding/animation-from-interactions.html">Animations from Interactions</a> requires us to allow users to prevent animations from being displayed on web pages. That's because some users find that fancy scroll effects like parallax or animations in general can cause nausea and migraines. </p>
-          <p>More than <a href="https://vestibular.org/article/what-is-vestibular/about-vestibular-disorders/">70 million people are affected by vestibular disorders</a>. Effects can include vertigo and hearing loss. Using the web when you have these experiences can be really tough, and that's what this success criterion is designed to accommodate. </p>
-          <p>Reviewing a few University of Southampton sites, none meet all the good practices that I have identified. Why not go back and check your sites?</p>
-          <p>Some final thoughts about navigation. We saw that the small details like hamburgers and scroll to top buttons have accessibility considerations. We saw there are opportunities to respect user preference with animations and we'll see more of this next. Hopefully, I've shown the importance of really listening to and considering the screen reader experience.</p>
-          <p>Next, we're onto colour. Just like reflow, providing a dark and light mode is expected on modern sites. When I last checked the results, 40% of you prefer to use dark mode, 20% prefer light mode and 40% will swap between themes based on your preference and circumstance. In <a href="https://support.microsoft.com/en-us/windows/change-colors-in-windows-d26ef4d6-819a-581c-1581-493cfcc005fe#:~:text=in%20Custom%20mode-,Select%20Start%20%3E%20Settings,Select%20Personalization%20%3E%20Colors.&amp;text=Under%20Choose%20your%20color%2C%20select%20Custom.,default%20Windows%20mode%2C%20select%20Dark.">Windows we can set what colour scheme we prefer</a>, and in <a href="https://developer.chrome.com/blog/new-in-devtools-79/#:~:text=Open%20the%20Command%20Menu%2C%20run%20the%20Show%20Rendering%20command%2C%20and%20then%20set%20the%20Emulate%20CSS%20media%20feature%20prefers%2Dcolor%2Dscheme%20dropdown%20to%20debug%20your%20prefers%2Dcolor%2Dscheme%3A%20dark%20and%20prefers%2Dcolor%2Dscheme%3A%20light%20styles.">Chome DevTools we can emulate the preference</a>. </p>
-          <p>
-            <a href="https://www.boia.org/blog/dark-mode-can-improve-text-readability-but-not-for-everyone">There are benefits to both modes.</a> Dark mode has become popular because it can save energy on LED displays and has some accessibility benefits. There's just as many benefits for light mode. It's important to provide users with a choice.
-          </p>
-          <p>It should be well accepted now that <a href="https://gomakethings.com/design-tip-never-use-black/">maximalist contrast should be avoided in digital.</a> There is such a thing as <a href="https://www.essentialaccessibility.com/blog/accessibility-for-people-with-astigmatism#:~:text=impairments%20occurring%20globally.-,Why%20is%20this%20important%3F,with%20astigmatism%20called%20%E2%80%9Chalation%E2%80%9D.">too much contrast</a> when we're presenting information in digital formats. </p>
-          <p>A typical way to respect colour scheme preference is to use CSS media queries. For my site I split the colour information into two CSS files (one for dark and one for light) and added a media query to them. This meant that the browser only loads one of those two CSS files. </p>
-          <p>Picking colours from the <a href="https://matthewdeeprose.github.io/matrix/matrix.html">University of Southampton palette</a> for dark mode I settled on these. "Plain black" for background, "Neutral 4" for text, "Marine 6" for focus indicators and hover states, and "Horizon 1" for links. Of course, all are at <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html">AAA levels of contrast</a>. I used University colours because I'm still building my understanding of colour combinations that work well. </p>
-          <p>You might wonder why I have three shades of black. While I retained "Rich Black" for legacy reasons &nbsp;because I had used it in previous PowerPoint templates, I added a non-University black which was a 10% tint from the University colour "Plain Black". I used that to add some borders to the site when it's over a certain width. I noticed <a href="https://speckyboy.com/negative-space-web-design/">this is a common practice on many sites</a> and it helps make content more readable on larger screens. At the moment I have it set to a 10% margin. There's probably a better method, so do let me know if you have any suggestions. </p>
-          <p>For light mode I had a bit less flexibility from our University palette and I wasn't to use as many colours as I would have wanted. &nbsp;I wanted to have a creamier white than pure white. The new University corporate PowerPoint templates have this kind of dull grey, white, but I wasn't very keen on that. I wanted a more creamy one. I had two shades of white because I was using them for margins.</p>
-          <p>In light mode, I chose "Rich Black" with an "Ivory" creamy white. <a href="https://www.w3.org/WAI/RD/2012/text-customization/r11">Research presented in 2012</a> found that this combination was almost equally preferred by dyslexic readers and those without dyslexia, it also had low fixation durations for each group. Shorter fixations are preferred to longer ones. People who tend to make fewer eye fixations during reading usually have a higher reading pace than people who make more frequent fixations. </p>
-          <p>Using SVG favicons you can even set them to have different colour schemes depending on theme choice, <a href="https://blog.tomayac.com/2019/09/21/prefers-color-scheme-in-svg-favicons-for-dark-mode-icons/">by adding CSS styles within the SVG</a>. </p>
-          <p>Here are examples from my personal site of clear WCAG 2.2 compliant focus indicators in dark mode. Here you can see focus indicators for an unselected button on the left and the selected button on the right, and on the left we have two links and on the right one of those links has been selected. You can see the same approach in light mode. </p>
-          <p>One of the reasons designers may remove focus indicators is that users see them when they use a mouse or touch pad to click on links. I used <a href="https://css-tricks.com/the-focus-visible-trick/">this CSS to apply a different style for mouse clicks</a>, you may be able to see a little drop shadow added around the link and no outline. </p>
-          <p>In WCAG 2.2 which is expected to be finalised soon, <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-enhanced">to reach the AAA success criterion for focus indicators</a>, we need at least 2 CSS pixel border, with a contrast of 4.5:1 or above, and the focus to not be hidden by author created content. </p>
-          <p>It wouldn't be an accessibility presentation without talking about contrast. In WCAG 2.1 and 2.2 we're used to thinking in terms of contrast ratios. <a href="https://www.w3.org/TR/wcag-3.0/#visual-contrast-of-text">WCAG 3.0</a>, which is probably a few years down the line, uses the <a href="https://github.com/Myndex/SAPC-APCA/blob/master/documentation/WhyAPCA.md">Accessible Perceptual Contrast Algorithm</a>. It's still in development and it's going to be a very big change. It's much more sophisticated than the previous measure of contrast and is <a href="https://atangledwebweweave.com/a-contrast-of-errors-373c2665d42a">arguably more accurate</a>. It produces a <a href="https://github.com/Myndex/SAPC-APCA/raw/master/images/Jan27_2022LUT_legend.jpg">Lightness contrast rating</a>, the higher the better. </p>
-          <p>We will find that some combinations that met WCAG 2 will fail under the new measurement. You can see here two examples from the <a href="https://matthewdeeprose.github.io/matrix/matrix.html">University colour palette</a>. </p>
-          <p>For this site I decided to future proof by ensuring colours I chose would meet both WCAG 2 and APCA. Chrome Dev tools can be <a href="https://developer.chrome.com/blog/new-in-devtools-89/#apca">configured to measure for APCA</a>, and you can use the <a href="https://developer.chrome.com/blog/new-in-devtools-96/#css-overview">CSS overview</a> to find all failing examples. Using this in combination with the <a href="https://matthewdeeprose.github.io/matrix/matrix.html">colour matrix script</a> I had written was really useful for identifying which colours would work. So, in dark mode, the body text is above 90 Lc and the same in Light mode. I do find that when you're in <a href="https://github.com/Myndex/SAPC-APCA/tree/master/documentation#:~:text=APCA%20is%20polarity%20aware">light mode you are going to get higher contrast ratings under APCA.</a>
-          </p>
-          <p>It's good practice not to make design decisions based on presumptions. Some may not know how to change their colour scheme at OS level or might not be aware that it's possible. Some might not like an implementation of dark or light theme that you've decided upon on your site. So, it's good to give people a choice. </p>
-          <p>I had already put a light bulb icon in the top left of the site to represent "ideas and thinking", but it looked like a good fit for putting in as a colour theme toggle. The idea is that it's going to set a preference using <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage">localStorage</a>. I'm using the UI pattern of an on / off button, mainly because at home I have dimmer switches and you push them in and out to turn them on and off, so I settled on using <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-pressed">aria-pressed</a>. I needed to be sure that changes <a href="https://www.scottohara.me/blog/2022/02/05/are-we-live.html">were announced to the screen reader</a>. We need to <a href="https://www.w3.org/WAI/WCAG21/Understanding/use-of-color.html">use more than colour alone</a> to represent the difference, so in dark mode the light is on and you can tell because of those little lines coming out around the bulb. </p>
-          <p>This was an interesting challenge for me and i'm going to talk you through the details. Now, this is my implementation. If you've spot any issues or have suggestions on how to make it better please do let me know in the comments.</p>
-          <p>Here's the button, when it loads it's set to not pressed, so when the web page loads the button this aria state is set to not pressed that's only going to be the correct state if you are in light mode. I also have a span here with an <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Live_Regions">aria-live region</a> that I will populate to announce changes. </p>
-          <p>So, I needed to do three things. First set whether the button was actually pressed or not depending on whether it was light or dark mode. When changing themes, the preference had to be saved, the change announced to the screen reader, and the value of the pressed attribute to be changed when. If a preference had been saved to load the desired theme instead of that preferred at Operating System level. &nbsp;broke it down into these three parts because it helped me make a solution piece by piece.</p>
-          <p>This part is setting whether the button is pressed or not on page load, it depends on what theme is being used. <a href="https://www.scottohara.me/blog/2021/10/01/detect-high-contrast-and-dark-modes.html">Dt is the operating system preference</a>, and themePref is the site-specific preference if there is one. So, if the OS preference is dark, and the local site preference is dark, then the button is pressed. Likewise, if the OS preference is light but the local site preference is dark, then that means the user wants dark mode and the button's going to be pressed. If the OS preference is dark and there's no local site preference, then the button is pressed. In all other cases we're going to be in light mode, the button isn't pressed. </p>
-          <p>Once we press that button, we want it to change themes, change the value of aria pressed, and save the preference. This the function that is performed when the light bulb icon is selected. It's based on a choice, if at the beginning the button was pressed, that means it was in dark mode, so the user wants to change to light mode so we're going to change aria pressed to not pressed. Change the CSS loaded in the head to be the light.CSS colours. I appreciate this is a bit of a hack. We're going to set the choice in localStorage and add a notification to the screen reader and if the button was not pressed at the beginning meaning we're in light mode, then the user wants to go into dark mode and the rest of the function is going to do the opposite. I'm not going to show you it here because it's the kind of it's the same thing that we saw above but everything's just swapped around.</p>
-          <p>This is the hidden text for screen reader users, there's a CSS class that hides it from view, and it's an aria-live region so the text created by the function is squirted into that span tag and then announced to the screen reader.</p>
-          <p>The final piece is respecting the choice of themes, it checks if there is a preference from the user; have they pressed the button and it saved their preference? So then when they go to other pages on the site, we need to make sure that their preference is respected. So, here we check if there is that local preference, we set the theme accordingly, and set the state of the button.</p>
-          <p>So, let's hear and see how this works from the screen reader's perspective.</p>
-          <p>&nbsp; <span class="transcriptSpeaker">NVDA:</span> "Welcome document. Visited link; skip to content. Banner landmark. Change between light and dark theme; toggle button: not pressed. Dark theme enabled, the button is now pressed." </p>
-          <p>You might think, "hang on Matt, do we really need to make this compatible with screen readers - changing between light and dark mode? Because they're not going to see it right?" Well, remember what we said about intersectionality, not everyone who uses a screen reader is blind and there are different levels of sight that people might have. Who are we to say what functionality anyone can and can't use on our site? Perhaps the screen reader user is navigating our page using the screen reader but they have others in the among them, perhaps members of the family who prefer a different mode, and so the screen reader user is changing the theme on the page? We don't know what people are going to be using on our website. <a href="https://www.a11yproject.com/about/">Accessibility is about removing barriers</a> to using our services and sites for everyone. We're reminded of that <a href="https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html">basic success criterion</a> about names and roles, states and properties, and notification of changes. </p>
-          <p>My site was really simple so there was no excuse for it not to be performant, but here's what Ii learned that i think you might find useful for me to share with you</p>
-          <p>As well as using the <a href="https://validator.w3.org/">W3C Validator</a> to test for conformant HTML, I used the <a href="https://webpagetest.org/">webpagetest.org</a> to run performance tests on my website as I built it. Out of curiosity, I had a look at a few other services at the University of Southampton that are well known for our audience. </p>
-          <p>One of the options on webpagetest.org is that you can test from different locations and on different devices, here is a set of tests that were run on 3G connected mobile in Mumbai. If the experience is good in Mumbai on a 3G phone, then it's probably going to be good everywhere. I'm going to give you a quick review of what these features are about.</p>
-          <ul>
-            <li>First byte is how long it takes from requesting the page to getting the first byte of data.</li>
-            <li>Start Render&nbsp;marks the moment when a web page displays the first asset.</li>
-            <li>First Contentful Paint (FCP) is when the browser renders the first bit of content, providing the first feedback to the user that the page is actually loading.</li>
-            <li>Speed Index (SI) is how quickly the contents of a page are visibly populated. </li>
-            <li>LCP stands for Largest Contentful Paint and tracks the time it takes for the largest visual part of the page to load. It's a measure of how long it takes for a user to start working with our site.</li>
-            <li>TBT Total Blocking Time, TBT is the total time between the&nbsp; <a href="https://web.dev/first-contentful-paint/">First </a>
-              <a href="https://web.dev/first-contentful-paint/">Contentful</a>
-              <a href="https://web.dev/first-contentful-paint/"> Paint (FCP)</a>&nbsp;and&nbsp; <a href="https://web.dev/interactive/">Time to Interactive (TTI)</a>.&nbsp;
-            </li>
-            <li>Total bytes is the amount of data downloaded. When you pay for your data, you don't want to be paying for things that aren't going to be giving you value.</li>
-          </ul>
-          <p>From a sustainability point of view, it's worth paying attention to how much content is downloaded to users, some might be on metered connections. The reason this number is so high on the site, the <a href="https://generic.wordpress.soton.ac.uk/digital-learning/">Digital Learning Blog</a>, is that there's an auto playing YouTube video at the beginning, so we've already downloaded 12 megabytes in the time that webpagetest.org has initiated and completed its its testing of that page. That's quite a lot of data particularly if you're paying for it, byte by byte. </p>
-          <p>WebPage test also shows us what parts are being loaded on the page and how long each individual part takes. <a href="https://web.dev/render-blocking-resources/">Render-blocking resources</a>, marked here with an X, are&nbsp;things that block or delay the browser from rendering page content to the screen. Do we need the H5P plugin? Do we need to load both font-awesome and google fonts, which is a <a href="https://rewis.io/urteile/urteil/lhm-20-01-2022-3-o-1749320/">GDPR risk</a>? These may all be legitimate, but has anyone actually sat down and thought about this before? </p>
-          <p>Chrome has a feature called <a href="https://developers.google.com/web/tools/lighthouse">Lighthouse</a>. As this brilliant article explains, <a href="https://www.matuzo.at/blog/building-the-most-inaccessible-site-possible-with-a-perfect-lighthouse-score/">you can trick the results of Google Lighthouse</a> but still it is worth using. You get ratings for Performance, Accessibility, Best Practice and <a href="https://en.wikipedia.org/wiki/Search_engine_optimization">SEO</a>. My site is very, very simple, so getting 100 isn't special, but it did make me want to look at the scores of other sites. </p>
-          <p>I expect that our corporate communications team will be monitoring regularly the lighthouse scores for the <a href="https://www.soton.ac.uk/">corporate site</a> because it's so important. It's the page that new people who want to find out about the University are going to be accessing so it needs to be performant, accessible, follow best practices, and have great Search Engine Optimisation. </p>
-          <p>This is our <a href="https://elearn.southampton.ac.uk/">e-learning support resources</a> it's soon going to be replaced with a new version so we definitely want to be monitoring performance, and we can definitely do better than 58 for performance can't we? In fact, all of our WordPress sites have terrible scores for performance. The <a href="https://generic.wordpress.soton.ac.uk/digital-learning/">Digital Learning Blog</a> has only got 54. </p>
-          <p>I'm going to take us on a little side-track now to talk about accessibility of the Digital Learning Blog. The thing about WordPress sites is quite often once you've picked a theme, you're kind of locked in to the accessibility that that theme provides and it can be quite hard to make improvements without changing the whole theme. <a href="https://www.linkedin.com/in/tamsynmsmith/">Tamsyn Smith</a> and I looked into this. There was lots we couldn't fix: there's still a hamburger button that cannot be used with the keyboard - but we were able to use the <a href="https://www.wpbeginner.com/plugins/how-to-easily-add-custom-css-to-your-wordpress-site/">Additional CSS</a> option in WordPress to make a lot of changes. In fact, <a href="https://generic.wordpress.soton.ac.uk/digital-learning/?custom-css=a631ef4e07">325 lines is what we did in total</a>. </p>
-          <p>Let's take a look at a few examples so we've got before on the left and after on the right. So, this is the masthead which you can see on the left this before state was pretty much unreadable, but this was fixed by adding background colour with a little opacity and changing the text colour. That footer is also pretty terrible on the left isn't it? We're able to fix that and also remove a few details that just weren't needed. My favourite is this the menu, the mega menu along the top. Obviously, no one had ever tested it with a keyboard before, because as you can see the menu items appear behind the content on the left, the before state. On the right there you can see that a change to the <a href="https://www.w3schools.com/cssref/pr_pos_z-index.asp">z- index</a> brought the menu on top. We've made numerous other improvements to the menu since then but that was definitely the biggest. </p>
-          <p>What did i do on my site in terms of performance? Well i used <a href="https://tinypng.com/">TinyPNG</a> and <a href="https://tinyjpg.com/">TinyJPG</a> to optimise image size, and i added <a href="https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading">lazy loading on images and YouTube embeds</a> so that they would only be loaded up once you got to that point on the page. Where i had used extra scripts like jQuery I only loaded those on the pages where they were actually going to be used because it's only on about two of the pages that i'm actually using any jQuery. I reduced critical chaining requests by using media queries for the light and dark CSS files in the head of the page. </p>
-          <p>So, to summarize we just need to be using some of these free management tools to get an understanding of whether users will find our site slow or fast. There's a little bit of automated accessibility checking and this isn't talking about load testing or anything like that this is simple tests that we can do and if we find any issues then we need to be talking to the site managers to find out why is&hellip; what is the justification for poor performance? Why are our WordPress sites so terrible at performance?</p>
-          <p>In terms of discoverability on my site. I added a site map, registered the site on the <a href="https://search.google.com/search-console/">google search console</a>, and added an <a href="https://www.makeuseof.com/tag/how-to-create-an-rss-feed-for-your-site-from-scratch/">RSS feed</a>. I could still add a local search and breadcrumb navigation &ndash; but this is really simple site. Right now, there's only 34 pages, but I'll try and get to adding a few more of those later. </p>
-          <p>Let's put the meh in meta, here's a look at some of the meta tags. Here you can I've added some I <a href="https://ogp.me/">open graph</a> tags and Twitter card tags. It's expected now that when we share a link on teams, Twitter, LinkedIn and so on that we're going to get a nice preview It also can help to build awareness of our site and establish credibility. We want people to share our content and we want it to look good wherever it appears. There are validators online that can help you to check how the previews will look. It's great to see it happening, here accessibility legend <a href="https://www.learningapps.co.uk/moodle/xertetoolkits/play.php?template_id=2196#page1">Alistair McNaught</a> is sharing a page on Twitter, and on the right is a connection request on LinkedIn from someone who found me through my personal site. I recommend using card validators to fine tune how your links will look when they are shared. </p>
-          <p>In terms of what's next, I would like to move the build process into a <a href="https://jamstack.org/generators/">static site generator</a> like <a href="https://www.11ty.dev/">eleventy</a>, that will make updating the site template much more efficient. I would like to hide videos embeds behind a <a href="https://web.dev/third-party-facades/">click to load pattern</a>, for both privacy and performance reasons. The traditional approach to dark mode is to use <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_custom_properties">CSS variables</a> and then build classes from them, so if I ever find the time to look at that and refactor then I definitely want to do that because I haven't used CSS variables before and it looks really powerful. As I think of more things I want to share on the site I will be building up that component library that I've started for different design patterns, (like soon I want to do a responsive table pattern) with appropriate ARIA where necessary and light/dark colour schemes. I've got lots of accessibility related projects I have in mind that I want to build and now I've got a platform to put build them on. So, in a way the hard work is done, and the fun begins! </p>
-          <p>In this presentation I really wanted to share my struggles to deepen my understanding of accessibility and to share some concrete examples and my approach to solving them. I hope that has helped. I also know that I'm still learning and there's probably some mistakes in there. So, if I've got anything wrong or you have any suggestions for improvements, please let me know in the comments.</p>
-          <p>I've got a number of resources here you can find these on a link below the video and if there's time we can have a break for questions and answers. Maybe you'll have the questions - maybe I'll have the answers! Thanks very much for your time and i hope you found this video useful!</p>
-        </article>
-        <div id="panel">
-          <button class="panelButton" onclick="topFunction()" id="myBtn">
-            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
-              <title id="svgTitle2">Top.</title>
-              <desc id="svgDesc2">Move to the top of the page.</desc>
-              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
-                <circle cx="8.5" cy="8.5" r="8" />
-                <path d="m11.5 7.5-3-3-3 3" />
-                <path d="m8.5 4.5v8" />
-              </g>
-            </svg>
-            <br />
-            <span id="myBtnTop" class="panelLabel">Top</span>
-          </button>
-          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
-            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
-              <title id="svgTitle3">Bottom.</title>
-              <desc id="svgDesc3">Move to the bottom of the page.</desc>
-              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
-                <circle cx="8.5" cy="8.5" r="8" />
-                <path d="m5.5 9.5 3 3 3-3" />
-                <path d="m8.5 12.5v-8" />
-              </g>
-            </svg>
-            <br />
-            <span id="myBtnBottom" class="panelLabel">Bottom</span>
-          </button>
-        </div>
-      </main>
-      <aside class="page-sidebar related">
-        <section class="related">
-          <h2>Related content</h2>
-        </section>
-        <section class="related">
-          <h3>Presentations</h3>
-          <ul class="relUL">
-            <li>
-              <a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a>
-            </li>
-            <li>
-              <a href="makeITaccessible.html">Making IT accessible for all!</a>
-            </li>
-            <li>
-              <a href="keyboardnav.html">Introduction to Keyboard Navigation and Accessibility</a>
-            </li>
-          </ul>
-        </section>
-        <section class="related">
-          <h3>Blog posts</h3>
-          <ul class="relUL">
-            <li>
-              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/09/22/six-ways-that-digital-accessibility-maps-to-agile-practices/">Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</a>
-            </li>
-          </ul>
-        </section>
-      </aside>
-      <footer class="page-footer">
-        <div id="RSS">
-          <a id="rssA" href="feed.rss">RSS</a>
-        </div>
-        <div id="SiteMap">
-          <a href="siteMap.html">Site Map</a>
-        </div>
-        <div id="AccessibilityFoot">
-          <a href="Accessibility_Statement.html">Accessibility Statement</a>
-        </div>
-        <div id="twitterFoot">
-          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
-        </div>
-        <div id="YouTubeChannelFoot">
-          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
-        </div>
-        <div id="aboutFoot">
-          <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
-        </div>
-      </footer>
-    </div>
-    <script>
-      function menuAction() {
-        let menuSwitch = document.getElementById("myTopnav");
-        if (menuSwitch.className === "topnav") {
-          menuSwitch.className += " responsive";
-        } else {
-          menuSwitch.className = "topnav";
-        }
-        let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-        if (menuAriaAttrib === "true") {
-          menuAriaAttrib = "false"
-        } else {
-          menuAriaAttrib = "true"
-        }
-        document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-      }
-    </script>
-    <script>
-      let mybutton = document.getElementById("myBtn");
-      let mybutton2 = document.getElementById("myBtn2");
-      window.onscroll = function() {
-        scrollFunction()
-      };
-
-      function scrollFunction() {
-        if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
-          mybutton.style.display = "block";
-          mybutton2.style.display = "block";
-        } else {
-          mybutton.style.display = "none";
-          mybutton2.style.display = "none";
-        }
-      }
-
-      function topFunction() {
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
-        document.getElementById('skipToContent').focus();
-      }
-
-      function bottomFunction() {
-        window.scrollTo(0, document.body.scrollHeight);
-        document.getElementById('rssA').focus();
-      }
-    </script>
-    <script>
-      let themePref = localStorage.getItem("theme");
-      console.log("Has a theme preference been saved?", themePref);
-
-      function setLight() {
-        let buttonStatus = document.getElementById("lightDark");
-        let theButton = document.getElementById("modeToggle");
-        const d = matchMedia('(prefers-color-scheme: dark)');
-        let dt;
-        if (d.matches) {
-          dt = 'dark';
-          console.log("Prefers dark theme in OS");
-        } else {
-          dt = 'light'
-          console.log("Prefers light theme in OS");
-        }
-        if (dt == 'dark' && themePref == 'Dark') {
-          theButton.setAttribute("aria-pressed", "true");
-        } else if (dt == 'light' && themePref == 'Dark') {
-          theButton.setAttribute("aria-pressed", "true");
-        } else if (dt == 'dark' && !themePref) {
-          theButton.setAttribute("aria-pressed", "true");
-        } else {
-          theButton.setAttribute("aria-pressed", "false");
-        }
-      }
-      setLight();
-
-      function toggle(btnID) {
-        let buttonStatus = document.getElementById("lightDark");
-        let theButton = document.getElementById(btnID);
-        if (theButton.getAttribute("aria-pressed") == "true") {
-          theButton.setAttribute("aria-pressed", "false");
-          document.getElementById('lightCSS').href = 'light.css';
-          document.getElementById('darkCSS').href = 'light.css';
-          console.log("Turned on light mode");
-          localStorage.setItem("theme", "Light");
-          let themePref = localStorage.getItem("theme");
-          console.log("Site theme preference to ", themePref);
-          document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
-          let toggleButton = document.getElementById('modeToggle');
-          toggleButton.removeAttribute("aria-pressed");
-          toggleButton.setAttribute("aria-pressed", "false");
-        } else {
-          theButton.setAttribute("aria-pressed", "true");
-          document.getElementById('lightCSS').href = 'dark.css';
-          document.getElementById('darkCSS').href = 'dark.css';
-          console.log("Turned on dark mode");
-          localStorage.setItem("theme", "Dark");
-          let themePref = localStorage.getItem("theme");
-          console.log("Site theme preference set to ", themePref);
-          document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
-          let toggleButton = document.getElementById('modeToggle');
-          toggleButton.removeAttribute("aria-pressed");
-          toggleButton.setAttribute("aria-pressed", "true");
-        }
-      }
-
-      function applyThemePreference() {
-        if (themePref == 'Dark') {
-          let theButton = document.getElementById('modeToggle');
-          document.getElementById('lightCSS').href = 'dark.css';
-          document.getElementById('darkCSS').href = 'dark.css';
-          theButton.setAttribute("aria-pressed", "true");
-          console.log("Applied dark theme because site theme preference is set to", themePref);
-        } else if (themePref == 'Light') {
-          let theButton = document.getElementById('modeToggle');
-          document.getElementById('lightCSS').href = 'light.css';
-          document.getElementById('darkCSS').href = 'light.css';
-          theButton.setAttribute("aria-pressed", "false");
-          console.log("Applied dark theme because site theme preference is set to", themePref);
-        }
-      }
-      applyThemePreference();
-    </script>
-    <script src="scripts/lite-yt-embed.js"></script>
-    <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
-  </body>
+      <script>
+         function menuAction() {
+           let menuSwitch = document.getElementById("myTopnav");
+           if (menuSwitch.className === "topnav") {
+             menuSwitch.className += " responsive";
+           } else {
+             menuSwitch.className = "topnav";
+           }
+           let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+           if (menuAriaAttrib === "true") {
+             menuAriaAttrib = "false"
+           } else {
+             menuAriaAttrib = "true"
+           }
+           document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");
+         window.onscroll = function() {
+           scrollFunction()
+         };
+         
+         function scrollFunction() {
+           if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+             mybutton.style.display = "block";
+             mybutton2.style.display = "block";
+           } else {
+             mybutton.style.display = "none";
+             mybutton2.style.display = "none";
+           }
+         }
+         
+         function topFunction() {
+           document.body.scrollTop = 0;
+           document.documentElement.scrollTop = 0;
+           document.getElementById('skipToContent').focus();
+         }
+         
+         function bottomFunction() {
+           window.scrollTo(0, document.body.scrollHeight);
+           document.getElementById('rssA').focus();
+         }
+      </script>
+      <script>
+         let themePref = localStorage.getItem("theme");
+         console.log("Has a theme preference been saved?", themePref);
+         
+         function setLight() {
+           let buttonStatus = document.getElementById("lightDark");
+           let theButton = document.getElementById("modeToggle");
+           const d = matchMedia('(prefers-color-scheme: dark)');
+           let dt;
+           if (d.matches) {
+             dt = 'dark';
+             console.log("Prefers dark theme in OS");
+           } else {
+             dt = 'light'
+             console.log("Prefers light theme in OS");
+           }
+           if (dt == 'dark' && themePref == 'Dark') {
+             theButton.setAttribute("aria-pressed", "true");
+           } else if (dt == 'light' && themePref == 'Dark') {
+             theButton.setAttribute("aria-pressed", "true");
+           } else if (dt == 'dark' && !themePref) {
+             theButton.setAttribute("aria-pressed", "true");
+           } else {
+             theButton.setAttribute("aria-pressed", "false");
+           }
+         }
+         setLight();
+         
+         function toggle(btnID) {
+           let buttonStatus = document.getElementById("lightDark");
+           let theButton = document.getElementById(btnID);
+           if (theButton.getAttribute("aria-pressed") == "true") {
+             theButton.setAttribute("aria-pressed", "false");
+             document.getElementById('lightCSS').href = 'light.css';
+             document.getElementById('darkCSS').href = 'light.css';
+             console.log("Turned on light mode");
+             localStorage.setItem("theme", "Light");
+             let themePref = localStorage.getItem("theme");
+             console.log("Site theme preference to ", themePref);
+             document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+             let toggleButton = document.getElementById('modeToggle');
+             toggleButton.removeAttribute("aria-pressed");
+             toggleButton.setAttribute("aria-pressed", "false");
+           } else {
+             theButton.setAttribute("aria-pressed", "true");
+             document.getElementById('lightCSS').href = 'dark.css';
+             document.getElementById('darkCSS').href = 'dark.css';
+             console.log("Turned on dark mode");
+             localStorage.setItem("theme", "Dark");
+             let themePref = localStorage.getItem("theme");
+             console.log("Site theme preference set to ", themePref);
+             document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+             let toggleButton = document.getElementById('modeToggle');
+             toggleButton.removeAttribute("aria-pressed");
+             toggleButton.setAttribute("aria-pressed", "true");
+           }
+         }
+         
+         function applyThemePreference() {
+           if (themePref == 'Dark') {
+             let theButton = document.getElementById('modeToggle');
+             document.getElementById('lightCSS').href = 'dark.css';
+             document.getElementById('darkCSS').href = 'dark.css';
+             theButton.setAttribute("aria-pressed", "true");
+             console.log("Applied dark theme because site theme preference is set to", themePref);
+           } else if (themePref == 'Light') {
+             let theButton = document.getElementById('modeToggle');
+             document.getElementById('lightCSS').href = 'light.css';
+             document.getElementById('darkCSS').href = 'light.css';
+             theButton.setAttribute("aria-pressed", "false");
+             console.log("Applied dark theme because site theme preference is set to", themePref);
+           }
+         }
+         applyThemePreference();
+      </script>
+      <script src="scripts/lite-yt-embed.js"></script>
+      <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+   </body>
 </html>
