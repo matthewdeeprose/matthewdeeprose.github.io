@@ -15,6 +15,22 @@
       <height>1125</height>
     </image>
     <item>
+      <title>The impact that high quality mark-up can have on accessibility, performance, and discoverability</title>
+      <pubDate>Thu, 17 Mar 2022 16:55:27 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/high_quality-markup_impact.html</link>
+      <category>accessibility</category>
+      <description><![CDATA[Going beyond accessibility checklists, you may quickly get bogged down with technical details and acronyms that you feel you may never understand. In this fast-paced 30-minute presentation I use worked examples, with screen reader demonstrations, to cover topics including:
+
+-semantic landmarks
+--using ARIA attributes to improve the screen reader experience
+-respecting motion and colour preference
+-dark and light themes
+-the new contrast measurement in WCAG 3
+-and more
+
+My hope is that by the end of this presentation you feel more informed and ready to dive deeper into web accessibility.]]></description>
+    </item>
+    <item>
       <title>Interview with textBOX</title>
       <pubDate>Sun, 30 Jan 2022 14:13:18 GMT</pubDate>
       <link>https://www.textboxdigital.com/lunchbox-011</link>
