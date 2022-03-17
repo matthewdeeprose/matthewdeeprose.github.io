@@ -136,75 +136,98 @@ html {
 </div>
 			<div class="codeWrapper">
 			
-				<pre><code class="language-webmanifest">
-				    {
-        "name": "University of Southampton",
-        "textClasses": {
-            "callout": {
-                "fontSize": 45,
-                "fontFace": "Arial",
-                "color": "#231F20"
-            },
-            "title": {
-                "fontSize": 12,
-                "fontFace": "Arial",
-                "color": "#231F20"
-            },
-            "header": {
-                "fontSize": 12,
-                "fontFace": "Arial",
-                "color": "#231F20"
-            },
-            "label": {
-                "fontSize": 8,
-                "fontFace": "Arial",
-                "color": "#231F20"
-            }
-    },    
-        "dataColors": ["#005C48", "#74C9E5", "#3CBAC6", "#B3DBD2", "#4BB694", "#C1D100", "#FCBC00", "#EF7D00", "#E73037", "#D5007F", "#8D3970", "#002E3B", "#1E8765", "#E73238"],
-        "background":"#FFFFFF",
-            "backgroundLight": "#E1E8EC",
-            "backgroundNeutral": "#9FB1BD",
-        "foreground": "#495961",
-            "foregroundNeutralSecondary": "#758D9A",
-            "foregroundNeutralTertiary": "#9FB1BD",
-        "tableAccent": "#9FB1BD",
-        "good": "#1E8765",
-    	"neutral": "#EF7D00",
-    	"bad": "#E73037",
-    	"maximum": "#005C84",
-    	"center": "#74C9E5",
-    	"minimum": "#74C9E5",
-        "null": "#B3DBD2",
-        "visualStyles": {
-            "tableEx": {
-                "*": {
-                    "grid": [{
-                        "textSize": 12
-                    }],
-                    "columnHeaders": [{
-                        "fontFamily": "Arial",
-                        "fontSize": 12,
-                        "alignment": "Center",
-                        "wordWrap": true
-                    }],
-                    "values": [{
-                        "fontFamily": "Arial",
-                        "fontSize": 12,
-                        "alignment": "Left",
-                        "wordWrap": false
-                    }],
-                    "total": [{
-                        "totals": true,
-                        "fontFamily": "Arial",
-                        "fontSize": 12,
-                        "alignment": "Left",
-                        "wordWrap": false
-                    }]
-                }
-            }
-        }
+				<pre><code class="language-json">
+{
+  "name": "University of Southampton",
+  "textClasses": {
+    "callout": {
+      "fontSize": 45,
+      "fontFace": "Arial",
+      "color": "#231F20"
+    },
+    "title": {
+      "fontSize": 12,
+      "fontFace": "Arial",
+      "color": "#231F20"
+    },
+    "header": {
+      "fontSize": 12,
+      "fontFace": "Arial",
+      "color": "#231F20"
+    },
+    "label": {
+      "fontSize": 8,
+      "fontFace": "Arial",
+      "color": "#231F20"
     }
+  },
+  "dataColors": [
+    "#005C48",
+    "#74C9E5",
+    "#3CBAC6",
+    "#B3DBD2",
+    "#4BB694",
+    "#C1D100",
+    "#FCBC00",
+    "#EF7D00",
+    "#E73037",
+    "#D5007F",
+    "#8D3970",
+    "#002E3B",
+    "#1E8765",
+    "#E73238"
+  ],
+  "background": "#FFFFFF",
+  "backgroundLight": "#E1E8EC",
+  "backgroundNeutral": "#9FB1BD",
+  "foreground": "#495961",
+  "foregroundNeutralSecondary": "#758D9A",
+  "foregroundNeutralTertiary": "#9FB1BD",
+  "tableAccent": "#9FB1BD",
+  "good": "#1E8765",
+  "neutral": "#EF7D00",
+  "bad": "#E73037",
+  "maximum": "#005C84",
+  "center": "#74C9E5",
+  "minimum": "#74C9E5",
+  "null": "#B3DBD2",
+  "visualStyles": {
+    "tableEx": {
+      "*": {
+        "grid": [
+          {
+            "textSize": 12
+          }
+        ],
+        "columnHeaders": [
+          {
+            "fontFamily": "Arial",
+            "fontSize": 12,
+            "alignment": "Center",
+            "wordWrap": true
+          }
+        ],
+        "values": [
+          {
+            "fontFamily": "Arial",
+            "fontSize": 12,
+            "alignment": "Left",
+            "wordWrap": false
+          }
+        ],
+        "total": [
+          {
+            "totals": true,
+            "fontFamily": "Arial",
+            "fontSize": 12,
+            "alignment": "Left",
+            "wordWrap": false
+          }
+        ]
+      }
+    }
+  }
+}
 				
 					</code></pre>
 	</div>
