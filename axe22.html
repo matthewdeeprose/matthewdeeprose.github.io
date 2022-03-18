@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+   <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="Axe Con 2022 Recordings">
+      <meta name="keywords" content="accessibility, axe-con, recordings">
+      <meta name="author" content="Matthew Deeprose">
+      <title>Axe Con 2022 Recordings</title>
+      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+      <meta property="og:title" content="Axe Con 2022 Recordings">
+      <meta property="og:description" content="Axe Con 2022 Recordings in an easy list with no login required">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/axe22.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="Axe Con 2022 Recordings"/>
+      <meta name="twitter:description" content="Axe Con 2022 Recordings in an easy list with no login required"/>
+      <meta name="twitter:creator" content="@VLEguru"/>
+      <meta name="twitter:site" content="@VLEguru"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
+      <meta name="twitter:image:alt" content=""/>
+      <style>
+         .page-wrap > * {
+         grid-column: 1/-1 !important;
+         grid-row: auto !important;
+         }
+         .resourseList li {
+         margin-bottom: 2rem;
+         }
+         div#Development,
+         div#Success {
+         border-right: 1px solid black;
+         padding-right: 1rem;
+         }
+         @media (max-width: 800px) {
+         div#Development,
+         div#Success {
+         border-right: 0px solid black;
+         padding-right: 0rem;
+         }
+         hr {
+         display: none;
+         }
+         }      
+      </style>
+   </head>
+   <body>
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Change theme</title>
+                        <desc id="svgDesc">Select to switch to light theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4"/>
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                           <path d="m8.5 1.5v-1"/>
+                           <path d="m13.5 3.5 1-1"/>
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
+                           <path d="m1.5 7.5h-1"/>
+                           <path d="m16.5 7.5h-1"/>
+                        </g>
+                     </svg>
+                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                        <title id="svgTitleX">Change theme</title>
+                        <desc id="svgDescX">Select to switch to dark theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                           <path d="m2.5 13.5h4"/>
+                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                        </g>
+                     </svg>
+                  </button>
+               </div>
+               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+               <div id="titleLink">Matthew Deeprose</div>
+            </div>
+         </header>
+         <div id="main-navigation" class="page-nav">
+            <nav aria-label="Main menu" class="topnav" id="myTopnav">
+               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+                  <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span>
+                  <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+                           <path  d="m16.5,10.5l-13,0"/>
+                        </g>
+                     </svg>
+                  </span>
+               </button>
+               <a id="homeMenu" href="index.html">Home</a>
+               <a href="presentations.html">Presentations</a>
+               <a href="posts.html">Blog Posts</a>
+               <a href="projects.html" class="active">Projects</a>
+               <a href="about.html">About</a>
+            </nav>
+         </div>
+         <main class="page-main" id="main">
+            <article class="standard">
+               <h1 id="top">Axe Con 2022 recordings list</h1>
+               <p>The Axe Con presentations are almost always excellent. <a href="https://www.deque.com/axe-con/">You can sign up for free and watch the recordings through their website</a>. For my own convenience I created a list of the recordings on one page.</p>
+			   <p>Shortcuts to:</p>
+			   <ul>
+				<li><a href="#-Keynotes">Keynotes</a></li>
+				<li><a href="#Development">Development</a></li>
+				<li><a href="#-Design">Design</a></li>
+				<li><a href="#-Success">Organisational Success with Accessibility</a></li>
+				<li><a href="#-Wildcard">Wildcard</a></li>
+			   </ul>
+               <div id="Keynotes">
+                  <h2 id="-Keynotes">Keynotes</h2>
+                  <ul>
+                     <li><a href="https://vimeo.com/event/1913034/embed/220c2267eb" >The Future of the Web and Accessibility - Sir Tim Berners-Lee</a> (available until 14/4/22)</li>
+                     <li><a href="https://vimeo.com/event/1913044/embed/7cfb77d7bb" >The State of Accessibility and axe Updates - Preety Kumar and Dylan Barrell</a></li>
+                     <li>
+                        <a href="https://vimeo.com/event/1913052/embed/abff3efc0b" >Accessibility at Microsoft- Jenny Lay-Flurrie</a>
+                        <ul>
+                           <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2022/02/Axe-Con-03152022.pptx" >Slides</a>: Accessibility at Microsoft </li>
+                        </ul>
+                     </li>
+                     <li><a href="https://vimeo.com/event/1913128/embed/665ef55ce8" >Navigating Institutional Barriers with #a12y - Seth Godin, Liz Jackson</a></li>
+                  </ul>
+			<p><a href="#top">Back to top.</a></p>	  
+               </div>
+               <div class="resourseList">
+                  <div id="Development">
+                     <h2 id="-Development">Development</h2>
+                     <ul>
+                        <li>
+                           <a href="https://vimeo.com/event/1913132/embed/dbfeeff323" >New CSS with accessibility in mind - Rachel Andrew</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axe-con-2022-rachel-andrew-1-1.zip" >Slides</a>: New CSS with accessibility in mind - Rachel Andrew</li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913134/embed/94de631e45" >Creating Accessible React Native Apps - Scott Vinkle</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Creating-Accessible-React-Native-Apps.pdf" >Slides: Creating Accessible React Native Apps </a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913135/embed/218bef5cc7" >Venturing into unmapped ARIAs - Sarah Higley</a>
+                           <ul>
+                              <li><a href="https://smhigley.github.io/slides/unmapped-arias/#/" >Slides: Venturing into unmapped ARIAs</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913137/embed/6b45526330" >Get It Right the 1st Time: Stop 80%+ of A11Y Bugs During Development - Glenda Sims, Jason Wilson</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Axe-Con-Talk-Get-it-Right-the-1st-Time-FINALa.pdf" >Slides: Get It Right the 1st Time </a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913138/embed/be3f2c68da" >Scoring the Accessibility of Websites - Jared Smith, Christoph Rump</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axe-con_Accessibility_Scoring_v1.0_20220303.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913139/embed/77efa3883e" >The world is your user agent: why semantic HTML is important for accessibility - Rachel Cherry</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axe-con-2022-COGA-Content-Usable.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916374/embed/0d8460e5d5" >What&rsquo;s new in axe 2022 - Steven Lambert, Michael Siek</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/What_s-New-in-Axe-core-2022.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916376/embed/9d3a4f4bc3" >Testing Web Accessibility - Adri&aacute;n Bolonio</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Testing-Web-Accessibility-2022Axe-con.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916381/embed/acf9ff8c59" >Modern CSS Upgrades To Improve Accessibility - Stephanie Eckles</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/ModernCSSUpgradesToImproveAccessibility_StephanieEckles.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916385/embed/8625bcaa6a" >Is eCommerce Intentionally Inaccessible? - Hector Osborne Rodriguez</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axeConf2022.HectorOsborneRodriguez.v0.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916389/embed/6d9c17fccc" >Building Accessible Android Apps with Jetpack Compose - Devanshu Chandra</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/DevanshuAxeCon.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916392/embed/b797566f64" >SwiftUI &amp; Accessibility: Goodies &amp; Gotchas - Kate Owens</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/AxeConSlidesFinal.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916393/embed/1c0feeecac" >Testing for Accessibility: Scaling for Automation and Continuous Delivery - Marcus Merrell</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916396/embed/dd208e0634" >Developing an Accessible &lsquo;Add To Cart&rsquo; Flow - Nic Chan</a>
+                           <ul>
+                              <li><a href="https://add-to-cart-slides.netlify.app/" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916397/embed/2d26cb8db5" >Accessible Forms in the Wild - Sean Goresht</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/accessible-forms-in-the-wild.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916399/embed/9e250c6b4b" >Testing for Accessibility in the Development Cycle - Harris Schneiderman, Preety Kumar</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916401/embed/c406fb899a" >Intro to Accessibility Behavior Informed Development - Michael Fairchild</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/intro-to-a11ybid.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916405/embed/9793396410" >Don&rsquo;t lose your focus; Focus management strategies in React - Robert Snow</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/React-Axecon-focus-presentation.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916407/embed/bc4b35a5b9" >XR Accessibility: Can we do that? Deb Mayers</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/XR-Accessibility-Can-we-do-that-_FINAL.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916408/embed/0df9d6e207" >How a Developer Can Break Your UI Component Library&rsquo;s Accessibility, and What To Do About It - Beth Qiang</a>
+                           <ul>
+                              <li><a href="https://docs.google.com/presentation/d/1JViPqg9eJJdOjrlLQyMOdTVDYbNubAJgP47AyTsr4n4/edit#slide=id.p" >Slides</a></li>
+                              <li><a href="https://axe-con-2022-demo.vercel.app/" >Demo App</a></li>
+                              <li><a href="https://github.com/bethqiang/axe-con-2022-demo" >Code for Demo App</a></li>
+                           </ul>
+                        </li>
+                     </ul>
+					 <p><a href="#top">Back to top.</a></p>
+                  </div>
+                  <div id="Design">
+                     <h2 id="-Design">Design</h2>
+                     <ul>
+                        <li>
+                           <a href="https://vimeo.com/event/1916416/embed/f00b36e09b" >Accessible Data and Design - Regin&eacute; Gilbert</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Axe-Con-Presentation-Regine-Gilbert.pdf" >Slides</a>: Accessible Data and Design</li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916427/embed/d722b213e4" >Accessible Typography Essentials - Carie Fisher</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Accessible-Typography-Carie-Fisher.pdf" >Slides: Accessible Typography Essentials </a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916428/embed/ed0a8c3e57" >Removing Bias with Wizard of Oz Screen Reader Usability Testing - Annabel Weiner, Courtney Benjamin, Tim Harshbarger</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axe-con-removing-bias-with-wizard-of-oz-testing.pdf" >Slides: Removing Bias with Wizard of Oz Screen Reader Usability Testing </a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916429/embed/fbf49b7bd4" >Space Jamming Accessibility - Zo&euml; Bijl, Jenny Judova</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Space-Jamming-Accessibility-2022.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916430/embed/e68660a243" >Beyond Alt&hellip; Inclusive-first pixels - Charles Duncan</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axecon1.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916433/embed/a4ccb001e4" >Making Content Usable for People with Cognitive and Learning Disabilities - Rain Michaels</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916435/embed/d335e4f606" >A designer&rsquo;s guide to documenting accessibility &amp; user interactions - St&eacute;phanie Walter</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/accessibility-documentation-for-designers.pdf" >Slides</a></li>
+                              <li><a href="https://stephaniewalter.design/blog/a-designers-guide-to-documenting-accessibility-user-interactions/https:/stephaniewalter.design/blog/a-designers-guide-to-documenting-accessibility-user-interactions/" >Article</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916437/embed/7ab78a08b7" >Designing for cognitive disabilities - Tolu Adegbite</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/TA_Designing-for-cognitive-disabilities.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916439/embed/7a34763b82" >Engaging in Access Early: How designers can validate concepts and seek feedback from the disability community before it&rsquo;s too late - Brandy Bora, Claire Kearney-Volpe</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916442/embed/0c715c3dd0" >Abilities Design: A new framework to brainstorm ideas for accessible solutions - John L. O&rsquo;Neill</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/John_ONeill_axe_2022_Abilities_Design-1.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916454/embed/3588118e47" >Fix Your Error Flows, Or Send Me More Spoons - Shell Little</a></li>
+                        <li>
+                           Augment Your Design Practice For Inclusion: Five Best Practices - Gina Bhawalkar &ndash; session was not recorded
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Forrester-talk-for-Deque-axe-con-FINAL.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916457/embed/6f7f1b0c92" >How To Do Remote Research Studies for Accessibility - Rebecca Topps</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Axe-Con-2022-final-draft-Rebecca-Topps-1.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916458/embed/d57c081a54" >Peloton: Setting Accessibility in Motion - Oliver Warfield, Be Birchall, Glenda Sims</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916459/embed/8f096a567c" >Why We Need More Accessibility Designers - Anna Cook</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Why-We-Need-More-Accessibility-Designers-031522.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916460/embed/996d1494d8" >Inclusive innovation: How disability-inclusive insights have informed fundamentally better solutions - Christine Hemphill</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916461/embed/44717e377a" >Building Accessible Design Systems &ndash; Try, Try, Try again - Daniel Henderson-Ede, Meghan Morris</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Building-Accessible-Design-Systems-Try-Try-Try-again-Final.pdf" >Slides</a> </li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916462/embed/84c7685627" >When UX and Development Collab - Aaron Pearlman, Harris Schneiderman</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axe-con-2022_-When-UX-and-Development-collab.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916464/embed/f9fa286b31" >Accessibility Design: Strategy for Equity &amp; Innovation - Claire Benedikt</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916465/embed/3d2f4a90b4" >Discovering the Undiscovered with Designers - Sujasree Kurapati</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/AxeCon_SujasreeKurapati_Slidedeck.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916466/embed/cf748ad510" >Accessible by Design &ndash; The NAB Mobile Banking App - Alison Ennis</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Accessible-By-Design-The-NAB-Mobile-Banking-App-axe-con22-Alison-Ennis.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                     </ul>
+					 <p><a href="#top">Back to top.</a></p>
+                  </div>
+               </div>
+               <hr/>
+               <div class="resourseList">
+                  <div id="Success">
+                     <h2 id="-Success">Organisational Success with Accessibility</h2>
+                     <ul>
+                        <li><a href="https://vimeo.com/event/1913064/embed/46a1f41e79" >Truth Matters - Steve Sawczyn</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913069/embed/a984767b83" >Stronger Together: Accessibility and Product Inclusion at Yahoo - Cindy Joung, Danise Olague, Malcom Jones </a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Axe-con-2022-Accessibility-and-Product-Inclusion-Presentation.pdf" >Slides Stronger Together </a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913072/embed/448e06ce24" >Changing the way you think and work: agile accessibility audits in the product life cycle - Elle Waters, John Piotrowski</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axe-con-2022-WATERS-PIOTROWSKI.pdf" >Slides: Changing the way you think and work </a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913075/embed/2cd98e3a63" >Change Management for Accessibility - Michael Harshbarger, Heidi Kelly-Gibson</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2022/01/Axe-Con-2022-Change-Management-for-Accessibility.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1913076/embed/7d760a0af8" >Seven Pillars of Strategic Accessibility - Enid Brown</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913077/embed/89c89df543" >Creating An Accessibility Program - Fred Moltz</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Axe-Con-moltz-03-2022.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1913079/embed/998ca9711f" >We are the champions! - Andrew Hayward</a></li>
+                        <li><a href="https://vimeo.com/event/1913080/embed/f5d3856069" >Accessibility in an Agile Environment - Dylan Barrell, Katie Olson</a></li>
+                        <li><a href="https://vimeo.com/event/1913082/embed/9674e26b21" >Accessibility Coaching: What is a Friendly Neighborhood Coach? - Kelly Gaertner</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913102/embed/1e98b0d8ef" >A11Y Business Strategy Development and Execution &ndash; The Agile Way - Dena Wainwright</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/AxeCon-03-2022-Wainwright.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913104/embed/da5a8952fe" >How Short-term Gains Helped a Leading Cloud Provider to Prioritize Accessibility - Devin Owsley-Aquilia, Rachael Penfil</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/How-short-term-gains-helped-a-leading-cloud-provider-to-prioritize-accessibility-1.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913106/embed/a9f7c055f6" >Stepping Stones to Getting Started in Accessibility - Kate Sonka, Dr. Rachael Bradley Montgomery, Sharron Rush</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2022/02/Stepping_Stones_final.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           Accelerating Accessibility Transformation through a Complete Understanding of your Toolkit - Devon McAlister &ndash; session was cancelled
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Axe-Con-Presentation.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913113/embed/a4563e7149" >Accessibility journey in a fast-growing company - Natalie Russell</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Accessibility-journey-in-a-fast-growing-company.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1913115/embed/6c0e3faa84" >BBC Accessibility Definitions &amp; Principles &ndash; Revisiting the lenses we use and why we use them - Jamie Knight + Lion</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913116/embed/ad419beed6" >Driving an Accessibility Learning Culture &amp; Digital Accessibility Specialist Apprenticeship - Mark Wilcock</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Driving-an-Accessibility-Learning-Culture-Digital-Accessibility-Specialist-Apprenticeship-AXE-Con.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913117/embed/0ae66dc938" >How Can You Measure Accessibility Impact At Scale? Gareth Ford Williams</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Axe-Con-Final-Final-2022.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913118/embed/a01129f479" >Learning A-Z: A Case Study of Our Accessibility Journey - John Lucas, Mario Ball, Ali Sikorski</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Learning-A-Z-Axe-Con-Presentation.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913122/embed/c2cea8e28d" >Building accessible products from the ground up - Prerna Ramachandra, Christina Xu</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Axe-con-2022-Accessibility-at-Slack.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913123/embed/f0c76696ad" >Starting Your Accessibility Journey: A Developers Guide - Mark Steadman</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Starting-Your-Accessibility-Journey-A-Developers-Guide-Axe-Con.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1913125/embed/bbe85e5ebc" >Empathy as a Catalyst for Meta Impact - Shannon Landin</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Empathy-as-a-Catalyst-for-Meta-Impact.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                     </ul>
+					 <p><a href="#top">Back to top.</a></p>
+                  </div>
+                  <div id="Wildcard">
+                     <h2 id="-Wildcard">Wildcard</h2>
+                     <ul>
+                        <li>
+                           <a href="https://vimeo.com/event/1916469/embed/342c5bbc36" >Collaboration Works! 25 years of Structured Negotiation as a strategy to enhance digital accessibility - Lainey Feingold</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/NO-NOTES-Laineys-Axe-con-talk.pdf" >Slides</a>: Collaboration Works!</li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916472/embed/74f25a1eef" >The State of Accessibility Report Findings - Joe Devon</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916474/embed/c6e6e56362" >Yahoo Fantasy: It&rsquo;s More Than Just A Game - Brian Fischler, Joe Nazzaro, Nick D&rsquo;Ambrosio</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Yahoo-Fantasy-Sports_-axe-con-2022.pdf" >Slides: Yahoo Fantasy </a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916475/embed/77a97ee312" >Screen Readers and Beyond: A Guide to Assistive Technology for Digital Access - Crystal Preston-Watson</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/AxeCon2022-compressed.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916478/embed/abe4bd6722" >The A11yCats Game Design Process: An Irreverent Reverent Adventure in Accessibility - Cyndi Wiley, Carie Fisher, Brittni Wendling</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/axe-con-2022-AccessibleGaming.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916480/embed/d932477b1d" >Going from Zero to One in Accessibility - Ramya Ramaswamy</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Going-from-Zero-to-One-in-Accessibility-axe-con-2022-1.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916485/embed/d0ca2d0e13" >Digital Accessibility Legal Update - Kristina Launey</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/2022-Deque-Web-Accessibility-Webinar-Legal-Update.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916487/embed/54126e85ec" >Sea Of Thieves: From Landlubber To Pirate Legend &ndash; SightlessKombat</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/AxeCon-2022-SightlessKombat-Land-Lubber-To-Pirate-Legend.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916489/embed/e02b24fcbd" >How AI fails people with disabilities &ndash; and how to fix it - Samuel Proulx</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2022/01/2022_02_07-How-AI-Fails-People-with-Disabilities-and-how-to-fix-it.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916491/embed/6cf685b71a" >My Trigger, My Choice: UX for Trigger and Content Warnings - Tori Clark, Keli Sierra Bradley</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/My-Trigger-My-Choice_Final_Tagged.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916492/embed/40c5d10966" >Kids Websites: Where Fun and Accessibility Come to Play - Olena Sullivan</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Olena-Sullivan-Kids-Websites_-where-fun-and-accessibility-come-to-play.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916495/embed/6495a69c63" >Design XR Tools with Disability Inclusion in Mind - Ashley Coffey, Meryl Evans</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Designing-XR-Tools-with-Disability-Inclusion-in-Mind.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916496/embed/edaecf26c8" >Improving production velocity and quality with automation in accessible product workflows - Greg Suprock</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916505/embed/19731732f5" >State of Play &ndash; Game Accessibility in 2022 - Ian Hamilton</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/IH-Axecon2022-interim.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916510/embed/7341c3b973" >The WCAG 2.2 and 3.0 update: What, when and how? - Wilco Fiers</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/WCAG-update-axe-con-2022_03.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916512/embed/c2f70a9c15" >The data says I don&rsquo;t exist: How data driven solutions fail those with disabilities - Kevin Mar-Molinero</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/The-Data-Says-I-Dont-Exist.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916513/embed/3002cba33e" >Accessible Forms: It&rsquo;s Not as Difficult as You Think - Maria Lamardo</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Accessible-Forms_-Its-Not-as-Difficult-as-You-Think.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916515/embed/1bd490112e" >Current Digital Accessibility Litigation Landscape and Increased DOJ Enforcement of Title III of the ADA &ndash; How Can Risk be Effectively Mitigated? - Lori Sommerfield, Michelle McGeogh</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Digital-Accessibility-Litigation-and-Regulatory-Landscape-2.2022-DMFIRM_4016419253.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li><a href="https://vimeo.com/event/1916520/embed/e0c362ebcf" >Future of Accessibility Panel - Cybele Grandjean, Fred Confer, November Champion, Ted Drake, Ann-Marie Alc&aacute;ntara</a></li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916523/embed/68f2afc518" >Grit and Strategy &ndash; How a ragtag group of researchers changed how we make video games - Faith McGee, Natashia Tjandra</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/Ragtag-Inclusive-Research-.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                        <li>
+                           <a href="https://vimeo.com/event/1916525/embed/034e882671" >The Accidental Accessibility Evangelist - Katherine Lewis</a>
+                           <ul>
+                              <li><a href="https://www.deque.com/axe-con/wp-content/uploads/2021/12/AxeCon_KatherineLewis_V2.pdf" >Slides</a></li>
+                           </ul>
+                        </li>
+                     </ul>
+					 				  <p><a href="#top">Back to top.</a></p>
+                  </div>
+               </div>
+            </article>
+            <div id="panel">
+               <button class="panelButton" onclick="topFunction()" id="myBtn">
+                  <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+                     <title id="svgTitle2">Top.</title>
+                     <desc id="svgDesc2">Move to the top of the page.</desc>
+                     <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                        <circle cx="8.5" cy="8.5" r="8"/>
+                        <path d="m11.5 7.5-3-3-3 3"/>
+                        <path d="m8.5 4.5v8"/>
+                     </g>
+                  </svg>
+                  <br />
+                  <span id="myBtnTop" class="panelLabel">Top</span>
+               </button>
+               <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+                  <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+                     <title id="svgTitle3">Bottom.</title>
+                     <desc id="svgDesc3">Move to the bottom of the page.</desc>
+                     <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                        <circle cx="8.5" cy="8.5" r="8"/>
+                        <path d="m5.5 9.5 3 3 3-3"/>
+                        <path d="m8.5 12.5v-8"/>
+                     </g>
+                  </svg>
+                  <br />
+                  <span id="myBtnBottom" class="panelLabel">Bottom</span>
+               </button>
+            </div>
+         </main>
+         <footer class="page-footer">
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="AccessibilityFoot">
+               <a href="Accessibility_Statement.html">Accessibility Statement</a>
+            </div>
+            <div id="twitterFoot">
+               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+            </div>
+            <div id="YouTubeChannelFoot">
+               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+            </div>
+            <div id="aboutFoot">
+               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
+            </div>
+         </footer>
+      </div>
+      <script>
+         function menuAction() {
+             let menuSwitch = document.getElementById("myTopnav");
+             if (menuSwitch.className === "topnav") {
+                 menuSwitch.className += " responsive";
+                 
+             } else {
+                 menuSwitch.className = "topnav";
+             }
+             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+             if (menuAriaAttrib === "true") {
+                 menuAriaAttrib = "false"
+             } else {
+                 menuAriaAttrib = "true"
+             }
+             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");       
+         window.onscroll = function() {
+             scrollFunction()
+         };      
+         function scrollFunction() {
+             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+                 mybutton.style.display = "block";
+         		mybutton2.style.display = "block";
+             } else {
+                 mybutton.style.display = "none";
+         		mybutton2.style.display = "none";
+             }
+         }       
+         function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
+         }
+         
+         function bottomFunction() {
+         window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
+         }
+      </script>
+      <script>
+         let themePref = localStorage.getItem("theme");
+         console.log("Has a theme preference been saved?", themePref);   
+         function setLight() {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById("modeToggle");
+             const d = matchMedia('(prefers-color-scheme: dark)');
+             let dt;
+             if (d.matches) {
+                 dt = 'dark';
+                 console.log("Prefers dark theme in OS");
+             } else {
+                 dt = 'light'
+                 console.log("Prefers light theme in OS");
+             }
+             if (dt == 'dark' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'light' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'dark' && !themePref) {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else {
+                 theButton.setAttribute("aria-pressed", "false");
+             }
+         }
+         setLight();         
+         function toggle(btnID) {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById(btnID);
+             if (theButton.getAttribute("aria-pressed") == "true") {
+                 theButton.setAttribute("aria-pressed", "false");
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 console.log("Turned on light mode");
+                 localStorage.setItem("theme", "Light");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "false");
+             } else {
+                 theButton.setAttribute("aria-pressed", "true");
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 console.log("Turned on dark mode");
+                 localStorage.setItem("theme", "Dark");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference set to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "true");
+             }
+         }         
+         function applyThemePreference() {
+             if (themePref == 'Dark') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 theButton.setAttribute("aria-pressed", "true");
+                 console.log("Applied dark theme because site theme preference is set to", themePref);
+             } else if (themePref == 'Light') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 theButton.setAttribute("aria-pressed", "false");
+                 console.log("Applied dark theme because site theme preference is set to", themePref);
+             }
+         }
+         applyThemePreference();                
+      </script>
+   </body>
+</html>
