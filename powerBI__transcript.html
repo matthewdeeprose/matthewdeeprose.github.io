@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Transcript: PowerBI: Accessibility Tips">
+    <meta name="keywords" content="accessibility, presentation, WCAG, Power BI, PowerBI, transcript">
+    <meta name="author" content="Matthew Deeprose">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Transcript: PowerBI: Accessibility Tips</title>
+    <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+    <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+    <meta property="og:title" content="Transcript: PowerBI: Accessibility Tips">
+    <meta property="og:description" content="">
+    <meta property="og:image" content="https://matthewdeeprose.github.io/PowerBI--accessibility-cover.png">
+    <meta property="og:image:alt" content="">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://matthewdeeprose.github.io/powerBI__transcript.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="favicon.ico">
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Transcript: PowerBI: Accessibility Tips" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta name="twitter:image" content="https://matthewdeeprose.github.io/PowerBI--accessibility-cover.png" />
+    <meta name="twitter:image:alt" content="" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+              <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                  <path d="m6.5 17.5h4" />
+                  <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                  <path d="m2.5 13.5h4" />
+                  <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+            <span id="hamburger">
+              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html" class="active">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html">Projects</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 id="top">Transcript: PowerBI: Accessibility Tips</h1> <ul>
+              <li>
+                <a href="https://www.youtube.com/watch?v=4aF_rsdK1LA">Presentation recording</a>
+              </li>
+              <li>
+                <a href="powerBI.html">Presentation resources</a>
+              </li>
+            </ul>
+            <p>Hi everyone, I&rsquo;m Matthew Deeprose. Thanks to Mike for inviting me to talk with you about accessibility.</p>
+            <p>I&rsquo;m going to introduce the session by telling you a bit about who I am, why accessibility is important, and how we know what &ldquo;good&rdquo; looks like. The bulk of our presentation will be about different aspects of accessibility relating to PowerBI, starting with some visual aspects like alternative text and colour. Then we&rsquo;ll cover some aspects of how users interact with PowerBI reports, and other aspects like descriptive links, and using titles, labels and avoiding abbreviations where possible. We&rsquo;ll conclude by looking at some possible next steps including options for automated testing. To make the most of our time please save questions to the end. As mike said I&rsquo;ve got something else I need to get to at 10:30 but anything we can&#39;t cover&hellip; this is just the start of the journey and we&#39;ll be here... I&rsquo;ll be available on teams for any questions and follow-ups. I&rsquo;ll also be really interested see how you guys get on and learn more from you about PowerBI.</p>
+            <p>In terms of who I am. I&rsquo;ve been learning about accessibility since 2018 and am slowly building up my knowledge. But in terms of PowerBI I know nothing other than I have used one PowerBI report, so please keep that in mind and have patience with me. Having looked through the community on Teams, I&rsquo;m in awe of your level of community spirit and knowledge. I&rsquo;ve tried to make this presentation relevant for you in the PowerBI community, but it&rsquo;s coming from a place of PowerBI ignorance. I do use one PowerBI report as an example and that&#39;s not a criticism of those who made the report &ndash; it&rsquo;s just the one report I have experience of using.</p>
+            <p>Why is accessibility important? Well, I&rsquo;ll open with a quotation from Gareth Ford Williams. Gareth was the head of accessibility at the BBC. &ldquo;No one is disabled until someone designed something that does not consider their needs&rdquo;. So, keep this in mind whilst designing PowerBI reports: how can we make sure we&#39;re not putting up barriers that prevent someone from getting the most out of our work?</p>
+            <p>You might have seen <a href="https://miro.medium.com/max/1400/1*tQ7doY7lShaI4hNU28mJ2Q.png">this illustration from Microsoft &nbsp;Design</a> before. While almost <a href="https://www.ons.gov.uk/peoplepopulationandcommunity/healthandsocialcare/disability/articles/nearlyoneinfivepeoplehadsomeformofdisabilityinenglandandwales/2015-07-13#:~:text=England%20and%20Wales-,Nearly%20one%20in%20five%20people%20had%20some,disability%20in%20England%20and%20Wales&amp;text=Disabilities%20can%20make%20it%20harder,are%20often%20taken%20for%20granted.">one in five UK adults have a disability</a>, all of us will be affected by temporary impairments like a broken arm or migraine. Frequently, we&#39;ll encounter situational impairments such as trying to read what&#39;s on the screen whilst experiencing screen glare. Ensuring our content meets accessibility guidelines will make it better. The top frustrations that users report when using the web&hellip; all of <a href="https://a11y-collective.com/blog/blind-people-dont-visit-my-website/">those frustrations map to accessibility issues</a> but how do we know what good looks like? Well, the <a href="https://www.w3.org/WAI/WCAG21/quickref/">Web Content Accessibility Guidelines</a> is a standard that helps us to know when we are succeeding in accessibility. there are more than 50 guidelines and they&#39;re broken down into <a href="https://www.boia.org/blog/what-are-the-four-major-categories-of-accessibility">four sections or four principles</a>. Perceivable is about catering to our senses. Information and user interface components must be presented in a way that all users can recognise and understand. Operable is about our ability to use a site, for example using a keyboard if we can&#39;t use a mouse or touchpad. Understandable means that the content is readable and predictable and that&#39;s not only to users themselves but to any assistive technologies that they use. Robust is about being compatible with user agents including those not yet invented - that&#39;s more about conforming to web standards we&#39;ll mainly be looking at those first free in this presentation as that&#39;s (from my understanding) what you have more control over when creating PowerBI reports. </p>
+            <p>We&#39;re going to look at some aspects from Perceivable first. When creating PowerBI reports it might be quite rare that you add a picture but if you do it&#39;s important that those that do not see the picture do not lose the meaning that was behind putting it there. This benefits not only those who cannot see the image but also those that might turn off images to save bandwidth as shown in that screenshot on the right. </p>
+            <p>So, first we consider whether alternative text is required for an image. We do need to provide alternative text if the image contains text that is not also represented nearby. Like it&#39;s a graphic with like some words that have been put within it maybe in a fancy font or something. Or if it&#39;s an image that&#39;s used as a link, so if we would select an image in order to go to a different web address then we need to have alternative text there. Or if that image contributes to the meaning of the page and if that image was not on that page that a vital part of the meaning that the user was expected to get would then be missing.</p>
+            <p>We don&#39;t need alternative text if the image is only being used for decorative purposes or if it&#39;s just reinforcing or duplicating meaning that&#39;s held elsewhere on the page.</p>
+            <p>A good way to approach writing alternative text is to imagine you are describing the image over the phone to someone. What would you say? Or, consider how you would describe it in conversation with someone, what details would you need to cover so that someone who&#39;s not looking at that image can understand it. You can provide alternative text to any object in the PowerBI desktop report. The alt text text box in PowerBI has a limit of 250 characters. I don&#39;t know anything about this but <a href="https://docs.microsoft.com/en-us/power-bi/create-reports/desktop-accessibility-creating-reports#conditional-formatting-for-alt-text">according to Microsoft you can use DAX measures and conditional formatting to create dynamic alt text,</a> which sounds amazing and I would love to see any examples of that in the future community of practice sessions, so I could learn more about that from you. </p>
+            <p>Thinking about colour. We shouldn&#39;t use colour alone as the only way to convey meaning. Imagine that you are submitting a piece of work and this is the interface you get. You see two buttons. Now if you had red / green colour blindness (which is the most common type of colour blindness) it would be difficult to know which button you were meant to press. It&#39;s great to see that you&#39;ve already been discussing this within your user community. There are options <a href="https://developer.chrome.com/blog/new-in-devtools-83/#vision-deficiencies">to simulate colour blindness in chrome</a> and edge dev tools and you can also use browser plugins to simulate colour blindness. </p>
+            <p>The main method I would recommend is just not to rely on colour alone for meaning for example here I&rsquo;ve added &ldquo;yes&rdquo; and &ldquo;no&rdquo; labels that make clear the purpose of the buttons. That was a kind of really simple example, but then if we were thinking about graphs then markers and labels are a good example. On the right I&rsquo;ve added labels to this pie chart because if we were to look at that pie chart in black and white, the graph on the right is much more easy to understand because we&#39;ve got those data labels but the graph on the left is going to be very difficult to understand. So, a good practice is to test any content in grayscale to be sure you&#39;re not relying on colour alone for meaning. Here&#39;s an example in the case of a line graph. On the right I&rsquo;ve made use of markers and dotted lines to help differentiate between the two lines in that graph and you can clearly see the difference in grayscale. <a href="https://docs.microsoft.com/en-us/power-bi/create-reports/desktop-accessibility-creating-reports#markers">PowerBI has a handy &ldquo;show marker&rdquo; feature</a> that you can turn on. </p>
+            <p>As we continue thinking about perceivable, take a look at these four text boxes does that text seem easy to read to you? I expect these examples are much clearer. In these examples we&#39;re using more contrast to make the text legible. Screen glare is an example of a situational impairment. In the photo I&rsquo;m sharing you can see how screen glare makes those early examples more difficult to read. Now we have examples where the text has sufficient contrast. Although screen glare still makes it difficult to read, I think most would agree that it is easier. A rule of thumb is that light text on a dark background should be easier to read and conversely dark text on a light background is easy to read. It can get more tricky when we look at specifics, here are nine text boxes of various colours in in rows of three. The top row most probably agree is hard to read. The bottom row most agree is easy to read. What about that middle row?</p>
+            <p>The Web Content Accessibility Guidelines provide a method for us to ensure that when we use colour, we can do so in a way that is accessible. It involves <a href="https://planetcalc.com/7779/#:~:text=Knowing%20the%20relative%20luminance%2C%20you,color%20(L1%3EL2).&amp;text=The%20contrast%20ratio%20shows%20how,image%20on%20a%20colored%20background.">comparing the relative luminance of the text colour with the background colour</a>. The result is a contrast ratio that goes from 1:1 up to 21:1, the higher the number the better. For text we should aim at least for a 4.5:1 contrast ratio and ideally higher. There are many sites online that can calculate contrast ratios. My favourite is <a href="https://whocanuse.com/">whocan use.com</a>. The way they work is you paste in two colour codes and then it tells you the contrast ratio. Usually these are <a href="https://en.wikipedia.org/wiki/Web_colors">hex codes</a> which is the HTML colour format. How do you know what those codes for your colours are? I recommend using Microsoft &#39;s free <a href="https://github.com/microsoft/PowerToys/releases/">PowerToys suite of utilities</a>, it has a very handy colour picker tool that you can turn on and then use by pressing a key combination. It will tell you the HTML, RGB and HSL values for a colour that you select from on screen. </p>
+            <p>In terms of the contrast ratios you need to remember, for parts that don&#39;t contain text like icons or symbols the colour of the icon should have a contrast ratio of 3:1 or higher to the background colour. For text 4.5:1 is the minimum level of contrast. There&#39;s also an enhanced AAA guideline aiming at a minimum of 7:1 or higher. If we go back to look at those nine examples, now I&rsquo;ve turned on the contrast ratios. That middle row all has examples that were below 4.5:1. We shouldn&#39;t be using those for presenting text.</p>
+            <p>I saw a question in your community about your JSON file. This has a selection of colours from the university brand and they&#39;ve been assigned to different aspects of a PowerBI template. I&rsquo;ve analysed all 400 colour combinations in your JSON file and <a href="https://matthewdeeprose.github.io/UoS_PBI_Theme_1/matrix.html">I shared a link to this table in the chat earlier</a>. Now in that table &ldquo;G&rdquo; means it&#39;s okay for graphical objects; the contrast is 3:1 or higher. &ldquo;AA&rdquo;means it&#39;s okay for text or graphical objects at 4.5:1 or higher. &ldquo;AAA&rdquo; means it meets that enhanced level for text or graphical objects of 7:1 or higher. </p>
+            <p>I&rsquo;ve picked out a few things to consider. Using the mobile view of that table, which you can get by pressing a button or resizing your browser screen, you get to see the colours one at a time. This section is about the background colour. Only six of the colours in that theme have a 4.5:1 contrast ratio or higher, so you&#39;d be thinking out of these colours which would be I be using against the background? If any of those do not meet the 4.5:1 or higher, if they don&#39;t say AA or AAA next to them then I need to consider using different colours. The colour used for titles, callouts, headers, and labels has good contrast with 11 of the other colours. The foreground colour only has sufficient colour contrast with three other colours in that theme. </p>
+            <p>Of course, I don&#39;t know the context of how these colours would be used. I would suggest as a next step to consider which colour combinations are likely. For example, will all of those data colours have labels and what colour is planned for the labels? Then you might want to adjust your data colours until you&#39;ve found shades that will have sufficient contrast. Hopefully that makes sense? We can talk more about it later if we need to.</p>
+            <p>So now we&#39;re going to consider some &ldquo;operable&rdquo; aspects, in particular using the keyboard. Not everyone will use a mouse or touchpad so it&#39;s important that we can use a keyboard to interact with PowerBI reports too. The keyboard is also the interaction layer through which other assistive technologies like switch devices navigate pages. Using the keyboard to navigate a web page will typically involve using the tab key to move between links and the enter key to select something. The space bar is used to perform an action and the cursor keys move between radio buttons or list items in the case of menus built from list items. Further keyboard shortcuts are available for PowerBI and these are shown to keyboard users when they start navigating a report. </p>
+            <p>Many of us have only used the mouse or touchpad so we&#39;ll be familiar with a screen that looks like this but how effective would it be if we could not see the mouse pointer? Keyboard users don&#39;t have a mouse pointer but a &ldquo;focus indicator&rdquo; which is usually a box and it appears around the element that they have navigated to. Here&#39;s an example over a checkbox and here&#39;s an example around a select menu. Both of these are fairly clear because the focus indicator is black and the background in these screenshots is white so that&#39;s very high contrast. But here the focus indicator around the drop-down menu, the background of which is kind of turquoise blue, now it&#39;s less easy to see that due to there being less contrast between the focus indicator and the background. </p>
+            <p>It looks like you can&#39;t set the colour of a focus indicator in PowerBI. It seems to be fixed to black in my limited testing so far. So be aware as you use colour in your PowerBI reports that if you use darker colours to fill in parts of that report it might make the focus indicator difficult to see, so keep that in mind. Maybe a lighter background colour with dark text would be better in those cases? </p>
+            <p>There is a feature in Edge to <a href="https://support.microsoft.com/en-us/microsoft-edge/accessibility-features-in-microsoft-edge-4c696192-338e-9465-b2cd-bd9b698ad19a#bkmk_high_visibility_outline">make the focus indicator extra visible.</a>
+            </p>
+            <p>We covered being able to see the focus indicator and the other consideration is that as you use the tab key to move around a report that you should be moved around in a logical sequence. Now I&rsquo;m going to play a video that I recorded using the accessibility insights browser plugin which visualizes where the focus indicator is moving. It&#39;s going to start at the University logo and then it&#39;s going to move to the report title, then the academic year drop down but as it continues the focus order doesn&#39;t appear to be particularly logical.</p>
+            <p>Fortunately <a href="https://docs.microsoft.com/en-us/power-bi/create-reports/desktop-accessibility-creating-reports#tab-order">we can set the tab order in PowerBI</a>. In the selection pane, selecting tab order displays the current tab order for your report. You can select an object and then use the up and down arrow buttons to move the object in the hierarchy, or you can click and drag with the mouse. Selecting the number next to an object hides that object from the tab order. So, if you&#39;re including decorative shapes or images in your report you should remove those from the tab order so that the keyboard user isn&#39;t moved on to those which they can&#39;t interact with. </p>
+            <p>Next, we&#39;re going to consider aspects of &ldquo;understandable&rdquo;. When we put links in our reports, we should make it clear within the name of the link what will happen when we select it. This is useful for everyone. For those that can visually see a page, it&#39;s common to scan over what you see without looking in too much detail. </p>
+            <p>Imagine that we visually scanned the links of a website and this is what we saw. It&#39;s not clear where any of these links will take us. We have to read the surrounding text to understand the purpose of these links. If we write descriptive links, we can much more easily scan the page and find what we want without having to read that surrounding text. This is even more the case for those who use screen readers. An analogue for that visual scanning is that screen readers can generate a list of links on the page, but if the links say &ldquo;click here&rdquo; or &ldquo;read more&rdquo; that&#39;s not going to be very useful. In comparison, in this example almost all of these links are unique and understandable in isolation. </p>
+            <p>One other thing&hellip; it&#39;s really important that you underline your links. Don&#39;t rely on the colour of the link alone to express the meaning that something is a link. Just underline it!</p>
+            <p>
+              Here&#39;s two examples in both cases the word &ldquo;here&rdquo; is underlined and is the link. Now you know that not everyone uses a mouse you also know not everyone&#39;s going to be clicking. Perhaps you&#39;ve noticed I&rsquo;m trying to say the word &ldquo;select&rdquo; rather than click? We could rewrite that first link to just &ldquo;email the data analytics and insights team&rdquo;, and we can rewrite the link on the right to say &ldquo;visit the data analytics and insight SharePoint site&rdquo;.
+            </p>
+            <p>You might also have noticed that the text in these boxes is centre &nbsp;aligned? When text will run over more than one line, I recommend you avoid centre aligning text. Compare the passage on the left with the passage on the right. I have marked where each line begins. By left aligning the text we make it much more readable. This benefits everyone in terms of readability and reading speed but particularly helps readers with dyslexia.</p>
+            <p>We&#39;re going to finish with a few tips that might be obvious but are worth mentioning. These are all taken from Microsoft &#39;s <a href="https://docs.microsoft.com/en-us/power-bi/create-reports/desktop-accessibility-creating-reports#titles-and-labels">very useful accessibility guide for PowerBI reports</a>. </p>
+            <p>We should try to avoid jargon or acronyms. As you can see in this example &ldquo;CY&rdquo; has been expanded to &ldquo;Current Year&rdquo;. I&rsquo;ve noticed that some [of our University] PowerBI reports have an explanation page which looks to be a nice way to add that kind of contextual complex information like explaining acronyms and so on. </p>
+            <p>We should aim to include titles, axis details and data labels. In this example, the horizontal and vertical axis labels have been added as well as data labels for the line graph.</p>
+            <p>When we add those data labels, we should take care at how we position them. In this case it isn&#39;t clear which labels refer to which graph, but in this version the labels of one line have been set to show above that line and for the other line the labels are below. Note also the way that one line is dotted so that we can help to differentiate between those two colours.</p>
+            <p>Heading to our conclusion, <a href="https://accessibilityinsights.io/docs/en/web/overview/">Microsoft &nbsp;provides a free browser-based tool for accessibility testing</a>. There are many similar tools, but I like this one because the interface is fairly clear. You can use it to run a &ldquo; <a href="https://accessibilityinsights.io/docs/en/web/getstarted/fastpass/">fast pass</a>&rdquo; on your PowerBI report. It will point out issues that might be false positives or definitely something you won&#39;t have any control over, but the colour contrast checks are useful. You can set a filter to show only certain issues and it will explain the details, in this case insufficient contrast, and show you where on the report those issues occur. You might find this is a bit too verbose or confusing, but some might find it useful. </p>
+            <p>In terms of next steps I&rsquo;d recommend making contact with the <a href="https://sotonac.sharepoint.com/teams/UoSDisabilityStaffNetwork">Disability Staff Network</a> and ask about their experiences with PowerBI. In the past, some members of the group have offered to help test things and give feedback. If you&#39;re interested in learning more, I&rsquo;ve collated <a href="https://matthewdeeprose.github.io/">my accessibility presentations and blog posts on my website</a> and I always include a large bibliography of links and resources for each one. <a href="https://teams.microsoft.com/l/team/19%3af18e35da49dc4361ad6b06cc94b70234%40thread.tacv2/conversations?groupId=0b49ec6f-66f9-4795-bc19-e5430ae979a9&amp;tenantId=4a5378f9-29f4-4d3e-be89-669d03ada9d8">Our accessibility community of practice is open to all</a>. All of those links I pasted in the chat earlier. </p>
+            <p>So, we&#39;ve covered a lot in this session, and I hope that you found at least some of it relevant and useful even though I don&#39;t really know anything about PowerBI, but this is the start - we can continue the conversation in Teams and in follow-up community sessions. I might not necessarily have the answers, but I have got a big network of contacts I can reach out to for help and any other tips that might help us. </p>
+            <p>The slide deck has follow-up resources to check out and I posted more in the chat earlier. Thank you very much for listening. I&rsquo;ll stop sharing now and I&rsquo;ve got a few minutes to try to answer any questions you have. Thanks very much for listening.</p>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related content</h2>
+        </section>
+        <section class="related">
+          <h3>Presentations</h3>
+          <ul class="relUL">
+            <li>
+              <a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a>
+            </li>
+            <li>
+              <a href="makeITaccessible.html">Making IT accessible for all!</a>
+            </li>
+            <li>
+              <a href="keyboardnav.html">Introduction to Keyboard Navigation and Accessibility</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h3>Blog posts</h3>
+          <ul class="relUL">
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/09/22/six-ways-that-digital-accessibility-maps-to-agile-practices/">Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</a>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS">
+          <a id="rssA" href="feed.rss">RSS</a>
+        </div>
+        <div id="SiteMap">
+          <a href="siteMap.html">Site Map</a>
+        </div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
+        </div>
+      </footer>
+    </div>
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false"
+        } else {
+          menuAriaAttrib = "true"
+        }
+        document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
+      window.onscroll = function() {
+        scrollFunction()
+      };
+
+      function scrollFunction() {
+        if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
+
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById('skipToContent').focus();
+      }
+
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById('rssA').focus();
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
+
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia('(prefers-color-scheme: dark)');
+        let dt;
+        if (d.matches) {
+          dt = 'dark';
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = 'light'
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == 'dark' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'light' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'dark' && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
+
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
+
+      function applyThemePreference() {
+        if (themePref == 'Dark') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          theButton.setAttribute("aria-pressed", "true");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        } else if (themePref == 'Light') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          theButton.setAttribute("aria-pressed", "false");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        }
+      }
+      applyThemePreference();
+    </script>
+    <script src="scripts/lite-yt-embed.js"></script>
+    <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+  </body>
+</html>
