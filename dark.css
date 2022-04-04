@@ -76,6 +76,7 @@ main a:focus,
 aside a:focus,
 footer a:focus {
 	outline: 0.3rem solid #C1D100 !important;
+	color: #74C9E5;
 }
 
 div#titleLink,
@@ -115,7 +116,7 @@ a:visited {
 }
 
 a:hover {
-	color: #C1D100;
+	color: #74C9E5;
 }
 
 
