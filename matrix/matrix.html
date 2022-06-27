@@ -2,18 +2,6 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta property="og:title" content="Accessibility Matrix for University of Southampton Brand Colour Palette">
-<meta property="og:description" content="When we use our brand palette, we must ensure that the colours we choose for text and graphics have enough contrast to the background colour. Doing so means that the materials we create will be accessible to the largest audience. The table below lists all brand colour combinations. It shows which pairings have the required level of contrast for different uses. These uses include: graphics and user interface elements, text and images of text.">
-<meta property="og:image" content="https://matthewdeeprose.github.io/matrix.PNG">
-<meta property="og:image:alt" content="Accessibility Matrix for University of Southampton Brand Colour Palette">
-<meta property="og:locale" content="en_GB">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://matthewdeeprose.github.io/matrix/matrix.html">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-<link rel="icon" href="../favicon.ico">
-<link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <title>Colour Contrast Accessibility Matrix</title>
 <script>
 // Locally hosted jQuery means unnecessary to be online
@@ -273,13 +261,7 @@ $(document).ready(function() {
         background-color: #161415 !important;
         color: #C1D100;
     }
-thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: #161415;
-    border: #3CBAC6 1px solid !important;
-}
+
 
 
     #myTable td:hover::before,
@@ -409,19 +391,9 @@ thead {
         border: #FCBC00 solid 1rem !important;
         outline: 0px solid #74C9E5 !important;
     }
-/* Dark mode ends here */
 }
 
-@media (prefers-color-scheme: light) {
-/* Light mode */
-thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: #FFFFF4;
-    border: black 2px solid !important;
-}
-}
+
 /* Center align the html hex code row */
 #HTMLcolCodeline th {
     text-align: center !important;
@@ -886,7 +858,7 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
 <div id="Matrix"><table id="myTable">
 <caption>
 Colour Accessibility Matrix.  Foreground colours are the columns, background colours are the rows.  Where a foreground column and background row intersect the cell shows the Web Content Accessibility Guidline (WCAG) contrast complicance level of the two colours when used together.
-</caption><thead>
+</caption>
 
 <tr id="VanityLine">
 <td></td>
@@ -938,7 +910,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <th scope="col" class="col">#D5007F</th>
 <th scope="col" class="col">#8D3970</th>
 </tr>
-</thead><tr id="colorRow">
+<tr id="colorRow">
 <td></td>
 <td></td>
 <td style="background-color:#FFFFFF"> </td>
@@ -1192,7 +1164,6 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <th scope="row" class="row">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
 <td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
 <td class="ResultAAA">AAA</td>
 <td class="ResultG">G</td>
 <td class="ResultF">F</td>
@@ -2799,13 +2770,13 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultG">G</td>
+<td class="ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
@@ -2823,19 +2794,19 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultG">G</td>
+<td class="ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
@@ -2901,13 +2872,12 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultG">G</td>
 </tr>
 </table>
 </div>
@@ -4493,7 +4463,7 @@ Explaining the matrix.</caption>
 </tr>
 <tr>
 <td id="explainG" style="background-color: #B3DBD2; text-align: center;">G</td>
-<td><strong>Contrast ratio is at least 3:1 - 156 of 441 combinations (35%).</strong>
+<td><strong>Contrast ratio is at least 3:1 - 155 of 441 combinations (35%).</strong>
 <ul>
 <li>Suitable for User Interface Components and Graphical Objects where no text is used (<a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a>).</li>
 <li>Suitable for large-scale text (at least 18 point if not bold and at least 14 point if bold) and images of large-scale text (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a>.</li>
@@ -4503,7 +4473,7 @@ Explaining the matrix.</caption>
 </tr>
 <tr>
 <td id="explainAA" style="background-color: #FCBC00; text-align: center;">AA</td>
-<td><strong>Contrast ratio is at least 4.5:1 - 84 of 441 combinations (19%).</strong>
+<td><strong>Contrast ratio is at least 4.5:1 - 83 of 441 combinations (19%).</strong>
 <ul>
 <li>Suitable for the visual representation of text and images of text to minimum level (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a>.</li>
 <li>Suitable for large-scale text (at least 18 point if not bold and at least 14 point if bold) and images of large-scale text (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced">WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a></li>
@@ -4514,7 +4484,7 @@ Explaining the matrix.</caption>
 </tr>
 <tr>
 <td id="explainAAA" style="background-color: #C1D100;  text-align: center;">AAA</td>
-<td><strong>Contrast ratio is at least 7:1 - 52 of 441 combinations (12%).</strong>
+<td><strong>Contrast ratio is at least 7:1 - 51 of 441 combinations (12%).</strong>
 <ul>
 <li>Suitable for the visual representation of text and images of text at enhanced level (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced">WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a>.</li>
 <li>Suitable for User Interface Components and Graphical Objects where no text is used (<a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a>).</li>
@@ -4608,7 +4578,7 @@ Explaining the matrix.</caption>
 <div id="credits">
 <details>
     <summary>Credits</summary>
-When you use colours from a defined palette, such as a corporate brand, you should make accessible choices. This colour accessibility matrix helps you do this. A custom <a href="https://en.wikipedia.org/wiki/Bash_(Unix_shell)">bash script</a> created by <a href="https://matthewdeeprose.github.io">Matthew Deeprose</a>, Senior Learning Designer at the University of Southampton, generated this web page.
+When you use colours from a defined palette, such as a corporate brand, you should make accessible choices. This colour accessibility matrix helps you do this. A custom <a href="https://en.wikipedia.org/wiki/Bash_(Unix_shell)">bash script</a> created by <a href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a>, Senior Learning Designer at the University of Southampton, generated this web page.
 <br />
 Additional tools used are:
 <ul>
