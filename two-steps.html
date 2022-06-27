@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="description" content="Two steps forward? Making accessibility easier.">
+	<meta name="keywords" content="accessibility, presentation, blog,UCISA,UX,colour contrast, Microsoft Office, Accessibility Inspector">
+	<meta name="author" content="Matthew Deeprose">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Two steps forward? Making accessibility easier.</title>
+	<link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+	<link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+	<link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+	<link rel="stylesheet" id="printCSS" href="print.css" media="print">
+	<meta property="og:title" content="Two steps forward? Making accessibility easier - Matthew Deeprose">
+	<meta property="og:description" content="">
+	<meta property="og:image" content="https://matthewdeeprose.github.io/2steps.png">
+	<meta property="og:image:alt" content="">
+	<meta property="og:locale" content="en_GB">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="https://matthewdeeprose.github.io/pres.html">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+	<meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+	<link rel="icon" href="favicon.ico">
+	<link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+	<link rel="icon" href="favicon.svg" type="image/svg+xml">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="Two steps forward? Making accessibility easier. - Matthew Deeprose" />
+	<meta name="twitter:description" content="" />
+	<meta name="twitter:creator" content="@VLEguru" />
+	<meta name="twitter:site" content="@VLEguru" />
+	<meta name="twitter:image" content="https://matthewdeeprose.github.io/2steps.png" />
+	<meta name="twitter:image:alt" content="" />
+	<meta name="twitter:card" content="summary_large_image" /> </head>
+
+<body>
+	<div class="page-wrap" id="start"> <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+		<header class="page-header">
+			<div id="banner">
+				<div id="logo">
+					<button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+						<svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+							<title id="svgTitle">Change theme</title>
+							<desc id="svgDesc">Select to switch to light theme</desc>
+							<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+								<path d="m6.5 17.5h4" />
+								<path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+								<path d="m8.5 1.5v-1" />
+								<path d="m13.5 3.5 1-1" />
+								<path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+								<path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+								<path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+								<path d="m1.5 7.5h-1" />
+								<path d="m16.5 7.5h-1" /> </g>
+						</svg>
+						<svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+							<title id="svgTitleX">Change theme</title>
+							<desc id="svgDescX">Select to switch to dark theme</desc>
+							<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+								<path d="m2.5 13.5h4" />
+								<path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" /> </g>
+						</svg>
+					</button>
+				</div> <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+				<div id="titleLink">Matthew Deeprose</div>
+			</div>
+		</header>
+		<div id="main-navigation" class="page-nav">
+			<nav aria-label="Main menu" class="topnav" id="myTopnav">
+				<button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()"> <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span> <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+                           <path  d="m16.5,10.5l-13,0"/>
+                        </g>
+                     </svg>
+                  </span> </button> <a id="homeMenu" href="index.html">Home</a> <a href="presentations.html" class="active">Presentations</a> <a href="posts.html">Blog Posts</a> <a href="projects.html">Projects</a> <a href="about.html">About</a> </nav>
+		</div>
+		<main class="page-main" id="main">
+			<article class="standard">
+				<h1 id="top">Two steps forward? Making accessibility easier.</h1>
+				<p>Presented at UCISA-UX: Accessibility in HE, Tuesday 28 June 2022.</p>
+				<h2>Synopsis</h2>
+				<p>The UCISA-UX team asked whether we "made something easier for everyone to use"? In this five-minute slot I will share two topics on that theme:</p>
+				<ul>
+					<li>Brand colour contrast made easy</li>
+					<li>Accessibility inspector for everyone</li>
+				</ul>
+				<h2>Resources</h2>
+				<ul>
+					<li><a href="M_Deeprose-Two_Steps_Accessibilty--UCISA-UX.pptx">Slide Deck</a> [4 MB PPTX]</li>
+					<li>Example brand colour accessibility matrix</li>
+				</ul>
+				<h2>Links</h2>
+				<h3>Relevant WCAG criteria</h3>
+				<ul>
+					<li><a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">1.4.11 Non-text Contrast (Level AA)</a></li>
+					<li><a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-minimum.html">2.4.11 Focus Appearance (Minimum)</a></li>
+					<li><a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">1.4.3 Contrast (Minimum) (Level AA)</a></li>
+					<li><a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-enhanced">2.4.12 Focus Appearance (Enhanced)</a></li>
+					<li>
+						<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html"></a> 1.4.6: Contrast (Enhanced)</li>
+				</ul>
+				<h3>Other links</h3>
+				<ul>
+					<li><a href="https://webaim.org/projects/million/">The WebAIM Million</a>: The 2022 report on the accessibility of the top 1,000,000 home pages</li>
+					<li><a href="https://planetcalc.com/7779/">Calculating relative luminance and contrast ratio</a></li>
+					<li>
+						<a href="https://www.24a11y.com/2019/color-theory-and-contrast-ratios/"></a>Colour Theory and Contrast Ratios.</li>
+					<li><a href="https://whocanuse.com">Who Can Use</a>: Colour contrast checking tool.</li>
+					<li><a href="https://elearn.soton.ac.uk/knowledge-base/accessibility-in-m365/">Check accessibility as you work in Microsoft Office</a></li>
+				</ul>
+				<h3>Other similar contrast tools I found after I wrote my script</h3>
+				<ul>
+					<li><a href="https://toolness.github.io/accessible-color-matrix/">Accessible color palette builder</a></li>
+					<li><a href="https://contrast-grid.eightshapes.com">Contrast Grid</a></li>
+					<li><a href="https://colorbox.io/">Color Box</a></li>
+					<li><a href="https://material.io/resources/color/#!/?view.left=0&view.right=0&primary.color=B388FF">Material Designs Color Tool</a></li>
+				</ul>
+				<h3>Other useful colour contrast tools</h3>
+				<ul>
+					<li><a href="https://css-tricks.com/nailing-the-perfect-contrast-between-light-text-and-a-background-image/">Find the Perfect Contrast Between Light Text and a Background Image</a>.</li>
+					<li><a href="http://colorsafe.co/">Color Safe</a>: Find accessible colours that contrast with a specific colour you wish to you.</li>
+					<li><a href="https://contrast-finder.tanaguru.com/">tanaguru contrast finder</a>: Find good constrasts, for web accessibility, between two colours you specify.</li>
+					<li><a href="https://github.com/microsoft/PowerToys/releases/">PowerToys for Windows 10 has a fantastic colour picker tool, this helps you identify colour codes</a>.</li>
+				</ul>
+				<h3>Interesting presentations about colour contrast</h3>
+				<ul>
+					<li><a href="https://www.youtube.com/watch?v=ZDjCO9gmlzY">Accessibility in Color Systems</a>by James Sullivan</li>
+					<li><a href="https://www.youtube.com/watch?v=riZfw8xCqeE">How Color Contrast Got Their Attention</a> by Patrick Sturdivant and Debbie Schulz</li>
+					<li><a href="">Retrofitting for an Accessible Color Palette: Beyond the "Nice-to-Have" Improvement</a> by Marion Couesnon</li>
+				</ul>
+			</article>
+			<div id="panel">
+				<button class="panelButton" onclick="topFunction()" id="myBtn">
+					<svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+						<title id="svgTitle2">Top.</title>
+						<desc id="svgDesc2">Move to the top of the page.</desc>
+						<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+							<circle cx="8.5" cy="8.5" r="8" />
+							<path d="m11.5 7.5-3-3-3 3" />
+							<path d="m8.5 4.5v8" /> </g>
+					</svg>
+					<br /> <span id="myBtnTop" class="panelLabel">Top</span> </button>
+				<button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+					<svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+						<title id="svgTitle3">Bottom.</title>
+						<desc id="svgDesc3">Move to the bottom of the page.</desc>
+						<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+							<circle cx="8.5" cy="8.5" r="8" />
+							<path d="m5.5 9.5 3 3 3-3" />
+							<path d="m8.5 12.5v-8" /> </g>
+					</svg>
+					<br /> <span id="myBtnBottom" class="panelLabel">Bottom</span> </button>
+			</div>
+		</main>
+		<aside class="page-sidebar related">
+			<section class="related">
+				<h2>Related content</h2> </section>
+			<section class="related">
+				<h3>Presentations</h3>
+				<ul class="relUL">
+					<li><a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a></li>
+					<li><a href="bbworld20.html">The Practical “Bluffer’s Guide” to Blackboard Theme Accessibility</a></li>
+					<li><a href="makeITaccessible.html">Making IT accessible for all!</a></li>
+				</ul>
+			</section>
+			<section class="related">
+				<h3>Blog posts</h3>
+				<ul class="relUL">
+					<li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/07/20/design-ideas-three-ways-overview/">Three ways PowerPoint’s "Design Ideas" excludes your audience, and how to fix it.</a></li>
+					<li><a href="https://abilitynet.org.uk/news-blogs/guest-blog-how-check-your-brands-colour-contrast-accessibility">Guest blog: How to check your brand's colour contrast for accessibility</a></li>
+					<li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2022/01/17/da_cop_2021_review/">iSolutions Digital Accessibility Community of Practice: what did we do in 2021 and what was the impact?</a></li>
+				</ul>
+			</section>
+		</aside>
+		<footer class="page-footer">
+			<div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+			<div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+			<div id="AccessibilityFoot"> <a href="Accessibility_Statement.html">Accessibility Statement</a> </div>
+			<div id="twitterFoot"> <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a> </div>
+			<div id="YouTubeChannelFoot"> <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a> </div>
+			<div id="aboutFoot"> <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a> </div>
+		</footer>
+	</div>
+	<script>
+	function menuAction() {
+		let menuSwitch = document.getElementById("myTopnav");
+		if(menuSwitch.className === "topnav") {
+			menuSwitch.className += " responsive";
+		} else {
+			menuSwitch.className = "topnav";
+		}
+		let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+		if(menuAriaAttrib === "true") {
+			menuAriaAttrib = "false"
+		} else {
+			menuAriaAttrib = "true"
+		}
+		document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+	}
+	</script>
+	<script>
+	let mybutton = document.getElementById("myBtn");
+	let mybutton2 = document.getElementById("myBtn2");
+	window.onscroll = function() {
+		scrollFunction()
+	};
+
+	function scrollFunction() {
+		if(document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+			mybutton.style.display = "block";
+			mybutton2.style.display = "block";
+		} else {
+			mybutton.style.display = "none";
+			mybutton2.style.display = "none";
+		}
+	}
+
+	function topFunction() {
+		document.body.scrollTop = 0;
+		document.documentElement.scrollTop = 0;
+		document.getElementById('skipToContent').focus();
+	}
+
+	function bottomFunction() {
+		window.scrollTo(0, document.body.scrollHeight);
+		document.getElementById('rssA').focus();
+	}
+	</script>
+	<script>
+	let themePref = localStorage.getItem("theme");
+	console.log("Has a theme preference been saved?", themePref);
+
+	function setLight() {
+		let buttonStatus = document.getElementById("lightDark");
+		let theButton = document.getElementById("modeToggle");
+		const d = matchMedia('(prefers-color-scheme: dark)');
+		let dt;
+		if(d.matches) {
+			dt = 'dark';
+			console.log("Prefers dark theme in OS");
+		} else {
+			dt = 'light'
+			console.log("Prefers light theme in OS");
+		}
+		if(dt == 'dark' && themePref == 'Dark') {
+			theButton.setAttribute("aria-pressed", "true");
+		} else if(dt == 'light' && themePref == 'Dark') {
+			theButton.setAttribute("aria-pressed", "true");
+		} else if(dt == 'dark' && !themePref) {
+			theButton.setAttribute("aria-pressed", "true");
+		} else {
+			theButton.setAttribute("aria-pressed", "false");
+		}
+	}
+	setLight();
+
+	function toggle(btnID) {
+		let buttonStatus = document.getElementById("lightDark");
+		let theButton = document.getElementById(btnID);
+		if(theButton.getAttribute("aria-pressed") == "true") {
+			theButton.setAttribute("aria-pressed", "false");
+			document.getElementById('lightCSS').href = 'light.css';
+			document.getElementById('darkCSS').href = 'light.css';
+			console.log("Turned on light mode");
+			localStorage.setItem("theme", "Light");
+			let themePref = localStorage.getItem("theme");
+			console.log("Site theme preference to ", themePref);
+			document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+			let toggleButton = document.getElementById('modeToggle');
+			toggleButton.removeAttribute("aria-pressed");
+			toggleButton.setAttribute("aria-pressed", "false");
+		} else {
+			theButton.setAttribute("aria-pressed", "true");
+			document.getElementById('lightCSS').href = 'dark.css';
+			document.getElementById('darkCSS').href = 'dark.css';
+			console.log("Turned on dark mode");
+			localStorage.setItem("theme", "Dark");
+			let themePref = localStorage.getItem("theme");
+			console.log("Site theme preference set to ", themePref);
+			document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+			let toggleButton = document.getElementById('modeToggle');
+			toggleButton.removeAttribute("aria-pressed");
+			toggleButton.setAttribute("aria-pressed", "true");
+		}
+	}
+
+	function applyThemePreference() {
+		if(themePref == 'Dark') {
+			let theButton = document.getElementById('modeToggle');
+			document.getElementById('lightCSS').href = 'dark.css';
+			document.getElementById('darkCSS').href = 'dark.css';
+			theButton.setAttribute("aria-pressed", "true");
+			console.log("Applied dark theme because site theme preference is set to", themePref);
+		} else if(themePref == 'Light') {
+			let theButton = document.getElementById('modeToggle');
+			document.getElementById('lightCSS').href = 'light.css';
+			document.getElementById('darkCSS').href = 'light.css';
+			theButton.setAttribute("aria-pressed", "false");
+			console.log("Applied dark theme because site theme preference is set to", themePref);
+		}
+	}
+	applyThemePreference();
+	</script>
+	<script src="scripts/lite-yt-embed.js"></script>
+	<link rel="stylesheet" href="scripts/lite-yt-embed.css" /> </body>
+
+</html>
