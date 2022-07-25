@@ -110,15 +110,18 @@
             <li>Press <strong>F12</strong> to open developer tools. If <strong>F12</strong> does not work, try <strong>CTRL + SHIFT + C</strong>.</li>
             <li>Select the <strong>console</strong> tab.</li>
             <li>Copy the text below and paste it within the editor part of the screen <br />
-              <pre><code class="language-javascript">// Get the element in which the video is held on the page and put in variable named 'vid'
+              <pre><code class="language-javascript">// Get the element in which the video is held
+// and put it into a variable named 'vid'.
 																														
 let vid = document.getElementById('playback-video-playback-video_html5_api');
 
-// Get the link to the source of the mp4 video from the above and put it in 'vidlink'
+// Get the link to the source of the mp4 video from 
+// the above element and put that into a variable named 'vidlink'.
 
 let vidlink = vid.getAttribute('src');
 
-// Open 'vidlink' in a new window
+// Open 'vidlink' in a new tab. 
+// This will open the mp4 video in a new browser tab.
 
 window.open(vidlink, '_blank');</code>
 																													</pre> and then press <strong>enter</strong>. Be sure to have copied and pasted all the text from the snippet.
