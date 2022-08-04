@@ -216,11 +216,11 @@ dd.from {
     line-height: 1.75;
 }
 
-#Example {
+#Example, .Example {
     min-width: 17rem;
     max-width: 25rem;
     padding: 1rem;
-    font-family: courier;
+    font-family: 'Courier New', monospace !important;
 }
 
 

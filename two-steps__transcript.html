@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="Transcript: Two steps forward? Making accessibility easier.">
+	<meta name="keywords" content="accessibility, presentation, blog,UCISA,UX,colour contrast, Microsoft Office, Accessibility Inspector">
+	<meta name="author" content="Matthew Deeprose">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Transcript: Two steps forward? Making accessibility easier.</title>
+	<link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+	<link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+	<link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+	<link rel="stylesheet" id="printCSS" href="print.css" media="print">
+	<meta property="og:title" content="Transcript: Two steps forward? Making accessibility easier - Matthew Deeprose">
+	<meta property="og:description" content="">
+	<meta property="og:image" content="https://matthewdeeprose.github.io/2steps-narrow.png">
+	<meta property="og:image:alt" content="">
+	<meta property="og:locale" content="en_GB">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="https://matthewdeeprose.github.io/two-steps__transcript.html">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+	<meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+	<link rel="icon" href="favicon.ico">
+	<link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+	<link rel="icon" href="favicon.svg" type="image/svg+xml">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="Transcript: Two steps forward? Making accessibility easier. - Matthew Deeprose" />
+	<meta name="twitter:description" content="" />
+	<meta name="twitter:creator" content="@VLEguru" />
+	<meta name="twitter:site" content="@VLEguru" />
+	<meta name="twitter:image" content="https://matthewdeeprose.github.io/2steps-wide.png" />
+	<meta name="twitter:image:alt" content="" />
+	<meta name="twitter:card" content="summary_large_image" /> </head>
+
+<body>
+	<div class="page-wrap" id="start"> <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+		<header class="page-header">
+			<div id="banner">
+				<div id="logo">
+					<button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+						<svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+							<title id="svgTitle">Change theme</title>
+							<desc id="svgDesc">Select to switch to light theme</desc>
+							<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+								<path d="m6.5 17.5h4" />
+								<path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+								<path d="m8.5 1.5v-1" />
+								<path d="m13.5 3.5 1-1" />
+								<path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+								<path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+								<path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+								<path d="m1.5 7.5h-1" />
+								<path d="m16.5 7.5h-1" /> </g>
+						</svg>
+						<svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+							<title id="svgTitleX">Change theme</title>
+							<desc id="svgDescX">Select to switch to dark theme</desc>
+							<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+								<path d="m2.5 13.5h4" />
+								<path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" /> </g>
+						</svg>
+					</button>
+				</div> <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+				<div id="titleLink">Matthew Deeprose</div>
+			</div>
+		</header>
+		<div id="main-navigation" class="page-nav">
+			<nav aria-label="Main menu" class="topnav" id="myTopnav">
+				<button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()"> <span id="hamburger">
+              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span> <span id="arrow">
+              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span> </button> <a id="homeMenu" href="index.html">Home</a> <a href="presentations.html" class="active">Presentations</a> <a href="posts.html">Blog Posts</a> <a href="projects.html">Projects</a> <a href="about.html">About</a> </nav>
+		</div>
+		<main class="page-main" id="main">
+			<article class="standard">
+				<h1 id="top">Transcript: Two steps forward? Making accessibility easier.</h1>
+				<ul>
+					<li> <a href="https://www.youtube.com/watch?v=rDkEhGiowXM">Presentation recording</a> </li>
+					<li> <a href="two-steps.html">Presentation resources</a> </li>
+				</ul>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Hi everyone! I&#39;m Matthew Deeprose from the University of Southampton. I&#39;m going to share two topics in the next five minutes:</p>
+				<ul>
+					<li>Making accessible use of a brand colour scheme easier and </li>
+					<li>removing friction on the accessibility checking process in Office.</li>
+				</ul>
+				<p>Starting with brand colour contrast made easy. Now, I&#39;m assuming that most of you will know all about colour contrast and accessibility but just in case&hellip;</p>
+				<p>In the WebAIM survey of a million web pages, the most persistent accessibility issue was low contrast text. What do we mean by that?</p>
+				<p>Here I&#39;m sharing nine boxes in rows of three. Each box has a different coloured background and white or black text. The top row is harder to read because the colour of the text has low contrast to the background colour. The bottom row is easier to read, the text colour has higher contrast with the background colour. But what about this middle row? Some might find it easy to read, some may disagree. </p>
+				<p>How do we know how much contrast is sufficient? The Web Content Accessibility Guidelines, which I&#39;ll shorten to WCAG provide a calculation for assessing colour contrast. The result is a ratio. The higher the number the better. </p>
+				<p>I&#39;ve revealed the contrast ratios for these boxes. The top row are all low numbers, below 2:1. Those would all fail. The bottom row are all high numbers all are above seven to one. They would pass because they go well beyond the minimum level of contrast. That middle row are all at 4:1 or lower. These would actually fail the minimum contrast ratio for the presentation of text. </p>
+				<p>The Web Content Accessibility Guidelines state that contrast ratio 3:1 is the minimum level of contrast for graphical objects like icons. A contrast level of 4.5 to 1 is the minimum for text. 7:1 and higher is the minimum for text when we want to reach the AAA level of accessibility.</p>
+				<p>For someone new to accessibility this can seem a bit intimidating. If someone just wants to use our colour brand, or our brand colour palette, how can they make accessible choices easily?</p>
+				<p>That&#39;s a question I was asking myself in Spring 2019 when I was updating our institutional Virtual Learning Environment, Blackboard , to use our corporate brand colour scheme. In almost 2,000 lines of CSS I had about 300 colour statements. That included things like <a href="https://css-tricks.com/focusing-on-focus-styles/">focus indicators</a>, <a href="https://www.w3schools.com/cssref/sel_hover.asp">hover states</a>, and so on. I was regularly going between our brand palette and a contrast checker. My favourite is <a href="https://whocanuse.com">whocanuse.com</a>. So, after the umpteenth colour contrast check, I wrote a script which took all of the 441 colour combinations of our brand and checked them for contrast. Initially, the result was a spreadsheet, but I developed it further into a <a href="https://matthewdeeprose.github.io/matrix/matrix.html">responsive web page</a>. This meant I had a lookup table to check colours easily.</p>
+				<p>To zoom in and give you a clearer understanding, the same colours are in the same order for both the horizontal and vertical axes. Where two colours meet, the table shows F if it fails all contrast criteria. G means it can only be used for graphical objects like icons. AA means that as well as graphical objects it could be used for text, but only at that minimum AA level. AAA means it can be used for text at the enhanced level, so higher than 7:1, as well as for graphical objects.</p>
+				<p>I shared with colleagues who started using it and they gave me some feedback. One shared that it was all well and good to know what combinations you could use but it would be nice to browse through the accessible combinations and see how they look. So, I developed the script further to produce examples of every on-brand accessible colour combination. Here&rsquo;s a larger example. You can see it has the colour details, contrast ratio, an example of how it looks; one example here shows the graphic icon, the other shows text. The screenshots show how I also implemented dark and light themes. </p>
+				<p>I also added a little bit of info, like how many combinations from our brand palette were accessible when used together. For example, only 19% of the colour combinations in our brand can be used for text. So, obviously our palette was not designed with accessibility in mind. </p>
+				<p>It helped me find some other insights. Only seven colours in our brand have sufficient contrast with white, two of those are different shades of black! Whereas, with a black background I can use eleven other brand colours and they&#39;re much more fun colours like orange, green, yellow, cyan, compared with dark blue and magenta that I can use with white. It also highlighted that two colours in our brand cannot ever be used for text whatsoever, only graphical objects. </p>
+				<p>Since I wrote the script to do this, the hard work&#39;s done. On that <a href="https://matthewdeeprose.github.io/two-steps.html">link to the page I shared earlier,</a> if you&#39;d like to have something like this for your brand, the details are there, with what I&#39;ll need to make one for you.</p>
+				<p>The other topic is making the accessibility inspector more visible in office for everyone.</p>
+				<p>The <a href="https://support.microsoft.com/en-us/office/check-accessibility-while-you-work-in-office-apps-ae9e8ea7-1f22-41af-ad04-cc2919daebae">accessibility inspector in Office</a> alerts you to accessibility issues whilst you work. Once you&#39;ve <a href="https://elearn.soton.ac.uk/knowledge-base/accessibility-in-m365/">turned it on</a>, it appears at the bottom left corner of Office. As you can see on screen, it says &ldquo;accessibility: investigate,&rdquo; if it has found some issues.</p>
+				<p>But, there&#39;s some friction. You have to follow three steps to turn it on: file, options, ease of access and tick &ldquo;keep accessibility checkout running whilst I work&rdquo;. I often see people, when they share their screens during a meeting, that they haven&#39;t turned this on&hellip; even people giving presentations about equality, diversity and inclusion. </p>
+				<p>I asked the <a href="https://www.microsoft.com/en-us/accessibility/disability-answer-desk?activetab=contact-pivot%3aprimaryr9">Microsoft Enterprise Disability Answer Desk</a>, if we could set this on by default on machines managed by the university. They said yes you can do this using Group Policy. So, I&#39;ve raised this as a request to our desktop team who now have it in their queue. I&#39;m hoping it will be implemented by September and we&#39;ll then be doing some comms to our user community.</p>
+				<p>Hopefully this change, that reduces that friction of setting up that option, will inspire more people to turn that cross in the accessibility inspector into a tick.</p>
+				<p>Thanks for listening and if you&#39;re interested in other blog posts, presentations, and accessibility projects I&#39;ve shared <a href="https://matthewdeeprose.github.io/">there&#39;s more on my website</a>. I&#39;ve recently talked about <a href="https://matthewdeeprose.github.io/makeITaccessible.html">implementing accessibility in higher education IT departments</a>, <a href="https://matthewdeeprose.github.io/powerBI.html">creating accessible Power BI reports</a>, and aspects of web development like Aria roles for screen readers, light and dark modes and so on.</p>
+				<p>So, thanks very much and back to you.</p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> Thank you, Matt! Wow, I think we&#39;re all just in awe of what you&#39;ve achieved. There some fantastic reactions in the chat and people clapping as well. I will check and see if&hellip;</p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Hopefully, it was worth it in the end after all the technical issues?</p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> Absolutely. Totally was. You know, good things come to those who wait. </p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Very true.</p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> Lots of information there, and just complete wizardry, I think. Yeah. There&#39;s lots of interest in the colour checker, because I think people will find it useful in their own institutions. While we wait for questions to come in. I had a question about that and sort of I guess more generally around applying brand colours and checking accessibility to something like a third party, so Blackboard &rsquo;s product. Did you find, like, any help from the Blackboard side of things in terms of&hellip; helping what you wanted to achieve in terms of colour contrast or&hellip; yeah, how did that work? </p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> I had lots of help from the community in terms of&hellip; when I started the work, I didn&#39;t know anything about CSS and with the help of them within a month I was writing CSS and it was then that I had... at the same time, I&#39;ve started hearing about the accessibility regulations, and so then&hellip; I went further and that was kind of from my own side learning about it and then realising what we needed to do to make sure it&#39;s accessible. Because, for example, with some systems you might have the option to change aspects of a system to use your brand, but then say you&#39;ve changed the colour of a background to your university, like, main, major, main colour. That might have then made the focus indicators that are set for that system [to] no longer have sufficient contrast, because although this is going to be <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-minimum.html">explicitly stated in WCAG 2.2</a>, even in <a href="https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html">WCAG 2.1</a>, if you read between the lines and <a href="https://www.w3.org/WAI/WCAG21/Techniques/general/G195">examine some of the background pages</a>, it says you really need to have a 3:1 contrast ratio, in your focus indicators to the background. So, that just shows sometimes even the vendors have maybe allowed you to set one colour. But in doing so, you might have then made something worse on another side. </p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> I&#39;m not sure we have any specific questions. There&#39;s lots and lots of appreciation for your knowledge and wisdom. Focus indication is massive. </p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Are there&hellip; I could just mention a couple of things, a couple of slides I cut because I wasn&#39;t sure if I was going to have time and I could just mention a few of those and hopefully I won&#39;t break Teams by sharing my screen again. But. I was half expecting, someone to say, but what about a APCA? APCA (<a href="https://github.com/Myndex/SAPC-APCA">Accessible Perceptual Contrast Algorithm</a>) is the new measurement of contrast in WCAG 3, which obviously&hellip; WCAG 3 isn&#39;t yet settled and it isn&#39;t yet out, but it has been confirmed that they&#39;re going to change the contrast measurement that they use. So, I do plan, once there&#39;s an API for the Accessible Perceptual Contrast Algorithm. I do plan to adjust the script to take those measurements and have like a parallel matrix that could show those, but in Chrome Dev tools you can enable the <a href="https://www.freecodecamp.org/news/how-to-use-css-overview-in-chrome-developer-tools/#:~:text=The%20CSS%20overview%20panel%20is,used%20on%20a%20web%20page.">CSS overview</a> tool and there&#39;s a <a href="https://developer.chrome.com/blog/new-in-devtools-89/#:~:text=%23-,New%20color%20contrast%20calculation%20%2D%20Advanced%20Perceptual%20Contrast%20Algorithm%20(APCA),-To%20enable%20the">setting to get it to use APCA contrast measurement</a> and on screen I&#39;m showing that it has detected where I&#39;ve got a list of all of the possible colour combinations from our brand, it&#39;s then shown that actually there&#39;s 15 that had passed WCAG 2 but would not pass APCA so that&#39;s how I&#39;m approaching that in the in the medium term. At the moment, I&#39;m making sure that everything passes both WCAG 2 and APCA.</p>
+				<p>Another thing that I want to work on, (I don&#39;t know when I&#39;m ever going to get [the] time, is I remember I think, Emma, you were talking about working on a design system at Edinburgh. What I&#39;d like to do is, where I&#39;ve got the examples of all of the different colour combinations you can use for text, is to then just develop it further and have a few different components and then show these are all of the different colour combinations where the background and the foreground have sufficient contrast, but also the focus indicator will have sufficient contrast to those two that is both different enough to the main colour, but still has sufficient contrast with the background and try it out with a few different components. Then at a click of a button, I could see all of the possible colour combinations not only for text and so on, but where you&#39;ve kind of got that more three-dimensional look: We&#39;ve <a href="https://webaim.org/resources/linkcontrastchecker">got to check three different contrast ratings</a> and make sure that they all line up together. So that&#39;s just a couple of extras for the accessibility geeks among us. </p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> That looks amazing. Yes, we are. We&#39;re building a design system at Edinburgh and actually on that, it&#39;s interesting, you mentioned sort of components and because there is obviously, there&#39;s things that people have to do or can do themselves to address accessibility and like getting an understanding of what those things are is important and sort of understand that it&#39;s not just tech, but maybe on the kind of design system / CMS side of things, are there things that you&#39;ve encountered that maybe make accessibility, like more available? I suppose so that people are doing things maybe without necessarily consciously realizing it&#39;s accessible. It&#39;s just good practice embedded in those design systems and CMS&#39;s.</p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Well, something that I really like the idea of that I don&#39;t have direct experience of and <a href="https://www.linkedin.com/in/gavinhenrick/">I&#39;ll have to check for this gentleman&#39;s name.</a> But he&rsquo;s a gentleman in the Moodle community <a href="https://www.brickfield.ie/brickfield-accessibility-toolkit/">who&#39;s been customising Moodle</a>, such that when you&#39;re using the text editor, it will only allow you to make accessible choices. So, for example, say it knows you&#39;ve got a background colour, it will only let you select from the palette [text] colours that would have sufficient contrast. </p>
+				<p>I think that can be quite a nice way of kind of channelling people to make good decisions by removing the ability to make bad decisions. Well, not necessarily bad, but decisions that wouldn&#39;t&hellip; </p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> Once that will have consequences.</p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Yeah, yeah. Yep. Be accessible, yes. And I&#39;ll dig out his name, but it&#39;s probably not that relevant within the CMS context, but I dare say if you could, if it would be possible to customise the CMS, and it definitely would be possible because there&#39;s libraries in JavaScript which can do that kind of contrast checking, so it&#39;s a kind of if background colour is this, only show these colours and you can do that at runtime. So, it can be kind of totally dynamic</p>
+				<p>That is an idea&hellip; also for example like not allowing a page to be published until it&#39;s passed, like:</p>
+				<ul>
+					<li>it&#39;s got alternative text, </li>
+					<li>it&#39;s got headings, </li>
+					<li>they&#39;re in the right order, </li>
+				</ul>
+				<p>that kind of thing. And you can also apply that within an IT department. If you have a continuous integration / continual deployment process, you can use free tools such as <a href="https://github.com/dequelabs/axe-core">axe</a> or <a href="https://github.com/pa11y/pa11y-ci">pally</a> to run checks so that when they&#39;re someone tries to do a push or pull request that there will be&hellip; there is automated checks and then someone would have to say, if they found accessibility issues, I will let it go into the main code base or I&#39;ll send it back and say you need to fix these issues, and there are further ones <a href="https://github.com/marketplace/axe-linter">where it will offer to try to fix them automatically for you</a>. Like I&#39;ve seen that you&#39;ve got a bit low contrast here if you just change the shade by like this many points then you would have sufficient contrast. </p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> Yeah, I think it. I think that that kind of tool would be very helpful, like as well as teaching people, getting people to understand what they can do, but equally just things that will help them make the right choices. Because there is, obviously, there&#39;s lots to consider and consequences of one decision might not be known until something&#39;s published. It&#39;s out there. It&#39;s then copied. It&#39;s all over the place. So, I think, that kind of approach would be really helpful, and I think people would be encouraged as well to know that you know that that is available. </p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Definitely. I remember higher up in the chat, but I&#39;m just scrolling&hellip; I can&#39;t find&hellip; someone mentioned that say that you had, sign language [interpretation] happening at the same time that for some that might be too distracting and so allowing to have a options of different choices. </p>
+				<p>So [for example], &ldquo;I&#39;d like to have the dark mode&rdquo;. &ldquo;I&#39;d like to have the light mode&rdquo;. &ldquo;I&#39;d like to have the &lsquo;no distractions&rsquo;, mode&rdquo;, and a lot of these sorts of things should be fairly configurable if you&#39;re using a template. Some of those examples, is some websites like to have really fancy scrolling effects like parallax. If you have a vestibular issue then it might make you feel that you have to have a lie down when you&#39;re scrolling down a page. So, there&#39;s a CSS <s>selector</s> [media feature] &ldquo;<a href="https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion">prefers-reduced-motion</a>&rdquo; so that if you set in your operating system, I don&#39;t want to have these kinds of animations. Then as a designer you can account for that preference within your code, and say if someone doesn&#39;t want animations, I&#39;m going to give them a version without animations and so on. </p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> He&rsquo;s saying, &ldquo;yes, please give me choices&rdquo;! Conscious of time&hellip;</p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Ohh, one other thing. Since Chris mentions about Figma having contrast checking tools.</p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> No, go for it.</p>
+				<p><span class="transcriptSpeaker">Matthew Deeprose:</span> I&#39;ll dig out a link and put it in the chat in a moment. There&#39;s some really nice plugins for Figma that allow you to add what are called <a href="https://dribbble.com/shots/6269661-Accessibility-Bluelines">accessibility blue lines</a> because I think there was a presentation or there&#39;s <a href="https://www.uxbeginner.com/glossary/redlining/">a thing about red lines</a> or this&hellip; kind of like wireframes.</p>
+				<p>But you can add in, &ldquo;this will be the H1&rdquo;, &ldquo;this will be the H2&rdquo;, and you can add these little tags in Figma so that as you pass a design from a designer onto a coder that they don&#39;t then have to &ldquo;guess&rdquo; how accessibility is meant to be applied. You can make it clear. As one of my accessibility colleagues told me, &ldquo;the last thing you want to ask a developer to do is think&rdquo;. </p>
+				<p><span class="transcriptSpeaker">Emma Horrell:</span> No comment. But something I think we can resonate with it. It can be difficult. I think communicating messages on from design to development is a whole other topic, but just yeah, keeping that message passed over when there&#39;s a lot to consider. And as I said before, one small thing can break other things without people necessarily meaning to do a bad job, but it is trying to kind of keep that consistency.</p>
+				<p>&nbsp;And that has been absolutely amazing. I&#39;m totally blown away by the number of new links that we have all shared and good practice and resources.</p>
+				<p>&nbsp;</p>
+			</article>
+			<div id="panel">
+				<button class="panelButton" onclick="topFunction()" id="myBtn">
+					<svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+						<title id="svgTitle2">Top.</title>
+						<desc id="svgDesc2">Move to the top of the page.</desc>
+						<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+							<circle cx="8.5" cy="8.5" r="8" />
+							<path d="m11.5 7.5-3-3-3 3" />
+							<path d="m8.5 4.5v8" /> </g>
+					</svg>
+					<br /> <span id="myBtnTop" class="panelLabel">Top</span> </button>
+				<button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+					<svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+						<title id="svgTitle3">Bottom.</title>
+						<desc id="svgDesc3">Move to the bottom of the page.</desc>
+						<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+							<circle cx="8.5" cy="8.5" r="8" />
+							<path d="m5.5 9.5 3 3 3-3" />
+							<path d="m8.5 12.5v-8" /> </g>
+					</svg>
+					<br /> <span id="myBtnBottom" class="panelLabel">Bottom</span> </button>
+			</div>
+		</main>
+		<aside class="page-sidebar related">
+			<section class="related">
+				<h2>Related content</h2> </section>
+			<section class="related">
+				<h3>Presentations</h3>
+				<ul class="relUL">
+					<li> <a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a> </li>
+					<li> <a href="bbworld20.html">The Practical “Bluffer’s Guide” to Blackboard Theme Accessibility</a> </li>
+					<li> <a href="makeITaccessible.html">Making IT accessible for all!</a> </li>
+				</ul>
+			</section>
+			<section class="related">
+				<h3>Blog posts</h3>
+				<ul class="relUL">
+					<li> <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/07/20/design-ideas-three-ways-overview/">Three ways PowerPoint’s "Design Ideas" excludes your audience, and how to fix it.</a> </li>
+					<li> <a href="https://abilitynet.org.uk/news-blogs/guest-blog-how-check-your-brands-colour-contrast-accessibility">Guest blog: How to check your brand's colour contrast for accessibility</a> </li>
+					<li> <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2022/01/17/da_cop_2021_review/">iSolutions Digital Accessibility Community of Practice: what did we do in 2021 and what was the impact?</a> </li>
+				</ul>
+			</section>
+		</aside>
+		<footer class="page-footer">
+			<div id="RSS"> <a id="rssA" href="feed.rss">RSS</a> </div>
+			<div id="SiteMap"> <a href="siteMap.html">Site Map</a> </div>
+			<div id="AccessibilityFoot"> <a href="Accessibility_Statement.html">Accessibility Statement</a> </div>
+			<div id="twitterFoot"> <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a> </div>
+			<div id="YouTubeChannelFoot"> <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a> </div>
+			<div id="aboutFoot"> <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a> </div>
+		</footer>
+	</div>
+	<script>
+	function menuAction() {
+		let menuSwitch = document.getElementById("myTopnav");
+		if(menuSwitch.className === "topnav") {
+			menuSwitch.className += " responsive";
+		} else {
+			menuSwitch.className = "topnav";
+		}
+		let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+		if(menuAriaAttrib === "true") {
+			menuAriaAttrib = "false"
+		} else {
+			menuAriaAttrib = "true"
+		}
+		document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+	}
+	</script>
+	<script>
+	let mybutton = document.getElementById("myBtn");
+	let mybutton2 = document.getElementById("myBtn2");
+	window.onscroll = function() {
+		scrollFunction()
+	};
+
+	function scrollFunction() {
+		if(document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+			mybutton.style.display = "block";
+			mybutton2.style.display = "block";
+		} else {
+			mybutton.style.display = "none";
+			mybutton2.style.display = "none";
+		}
+	}
+
+	function topFunction() {
+		document.body.scrollTop = 0;
+		document.documentElement.scrollTop = 0;
+		document.getElementById('skipToContent').focus();
+	}
+
+	function bottomFunction() {
+		window.scrollTo(0, document.body.scrollHeight);
+		document.getElementById('rssA').focus();
+	}
+	</script>
+	<script>
+	let themePref = localStorage.getItem("theme");
+	console.log("Has a theme preference been saved?", themePref);
+
+	function setLight() {
+		let buttonStatus = document.getElementById("lightDark");
+		let theButton = document.getElementById("modeToggle");
+		const d = matchMedia('(prefers-color-scheme: dark)');
+		let dt;
+		if(d.matches) {
+			dt = 'dark';
+			console.log("Prefers dark theme in OS");
+		} else {
+			dt = 'light'
+			console.log("Prefers light theme in OS");
+		}
+		if(dt == 'dark' && themePref == 'Dark') {
+			theButton.setAttribute("aria-pressed", "true");
+		} else if(dt == 'light' && themePref == 'Dark') {
+			theButton.setAttribute("aria-pressed", "true");
+		} else if(dt == 'dark' && !themePref) {
+			theButton.setAttribute("aria-pressed", "true");
+		} else {
+			theButton.setAttribute("aria-pressed", "false");
+		}
+	}
+	setLight();
+
+	function toggle(btnID) {
+		let buttonStatus = document.getElementById("lightDark");
+		let theButton = document.getElementById(btnID);
+		if(theButton.getAttribute("aria-pressed") == "true") {
+			theButton.setAttribute("aria-pressed", "false");
+			document.getElementById('lightCSS').href = 'light.css';
+			document.getElementById('darkCSS').href = 'light.css';
+			console.log("Turned on light mode");
+			localStorage.setItem("theme", "Light");
+			let themePref = localStorage.getItem("theme");
+			console.log("Site theme preference to ", themePref);
+			document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+			let toggleButton = document.getElementById('modeToggle');
+			toggleButton.removeAttribute("aria-pressed");
+			toggleButton.setAttribute("aria-pressed", "false");
+		} else {
+			theButton.setAttribute("aria-pressed", "true");
+			document.getElementById('lightCSS').href = 'dark.css';
+			document.getElementById('darkCSS').href = 'dark.css';
+			console.log("Turned on dark mode");
+			localStorage.setItem("theme", "Dark");
+			let themePref = localStorage.getItem("theme");
+			console.log("Site theme preference set to ", themePref);
+			document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+			let toggleButton = document.getElementById('modeToggle');
+			toggleButton.removeAttribute("aria-pressed");
+			toggleButton.setAttribute("aria-pressed", "true");
+		}
+	}
+
+	function applyThemePreference() {
+		if(themePref == 'Dark') {
+			let theButton = document.getElementById('modeToggle');
+			document.getElementById('lightCSS').href = 'dark.css';
+			document.getElementById('darkCSS').href = 'dark.css';
+			theButton.setAttribute("aria-pressed", "true");
+			console.log("Applied dark theme because site theme preference is set to", themePref);
+		} else if(themePref == 'Light') {
+			let theButton = document.getElementById('modeToggle');
+			document.getElementById('lightCSS').href = 'light.css';
+			document.getElementById('darkCSS').href = 'light.css';
+			theButton.setAttribute("aria-pressed", "false");
+			console.log("Applied dark theme because site theme preference is set to", themePref);
+		}
+	}
+	applyThemePreference();
+	</script>
+	<script src="scripts/lite-yt-embed.js"></script>
+	<link rel="stylesheet" href="scripts/lite-yt-embed.css" /> </body>
+
+</html>
