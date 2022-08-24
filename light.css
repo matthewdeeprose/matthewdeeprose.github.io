@@ -187,6 +187,13 @@ button:focus {
 	border: 0.2rem solid #00131D;
 }
 
+button#genNew:hover, button#genNew:focus {
+		background-color: #FFFFF4 !important;
+	color: #00131D !important;
+	box-shadow: 0 0 0 0.4rem #005C84 !important;
+	outline: 0.2rem solid #FFFFF4 !important;
+border: 0.2rem solid #00131D !important;}
+
 .page-wrap {
 	background: #FFFFF4;
 	/* box-shadow: 0 0 3px rgba(0, 0, 0, 0.33);*/ 

@@ -1,0 +1,67 @@
+
+#infoTexT, .iconrow {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+ .infoIcon {
+    font-size: 5rem;
+     padding-left: 1rem;
+     padding-right: 1rem;
+} 
+@media only screen and (max-width: 400px) {
+	.infoIcon  {
+		    font-size: 2rem;
+     padding-left: 0rem;
+     padding-right: 0rem;
+		white-space: pre-line;		
+	}
+	#infoTexT, .iconrow {
+    display:inline;
+    justify-content:normal;
+    align-items:normal;
+}
+	}
+	
+ #infoGraphicBox {
+    border: 2px solid black;
+     outline: 2px solid white;
+     padding: 15px;
+     width: auto;
+     margin: 0px;
+     display: block;
+     margin-block-start: 1em;
+     margin-block-end: 1em;
+     margin-inline-start: 0px;
+     margin-inline-end: 0px;
+	 word-break: break-all;
+}
+ .arrayDetails {
+    display:none;
+}
+ .colorBox {
+    border: black 1px solid;
+     outline: white 1px solid;
+}
+
+
+ .grid-child {
+     padding: 10px;
+}
+
+ section .details {
+    font-family: "Courier New", Courier, monospace;
+}
+ .result {
+     font-weight: bold;
+}
+  @media (max-width: 1300px) {
+     .result2 {
+        white-space: pre-line;
+    }
+}
+ @media (max-width: 800px) {
+            .result2 {
+            white-space: normal;
+    }
+}
