@@ -114,7 +114,7 @@
   <button id="genNew" class="actionButton" type="button"onclick="randomAll()">Randomise</button>
 
   <div class="resourseList">
-    <div class="grid-child ">
+    <div class="grid-child" aria-hidden="true">
       <section id="infoGraphicBox" class="">
         <h2 id="infoTexT" class="">Text and information<h2>
           <p class="iconrow">
@@ -125,7 +125,7 @@
       </section>
     </div>
     <div class="grid-child" id="info">
-      <section class="details">
+      <section class="details" aria-live="polite">
         <p class="details">Background colour:<span class="result2"> <span id="bgColor" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
           <span class="details result" id="backgroundColor"></span> <span class="details result" id="backgroundName"></span></span>
         </p>
@@ -136,17 +136,17 @@
           <br />
           <span class="arrayDetails">Text contrast array used: <span class="details" id="tcontrastArray"></span>
           </span>
-        <p class="details">Graphic 1 colour: <span class="result2"><span id="g1colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
+        <p class="details">Graphic 1 &#x2745; colour: <span class="result2"><span id="g1colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
           <span class="details result" id="g1colourSpan1"></span> <span class="details result" id="gfx1ColorName"></span></span>
           <br />Graphic 1 contrast: <span id="g1contrast" class="details result"></span>
           <br />WCAG Rating: <span class="details result" id="g1contrastWCAG"></span>
         </p>
-        <p class="details">Graphic 2 colour: <span class="result2"><span id="g2colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
+        <p class="details">Graphic 2 &#9825; colour: <span class="result2"><span id="g2colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
           <span id="g2colourSpan1" class="details result"></span> <span class="details result" id="gfx2ColorName"></span></span>
           <br />Graphic 2 contrast: <span class="details result" id="g2contrast"></span>
           <br />WCAG Rating: <span class="details result" id="g2contrastWCAG"></span>
         </p>
-        <p class="details">Graphic 3 colour: <span class="result2"><span id="g3colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
+        <p class="details">Graphic 3 &#10026; colour: <span class="result2"><span id="g3colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
           <span id="g3colourSpan1" class="details result"></span> <span class="details result" id="gfx3ColorName"></span></span>
           <br />Graphic 3 contrast: <span id="g3contrast" class="details result"></span>
           <br />WCAG Rating: <span id="g3contrastWCAG" class="details result"></span>
