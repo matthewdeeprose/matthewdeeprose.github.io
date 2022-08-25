@@ -24,8 +24,7 @@
 	}
 	
  #infoGraphicBox {
-    border: 2px solid black;
-     outline: 2px solid white;
+     outline: transparent solid 2px;
      padding: 15px;
      width: auto;
      margin: 0px;
@@ -40,8 +39,7 @@
     display:none;
 }
  .colorBox {
-    border: black 1px solid;
-     outline: white 1px solid;
+    outline: transparent solid 2px;
 }
 
 

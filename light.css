@@ -1,7 +1,18 @@
 /*Light mode */
-
 lite-youtube {
 	border: 0.3rem solid #495961 !important;
+}
+
+/* Infographic */
+#infoGraphicBox {
+	border: 1px solid #00131D;
+	-webkit-box-shadow: 0px 0px 90px -25px rgba(0, 19, 29, 1);
+	-moz-box-shadow: 0px 0px 90px -25px rgba(0, 19, 29, 1);
+	box-shadow: 0px 0px 90px -25px rgba(0, 19, 29, 1);
+}
+
+.colorBox {
+	border: #00131D 2px solid;
 }
 
 
@@ -60,7 +71,7 @@ dd.from {
 /* Presentations */
 .presentations {
 	border: 1px solid #495961;
-	}
+}
 
 @media only screen and (max-width: 600px) {
 	.presentations {
@@ -187,16 +198,18 @@ button:focus {
 	border: 0.2rem solid #00131D;
 }
 
-button#genNew:hover, button#genNew:focus {
-		background-color: #FFFFF4 !important;
+button#genNew:hover,
+button#genNew:focus {
+	background-color: #FFFFF4 !important;
 	color: #00131D !important;
 	box-shadow: 0 0 0 0.4rem #005C84 !important;
 	outline: 0.2rem solid #FFFFF4 !important;
-border: 0.2rem solid #00131D !important;}
+	border: 0.2rem solid #00131D !important;
+}
 
 .page-wrap {
 	background: #FFFFF4;
-	/* box-shadow: 0 0 3px rgba(0, 0, 0, 0.33);*/ 
+	/* box-shadow: 0 0 3px rgba(0, 0, 0, 0.33);*/
 }
 
 .page-header {
