@@ -6,9 +6,9 @@ lite-youtube {
 /* Infographic */
 #infoGraphicBox {
 	border: 1px solid #00131D;
-	-webkit-box-shadow: 0px 0px 90px -25px rgba(0, 19, 29, 1);
-	-moz-box-shadow: 0px 0px 90px -25px rgba(0, 19, 29, 1);
-	box-shadow: 0px 0px 90px -25px rgba(0, 19, 29, 1);
+	-webkit-box-shadow: 0px 0px 60px -25px rgba(0, 19, 29, 1);
+	-moz-box-shadow: 0px 0px 60px -25px rgba(0, 19, 29, 1);
+	box-shadow: 0px 0px 60px -25px rgba(0, 19, 29, 1);
 }
 
 .colorBox {
