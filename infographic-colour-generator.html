@@ -425,7 +425,7 @@
         const textcontrastsE73238 = [];
         const textcontrastsD5007F = ['#FFFFFF'];
         const textcontrasts8D3970 = ['#FFFFFF', '#E1E8EC', '#B3DBD2'];
-        //Graphic arrays - some include ratio above 4.5:1
+        //Graphic arrays 
         const gfxContrastsFFFFFF = ['#231F20', '#00131D', '#495961', '#758D9A', '#002E3B', '#005C84', '#1E8765', '#E73037', '#E73238', '#D5007F', '#8D3970'];
         const gfxContrasts231F20 = ['#FFFFFF', '#758D9A', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#4BB694', '#1E8765', '#C1D100', '#FCBC00', '#EF7D00', '#E73037', '#E73238', '#D5007F'];
         const gfxContrasts00131D = ['#FFFFFF', '#758D9A', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#4BB694', '#1E8765', '#C1D100', '#FCBC00', '#EF7D00', '#E73037', '#E73238', '#D5007F'];
@@ -466,6 +466,9 @@
             Math.random() * textString.length
         );
         myInfoGraphicText.style.color = "#FFFFFF"; */
+		// Couldn't get the above to work, no idea why...
+		
+		// Big if else then. Had to use var, probably due to my poor practice.
         if (infoGraphicBackgrounds[randomBackgroundColor] == "#FFFFFF") {
           let h2TextColor = Math.floor(Math.random() * textcontrastsFFFFFF.length);
           myInfoGraphicText.style.color = textcontrastsFFFFFF[h2TextColor];
@@ -567,7 +570,8 @@
         bgColId.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
         // text colour example
         tColId.style.backgroundColor = infTextColor;
-
+		// This amazing function to get n number of random values from an array
+		// found on https://stackoverflow.com/questions/19269545/how-to-get-a-number-of-random-elements-from-an-array
         function getRandom(arr, n) {
           var result = new Array(n),
             len = arr.length,
@@ -580,7 +584,9 @@
           }
           return result;
         }
-        //Testing
+        // Let's get 3 random colours
+		// I hope to make a better version of this
+		// Once I know what question to google on stackoverflow :)
         if (infoGraphicBackgrounds[randomBackgroundColor] == "#FFFFFF") {
           gfxArray = (getRandom(gfxContrastsFFFFFF, 3));
           myInfoGraphicGfx1.style.color = gfxArray[0];
@@ -746,7 +752,7 @@
         // show contrast ratio
         g3contrast.innerHTML = gfx3ContrastDisplay + ":1";
         //function to determine wcag rating from a Contrast Ratio
-        function getWcagRrating(contrastRatio) {
+        function getWcagRating(contrastRatio) {
           if (contrastRatio >= 7) {
             WcagRating = "AAA";
           } else if (contrastRatio >= 4.5) {
@@ -758,10 +764,12 @@
           }
           return WcagRating;
         }
-        g1contrastWCAG.innerHTML = getWcagRrating(gfx1ContrastDisplay);
-        g2contrastWCAG.innerHTML = getWcagRrating(gfx2ContrastDisplay);
-        g3contrastWCAG.innerHTML = getWcagRrating(gfx3ContrastDisplay);
-        tcontrastWCAG.innerHTML = getWcagRrating(textContrastDisplay);
+		// Set up the WCAG results to show
+        g1contrastWCAG.innerHTML = getWcagRating(gfx1ContrastDisplay);
+        g2contrastWCAG.innerHTML = getWcagRating(gfx2ContrastDisplay);
+        g3contrastWCAG.innerHTML = getWcagRating(gfx3ContrastDisplay);
+		// Text contrast WCAG results
+        tcontrastWCAG.innerHTML = getWcagRating(textContrastDisplay);
         // Colournames array
         let colournames = [{
           "colourHex": "#FFFFFF",
@@ -839,6 +847,8 @@
         gfx2ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")";
         gfx3ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")";
       };
+	  // Finally we run the function when the page loads
+	  // It also runs when you press the button	  
       randomAll();
     </script>
   </body>
