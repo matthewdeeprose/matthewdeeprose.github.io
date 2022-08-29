@@ -110,10 +110,11 @@
         <article class="standard">
           <h1 id="top">UoS Brand Accessible Colour Suggester</h1>
           <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://go.soton.ac.uk/uosbrand">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic.</p>
-          <button id="genNew" class="actionButton" type="button" onclick="randomAll()">Randomise</button>
+          
           <div class="resourseList">
-            <div class="grid-child" aria-hidden="true">
-              <section id="infoGraphicBox" class="">
+            <div class="grid-child">
+			  <button id="genNew" class="actionButton" type="button" onclick="randomAll()">Randomise</button>	
+              <section id="infoGraphicBox" class="" aria-hidden="true">
                 <h2 id="infoTexT" class="">Text and information</h2>
                     <p class="iconrow">
                       <span id="icon1" class="infoIcon">&#x2745;</span>
@@ -124,7 +125,7 @@
             </div>
             <div class="grid-child" id="info">
               <section class="details" aria-live="polite">
-				<h2>Colour details</h2>
+				<h2 id="colDetailsH2">Colour details</h2>
                 <p class="details">Background colour: <span class="result2">
                     <span id="bgColor" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
                     <span class="details result" id="backgroundColor"></span>

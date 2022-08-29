@@ -103,3 +103,8 @@ div#titleLink,
 .page-header {
 	background-image: none !important;
 }
+/* h2 line up */
+#colDetailsH2 {    font-size: 1.5em;
+    margin-block-start: 0em;
+    margin-block-end: 1em;
+;}
