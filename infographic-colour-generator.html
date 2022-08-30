@@ -109,24 +109,26 @@
       <main class="page-main" id="main">
         <article class="standard">
           <h1 id="top">UoS Brand Accessible Colour Suggester</h1>
-          <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://go.soton.ac.uk/uosbrand">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic.</p><p>Use the Randomise button to get started!</p>
-          
+          <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://go.soton.ac.uk/uosbrand">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic. </p>
+          <p>Use the Randomise button to get started!</p>
           <div class="resourseList">
             <div class="grid-child">
-			  <button id="genNew" class="actionButton" type="button" onclick="randomAll()">Randomise</button>	
+              <button id="genNew" class="actionButton" type="button" onclick="randomAll()">Randomise</button>
               <section id="infoGraphicBox" class="" aria-hidden="true">
                 <h2 id="infoTexT" class="">Text and information</h2>
-                    <p class="iconrow">
-                      <span id="icon1" class="infoIcon">&#x2745;</span>
-                      <span id="icon2" class="infoIcon">&#9825;</span>
-                      <span id="icon3" class="infoIcon">&#10026;</span>
-                    </p>
+                <p class="iconrow">
+                  <span id="icon1" class="infoIcon">&#x2745;</span>
+                  <span id="icon2" class="infoIcon">&#9825;</span>
+                  <span id="icon3" class="infoIcon">&#10026;</span>
+                </p>
               </section>
             </div>
             <div class="grid-child" id="info">
               <section class="details" aria-hidden="true">
-				<h2 id="colDetailsH2">Colour details</h2>
-                <p class="details"><span id="bgC" class="details">Background colour: </span><span class="result2">
+                <h2 id="colDetailsH2">Colour details</h2>
+                <p class="details">
+                  <span id="bgC" class="details">Background colour: </span>
+                  <span class="result2">
                     <span id="bgColor" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
                     <span class="details result" id="backgroundColor" aria-hidden="true"></span>
                     <span class="details result" id="backgroundName" aria-hidden="true"></span>
@@ -169,12 +171,9 @@
               </section>
             </div>
           </div>
-		  <section id="srDetails" class="sr-only">
-		  <span id="srResults" aria-live="polite">
-		  
-		  </span>
-		  
-		  </section>
+          <section id="srDetails" class="sr-only">
+            <span id="srResults" aria-live="polite"></span>
+          </section>
           <section class="infoDetails">
             <h2>What does "WCAG Rating" mean?</h2>
             <dl>
@@ -245,7 +244,7 @@
         <section class="related">
           <h2>Related content</h2>
           <ul class="relUL">
-		  	<li>
+            <li>
               <a href="https://codepen.io/matthewdeeprose/pen/JjLMMob">View the source in CodePen.</a>
             </li>
             <li>
@@ -411,7 +410,7 @@
         //pick random button background put in variable
         const randomBackgroundColor = Math.floor(Math.random() * infoGraphicBackgrounds.length);
         backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
-		bgC.innerHTML = "Background colour: ";
+        bgC.innerHTML = "Background colour: ";
         myInfoGraphicBox.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
         /* Set the main text colour */
         /* Create arrays with every possible accessible text colour */
@@ -477,9 +476,8 @@
             Math.random() * textString.length
         );
         myInfoGraphicText.style.color = "#FFFFFF"; */
-		// Couldn't get the above to work, no idea why...
-		
-		// Big if else then. Had to use var, probably due to my poor practice.
+        // Couldn't get the above to work, no idea why...
+        // Big if else then. Had to use var, probably due to my poor practice.
         if (infoGraphicBackgrounds[randomBackgroundColor] == "#FFFFFF") {
           let h2TextColor = Math.floor(Math.random() * textcontrastsFFFFFF.length);
           myInfoGraphicText.style.color = textcontrastsFFFFFF[h2TextColor];
@@ -581,8 +579,8 @@
         bgColId.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
         // text colour example
         tColId.style.backgroundColor = infTextColor;
-		// This amazing function to get n number of random values from an array
-		// found on https://stackoverflow.com/questions/19269545/how-to-get-a-number-of-random-elements-from-an-array
+        // This amazing function to get n number of random values from an array
+        // found on https://stackoverflow.com/questions/19269545/how-to-get-a-number-of-random-elements-from-an-array
         function getRandom(arr, n) {
           var result = new Array(n),
             len = arr.length,
@@ -596,8 +594,8 @@
           return result;
         }
         // Let's get 3 random colours
-		// I hope to make a better version of this
-		// Once I know what question to google on stackoverflow :)
+        // I hope to make a better version of this
+        // Once I know what question to google on stackoverflow :)
         if (infoGraphicBackgrounds[randomBackgroundColor] == "#FFFFFF") {
           gfxArray = (getRandom(gfxContrastsFFFFFF, 3));
           myInfoGraphicGfx1.style.color = gfxArray[0];
@@ -775,11 +773,11 @@
           }
           return WcagRating;
         }
-		// Set up the WCAG results to show
+        // Set up the WCAG results to show
         g1contrastWCAG.innerHTML = getWcagRating(gfx1ContrastDisplay);
         g2contrastWCAG.innerHTML = getWcagRating(gfx2ContrastDisplay);
         g3contrastWCAG.innerHTML = getWcagRating(gfx3ContrastDisplay);
-		// Text contrast WCAG results
+        // Text contrast WCAG results
         tcontrastWCAG.innerHTML = getWcagRating(textContrastDisplay);
         // Colournames array
         let colournames = [{
@@ -857,14 +855,11 @@
         gfx1ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")";
         gfx2ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")";
         gfx3ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")";
-		
-		// Put results into a special span that is only visible to screen reader users
-		document.getElementById("srResults").innerHTML = "Results: Background colour " + infoGraphicBackgrounds[randomBackgroundColor] + " " + "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")" + ", Text colour: " + infTextColor + " " + "(" + nameLookup(colournames, infTextColor) + ")" + ", Text contrast: " + textContrastDisplay + ":1, " + "W C A G Rating: " + getWcagRating(textContrastDisplay) + ". Graphic 1 colour: " + myInfoGraphicGfx1Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")" + ". Graphic 1 contrast: " + gfx1ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx1ContrastDisplay) + ". " + "Graphic 2 colour: " + myInfoGraphicGfx2Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")" + ". Graphic 2 contrast: " + gfx2ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx2ContrastDisplay) + ". " + "Graphic 3 colour: " + myInfoGraphicGfx3Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")" + ". Graphic 3 contrast: " + gfx3ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx3ContrastDisplay); 
-		
-		
+        // Put results into a special span that is only visible to screen reader users
+        document.getElementById("srResults").innerHTML = "Results: Background colour " + infoGraphicBackgrounds[randomBackgroundColor] + " " + "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")" + ", Text colour: " + infTextColor + " " + "(" + nameLookup(colournames, infTextColor) + ")" + ", Text contrast: " + textContrastDisplay + ":1, " + "W C A G Rating: " + getWcagRating(textContrastDisplay) + ". Graphic 1 colour: " + myInfoGraphicGfx1Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")" + ". Graphic 1 contrast: " + gfx1ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx1ContrastDisplay) + ". " + "Graphic 2 colour: " + myInfoGraphicGfx2Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")" + ". Graphic 2 contrast: " + gfx2ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx2ContrastDisplay) + ". " + "Graphic 3 colour: " + myInfoGraphicGfx3Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")" + ". Graphic 3 contrast: " + gfx3ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx3ContrastDisplay);
       };
-	  // Finally we run the function when the page loads
-	  // It also runs when you press the button	  
+      // Finally we run the function when the page loads
+      // It also runs when you press the button	  
       // randomAll();
     </script>
   </body>
