@@ -109,7 +109,7 @@
       <main class="page-main" id="main">
         <article class="standard">
           <h1 id="top">UoS Brand Accessible Colour Suggester</h1>
-          <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://go.soton.ac.uk/uosbrand">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic.</p>
+          <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://go.soton.ac.uk/uosbrand">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic.</p><p>Use the Randomise button to get started!</p>
           
           <div class="resourseList">
             <div class="grid-child">
@@ -124,51 +124,57 @@
               </section>
             </div>
             <div class="grid-child" id="info">
-              <section class="details" aria-live="polite">
+              <section class="details" aria-hidden="true">
 				<h2 id="colDetailsH2">Colour details</h2>
-                <p class="details">Background colour: <span class="result2">
-                    <span id="bgColor" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
-                    <span class="details result" id="backgroundColor"></span>
-                    <span class="details result" id="backgroundName"></span>
+                <p class="details"><span id="bgC" class="details">Background colour: </span><span class="result2">
+                    <span id="bgColor" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span class="details result" id="backgroundColor" aria-hidden="true"></span>
+                    <span class="details result" id="backgroundName" aria-hidden="true"></span>
                   </span>
                 </p>
                 <p class="details">Text colour: <span class="result2">
-                    <span id="tColorColor" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
-                    <span class="details result" id="tcolor"></span>
-                    <span class="details result" id="tColorName"></span>
+                    <span id="tColorColor" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span class="details result" id="tcolor" aria-hidden="true"></span>
+                    <span class="details result" id="tColorName" aria-hidden="true"></span>
                   </span>
-                  <br /> Text contrast: <span class="details result" id="tcontrast"></span>
-                  <br />WCAG Rating: <span class="details result" id="tcontrastWCAG"></span>
+                  <br /> Text contrast: <span class="details result" id="tcontrast" aria-hidden="true"></span>
+                  <br />WCAG Rating: <span class="details result" id="tcontrastWCAG" aria-hidden="true"></span>
                   <br />
                   <span class="arrayDetails">Text contrast array used: <span class="details" id="tcontrastArray"></span>
                   </span>
                 <p class="details">Graphic 1 <span aria-hidden="true">&#x2745;</span> colour: <span class="result2">
-                    <span id="g1colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
-                    <span class="details result" id="g1colourSpan1"></span>
-                    <span class="details result" id="gfx1ColorName"></span>
+                    <span id="g1colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span class="details result" id="g1colourSpan1" aria-hidden="true"></span>
+                    <span class="details result" id="gfx1ColorName" aria-hidden="true"></span>
                   </span>
-                  <br />Graphic 1 contrast: <span id="g1contrast" class="details result"></span>
-                  <br />WCAG Rating: <span class="details result" id="g1contrastWCAG"></span>
+                  <br />Graphic 1 contrast: <span id="g1contrast" aria-hidden="true" class="details result"></span>
+                  <br />WCAG Rating: <span class="details result" id="g1contrastWCAG" aria-hidden="true"></span>
                 </p>
                 <p class="details">Graphic 2 <span aria-hidden="true">&#9825;</span> colour: <span class="result2">
-                    <span id="g2colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
-                    <span id="g2colourSpan1" class="details result"></span>
-                    <span class="details result" id="gfx2ColorName"></span>
+                    <span id="g2colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="g2colourSpan1" class="details result" aria-hidden="true"></span>
+                    <span class="details result" id="gfx2ColorName" aria-hidden="true"></span>
                   </span>
-                  <br />Graphic 2 contrast: <span class="details result" id="g2contrast"></span>
-                  <br />WCAG Rating: <span class="details result" id="g2contrastWCAG"></span>
+                  <br />Graphic 2 contrast: <span class="details result" id="g2contrast" aria-hidden="true"></span>
+                  <br />WCAG Rating: <span class="details result" id="g2contrastWCAG" aria-hidden="true"></span>
                 </p>
                 <p class="details">Graphic 3 <span aria-hidden="true">&#10026;</span> colour: <span class="result2">
-                    <span id="g3colourSpan2" class="colorBox">&nbsp;&nbsp;&nbsp;</span>
-                    <span id="g3colourSpan1" class="details result"></span>
-                    <span class="details result" id="gfx3ColorName"></span>
+                    <span id="g3colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="g3colourSpan1" class="details result" aria-hidden="true"></span>
+                    <span class="details result" id="gfx3ColorName" aria-hidden="true"></span>
                   </span>
-                  <br />Graphic 3 contrast: <span id="g3contrast" class="details result"></span>
-                  <br />WCAG Rating: <span id="g3contrastWCAG" class="details result"></span>
+                  <br />Graphic 3 contrast: <span id="g3contrast" class="details result" aria-hidden="true"></span>
+                  <br />WCAG Rating: <span id="g3contrastWCAG" class="details result" aria-hidden="true"></span>
                 </p>
               </section>
             </div>
           </div>
+		  <section id="srDetails" class="sr-only">
+		  <span id="srResults" aria-live="polite">
+		  
+		  </span>
+		  
+		  </section>
           <section class="infoDetails">
             <h2>What does "WCAG Rating" mean?</h2>
             <dl>
@@ -404,7 +410,8 @@
         const infoGraphicBackgrounds = ["#FFFFFF", "#231F20", "#00131D", "#495961", "#758D9A", "#9FB1BD", "#E1E8EC", "#002E3B", "#005C84", "#74C9E5", "#3CBAC6", "#B3DBD2", "#4BB694", "#C1D100", "#FCBC00", "#EF7D00", "#D5007F", "#8D3970"];
         //pick random button background put in variable
         const randomBackgroundColor = Math.floor(Math.random() * infoGraphicBackgrounds.length);
-        backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];;
+        backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
+		bgC.innerHTML = "Background colour: ";
         myInfoGraphicBox.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
         /* Set the main text colour */
         /* Create arrays with every possible accessible text colour */
@@ -850,10 +857,15 @@
         gfx1ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")";
         gfx2ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")";
         gfx3ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")";
+		
+		// Put results into a special span that is only visible to screen reader users
+		document.getElementById("srResults").innerHTML = "Results: Background colour " + infoGraphicBackgrounds[randomBackgroundColor] + " " + "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")" + ", Text colour: " + infTextColor + " " + "(" + nameLookup(colournames, infTextColor) + ")" + ", Text contrast: " + textContrastDisplay + ":1, " + "W C A G Rating: " + getWcagRating(textContrastDisplay) + ". Graphic 1 colour: " + myInfoGraphicGfx1Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")" + ". Graphic 1 contrast: " + gfx1ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx1ContrastDisplay) + ". " + "Graphic 2 colour: " + myInfoGraphicGfx2Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")" + ". Graphic 2 contrast: " + gfx2ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx2ContrastDisplay) + ". " + "Graphic 3 colour: " + myInfoGraphicGfx3Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")" + ". Graphic 3 contrast: " + gfx3ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx3ContrastDisplay); 
+		
+		
       };
 	  // Finally we run the function when the page loads
 	  // It also runs when you press the button	  
-      randomAll();
+      // randomAll();
     </script>
   </body>
 </html>
