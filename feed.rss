@@ -15,6 +15,13 @@
       <height>1125</height>
     </image>
     <item>
+      <title>UoS Brand Accessible Colour Suggester</title>
+      <pubDate>Tue, 6 Sep 2022 09:55:09 +0100</pubDate>
+      <link>https://matthewdeeprose.github.io/infographic-colour-generator.html</link>
+      <category>accessibility, colour contrast</category>
+      <description><![CDATA[I created this simple tool that ranomly chooses a set of colours from our corporate brand that all meet accessibility guidelines for contrast. This was an interesting learning experience to help me learn a bit more about Javascript and ARIA. I hope to spend some more time improving this for a future more extendable iteration.]]></description>
+    </item>
+    <item>
       <title>Two steps forward? Making accessibility easier.</title>
       <pubDate>Thu, 4 Aug 2022 07:43:25 +0100</pubDate>
       <link>https://matthewdeeprose.github.io/two-steps</link>
