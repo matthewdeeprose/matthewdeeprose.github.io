@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel">
+    <meta name="keywords" content="presentation,alternative text,alt text,images,wcag,powerpoint,office,accessibility,a11y,blackboard,vle,lms,ally,excel,word,reading order,contrast,colour,document headings,table headings,use of colour,PDF accessibility,accessibility inspector,MS Office,Microsoft Office,Office 365,Microsoft 365">
+    <meta name="author" content="Matthew Deeprose">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</title>
+    <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+    <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+    <meta property="og:title" content="Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel - Matthew Deeprose">
+    <meta property="og:description" content="">
+    <meta property="og:image" content="https://matthewdeeprose.github.io/betterContent.png">
+    <meta property="og:image:alt" content="">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://matthewdeeprose.github.io/better_content_made_easy.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="favicon.ico">
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel - Matthew Deeprose" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta name="twitter:image" content="https://matthewdeeprose.github.io/betterContent.png" />
+    <meta name="twitter:image:alt" content="" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+              <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                  <path d="m6.5 17.5h4" />
+                  <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                  <path d="m2.5 13.5h4" />
+                  <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+            <span id="hamburger">
+              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html" class="active">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html">Projects</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 id="top">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</h1>
+		  <p>Presented on 1 September 2022 to the University of Southampton 365 Community with my colleague <a href="https://www.linkedin.com/in/lsearle/">Luke Searle</a>.</p>
+          <h2>Presentation recording and transcript</h2>
+          <div class="videoWrapper">
+            <lite-youtube videoid="vIHHkrCu5JQ" style="background-image: url('betterContent.png');">
+              <a href="https://www.youtube.com/watch?v=vIHHkrCu5JQ" class="lty-playbtn" title="Play Video">
+                <span class="lyt-visually-hidden">Play Video: Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel.</span>
+              </a>
+            </lite-youtube>
+          </div>
+          <p>
+            <a href="better_content_made_easy__transcript.html">Read the transcript</a>
+          </p>
+          <h2>Synopsis</h2>
+          <p>In this session we introduce the accessibility inspector in Word, PowerPoint, and Excel. The accessibility inspector:</p>
+          <ul>
+            <li>identifies possible improvements you can make to the accessibility of your documents</li>
+            <li>runs whilst you’re working</li>
+            <li>will show you how to make your document more accessible.</li>
+          </ul>
+          <h2>Resources</h2>
+          <ul>
+            <li>
+              <a href="Better_content--made_easy--using_the_accessibility_inspector_in_office.pptx">Slide Deck</a> [34.7 MB PPTX]
+            </li>
+          </ul>
+          <h2>Links</h2>
+          <h3>About the accessibility inspector</h3>
+          <ul>
+            <li>
+              <a href="https://elearn.soton.ac.uk/knowledge-base/accessibility-in-m365/">How to turn on the accessibility inspector if you do not see it.</a>
+            </li>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/rules-for-the-accessibility-checker-651e08f2-0fc3-4e10-aaca-74b4a67101c1">Rules for the Accessibility Checker (Microsoft).</a>
+            <li>
+          </ul>
+          <h3>Word accessibility links</h3>
+          <h4>General Word Links</h4>
+          <ul>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/make-your-word-documents-accessible-to-people-with-disabilities-d9bf3683-87ac-47ea-b91a-78dcacb3c66d">Make your Word documents accessible to people with disabilities (Microsoft).</a>
+            <li>
+          </ul>
+          <h4>Headings in Word</h4>
+          <ul>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/video-improve-accessibility-with-heading-styles-68f1eeff-6113-410f-8313-b5d382cc3be1">Improve accessibility with heading styles (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://www.linkedin.com/learning-login/share?account=35146660&forceAccount=false&redirect=https%3A%2F%2Fwww.linkedin.com%2Flearning%2Fcreating-accessible-pdfs-14445392%2Fstyles-and-outline-levels%3Ftrk%3Dshare_video_url%26shareId%3Dulw2Vx84QCqcQ3I6XzTp2g%253D%253D"></a>Styles and outline levels [in Word] (LinkedIn Learning).
+            <li>
+          </ul>
+          <h4>Tables in Word</h4>
+          <ul>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/video-create-accessible-tables-in-word-cb464015-59dc-46a0-ac01-6217c62210e5">Create accessible tables in Word (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://www.linkedin.com/learning-login/share?account=35146660&forceAccount=false&redirect=https%3A%2F%2Fwww.linkedin.com%2Flearning%2Fcreating-accessible-pdfs-14445392%2Ftagging-tables%3Ftrk%3Dshare_video_url%26shareId%3Dulw2Vx84QCqcQ3I6XzTp2g%253D%253D">Tagging tables [in Word] (LinkedIn Learning).</a>
+            <li>
+          </ul>
+          <h3>PowerPoint accessibility links</h3>
+          <h4>General PowerPoint links</h4>
+          <ul>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/make-your-powerpoint-presentations-accessible-to-people-with-disabilities-6f7772b2-2f33-4bd2-8ca7-dae3b2b3ef25">Make your PowerPoint presentations accessible to people with disabilities (Microsoft).</a>
+            <li>
+          </ul>
+          <h4>Colour contrast in PowerPoint</h4>
+          <ul>
+            <li>
+              <a href="https://accessible-communications.com/">Use Colour Contrast in PowerPoint (Accessible by design).</a>
+            <li>
+            <li>
+              <a href="https://www.washington.edu/accessibility/documents/contrast/">Colour contrast in documents (University of Washington).</a>
+            <li>
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/07/20/design-ideas-three-ways-overview/">Three ways PowerPoint’s “Design Ideas” excludes your audience, and how to fix it (Digital Learning).</a>
+            <li>
+          </ul>
+          <h4>Using the University of Southampton colour palette</h4>
+          <ul>
+            <li>
+              <a href="matrix/matrix.html">Brand Accessibility Matrix</a>
+            <li>
+            <li>
+              <a href="infographic-colour-generator.html">Brand Accessible Colour Suggester</a>
+            <li>
+          </ul>
+          <h4>Reading order in PowerPoint</h4>
+          <ul>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/make-slides-easier-to-read-by-using-the-reading-order-pane-863b5c1c-4f19-45ec-96e6-93a6457f5e1c">Make slides easier to read by using the Reading Order pane (Microsoft)</a>
+            <li>
+            <li>
+              <a href="https://csdtl.info.yorku.ca/2021/01/set-the-reading-order-of-a-powerpoint-slide/">Set the Reading Order of a PowerPoint Slide (York University).</a>
+            <li>
+            <li>
+              <a href="https://support.microsoft.com/en-gb/office/video-create-slides-with-an-accessible-reading-order-794fc5da-f686-464d-8c29-1c6ab8515465">Create slides with an accessible reading order (Video by Microsoft).</a>
+            <li>
+          </ul>
+          <h3>Excel accessibility links</h3>
+          <ul>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/make-your-excel-documents-accessible-to-people-with-disabilities-6cc05fc5-1314-48b5-8eb3-683e49b3e593">Make your Excel documents accessible to people with disabilities (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://www.linkedin.com/learning/paths/excel-boot-camp?u=35146660">Excel bootcamp course (LinkedIn Learning).</a>
+            <li>
+            <li>
+              <a href="https://digitalaccessibility.leeds.ac.uk/how-to-create-accessible-content/spreadsheets-2/create-accessible-excel-spreadsheets/">Create accessible Excel spreadsheets (University of Leeds).</a>
+            <li>
+            <li>
+              <a href="alt-text-images-charts-graphs.html">What is alternative text? How do I write it for images, charts, and graphs?</a>
+            <li>
+          </ul>
+          <h3>Making your computer work for you</h3>
+          <ul>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/dictate-your-documents-in-word-3876e05f-3fcc-418f-b8ab-db7ce0d11d3c">Dictate your documents in Word (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://support.microsoft.com/en-gb/office/use-immersive-reader-in-word-a857949f-c91e-4c97-977c-a4efcaf9b3c1">Use Immersive Reader in Word (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://support.microsoft.com/en-us/windows/set-your-display-for-night-time-in-windows-18fe903a-e0a1-8326-4c68-fd23d7aaf136#Category=Windows_10">Reduce blue light in Windows (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://support.microsoft.com/en-us/windows/make-text-and-apps-bigger-c3095a80-6edd-4779-9282-623c4d721d64#:~:text=Make%20text%20bigger%20on%20your%20screen&text=To%20go%20to%20the%20Accessibility,the%20text%20size%2C%20select%20Apply.">Make text and apps bigger in Windows (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://support.microsoft.com/en-us/windows/make-windows-easier-to-see-c97c2b0d-cadb-93f0-5fd1-59ccfe19345d">Make Windows easier to see (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://support.microsoft.com/en-us/windows/change-colors-in-windows-d26ef4d6-819a-581c-1581-493cfcc005fe">Change colours in Windows (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://support.microsoft.com/en-us/office/listen-to-your-outlook-email-messages-64e393a4-1229-45c0-acdb-dc93330ebdb3">Listen to your emails in Outlook (Microsoft).</a>
+            <li>
+            <li>
+              <a href="https://mcmw.abilitynet.org.uk/">My Computer, My Way (AbilityNet).</a>
+            <li>
+          </ul>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related content</h2>
+        </section>
+        <section class="related">
+          <h3>Presentations</h3>
+          <ul class="relUL">
+            <li>
+              <a href="alt-text-images-charts-graphs.html">What is alternative text? How do I write it for images, charts, and graphs?</a>
+            </li>
+            <li>
+              <a href="two-steps.html">Two steps forward? Making accessibility easier.</a>
+            </li>
+            <li>
+              <a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h3>Blog posts</h3>
+          <ul class="relUL">
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/07/20/design-ideas-three-ways-overview/">Three ways PowerPoint’s "Design Ideas" excludes your audience, and how to fix it.</a>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS">
+          <a id="rssA" href="feed.rss">RSS</a>
+        </div>
+        <div id="SiteMap">
+          <a href="siteMap.html">Site Map</a>
+        </div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
+        </div>
+      </footer>
+    </div>
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false"
+        } else {
+          menuAriaAttrib = "true"
+        }
+        document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
+      window.onscroll = function() {
+        scrollFunction()
+      };
+
+      function scrollFunction() {
+        if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
+
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById('skipToContent').focus();
+      }
+
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById('rssA').focus();
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
+
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia('(prefers-color-scheme: dark)');
+        let dt;
+        if (d.matches) {
+          dt = 'dark';
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = 'light'
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == 'dark' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'light' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'dark' && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
+
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
+
+      function applyThemePreference() {
+        if (themePref == 'Dark') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          theButton.setAttribute("aria-pressed", "true");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        } else if (themePref == 'Light') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          theButton.setAttribute("aria-pressed", "false");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        }
+      }
+      applyThemePreference();
+    </script>
+    <script src="scripts/lite-yt-embed.js"></script>
+    <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+  </body>
+</html>
