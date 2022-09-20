@@ -15,6 +15,17 @@
       <height>1125</height>
     </image>
     <item>
+      <title>Use group policy to set the Microsoft Office Accessibility Inspector to "check while you work" by default</title>
+      <pubDate>Tue, 20 Sep 2022 15:31:40 +0100</pubDate>
+      <description><![CDATA[The Accessibility Inspector in Office is a useful tool that helps content creators identify accessibility potential improvements while they create content in Word, PowerPoint, and Excel. The tool does not run by default. A user has to follow three steps to turn it on.
+
+To promote the use of this tool we arranged to have the accessibility inspector run by default on University-managed desktops and laptops running Windows with Microsoft 365.
+
+We have now successfully implemented this change. It's early days but feedback so far is positive. Here is a slightly anonymised implementation plan, with thanks to my colleague Nick Williams for sharing it.
+
+This guidance is provided on a best-efforts basis. It should be tested in a pre-production environment first. No guarantees or assurances etc.]]></description>
+    </item>
+    <item>
       <title>UoS Brand Accessible Colour Suggester</title>
       <pubDate>Tue, 6 Sep 2022 09:55:09 +0100</pubDate>
       <link>https://matthewdeeprose.github.io/infographic-colour-generator.html</link>

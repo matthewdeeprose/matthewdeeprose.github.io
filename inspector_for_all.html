@@ -103,19 +103,19 @@
       </div>
       <main class="page-main" id="main">
         <article class="standard">
-          <h1 id="top">Use group policy to set the Microsoft Office Accessibility Inspector to "check while you work" by default.</h1>
+          <h1 id="top">Use group policy to set the Microsoft Office Accessibility Inspector to "check while you work" by default</h1>
           <p>The <a href="https://support.microsoft.com/en-us/office/rules-for-the-accessibility-checker-651e08f2-0fc3-4e10-aaca-74b4a67101c1">Accessibility Inspector in Office</a> is a useful tool that helps content creators identify accessibility potential improvements while they create content in Word, PowerPoint, and Excel. The tool does not run by default. A user has to <a href="https://elearn.soton.ac.uk/knowledge-base/accessibility-in-m365/">follow three steps</a> to turn it on. </p>
           <p>To promote the use of this tool we arranged to have the accessibility inspector run by default on University-managed desktops and laptops running Windows with Microsoft 365.</p>
           <p>We have now successfully implemented this change. It's early days but feedback so far is positive. Here is a slightly anonymised implementation plan, with thanks to my colleague Nick Williams for sharing it.</p>
-          <p>This guidance is provided on a best-efforts basis. It should be tested in a pre-production environment first. No guarantees or assurances etc.</p>
+          <p>This guidance is provided "as-is". Test in a pre-production environment first. No guarantees or assurances etc.</p>
           <section class=".Example">
             <h2>Implementation plan</h2>
             <ol>
               <li>Login to a management server</li>
-              <li>Edit the Group Policy [This will be unique to your environment]</li>
+              <li>Edit the Group Policy [this will be unique to your environment]</li>
               <li>Navigate to User Configuration > Preferences > Windows Settings > Registry</li>
               <li>Create a new Registry Collection called "Office Accessibility Checker"</li>
-              <li>Inside the new collection (folder) create three new registry keys (NB The Value Name for Word is different to Excel and Powerpoint!):</li>
+              <li>Inside the new collection (folder) create three new registry keys (Note that the Value Name for Word is different that used for Excel and PowerPoint):</li>
             </ol>
           </section>
           <section class=".Example">
@@ -182,7 +182,7 @@
                 <h2>Backout plan</h2>
                 <ol>
                   <li>Login to a management server
-                  <li>Edit the Group Policy [This will be unique to your environment]
+                  <li>Edit the Group Policy [this will be unique to your environment]
                   <li>Navigate to User Configuration > Preferences > Windows Settings > Registry
                   <li>Navigate to the Registry Collection called "Office Accessibility Checker"
                   <li>Disable the three Registry items inside (to prevent any new deployment of the keys)</li>
@@ -190,7 +190,7 @@
                 <h3>To revert the change completely (not recommended)</h3>
                 <ol>
                   <li>Login to a management server</li>
-                  <li>Edit the Group Policy [This will be unique to your environment]</li>
+                  <li>Edit the Group Policy [this will be unique to your environment]</li>
                   <li>Navigate to User Configuration > Preferences > Windows Settings > Registry</li>
                   <li>Navigate to the Registry Collection called "Office Accessibility Checker"</li>
                   <li> Disable the three Registry items inside (to prevent any new deployment of the keys) <ol>
@@ -198,7 +198,7 @@
                       <li>Change the "Create" to a "Replace"</li>
                       <li>Change the Value "1" to a "0" </li>
                       <li>Make sure "Apply Once and do not reapply" is still ticked on the "Common" tab</li>
-                      <li>Enable each newly create key, in turn</li>
+                      <li>Enable each newly created key, in turn</li>
                     </ol>
                   </li>
                 </ol>
