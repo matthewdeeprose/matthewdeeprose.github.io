@@ -15,8 +15,21 @@
       <height>1125</height>
     </image>
     <item>
+      <title>Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</title>
+      <pubDate>Wed, 21 Sep 2022 06:32:50 +0100</pubDate>
+      <link>https://matthewdeeprose.github.io/better_content_made_easy.html</link>
+      <category>accessibility</category>
+      <description><![CDATA[In this session we introduce the accessibility inspector in Word, PowerPoint, and Excel. The accessibility inspector: 
+<ul>
+<li>identifies possible improvements you can make to the accessibility of your documents </li>
+<li>runs whilst you’re working </li>
+<li>will show you how to make your document more accessible. </li></ul>]]></description>
+    </item>
+    <item>
       <title>Use group policy to set the Microsoft Office Accessibility Inspector to "check while you work" by default</title>
       <pubDate>Tue, 20 Sep 2022 15:31:40 +0100</pubDate>
+      <link>https://matthewdeeprose.github.io/inspector_for_all</link>
+      <category>accessibility, group policy</category>
       <description><![CDATA[The Accessibility Inspector in Office is a useful tool that helps content creators identify accessibility potential improvements while they create content in Word, PowerPoint, and Excel. The tool does not run by default. A user has to follow three steps to turn it on.
 
 To promote the use of this tool we arranged to have the accessibility inspector run by default on University-managed desktops and laptops running Windows with Microsoft 365.
