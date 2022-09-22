@@ -400,467 +400,239 @@
     <script src="scripts/lite-yt-embed.js"></script>
     <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
     <script>
-      function randomAll() {
-        /* put into the infographic box into the myInfoGraphicBox variable */
-        const myInfoGraphicBox = document.getElementById("infoGraphicBox");
-        const bgColId = document.getElementById("bgColor");
-        const tColId = document.getElementById("tColorColor");
-        const gCol1Id = document.getElementById("g1colourSpan2");
-        const gCol2Id = document.getElementById("g2colourSpan2");
-        const gCol3Id = document.getElementById("g3colourSpan2");
-        // list possible background buttons
-        const infoGraphicBackgrounds = ["#FFFFFF", "#231F20", "#00131D", "#495961", "#758D9A", "#9FB1BD", "#E1E8EC", "#002E3B", "#005C84", "#74C9E5", "#3CBAC6", "#B3DBD2", "#4BB694", "#C1D100", "#FCBC00", "#EF7D00", "#D5007F", "#8D3970"];
-        //pick random button background put in variable
-        const randomBackgroundColor = Math.floor(Math.random() * infoGraphicBackgrounds.length);
-        backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
-        bgC.innerHTML = "Background colour: ";
-        myInfoGraphicBox.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
-        /* Set the main text colour */
-        /* Create arrays with every possible accessible text colour */
-        const textcontrastsFFFFFF = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#D5007F', '#8D3970'];
-        const textcontrasts231F20 = ['#FFFFFF', '#758D9A', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#4BB694', '#C1D100', '#FCBC00', '#EF7D00'];
-        const textcontrasts00131D = ['#FFFFFF', '#758D9A', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#4BB694', '#C1D100', '#FCBC00', '#EF7D00'];
-        const textcontrasts495961 = ['#FFFFFF', '#E1E8EC', '#B3DBD2'];
-        const textcontrasts758D9A = ['#231F20', '#00131D'];
-        const textcontrasts9FB1BD = ['#231F20', '#00131D', '#002E3B'];
-        const textcontrastsE1E8EC = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#8D3970'];
-        const textcontrasts002E3B = ['#FFFFFF', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#4BB694', '#C1D100', '#FCBC00', '#EF7D00'];
-        const textcontrasts005C84 = ['#FFFFFF', '#E1E8EC', '#B3DBD2'];
-        const textcontrasts74C9E5 = ['#231F20', '#00131D', '#002E3B'];
-        const textcontrasts3CBAC6 = ['#231F20', '#00131D', '#002E3B'];
-        const textcontrastsB3DBD2 = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#8D3970'];
-        const textcontrasts4BB694 = ['#231F20', '#00131D', '#002E3B'];
-        const textcontrasts1E8765 = [];
-        const textcontrastsC1D100 = ['#231F20', '#00131D', '#002E3B'];
-        const textcontrastsFCBC00 = ['#231F20', '#00131D', '#002E3B'];
-        const textcontrastsEF7D00 = ['#231F20', '#00131D', '#002E3B'];
-        const textcontrastsE73037 = [];
-        const textcontrastsE73238 = [];
-        const textcontrastsD5007F = ['#FFFFFF'];
-        const textcontrasts8D3970 = ['#FFFFFF', '#E1E8EC', '#B3DBD2'];
-        //Graphic arrays 
-        const gfxContrastsFFFFFF = ['#231F20', '#00131D', '#495961', '#758D9A', '#002E3B', '#005C84', '#1E8765', '#E73037', '#E73238', '#D5007F', '#8D3970'];
-        const gfxContrasts231F20 = ['#FFFFFF', '#758D9A', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#4BB694', '#1E8765', '#C1D100', '#FCBC00', '#EF7D00', '#E73037', '#E73238', '#D5007F'];
-        const gfxContrasts00131D = ['#FFFFFF', '#758D9A', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#4BB694', '#1E8765', '#C1D100', '#FCBC00', '#EF7D00', '#E73037', '#E73238', '#D5007F'];
-        const gfxContrasts495961 = ['#FFFFFF', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#C1D100', '#FCBC00'];
-        const gfxContrasts758D9A = ['#FFFFFF', '#231F20', '#00131D', '#002E3B'];
-        const gfxContrasts9FB1BD = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#8D3970'];
-        const gfxContrastsE1E8EC = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#1E8765', '#E73037', '#E73238', '#D5007F', '#8D3970'];
-        const gfxContrasts002E3B = ['#FFFFFF', '#758D9A', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#4BB694', '#1E8765', '#C1D100', '#FCBC00', '#EF7D00', '#E73037', '#E73238'];
-        const gfxContrasts005C84 = ['#FFFFFF', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#C1D100', '#FCBC00'];
-        const gfxContrasts74C9E5 = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#8D3970'];
-        const gfxContrasts3CBAC6 = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#8D3970'];
-        const gfxContrastsB3DBD2 = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#D5007F', '#8D3970'];
-        const gfxContrasts4BB694 = ['#231F20', '#00131D', '#002E3B'];
-        const gfxContrasts1E8765 = ['#FFFFFF', '#231F20', '#00131D', '#E1E8EC', '#002E3B'];
-        const gfxContrastsC1D100 = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#8D3970'];
-        const gfxContrastsFCBC00 = ['#231F20', '#00131D', '#495961', '#002E3B', '#005C84', '#8D3970'];
-        const gfxContrastsEF7D00 = ['#231F20', '#00131D', '#002E3B'];
-        const gfxContrastsE73037 = ['#FFFFFF', '#231F20', '#00131D', '#E1E8EC', '#002E3B'];
-        const gfxContrastsE73238 = ['#FFFFFF', '#231F20', '#00131D', '#E1E8EC', '#002E3B'];
-        const gfxContrastsD5007F = ['#FFFFFF', '#231F20', '#00131D', '#E1E8EC', '#B3DBD2'];
-        const gfxContrasts8D3970 = ['#FFFFFF', '#9FB1BD', '#E1E8EC', '#74C9E5', '#3CBAC6', '#B3DBD2', '#C1D100', '#FCBC00'];
-        /* Get the element in which our text is */
-        let myInfoGraphicText = document.getElementById("infoTexT");
-        /* Get Graphics */
-        /* Get Graphic 1 */
-        let myInfoGraphicGfx1 = document.getElementById("icon1");
-        /* Get Graphic 2 */
-        let myInfoGraphicGfx2 = document.getElementById("icon2");
-        /* Get Graphic 3 */
-        let myInfoGraphicGfx3 = document.getElementById("icon3");
-        /* Build the first string name we need 
-	We will use this to start setting the text colour 
-	let textString = "textContrasts" + infoGraphicBackgrounds[randomBackgroundColor].substring(1);
-	console.log(textString);
-
-	 Set text colour 
-	let textColorValue = Math.floor(
-            Math.random() * textString.length
-        );
-        myInfoGraphicText.style.color = "#FFFFFF"; */
-        // Couldn't get the above to work, no idea why...
-        // Big if else then. Had to use var, probably due to my poor practice.
-        if (infoGraphicBackgrounds[randomBackgroundColor] == "#FFFFFF") {
-          let h2TextColor = Math.floor(Math.random() * textcontrastsFFFFFF.length);
-          myInfoGraphicText.style.color = textcontrastsFFFFFF[h2TextColor];
-          var infTextColor = textcontrastsFFFFFF[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrastsFFFFFF";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#9FB1BD") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts9FB1BD.length);
-          myInfoGraphicText.style.color = textcontrasts9FB1BD[h2TextColor];
-          var infTextColor = textcontrasts9FB1BD[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts9FB1BD";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#E1E8EC") {
-          let h2TextColor = Math.floor(Math.random() * textcontrastsE1E8EC.length);
-          myInfoGraphicText.style.color = textcontrastsE1E8EC[h2TextColor];
-          var infTextColor = textcontrastsE1E8EC[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrastsE1E8EC";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#74C9E5") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts74C9E5.length);
-          myInfoGraphicText.style.color = textcontrasts74C9E5[h2TextColor];
-          var infTextColor = textcontrasts74C9E5[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts74C9E5";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#3CBAC6") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts3CBAC6.length);
-          myInfoGraphicText.style.color = textcontrasts3CBAC6[h2TextColor];
-          var infTextColor = textcontrasts3CBAC6[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts3CBAC6";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#B3DBD2") {
-          let h2TextColor = Math.floor(Math.random() * textcontrastsB3DBD2.length);
-          myInfoGraphicText.style.color = textcontrastsB3DBD2[h2TextColor];
-          var infTextColor = textcontrastsB3DBD2[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrastsB3DBD2";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#C1D100") {
-          let h2TextColor = Math.floor(Math.random() * textcontrastsC1D100.length);
-          myInfoGraphicText.style.color = textcontrastsC1D100[h2TextColor];
-          var infTextColor = textcontrastsC1D100[h2TextColor];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#231F20") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts231F20.length);
-          myInfoGraphicText.style.color = textcontrasts231F20[h2TextColor];
-          var infTextColor = textcontrasts231F20[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts231F20";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#00131D") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts00131D.length);
-          myInfoGraphicText.style.color = textcontrasts00131D[h2TextColor];
-          var infTextColor = textcontrasts00131D[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts00131D";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#495961") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts495961.length);
-          myInfoGraphicText.style.color = textcontrasts495961[h2TextColor];
-          var infTextColor = textcontrasts495961[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts495961";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#758D9A") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts758D9A.length);
-          myInfoGraphicText.style.color = textcontrasts758D9A[h2TextColor];
-          var infTextColor = textcontrasts758D9A[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts758D9A";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#002E3B") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts002E3B.length);
-          myInfoGraphicText.style.color = textcontrasts002E3B[h2TextColor];
-          var infTextColor = textcontrasts002E3B[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts002E3B";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#005C84") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts005C84.length);
-          myInfoGraphicText.style.color = textcontrasts005C84[h2TextColor];
-          var infTextColor = textcontrasts005C84[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts005C84";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#4BB694") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts4BB694.length);
-          myInfoGraphicText.style.color = textcontrasts4BB694[h2TextColor];
-          var infTextColor = textcontrasts4BB694[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts4BB694";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#EF7D00") {
-          let h2TextColor = Math.floor(Math.random() * textcontrastsEF7D00.length);
-          myInfoGraphicText.style.color = textcontrastsEF7D00[h2TextColor];
-          var infTextColor = textcontrastsEF7D00[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrastsEF7D00";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#D5007F") {
-          let h2TextColor = Math.floor(Math.random() * textcontrastsD5007F.length);
-          myInfoGraphicText.style.color = textcontrastsD5007F[h2TextColor];
-          var infTextColor = textcontrastsD5007F[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrastsD5007F";
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#8D3970") {
-          let h2TextColor = Math.floor(Math.random() * textcontrasts8D3970.length);
-          myInfoGraphicText.style.color = textcontrasts8D3970[h2TextColor];
-          var infTextColor = textcontrasts8D3970[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrasts8D3970";
+    function randomAll() {
+      console.log("\n");
+      console.log("Randomise function starts");
+      console.log("\n");
+      // Colournames array
+      let colournames = [{
+        "colourHex": "#FFFFFF",
+        "name": "White"
+      }, {
+        "colourHex": "#231F20",
+        "name": "Plain Black"
+      }, {
+        "colourHex": "#00131D",
+        "name": "Rich Black"
+      }, {
+        "colourHex": "#495961",
+        "name": "Neutral 1"
+      }, {
+        "colourHex": "#758D9A",
+        "name": "Neutral 2"
+      }, {
+        "colourHex": "#9FB1BD",
+        "name": "Neutral 3"
+      }, {
+        "colourHex": "#E1E8EC",
+        "name": "Neutral 4"
+      }, {
+        "colourHex": "#002E3B",
+        "name": "Prussian"
+      }, {
+        "colourHex": "#005C84",
+        "name": "Marine 1"
+      }, {
+        "colourHex": "#74C9E5",
+        "name": "Marine 2"
+      }, {
+        "colourHex": "#3CBAC6",
+        "name": "Marine 3"
+      }, {
+        "colourHex": "#B3DBD2",
+        "name": "Marine 4"
+      }, {
+        "colourHex": "#4BB694",
+        "name": "Marine 5"
+      }, {
+        "colourHex": "#C1D100",
+        "name": "Marine 6"
+      }, {
+        "colourHex": "#FCBC00",
+        "name": "Horizon 1"
+      }, {
+        "colourHex": "#EF7D00",
+        "name": "Horizon 2"
+      }, {
+        "colourHex": "#D5007F",
+        "name": "Horizon 4"
+      }, {
+        "colourHex": "#8D3970",
+        "name": "Horizon 5"
+      }]
+      // Loop through the colour names array to create an array with only the hex codes
+      // Based on https://stackoverflow.com/questions/19590865/from-an-array-of-objects-extract-value-of-a-property-as-array
+      let infoGraphicBackgrounds = colournames.map((item) => item.colourHex);
+      console.log("\n");
+      console.log("Colours in our set: ");
+      console.log(infoGraphicBackgrounds);
+      console.log("\n");
+      /*
+    /* put into the infographic box into the myInfoGraphicBox variable */
+      const myInfoGraphicBox = document.getElementById("infoGraphicBox");
+      const bgColId = document.getElementById("bgColor");
+      const tColId = document.getElementById("tColorColor");
+      const gCol1Id = document.getElementById("g1colourSpan2");
+      const gCol2Id = document.getElementById("g2colourSpan2");
+      const gCol3Id = document.getElementById("g3colourSpan2");
+      // This amazing function to get n number of random values from an array
+      // found on https://stackoverflow.com/questions/19269545/how-to-get-a-number-of-random-elements-from-an-array
+      function getRandom(arr, n) {
+        var result = new Array(n),
+          len = arr.length,
+          taken = new Array(len);
+        if (n > len) throw new RangeError("getRandom: more elements taken than available");
+        while (n--) {
+          var x = Math.floor(Math.random() * len);
+          result[n] = arr[x in taken ? taken[x] : x];
+          taken[x] = --len in taken ? taken[len] : len;
+        }
+        return result;
+      }
+      /* Get the element in which our text is */
+      let myInfoGraphicText = document.getElementById("infoTexT");
+      /* Get Graphics */
+      //
+      /* Get Graphic 1 */
+      let myInfoGraphicGfx1 = document.getElementById("icon1");
+      /* Get Graphic 2 */
+      let myInfoGraphicGfx2 = document.getElementById("icon2");
+      /* Get Graphic 3 */
+      let myInfoGraphicGfx3 = document.getElementById("icon3");
+      // Start Arrays
+      // Create empty array for text colour
+      let textColor = [];
+      // Create empty array for graphics colours
+      let gfxColor = [];
+      // list possible backgrounds
+      // pick random button background put in variable
+      const randomBackgroundColor = Math.floor(Math.random() * infoGraphicBackgrounds.length);
+      backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
+      bgC.innerHTML = "Background colour: ";
+      myInfoGraphicBox.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
+      // Show the hex code of the colour on the web page
+      backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
+      currentBackground = infoGraphicBackgrounds[randomBackgroundColor];
+      // Show the colour itself on the page
+      bgColId.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
+      // Start the first loop for text colours
+      console.log("\n");
+      console.log("*** TXT ARRAY LOOP START ***");
+      console.log("\n");
+      for (let i = 0; i < infoGraphicBackgrounds.length; i++) {
+        let currentColor = infoGraphicBackgrounds[i];
+        //console.log(infoGraphicBackgrounds[i]);
+        console.log("Current colour is " + currentColor);
+        let currentColorRatio = chroma.contrast(currentBackground, infoGraphicBackgrounds[i]);
+        // console.log(chroma.contrast(currentBackground, infoGraphicBackgrounds[i]));
+        console.log("Contrast with " + currentBackground + " = " + currentColorRatio)
+        // add thing that adds colors with contrast over 4.5:1 to textColor array
+        if (currentColorRatio >= 4.5) {
+          textColor.push(currentColor);
+          console.log("Added " + currentColor + " to the array");
+        }
+        console.log("Current array items: " + textColor);
+      }
+      console.log("\n");
+      console.log("*** TXT ARRAY LOOP ENDS ***");
+      console.log("\n");
+      // Pick a random colour from the textColor array
+      let h2TextColor = Math.floor(Math.random() * textColor.length);
+      myInfoGraphicText.style.color = textColor[h2TextColor];
+      var infTextColor = textColor[h2TextColor];
+      // set text colour display
+      tcolor.innerHTML = infTextColor;
+      // get contrast ratio of text and background
+      let textContrastDisplay = chroma.contrast(infTextColor, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
+      // show contrast ratio
+      tcontrast.innerHTML = textContrastDisplay + ":1";
+      // set colour examples:
+      // text colour example
+      tColId.style.backgroundColor = infTextColor;
+      // Start the second loop, this time for gfx colours
+      console.log("\n");
+      console.log("*** GFX ARRAY LOOP START ***");
+      console.log("\n");
+      for (let i = 0; i < infoGraphicBackgrounds.length; i++) {
+        let currentColor2 = infoGraphicBackgrounds[i];
+        console.log("Current colour is " + currentColor2);
+        let currentColor2Ratio = chroma.contrast(currentBackground, infoGraphicBackgrounds[i]);
+        console.log("Contrast with " + currentBackground + " = " + currentColor2Ratio)
+        // add thing that adds colors with contrast over 3:1 to textColor array
+        if (currentColor2Ratio >= 3) {
+          gfxColor.push(currentColor2);
+          console.log("Added " + currentColor2 + " to the array");
+        }
+        console.log("Current gfx array items: " + gfxColor);
+      }
+      console.log("\n");
+      console.log("*** GFX ARRAY LOOP END ***");
+      console.log("\n");
+      // NEED TO ADD SOMETHING ABOUT WHAT TO DO IF THERE ARE LESS THAN THREE COLOURS IN THE GFX ARRAY!
+      // Let's get 3 random colours
+      gfxArray = (getRandom(gfxColor, 3));
+      myInfoGraphicGfx1.style.color = gfxArray[0];
+      myInfoGraphicGfx1.style.color = gfxArray[0];
+      myInfoGraphicGfx2.style.color = gfxArray[1];
+      myInfoGraphicGfx3.style.color = gfxArray[2];
+      let myInfoGraphicGfx1Color = gfxArray[0];
+      let myInfoGraphicGfx2Color = gfxArray[1];
+      let myInfoGraphicGfx3Color = gfxArray[2];
+      g1colourSpan1.innerHTML = myInfoGraphicGfx1Color;
+      g2colourSpan1.innerHTML = myInfoGraphicGfx2Color;
+      g3colourSpan1.innerHTML = myInfoGraphicGfx3Color;
+      /*gContrastArray.innerHTML = "gfxContrastsFFFFFF";*/
+      gCol1Id.style.backgroundColor = myInfoGraphicGfx1Color;
+      gCol2Id.style.backgroundColor = myInfoGraphicGfx2Color;
+      gCol3Id.style.backgroundColor = myInfoGraphicGfx3Color;
+      // get contrast ratio of graphic 1 and background
+      let gfx1ContrastDisplay = chroma.contrast(myInfoGraphicGfx1Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
+      // show contrast ratio
+      g1contrast.innerHTML = gfx1ContrastDisplay + ":1";
+      // get contrast ratio of graphic 2 and background
+      let gfx2ContrastDisplay = chroma.contrast(myInfoGraphicGfx2Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
+      // show contrast ratio
+      g2contrast.innerHTML = gfx2ContrastDisplay + ":1";
+      // get contrast ratio of graphic 3 and background
+      let gfx3ContrastDisplay = chroma.contrast(myInfoGraphicGfx3Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
+      // show contrast ratio
+      g3contrast.innerHTML = gfx3ContrastDisplay + ":1";
+      //function to determine wcag rating from a Contrast Ratio
+      function getWcagRating(contrastRatio) {
+        if (contrastRatio >= 7) {
+          WcagRating = "AAA";
+        } else if (contrastRatio >= 4.5) {
+          WcagRating = "AA";
+        } else if (contrastRatio >= 3) {
+          WcagRating = "G";
         } else {
-          let h2TextColor = Math.floor(Math.random() * textcontrastsFCBC00.length);
-          myInfoGraphicText.style.color = textcontrastsFCBC00[h2TextColor];
-          var infTextColor = textcontrastsFCBC00[h2TextColor];
-          tcontrastArray.innerHTML = "textcontrastsFCBC00";
+          WcagRating = "F";
         }
-        // set text colour display
-        tcolor.innerHTML = infTextColor;
-        // get contrast ratio of text and background
-        let textContrastDisplay = chroma.contrast(infTextColor, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
-        // show contrast ratio
-        tcontrast.innerHTML = textContrastDisplay + ":1";
-        // set colour examples:
-        // Background colour example
-        bgColId.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
-        // text colour example
-        tColId.style.backgroundColor = infTextColor;
-        // This amazing function to get n number of random values from an array
-        // found on https://stackoverflow.com/questions/19269545/how-to-get-a-number-of-random-elements-from-an-array
-        function getRandom(arr, n) {
-          var result = new Array(n),
-            len = arr.length,
-            taken = new Array(len);
-          if (n > len) throw new RangeError("getRandom: more elements taken than available");
-          while (n--) {
-            var x = Math.floor(Math.random() * len);
-            result[n] = arr[x in taken ? taken[x] : x];
-            taken[x] = --len in taken ? taken[len] : len;
-          }
-          return result;
-        }
-        // Let's get 3 random colours
-        // I hope to make a better version of this
-        // Once I know what question to google on stackoverflow :)
-        if (infoGraphicBackgrounds[randomBackgroundColor] == "#FFFFFF") {
-          gfxArray = (getRandom(gfxContrastsFFFFFF, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#231F20") {
-          gfxArray = (getRandom(gfxContrasts231F20, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#00131D") {
-          gfxArray = (getRandom(gfxContrasts00131D, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#495961") {
-          gfxArray = (getRandom(gfxContrasts495961, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#758D9A") {
-          gfxArray = (getRandom(gfxContrasts758D9A, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#9FB1BD") {
-          gfxArray = (getRandom(gfxContrasts9FB1BD, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#E1E8EC") {
-          gfxArray = (getRandom(gfxContrastsE1E8EC, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#002E3B") {
-          gfxArray = (getRandom(gfxContrasts002E3B, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#005C84") {
-          gfxArray = (getRandom(gfxContrasts005C84, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#74C9E5") {
-          gfxArray = (getRandom(gfxContrasts74C9E5, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#3CBAC6") {
-          gfxArray = (getRandom(gfxContrasts3CBAC6, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#B3DBD2") {
-          gfxArray = (getRandom(gfxContrastsB3DBD2, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#4BB694") {
-          gfxArray = (getRandom(gfxContrasts4BB694, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#C1D100") {
-          gfxArray = (getRandom(gfxContrastsC1D100, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#FCBC00") {
-          gfxArray = (getRandom(gfxContrastsFCBC00, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#EF7D00") {
-          gfxArray = (getRandom(gfxContrastsEF7D00, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else if (infoGraphicBackgrounds[randomBackgroundColor] == "#D5007F") {
-          gfxArray = (getRandom(gfxContrastsD5007F, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        } else {
-          gfxArray = (getRandom(gfxContrasts8D3970, 3));
-          myInfoGraphicGfx1.style.color = gfxArray[0];
-          myInfoGraphicGfx2.style.color = gfxArray[1];
-          myInfoGraphicGfx3.style.color = gfxArray[2];
-          var myInfoGraphicGfx1Color = gfxArray[0];
-          var myInfoGraphicGfx2Color = gfxArray[1];
-          var myInfoGraphicGfx3Color = gfxArray[2];
-        }
-        g1colourSpan1.innerHTML = myInfoGraphicGfx1Color;
-        g2colourSpan1.innerHTML = myInfoGraphicGfx2Color;
-        g3colourSpan1.innerHTML = myInfoGraphicGfx3Color;
-        /*gContrastArray.innerHTML = "gfxContrastsFFFFFF";*/
-        gCol1Id.style.backgroundColor = myInfoGraphicGfx1Color;
-        gCol2Id.style.backgroundColor = myInfoGraphicGfx2Color;
-        gCol3Id.style.backgroundColor = myInfoGraphicGfx3Color;
-        // get contrast ratio of graphic 1 and background
-        let gfx1ContrastDisplay = chroma.contrast(myInfoGraphicGfx1Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
-        // show contrast ratio
-        g1contrast.innerHTML = gfx1ContrastDisplay + ":1";
-        // get contrast ratio of graphic 2 and background
-        let gfx2ContrastDisplay = chroma.contrast(myInfoGraphicGfx2Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
-        // show contrast ratio
-        g2contrast.innerHTML = gfx2ContrastDisplay + ":1";
-        // get contrast ratio of graphic 3 and background
-        let gfx3ContrastDisplay = chroma.contrast(myInfoGraphicGfx3Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
-        // show contrast ratio
-        g3contrast.innerHTML = gfx3ContrastDisplay + ":1";
-        //function to determine wcag rating from a Contrast Ratio
-        function getWcagRating(contrastRatio) {
-          if (contrastRatio >= 7) {
-            WcagRating = "AAA";
-          } else if (contrastRatio >= 4.5) {
-            WcagRating = "AA";
-          } else if (contrastRatio >= 3) {
-            WcagRating = "G";
-          } else {
-            WcagRating = "F";
-          }
-          return WcagRating;
-        }
-        // Set up the WCAG results to show
-        g1contrastWCAG.innerHTML = getWcagRating(gfx1ContrastDisplay);
-        g2contrastWCAG.innerHTML = getWcagRating(gfx2ContrastDisplay);
-        g3contrastWCAG.innerHTML = getWcagRating(gfx3ContrastDisplay);
-        // Text contrast WCAG results
-        tcontrastWCAG.innerHTML = getWcagRating(textContrastDisplay);
-        // Colournames array
-        let colournames = [{
-          "colourHex": "#FFFFFF",
-          "name": "White"
-        }, {
-          "colourHex": "#231F20",
-          "name": "Plain Black"
-        }, {
-          "colourHex": "#00131D",
-          "name": "Rich Black"
-        }, {
-          "colourHex": "#495961",
-          "name": "Neutral 1"
-        }, {
-          "colourHex": "#758D9A",
-          "name": "Neutral 2"
-        }, {
-          "colourHex": "#9FB1BD",
-          "name": "Neutral 3"
-        }, {
-          "colourHex": "#E1E8EC",
-          "name": "Neutral 4"
-        }, {
-          "colourHex": "#002E3B",
-          "name": "Prussian"
-        }, {
-          "colourHex": "#005C84",
-          "name": "Marine 1"
-        }, {
-          "colourHex": "#74C9E5",
-          "name": "Marine 2"
-        }, {
-          "colourHex": "#3CBAC6",
-          "name": "Marine 3"
-        }, {
-          "colourHex": "#B3DBD2",
-          "name": "Marine 4"
-        }, {
-          "colourHex": "#4BB694",
-          "name": "Marine 5"
-        }, {
-          "colourHex": "#1E8765",
-          "name": "Shamrock"
-        }, {
-          "colourHex": "#C1D100",
-          "name": "Marine 6"
-        }, {
-          "colourHex": "#FCBC00",
-          "name": "Horizon 1"
-        }, {
-          "colourHex": "#EF7D00",
-          "name": "Horizon 2"
-        }, {
-          "colourHex": "#E73037",
-          "name": "Horizon 3"
-        }, {
-          "colourHex": "#E73238",
-          "name": "Coral"
-        }, {
-          "colourHex": "#D5007F",
-          "name": "Horizon 4"
-        }, {
-          "colourHex": "#8D3970",
-          "name": "Horizon 5"
-        }]
-        // Lookup function based on https://stackoverflow.com/questions/64456535/create-a-function-called-pricelookup-to-find-the-price-of-a-single-item 
-        function nameLookup(colournames, colour) {
-          let ret = colournames.find(x => x.colourHex === colour);
-          return ret ? ret.name : "No such item";
-        }
-        // Make names of colours appear
-        backgroundName.innerHTML = "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")";
-        tColorName.innerHTML = "(" + nameLookup(colournames, infTextColor) + ")";
-        gfx1ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")";
-        gfx2ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")";
-        gfx3ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")";
-        // Put results into a special span that is only visible to screen reader users
-        document.getElementById("srResults").innerHTML = "Results: Background colour " + infoGraphicBackgrounds[randomBackgroundColor] + " " + "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")" + ", Text colour: " + infTextColor + " " + "(" + nameLookup(colournames, infTextColor) + ")" + ", Text contrast: " + textContrastDisplay + ":1, " + "W C A G Rating: " + getWcagRating(textContrastDisplay) + ". Graphic 1 colour: " + myInfoGraphicGfx1Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")" + ". Graphic 1 contrast: " + gfx1ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx1ContrastDisplay) + ". " + "Graphic 2 colour: " + myInfoGraphicGfx2Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")" + ". Graphic 2 contrast: " + gfx2ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx2ContrastDisplay) + ". " + "Graphic 3 colour: " + myInfoGraphicGfx3Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")" + ". Graphic 3 contrast: " + gfx3ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx3ContrastDisplay);
+        return WcagRating;
+      }
+      // Set up the WCAG results to show
+      g1contrastWCAG.innerHTML = getWcagRating(gfx1ContrastDisplay);
+      g2contrastWCAG.innerHTML = getWcagRating(gfx2ContrastDisplay);
+      g3contrastWCAG.innerHTML = getWcagRating(gfx3ContrastDisplay);
+      // Text contrast WCAG results
+      tcontrastWCAG.innerHTML = getWcagRating(textContrastDisplay);
+      // Lookup function based on https://stackoverflow.com/questions/64456535/create-a-function-called-pricelookup-to-find-the-price-of-a-single-item 
+      function nameLookup(colournames, colour) {
+        let ret = colournames.find(x => x.colourHex === colour);
+        return ret ? ret.name : "No such item";
       };
+      // Make names of colours appear
+      backgroundName.innerHTML = "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")";
+      tColorName.innerHTML = "(" + nameLookup(colournames, infTextColor) + ")";
+      gfx1ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")";
+      gfx2ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")";
+      gfx3ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")";
+      // Put results into a special span that is only visible to screen reader users
+      document.getElementById("srResults").innerHTML = "Results: Background colour " + infoGraphicBackgrounds[randomBackgroundColor] + " " + "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")" + ", Text colour: " + infTextColor + " " + "(" + nameLookup(colournames, infTextColor) + ")" + ", Text contrast: " + textContrastDisplay + ":1, " + "W C A G Rating: " + getWcagRating(textContrastDisplay) + ". Graphic 1 colour: " + myInfoGraphicGfx1Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")" + ". Graphic 1 contrast: " + gfx1ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx1ContrastDisplay) + ". " + "Graphic 2 colour: " + myInfoGraphicGfx2Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")" + ". Graphic 2 contrast: " + gfx2ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx2ContrastDisplay) + ". " + "Graphic 3 colour: " + myInfoGraphicGfx3Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")" + ". Graphic 3 contrast: " + gfx3ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx3ContrastDisplay);
+      console.log("\n");
+      console.log("Randomise function ends");
+      console.log("\n");
+    };
       // Finally we run the function when the page loads
       // It also runs when you press the button	  
       // randomAll();
