@@ -35,6 +35,7 @@
 	margin-inline-start: 0px;
 	margin-inline-end: 0px;
 	word-break: break-word;
+	min-width:28rem;
 }
 .arrayDetails {
 	display: none;
