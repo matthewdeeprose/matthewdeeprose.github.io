@@ -32,7 +32,6 @@ body {
 	background: white;
 }
 
-
 .page-main {
         background-color: white;
         color: black;
@@ -46,4 +45,8 @@ body {
 summary, details {
 	border: 0px;
 	outline: 0px;
+}
+
+article a:after {
+     content: '  [ ' attr(href) ' ]';
 }

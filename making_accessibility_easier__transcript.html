@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+   <head>
+      <meta charset="utf-8" />
+      <meta name="description" content="Transcript for making accessibility easier">
+      <meta name="keywords" content="accessibility, presentation, blog">
+      <meta name="author" content="Matthew Deeprose">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Transcript for making accessibility easier</title>
+      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+      <meta property="og:title" content="Transcript for making accessibility easier - Matthew Deeprose">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/allyUG-2022-09.png">
+	  <meta property="og:image:width" content="2500" />
+	  <meta property="og:image:height" content="1306" />
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/making_accessibility_easier__transcript.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="Transcript for making accessibility easier - Matthew Deeprose" />
+      <meta name="twitter:description" content=""/>
+      <meta name="twitter:creator" content="@VLEguru"/>
+      <meta name="twitter:site" content="@VLEguru"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/allyUG-2022-09.png"/>
+      <meta name="twitter:image:alt" content=""/>
+      <meta name="twitter:card" content="summary_large_image"/>
+   </head>
+   <body>
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Change theme</title>
+                        <desc id="svgDesc">Select to switch to light theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4"/>
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                           <path d="m8.5 1.5v-1"/>
+                           <path d="m13.5 3.5 1-1"/>
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
+                           <path d="m1.5 7.5h-1"/>
+                           <path d="m16.5 7.5h-1"/>
+                        </g>
+                     </svg>
+                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                        <title id="svgTitleX">Change theme</title>
+                        <desc id="svgDescX">Select to switch to dark theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                           <path d="m2.5 13.5h4"/>
+                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                        </g>
+                     </svg>
+                  </button>
+               </div>
+               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+               <div id="titleLink">Matthew Deeprose</div>
+            </div>
+         </header>
+         <div id="main-navigation" class="page-nav">
+            <nav aria-label="Main menu" class="topnav" id="myTopnav">
+               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+                  <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span>
+                  <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+                           <path  d="m16.5,10.5l-13,0"/>
+                        </g>
+                     </svg>
+                  </span>
+               </button>
+               <a id="homeMenu" href="index.html">Home</a>
+               <a href="presentations.html" class="active">Presentations</a>
+               <a href="posts.html">Blog Posts</a>
+               <a href="projects.html">Projects</a>
+               <a href="about.html">About</a>
+            </nav>
+         </div>
+         <main class="page-main" id="main">
+            <article class="standard">
+               <h1 id="top">Transcript for making accessibility easier</h1>
+			             <ul>
+            <li>
+              <a href="https://www.youtube.com/watch?v=HnbVPEKtXew">Presentation recording</a>
+            </li>
+            <li>
+              <a href="making_accessibility_easier.html">Presentation resources</a>
+            </li>
+          </ul>
+			   <h2>Introduction</h2>
+
+<p><span class="transcriptSpeaker">Matthew Deeprose:</span> Thank you very much, Kristen. Hello everyone! Hopefully you can see my slides and I'm going to tell you or give you a little presentation in which I will hopefully not run over time, to tell you about some insights into a range of activities we've done that aim to make accessibility easier for our colleagues. Since I've got a lot to get through, we're going to keep questions to the end. I'm afraid I'm not going to be able to see the chat while I'm presenting but if anything goes wrong, Kristen please tell me and I'll try and fix it. So, let's get started!</p>
+
+<p>Now you might be thinking, "we already made accessibility easier - we bought Ally". My experience is that after the initial rush of excitement, we start thinking about how to deal with certain edge cases or more difficult topics and questions are likely to come up once our colleagues and students really start using Ally. You might encounter resistance to yet another seemingly new and additional demand on staff time. So, how can we deal with some of these edge cases? And how can we make certain accessibility topics seem less burdensome and invite curiosity?</p>
+
+<p>In this presentation I'm going to share </p>
+
+<ul>
+	<li>how he went about designing and delivering a webinar on writing alternative text for more complex images like charts and graphs, what went well, what we still have to do</li>
+	<li>an approach to helping colleagues make accessible on-brand colour choices</li>
+	<li>and one small step forward in terms of accessibility and organisational change</li>
+</ul>
+
+<h2>Alternative text for complex images</h2>
+
+<p>If you look at your ally institutional report, missing alternative text is probably one of your top two along with colour contrast. When you search for guidance online, it tends to be overly simplistic and quite repetitive often, with facile examples that don't account for the context of the images that our academic staff may use. Of course, you really need good alternative text to realise the benefits of Ally's audio format.</p>
+
+<p>I'm going to open up the presentation we delivered, point out some aspects and challenges, and then I'll share some resources and discoveries, highlight some unresolved questions and explain my next steps.</p>
+
+<p>I'm going to give you a light walkthrough of the session we gave and give a commentary on it. I'll be posting all of the links and they're also all on the Ally community site. I've hidden some of the slides: I'm just going to show you some some pointers.</p>
+
+<p>When we started introducing the topic of course we mentioned the Ally audio format. I felt a good metaphor was that when you don't add alternative text, you're effectively censoring content - you're putting up that barrier to some of your users. Introducing the main way of thinking about it: consider the context, the audience and the function. Then we started with some light easy examples but then we started talking about charts and graphs. So, first of all how much do you need to write? Talking with a few different experts we came up with this decision workflow:</p>
+
+<ul>
+	<li>is it only for visual interest? That's decorative.</li>
+	<li>does it replicate text already in the document? Then adding a caption with some essential information, then marking [the image] as decorative should suffice.</li>
+	<li>Does it support text already in the document? Then brief alternative text is probably satisfactory, along with a caption or title.</li>
+	<li>But does the graph or chart go further than text already in the document? Then as well as having a brief alternative text, caption or title, we need to write a full description and provide the tabular data if relevant.</li>
+</ul>
+
+<p>Then I went through three worked examples. Starting with this graph which is about how the cones in our eyes detect different shades of colour. </p>
+
+<p>The breakdown of how you would approach that is: the title, the construction of the image, the summary or overview, and then providing the data. Then I gave and explained some examples like, "this is the title" and how I came up with that, then talking about the construction of the image, where we're kind of setting like the parameters and the boundaries of what's within the graph, and then having the detailed summary or overview, for example like saying like the m-cone starts at 390 nanometres at zero energy and so on. </p>
+
+<p>So, then you're really describing what's in that graph. Then having that tabular data so that those that can't see the graph can really dig into that if they need it. We did the same then like saying what if what you needed was supporting text, that was already in there, then a suggested caption and short alternative text and describing that. </p>
+
+<p>Then giving that same kind of walkthrough for a set of Venn diagrams and then a decision tree.</p>
+
+<p>So, I'm just going to go back to my presentation. Here's a few resources that I used and I recommend. You've probably heard of <a href="http://diagramcenter.org/" >Diagram Center</a>. They have a really good YouTube video on <a href="https://youtu.be/oSdz6KZpLjs" >describing complex images</a>. It's really quite old now but it's still worth watching. They get through many different image types. The Northwest Evaluation Association has produced an incredible resource on <a href="https://www.nwea.org/content/uploads/2022/02/Image-Description-Guidelines-for-Assessments_NWEA_2021.pdf" >writing alternative text for images that are used in assessments</a>. How can you describe an image without giving away the answer? I expect many of you are aware of the <a href="https://poet.diagramcenter.org/how.html" >POET training tool</a> that has exercises you can follow to learn more about writing alternative text. </p>
+
+<p>Those resources were all freely available. This next resource is amazing but has a cost starting at &pound;400 per annum for access for three users. <a href="https://www.textboxdigital.com/accessing-described" >Textbox Digital's Described service</a> provides worked examples of writing alternative text for different types of image, including step by steps of many complex graphs. I'm going to give you a quick demo.</p>
+
+<p>So, this is Described. I've got a summary of different types of image. Then if I had selected graphs then I have different types of graph, and then if I go into the detail... for example this is a "<a href="https://en.wikipedia.org/wiki/Box_plot" >box and a whisper plot</a>". I've got an overview, then I've got the process, "how would I go about describing a box of whisker plot"? (Which I find hard to even understand what they're about at the best of times.) Then a brilliant worked example, and then a final example description based on the image type used. I think that's really useful and I'm planning to use that a lot more in the future.</p>
+
+<p>So we've got to grips with how to write description of their complex images and we have resources that we can use that explain how to do it. The question that remained for me, which I want a good answer to before I'm going out briefing academics on this topic, is when we need to use full descriptions where do we put them in the document, be it a Word document, PowerPoint presentation, or something else? </p>
+
+<p>Ally doesn't use speaker notes or hidden slides in PowerPoint, quite rightly, but those would have been fairly obvious places. One technique I've seen recommended is to put the full description in very small text and hide it off the slide or behind the image. I think that would be a faff [onerous] for "the jobbing academic" and would obscure the valuable full description from everyone apart from those using an audio alternative format or screen reader.</p>
+
+<p>The answer seems to be to just include it in full on however many pages and slides it requires but I'm nervous that academics may see this as breaking the flow of their carefully curated materials. I plan to do investigations further on that topic with a number of academic colleagues and also through discussions with our Students Union who this year are really interested in digital accessibility. I'll be really interested to hear how others are dealing with describing complex images and where they recommend their academics place full descriptions within their resources that they upload to Blackboard. </p>
+
+<p>Now let's take a pause. I'm going to have a drink and then I'm going to move on to the next session. Keep the questions for the end.</p>
+
+<h2>Colour contrast, brand insights</h2>
+
+<p>If alt text wasn't your top issue, then it's probably colour contrast. You might find that your academic colleagues try to use corporate templates for slides and documents, and almost everyone will at some point have to use their corporate brand colour palette. </p>
+
+<p>In this section I'm going to review an older attempt to make this easier, some discoveries, and something new I put together this summer. You are probably aware of the <a href="https://matthewdeeprose.github.io/matrix/matrix.html" >brand colour matrix</a> I've been using. I wrote a script that checks all the colours within a brand palette for accessibility and presents that information in a web page. I've done a few versions of this for more than twenty universities and colleges around the world. This isn't new but I want to share some insights that I found from using this approach and then demonstrate something new I've worked on over the summer. </p>
+
+<p>In terms of insights one example is that of the twenty one colour s in our brand, only seven have sufficient contrast with white and two of those are different shades of black! White, of course, is the background colour commonly used in corporate templates, documents and Blackboard and so on. This makes explicit how our corporate brand wasn't designed with accessibility in mind. </p>
+
+<p>Whereas with black I can use 11 other colours and they're much more fun colours like orange, green, yellow, and cyan compared with dark blue and magenta that I can use with white. This helped me to design this slide deck which uses brand colours. Looking at brand palettes in this way might help with designing dark modes for institutional services.</p>
+
+<p>It also highlighted that two colours in our brand cannot be used with text whatsoever, only graphical objects - so ratio of 3:1, now those colours are dead to me!</p>
+
+<p>Over the summer, I put this new tool together. With each selection of the randomise button, it fills a square with an "on-brand" colour, then adds some text with an on-brand colour that has a contrast ratio of at least 4.5 to 1 to meet the <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html" >AA success criterion for contrast</a>, and then three graphics / icons with three different brand colours that all have <a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html" >a contrast ratio of at least 3:1</a>. Details like hex codes for colours, their vanity [brand] names, contrast ratios are shown for each combination. I'll give you a quick demo.</p>
+
+<p>Here I have the tool. If I click on randomise... now I've got a background colour, there's the vanity name, it's picked out a text colour, showing details like contrast ratio WCAG rating and so on, and I can keep pressing this button to get new examples. I came up with this when I was making an infographic and someone said to me, "I've never seen that combination used before," which made me start thinking how can we find new and interesting colour combinations that we might not have used before? Some of these maybe I wouldn't use. Maybe I wouldn't use a graphic that was grey with a background that was grey, for example I've got a 3.291:1 contrast ratio. It would meet AA for graphics but I would probably still avoid it personally.</p>
+
+<p>I've got some ideas for updates. First priority is to allow the colours to be changed so we can use any range of colours we want because right now it's fixed to my University's brand colours. Once I've got that sorted then anyone can use this tool for their colour set. Another aspect I'd like to work on is to allow the user to fix one of the colours, probably the background colour, and then cycle through accessible combinations for that colour only. It might also be useful to have an option to say only show <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html" >AAA colour contrast</a> options, only show AA and so on. I'm not super happy with the placeholder text and graphics I'm using in the example card. Perhaps I could add something more interesting and have it change with each roll of the dice? Since with WCAG 3 of course the contrast measurement is changing to the <a href="https://github.com/Myndex/SAPC-APCA" >Accessible Perceptual Contrast Algorithm</a> (APCA) I would like to use that too. As I showed in the demo, there's some combinations I wouldn't recommend even though they meet the WCAG 2.1 AA, but if I add on in addition an APCA check it's likely to filter those out.</p>
+
+<p>By the way we've just added the <a href="https://www.tpgi.com/color-contrast-checker/" >TPGI colour contrast picker</a> to our software center so those without admin rights can install it. We're planning a session soon about colour contrast and helping users to pick colours and check their contrasts will be much easier using this tool. </p>
+
+<p>One piece of feedback from the brand randomiser I saw was <a href="https://twitter.com/eleonorag1/status/1563169553525669890" >my colleague Dr Eleonora Gandolfi saying</a>, "we need more tools like this please," that made me think about the opportunities of <a href="https://en.wikipedia.org/wiki/Hackathon" >hackathons</a> to identify and prototype tools like the colour suggester that can make accessibility easier for our busy colleagues. So I'm working with our students union see if our computer science students might be interested in this. </p>
+
+<p>I'm going to take a break and have a drink and then move over to the last section.</p>
+
+<h2>Accessibility inspector for everyone</h2>
+
+<p>The last topic I wanted to cover was about one small piece of organisational change. It's about the <a href="https://support.microsoft.com/en-us/office/improve-accessibility-with-the-accessibility-checker-a16f6de0-2f39-4a2b-8bd8-5ad801426c7f" >accessibility inspector</a> in office. You're probably already using it. You can <a href="https://support.microsoft.com/en-us/office/rules-for-the-accessibility-checker-651e08f2-0fc3-4e10-aaca-74b4a67101c1" >check for 16 different accessibility issues</a> whilst you work in Word, PowerPoint and Excel. You can identify issues before you upload content to the VLE, which is check then by Ally. So, it's a touch less reactive.</p>
+
+<p>The user has to <a href="https://elearn.soton.ac.uk/knowledge-base/accessibility-in-m365/" >turn on the check [accessibility] while I work option</a> in each of Word, PowerPoint and Excel in the settings. So we made one small change: we've turned on the "check while I work setting" on all University match PCs using Group Policy. I've also got <a href="https://matthewdeeprose.github.io/inspector_for_all" >an implementation plan</a> for this on my website if you want to try it at your institution.</p>
+
+<p>We've been raising awareness of this. I'm going to be giving a quick overview of how we did this in a recent webinar. In terms of success, it's been quite interesting. I've already encountered people talking about it like it's always been there. We've been contacted by one of our executive governance groups seeking help to make their word templates more accessible. </p>
+
+<p>Now I'm going to work through some of the webinar materials and just pick out a few elements that I think you might be interested in. Again, I've hidden lots of slides I'm just going to show you a little bit.</p>
+
+<p>The way that I introduce it is saying, "what if you could make your stuff more professional, improve your Blackboard efficiency, make the world a better place, and that was easy"? Note, I haven't used the word "accessibility" and I try not to use it in any of the advertising materials about it, to get more people to come to the session. Then I start talking about the accessibility inspector... [it] runs while you work, makes things better... and then we gave a set of examples in Word, PowerPoint and Excel of using accessibility inspector to fix things.</p>
+
+<p>One of those things was about table headings. I used this example I'm going to show you in a moment which was inspired by a demo that <a href="https://www.linkedin.com/in/nicolaasmatthijs/" >Nico</a> gave at one of the TLCs [Teaching and Learning Conference]. Hopefully I've shared sound and hopefully you will hear this.</p>
+
+<p><span class="transcriptSpeaker">Computer:</span> Begin table with three columns and three rows. Row one of three. Column one of three. Superhero. Column two of three. Skill. Column three of three. Nemesis.</p>
+
+<p>Row two of three, column one of three. Batman.</p>
+
+<p><span class="transcriptSpeaker">Matthew Deeprose:</span> So, there we are showing... if this is a big table imagine how confusing it will be to keep following that? Because of course, I haven't added that column header information - it's only there through visible formatting.</p>
+
+<p><span class="transcriptSpeaker">Computer:</span> Begin table with three columns and three rows. Row one of three. Column one of three. Column heading Superhero. Column two of three. Column heading Skill. Column three of three. Column heading Nemesis.</p>
+
+<p>Row two of three. Column one of three with column heading Superhero, Batman.</p>
+
+<p><span class="transcriptSpeaker">Matthew Deeprose:</span> So, now it's showing when you add the column headings then you can keep track of what's going on and you can start to immediately hear the benefits. Again, focusing on the Ally alternative format. Of course you've got to make this work - you've got to untick "allow row to break across pages" and tick "repeat as header row" which is a bit of a pain. I hope that we can find a way of making that a bit less obscure and niche.</p>
+
+<p>We did similar with explaining reading order. I'm not going to play this, but we started with a slide with a set of pictures where of course the reading order was wrong. We played the audio example from Ally which had making a cup of tea in completely the wrong order, then we fixed it and showed how with the right order then the audio version makes sense.</p>
+
+<p>So, I'm just going to go back. We're reaching our conclusion now. So, let's... I just need to find the right slide.</p>
+
+<p>Okay I think I've got a bit lost here but I'm going to come back and we're about to finish so I've got one last bit of questions that I kind of wanted to raise and I've lost my speaker notes, so I'm sorry to the captioner, I'm going to have to speak off script for a moment.</p>
+
+<p>We know that with PowerPoint tables [in Ally] you can't get the header information read out with the audio version. I raised a ticket about this last year and was told it was due to the way that LibreOffice is set up with Ally. They [Anthology support] said they reported it to LibreOffice but I haven't heard anything. One of my worries is the more that we show the benefits the more people are going to find those edge cases that I still can't resolve.</p>
+
+<p>Also, how can we get Ally to read a table like this properly? How can I get ally to read not only the column headers but the row headers? You can do that in HTML with a screen reader but I can't yet find a way of making that work with Ally. </p>
+
+<p>Also, on the topic of the audio format, we haven't heard much about audio playlists or breaking that 100,000 limit that prevents us from making larger audio formats.</p>
+
+<p>So, what have we covered?</p>
+
+<ul>
+	<li>I showed you what we went through with alternative text for complex images, some of the challenges, the questions, and some of the resources.</li>
+	<li>We showed you an approach to helping make more accessible colour choices.</li>
+	<li>And one small step in terms of organisational change by making that accessibility inspector turned on for all University managed PCs.</li>
+</ul>
+
+<p>Thanks very much for listening. I hope I haven't run over time too much. I'll hand back over to Kristen who can perhaps round up some of the questions or any questions from the chat, and we might have some time to discuss before we hand back over to Andy and Karen.</p>
+
+            </article>
+			      <div id="panel">
+         <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+               <title id="svgTitle2">Top.</title>
+               <desc id="svgDesc2">Move to the top of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m11.5 7.5-3-3-3 3"/>
+                  <path d="m8.5 4.5v8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+         </button>
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+               <title id="svgTitle3">Bottom.</title>
+               <desc id="svgDesc3">Move to the bottom of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m5.5 9.5 3 3 3-3"/>
+                  <path d="m8.5 12.5v-8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+         </button>
+      </div>
+         </main>
+         <aside class="page-sidebar related">
+            <section class="related">
+			<h2>Related content</h2>
+			</section>
+            <section class="related">
+               <h3>Presentations</h3>
+               <ul class="relUL">
+                  <li><a href="#">Using Colours</a></li>
+                  <li><a href="#">Future Teacher</a></li>
+                  <li><a href="#">Bluffers guide to Blackboard theme accessibility</a></li>
+               </ul>
+            </section>
+            <section class="related">
+               <h3>Blog posts</h3>
+               <ul class="relUL">
+                  <li><a href="#">Using Colours</a></li>
+                  <li><a href="#">Future Teacher</a></li>
+                  <li><a href="#">Bluffers guide to Blackboard theme accessibility</a></li>
+               </ul>
+            </section>
+         </aside>
+         <footer class="page-footer">
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="AccessibilityFoot">
+               <a href="Accessibility_Statement.html">Accessibility Statement</a>
+            </div>
+            <div id="twitterFoot">
+               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+            </div>
+            <div id="YouTubeChannelFoot">
+               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+            </div>
+            <div id="aboutFoot">
+               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
+            </div>
+         </footer>
+      </div>
+
+      <script>
+         function menuAction() {
+             let menuSwitch = document.getElementById("myTopnav");
+             if (menuSwitch.className === "topnav") {
+                 menuSwitch.className += " responsive";
+                 
+             } else {
+                 menuSwitch.className = "topnav";
+             }
+             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+             if (menuAriaAttrib === "true") {
+                 menuAriaAttrib = "false"
+             } else {
+                 menuAriaAttrib = "true"
+             }
+             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");
+         
+         
+         window.onscroll = function() {
+             scrollFunction()
+         };
+         
+         function scrollFunction() {
+             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+                 mybutton.style.display = "block";
+         		mybutton2.style.display = "block";
+             } else {
+                 mybutton.style.display = "none";
+         		mybutton2.style.display = "none";
+             }
+         }
+         
+         
+         
+         function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
+         }
+         
+         function bottomFunction() {
+         window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
+         }
+      </script>
+      <script>
+         let themePref = localStorage.getItem("theme");
+         console.log("Has a theme preference been saved?", themePref);        
+         
+         
+         function setLight() {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById("modeToggle");
+             const d = matchMedia('(prefers-color-scheme: dark)');
+             let dt;
+             if (d.matches) {
+                 dt = 'dark';
+                 console.log("Prefers dark theme in OS");
+             } else {
+                 dt = 'light'
+                 console.log("Prefers light theme in OS");
+             }
+             if (dt == 'dark' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'light' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'dark' && !themePref) {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else {
+                 theButton.setAttribute("aria-pressed", "false");
+             }
+         }
+         setLight();
+         
+         function toggle(btnID) {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById(btnID);
+             if (theButton.getAttribute("aria-pressed") == "true") {
+                 theButton.setAttribute("aria-pressed", "false");
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 console.log("Turned on light mode");
+                 localStorage.setItem("theme", "Light");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "false");
+             } else {
+                 theButton.setAttribute("aria-pressed", "true");
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 console.log("Turned on dark mode");
+                 localStorage.setItem("theme", "Dark");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference set to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "true");
+             }
+         }
+         
+         function applyThemePreference() {
+             if (themePref == 'Dark') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 theButton.setAttribute("aria-pressed", "true");
+                 console.log("Applied dark theme because site theme preference is set to", themePref);
+             } else if (themePref == 'Light') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 theButton.setAttribute("aria-pressed", "false");
+                 console.log("Applied dark theme because site theme preference is set to", themePref);
+             }
+         }
+         applyThemePreference();                
+      </script>
+	  <script src="scripts/lite-yt-embed.js"></script>
+	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
+   </body>
+</html>
