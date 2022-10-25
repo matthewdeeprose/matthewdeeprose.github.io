@@ -18,11 +18,7 @@
       <title>Making accessibility easier</title>
       <pubDate>Mon, 24 Oct 2022 15:29:26 +0100</pubDate>
       <link>https://matthewdeeprose.github.io/making_accessibility_easier.html</link>
-      <description><![CDATA[My presentation to the European Ally User Group, sharing:
-<ul>
-<li>What I learned while designing a session about writing alternative text for complex images like graphs and charts</li>
-<li>An approach to making on-brand colour contrast easier</li>
-<li>Turning the Microsoft Accessibility inspector on by default. Implementation plan, and the start of communicating the change.</li></ul>]]></description>
+      <description><![CDATA[My presentation to the European Ally User Group, sharing: what I learned while designing a session about writing alternative text for complex images like graphs and charts, an approach to making on-brand colour contrast easier, turning the Microsoft Accessibility inspector on by default. Implementation plan, and the start of communicating the change.]]></description>
     </item>
     <item>
       <title>Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</title>
