@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Transcript for Making accessibility simpler in Higher Education and beyond! TechSharePro 2022">
+    <meta name="keywords" content="accessibility, presentation, blog">
+    <meta name="author" content="Matthew Deeprose">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Transcript for Making accessibility simpler in Higher Education and beyond! TechSharePro 2022</title>
+    <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+    <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+    <meta property="og:title" content="Transcript for Making accessibility simpler in Higher Education and beyond! TechSharePro 2022 - Matthew Deeprose">
+    <meta property="og:description" content="">
+    <meta property="og:image" content="https://matthewdeeprose.github.io/Making_accessibility_simpler.png">
+    <meta property="og:image:width" content="2500" />
+    <meta property="og:image:height" content="1306" />
+    <meta property="og:image:alt" content="">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://matthewdeeprose.github.io/techshare_pro_22__simplify_accessibility.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="favicon.ico">
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Transcript for Making accessibility simpler in Higher Education and beyond! TechSharePro 2022 - Matthew Deeprose" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta name="twitter:image" content="https://matthewdeeprose.github.io/Making_accessibility_simpler.png" />
+    <meta name="twitter:image:alt" content="" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+              <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                  <path d="m6.5 17.5h4" />
+                  <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                  <path d="m2.5 13.5h4" />
+                  <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+            <span id="hamburger">
+              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html" class="active">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html">Projects</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 id="top">Transcript for Making accessibility simpler in Higher Education and beyond!</h1>
+          <p>A "Lunch and Learn" session at <a href="https://abilitynet.org.uk/techsharepro-2022">TechSharePro 2022</a> delivered on 16 November 2022. </p>
+          <ul>
+            <li>
+              <a href="https://www.youtube.com/watch?v=uAhdsFUPUHQ">Presentation recording</a>
+            </li>
+            <li>
+              <a href="techshare_pro_22__simplify_accessibility.html">Presentation resources</a>
+            </li>
+          </ul>
+          <h2>Welcome</h2>
+          <p>Hi everyone, I'm Matthew Deeprose from the University of Southampton.</p>
+          <p>Welcome to this Lunch and Learn at TechShare Pro 2022 titled, "Making Accessibility Simpler in Higher Education and Beyond". I'm a white male in my mid-40s wearing a pink shirt with a black jacket and matching pocket square. My pronouns are he / him.</p>
+          <h2>About me</h2>
+          <p>I've been working in Higher Education IT for more than 20 years. Since I found out about The Public Sector Bodies Accessibility Regulations 2018, I've been learning about accessibility, finding opportunities to put it into practice and looking for ways to share what I learn with others.</p>
+          <p>Some recent accessibility projects I've been involved in have been:</p>
+          <ul>
+            <li>refreshing our Virtual Learning Environment to have an updated, on brand theme that meets and surpasses accessibility guidelines as much as possible, </li>
+            <li>designing an Accessibility Testing process, </li>
+            <li>running our Digital Accessibility Community of Practice, </li>
+            <li>and designing and delivering accessibility focussed webinars. </li>
+          </ul>
+          <p>We use Blackboard Ally and I've recently become co-chair of the European Blackboard Ally User Group. I'm also a member of the UCISA Diversity task force.</p>
+          <p>You can find out more about me and the work I'm doing on my website at <a href="https://matthewdeeprose.github.io/">matthewdeeprose.github.io</a>. You can find my LinkedIn, Twitter, and YouTube there, feel very free to connect with me and give me feedback on this session. </p>
+          <p>Please use the Slido to ask questions. You can also find a link in there to the dedicated captions from StreamText. You should also be able to pin Tim and Bridget our BSL (British Sign Language) interpreters. Alright! Let's get started!</p>
+          <h2>Introduction</h2>
+          <p>In my work, accessibility is about removing barriers that might prevent people from making the most out of our organisation's digital estate. In particular for those with disabilities, or impairments, be they permanent, situational, or temporary. This is particularly important within the educational context, because education has a significant impact on our lives.</p>
+          <p>Thinking in terms of removing barriers can sound quite simple. But we will find complexity and puzzles to solve, first for our own understanding, and then for how we can explain and empower our colleagues to take action on removing those barriers.</p>
+          <p>For me, the key is finding a set of steps we can use to solve these puzzles.</p>
+          <p>So, in this session, I'm going to use examples from my recent work to show how I've attempted to answer some of these questions.</p>
+          <ul>
+            <li>How can we demystify writing alternative text for complex images like charts and graphs? </li>
+            <li>How can we simplify accessible brand palette colour choices?</li>
+            <li>And how can we amplify engagement with accessibility within our organisation? </li>
+          </ul>
+          <p>Since this is a lunch and learn session, I'll be sharing links and resources, some of my own and some from others in the accessibility profession. You might have heard of some, but hopefully there will be something new and interesting for everyone and if they are useful, you can use them straight away.</p>
+          <p>I'm aiming to give you lots of resources, and at the end of my presentation I'll do a "quick fire" run-through of other resources I recommend, that can help to demystify, simplify, and amplify.</p>
+          <p>I'm speaking from my experience working in Higher Education Information Technology, but to a greater or lesser extent, everything I cover today is likely to be useful for any organisation.</p>
+          <p>The slide deck and all the resources I'll be discussing are available from my presentation web page. You can reach it at this address: <a href="https://go.soton.ac.uk/tsp">go.soton.ac.uk/tsp</a>. The link also appears in the footer of every slide. </p>
+          <h2>How can we demystify writing alternative text for complex images like charts and graphs?</h2>
+          <p>First, let's look at writing alternative text for complex images like charts and graphs. How have I tried to demystify that process? </p>
+          <p>Missing or poorly composed alternative text is one of the top accessibility issues affecting learning content at my University. It's also the second most common accessibility issue that the Web Accessibility in Mind (WebAIM) organisation found in their survey of the million most popular web pages.</p>
+          <p>There's also lots of good examples out there, but when you do a quick Google search, you might find fairly basic guides that use quite simple images as examples. It can be difficult to find advice around those more complex images we might use in education and elsewhere.</p>
+          <p>Writing good alternative text is really important. Many Universities use systems such as Blackboard Ally or Sensus Access that provide students with alternative formats, such as an audio version. Good quality alternative text really helps students to get the most out of alternative formats.</p>
+          <p>We recently designed and ran a thirty-minute session about <a href="https://matthewdeeprose.github.io/alt-text-images-charts-graphs.html">writing alternative text for images, charts and graphs</a>. We covered six examples, from basic images to more complex ones like graphs, decision trees, and Venn diagrams. </p>
+          <p>Rather than go into detail about the session because you can review the recording, slides and materials online in your own time, I want to highlight which resources were really useful for me in creating the session.</p>
+          <p>Now, Diagram Centre have a really good <a href="https://youtu.be/oSdz6KZpLjs">YouTube video on describing complex images</a>. It's quite old now, but they get through a lot of different image types. The <a href="https://www.nwea.org/">Northwest Evaluation Association</a>, NWEA, has produced an incredible resource on <a href="https://www.nwea.org/content/uploads/2022/02/Image-Description-Guidelines-for-Assessments_NWEA_2021.pdf">writing alternative text for images that are used in assessments</a>. So how can you describe an image without giving away the answer? That's an incredible resource if you write quizzes or assessments. Many of you will be aware of the <a href="https://poet.diagramcenter.org/how.html">POET training tool</a> that has exercises you can follow to learn more about writing alternative text. If you've not come across it before, I recommend it. </p>
+          <p>The previous resources were all freely available. This next resource is amazing but has a cost, from &pound;400 a year for access for three users. <a href="https://www.textboxdigital.com/accessing-described">textBox digital's "described" service</a> provides guidance and worked examples of writing alternative text for different types of image. On screen I'm listing the types of image they cover, examples include Diagrams, graphs, Illustrations, Maps, and scientific images such as circuit diagrams. I'm now sharing a list of examples from the graph section. This includes area charts, box and whisker plots and dot plots. </p>
+          <p>When you select an image type, Described provides an overall set of guidance, a step by step process, and a worked example with final complete description. Once you have a process you can follow it really helps you to unlock what once might have been a mystery and can make it seem simple.</p>
+          <p>Some high-level strategies for all descriptions are to consider the context in which we use the image, our intended audience, and the function or purpose of that image. You might write different descriptions for the same image as the context, audience, and function changes. For more complex images, a full description should include the title, the construction of image, a summary or overview, and a data table if relevant.</p>
+          <p>So even if you have some really complex images you need to describe. There's lots of resources out there that can help you. Of course, even with a structured process, you still need the subject matter expertise once you get to writing the descriptions.</p>
+          <p>Next, I'm going to speak to the question of how we can simplify making accessible colour choices.</p>
+          <h2>How can we simplify accessible brand palette colour choices?</h2>
+          <p>Insufficient colour contrast is the most prevalent issue reported in the WebAIM million. It's something that's so easy to get right, but you have to know about it.</p>
+          <p>As many will know, the Web Content Accessibility Guidelines state that with a contrast ratio of 3:1, that's <a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">the minimum level of contrast for graphical objects like icons</a>. A contrast level of <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">4.5:1 is the minimum for text</a>. 7:1 and higher is <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html">the minimum for text when we want to reach the AAA level</a> of accessibility. For someone new to accessibility, this can seem a bit intimidating, if someone just wants to use our brand colour palette, how can they make accessible choices easily? </p>
+          <p>Most organisations including Universities, have corporate colour schemes, aligned with their brand.</p>
+          <p>They are likely to be part of PowerPoint and Word templates with brand colours included in the theme. Websites and online applications are likely to use the brand colours, not only for content, but for the whole user interface, including hover states, focus indicators and so on.</p>
+          <p>Yesterday, <a href="https://www.linkedin.com/in/heather-hepburn-6a857b40/">Heather from Sky Scanner</a> was saying about or talking about the work that they had done to create a new brand colour palette that was more accessible. </p>
+          <p>When I was redesigning the colour theme for our virtual learning environment, I was frequently looking up the contrast ratios of colours from our brand. To save me time I built a look up table with all 441 possible colour combinations. Overtime I turned this into a web page.</p>
+          <p>To zoom in and give you a clear understanding. The same colours are in the same order for both the horizontal and vertical axes. Where two colours meet the table shows F, if it fails all contrast criteria. G means it can only be used for graphical objects, AA means that as well as graphical objects it can be used for text, but only at the minimum AA level, and AAA means it can be used for text at the enhanced level, as well as for graphical objects. I've been using that a lot and so have a number of my colleagues that's become more and more popular over the years since I put it together.</p>
+          <p>To give you one example of how I've used this colour matrix. The past couple of months I've been creating some infographics. To make them more visually interesting I've been using vector-based stock images such as this one on screen which is a slightly abstract illustration of a computer screen with a woman holding a settings symbol and a file transfer symbol.</p>
+          <p>To make these images more congruent, I recolour them using my university's brand, and the matrix helps me to pick colours that have sufficient contrast with each other. This is a small part of an infographic I'm producing that explains our pilot process for new Educational Technology tools.</p>
+          <p>Since I wrote a script to create the colour matrix, I can feed it with the colours of any brand, so if it would be useful for you there's info on my presentation web page about <a href="https://matthewdeeprose.github.io/request.html">how to request one for your brand</a>. </p>
+          <p>A few months after making the script, I found that others had the same idea and have similar tools online, and if I'd have found this out before, I probably wouldn't have gone to the trouble of making my own.</p>
+          <p>On screen is the <a href="https://toolness.github.io/accessible-color-matrix/">Accessible Colour Palette Builder</a> and a tool called <a href="https://contrast-grid.eightshapes.com/?version=1.1.0&amp;background-colors=%23FFFFFF%2C%20White%0D%0A%23FEDC2A%2C%20Yellow%0D%0A%235A3B5D%2C%20Dark%20Purple%0D%0A%238B538F%2C%20Light%20Purple%0D%0A%23C3A3C9%2C%20Lightst%20purple%0D%0A%23777777%2C%20Gray%0D%0A%23555555%2C%20Darker%20Gray%0D%0A%0D%0A&amp;foreground-colors=%23FFFFFF%2C%20White%0D%0A%23FEDC2A%2C%20Yellow%0D%0A%235A3B5D%2C%20Dark%20Purple%0D%0A%238B538F%2C%20Light%20Purple%0D%0A%23C3A3C9%2C%20Lightst%20purple%0D%0A%23777777%2C%20Gray%0D%0A%23555555%2C%20Darker%20Gray%0D%0A%23444444%2C%20Darker%20%20Darker%20Gray%0D%0A%23333333%2C%20Fifty%20Shades%20of%20darker%20gray%0D%0A%23222222%2C%20Dorian%20Gray%3F&amp;es-color-form__tile-size=compact&amp;es-color-form__show-contrast=aaa&amp;es-color-form__show-contrast=aa&amp;es-color-form__show-contrast=aa18&amp;es-color-form__show-contrast=dnp">Contrast Grid</a> that offers very similar functionality. Note that while I've tested my own content for accessibility, I haven't tested the third party site that I'll be sharing in this presentation. I've got links on the support site to both of these tools. I'm going to give you a quick demo of Contrast Grid. Now I'm going to try a live demo. Wish me luck! </p>
+          <p>I've just got to find my web browser. Here we are, and I've got to find my list of colours. Here is the Contrast Grid website. From a notepad, I'm just going to paste in all of the colours from my brand colour scheme. Now you see it instantly. It created a very similar matrix to what I showed you that I had made, where I've got all of the colours, and I can see do they have a "AA", "AAA"? Could they be used for graphics, or should we just not use them at all? </p>
+          <p>I'm not so happy about how this isn't responsive, so it's not going to work very well on mobile phones, but it is really fast, and if you want to have a quick check, you probably will find that very useful. I'm going to go back to my slides now.</p>
+          <p>The colour matrix might still be a bit too intimidating for some. I'm always looking for approaches to invite curiosity with accessibility and make it more approachable. A couple of months ago, I was working on another infographic, and a colleague mentioned, he hadn't seen one of the colour combinations that I'd used before, so I had an idea <a href="https://matthewdeeprose.github.io/infographic-colour-generator.html">for a colour randomiser</a> that would offer an accessible colour combination from our brand. It will give us one background colour, one text colour, and three colours for graphical objects. I'm just going to show you that now. </p>
+          <p>I'm just going to change to my browser, and if I just refresh this page, I've got a bit of an introduction, and now when I select this Randomise button, it will pick a different background colour, text colour, tells me the hex code for that colour, the contrast ratio, what WCAG criteria would it meet, in this case AAA, and then for graphic colours, this could be anything from 3:1 and higher. So, here I've got a grey colour, Neutral 1, because of course we like to have abstract names for our brand colours, and it's showing me the contrast ratio, and again for the other three. Then as I select the Randomize button, it's going to give me a whole set of new choices from there. I'm hoping that approaches like this can help to both find new combinations that we might not have used before, and also just to make it something a bit more interactive and approachable in terms of helping our colleagues to make more accessible choices. I'm going to go back to the slide deck now.</p>
+          <p>There are other useful tools out there. You may find yourself wanting to use a colour combination that does not have enough contrast, how can you find a colour that is a close match which does have sufficient contrast?</p>
+          <p>On screen I have screenshots of two tools that can help you with this, the <a href="https://contrast-finder.tanaguru.com/result.html?foreground=%231E8765&amp;background=%23FFFFFF&amp;ratio=4.5&amp;isBackgroundTested=false&amp;algo=Rgb&amp;distanceSort=asc">Tanaguru Contrast Finder</a>, and <a href="http://colorsafe.co/">Colour Safe</a>. I'm going to show you the Tanaguru Contrast Finder. </p>
+          <p>I've just gone to my browser. I'm at the Tanaguru contrast finder page, and I want to use a white text with an orange background. This colour orange is from the University of Southampton brand, but I already happen to know that this isn't going to have sufficient contrast for the use of text. I want to aim for at least a 4.5 to 1 contrast ratio, and I have to have a white text colour. Look at the background colour and give me some colours that are very close to that orange colour.</p>
+          <p>I've already run this because I've been burnt several times by live demos. There is reminding me of my current choice, this orange with white text, which has a contrast ratio of 2.7: 1, which is far too low. It's showing me below a number of similar colours. Maybe not quite as bright and orange as my original colour, but these do all have a contrast ratio higher than 4.5 to 1. If I was working with a customer or a client who really said it's got to be orange, but I want to make sure it's accessible, then maybe I can use this tool to find something that's like really close. I should probably tell them that I've changed it, but I think most of the time people may or may not notice. I think that's a really useful tool. I'm going back to my slides now.</p>
+          <p>Another aspect of accessible contrast is when we add text over images. In this example we have a quote from Jesse Jackson, "When everyone is included, everyone wins", in white text over a photograph of a woman using a refreshable braille display sat beside her service dog. The white text is very difficult to read because the photograph has a lot of light colours.</p>
+          <p>There are different strategies to resolving this, we could use a black outline around the text, or drop shadow, or just put a solid colour behind the text, or we could add a layer over the photo that darkens it, helping to make the text more legible.</p>
+          <p>The <a href="https://codepen.io/yaphi1/live/oNbEqGV">optimal overlay finder</a> is a tool that I often use. I'm going to give you a quick demonstration. If I find here, I have the overlay finder. I could upload a custom image, which I've already done. It shows me here an example before and an example after. It's telling me that if I were to add a black overlay and use an opacity, let's call it 52%, then I will have sufficient contrast between the text and any of the colours that it appears against. I'm going to show you in PowerPoint how I would approach this. </p>
+          <p>I've actually already added a black overlay over this photograph. I'm just waiting for my screen magnifier to load. If I were to change that overlay, I can pick it up while I'm talking. If I got 0%, I can't see the photo at all now, whereas at 100%, I can see the photo very well, because it made that layer invisible.</p>
+          <p>I'm going to select 52%, and now I have a much better contrast between the text and the background. Of course, maybe I should choose a different photograph. If I had to use that photograph and wanted to make sure it was accessible, then that's an approach I've been using.</p>
+          <p>By the way, I'll be mentioning this, <a href="https://disabilityin.org/resource/disability-stock-photography/">Disability:IN</a>
+            <a href="https://disabilityin.org/resource/disability-stock-photography/"></a>in my quick fire round at the end.
+          </p>
+          <h2>How can we amplify engagement with accessibility?</h2>
+          <p>My final question is, how can we amplify engagement with accessibility across our organisation? I'm going to share one small change that I believe has done just that.</p>
+          <p>You're probably aware of the accessibility inspector in office. It appears in Word, PowerPoint, and Excel. You're probably already using it. <a href="https://support.microsoft.com/en-us/office/rules-for-the-accessibility-checker-651e08f2-0fc3-4e10-aaca-74b4a67101c1">It could check for 16 different accessibility issues whilst you work.</a> When it finds accessibility issues, an accessibility investigator alert appears. Selecting it will give you an overview of the issues and steps you can follow to improve accessibility. For example, setting the reading order, using headings, resolving contrast issues, adding headings to tables, and so on. To benefit from this feature, each user has to turn on the " <a href="https://elearn.soton.ac.uk/knowledge-base/accessibility-in-m365/">keep accessibility checker running while I work</a>" option for each of Word, PowerPoint, and Excel in the settings. </p>
+          <p>An alternative method is that after running an accessibility check in one of Word, PowerPoint, or Excel you can select a check box within the inspection results panel to "keep accessibility checker running while I work". But you've got to have actually made an effort to look for [review] accessibility first before you even see that option.</p>
+          <p>What if we could remove those steps? </p>
+          <p>Like many organisations, our University sets up PCs for staff and students. We've got staff machines and we've got <a href="https://knowledgenow.soton.ac.uk/Articles/KB0011362">public workstations</a> where students can use computers on campus. </p>
+          <p>Could we just turn on this feature? I checked with the brilliant <a href="https://support.microsoft.com/en-gb/accessibility/enterprise-answer-desk">Microsoft enterprise Disability Answer Desk</a>, who said it was possible using an admin tool called Group Policy. They didn't give me a step by step, but just knowing it was possible meant I could follow up with our Desktop team at the University of Southampton and they put this into action for us. </p>
+          <p>We've now implemented the change so that the accessibility inspector is always running while our staff and students work on University machines. I've also shared an <a href="https://matthewdeeprose.github.io/inspector_for_all">anonymised implementation plan that other organisations can use</a> to make the same change on their PCs, and I've shared a webinar recording, slides, and materials for <a href="https://matthewdeeprose.github.io/better_content_made_easy.html">how we explained and demonstrated the benefits of using the accessibility inspector</a>. </p>
+          <p>We only made this change a couple of months ago. Since we're quite used to Microsoft Office changing quite frequently now we're on Microsoft 365, I'm hoping that lots of our colleagues will be curious to select the button and review how they can make their content more accessible.</p>
+          <p>We've already been approached by a senior governance group led at executive level who asked for help to make their Word templates more accessible after they noticed the results of the accessibility inspector.</p>
+          <p>It's also proved an interesting conversation starter. In a world of hybrid meetings we often see when people share their screens the accessibility status of their documents. Some have been sharing their tips on how they approached resolving an accessibility issue they found whilst producing content.</p>
+          <p>I also really like how when the accessibility inspector cannot find any issues, the button changes to "accessibility good to go", we made this one of the key messages in our training, that a resource isn't "good to go" until the accessibility inspector says it is "good to go". Of course, automated tools can't find all issues, but if we can reach a baseline where everyone's aiming to have no issues which can be detected automatically, then that's going to be quite a step forward.</p>
+          <p>So far, I've shared some of my experiences with mystifying how we write alternative text, simplifying the accessible use of brand colour schemes and amplifying engagement with accessibility. Hopefully, some of these resources were new or interesting to you and on the presentation website you can find all of the links.</p>
+          <h2>Quick fire round</h2>
+          <p>Now just in case you didn't find anything that we covered so far of interest, I'm going to do a quick fire round showing some more resources that can help to simplify your accessibility journey.</p>
+          <h3>Inclusive Stock photography</h3>
+          <p>I'm often using stock photo services and when I look for more inclusive imagery, I'm not sure about how credible some of the images are. I remember a <a href="https://www.youtube.com/watch?v=lUxKZv0LgZ0">really interesting presentation</a> from <a href="https://keelycatwells.com/">Keely Cat-Wells</a> and <a href="https://www.danedge.com/">Dan Edge</a> of <a href="https://ctalent.org/">C Talent</a>, which is the linked to on my presentation site by the way. Dan mentioned that he could tell in some images whether someone using a wheelchair was just using it as a prop and it wasn't really their wheelchair. Both the <a href="https://affecttheverb.com/collection/">Disabled and Here collection</a> and the <a href="https://disabilityin.org/resource/disability-stock-photography/">Disability:IN inclusive stock photo library</a> are available on Creative Commons so I recommend checking them out. </p>
+          <h3>Introducing accessibility</h3>
+          <p>If you're looking for a way to introduce people to digital accessibility, The <a href="https://de.ryerson.ca/wa/maze.html">Accessibility Maze</a> is a web based game that you and your colleagues can play to learn more about accessibility. It was created to help those new to web accessibility experience first hand what it is like to encounter accessibility barriers. The game introduces a number of common barriers players must work around, mirroring the experience of those who encounter these obstacles daily, and provides quick lessons on how to avoid or correct them. </p>
+          <h3>Organisational implementation</h3>
+          <p>If you're looking for tips on how to approach implementing accessibility within an organisation, the W3C has a fantastic pathway " <a href="https://www.w3.org/WAI/planning-and-managing/">Planning and Managing Web Accessibility</a>", some colleagues and I gave a session last year showing how to apply this in an educational context at an event called " <a href="https://matthewdeeprose.github.io/makeITaccessible.html">Making IT accessible for all!</a>" </p>
+          <h3>Shifting left</h3>
+          <p>"Shifting left" is about considering accessibility as early as possible in the development process. Here's two really useful resources. If you are working with developers it can be useful to include accessibility within your <a href="https://digitalcommunications.wp.st-andrews.ac.uk/2016/08/31/how-do-you-know-when-youre-done/">definition of done</a>, or to use <a href="https://en.wikipedia.org/wiki/Behavior-driven_development">behaviour driven development</a> techniques to ensure your requirements are met. <a href="https://www.magentaa11y.com/web/">MagentA11y from T-mobile</a> provides testing criteria in <a href="https://cucumber.io/docs/gherkin/">Gherkin format</a>, which is often used for user stories and in behaviour driven development. </p>
+          <p>If you are buying a commercial-off-the-shelf service, then this <a href="https://caudit.edu.au/accessible-it-procurement/">Accessible IT Procurement guide</a> is vital. It has examples of legal clauses you can use during procurement, questions to ask and so on, and it's aimed specifically at Higher Education. </p>
+          <h3>Screen reader testing</h3>
+          <p>Ideally, we involve those who use assistive technologies such as screen readers to test our new sites and services, or changes to existing sites and services. This might not always be possible. If you need to do some screen reader testing yourself and aren't sure how to start, <a href="https://github.com/canaxess/screen-reader-testing">Canaxxes has a screen reader testing guide</a> and <a href="https://screenreader.app/">the ScreenReader app</a>, developed by the <a href="https://appt.org/">Appt foundation</a> who were on one of the lunch and learn sessions yesterday, is an app to help you to learn how to use a screen reader on a mobile device. </p>
+          <h3>Accessibility testing</h3>
+          <p>On the topic of testing, <a href="https://www.learningapps.co.uk/moodle/xertetoolkits/play.php?template_id=2196#page1">Alistair McNaught</a> has shared a really useful <a href="https://docs.google.com/spreadsheets/d/1g1yZl-1LsubIwZCatKizH7nrOfXaWGjMbkloBFfAeos/edit#gid=1416612772">Tools and platforms Quick Check accessibility testing spreadsheet</a>. If you need to do more deeper testing the Government Digital Service has a really useful <a href="https://github.com/alphagov/wcag-primer/wiki">accessibility testing guide</a>. Of course, there's tools like <a href="https://accessibilityinsights.io/">Accessibility Insights</a> but I assume everyone knows about that one. </p>
+          <h3>Developing staff</h3>
+          <p>If you want to build or train your team, <a href="https://twitter.com/scottohara">Scott O'Hara</a>'s <a href="https://scottaohara.github.io/accessibility_interview_questions/">Accessibility Interview questions</a> gives some great examples of questions you can ask at interviews and Teach Access offers an <a href="https://teachaccess.github.io/tutorial/">interactive accessibility tutorial</a> for developers and designers. </p>
+          <h3>Newsletters and blogs</h3>
+          <p>My recommended way to learn about accessibility and keep up to date is through accessibility newsletters and blogs. As <a href="https://twitter.com/AccessibilityC3">Charlie</a> said in the Accessibility Champions session, community knowledge is really important. I've learnt the most from amazing blogs by people like <a href="https://adrianroselli.com/posts">Adrian Roselli</a>, <a href="https://yatil.net/blog">Eric Eggert</a>, <a href="https://www.sarasoueidan.com/blog/">Sara Soueidan</a>, <a href="https://www.scottohara.me/writing/">Scott O'Hara</a> and especially <a href="https://groups.google.com/a/d.umn.edu/g/webdev">Laura Carlson's weekly newsletter</a>. I've collated a list of <a href="https://matthewdeeprose.github.io/resources.html">my favourite accessibility newsletters and blogs</a> on my website. </p>
+          <h2>Conclusion</h2>
+          <p>Thanks for joining me on the lunch and learn. I hope there was something of use to everyone! A special thank you to our captioner Jen, and Tim and our Bridget BSL interpreter.</p>
+          <p>We can use the remaining time to try to answer any questions. Perhaps you'd like to look in more detail at something I shared? Or maybe you want to share how you approached demystifying, simplifying and amplifying accessibility at your organisation?</p>
+          <p>Before I start reviewing the slido, the next session at 14:00 is "Innovation and Accessibility Eco Systems" which looks amazing. Do not miss the session at 16:15 GMT, " <a href="https://www.youtube.com/watch?v=ab7xRhUw9hU">User-generated accessibility information</a>" because anything that <a href="https://www.linkedin.com/in/cambeaudoin/">Cam Bedouin</a> is involved with is always going to be awesome and you really need to check out him and his colleagues on that session. </p>
+          <h3>Questions and answers</h3>
+          <p>Thanks very much for listening and I'll stop sharing and start having a look at any questions in the Slido. I'm going to just go by, let's see, most popular.</p>
+          <p>From Kirsten, "Does higher education as an industry have unique accessibility challenges that don't occur in other industries?" Brilliant question. Thank you, Kirsten. I'd say probably due to the breadth of the types of resources that we use at universities, for example, maps, chemistry, STEM, there's a lot of very complex notation and I think we still haven't quite fully solved the question of how can we help our academic staff to create accessible resources in those subject areas, particularly that can be adjusted really well with our alternative formats that we offer with Blackboard Ally and Sensus Access. There is a brilliant <a href="https://github.com/A11yMaths">JISC accessibility maths group</a> who are working on that and one of my colleagues, Luke, is in there as well. I think we've only got a few seconds left. I'm going to have a look at the next one. </p>
+          <p>David says, "Really cool and awesome", thank you. "Highly informative". Awesome. Brilliant. Thank you very much.</p>
+          <p>"Could you share any tips or sources to explain the importance of colour contrast to marketing / stakeholders" ask Nikki? I would suggest, ask them to&hellip; say you get something with a yellow background and white text, put it on a mobile phone, ask them to go out in the middle of the day, on a sunny day and try to read the text on their phone. That's a kind of situational impairment with screen glare and then ask them to compare something with really good contrast and the experience. Then think about all of the other ways that that might appear so that it's not only affecting those that might have an impairment or disability or permanent disability but those <a href="https://www.w3.org/WAI/EO/wiki/Situational_terminology">situational impairments</a> and how the more accessible the content, the more everyone benefits. </p>
+          <p>I think we've reached 14:00. I don't want to make you late for the next session. You're welcome to get in touch with me and if you'd like to have a follow up to this section with AbilityNet, <a href="https://abilitynet.org.uk/">I'm sure if you contact AbilityNet we can sort something out</a>. </p>
+          <p>Thank you so much for listening! I don't know whether I'm just going to get cut off but thanks very much, and thanks again to Bridget for trying to deal with my rapid talking. Thank you Bridget and thanks everyone and goodbye.</p>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related content</h2>
+        </section>
+        <section class="related">
+          <h3>Presentations</h3>
+          <ul class="relUL">
+            <li>
+              <a href="https://matthewdeeprose.github.io/alt-text-images-charts-graphs.html">What is alternative text? How do I write it for images, charts, and graphs?</a>
+            </li>
+            <li>
+              <a href="https://matthewdeeprose.github.io/better_content_made_easy.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h3>Blog posts</h3>
+          <ul class="relUL">
+            <li>
+              <a href="inspector_for_all">Use group policy to set the Microsoft Office Accessibility Inspector to "check while you work" by default</a>
+            </li>
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/07/20/design-ideas-three-ways-overview/">Three ways PowerPoint’s “Design Ideas” excludes your audience, and how to fix it (Digital Learning).</a>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS">
+          <a id="rssA" href="feed.rss">RSS</a>
+        </div>
+        <div id="SiteMap">
+          <a href="siteMap.html">Site Map</a>
+        </div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
+        </div>
+      </footer>
+    </div>
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false"
+        } else {
+          menuAriaAttrib = "true"
+        }
+        document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
+      window.onscroll = function() {
+        scrollFunction()
+      };
+
+      function scrollFunction() {
+        if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
+
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById('skipToContent').focus();
+      }
+
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById('rssA').focus();
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
+
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia('(prefers-color-scheme: dark)');
+        let dt;
+        if (d.matches) {
+          dt = 'dark';
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = 'light'
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == 'dark' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'light' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'dark' && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
+
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
+
+      function applyThemePreference() {
+        if (themePref == 'Dark') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          theButton.setAttribute("aria-pressed", "true");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        } else if (themePref == 'Light') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          theButton.setAttribute("aria-pressed", "false");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        }
+      }
+      applyThemePreference();
+    </script>
+    <script src="scripts/lite-yt-embed.js"></script>
+    <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+  </body>
+</html>
