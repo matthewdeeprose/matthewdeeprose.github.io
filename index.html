@@ -107,7 +107,7 @@
           <section>
             <h2>Recent presentations</h2>
             <ul class="cards">
-			<!--  Card x    -->
+              <!--  Card x    -->
               <li>
                 <article class="card reorder plainBlack">
                   <h2>
@@ -115,12 +115,13 @@
                   </h2>
                   <img src="Making_accessibility_simpler.png" alt="" loading="lazy" width="533" height="300">
                   <div class="cardDesc">
-                    <p>A "Lunch and Learn" session at <a href="https://abilitynet.org.uk/techsharepro-2022">TechSharePro 2022.</a></p>
+                    <p>A "Lunch and Learn" session at <a href="https://abilitynet.org.uk/techsharepro-2022">TechSharePro 2022.</a>
+                    </p>
                   </div>
                 </article>
                 <!--  End of card 0   -->
               </li>
-			<!--  Card x    -->
+              <!--  Card x    -->
               <li>
                 <article class="card reorder plainBlack">
                   <h2>
@@ -215,24 +216,28 @@
             <a href="presentations.html">More presentations</a>
             <h2>Highlighted projects and resources</h2>
             <ul class="cards">
-			<!--  Card 2    -->
-                     <li>
-                        <article class="card reorder plainBlack">
-                           <h2><a href="inspector_for_all">Accessibility inspector for everyone</a></h2>
-                           <img src="inspector-4-all.png" alt="" loading="lazy" width="533" height="300">
-                           <p>Use group policy to set the accessibility inspector to "check as I work" on managed Windows PCs.</p>
-                        </article>
-                        <!--  End of card 2   -->
-                     </li>
-				                       <!--  Card 2    -->
-                     <li>
-                        <article class="card reorder plainBlack">
-                           <h2><a href="infographic-colour-generator.html">Brand Colour Combination Suggester</a></h2>
-                           <img src="suggester.png" alt="A randomomise button, next to a selection of colours selected for an infographic" loading="lazy" width="533" height="300">
-                           <p>Discover "on brand" colour combinations that meet accessibility guidelines.</p>
-                        </article>
-                        <!--  End of card 2   -->
-                     </li>
+              <!--  Card 2    -->
+              <li>
+                <article class="card reorder plainBlack">
+                  <h2>
+                    <a href="inspector_for_all">Accessibility inspector for everyone</a>
+                  </h2>
+                  <img src="inspector-4-all.png" alt="" loading="lazy" width="533" height="300">
+                  <p>Use group policy to set the accessibility inspector to "check as I work" on managed Windows PCs.</p>
+                </article>
+                <!--  End of card 2   -->
+              </li>
+              <!--  Card 2    -->
+              <li>
+                <article class="card reorder plainBlack">
+                  <h2>
+                    <a href="infographic-colour-generator.html">Brand Colour Combination Suggester</a>
+                  </h2>
+                  <img src="suggester.png" alt="A randomomise button, next to a selection of colours selected for an infographic" loading="lazy" width="533" height="300">
+                  <p>Discover "on brand" colour combinations that meet accessibility guidelines.</p>
+                </article>
+                <!--  End of card 2   -->
+              </li>
               <!--  Card X    -->
               <li>
                 <article class="card reorder plainBlack">
@@ -257,6 +262,23 @@
               </li>
             </ul>
             <a href="projects.html">More projects and resources</a>
+          </section>
+          <section>
+            <nav class="a11y-webring-club" aria-labelledby="a11y-webring-club">
+              <h2 id="a11y-webring-club">a11y-webring.club</h2>
+              <p>This site is a member of the <a rel="external" href="https://a11y-webring.club/">a11y-webring.club</a>. </p>
+              <ul>
+                <li>
+                  <a rel="previous external" href="https://a11y-webring.club/prev">Previous website</a>
+                </li>
+                <li>
+                  <a rel="external" href="https://a11y-webring.club/random">Random website</a>
+                </li>
+                <li>
+                  <a rel="next external" href="https://a11y-webring.club/next">Next website</a>
+                </li>
+              </ul>
+            </nav>
           </section>
         </article>
         <div id="panel">
@@ -295,16 +317,18 @@
         <section class="related">
           <h3>Latest presentation</h3>
           <ul class="relUL">
-			<li><a href="making_accessibility_easier">Making accessibility easier</a></li>
+            <li>
+              <a href="making_accessibility_easier">Making accessibility easier</a>
+            </li>
           </ul>
         </section>
         <section class="related">
           <h3>Recent presentations</h3>
           <ul class="relUL">
-		    <li>
+            <li>
               <a href="better_content_made_easy.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</a>
             </li>
-		    <li>
+            <li>
               <a href="two-steps.html">Two steps forward? Making accessibility easier.</a>
             </li>
             <li>
@@ -402,45 +426,42 @@
         document.getElementById('rssA').focus();
       }
     </script>
-      <script>
-         /* Credit to Alastair Campbell for providing the basis of this script */
-         
-         
-         // Link up the cards
-         
-         function linkBoxes() {
-           var boxes = document.querySelectorAll("article.card");
-         
-           boxes.forEach(function (box) {
-             var link = box.querySelector("a");
-             if (link) {
-               var url = link.getAttribute("href");
-               box.addEventListener("click", function () {
-                 location.href = url;
-                 link.preventDefault;
-               });
-               box.classList.add("linkify");
-               link.addEventListener("focus", function () {
-                 box.classList.add("isfocused");
-               });
-               link.addEventListener("blur", function () {
-                 box.classList.remove("isfocused");
-               });
-         
-          /* Inject CTA in to cards as visual affordance but hide from assistive tech announcements */
-               box.insertAdjacentHTML("beforeend", '<span class="cta" aria-hidden="true"></span>');
-             }
-           });
-         }
-         document.addEventListener("DOMContentLoaded", function () {
-           if ("querySelector" in document) {
-             linkBoxes();
-           }
-         });
-      </script>
+    <script>
+      /* Credit to Alastair Campbell for providing the basis of this script */
+      // Link up the cards
+      function linkBoxes() {
+        var boxes = document.querySelectorAll("article.card");
+        boxes.forEach(function(box) {
+            var link = box.querySelector("a");
+            if (link) {
+              var url = link.getAttribute("href");
+              box.addEventListener("click", function() {
+                location.href = url;
+                link.preventDefault;
+              });
+              box.classList.add("linkify");
+              link.addEventListener("focus", function() {
+                box.classList.add("isfocused");
+              });
+              link.addEventListener("blur", function() {
+                box.classList.remove("isfocused");
+              });
+              /* Inject CTA in to cards as visual affordance but hide from assistive tech announcements */
+              box.insertAdjacentHTML("beforeend", ' < span class = "cta"
+                aria - hidden = "true" > < /span>');
+              }
+            });
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+          if ("querySelector" in document) {
+            linkBoxes();
+          }
+        });
+    </script>
     <script>
       let themePref = localStorage.getItem("theme");
       console.log("Has a theme preference been saved?", themePref);
+
       function setLight() {
         let buttonStatus = document.getElementById("lightDark");
         let theButton = document.getElementById("modeToggle");

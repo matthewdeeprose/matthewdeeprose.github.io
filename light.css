@@ -1,4 +1,9 @@
 /*Light mode */
+/* Webring */
+.a11y-webring-club {
+	border: 0.1rem #00131d solid;}
+
+
 lite-youtube {
 	border: 0.3rem solid #495961 !important;
 }
