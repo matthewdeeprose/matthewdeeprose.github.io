@@ -107,9 +107,9 @@
           <section>
             <h2>Recent presentations</h2>
             <ul class="cards">
-              <!--  Card x    -->
-              <li>
-                <article class="card reorder plainBlack">
+			<!--  Card x    -->
+			<li>
+<article class="card reorder plainBlack">
                   <h2>
                     <a href="techshare_pro_22__simplify_accessibility.html">Simplify accessibility in Higher Education...</a>
                   </h2>
@@ -121,13 +121,12 @@
                 </article>
                 <!--  End of card 0   -->
               </li>
-              <!--  Card x    -->
               <li>
                 <article class="card reorder plainBlack">
                   <h2>
                     <a href="better_content_made_easy.html">Better content, made easy</a>
                   </h2>
-                  <img src="betterContent2.png" alt="" loading="lazy" width="533" height="300">
+                  <img src="betterContent.png" alt="" loading="lazy" width="533" height="300">
                   <div class="cardDesc">
                     <p>Using the accessibility inspector in Word, PowerPoint, and Excel to create better, more accessible content.</p>
                   </div>
@@ -216,28 +215,24 @@
             <a href="presentations.html">More presentations</a>
             <h2>Highlighted projects and resources</h2>
             <ul class="cards">
-              <!--  Card 2    -->
-              <li>
-                <article class="card reorder plainBlack">
-                  <h2>
-                    <a href="inspector_for_all">Accessibility inspector for everyone</a>
-                  </h2>
-                  <img src="inspector-4-all.png" alt="" loading="lazy" width="533" height="300">
-                  <p>Use group policy to set the accessibility inspector to "check as I work" on managed Windows PCs.</p>
-                </article>
-                <!--  End of card 2   -->
-              </li>
-              <!--  Card 2    -->
-              <li>
-                <article class="card reorder plainBlack">
-                  <h2>
-                    <a href="infographic-colour-generator.html">Brand Colour Combination Suggester</a>
-                  </h2>
-                  <img src="suggester.png" alt="A randomomise button, next to a selection of colours selected for an infographic" loading="lazy" width="533" height="300">
-                  <p>Discover "on brand" colour combinations that meet accessibility guidelines.</p>
-                </article>
-                <!--  End of card 2   -->
-              </li>
+			<!--  Card 2    -->
+                     <li>
+                        <article class="card reorder plainBlack">
+                           <h2><a href="inspector_for_all">Accessibility inspector for everyone</a></h2>
+                           <img src="inspector-4-all.png" alt="" loading="lazy" width="533" height="300">
+                           <p>Use group policy to set the accessibility inspector to "check as I work" on managed Windows PCs.</p>
+                        </article>
+                        <!--  End of card 2   -->
+                     </li>
+				                       <!--  Card 2    -->
+                     <li>
+                        <article class="card reorder plainBlack">
+                           <h2><a href="infographic-colour-generator.html">Brand Colour Combination Suggester</a></h2>
+                           <img src="suggester.png" alt="A randomomise button, next to a selection of colours selected for an infographic" loading="lazy" width="533" height="300">
+                           <p>Discover "on brand" colour combinations that meet accessibility guidelines.</p>
+                        </article>
+                        <!--  End of card 2   -->
+                     </li>
               <!--  Card X    -->
               <li>
                 <article class="card reorder plainBlack">
@@ -263,8 +258,7 @@
             </ul>
             <a href="projects.html">More projects and resources</a>
           </section>
-          <section>
-            <nav class="a11y-webring-club" aria-labelledby="a11y-webring-club">
+		  		            <nav class="a11y-webring-club" aria-labelledby="a11y-webring-club">
               <h2 id="a11y-webring-club">a11y-webring.club</h2>
               <p>This site is a member of the <a rel="external" href="https://a11y-webring.club/">a11y-webring.club</a>. </p>
               <ul>
@@ -279,8 +273,8 @@
                 </li>
               </ul>
             </nav>
-          </section>
         </article>
+
         <div id="panel">
           <button class="panelButton" onclick="topFunction()" id="myBtn">
             <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
@@ -292,7 +286,7 @@
                 <path d="m8.5 4.5v8" />
               </g>
             </svg>
-            <br>
+            <br />
             <span id="myBtnTop" class="panelLabel">Top</span>
           </button>
           <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
@@ -305,7 +299,7 @@
                 <path d="m8.5 12.5v-8" />
               </g>
             </svg>
-            <br>
+            <br />
             <span id="myBtnBottom" class="panelLabel">Bottom</span>
           </button>
         </div>
@@ -317,25 +311,23 @@
         <section class="related">
           <h3>Latest presentation</h3>
           <ul class="relUL">
-            <li>
-              <a href="making_accessibility_easier">Making accessibility easier</a>
-            </li>
+<li><a href="techshare_pro_22__simplify_accessibility.html">Simplify accessibility in Higher Education...</a></li>
           </ul>
         </section>
         <section class="related">
           <h3>Recent presentations</h3>
           <ul class="relUL">
-            <li>
+		              <li>
               <a href="better_content_made_easy.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</a>
-            </li>
-            <li>
-              <a href="two-steps.html">Two steps forward? Making accessibility easier.</a>
             </li>
             <li>
               <a href="alt-text-images-charts-graphs.html.html">What is alternative text? How do I write it for images, charts, and graphs?</a>
             </li>
             <li>
               <a href="objectives.html">Sustaining accessibility efforts through accessibility-related appraisal objectives.</a>
+            </li>
+            <li>
+              <a href="powerBI.html">Power BI: Accessibility Tips.</a>
             </li>
           </ul>
         </section>
@@ -426,42 +418,45 @@
         document.getElementById('rssA').focus();
       }
     </script>
-    <script>
-      /* Credit to Alastair Campbell for providing the basis of this script */
-      // Link up the cards
-      function linkBoxes() {
-        var boxes = document.querySelectorAll("article.card");
-        boxes.forEach(function(box) {
-            var link = box.querySelector("a");
-            if (link) {
-              var url = link.getAttribute("href");
-              box.addEventListener("click", function() {
-                location.href = url;
-                link.preventDefault;
-              });
-              box.classList.add("linkify");
-              link.addEventListener("focus", function() {
-                box.classList.add("isfocused");
-              });
-              link.addEventListener("blur", function() {
-                box.classList.remove("isfocused");
-              });
-              /* Inject CTA in to cards as visual affordance but hide from assistive tech announcements */
-              box.insertAdjacentHTML("beforeend", ' < span class = "cta"
-                aria - hidden = "true" > < /span>');
-              }
-            });
-        }
-        document.addEventListener("DOMContentLoaded", function() {
-          if ("querySelector" in document) {
-            linkBoxes();
-          }
-        });
-    </script>
+      <script>
+         /* Credit to Alastair Campbell for providing the basis of this script */
+         
+         
+         // Link up the cards
+         
+         function linkBoxes() {
+           var boxes = document.querySelectorAll("article.card");
+         
+           boxes.forEach(function (box) {
+             var link = box.querySelector("a");
+             if (link) {
+               var url = link.getAttribute("href");
+               box.addEventListener("click", function () {
+                 location.href = url;
+                 link.preventDefault;
+               });
+               box.classList.add("linkify");
+               link.addEventListener("focus", function () {
+                 box.classList.add("isfocused");
+               });
+               link.addEventListener("blur", function () {
+                 box.classList.remove("isfocused");
+               });
+         
+          /* Inject CTA in to cards as visual affordance but hide from assistive tech announcements */
+               box.insertAdjacentHTML("beforeend", '<span class="cta" aria-hidden="true"></span>');
+             }
+           });
+         }
+         document.addEventListener("DOMContentLoaded", function () {
+           if ("querySelector" in document) {
+             linkBoxes();
+           }
+         });
+      </script>
     <script>
       let themePref = localStorage.getItem("theme");
       console.log("Has a theme preference been saved?", themePref);
-
       function setLight() {
         let buttonStatus = document.getElementById("lightDark");
         let theButton = document.getElementById("modeToggle");
