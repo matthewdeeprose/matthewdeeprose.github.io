@@ -1,1378 +1,1365 @@
 <!DOCTYPE html>
 <html lang="en-GB">
-   <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <meta name="description" content="University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?">
-      <meta name="keywords" content="Accessibility, WCAG, EN 301 549, UCISA, Univesity, PSBAR, public sector, managing accessibility, implementation">
-      <meta name="author" content="Matthew Deeprose">
-      <title>Making IT accessible for all!</title>
-      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
-      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
-      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
-      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-      <meta property="og:title" content="Making IT accessible for all!">
-      <meta property="og:description" content="Recent experiences have demonstrated that University staff and students expect to use online resources with a variety of devices, making full use of accessibility features such as reflow, captions, and text-to-speech. Such features benefit everyone, but especially the increasing proportion of university students who self-report a disability. University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?">
-      <meta property="og:image" content="https://matthewdeeprose.github.io/makeITaccessible.png">
-      <meta property="og:image:alt" content="">
-      <meta property="og:locale" content="en_GB">
-      <meta property="og:type" content="website">
-      <meta property="og:url" content="https://matthewdeeprose.github.io/makeITaccessible.html">
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
-      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-      <link rel="icon" href="favicon.ico">
-      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
-      <link rel="icon" href="favicon.svg" type="image/svg+xml">
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Making IT accessible for all!" />
-      <meta name="twitter:description" content="Recent experiences have demonstrated that University staff and students expect to use online resources with a variety of devices, making full use of accessibility features such as reflow, captions, and text-to-speech. Such features benefit everyone, but especially the increasing proportion of university students who self-report a disability. University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?" />
-      <meta name="twitter:creator" content="@VLEguru" />
-      <meta name="twitter:site" content="@VLEguru" />
-      <meta name="twitter:image" content="https://matthewdeeprose.github.io/makeITaccessible.png" />
-      <meta name="twitter:image:alt" content="" />
-	  <style>
-		lite-youtube > .lty-playbtn {
-			width: 3.6rem !important;
-			height: 2.9rem !important;
-		}
-	  </style>
-   </head>
-   <body>
-      <div class="page-wrap" id="start">
-         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
-         <header class="page-header">
-            <div id="banner">
-               <div id="logo">
-                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
-                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
-                        <title id="svgTitle">Change theme</title>
-                        <desc id="svgDesc">Select to switch to light theme</desc>
-                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
-                           <path d="m6.5 17.5h4"/>
-                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
-                           <path d="m8.5 1.5v-1"/>
-                           <path d="m13.5 3.5 1-1"/>
-                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
-                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
-                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
-                           <path d="m1.5 7.5h-1"/>
-                           <path d="m16.5 7.5h-1"/>
-                        </g>
-                     </svg>
-                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
-                        <title id="svgTitleX">Change theme</title>
-                        <desc id="svgDescX">Select to switch to dark theme</desc>
-                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
-                           <path d="m2.5 13.5h4"/>
-                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
-                        </g>
-                     </svg>
-                  </button>
-               </div>
-               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
-               <div id="titleLink">Matthew Deeprose</div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?">
+    <meta name="keywords" content="Accessibility, WCAG, EN 301 549, UCISA, Univesity, PSBAR, public sector, managing accessibility, implementation">
+    <meta name="author" content="Matthew Deeprose">
+    <title>Making IT accessible for all!</title>
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+    <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+    <meta property="og:title" content="Making IT accessible for all!">
+    <meta property="og:description" content="Recent experiences have demonstrated that University staff and students expect to use online resources with a variety of devices, making full use of accessibility features such as reflow, captions, and text-to-speech. Such features benefit everyone, but especially the increasing proportion of university students who self-report a disability. University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?">
+    <meta property="og:image" content="https://matthewdeeprose.github.io/makeITaccessible.png">
+    <meta property="og:image:alt" content="">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://matthewdeeprose.github.io/makeITaccessible.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="favicon.ico">
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Making IT accessible for all!" />
+    <meta name="twitter:description" content="Recent experiences have demonstrated that University staff and students expect to use online resources with a variety of devices, making full use of accessibility features such as reflow, captions, and text-to-speech. Such features benefit everyone, but especially the increasing proportion of university students who self-report a disability. University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?" />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta name="twitter:image" content="https://matthewdeeprose.github.io/makeITaccessible.png" />
+    <meta name="twitter:image:alt" content="" />
+    <style>
+      lite-youtube>.lty-playbtn {
+        width: 3.6rem !important;
+        height: 2.9rem !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+              <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                  <path d="m6.5 17.5h4" />
+                  <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                  <path d="m2.5 13.5h4" />
+                  <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+            <span id="hamburger">
+              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html" class="active">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html">Projects</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 id="top">Making IT accessible for all!</h1>
+          <div class="expandContractControls">
+            <button id="expandAll" class="actionButton" aria-label="Expand all content" type="button" onclick="openAll()">Expand all</button>
+            <button id="collapseAll" class="actionButton" aria-label="Collapse all content" type="button" onclick="collapseAll()">Collapse all</button>
+          </div>
+          <details open>
+            <summary id="Video">
+              <h2>Presentation recording and transcript</h2>
+            </summary>
+            <div id="vidPres">
+              <h2 id="video">Watch the presentation</h2>
+              <div class="videoWrapper">
+                <lite-youtube videoid="g59mIZ2M2lU"></lite-youtube>
+              </div>
+              <p>
+                <a href="makeITaccessible_transcript.html">Read the transcript</a>
+              </p>
             </div>
-         </header>
-         <div id="main-navigation" class="page-nav">
-            <nav aria-label="Main menu" class="topnav" id="myTopnav">
-               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
-                  <span id="hamburger">
-                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
-                        <title id="hamSVGTitle">Menu</title>
-                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
-                        <rect width="100" height="20"></rect>
-                        <rect y="30" width="100" height="20"></rect>
-                        <rect y="60" width="100" height="20"></rect>
-                     </svg>
-                  </span>
-                  <span id="arrow">
-                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
-                        <title id="arrowSVGTitle">Menu</title>
-                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
-                        <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
-                           <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
-                           <path d="m16.5,10.5l-13,0" />
-                        </g>
-                     </svg>
-                  </span>
-               </button>
-               <a id="homeMenu" href="index.html">Home</a>
-               <a href="presentations.html" class="active">Presentations</a>
-               <a href="posts.html">Blog Posts</a>
-               <a href="projects.html">Projects</a>
-               <a href="about.html">About</a>
-            </nav>
-         </div>
-         <main class="page-main" id="main">
-            <article class="standard">
-               <h1 id="top">Making IT accessible for all!</h1>
-               <div class="expandContractControls">
-                  <button id="expandAll" class="actionButton" aria-label="Expand all content" type="button" onclick="openAll()">Expand all</button>
-                  <button id="collapseAll" class="actionButton" aria-label="Collapse all content" type="button" onclick="collapseAll()">Collapse all</button>
-               </div>
-               <details open>
-                  <summary id="Video">
-                     <h2>Presentation recording and transcript</h2>
-                  </summary>
-                  <div id="vidPres">
-                     <h2 id="video">Watch the presentation</h2>
-                     <div class="videoWrapper">
-						<lite-youtube videoid="g59mIZ2M2lU"></lite-youtube>
-                     </div>
-                     <p>
-                        <a href="makeITaccessible_transcript.html">Read the transcript</a>
-                     </p>
-                  </div>
-               </details>
-               <details>
-                  <summary id="Files">
-                     <h2>Presentation files and other assets</h2>
-                  </summary>
-                  <ul>
-                     <li>
-                        <a href="Making_IT_Accessible_For_All__Live_Presentation.pptx">Presentation deck - Live version (32.7 MB PPTX)</a>
-                     </li>
-                     <li>
-                        <a href="Making_IT_Accessible_For_All__Full_Presentation.pptx">Presentation deck - Full version (83.3 MB PPTX)</a>
-                     </li>
-                     <li>
-                        <a href="https://www.slideshare.net/UOS_MLE/making-it-accessible-for-all-live-version">View 'Live slide deck' online via SlideShare</a>
-                     </li>
-                     <li>
-                        <a href="https://speakerdeck.com/matthewdeeprose/making-it-accessible-for-all-full-slide-deck">View 'Full slide deck' online via SpeakerDeck</a>
-                     </li>
-                     <li>
-                        <a href="Digital_accessibility_policy_for_University_IT__Template.docx">IT Accessibility Policy Template (39.6 KB DOCX)</a>
-                     </li>
-                     <li>
-                        <a href="level3.html">Digital Learning Level 3 Accessibility Test Process</a>
-                     </li>
-                     <li>
-                        <a href="Definition_of_Done.pdf">Example role-based Definition of Done (27.6 KB PDF)</a>
-                     </li>
-                     <li>
-                        <a href="Draft_Web_Accessibility_Testing_Plan.xlsx">Example accessibility testing sheet (46.3 KB XLSX)</a>
-                     </li>
-                  </ul>
-               </details>
-               <details>
-                  <summary id="Presenters">
-                     <h2>Presenters</h2>
-                  </summary>
-                  <ul>
-                     <li>
-                        <a href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a>
-                        <ul>
-                           <li>Senior Learning Designer</li>
-                           <li>University of Southampton</li>
-                           <li>
-                              <a href="https://twitter.com/VLEguru">@VLEguru</a>
-                           </li>
-                        </ul>
-                     </li>
-                     <li>
-                        <a href="https://www.linkedin.com/in/tamsynmsmith/">Tamsyn Smith</a>
-                        <ul>
-                           <li>Senior Learning Designer Team Lead</li>
-                           <li>University of Southampton</li>
-                           <li>
-                              <a href="https://twitter.com/TamsynMSmith">@TamsynMSmith</a>
-                           </li>
-                        </ul>
-                     </li>
-                     <li>
-                        <a href="https://www.linkedin.com/in/fiona-strawbridge-46065bb/">Dr Fiona Strawbridge</a>
-                        <ul>
-                           <li>Director of Digital Education</li>
-                           <li>University College London</li>
-                           <li>
-                              <a href="https://twitter.com/fstrawbridge">@fstrawbridge</a>
-                           </li>
-                        </ul>
-                     </li>
-                  </ul>
-               </details>
-               <details>
-                  <summary id="Synopsis">
-                     <h2>Synopsis</h2>
-                  </summary>
-                  <p>3 December 2021 - <a href="https://www.ucisa.ac.uk/Events/2021/December/Making-IT-accessible-for-all">UCISA</a>
-                  </p>
-                  <p>Recent experiences have demonstrated that University staff and students expect to use online resources with a variety of devices, making full use of accessibility features such as reflow, captions, and text-to-speech.</p>
-                  <p>Such features benefit everyone, but especially the increasing proportion of university students who self-report a disability.</p>
-                  <p>University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?</p>
-                  <p>In this presentation, we will share:</p>
-                  <ul>
-                     <li>approaches to building a digital accessibility policy for university IT departments.</li>
-                     <li>techniques for embedding accessibility within IT development processes by ‘shifting left’.</li>
-                     <li>examples from within the Higher Education and wider IT sectors.</li>
-                  </ul>
-               </details>
-               <details>
-                  <summary id="Acronyms">
-                     <h2>Acronyms</h2>
-                  </summary>
-                  <dl>
-                     <dt>WCAG</dt>
-                     <dd>The <a href="https://www.w3.org/WAI/WCAG21/quickref/?currentsidebar=%23col_customize">Web Content Accessibility Guidelines</a> are a set of normative standards for assessing the accessibility of web-based content. </dd>
-                     <dt>PSBAR</dt>
-                     <dd>
-                        <a href="https://www.legislation.gov.uk/uksi/2018/952/made?view=plain">The Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018</a> came into force on 23 September. It aims to ensure public sector websites and mobile apps are accessible to all users, especially those with disabilities.
-                     </dd>
-                     <dt>W3C</dt>
-                     <dd>The <a href="https://www.w3.org/">World Wide Web Consortium</a> is an international community that develops open standards, such as the Web Content Accessibility Guidelines, to ensure the long-term growth of the Web. </dd>
-                     <dt>A11y</dt>
-                     <dd>
-                        <a href="https://www.a11yproject.com/posts/2017-08-26-a11y-and-other-numeronyms/">Accessibility</a>. The use of a11y is a <a href="https://en.wikipedia.org/wiki/Numeronym">numeronym</a> for the word accessibility. There are eleven letters between the "a" and "y".
-                     </dd>
-                     <dt>CDDO</dt>
-                     <dd>The <a href="https://www.gov.uk/government/organisations/central-digital-and-data-office/about">Central Data and Digital Office (CDDO)</a> monitor public sector bodies’ compliance on behalf of the Minister for the Cabinet Office. The CDDO sits alongside the Government Digital Service (GDS) in the Cabinet Office. </dd>
-                     <dt>EHRC</dt>
-                     <dd>The <a href="https://www.equalityhumanrights.com/en">Equality and Human Rights Commission</a> may be asked by CDDO to investigate Universities who do not meet the standard set by The Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018. </dd>
-                     <dt>VPAT</dt>
-                     <dd>A <a href="https://www.section508.gov/sell/vpat/">Voluntary Product Accessibility Template</a> is a document that explains how information and communication technology (ICT) products such as software, hardware, electronic content, and support documentation meet accessibility standards, specifically related to the US <a href="https://www.access-board.gov/the-board/laws/rehabilitation-act-of-1973#508">Section 508 of the Rehabilitation Act</a>. </dd>
-                     <dt>ACR</dt>
-                     <dd>An <a href="https://krisrivenburgh.medium.com/acr-accessibility-conformance-report-vs-vpat-70828cd8e5bf">Accessibility Conformance Report</a> is a completed VPAT® + all the essential information about the report itself. </dd>
-                     <dt>EDI</dt>
-                     <dd>
-                        <a href="https://www.acas.org.uk/improving-equality-diversity-and-inclusion">Equality, Diversity and Inclusion</a>.
-                     </dd>
-                  </dl>
-               </details>
-               <details>
-                  <summary id="presLinks">
-                     <h2>Links referred to during the presentation</h2>
-                  </summary>
-                  <ul>
-                     <li>
-                        Introduction 
-                        <ul>
-                           <li>
-                              <a href="https://abilitynet.org.uk/accessibility-services/he-and-fe-accessibility-maturity-modelHE">Higher Education (HE) and Further Education (FE) Accessibility Maturity Model</a>, created by AbilityNet and McNaught Consultancy
-                           </li>
-                           <li>
-                              <a href="https://blog.google/outreach-initiatives/accessibility/world-sight-day-accessibility-customization/">Why we should rethink accessibility as customization,</a> by Nicola Yap, Google.
-                           </li>
-                           <li>
-                              <a href="https://www.mckinsey.com/featured-insights/diversity-and-inclusion/diversity-wins-how-inclusion-matters">Diversity wins: How inclusion matters,</a> by Sundiatu Dixon-Fyle, Kevin Dolan, Vivian Hunt, and Sara Prince.
-                           </li>
-                           <li>
-                              <a href="https://www.w3.org/WAI/planning-and-managing/">Planning and Managing Web Accessibility</a> from the W3C Web Accessibility Initiative (WAI)
-                           </li>
-                        </ul>
-                     </li>
-                     <li>
-                        Initiate 
-                        <ul>
-                           <li>
-                              Learn the basics 
-                              <ul>
-                                 <li>
-                                    <a href="https://www.w3.org/WAI/fundamentals/">Accessibility Fundamentals (W3C)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://accessibility.blog.gov.uk/2016/09/02/dos-and-donts-on-designing-for-accessibility/">Dos and don'ts on designing for accessibility (CDDO)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://a11y.coffee/quick-wins/">Quick wins for web accessibility (a11y.coffee)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://developer.mozilla.org/en-US/docs/Learn/Accessibility">Accessibility (MDN)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://docs.microsoft.com/en-us/learn/paths/accessibility-fundamentals/">Accessibility fundamentals (Microsoft)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://uxdesign.cc/giving-a-damn-about-accessibility-6caf90be5a40">Giving a damn about accessibility (UX Collective)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://de.ryerson.ca/wa/maze.html">Accessibility Maze</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://dwcag.org/#sign-up-section">WCAG of the Day</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://a11y-with-lindsey.ck.page/b4e437f629">10 Days of A11y</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://mailman12.u.washington.edu/mailman/listinfo/athen-list">Access Technology Higher Education Network Mailing List</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://webaim.org/discussion/">WebAIM Mailing List</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.jiscmail.ac.uk/cgi-bin/webadmin?A0=DIGITALACCESSIBILITYREGULATIONS">Digital Accessibility Regulations mailing list</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://a11y.coffee/dig-in/#communities">Web A11y Slack</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://jisc.onlinesurveys.ac.uk/accessibility-community-request-to-join">JISC Accessibility Community</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://tinyurl.com/a11y-WDA">Worldwide Accessibility Discord Server</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://accessibilityinsights.io/">Accessibility Insights</a>
-                                 </li>
-                              </ul>
-                           </li>
-                           <li>
-                              Develop the business case 
-                              <ul>
-                                 <li>
-                                    <a href="https://www.w3.org/WAI/WCAG21/Understanding/reflow.html">Understanding Success Criterion 1.4.10: Reflow</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.microsoft.com/design/inclusive/">Inclusive Design</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fapis.officeforstudents.org.uk%2Faccessplansdownloads%2F2024%2FUniversityOfSouthampton_APP_2020-21_V1_10007158.pdf&amp;data=04%7C01%7CM.Deeprose%40soton.ac.uk%7C52833ada55b34078f3af08d907e0e791%7C4a5378f929f44d3ebe89669d03ada9d8%7C0%7C0%7C637549484823251088%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C1000&amp;sdata=hM%2BqQt6X3alkFuK0yiSgTZJltb%2B4MRY2J4mjfBFlO3s%3D&amp;reserved=0">UoS Access and Participation Plan</a>.
-                                 </li>
-                                 <li>
-                                    <a href="https://twitter.com/McgarrDana/status/1387870476178006020">Accessibility isn’t more work, you were just cutting corners before. The work was incomplete.</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.lflegal.com/2018/11/webaim-fear/">Fear is a Poor Motivator for Accessibility</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://webaim.org/blog/motivating-accessibility-change/">WebAIM’s Hierarchy for Motivating Accessibility Change</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.peatworks.org/policy-workforce-development/the-accessible-technology-skills-gap/">The Accessible Technology Skills Gap</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.wsj.com/articles/more-companies-are-looking-to-hire-accessibility-specialists-11630501200">More Companies Are Looking to Hire Accessibility Specialists</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.w3.org/WAI/business-case/">The Business Case for Digital Accessibility</a>
-                                 </li>
-                              </ul>
-                           </li>
-                           <li>
-                              Gather support - this section was removed to save time, <a href="https://youtu.be/UcPj5vpCqyg">a video version is available</a>. 
-                              <ul>
-                                 <li>
-                                    <a href="workshops.html">Accessibility Workshop Materials</a>
-                                 </li>
-                              </ul>
-                           </li>
-                        </ul>
-                     </li>
-                     <li>
-                        Plan 
-                        <ul>
-                           <li>
-                              Review websites 
-                              <ul>
-                                 <li>
-                                    <a href="https://www.whatdotheyknow.com/request/gds_accessibility_monitoring">A Freedom of Information (FOI) request</a> resulted in CDDO sharing a document that includes <a href="https://www.whatdotheyknow.com/request/670181/response/1597882/attach/3/Simplified%20Test%20Template%20ODT%20version%201.odt?cookie_passthrough=1">their testing procedure</a>.
-                                 </li>
-                                 <li>
-                                    <a href="https://www.w3.org/WAI/test-evaluate/preliminary/">W3C Easy checks</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.lexdis.org.uk/digital-accessibility/testing/quick-accessibility-checks/">Lexdis Quick Accessibility Checks</a>
-                                 </li>
-                                 <li>
-                                    <a href="level3.html">Digital Learning Level 3 Accessibility Test Process</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/">Website Accessibility Conformance Evaluation Methodology</a>
-                                 </li>
-                              </ul>
-                           </li>
-                        </ul>
-                     </li>
-                     <li>
-                        Implement 
-                        <ul>
-                           <li>
-                              Integrate goals into processes 
-                              <ul>
-                                 <li>
-                                    <a href="https://www.deque.com/shift-left/">Shift left</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://austingil.com/making-accessibility-more-accessible/">Get more team members involved with accessibility by sharing tools they'll actually use.</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://marketplace.visualstudio.com/items?itemName=deque-systems.vscode-axe-linter">axe Accessibility Linter</a> for Visual Studio Code
-                                 </li>
-                                 <li>
-                                    <a href="https://www.youtube.com/watch?v=Vdgc6RPye2E">axe Accessibility Linter: introductory webinar</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.adrianbolonio.com/en/accessibility-github-actions/">Automating the accessibility tests of your source code with GitHub Actions</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.youtube.com/watch?v=CqxfrrMwhaY">Automated Accessibility Testing in JavaScript Frameworks</a>, Mark Steadman (Deque).
-                                 </li>
-                                 <li>
-                                    <a href="https://www.hassellinclusion.com/blog/gherkin-accessibility-tests/">Using Gherkin to Write Accessibility Tests</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://makeitfable.com/">Fable Tech Labs</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.youtube.com/watch?v=6PHTGHgCQig">Auditing Design Systems for Accessibility</a>, Anna Cook (Recurly).
-                                 </li>
-                                 <li>
-                                    <a href="https://www.youtube.com/watch?v=Y35jmpS8lQM">Annotating designs for Accessibility.</a> Sarah Pulis and Claire Webber of Intopia share their <a href="https://www.figma.com/community/file/1022394680250523675">accessibility annotation kit</a> for Figma.
-                                 </li>
-                                 <li>
-                                    <a href="https://www.lullabot.com/articles/monitoring-web-accessibility-compliance-with-pa11y-dashboard">Monitoring Web Accessibility Compliance With Pa11y Dashboard</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://codepen.io/matthewdeeprose/pen/KKvvXMr">Semantic vs non-semantic button example on CodePen.</a>
-                                 </li>
-                              </ul>
-                           </li>
-                           <li>
-                              Prioritise issues 
-                              <ul>
-                                 <li>
-                                    <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-minimum.html">Understanding Success Criterion 2.4.11: Focus Appearance (Minimum)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-enhanced">Understanding Success Criterion 2.4.12: Focus Appearance (Enhanced)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context.html">Understanding Success Criterion 2.4.4: Link Purpose (In Context)</a>
-                                 </li>
-                                 <li>
-                                    <a href="https://accessibility.deque.com/agile-accessibility-handbook">Agile Accessibility Handbook</a>
-                                 </li>
-                              </ul>
-                           </li>
-                        </ul>
-                     </li>
-                     <li>Sustain </li>
-                     <li>
-                        Conclusion 
-                        <ul>
-                           <li>
-                              <a href="https://youtu.be/b1JPqWmElxI">Knowledge Gathering - Karl Groves on accessibility in tech</a>
-                           </li>
-                           <li>
-                              <a href="https://jisc.onlinesurveys.ac.uk/accessibility-community-request-to-join">Continue the conversation on the JISC Accessibility Community Teams area</a>
-                        </ul>
-                     </li>
-                  </ul>
-               </details>
-               <details>
-                  <summary id="more">
-                     <h2>Further Resources</h2>
-                  </summary>
-                  <h3 id="paths">Pathways to implementing accessibility</h3>
-                  <ul>
-                     <li>
-                        <a href="https://www.iso.org/standard/70913.html">ISO/IEC 30071-1:2019</a> Information technology — Development of user interface accessibility — Part 1: Code of practice for creating accessible ICT products and services.
-                     </li>
-                     <li>
-                        <a href="https://www.kotterinc.com/8-steps-process-for-leading-change/">The 8-Step Process for Leading Change</a>.
-                     </li>
-                     <li>
-                        <a href="http://bit.ly/eaccess-shifting">Shifting digital accessibility practice</a> through use of the 8-Step Process for Leading Change.
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=WDBgiUSdSZ4">Recorded Webinar: Delivering ISO 30071-1 for all Organisations</a>
-                     </li>
-                     <li>
-                        <a href="https://www.w3.org/WAI/planning-and-managing/">Planning and Managing Web Accessibility</a> from W3C.
-                     </li>
-                  </ul>
-                  <h3 id="buyin">Getting buy-in</h3>
-                  <ul>
-                     <li>
-                        <a href="https://a11ymyths.com">A11y Myths</a> - Dispelling the myths about accessibility. Very useful for responding to assumptions when building the business case.
-                     </li>
-                     <li>
-                        <a href="https://businessdisabilityforum.org.uk/knowledge-hub/resources/how-accessibility-benefits-your-business/">How accessibility benefits your business</a>
-                     </li>
-                     <li>
-                        <a href="https://www.w3.org/WAI/business-case/">The Business Case for Digital Accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://smuvcmstorage.blob.core.windows.net/4a33c07a-4f5e-4969-a496-ec6aaf3ea331-260-files/Accessibility%20and%20the%20CSuite.pdf?sv=2018-11-09&sr=c&sig=Bi9YJC0kQzZuQpokDov1squbV1nJQ2vonbmpjNv3i7A%3D&se=2021-11-25T19%3A56%3A59Z&sp=r">Change agents: How can C-Suite and IT leaders build a culture of digital accessibility?</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=Krl4PmnZ8oQ">Hassel Inclusion Webinar: How do I get my boss to buy into investing in accessibility?</a>
-                     </li>
-                     <li>
-                        <a href="https://youtu.be/TIZ3wtsuabQ">Nomensa Webinar: Accessibility Capability, from the trenches to the boardroom</a>
-                     </li>
-                     <li>
-                        <a href="https://youtu.be/5DBnOgSj4hk">Nomensa Webinar: The Commercial Impact of Accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://www.boia.org/blog/4-digital-accessibility-features-that-benefit-everyone">4 Digital Accessibility Features That Benefit Everyone</a>
-                     </li>
-                     <li>
-                        <a href="https://abilitynet.org.uk/news-blogs/how-secure-budget-digital-accessibility">How to secure a budget for digital accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://www.access2online.com/support/cbmap.html">Cost-Benefit Model for Accessibility Projects</a>
-                     </li>
-                     <li>
-                        <a href="https://uxdesign.cc/disability-in-tech-a-checklist-to-get-your-sh-t-together-5682112b1234">Disability in tech: A checklist to get your sh*t together</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=gx8AztpQndg">Advocacy for Web Accessibility: Building Equality and Sensitivity in the Digital Landscape</a>
-                     </li>
-                  </ul>
-                  <h3 id="training">Training</h3>
-                  <ul>
-                     <li>
-                        <a href="https://www.d.umn.edu/itss/training/online/webdesign/accessibility.html">The University of Minnesota maintain a very comprehensive list of accessibility resources.</a>
-                     </li>
-                     <li>
-                        <a href="https://frontendmasters.com/courses/accessibility-v2/">Website Accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://www.a11y-collective.com/product/accessible-code/">Accessible code</a>
-                     </li>
-                     <li>
-                        <a href="https://teamtreehouse.com/library/web-accessibility-compliance">Web Accessibility Compliance</a>
-                     </li>
-                     <li>
-                        <a href="https://www.a11y-collective.com/product/writing-accessible-content-for-the-web/">Writing accessible content for the web</a>
-                     </li>
-                     <li>
-                        <a href="https://teamtreehouse.com/library/accessibility-for-ux-designers-2">Accessibility For UX Designers</a>
-                     </li>
-                     <li>
-                        <a href="https://www.a11y-collective.com/product/web-accessibility-the-basics/">Web accessibility, the basics</a>
-                     </li>
-                     <li>
-                        <a href="https://egghead.io/courses/start-building-accessible-web-applications-today">Start Building Accessible Web Applications Today</a>
-                     </li>
-                     <li>
-                        <a href="https://www.a11y-collective.com/product/masterclass-web-accessbility-the-business-case">Web Accessibility; the business case</a>
-                     </li>
-                     <li>
-                        <a href="https://www.pluralsight.com/courses/accessibility-testing-and-screen-reader">Accessibility: Testing and Screen Reader Use</a>
-                     </li>
-                  </ul>
-                  <h3 id="books">Books</h3>
-                  <ul>
-                     <li>The Agile Accessibility Handbook by Dylan Barrell is available both as a <a href="https://www.amazon.co.uk/Agile-Accessibility-Handbook-Accessible-Development/dp/164543477X">physical book you can order from amazon </a> and as a <a href="https://accessibility.deque.com/agile-accessibility-handbook">free download</a>. </li>
-                     <li>
-                        <a href="https://www.a11ywithlindsey.com/gift/">The Bootcamper's Guide to Web Accessibility by Lyndsey Kopacz</a> is an excellent resource for those wanting to learn about accessibility who already have a basic knowledge of HTML, CSS, and JavaScript
-                     </li>
-                  </ul>
-                  <h3 id="legislation">Legislation</h3>
-                  <ul>
-                     <li>
-                        <a href="http://www.legislation.gov.uk/uksi/2018/952/made?view=plain">The Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018.</a>
-                     </li>
-                     <li>
-                        <a href="https://eur-lex.europa.eu/legal-content/EN/ALL/?uri=CELEX%3A32016L2102">Directive (EU) 2016/2102 of the European Parliament and of the Council of 26 October 2016 on the accessibility of the websites and mobile applications of public sector bodies (Text with EEA relevance).</a>
-                     </li>
-                     <li>Accessibility Statement <a href="https://www.gov.uk/government/publications/sample-accessibility-statement/sample-accessibility-statement-for-a-fictional-public-sector-website">template provided by CDDO</a>. </li>
-                  </ul>
-                  <h3 id="beginner">Beginner guides to accessibility testing and development</h3>
-                  <ul>
-                     <li>
-                        <a href="https://www.accessibility.org.au/w3c-wai-curricula-on-web-accessibility-a-framework-to-build-your-own-courses/">Learning about accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://archive.md/YRcUR">A ‘learn as you do’ accessibility checklist</a>
-                     </li>
-                     <li>
-                        <a href="https://www.24a11y.com/2017/accessibility-testing-tools-desktop-mobile-websites/">Accessibility Testing Tools for Desktop and Mobile Websites</a>
-                     </li>
-                     <li>
-                        <a href="https://accessibility.huit.harvard.edu/tools">Tools for Testing Accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://davidakennedy.com/blog/a-workflow-for-testing-web-accessibility-with-free-tools/">A Workflow for Testing Web Accessibility with Free Tools</a>
-                     </li>
-                     <li>
-                        <a href="https://www.softwaretestinghelp.com/what-is-web-accessibility-testing/">Accessibility Testing Tutorial</a>
-                     </li>
-                     <li>
-                        <a href="https://level-level.com/talks/accessibility-testing-tools-and-workflow/">Test accessibility during development, not at the end!</a>
-                     </li>
-                     <li>
-                        <a href="https://www.w3.org/WAI/test-evaluate/">Evaluating Web Accessibility Overview</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=cOmehxAU_4s">How I do an accessibility check</a>
-                     </li>
-                     <li>
-                        <a href="https://alphagov.github.io/accessibility-tool-audit/">How do automated accessibility checkers compare?</a>
-                     </li>
-                     <li>
-                        <a href="https://www.smashingmagazine.com/2018/09/importance-manual-accessibility-testing/">The Importance Of Manual Accessibility Testing</a>
-                     </li>
-                     <li>
-                        <a href="https://www.guru99.com/accessibility-testing.html">Accessibility Testing Tutorial: What is, Tools &amp; Examples</a>
-                     </li>
-                     <li>
-                        <a href="https://www.w3.org/WAI/ER/tools/?q=wcag-21-w3c-web-content-accessibility-guidelines-21&amp;q=en-301-549-european-accessibility-standard">W3C list of WCAG testing tools</a>
-                     </li>
-                     <li>
-                        <a href="https://vimeo.com/84970341">Understanding the DOM's importance for accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://a11y.coffee/">ALLY Coffee (quick wins for developers)</a>
-                     </li>
-                     <li>
-                        <a href="http://bit.ly/10-days-of-a11y">Ten days of Ally</a>
-                     </li>
-                     <li>
+          </details>
+          <details>
+            <summary id="Files">
+              <h2>Presentation files and other assets</h2>
+            </summary>
+            <ul>
+              <li>
+                <a href="Making_IT_Accessible_For_All__Live_Presentation.pptx">Presentation deck - Live version (32.7 MB PPTX)</a>
+              </li>
+              <li>
+                <a href="Making_IT_Accessible_For_All__Full_Presentation.pptx">Presentation deck - Full version (83.3 MB PPTX)</a>
+              </li>
+              <li>
+                <a href="https://www.slideshare.net/UOS_MLE/making-it-accessible-for-all-live-version">View 'Live slide deck' online via SlideShare</a>
+              </li>
+              <li>
+                <a href="https://speakerdeck.com/matthewdeeprose/making-it-accessible-for-all-full-slide-deck">View 'Full slide deck' online via SpeakerDeck</a>
+              </li>
+              <li>
+                <a href="Digital_accessibility_policy_for_University_IT__Template.docx">IT Accessibility Policy Template (39.6 KB DOCX)</a>
+              </li>
+              <li>
+                <a href="level3.html">Digital Learning Level 3 Accessibility Test Process</a>
+              </li>
+              <li>
+                <a href="Definition_of_Done.pdf">Example role-based Definition of Done (27.6 KB PDF)</a>
+              </li>
+              <li>
+                <a href="Draft_Web_Accessibility_Testing_Plan.xlsx">Example accessibility testing sheet (46.3 KB XLSX)</a>
+              </li>
+            </ul>
+          </details>
+          <details>
+            <summary id="Presenters">
+              <h2>Presenters</h2>
+            </summary>
+            <ul>
+              <li>
+                <a href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a>
+                <ul>
+                  <li>Senior Learning Designer</li>
+                  <li>University of Southampton</li>
+                  <li>
+                    <a href="https://twitter.com/VLEguru">@VLEguru</a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a href="https://www.linkedin.com/in/tamsynmsmith/">Tamsyn Smith</a>
+                <ul>
+                  <li>Senior Learning Designer Team Lead</li>
+                  <li>University of Southampton</li>
+                  <li>
+                    <a href="https://twitter.com/TamsynMSmith">@TamsynMSmith</a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a href="https://www.linkedin.com/in/fiona-strawbridge-46065bb/">Dr Fiona Strawbridge</a>
+                <ul>
+                  <li>Director of Digital Education</li>
+                  <li>University College London</li>
+                  <li>
+                    <a href="https://twitter.com/fstrawbridge">@fstrawbridge</a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </details>
+          <details>
+            <summary id="Synopsis">
+              <h2>Synopsis</h2>
+            </summary>
+            <p>3 December 2021 - <a href="https://www.ucisa.ac.uk/Events/2021/December/Making-IT-accessible-for-all">UCISA</a>
+            </p>
+            <p>Recent experiences have demonstrated that University staff and students expect to use online resources with a variety of devices, making full use of accessibility features such as reflow, captions, and text-to-speech.</p>
+            <p>Such features benefit everyone, but especially the increasing proportion of university students who self-report a disability.</p>
+            <p>University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?</p>
+            <p>In this presentation, we will share:</p>
+            <ul>
+              <li>approaches to building a digital accessibility policy for university IT departments.</li>
+              <li>techniques for embedding accessibility within IT development processes by ‘shifting left’.</li>
+              <li>examples from within the Higher Education and wider IT sectors.</li>
+            </ul>
+          </details>
+          <details>
+            <summary id="Acronyms">
+              <h2>Acronyms</h2>
+            </summary>
+            <dl>
+              <dt>WCAG</dt>
+              <dd>The <a href="https://www.w3.org/WAI/WCAG21/quickref/?currentsidebar=%23col_customize">Web Content Accessibility Guidelines</a> are a set of normative standards for assessing the accessibility of web-based content. </dd>
+              <dt>PSBAR</dt>
+              <dd>
+                <a href="https://www.legislation.gov.uk/uksi/2018/952/made?view=plain">The Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018</a> came into force on 23 September. It aims to ensure public sector websites and mobile apps are accessible to all users, especially those with disabilities.
+              </dd>
+              <dt>W3C</dt>
+              <dd>The <a href="https://www.w3.org/">World Wide Web Consortium</a> is an international community that develops open standards, such as the Web Content Accessibility Guidelines, to ensure the long-term growth of the Web. </dd>
+              <dt>A11y</dt>
+              <dd>
+                <a href="https://www.a11yproject.com/posts/2017-08-26-a11y-and-other-numeronyms/">Accessibility</a>. The use of a11y is a <a href="https://en.wikipedia.org/wiki/Numeronym">numeronym</a> for the word accessibility. There are eleven letters between the "a" and "y".
+              </dd>
+              <dt>CDDO</dt>
+              <dd>The <a href="https://www.gov.uk/government/organisations/central-digital-and-data-office/about">Central Data and Digital Office (CDDO)</a> monitor public sector bodies’ compliance on behalf of the Minister for the Cabinet Office. The CDDO sits alongside the Government Digital Service (GDS) in the Cabinet Office. </dd>
+              <dt>EHRC</dt>
+              <dd>The <a href="https://www.equalityhumanrights.com/en">Equality and Human Rights Commission</a> may be asked by CDDO to investigate Universities who do not meet the standard set by The Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018. </dd>
+              <dt>VPAT</dt>
+              <dd>A <a href="https://www.section508.gov/sell/vpat/">Voluntary Product Accessibility Template</a> is a document that explains how information and communication technology (ICT) products such as software, hardware, electronic content, and support documentation meet accessibility standards, specifically related to the US <a href="https://www.access-board.gov/the-board/laws/rehabilitation-act-of-1973#508">Section 508 of the Rehabilitation Act</a>. </dd>
+              <dt>ACR</dt>
+              <dd>An <a href="https://krisrivenburgh.medium.com/acr-accessibility-conformance-report-vs-vpat-70828cd8e5bf">Accessibility Conformance Report</a> is a completed VPAT® + all the essential information about the report itself. </dd>
+              <dt>EDI</dt>
+              <dd>
+                <a href="https://www.acas.org.uk/improving-equality-diversity-and-inclusion">Equality, Diversity and Inclusion</a>.
+              </dd>
+            </dl>
+          </details>
+          <details>
+            <summary id="presLinks">
+              <h2>Links referred to during the presentation</h2>
+            </summary>
+            <ul>
+              <li> Introduction <ul>
+                  <li>
+                    <a href="https://abilitynet.org.uk/accessibility-services/he-and-fe-accessibility-maturity-modelHE">Higher Education (HE) and Further Education (FE) Accessibility Maturity Model</a>, created by AbilityNet and McNaught Consultancy
+                  </li>
+                  <li>
+                    <a href="https://blog.google/outreach-initiatives/accessibility/world-sight-day-accessibility-customization/">Why we should rethink accessibility as customization,</a> by Nicola Yap, Google.
+                  </li>
+                  <li>
+                    <a href="https://www.mckinsey.com/featured-insights/diversity-and-inclusion/diversity-wins-how-inclusion-matters">Diversity wins: How inclusion matters,</a> by Sundiatu Dixon-Fyle, Kevin Dolan, Vivian Hunt, and Sara Prince.
+                  </li>
+                  <li>
+                    <a href="https://www.w3.org/WAI/planning-and-managing/">Planning and Managing Web Accessibility</a> from the W3C Web Accessibility Initiative (WAI)
+                  </li>
+                </ul>
+              </li>
+              <li> Initiate <ul>
+                  <li> Learn the basics <ul>
+                      <li>
+                        <a href="https://www.w3.org/WAI/fundamentals/">Accessibility Fundamentals (W3C)</a>
+                      </li>
+                      <li>
+                        <a href="https://accessibility.blog.gov.uk/2016/09/02/dos-and-donts-on-designing-for-accessibility/">Dos and don'ts on designing for accessibility (CDDO)</a>
+                      </li>
+                      <li>
+                        <a href="https://a11y.coffee/quick-wins/">Quick wins for web accessibility (a11y.coffee)</a>
+                      </li>
+                      <li>
+                        <a href="https://developer.mozilla.org/en-US/docs/Learn/Accessibility">Accessibility (MDN)</a>
+                      </li>
+                      <li>
+                        <a href="https://docs.microsoft.com/en-us/learn/paths/accessibility-fundamentals/">Accessibility fundamentals (Microsoft)</a>
+                      </li>
+                      <li>
+                        <a href="https://uxdesign.cc/giving-a-damn-about-accessibility-6caf90be5a40">Giving a damn about accessibility (UX Collective)</a>
+                      </li>
+                      <li>
+                        <a href="https://de.ryerson.ca/wa/maze.html">Accessibility Maze</a>
+                      </li>
+                      <li>
                         <a href="https://dwcag.org/#sign-up-section">WCAG of the Day</a>
-                     </li>
-                  </ul>
-                  <h3 id="plans">More detailed Accessibility Testing guides / plans</h3>
-                  <ul>
-                     <li>
-                        <a href="https://www.w3.org/WAI/test-evaluate/preliminary/">Easy checks* (includes example before/after)</a>
-                     </li>
-                     <li>
-                        <a href="https://www.w3.org/WAI/WCAG21/quickref/?currentsidebar=%23col_customize">How to meet WCAG quick reference</a>
-                     </li>
-                     <li>
-                        <a href="https://www.smashingmagazine.com/2021/04/bake-layers-accessibility-testing-process/">How To Bake Layers Of Accessibility Testing Into Your Process</a>
-                     </li>
-                     <li>
-                        <a href="https://web2access.org/reviews/new">ECS Accessibility audit and statement wizard</a>
-                     </li>
-                     <li>
-                        <a href="https://usability.yale.edu/web-accessibility/articles/testing-procedures">Testing Procedures</a>
-                     </li>
-                     <li>
-                        <a href="https://yale.app.box.com/s/pfxe0q6gnx07pbq6qjl7dd12taqzd21z">Yale Quick Accessibility Tests for Authors</a>
-                     </li>
-                     <li>
-                        <a href="https://archive.is/Tg2om">Accessibility Manual Testing</a>
-                     </li>
-                     <li>
-                        <a href="https://www.lexdis.org.uk/digital-accessibility/testing/quick-accessibility-checks/">Quick Accessibility Checks</a>
-                     </li>
-                     <li>
-                        From Lexdis: 
-                        <ul>
-                           <li>
-                              <a href="https://www.lexdis.org.uk/digital-accessibility/testing/">Testing</a>
-                           </li>
-                           <li>
-                              <a href="https://www.lexdis.org.uk/digital-accessibility/testing/introduction-to-auditing/">Intro to audits</a>
-                           </li>
-                           <li>
-                              <a href="https://www.lexdis.org.uk/digital-accessibility/testing/performing-a-manual-audit/">Manual Audits</a>
-                           </li>
-                        </ul>
-                     </li>
-                     <li>
-                        <a href="https://docs.google.com/spreadsheets/d/1jug1AuXfAYKhPiorlQ9rG2M-XHTt7tWiPi4nU4RkAxc/edit#gid=0">Google Doc example Accessibility test sheet</a>
-                     </li>
-                     <li>
-                        <a href="https://webaim.org/standards/wcag/checklist">WebAIM's WCAG 2 Checklist</a>
-                     </li>
-                     <li>
-                        <a href="https://www.wuhcag.com/wcag-checklist/">WCAG Checklist</a>
-                     </li>
-                     <li>
-                        <a href="https://webflow.com/accessibility/checklist">Webflow Accessibility Checklist</a>
-                     </li>
-                     <li>
-                        <a href="https://digital.nhs.uk/about-nhs-digital/standards-for-web-products/accessibility-for-digital-services/accessibility-audit-checklist">NHS Accessibility Audit Checklist</a>
-                     </li>
-                     <li>
-                        <a href="https://ictbaseline.access-board.gov/">ICT Testing Baseline for Web Accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://lsnrae.medium.com/six-things-you-need-to-audit-your-site-for-accessibility-db6db13ad8bf">Six things you need to audit your site for accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://accessibility.18f.gov/checklist/">18F Accessibility Guide</a>
-                     </li>
-                     <li>
-                        <a href="https://www.w3.org/WAI/eval/report-tool/#!/">WCAG-EM Report Tool</a>
-                     </li>
-                     <li>
-                        <a href="https://www.a11yproject.com/checklist/">The issues this checklist prompts you to check for covers a wide range of disability conditions.</a>
-                     </li>
-                     <li>
-                        <a href="https://www.wpcampus.org/blog/2019/05/gutenberg-audit-results/">Case study, accessibility audit of the WordPress block editor, known as Gutenberg.</a>
-                     </li>
-                     <li>
-                        <a href="https://docs.google.com/spreadsheets/d/10CTezA0iDdaWggaqxuHawj-5u8YXdZeWBJsIkuvJ364/edit#gid=347324347">Ally testing tools comparison spreadsheet</a>
-                     </li>
-                     <li>
-                        <a href="https://www.whatdotheyknow.com/request/gds_accessibility_monitoring#incoming-1597882">What does GDS do?</a>
-                     </li>
-                     <li>
-                        <a href="https://www.gov.uk/guidance/public-sector-website-and-mobile-application-accessibility-monitoring#how-we-test">How GDS tests</a>
-                     </li>
-                     <li>
-                        <a href="https://www.gov.uk/government/publications/doing-a-basic-accessibility-check-if-you-cant-do-a-detailed-one/doing-a-basic-accessibility-check-if-you-cant-do-a-detailed-one">Do a basic accessibility check (GDS)</a>
-                     </li>
-                     <li>
-                        <a href="https://dev.to/s_aitchison/5-things-i-m-thinking-about-when-i-check-a-pull-request-for-accessibility-3gmo">5 things I'm thinking about when I check a Pull Request for accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://www.washington.edu/accesscomputing/AU/">Practice testing here</a>
-                     </li>
-                     <li>
-                        <a href="https://codepen.io/aardrian/details/ZLZMep">Text Contrast Issues That Cannot Be Detected with Automated Tools</a>
-                     </li>
-                     <li>
-                        <a href="https://adrianroselli.com/2021/09/beware-false-negatives.html">Beware False Negatives</a> (from using automated tools).
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=_B1o6DyLCVY">Accessibility Testing overview</a>
-                     </li>
-                     <li>
-                        <a href="https://www.smashingmagazine.com/2021/06/complete-guide-accessibility-tooling/">A Complete Guide To Accessibility Tooling</a>
-                     </li>
-                     <li>
-                        <a href="https://journals.publishing.umich.edu/weaveux/article/id/218/">How to Audit Your Library Website for WCAG 2.1 Compliance</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=59RWhOdmmWQ">HMRC Live accessibility audit demonstration</a>
-                     </li>
-                     <li>
-                        <a href="https://wcag-filter-tool.netlify.app/">WCAG 2.1 translated into plain language</a>. 103 tests categorised by content type, which removes the ambiguity from understanding success criteria.
-                     </li>
-                  </ul>
-                  <h3 id="browser">Browser Extensions to assist testing</h3>
-                  <ul>
-                     <li>
-                        <a href="https://www.digitala11y.com/accessibility-plug-ins-ie-chrome-firefox-browsers/">44 Browser Extensions to Perform Accessibility Testing Effectively</a>
-                     </li>
-                     <li>
-                        <a href="https://www.deque.com/axe/">Web AXE</a>
-                     </li>
-                     <li>
-                        <a href="https://github.com/dequelabs/axe-core/blob/HEAD/doc/rule-descriptions.md">What AXE tests and how critical they are</a>
-                     </li>
-                     <li>
+                      </li>
+                      <li>
+                        <a href="https://a11y-with-lindsey.ck.page/b4e437f629">10 Days of A11y</a>
+                      </li>
+                      <li>
+                        <a href="https://mailman12.u.washington.edu/mailman/listinfo/athen-list">Access Technology Higher Education Network Mailing List</a>
+                      </li>
+                      <li>
+                        <a href="https://webaim.org/discussion/">WebAIM Mailing List</a>
+                      </li>
+                      <li>
+                        <a href="https://www.jiscmail.ac.uk/cgi-bin/webadmin?A0=DIGITALACCESSIBILITYREGULATIONS">Digital Accessibility Regulations mailing list</a>
+                      </li>
+                      <li>
+                        <a href="https://a11y.coffee/dig-in/#communities">Web A11y Slack</a>
+                      </li>
+                      <li>
+                        <a href="https://jisc.onlinesurveys.ac.uk/accessibility-community-request-to-join">JISC Accessibility Community</a>
+                      </li>
+                      <li>
+                        <a href="https://tinyurl.com/a11y-WDA">Worldwide Accessibility Discord Server</a>
+                      </li>
+                      <li>
                         <a href="https://accessibilityinsights.io/">Accessibility Insights</a>
-                     </li>
-                     <li>
-                        <a href="https://wave.webaim.org/">Wave</a>. Here's <a href="https://webaim.org/articles/evaluationguide/">a great guide on using WAVE for accessibility evaluations</a>.
-                     </li>
-                     <li>
-                        <a href="https://www.matuzo.at/blog/building-the-most-inaccessible-site-possible-with-a-perfect-lighthouse-score/">Building the most inaccessible site possible with a perfect Lighthouse score</a>
-                     </li>
-                     <li>
-                        <a href="https://chrome.google.com/webstore/detail/arc-toolkit/chdkkkccnlfncngelccgbgfmjebmkmce">ARC Toolkit</a>
-                     </li>
-                     <li>
-                        <a href="https://chrome.google.com/webstore/detail/ibm-equal-access-accessib/lkcagbfjnkomcinoddgooolagloogehp">IBM Equal Access Accessibility Checker</a>
-                     </li>
-                     <li>
-                        <a href="https://chrome.google.com/webstore/detail/siteimprove-accessibility/efcfolpjihicnikpmhnmphjhhpiclljc?hl=en-US">Siteimprove accessibility checker</a>
-                     </li>
-                     <li>
-                        <a href="https://chrome.google.com/webstore/detail/color-contrast-analyzer/dagdlcijhfbmgkjokkjicnnfimlebcll">Colour contrast analyser</a>
-                        <ul>
-                           <li>Buggy but can be used to check if contrast of text over images or gradients is appropriate.</li>
-                        </ul>
-                     </li>
-                     <li>
-                        <a href="https://aslint.org/">ASlint</a>
-                        <ul>
-                           <li>This Bookmarklet, includes non-wcag recommendations too.</li>
-                        </ul>
-                     </li>
-                     <li>
-                        <a href="https://chrispederick.com/work/web-developer/">Web Developer browser plugin</a>
-                     </li>
-                  </ul>
-                  <h3 id="bookmarklets">Bookmarklets to assist testing</h3>
-                  <ul>
-                     <li>
-                        <a href="https://cdpn.io/stevef/debug/YLMqbo">Text spacing bookmarklet</a>
-                     </li>
-                     <li>
-                        <a href="https://ryersondmp.github.io/sa11y/">Sa11y - CMS plugin, also bookmarklet - intended for content authors</a>
-                     </li>
-                     <li>
-                        <a href="https://pauljadam.com/bookmarklets.html">Accessibility Testing bookmarklets</a>
-                     </li>
-                     <li>
-                        <a href="https://www.ssa.gov/accessibility/andi/help/install.html">ANDI: Accessibility Testing Tool</a>
-                     </li>
-                     <li>
-                        <a href="https://a11y-tools.com/bookmarklets/">A11y audit bookmarklets</a>
-                     </li>
-                  </ul>
-                  <h3 id="cmd">Commandline tools</h3>
-                  <ul>
-                     <li>
-                        <a href="https://github.com/bbc/bbc-a11y/blob/master/guides/using/checking-a-website.md">BBC Accessibility Standards Checker</a>: This tool runs a set of tests against a set of URLs to verify whether each one meets the <a href="https://www.bbc.co.uk/accessibility/forproducts/guides/mobile/">BBC accessibility guidelines</a>.
-                     </li>
-                     <li>
-                        <a href="https://www.npmjs.com/package/axe-core">Axecore</a>
-                     </li>
-                     <li>
-                        <a href="https://www.npmjs.com/package/@axe-core/cli">Axecore CLI</a>
-                     </li>
-                     <li>
-                        <a href="https://www.adrianbolonio.com/en/testing-web-accessibility-part-2/">Axe-cli, pa11y, lighthouse guide</a>
-                     </li>
-                     <li>
-                        <a href="https://pa11y.org">Pa11y</a>: provides both Command Line and Continuous integration based tools, as well as a dashboard for surveying accessibility across services.
-                     </li>
-                     <li>
-                        <a href="https://cruft.io/posts/accessibility-testing-with-pa11y/">Accessibility Testing With pa11y</a>
-                     </li>
-                     <li>
-                        <a href="http://hollsk.co.uk/posts/view/using-actions-in-pa11y">Using actions in Pa11y</a>
-                     </li>
-                     <li>
-                        <a href="https://bitsofco.de/pa11y/">Accessibility Testing with pa11y</a>
-                     </li>
-                     <li>
-                        <a href="https://dev.to/bias/web-accessibility-with-the-axe-core-module-5han">AxE Core NPM tutorial</a>
-                     </li>
-                     <li>
-                        <a href="https://github.com/dequelabs/axe-core/blob/HEAD/doc/projects.md">NPM projects using AxE</a>
-                     </li>
-                     <li>
-                        <a href="http://www.craigabbott.co.uk/blog/axe-core-vs-pa11y">Axe vs Pa11y</a>
-                     </li>
-                     <li>
-                        <a href="https://addyosmani.com/a11y/">The A11y Command-line Tools</a> assist in discovering common web accessibility issues, such as detecting if your page can be read with a screenreader or works well with high-contrast mode enabled.
-                     </li>
-                     <li>
-                        <a href="https://www.npmjs.com/package/a11y-sitechecker">A11y-sitechecker</a> is a tool to check a whole site against accessibility criteria. It uses axe-core to check whole sites for accessibility issues. It is crawling the first given Domain and tries to find all links recursively.
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=jC_7NnRdYb0">Automated accessibility testing with axe</a>
-                     </li>
-                     <li>
-                        <a href="https://www.npmjs.com/package/ghost-axe">ghostjs accessibility helper</a>
-                     </li>
-                     <li>
-                        <a href="https://github.com/theintern/intern-a11y">intern accessibility testing</a>
-                     </li>
-                     <li>
-                        <a href="https://github.com/MSU-NatSci/DomainAccessibilityAudit">Domain Accessibility Audit</a>: This web application automatically crawls websites and checks for accessibility violations. It can crawl within subdomains of the initial domain it starts with. It reports statistics of violations for the whole audit, domains and pages.
-                     </li>
-                  </ul>
-                  <h3 id="CI">Continuous integration</h3>
-                  <ul>
-                     <li>
-                        <a href="https://github.com/pa11y/pa11y-ci">Pa11y CI</a>
-                     </li>
-                     <li>
-                        <a href="https://www.adrianbolonio.com/en/accessibility-github-actions/">Automating the accessibility tests of your source code with GitHub Actions</a>
-                     </li>
-                     <li>
-                        <a href="https://hackernoon.com/using-pa11y-ci-and-drone-as-accessibility-testing-gatekeepers-a8b5a3415227">Using Pa11y CI and Drone as accessibility testing gatekeepers</a>
-                     </li>
-                     <li>
-                        <a href="https://cruft.io/posts/automated-accessibility-testing-node-travis-ci-pa11y/">Automated accessibility testing with Travis CI</a>
-                     </li>
-                     <li>
-                        <a href="https://github.com/nickcolley/jest-axe">Jest with axe</a>
-                     </li>
-                     <li>
-                        <a href="https://jj09.net/unit-testing-accessibility/">Unit Testing with AxE</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=jC_7NnRdYb0">Setting up Selenium, and AxE for automated testing</a>
-                     </li>
-                     <li>
-                        <a href="https://github.com/dequelabs/axe-core-maven-html">axe-core Selenium (Java) Integration</a>
-                     </li>
-                     <li>
-                        <a href="https://www.npmjs.com/package/cypress-axe">Cypress Axe</a>
-                     </li>
-                     <li>
-                        <a href="https://24ways.org/2017/automating-your-accessibility-tests">Automating Your Accessibility Tests</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=46rFCwYn27Y">Automated Accessibility Testing in JavaScript Frameworks</a>
-                     </li>
-                     <li>
-                        <a href="https://dev.to/steady5063/mobile-web-accessibility-testing-using-appium-3ndc">Mobile Web Accessibility Testing Using Appium</a>
-                     </li>
-                  </ul>
-                  <h3 id="dev">Frontend development</h3>
-                  <ul>
-                     <li>
+                      </li>
+                    </ul>
+                  </li>
+                  <li> Develop the business case <ul>
+                      <li>
+                        <a href="https://www.w3.org/WAI/WCAG21/Understanding/reflow.html">Understanding Success Criterion 1.4.10: Reflow</a>
+                      </li>
+                      <li>
+                        <a href="https://www.microsoft.com/design/inclusive/">Inclusive Design</a>
+                      </li>
+                      <li>
+                        <a href="https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fapis.officeforstudents.org.uk%2Faccessplansdownloads%2F2024%2FUniversityOfSouthampton_APP_2020-21_V1_10007158.pdf&amp;data=04%7C01%7CM.Deeprose%40soton.ac.uk%7C52833ada55b34078f3af08d907e0e791%7C4a5378f929f44d3ebe89669d03ada9d8%7C0%7C0%7C637549484823251088%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C1000&amp;sdata=hM%2BqQt6X3alkFuK0yiSgTZJltb%2B4MRY2J4mjfBFlO3s%3D&amp;reserved=0">UoS Access and Participation Plan</a>.
+                      </li>
+                      <li>
+                        <a href="https://twitter.com/McgarrDana/status/1387870476178006020">Accessibility isn’t more work, you were just cutting corners before. The work was incomplete.</a>
+                      </li>
+                      <li>
+                        <a href="https://www.lflegal.com/2018/11/webaim-fear/">Fear is a Poor Motivator for Accessibility</a>
+                      </li>
+                      <li>
+                        <a href="https://webaim.org/blog/motivating-accessibility-change/">WebAIM’s Hierarchy for Motivating Accessibility Change</a>
+                      </li>
+                      <li>
+                        <a href="https://www.peatworks.org/policy-workforce-development/the-accessible-technology-skills-gap/">The Accessible Technology Skills Gap</a>
+                      </li>
+                      <li>
+                        <a href="https://www.wsj.com/articles/more-companies-are-looking-to-hire-accessibility-specialists-11630501200">More Companies Are Looking to Hire Accessibility Specialists</a>
+                      </li>
+                      <li>
+                        <a href="https://www.w3.org/WAI/business-case/">The Business Case for Digital Accessibility</a>
+                      </li>
+                    </ul>
+                  </li>
+                  <li> Gather support - this section was removed to save time, <a href="https://youtu.be/UcPj5vpCqyg">a video version is available</a>. <ul>
+                      <li>
+                        <a href="workshops.html">Accessibility Workshop Materials</a>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li> Plan <ul>
+                  <li> Review websites <ul>
+                      <li>
+                        <a href="https://www.whatdotheyknow.com/request/gds_accessibility_monitoring">A Freedom of Information (FOI) request</a> resulted in CDDO sharing a document that includes <a href="https://www.whatdotheyknow.com/request/670181/response/1597882/attach/3/Simplified%20Test%20Template%20ODT%20version%201.odt?cookie_passthrough=1">their testing procedure</a>.
+                      </li>
+                      <li>
+                        <a href="https://www.w3.org/WAI/test-evaluate/preliminary/">W3C Easy checks</a>
+                      </li>
+                      <li>
+                        <a href="https://www.lexdis.org.uk/digital-accessibility/testing/quick-accessibility-checks/">Lexdis Quick Accessibility Checks</a>
+                      </li>
+                      <li>
+                        <a href="level3.html">Digital Learning Level 3 Accessibility Test Process</a>
+                      </li>
+                      <li>
+                        <a href="https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/">Website Accessibility Conformance Evaluation Methodology</a>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li> Implement <ul>
+                  <li> Integrate goals into processes <ul>
+                      <li>
                         <a href="https://www.deque.com/shift-left/">Shift left</a>
-                     </li>
-                     <li>
-                        <a href="https://saucelabs.com/blog/best-practices-for-shifting-accessibility-testing-left">Best practices for shifting left</a>
-                     </li>
-                     <li>
-                        <a href="https://www.upyoura11y.com/">Web accessibility toolkit</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=FzQBi2_TWo8">Becoming an Accessibility Focused Developer</a>
-                     </li>
-                     <li>
-                        <a href="https://adrianroselli.com/2021/06/using-css-to-enforce-accessibility.html">Using CSS to Enforce Accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://levelup.gitconnected.com/5-tips-on-how-to-incorporate-web-accessibility-into-your-dev-workflow-74d831e92fba">5 Ideas on How to Incorporate Web Accessibility into your Dev Workflow</a>
-                     </li>
-                     <li>
-                        <a href="https://levelup.gitconnected.com/the-developers-guide-to-web-accessibility-auditing-and-tooling-90e70fd95349">The Developer's Guide to Web Accessibility Auditing and Tooling</a>
-                     </li>
-                     <li>
-                        <a href="https://dev.to/steady5063/accessible-code-reviews-11j6">Accessible Code Reviews</a>
-                     </li>
-                     <li>
-                        <a href="https://fvsch.com/styling-buttons">Styling buttons, the right way</a>
-                     </li>
-                     <li>
-                        <a href="https://www.digitala11y.com/resources-for-building-accessible-tables/">Resources For Building Accessible Tables</a>
-                     </li>
-                     <li>
-                        <a href="https://adrianroselli.com/2017/11/hey-its-still-ok-to-use-tables.html">Hey, It's Still OK to Use Tables</a>
-                     </li>
-                  </ul>
-                  <a href="#top">Back to top.</a>
-                  <h3 id="semanticHTML">Semantic HTML</h3>
-                  <ul>
-                     <li>
-                        <a href="https://brucelawson.co.uk/2018/the-practical-value-of-semantic-html/">The practical value of semantic HTML</a>
-                     </li>
-                     <li>
-                        <a href="https://www.freecodecamp.org/news/semantic-html5-elements/">Semantic HTML5 Elements Explained</a>
-                     </li>
-                     <li>
-                        <a href="https://html.com/semantic-markup/">What On Earth Is Semantic Markup? (And Why Should You Learn To Write It)</a>
-                     </li>
-                     <li>
-                        <a href="https://localghost.dev/2021/06/the-right-tag-for-the-job-why-you-should-use-semantic-html/">The right tag for the job: why you should use semantic HTML</a>
-                     </li>
-                     <li>
-                        <a href="https://www.matuzo.at/blog/element-diversity/">Element diversity</a>
-                     </li>
-                     <li>
-                        <a href="https://www.freecodecamp.org/news/semantic-html-alternatives-to-using-divs/">Semantic HTML Guide - 10 Alternatives to Using divs</a>
-                     </li>
-                  </ul>
-                  <h3 id="vsc">For Visual Studio Code</h3>
-                  <ul>
-                     <li>
-                        <a href="https://marketplace.visualstudio.com/items?itemName=MaxvanderSchee.web-accessibility">Web Accessibility Linter for VS Code</a>
-                     </li>
-                     <li>
-                        <a href="https://marketplace.visualstudio.com/items?itemName=MadsKristensen.WebAccessibilityChecker">Web Accessibility Checker by Mads Kristensen</a>
-                     </li>
-                     <li>
-                        <a href="https://marketplace.visualstudio.com/items?itemName=deque-systems.vscode-axe-linter">axe Accessibility Linter</a>
-                     </li>
-                     <li>
+                      </li>
+                      <li>
+                        <a href="https://austingil.com/making-accessibility-more-accessible/">Get more team members involved with accessibility by sharing tools they'll actually use.</a>
+                      </li>
+                      <li>
+                        <a href="https://marketplace.visualstudio.com/items?itemName=deque-systems.vscode-axe-linter">axe Accessibility Linter</a> for Visual Studio Code
+                      </li>
+                      <li>
                         <a href="https://www.youtube.com/watch?v=Vdgc6RPye2E">axe Accessibility Linter: introductory webinar</a>
-                     </li>
-                     <li>
-                        <a href="https://vimeo.com/showcase/8855447">5 hour course from Smashing Magazine and Deque on using axe Accessibility Linter</a>. Workshop Materials: <a href="https://github.com/dequelabs/smashing-workshop">Day 1</a> / <a href="https://github.com/dequelabs/workshop-day-II">Day 2</a>. <a href="https://docs.google.com/document/d/1U9hr4Wsozc443S6PFGL_hk6PtP0px5mng-1xUVWh_r0/edit">Slides and collaborative document</a>.
-                     </li>
-                     <li>
-                        <a href="https://marketplace.visualstudio.com/items?itemName=inclusive-tech.brilliant">Bri11iant</a> is a VSCode language extension for supporting web developers improve the accessibility of their websites.
-                     </li>
-                     <li>
-                        <a href="https://devblogs.microsoft.com/visualstudio/improving-html-accessibility-with-visual-studio-extensions/">Using Tenon Accessibility Checker in VS Code</a>
-                     </li>
-                     <li>
-                        <a href="https://webhint.io">WebHint</a> - Accessibility testing + plugin for Visual Studio Code
-                     </li>
-                  </ul>
-                  <h3 id="atom">Atom</h3>
-                  <ul>
-                     <li>
-                        <a href="https://atom.io/packages/web-accessibility-checker">Atom accessibility plugin</a>
-                     </li>
-                     <li>
-                        <a href="https://atom.io/packages/accessible-snippets">Atom accessibility snippets</a>
-                     </li>
-                  </ul>
-                  <h3 id="frameworks">Javascript frameworks</h3>
-                  <ul>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=46rFCwYn27Y">Automated Accessibility Testing in JavaScript Frameworks</a>
-                     </li>
-                     <li>
-                        <a href="https://allyjs.io/#features">ally.js</a> - small library that can make certain aspects such as keyboard focus easier to manage
-                     </li>
-                  </ul>
-                  <h3 id="bs">Bootstrap</h3>
-                  <ul>
-                     <li>
-                        <a href="https://paypal.github.io/bootstrap-accessibility-plugin/">Bootstrap accessibility plugin</a>
-                     </li>
-                  </ul>
-                  <a href="#top">Back to top.</a>
-                  <h3 id="testfr">Integration with testing frameworks</h3>
-                  <ul>
-                     <li>
-                        <a href="https://24ways.org/2017/automating-your-accessibility-tests">Automating Your Accessibility Tests</a>
-                     </li>
-                     <li>
-                        <a href="https://www.npmjs.com/package/wcagify">WCAGify is a simple function for people who need to reference the Web Content Accessibility Guidelines frequently and are tired of copying and pasting.</a>
-                     </li>
-                  </ul>
-                  <h3 id="mobile">Mobile</h3>
-                  <ul>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=IkQk8ZbToNo">How Do Blind People Use Smartphones?</a>
-                     </li>
-                     <li>
-                        <a href="https://www.funka.com/en/research-and-innovation/archive---research-projects/mobile-guidelines/">Funka Mobile Guidelines</a>
-                     </li>
-                     <li>
-                        <a href="https://www.funka.com/contentassets/9131835638b640cf96baf2ef62a2fba4/guidelines_for_the_development_of_accessible_mobile_interfaces.pdf">Guidelines for developing accessible mobile interfaces</a>
-                     </li>
-                     <li>
-                        <a href="https://www.freecodecamp.org/news/mobile-accessibility/">Accessibility Best Practices for Mobile App Development</a>
-                     </li>
-                  </ul>
-                  <h3 id="design">Design</h3>
-                  <ul>
-                     <li>
-                        <a href="https://www.figma.com/community/file/984136149483735147">Fluent Accessibility Notation:</a> Elements for adding accessibility notation to wireframes and designs using Figma.
-                     </li>
-                     <li>
-                        <a href="https://dribbble.com/shots/6269661-Accessibility-Bluelines"> Accessibility Bluelines:</a> a set of accessibility bluelines from Jeremy Elder to help annotate design files for handoff to dev and QA, or just to include in docs. Sketch, Figma, Adobe XD, and InVision Studio versions.
-                     </li>
-                     <li>
-                        <a href="https://medium.com/asos-techblog/a-journey-towards-sustainable-accessibility-e75f8d0e5830">A journey towards sustainable accessibility</a>. <a href="https://archive.is/jS2bC">Alternative link on archive.is</a>.
-                     </li>
-                     <li>
-                        <a href="https://www.tpgi.com/five-ways-to-include-d-deaf-users-in-your-designs/">Five ways to include d/Deaf users in your designs</a>
-                     </li>
-                     <li>
-                        <a href="https://www.designsystemsforfigma.com/blog/accessible-design-systems-look-good-while-doing-good">Accessible Design Systems: Look Good While Doing Good</a>
-                     </li>
-                     <li>
-                        <a href="https://www.deque.com/blog/design-code-thinking-accessibility-ground/">Design Before Code: Thinking About Accessibility from the Ground Up: Part 1</a>
-                     </li>
-                     <li>
-                        <a href="https://www.deque.com/blog/design-before-code-part-2/">Design Before Code: Thinking About Accessibility from the Ground Up: Part 2</a>
-                     </li>
-                     <li>
-                        <a href="https://moderncss.dev/modern-css-upgrades-to-improve-accessibility/">Modern CSS Upgrades To Improve Accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://www.deque.com/blog/auditing-design-systems-for-accessibility/">Auditing Design Systems for Accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://www.a11yproject.com/posts/2021-08-14-reviewing-a-design-for-accessibility/"> Reviewing a design for accessibility</a>
-                     </li>
-                     <li>
-                        <a href="https://technology.blog.gov.uk/2020/02/24/why-the-gov-uk-design-system-team-changed-the-input-type-for-numbers/">Many examples are on gov.uk</a>
-                     </li>
-                     <li>
-                        <a href="https://www.w3.org/TR/wai-aria-practices-1.2/">WAI-ARIA Authoring Practices</a> (Explains how UI patterns should behave)
-                     </li>
-                     <li>
-                        <a href="https://github.com/w3c/aria-practices/">Repository of above.</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=0hqhAIjE_8I">ARIA HTML Tutorial - What is ARIA &amp; Why it's Important to Use!</a>
-                     </li>
-                     <li>
-                        <a href="https://www.youtube.com/watch?v=7deb5SY24NM">Why and How to Start Using ARIA Tags</a>
-                     </li>
-                     <li>
-                        <a href="https://www.deque.com/blog/aria-spec-for-the-uninitiated-part-1/">ARIA Spec for the Uninitiated: Part 1</a>
-                     </li>
-                     <li>
-                        <a href="https://www.deque.com/blog/aria-spec-for-the-uninitiated-part-2/">ARIA Spec for the Uninitiated: Part 2</a>
-                     </li>
-                     <li>
-                        <a href="https://www.deque.com/blog/aria-spec-for-the-uninitiated-part-3/">ARIA Spec for the Uninitiated: Part 3</a>
-                     </li>
-                     <li>
-                        <a href="https://www.maxability.co.in/2021/08/22/4-aria-mistakes/">4 ARIA-mistakes worth solving</a>
-                     </li>
-                     <li>
-                        <a href="https://github.com/dylanb/Axponents/tree/master/native">Accessible Native Web Components</a>
-                     </li>
-                     <li>
-                        <a href="https://inclusive-components.design/">Inclusive components</a>
-                        <ul>
-                           <li>A library of free inclusive web components explained step by step.</li>
-                        </ul>
-                     </li>
-                     <li>
-                        <a href="https://www.digitala11y.com/accessible-ui-component-libraries-roundup/">Accessible UI Component Libraries Roundup</a>
-                     </li>
-                     <li>
-                        <a href="https://medium.com/@addyosmani/accessible-ui-components-for-the-web-39e727101a67">Accessible UI Components For The Web</a>
-                     </li>
-                  </ul>
-               </details>
-               <div class="expandContractControls">
-                  <button id="expandAll_2" class="actionButton" aria-label="Expand all content" type="button" onclick="openAll()">Expand all</button>
-                  <button id="collapseAll_2" class="actionButton" aria-label="Collapse all content" type="button" onclick="collapseAll()">Collapse all</button>
-               </div>
-            </article>
-			      <div id="panel">
-         <button class="panelButton" onclick="topFunction()" id="myBtn">
+                      </li>
+                      <li>
+                        <a href="https://www.adrianbolonio.com/en/accessibility-github-actions/">Automating the accessibility tests of your source code with GitHub Actions</a>
+                      </li>
+                      <li>
+                        <a href="https://www.youtube.com/watch?v=CqxfrrMwhaY">Automated Accessibility Testing in JavaScript Frameworks</a>, Mark Steadman (Deque).
+                      </li>
+                      <li>
+                        <a href="https://www.hassellinclusion.com/blog/gherkin-accessibility-tests/">Using Gherkin to Write Accessibility Tests</a>
+                      </li>
+                      <li>
+                        <a href="https://makeitfable.com/">Fable Tech Labs</a>
+                      </li>
+                      <li>
+                        <a href="https://www.youtube.com/watch?v=6PHTGHgCQig">Auditing Design Systems for Accessibility</a>, Anna Cook (Recurly).
+                      </li>
+                      <li>
+                        <a href="https://www.youtube.com/watch?v=Y35jmpS8lQM">Annotating designs for Accessibility.</a> Sarah Pulis and Claire Webber of Intopia share their <a href="https://www.figma.com/community/file/1022394680250523675">accessibility annotation kit</a> for Figma.
+                      </li>
+                      <li>
+                        <a href="https://www.lullabot.com/articles/monitoring-web-accessibility-compliance-with-pa11y-dashboard">Monitoring Web Accessibility Compliance With Pa11y Dashboard</a>
+                      </li>
+                      <li>
+                        <a href="https://codepen.io/matthewdeeprose/pen/KKvvXMr">Semantic vs non-semantic button example on CodePen.</a>
+                      </li>
+                    </ul>
+                  </li>
+                  <li> Prioritise issues <ul>
+                      <li>
+                        <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-minimum.html">Understanding Success Criterion 2.4.11: Focus Appearance (Minimum)</a>
+                      </li>
+                      <li>
+                        <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance-enhanced">Understanding Success Criterion 2.4.12: Focus Appearance (Enhanced)</a>
+                      </li>
+                      <li>
+                        <a href="https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context.html">Understanding Success Criterion 2.4.4: Link Purpose (In Context)</a>
+                      </li>
+                      <li>
+                        <a href="https://accessibility.deque.com/agile-accessibility-handbook">Agile Accessibility Handbook</a>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>Sustain </li>
+              <li> Conclusion <ul>
+                  <li>
+                    <a href="https://youtu.be/b1JPqWmElxI">Knowledge Gathering - Karl Groves on accessibility in tech</a>
+                  </li>
+                  <li>
+                    <a href="https://jisc.onlinesurveys.ac.uk/accessibility-community-request-to-join">Continue the conversation on the JISC Accessibility Community Teams area</a>
+                </ul>
+              </li>
+            </ul>
+          </details>
+          <details>
+            <summary id="more">
+              <h2>Further Resources</h2>
+            </summary>
+            <h3 id="paths">Pathways to implementing accessibility</h3>
+            <ul>
+              <li>
+                <a href="https://www.iso.org/standard/70913.html">ISO/IEC 30071-1:2019</a> Information technology — Development of user interface accessibility — Part 1: Code of practice for creating accessible ICT products and services.
+              </li>
+              <li>
+                <a href="https://www.kotterinc.com/8-steps-process-for-leading-change/">The 8-Step Process for Leading Change</a>.
+              </li>
+              <li>
+                <a href="http://bit.ly/eaccess-shifting">Shifting digital accessibility practice</a> through use of the 8-Step Process for Leading Change.
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=WDBgiUSdSZ4">Recorded Webinar: Delivering ISO 30071-1 for all Organisations</a>
+              </li>
+              <li>
+                <a href="https://www.w3.org/WAI/planning-and-managing/">Planning and Managing Web Accessibility</a> from W3C.
+              </li>
+            </ul>
+            <h3 id="buyin">Getting buy-in</h3>
+            <ul>
+              <li>
+                <a href="https://a11ymyths.com">A11y Myths</a> - Dispelling the myths about accessibility. Very useful for responding to assumptions when building the business case.
+              </li>
+              <li>
+                <a href="https://businessdisabilityforum.org.uk/knowledge-hub/resources/how-accessibility-benefits-your-business/">How accessibility benefits your business</a>
+              </li>
+              <li>
+                <a href="https://www.w3.org/WAI/business-case/">The Business Case for Digital Accessibility</a>
+              </li>
+              <li>
+                <a href="https://smuvcmstorage.blob.core.windows.net/4a33c07a-4f5e-4969-a496-ec6aaf3ea331-260-files/Accessibility%20and%20the%20CSuite.pdf?sv=2018-11-09&sr=c&sig=Bi9YJC0kQzZuQpokDov1squbV1nJQ2vonbmpjNv3i7A%3D&se=2021-11-25T19%3A56%3A59Z&sp=r">Change agents: How can C-Suite and IT leaders build a culture of digital accessibility?</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=Krl4PmnZ8oQ">Hassel Inclusion Webinar: How do I get my boss to buy into investing in accessibility?</a>
+              </li>
+              <li>
+                <a href="https://youtu.be/TIZ3wtsuabQ">Nomensa Webinar: Accessibility Capability, from the trenches to the boardroom</a>
+              </li>
+              <li>
+                <a href="https://youtu.be/5DBnOgSj4hk">Nomensa Webinar: The Commercial Impact of Accessibility</a>
+              </li>
+              <li>
+                <a href="https://www.boia.org/blog/4-digital-accessibility-features-that-benefit-everyone">4 Digital Accessibility Features That Benefit Everyone</a>
+              </li>
+              <li>
+                <a href="https://abilitynet.org.uk/news-blogs/how-secure-budget-digital-accessibility">How to secure a budget for digital accessibility</a>
+              </li>
+              <li>
+                <a href="https://www.access2online.com/support/cbmap.html">Cost-Benefit Model for Accessibility Projects</a>
+              </li>
+              <li>
+                <a href="https://uxdesign.cc/disability-in-tech-a-checklist-to-get-your-sh-t-together-5682112b1234">Disability in tech: A checklist to get your sh*t together</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=gx8AztpQndg">Advocacy for Web Accessibility: Building Equality and Sensitivity in the Digital Landscape</a>
+              </li>
+            </ul>
+            <h3 id="training">Training</h3>
+            <ul>
+              <li>
+                <a href="https://www.d.umn.edu/itss/training/online/webdesign/accessibility.html">The University of Minnesota maintain a very comprehensive list of accessibility resources.</a>
+              </li>
+              <li>
+                <a href="https://frontendmasters.com/courses/accessibility-v2/">Website Accessibility</a>
+              </li>
+              <li>
+                <a href="https://www.a11y-collective.com/product/accessible-code/">Accessible code</a>
+              </li>
+              <li>
+                <a href="https://teamtreehouse.com/library/web-accessibility-compliance">Web Accessibility Compliance</a>
+              </li>
+              <li>
+                <a href="https://www.a11y-collective.com/product/writing-accessible-content-for-the-web/">Writing accessible content for the web</a>
+              </li>
+              <li>
+                <a href="https://teamtreehouse.com/library/accessibility-for-ux-designers-2">Accessibility For UX Designers</a>
+              </li>
+              <li>
+                <a href="https://www.a11y-collective.com/product/web-accessibility-the-basics/">Web accessibility, the basics</a>
+              </li>
+              <li>
+                <a href="https://egghead.io/courses/start-building-accessible-web-applications-today">Start Building Accessible Web Applications Today</a>
+              </li>
+              <li>
+                <a href="https://www.a11y-collective.com/product/masterclass-web-accessbility-the-business-case">Web Accessibility; the business case</a>
+              </li>
+              <li>
+                <a href="https://www.pluralsight.com/courses/accessibility-testing-and-screen-reader">Accessibility: Testing and Screen Reader Use</a>
+              </li>
+            </ul>
+            <h3 id="books">Books</h3>
+            <ul>
+              <li>The Agile Accessibility Handbook by Dylan Barrell is available both as a <a href="https://www.amazon.co.uk/Agile-Accessibility-Handbook-Accessible-Development/dp/164543477X">physical book you can order from amazon </a> and as a <a href="https://accessibility.deque.com/agile-accessibility-handbook">free download</a>. </li>
+              <li>
+                <a href="https://www.a11ywithlindsey.com/gift/">The Bootcamper's Guide to Web Accessibility by Lyndsey Kopacz</a> is an excellent resource for those wanting to learn about accessibility who already have a basic knowledge of HTML, CSS, and JavaScript
+              </li>
+            </ul>
+            <h3 id="legislation">Legislation</h3>
+            <ul>
+              <li>
+                <a href="http://www.legislation.gov.uk/uksi/2018/952/made?view=plain">The Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018.</a>
+              </li>
+              <li>
+                <a href="https://eur-lex.europa.eu/legal-content/EN/ALL/?uri=CELEX%3A32016L2102">Directive (EU) 2016/2102 of the European Parliament and of the Council of 26 October 2016 on the accessibility of the websites and mobile applications of public sector bodies (Text with EEA relevance).</a>
+              </li>
+              <li>Accessibility Statement <a href="https://www.gov.uk/government/publications/sample-accessibility-statement/sample-accessibility-statement-for-a-fictional-public-sector-website">template provided by CDDO</a>. </li>
+            </ul>
+            <h3 id="beginner">Beginner guides to accessibility testing and development</h3>
+            <ul>
+              <li>
+                <a href="https://www.accessibility.org.au/w3c-wai-curricula-on-web-accessibility-a-framework-to-build-your-own-courses/">Learning about accessibility</a>
+              </li>
+              <li>
+                <a href="https://archive.md/YRcUR">A ‘learn as you do’ accessibility checklist</a>
+              </li>
+              <li>
+                <a href="https://www.24a11y.com/2017/accessibility-testing-tools-desktop-mobile-websites/">Accessibility Testing Tools for Desktop and Mobile Websites</a>
+              </li>
+              <li>
+                <a href="https://accessibility.huit.harvard.edu/tools">Tools for Testing Accessibility</a>
+              </li>
+              <li>
+                <a href="https://davidakennedy.com/blog/a-workflow-for-testing-web-accessibility-with-free-tools/">A Workflow for Testing Web Accessibility with Free Tools</a>
+              </li>
+              <li>
+                <a href="https://www.softwaretestinghelp.com/what-is-web-accessibility-testing/">Accessibility Testing Tutorial</a>
+              </li>
+              <li>
+                <a href="https://level-level.com/talks/accessibility-testing-tools-and-workflow/">Test accessibility during development, not at the end!</a>
+              </li>
+              <li>
+                <a href="https://www.w3.org/WAI/test-evaluate/">Evaluating Web Accessibility Overview</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=cOmehxAU_4s">How I do an accessibility check</a>
+              </li>
+              <li>
+                <a href="https://alphagov.github.io/accessibility-tool-audit/">How do automated accessibility checkers compare?</a>
+              </li>
+              <li>
+                <a href="https://www.smashingmagazine.com/2018/09/importance-manual-accessibility-testing/">The Importance Of Manual Accessibility Testing</a>
+              </li>
+              <li>
+                <a href="https://www.guru99.com/accessibility-testing.html">Accessibility Testing Tutorial: What is, Tools &amp; Examples</a>
+              </li>
+              <li>
+                <a href="https://www.w3.org/WAI/ER/tools/?q=wcag-21-w3c-web-content-accessibility-guidelines-21&amp;q=en-301-549-european-accessibility-standard">W3C list of WCAG testing tools</a>
+              </li>
+              <li>
+                <a href="https://vimeo.com/84970341">Understanding the DOM's importance for accessibility</a>
+              </li>
+              <li>
+                <a href="https://a11y.coffee/">ALLY Coffee (quick wins for developers)</a>
+              </li>
+              <li>
+                <a href="http://bit.ly/10-days-of-a11y">Ten days of Ally</a>
+              </li>
+              <li>
+                <a href="https://dwcag.org/#sign-up-section">WCAG of the Day</a>
+              </li>
+            </ul>
+            <h3 id="plans">More detailed Accessibility Testing guides / plans</h3>
+            <ul>
+              <li>
+                <a href="https://www.w3.org/WAI/test-evaluate/preliminary/">Easy checks* (includes example before/after)</a>
+              </li>
+              <li>
+                <a href="https://www.w3.org/WAI/WCAG21/quickref/?currentsidebar=%23col_customize">How to meet WCAG quick reference</a>
+              </li>
+              <li>
+                <a href="https://www.smashingmagazine.com/2021/04/bake-layers-accessibility-testing-process/">How To Bake Layers Of Accessibility Testing Into Your Process</a>
+              </li>
+              <li>
+                <a href="https://web2access.org/reviews/new">ECS Accessibility audit and statement wizard</a>
+              </li>
+              <li>
+                <a href="https://usability.yale.edu/web-accessibility/articles/testing-procedures">Testing Procedures</a>
+              </li>
+              <li>
+                <a href="https://yale.app.box.com/s/pfxe0q6gnx07pbq6qjl7dd12taqzd21z">Yale Quick Accessibility Tests for Authors</a>
+              </li>
+              <li>
+                <a href="https://archive.is/Tg2om">Accessibility Manual Testing</a>
+              </li>
+              <li>
+                <a href="https://www.lexdis.org.uk/digital-accessibility/testing/quick-accessibility-checks/">Quick Accessibility Checks</a>
+              </li>
+              <li> From Lexdis: <ul>
+                  <li>
+                    <a href="https://www.lexdis.org.uk/digital-accessibility/testing/">Testing</a>
+                  </li>
+                  <li>
+                    <a href="https://www.lexdis.org.uk/digital-accessibility/testing/introduction-to-auditing/">Intro to audits</a>
+                  </li>
+                  <li>
+                    <a href="https://www.lexdis.org.uk/digital-accessibility/testing/performing-a-manual-audit/">Manual Audits</a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <a href="https://docs.google.com/spreadsheets/d/1jug1AuXfAYKhPiorlQ9rG2M-XHTt7tWiPi4nU4RkAxc/edit#gid=0">Google Doc example Accessibility test sheet</a>
+              </li>
+              <li>
+                <a href="https://webaim.org/standards/wcag/checklist">WebAIM's WCAG 2 Checklist</a>
+              </li>
+              <li>
+                <a href="https://www.wuhcag.com/wcag-checklist/">WCAG Checklist</a>
+              </li>
+              <li>
+                <a href="https://webflow.com/accessibility/checklist">Webflow Accessibility Checklist</a>
+              </li>
+              <li>
+                <a href="https://digital.nhs.uk/about-nhs-digital/standards-for-web-products/accessibility-for-digital-services/accessibility-audit-checklist">NHS Accessibility Audit Checklist</a>
+              </li>
+              <li>
+                <a href="https://ictbaseline.access-board.gov/">ICT Testing Baseline for Web Accessibility</a>
+              </li>
+              <li>
+                <a href="https://lsnrae.medium.com/six-things-you-need-to-audit-your-site-for-accessibility-db6db13ad8bf">Six things you need to audit your site for accessibility</a>
+              </li>
+              <li>
+                <a href="https://accessibility.18f.gov/checklist/">18F Accessibility Guide</a>
+              </li>
+              <li>
+                <a href="https://www.w3.org/WAI/eval/report-tool/#!/">WCAG-EM Report Tool</a>
+              </li>
+              <li>
+                <a href="https://www.a11yproject.com/checklist/">The issues this checklist prompts you to check for covers a wide range of disability conditions.</a>
+              </li>
+              <li>
+                <a href="https://www.wpcampus.org/blog/2019/05/gutenberg-audit-results/">Case study, accessibility audit of the WordPress block editor, known as Gutenberg.</a>
+              </li>
+              <li>
+                <a href="https://docs.google.com/spreadsheets/d/10CTezA0iDdaWggaqxuHawj-5u8YXdZeWBJsIkuvJ364/edit#gid=347324347">Ally testing tools comparison spreadsheet</a>
+              </li>
+              <li>
+                <a href="https://www.whatdotheyknow.com/request/gds_accessibility_monitoring#incoming-1597882">What does GDS do?</a>
+              </li>
+              <li>
+                <a href="https://www.gov.uk/guidance/public-sector-website-and-mobile-application-accessibility-monitoring#how-we-test">How GDS tests</a>
+              </li>
+              <li>
+                <a href="https://www.gov.uk/government/publications/doing-a-basic-accessibility-check-if-you-cant-do-a-detailed-one/doing-a-basic-accessibility-check-if-you-cant-do-a-detailed-one">Do a basic accessibility check (GDS)</a>
+              </li>
+              <li>
+                <a href="https://dev.to/s_aitchison/5-things-i-m-thinking-about-when-i-check-a-pull-request-for-accessibility-3gmo">5 things I'm thinking about when I check a Pull Request for accessibility</a>
+              </li>
+              <li>
+                <a href="https://www.washington.edu/accesscomputing/AU/">Practice testing here</a>
+              </li>
+              <li>
+                <a href="https://codepen.io/aardrian/details/ZLZMep">Text Contrast Issues That Cannot Be Detected with Automated Tools</a>
+              </li>
+              <li>
+                <a href="https://adrianroselli.com/2021/09/beware-false-negatives.html">Beware False Negatives</a> (from using automated tools).
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=_B1o6DyLCVY">Accessibility Testing overview</a>
+              </li>
+              <li>
+                <a href="https://www.smashingmagazine.com/2021/06/complete-guide-accessibility-tooling/">A Complete Guide To Accessibility Tooling</a>
+              </li>
+              <li>
+                <a href="https://journals.publishing.umich.edu/weaveux/article/id/218/">How to Audit Your Library Website for WCAG 2.1 Compliance</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=59RWhOdmmWQ">HMRC Live accessibility audit demonstration</a>
+              </li>
+              <li>
+                <a href="https://wcag-filter-tool.netlify.app/">WCAG 2.1 translated into plain language</a>. 103 tests categorised by content type, which removes the ambiguity from understanding success criteria.
+              </li>
+            </ul>
+            <h3 id="browser">Browser Extensions to assist testing</h3>
+            <ul>
+              <li>
+                <a href="https://www.digitala11y.com/accessibility-plug-ins-ie-chrome-firefox-browsers/">44 Browser Extensions to Perform Accessibility Testing Effectively</a>
+              </li>
+              <li>
+                <a href="https://www.deque.com/axe/">Web AXE</a>
+              </li>
+              <li>
+                <a href="https://github.com/dequelabs/axe-core/blob/HEAD/doc/rule-descriptions.md">What AXE tests and how critical they are</a>
+              </li>
+              <li>
+                <a href="https://accessibilityinsights.io/">Accessibility Insights</a>
+              </li>
+              <li>
+                <a href="https://wave.webaim.org/">Wave</a>. Here's <a href="https://webaim.org/articles/evaluationguide/">a great guide on using WAVE for accessibility evaluations</a>.
+              </li>
+              <li>
+                <a href="https://www.matuzo.at/blog/building-the-most-inaccessible-site-possible-with-a-perfect-lighthouse-score/">Building the most inaccessible site possible with a perfect Lighthouse score</a>
+              </li>
+              <li>
+                <a href="https://chrome.google.com/webstore/detail/arc-toolkit/chdkkkccnlfncngelccgbgfmjebmkmce">ARC Toolkit</a>
+              </li>
+              <li>
+                <a href="https://chrome.google.com/webstore/detail/ibm-equal-access-accessib/lkcagbfjnkomcinoddgooolagloogehp">IBM Equal Access Accessibility Checker</a>
+              </li>
+              <li>
+                <a href="https://chrome.google.com/webstore/detail/siteimprove-accessibility/efcfolpjihicnikpmhnmphjhhpiclljc?hl=en-US">Siteimprove accessibility checker</a>
+              </li>
+              <li>
+                <a href="https://chrome.google.com/webstore/detail/color-contrast-analyzer/dagdlcijhfbmgkjokkjicnnfimlebcll">Colour contrast analyser</a>
+                <ul>
+                  <li>Buggy but can be used to check if contrast of text over images or gradients is appropriate.</li>
+                </ul>
+              </li>
+              <li>
+                <a href="https://aslint.org/">ASlint</a>
+                <ul>
+                  <li>This Bookmarklet, includes non-wcag recommendations too.</li>
+                </ul>
+              </li>
+              <li>
+                <a href="https://chrispederick.com/work/web-developer/">Web Developer browser plugin</a>
+              </li>
+            </ul>
+            <h3 id="bookmarklets">Bookmarklets to assist testing</h3>
+            <ul>
+              <li>
+                <a href="https://cdpn.io/stevef/debug/YLMqbo">Text spacing bookmarklet</a>
+              </li>
+              <li>
+                <a href="https://ryersondmp.github.io/sa11y/">Sa11y - CMS plugin, also bookmarklet - intended for content authors</a>
+              </li>
+              <li>
+                <a href="https://pauljadam.com/bookmarklets.html">Accessibility Testing bookmarklets</a>
+              </li>
+              <li>
+                <a href="https://www.ssa.gov/accessibility/andi/help/install.html">ANDI: Accessibility Testing Tool</a>
+              </li>
+              <li>
+                <a href="https://a11y-tools.com/bookmarklets/">A11y audit bookmarklets</a>
+              </li>
+            </ul>
+            <h3 id="cmd">Commandline tools</h3>
+            <ul>
+              <li>
+                <a href="https://github.com/bbc/bbc-a11y/blob/master/guides/using/checking-a-website.md">BBC Accessibility Standards Checker</a>: This tool runs a set of tests against a set of URLs to verify whether each one meets the <a href="https://www.bbc.co.uk/accessibility/forproducts/guides/mobile/">BBC accessibility guidelines</a>.
+              </li>
+              <li>
+                <a href="https://www.npmjs.com/package/axe-core">Axecore</a>
+              </li>
+              <li>
+                <a href="https://www.npmjs.com/package/@axe-core/cli">Axecore CLI</a>
+              </li>
+              <li>
+                <a href="https://www.adrianbolonio.com/en/testing-web-accessibility-part-2/">Axe-cli, pa11y, lighthouse guide</a>
+              </li>
+              <li>
+                <a href="https://pa11y.org">Pa11y</a>: provides both Command Line and Continuous integration based tools, as well as a dashboard for surveying accessibility across services.
+              </li>
+              <li>
+                <a href="https://cruft.io/posts/accessibility-testing-with-pa11y/">Accessibility Testing With pa11y</a>
+              </li>
+              <li>
+                <a href="http://hollsk.co.uk/posts/view/using-actions-in-pa11y">Using actions in Pa11y</a>
+              </li>
+              <li>
+                <a href="https://bitsofco.de/pa11y/">Accessibility Testing with pa11y</a>
+              </li>
+              <li>
+                <a href="https://dev.to/bias/web-accessibility-with-the-axe-core-module-5han">AxE Core NPM tutorial</a>
+              </li>
+              <li>
+                <a href="https://github.com/dequelabs/axe-core/blob/HEAD/doc/projects.md">NPM projects using AxE</a>
+              </li>
+              <li>
+                <a href="http://www.craigabbott.co.uk/blog/axe-core-vs-pa11y">Axe vs Pa11y</a>
+              </li>
+              <li>
+                <a href="https://addyosmani.com/a11y/">The A11y Command-line Tools</a> assist in discovering common web accessibility issues, such as detecting if your page can be read with a screenreader or works well with high-contrast mode enabled.
+              </li>
+              <li>
+                <a href="https://www.npmjs.com/package/a11y-sitechecker">A11y-sitechecker</a> is a tool to check a whole site against accessibility criteria. It uses axe-core to check whole sites for accessibility issues. It is crawling the first given Domain and tries to find all links recursively.
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=jC_7NnRdYb0">Automated accessibility testing with axe</a>
+              </li>
+              <li>
+                <a href="https://www.npmjs.com/package/ghost-axe">ghostjs accessibility helper</a>
+              </li>
+              <li>
+                <a href="https://github.com/theintern/intern-a11y">intern accessibility testing</a>
+              </li>
+              <li>
+                <a href="https://github.com/MSU-NatSci/DomainAccessibilityAudit">Domain Accessibility Audit</a>: This web application automatically crawls websites and checks for accessibility violations. It can crawl within subdomains of the initial domain it starts with. It reports statistics of violations for the whole audit, domains and pages.
+              </li>
+            </ul>
+            <h3 id="CI">Continuous integration</h3>
+            <ul>
+              <li>
+                <a href="https://github.com/pa11y/pa11y-ci">Pa11y CI</a>
+              </li>
+              <li>
+                <a href="https://www.adrianbolonio.com/en/accessibility-github-actions/">Automating the accessibility tests of your source code with GitHub Actions</a>
+              </li>
+              <li>
+                <a href="https://hackernoon.com/using-pa11y-ci-and-drone-as-accessibility-testing-gatekeepers-a8b5a3415227">Using Pa11y CI and Drone as accessibility testing gatekeepers</a>
+              </li>
+              <li>
+                <a href="https://cruft.io/posts/automated-accessibility-testing-node-travis-ci-pa11y/">Automated accessibility testing with Travis CI</a>
+              </li>
+              <li>
+                <a href="https://github.com/nickcolley/jest-axe">Jest with axe</a>
+              </li>
+              <li>
+                <a href="https://jj09.net/unit-testing-accessibility/">Unit Testing with AxE</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=jC_7NnRdYb0">Setting up Selenium, and AxE for automated testing</a>
+              </li>
+              <li>
+                <a href="https://github.com/dequelabs/axe-core-maven-html">axe-core Selenium (Java) Integration</a>
+              </li>
+              <li>
+                <a href="https://www.npmjs.com/package/cypress-axe">Cypress Axe</a>
+              </li>
+              <li>
+                <a href="https://24ways.org/2017/automating-your-accessibility-tests">Automating Your Accessibility Tests</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=46rFCwYn27Y">Automated Accessibility Testing in JavaScript Frameworks</a>
+              </li>
+              <li>
+                <a href="https://dev.to/steady5063/mobile-web-accessibility-testing-using-appium-3ndc">Mobile Web Accessibility Testing Using Appium</a>
+              </li>
+            </ul>
+            <h3 id="dev">Frontend development</h3>
+            <ul>
+              <li>
+                <a href="https://www.deque.com/shift-left/">Shift left</a>
+              </li>
+              <li>
+                <a href="https://saucelabs.com/blog/best-practices-for-shifting-accessibility-testing-left">Best practices for shifting left</a>
+              </li>
+              <li>
+                <a href="https://www.upyoura11y.com/">Web accessibility toolkit</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=FzQBi2_TWo8">Becoming an Accessibility Focused Developer</a>
+              </li>
+              <li>
+                <a href="https://adrianroselli.com/2021/06/using-css-to-enforce-accessibility.html">Using CSS to Enforce Accessibility</a>
+              </li>
+              <li>
+                <a href="https://levelup.gitconnected.com/5-tips-on-how-to-incorporate-web-accessibility-into-your-dev-workflow-74d831e92fba">5 Ideas on How to Incorporate Web Accessibility into your Dev Workflow</a>
+              </li>
+              <li>
+                <a href="https://levelup.gitconnected.com/the-developers-guide-to-web-accessibility-auditing-and-tooling-90e70fd95349">The Developer's Guide to Web Accessibility Auditing and Tooling</a>
+              </li>
+              <li>
+                <a href="https://dev.to/steady5063/accessible-code-reviews-11j6">Accessible Code Reviews</a>
+              </li>
+              <li>
+                <a href="https://fvsch.com/styling-buttons">Styling buttons, the right way</a>
+              </li>
+              <li>
+                <a href="https://www.digitala11y.com/resources-for-building-accessible-tables/">Resources For Building Accessible Tables</a>
+              </li>
+              <li>
+                <a href="https://adrianroselli.com/2017/11/hey-its-still-ok-to-use-tables.html">Hey, It's Still OK to Use Tables</a>
+              </li>
+            </ul>
+            <a href="#top">Back to top.</a>
+            <h3 id="semanticHTML">Semantic HTML</h3>
+            <ul>
+              <li>
+                <a href="https://brucelawson.co.uk/2018/the-practical-value-of-semantic-html/">The practical value of semantic HTML</a>
+              </li>
+              <li>
+                <a href="https://www.freecodecamp.org/news/semantic-html5-elements/">Semantic HTML5 Elements Explained</a>
+              </li>
+              <li>
+                <a href="https://html.com/semantic-markup/">What On Earth Is Semantic Markup? (And Why Should You Learn To Write It)</a>
+              </li>
+              <li>
+                <a href="https://localghost.dev/2021/06/the-right-tag-for-the-job-why-you-should-use-semantic-html/">The right tag for the job: why you should use semantic HTML</a>
+              </li>
+              <li>
+                <a href="https://www.matuzo.at/blog/element-diversity/">Element diversity</a>
+              </li>
+              <li>
+                <a href="https://www.freecodecamp.org/news/semantic-html-alternatives-to-using-divs/">Semantic HTML Guide - 10 Alternatives to Using divs</a>
+              </li>
+            </ul>
+            <h3 id="vsc">For Visual Studio Code</h3>
+            <ul>
+              <li>
+                <a href="https://marketplace.visualstudio.com/items?itemName=MaxvanderSchee.web-accessibility">Web Accessibility Linter for VS Code</a>
+              </li>
+              <li>
+                <a href="https://marketplace.visualstudio.com/items?itemName=MadsKristensen.WebAccessibilityChecker">Web Accessibility Checker by Mads Kristensen</a>
+              </li>
+              <li>
+                <a href="https://marketplace.visualstudio.com/items?itemName=deque-systems.vscode-axe-linter">axe Accessibility Linter</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=Vdgc6RPye2E">axe Accessibility Linter: introductory webinar</a>
+              </li>
+              <li>
+                <a href="https://vimeo.com/showcase/8855447">5 hour course from Smashing Magazine and Deque on using axe Accessibility Linter</a>. Workshop Materials: <a href="https://github.com/dequelabs/smashing-workshop">Day 1</a> / <a href="https://github.com/dequelabs/workshop-day-II">Day 2</a>. <a href="https://docs.google.com/document/d/1U9hr4Wsozc443S6PFGL_hk6PtP0px5mng-1xUVWh_r0/edit">Slides and collaborative document</a>.
+              </li>
+              <li>
+                <a href="https://marketplace.visualstudio.com/items?itemName=inclusive-tech.brilliant">Bri11iant</a> is a VSCode language extension for supporting web developers improve the accessibility of their websites.
+              </li>
+              <li>
+                <a href="https://devblogs.microsoft.com/visualstudio/improving-html-accessibility-with-visual-studio-extensions/">Using Tenon Accessibility Checker in VS Code</a>
+              </li>
+              <li>
+                <a href="https://webhint.io">WebHint</a> - Accessibility testing + plugin for Visual Studio Code
+              </li>
+            </ul>
+            <h3 id="atom">Atom</h3>
+            <ul>
+              <li>
+                <a href="https://atom.io/packages/web-accessibility-checker">Atom accessibility plugin</a>
+              </li>
+              <li>
+                <a href="https://atom.io/packages/accessible-snippets">Atom accessibility snippets</a>
+              </li>
+            </ul>
+            <h3 id="frameworks">Javascript frameworks</h3>
+            <ul>
+              <li>
+                <a href="https://www.youtube.com/watch?v=46rFCwYn27Y">Automated Accessibility Testing in JavaScript Frameworks</a>
+              </li>
+              <li>
+                <a href="https://allyjs.io/#features">ally.js</a> - small library that can make certain aspects such as keyboard focus easier to manage
+              </li>
+            </ul>
+            <h3 id="bs">Bootstrap</h3>
+            <ul>
+              <li>
+                <a href="https://paypal.github.io/bootstrap-accessibility-plugin/">Bootstrap accessibility plugin</a>
+              </li>
+            </ul>
+            <a href="#top">Back to top.</a>
+            <h3 id="testfr">Integration with testing frameworks</h3>
+            <ul>
+              <li>
+                <a href="https://24ways.org/2017/automating-your-accessibility-tests">Automating Your Accessibility Tests</a>
+              </li>
+              <li>
+                <a href="https://www.npmjs.com/package/wcagify">WCAGify is a simple function for people who need to reference the Web Content Accessibility Guidelines frequently and are tired of copying and pasting.</a>
+              </li>
+            </ul>
+            <h3 id="mobile">Mobile</h3>
+            <ul>
+              <li>
+                <a href="https://www.youtube.com/watch?v=IkQk8ZbToNo">How Do Blind People Use Smartphones?</a>
+              </li>
+              <li>
+                <a href="https://www.funka.com/en/research-and-innovation/archive---research-projects/mobile-guidelines/">Funka Mobile Guidelines</a>
+              </li>
+              <li>
+                <a href="https://www.funka.com/contentassets/9131835638b640cf96baf2ef62a2fba4/guidelines_for_the_development_of_accessible_mobile_interfaces.pdf">Guidelines for developing accessible mobile interfaces</a>
+              </li>
+              <li>
+                <a href="https://www.freecodecamp.org/news/mobile-accessibility/">Accessibility Best Practices for Mobile App Development</a>
+              </li>
+            </ul>
+            <h3 id="design">Design</h3>
+            <ul>
+              <li>
+                <a href="https://www.figma.com/community/file/984136149483735147">Fluent Accessibility Notation:</a> Elements for adding accessibility notation to wireframes and designs using Figma.
+              </li>
+              <li>
+                <a href="https://dribbble.com/shots/6269661-Accessibility-Bluelines"> Accessibility Bluelines:</a> a set of accessibility bluelines from Jeremy Elder to help annotate design files for handoff to dev and QA, or just to include in docs. Sketch, Figma, Adobe XD, and InVision Studio versions.
+              </li>
+              <li>
+                <a href="https://medium.com/asos-techblog/a-journey-towards-sustainable-accessibility-e75f8d0e5830">A journey towards sustainable accessibility</a>. <a href="https://archive.is/jS2bC">Alternative link on archive.is</a>.
+              </li>
+              <li>
+                <a href="https://www.tpgi.com/five-ways-to-include-d-deaf-users-in-your-designs/">Five ways to include d/Deaf users in your designs</a>
+              </li>
+              <li>
+                <a href="https://www.designsystemsforfigma.com/blog/accessible-design-systems-look-good-while-doing-good">Accessible Design Systems: Look Good While Doing Good</a>
+              </li>
+              <li>
+                <a href="https://www.deque.com/blog/design-code-thinking-accessibility-ground/">Design Before Code: Thinking About Accessibility from the Ground Up: Part 1</a>
+              </li>
+              <li>
+                <a href="https://www.deque.com/blog/design-before-code-part-2/">Design Before Code: Thinking About Accessibility from the Ground Up: Part 2</a>
+              </li>
+              <li>
+                <a href="https://moderncss.dev/modern-css-upgrades-to-improve-accessibility/">Modern CSS Upgrades To Improve Accessibility</a>
+              </li>
+              <li>
+                <a href="https://www.deque.com/blog/auditing-design-systems-for-accessibility/">Auditing Design Systems for Accessibility</a>
+              </li>
+              <li>
+                <a href="https://www.a11yproject.com/posts/2021-08-14-reviewing-a-design-for-accessibility/"> Reviewing a design for accessibility</a>
+              </li>
+              <li>
+                <a href="https://technology.blog.gov.uk/2020/02/24/why-the-gov-uk-design-system-team-changed-the-input-type-for-numbers/">Many examples are on gov.uk</a>
+              </li>
+              <li>
+                <a href="https://www.w3.org/TR/wai-aria-practices-1.2/">WAI-ARIA Authoring Practices</a> (Explains how UI patterns should behave)
+              </li>
+              <li>
+                <a href="https://github.com/w3c/aria-practices/">Repository of above.</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=0hqhAIjE_8I">ARIA HTML Tutorial - What is ARIA &amp; Why it's Important to Use!</a>
+              </li>
+              <li>
+                <a href="https://www.youtube.com/watch?v=7deb5SY24NM">Why and How to Start Using ARIA Tags</a>
+              </li>
+              <li>
+                <a href="https://www.deque.com/blog/aria-spec-for-the-uninitiated-part-1/">ARIA Spec for the Uninitiated: Part 1</a>
+              </li>
+              <li>
+                <a href="https://www.deque.com/blog/aria-spec-for-the-uninitiated-part-2/">ARIA Spec for the Uninitiated: Part 2</a>
+              </li>
+              <li>
+                <a href="https://www.deque.com/blog/aria-spec-for-the-uninitiated-part-3/">ARIA Spec for the Uninitiated: Part 3</a>
+              </li>
+              <li>
+                <a href="https://www.maxability.co.in/2021/08/22/4-aria-mistakes/">4 ARIA-mistakes worth solving</a>
+              </li>
+              <li>
+                <a href="https://github.com/dylanb/Axponents/tree/master/native">Accessible Native Web Components</a>
+              </li>
+              <li>
+                <a href="https://inclusive-components.design/">Inclusive components</a>
+                <ul>
+                  <li>A library of free inclusive web components explained step by step.</li>
+                </ul>
+              </li>
+              <li>
+                <a href="https://www.digitala11y.com/accessible-ui-component-libraries-roundup/">Accessible UI Component Libraries Roundup</a>
+              </li>
+              <li>
+                <a href="https://medium.com/@addyosmani/accessible-ui-components-for-the-web-39e727101a67">Accessible UI Components For The Web</a>
+              </li>
+            </ul>
+          </details>
+          <div class="expandContractControls">
+            <button id="expandAll_2" class="actionButton" aria-label="Expand all content" type="button" onclick="openAll()">Expand all</button>
+            <button id="collapseAll_2" class="actionButton" aria-label="Collapse all content" type="button" onclick="collapseAll()">Collapse all</button>
+          </div>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
             <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
-               <title id="svgTitle2">Top.</title>
-               <desc id="svgDesc2">Move to the top of the page.</desc>
-               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
-                  <circle cx="8.5" cy="8.5" r="8"/>
-                  <path d="m11.5 7.5-3-3-3 3"/>
-                  <path d="m8.5 4.5v8"/>
-               </g>
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
             </svg>
             <br />
             <span id="myBtnTop" class="panelLabel">Top</span>
-         </button>
-         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
             <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
-               <title id="svgTitle3">Bottom.</title>
-               <desc id="svgDesc3">Move to the bottom of the page.</desc>
-               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
-                  <circle cx="8.5" cy="8.5" r="8"/>
-                  <path d="m5.5 9.5 3 3 3-3"/>
-                  <path d="m8.5 12.5v-8"/>
-               </g>
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
             </svg>
             <br />
             <span id="myBtnBottom" class="panelLabel">Bottom</span>
-         </button>
-      </div>
-         </main>
-         <aside class="page-sidebar related">
-            <section class="related">
-				<h2>Related content</h2>
-			</section>
-            <section class="related">
-               <h3>Presentations</h3>
-               <ul class="relUL">
-                  <li>
-                     <a href="whycare.html">Why should we care about Digital Accessibility?</a>
-                  </li>
-                  <li>
-                     <a href="amazing.html">Toward amazing accessibility!</a>
-                  </li>
-               </ul>
-            </section>
-            <section class="related">
-               <h3>Blog posts</h3>
-               <ul class="relUL">
-                  <li>
-                     <a href="http://generic.wordpress.soton.ac.uk/digital-learning/author/matthew-deeprose/">Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</a>
-                  </li>
-               </ul>
-            </section>
-            <section class="related">
-               <h3>Other Resources</h3>
-               <ul class="relUL">
-                  <li>
-                     <a href="workshops.html">Accessibility Workshop Materials</a>
-                  </li>
-                  <li>
-                     <a href="matrix/matrix.html">Brand Palette Colour Contrast Matrix</a>
-                  </li>
-                  <li>
-                     <a href="pathway.html">Pathway to PSBAR</a>
-                  </li>
-               </ul>
-            </section>
-         </aside>
-         <footer class="page-footer">
-            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
-            <div id="SiteMap">
-               <a href="siteMap.html">Site Map</a>
-            </div>
-            <div id="AccessibilityFoot">
-               <a href="Accessibility_Statement.html">Accessibility Statement</a>
-            </div>
-            <div id="twitterFoot">
-               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
-            </div>
-            <div id="YouTubeChannelFoot">
-               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
-            </div>
-            <div id="aboutFoot">
-               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
-            </div>
-         </footer>
-      </div>
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related content</h2>
+        </section>
+        <section class="related">
+          <h3>Presentations</h3>
+          <ul class="relUL">
+            <li>
+              <a href="whycare.html">Why should we care about Digital Accessibility?</a>
+            </li>
+            <li>
+              <a href="amazing.html">Toward amazing accessibility!</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h3>Blog posts</h3>
+          <ul class="relUL">
+            <li>
+              <a href="http://generic.wordpress.soton.ac.uk/digital-learning/author/matthew-deeprose/">Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h3>Other Resources</h3>
+          <ul class="relUL">
+            <li>
+              <a href="workshops.html">Accessibility Workshop Materials</a>
+            </li>
+            <li>
+              <a href="matrix/matrix.html">Brand Palette Colour Contrast Matrix</a>
+            </li>
+            <li>
+              <a href="pathway.html">Pathway to PSBAR</a>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS">
+          <a id="rssA" href="feed.rss">RSS</a>
+        </div>
+        <div id="SiteMap">
+          <a href="siteMap.html">Site Map</a>
+        </div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
+        </div>
+      </footer>
+    </div>
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false"
+        } else {
+          menuAriaAttrib = "true"
+        }
+        document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+      }
 
-      <script>
-         function menuAction() {
-           let menuSwitch = document.getElementById("myTopnav");
-           if (menuSwitch.className === "topnav") {
-             menuSwitch.className += " responsive";
-           } else {
-             menuSwitch.className = "topnav";
-           }
-           let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-           if (menuAriaAttrib === "true") {
-             menuAriaAttrib = "false"
-           } else {
-             menuAriaAttrib = "true"
-           }
-           document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-         }
+      function showHamburger() {
+        document.getElementById("arrow").style.display = "none";
+      }
 
+      function showArrow() {
+        document.getElementById("arrow").style.display = "inline-block";
+      }
+      //menu.onmouseover = showArrow;
+      // menu.onfocus = showArrow;
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
+      window.onscroll = function() {
+        scrollFunction()
+      };
 
+      function scrollFunction() {
+        if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block"
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none"
+        }
+      }
 
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById('skipToContent').focus();
+      }
 
-         function showHamburger() {
-  
-           document.getElementById("arrow").style.display = "none";
-         }
-         
-         function showArrow() {
-  
-           document.getElementById("arrow").style.display = "inline-block";
-         }
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById('rssA').focus();
+      }
+    </script>
+    <script src="scripts/jquery-3.6.0.slim.min.js"></script>
+    <script src="scripts/details.js"></script>
+    <script>
+      window.console || (window.console = {
+        'log': alert
+      });
+      $(function() {
+        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
+        $('details').details();
+        $('details').on({
+          'open.details': function() {
+            console.log('opened')
+          },
+          'close.details': function() {
+            console.log('closed')
+          }
+        })
+      });
+    </script>
+    <script>
+      // Expand details / summary when printing
+      // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
+      window.matchMedia("print").addEventListener("change", evt => {
+        if (evt.matches) {
+          elms = document.body.querySelectorAll("details:not([open])");
+          for (e of elms) {
+            e.setAttribute("open", "");
+            e.dataset.wasclosed = "";
+          }
+        } else {
+          elms = document.body.querySelectorAll("details[data-wasclosed]");
+          for (e of elms) {
+            e.removeAttribute("open");
+            delete e.dataset.wasclosed;
+          }
+        }
+      })
+    </script>
+    <script>
+      function openAll() {
+        var x = document.getElementsByTagName("details");
+        var i;
+        for (i = 0; i < x.length; i++) {
+          x[i].setAttribute("open", "true")
+        }
+      }
 
-         //menu.onmouseover = showArrow;
-        // menu.onfocus = showArrow;
+      function collapseAll() {
+        var y = document.getElementsByTagName("details");
+        var j;
+        for (j = 0; j < y.length; j++) {
+          y[j].removeAttribute("open")
+        }
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
 
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia('(prefers-color-scheme: dark)');
+        let dt;
+        if (d.matches) {
+          dt = 'dark';
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = 'light'
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == 'dark' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'light' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'dark' && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
 
-      </script>
-      <script>
-         let mybutton = document.getElementById("myBtn");
-         let mybutton2 = document.getElementById("myBtn2");
-         window.onscroll = function() {
-           scrollFunction()
-         };
-         
-         function scrollFunction() {
-           if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
-             mybutton.style.display = "block";
-             mybutton2.style.display = "block"
-           } else {
-             mybutton.style.display = "none";
-             mybutton2.style.display = "none"
-           }
-         }
-         
-            function topFunction() {
-                document.body.scrollTop = 0;
-                document.documentElement.scrollTop = 0; 
-         document.getElementById('skipToContent').focus();
-            }
-            
-            function bottomFunction() {
-         window.scrollTo(0,document.body.scrollHeight);
-         document.getElementById('rssA').focus();
-            }
-      </script>
-      <script src="scripts/jquery-3.6.0.slim.min.js"></script>
-      <script src="scripts/details.js"></script>
-      <script>
-         window.console || (window.console = {
-           'log': alert
-         });
-         $(function() {
-           $('html').addClass($.fn.details.support ? 'details' : 'no-details');
-           $('details').details();
-           $('details').on({
-             'open.details': function() {
-               console.log('opened')
-             },
-             'close.details': function() {
-               console.log('closed')
-             }
-           })
-         });
-      </script>
-      <script>
-         function openAll() {
-           var x = document.getElementsByTagName("details");
-           var i;
-           for (i = 0; i < x.length; i++) {
-             x[i].setAttribute("open", "true")
-           }
-         }
-         
-         function collapseAll() {
-           var y = document.getElementsByTagName("details");
-           var j;
-           for (j = 0; j < y.length; j++) {
-             y[j].removeAttribute("open")
-           }
-         }
-      </script>
-      <script>
-         let themePref = localStorage.getItem("theme");
-         console.log("Has a theme preference been saved?", themePref);        
-         
-         
-         function setLight() {
-             let buttonStatus = document.getElementById("lightDark");
-             let theButton = document.getElementById("modeToggle");
-             const d = matchMedia('(prefers-color-scheme: dark)');
-             let dt;
-             if (d.matches) {
-                 dt = 'dark';
-                 console.log("Prefers dark theme in OS");
-             } else {
-                 dt = 'light'
-                 console.log("Prefers light theme in OS");
-             }
-             if (dt == 'dark' && themePref == 'Dark') {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else if (dt == 'light' && themePref == 'Dark') {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else if (dt == 'dark' && !themePref) {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else {
-                 theButton.setAttribute("aria-pressed", "false");
-             }
-         }
-         setLight();
-         
-         function toggle(btnID) {
-             let buttonStatus = document.getElementById("lightDark");
-             let theButton = document.getElementById(btnID);
-             if (theButton.getAttribute("aria-pressed") == "true") {
-                 theButton.setAttribute("aria-pressed", "false");
-                 document.getElementById('lightCSS').href = 'light.css';
-                 document.getElementById('darkCSS').href = 'light.css';
-                 console.log("Turned on light mode");
-                 localStorage.setItem("theme", "Light");
-                 let themePref = localStorage.getItem("theme");
-                 console.log("Site theme preference to ", themePref);
-                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
-                 let toggleButton = document.getElementById('modeToggle');
-                 toggleButton.removeAttribute("aria-pressed");
-                 toggleButton.setAttribute("aria-pressed", "false");
-             } else {
-                 theButton.setAttribute("aria-pressed", "true");
-                 document.getElementById('lightCSS').href = 'dark.css';
-                 document.getElementById('darkCSS').href = 'dark.css';
-                 console.log("Turned on dark mode");
-                 localStorage.setItem("theme", "Dark");
-                 let themePref = localStorage.getItem("theme");
-                 console.log("Site theme preference set to ", themePref);
-                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
-                 let toggleButton = document.getElementById('modeToggle');
-                 toggleButton.removeAttribute("aria-pressed");
-                 toggleButton.setAttribute("aria-pressed", "true");
-             }
-         }
-         
-         function applyThemePreference() {
-             if (themePref == 'Dark') {
-                 let theButton = document.getElementById('modeToggle');
-                 document.getElementById('lightCSS').href = 'dark.css';
-                 document.getElementById('darkCSS').href = 'dark.css';
-                 theButton.setAttribute("aria-pressed", "true");
-                 console.log("Applied dark theme because site theme preference is set to", themePref);
-             } else if (themePref == 'Light') {
-                 let theButton = document.getElementById('modeToggle');
-                 document.getElementById('lightCSS').href = 'light.css';
-                 document.getElementById('darkCSS').href = 'light.css';
-                 theButton.setAttribute("aria-pressed", "false");
-                 console.log("Applied dark theme because site theme preference is set to", themePref);
-             }
-         }
-         applyThemePreference();                
-      </script>
-	  <script src="scripts/lite-yt-embed.js"></script>
-	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
-   </body>
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
+
+      function applyThemePreference() {
+        if (themePref == 'Dark') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          theButton.setAttribute("aria-pressed", "true");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        } else if (themePref == 'Light') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          theButton.setAttribute("aria-pressed", "false");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        }
+      }
+      applyThemePreference();
+    </script>
+    <script src="scripts/lite-yt-embed.js"></script>
+    <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+  </body>
 </html>

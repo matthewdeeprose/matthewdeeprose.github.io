@@ -5,21 +5,21 @@
 div#vidPres,
 #panel,
 button {
-	display: none;
+    display: none;
 }
 
 .page-wrap {
-	grid-template-columns: 100%;
-	grid-template-rows: auto;
+    grid-template-columns: 100%;
+    grid-template-rows: auto;
 }
 
-.page-wrap>* {
-	grid-column: 1/-1 !important;
-	grid-row: auto !important;
+.page-wrap > * {
+    grid-column: 1/-1 !important;
+    grid-row: auto !important;
 }
 
 body {
-	background: none !important;
+    background: none !important;
 }
 
 
@@ -29,24 +29,44 @@ body {
     margin: 0rem;
     line-height: 1.75;
     border: 0px;
-	background: white;
+    background: white;
 }
 
 .page-main {
-        background-color: white;
-        color: black;
-		
-}
-
-.page-main a, dd.from  {
+    background-color: white;
     color: black;
 }
 
-summary, details {
-	border: 0px;
-	outline: 0px;
+.page-main a,
+dd.from {
+    color: black;
+}
+
+summary,
+details {
+    border: 0px;
+    outline: 0px;
+}
+article a {
+    text-decoration: none;
+	font-weight: normal;
 }
 
 article a:after {
-     content: '  [ ' attr(href) ' ]'; 
+    content: '  [ ' attr(href) ' ]';
+    text-decoration: underline !important;
+}
+summary {
+    text-decoration: none;
+}
+
+summary h2 {
+    font-size: 2rem;
+}
+details > summary {
+    list-style: none;
+}
+
+details summary::-webkit-details-marker {
+    display: none;
 }
