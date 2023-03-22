@@ -383,7 +383,7 @@ input:focus {
 
 /* Remove focus from mouse, replace with box shadow */
 :focus:not(:focus-visible) {
-	outline: none !important;
+	outline: 2px transparent solid;
 	border: 0px solid #ffffff;
 	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12);
 }
