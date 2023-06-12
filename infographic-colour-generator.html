@@ -11,7 +11,7 @@
     <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
     <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
     <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-    <link rel="stylesheet" id="infographicCSS" href="infographic.css" media="all">
+    <link rel="stylesheet" id="infographicCSS" href="infographic2.css" media="all">
     <meta property="og:title" content="UoS Brand Accessible Colour Suggester - Matthew Deeprose">
     <meta property="og:description" content="">
     <meta property="og:image" content="https://matthewdeeprose.github.io/suggester.png">
@@ -45,6 +45,7 @@
       <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
       <header class="page-header">
         <div id="banner">
+		<div id="titleLink" class="infoGTitle"><h1>UoS Brand Accessible Colour Suggester</h1></div>
           <div id="logo">
             <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
               <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
@@ -73,7 +74,7 @@
             </button>
           </div>
           <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
-          <div id="titleLink">Matthew Deeprose</div>
+          
         </div>
       </header>
       <div id="main-navigation" class="page-nav">
@@ -107,8 +108,7 @@
         </nav>
       </div>
       <main class="page-main" id="main">
-        <article class="standard">
-          <h1 id="top">UoS Brand Accessible Colour Suggester</h1>
+        <article id="top" class="standard">         
           <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://sotonac.sharepoint.com/teams/Brand/SitePages/Visual-Identity/ColourPalette.aspx">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic. </p>
           <p>Use the Randomise button to get started!</p>
           <div class="resourseList">

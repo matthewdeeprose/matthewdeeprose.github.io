@@ -837,6 +837,7 @@ a:focus {
 
 a {
     font-weight: bold;
+	text-underline-offset: 0.2em;
 }
 
 a:hover {
