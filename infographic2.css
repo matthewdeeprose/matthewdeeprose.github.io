@@ -19,6 +19,7 @@
 div#titleLink {
     float: left !important;
     text-align: left !important;
+	word-break: break-word;
 }
 
 div#titleLink {
