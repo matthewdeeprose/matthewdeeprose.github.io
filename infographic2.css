@@ -30,7 +30,7 @@ div#titleLink {
 }
 @media screen and (max-width: 650px) {
     div#titleLink {
-        display: inline !important;
+        display: inline;
     }
 }
 
