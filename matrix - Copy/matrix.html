@@ -164,46 +164,6 @@ function showAAplus() {
 }
 // Show AA and above only ends
 
-// Show G and above only begins
-function showGplus() {
-    // Declare variables
-    var filter, table, tr, td, i;
-    filter = "AA";
-    table = document.getElementById("myTable");
-    tr = table.getElementsByTagName("tr");
-
-    // Loop through all table rows, and hide those who do not match the search query
-    for (i = 1; i < tr.length; i++) {
-        td = tr[i].getElementsByTagName("td");
-        for (j = 0; j < td.length; j++) {
-            var tdata = td[j];
-            if (tdata) {
-                if (tdata.innerHTML.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                    break;
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
-        }
-    }
-    // Make F transparent
-    $("td.ResultF").css('background-color', 'transparent');
-    // Hide F
-    $("td.ResultF").html("");
-
-
-    // Show colour row
-    $("tr#colorRow").show();
-
-    // Show HTML colour code line
-    $("tr#HTMLcolCodeline").show();
-
-    // Show help message
-    $("#buttonHelp").show();
-    $("#buttonHelp").text("Use the Reset Table button above to reveal all ratings again.");
-}
-
 //Dark mode change font size not border
 $(document).ready(function() {
     $.fn.darkMode = function() {
@@ -897,8 +857,7 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
         <button id="resetTable" title="Reset the table" type="button" onclick="location.reload(false)">Reset table</button>
 	<button id="showMobile" title="Show simple tables / mobile view" type="button" onclick="$.fn.showMobile()">Mobile / Single Column View</button>
 	<button id="Dark" title="Dark theme" type="button" onclick="$.fn.darkMode()">Apply Dark Theme</button>
-        <button id="showGplus" title="Show WCAG colour combinations at G, AA, and AAA levels only" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
-		<button id="showAAplus" title="Show WCAG colour combinations at AA and AAA levels only" type="button" onclick="showAAplus()">Show AA and AAA only</button>
+        <button id="showAAplus" title="Show WCAG colour combinations at AA and AAA levels only" type="button" onclick="showAAplus()">Show AA and AAA only</button>
         <button id="showAAA" title="Show WCAG colour combinations at AAA level only" type="button" onclick="showAAA()">Show AAA only</button>
         <button id="tableFit" title="Fit table width to page" type="button" onclick="$.fn.tableFit()">Fit table width to page <svg aria-hidden="true" focusable="false" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#2a2e3b" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"><path d="m9.45.814v5.657h-5.657" transform="matrix(-.70710678 .70710678 -.70710678 -.70710678 14.756959 6.39283)"/><path d="m5.197-.948v12.028" transform="matrix(0 1 1 0 4.447762 3.302301)"/><path d="m6.167.136-.04 5.697h-5.656" transform="matrix(.70710678 .70710678 .70710678 -.70710678 7.043131 8.291412)"/><path d="m.5.5v16.021"/><path d="m18.5.5v16.021"/></g></svg></button>
         <button id="tableFull" title="Full size table" type="button" onclick="$.fn.tableFull()">Full size table <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#2a2e3b" stroke-linecap="round" stroke-linejoin="round" transform="matrix(.70710678 -.70710678 .70710678 .70710678 .121489 10.313301)"><path d="m13.571.682v5.657l-5.667.01" transform="matrix(-1 0 0 -1 14.414 7.445)"/><path d="m7.207-1.944v18" transform="matrix(-.70710678 .70710678 .70710678 .70710678 7.313773 -2.615464)"/><path d="m6.289.015-.04 5.696h-5.657" transform="matrix(0 1 1 0 7.86 7.586)"/></g></svg></button>
