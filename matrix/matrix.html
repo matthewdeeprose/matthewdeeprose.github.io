@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"/>
@@ -69,7 +68,9 @@ $(document).ready(function() {
     }
 });
 
-// Show AAA only beigns
+// Updated functions
+
+// Show AAA only begins
 function showAAA() {
     // Declare variables
     var filter, table, tr, td, i;
@@ -92,6 +93,15 @@ function showAAA() {
             }
         }
     }
+    // Hide F lines
+    $(".mobResultF").parent('tr').css('display', 'none');
+
+    // Hide G lines
+    $(".mobResultG").parent('tr').css('display', 'none');
+
+    // Hide AA lines
+    $(".mobResultAA").parent('tr').css('display', 'none');
+
     // Make F transparent
     $("td.ResultF").css('background-color', 'transparent');
     // Hide F
@@ -142,6 +152,12 @@ function showAAplus() {
             }
         }
     }
+    // Hide F lines
+    $(".mobResultF").parent('tr').css('display', 'none');
+
+    // Hide G lines
+    $(".mobResultG").parent('tr').css('display', 'none');
+
     // Make F transparent
     $("td.ResultF").css('background-color', 'transparent');
     // Hide F
@@ -168,7 +184,7 @@ function showAAplus() {
 function showGplus() {
     // Declare variables
     var filter, table, tr, td, i;
-    filter = "AA";
+    filter = "G";
     table = document.getElementById("myTable");
     tr = table.getElementsByTagName("tr");
 
@@ -187,6 +203,11 @@ function showGplus() {
             }
         }
     }
+    // Hide F lines
+    $(".mobResultF").parent('tr').css('display', 'none');
+
+
+
     // Make F transparent
     $("td.ResultF").css('background-color', 'transparent');
     // Hide F
@@ -203,6 +224,7 @@ function showGplus() {
     $("#buttonHelp").show();
     $("#buttonHelp").text("Use the Reset Table button above to reveal all ratings again.");
 }
+// Show G and above only ends
 
 //Dark mode change font size not border
 $(document).ready(function() {
@@ -821,6 +843,7 @@ th.mobcol {
     outline: 0px solid #74C9E5;
     transition: transform .3s ease-out;
 }
+
 /* Hide caption */
 caption {	border: 0 !important;
 	clip: rect(1px, 1px, 1px, 1px) !important; /* 1 */
@@ -834,6 +857,7 @@ caption {	border: 0 !important;
 	width: 1px !important;
 	white-space: nowrap !important;            /* 3 */}
 	
+
 /* Print fomatting */
 @media print {
     .skip-link,
@@ -897,8 +921,8 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
         <button id="resetTable" title="Reset the table" type="button" onclick="location.reload(false)">Reset table</button>
 	<button id="showMobile" title="Show simple tables / mobile view" type="button" onclick="$.fn.showMobile()">Mobile / Single Column View</button>
 	<button id="Dark" title="Dark theme" type="button" onclick="$.fn.darkMode()">Apply Dark Theme</button>
-        <button id="showGplus" title="Show WCAG colour combinations at G, AA, and AAA levels only" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
-		<button id="showAAplus" title="Show WCAG colour combinations at AA and AAA levels only" type="button" onclick="showAAplus()">Show AA and AAA only</button>
+	<button id="showGplus" title="Show WCAG colour combinations at G, AA, and AAA levels only" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
+        <button id="showAAplus" title="Show WCAG colour combinations at AA and AAA levels only" type="button" onclick="showAAplus()">Show AA and AAA only</button>
         <button id="showAAA" title="Show WCAG colour combinations at AAA level only" type="button" onclick="showAAA()">Show AAA only</button>
         <button id="tableFit" title="Fit table width to page" type="button" onclick="$.fn.tableFit()">Fit table width to page <svg aria-hidden="true" focusable="false" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#2a2e3b" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"><path d="m9.45.814v5.657h-5.657" transform="matrix(-.70710678 .70710678 -.70710678 -.70710678 14.756959 6.39283)"/><path d="m5.197-.948v12.028" transform="matrix(0 1 1 0 4.447762 3.302301)"/><path d="m6.167.136-.04 5.697h-5.656" transform="matrix(.70710678 .70710678 .70710678 -.70710678 7.043131 8.291412)"/><path d="m.5.5v16.021"/><path d="m18.5.5v16.021"/></g></svg></button>
         <button id="tableFull" title="Full size table" type="button" onclick="$.fn.tableFull()">Full size table <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#2a2e3b" stroke-linecap="round" stroke-linejoin="round" transform="matrix(.70710678 -.70710678 .70710678 .70710678 .121489 10.313301)"><path d="m13.571.682v5.657l-5.667.01" transform="matrix(-1 0 0 -1 14.414 7.445)"/><path d="m7.207-1.944v18" transform="matrix(-.70710678 .70710678 .70710678 .70710678 7.313773 -2.615464)"/><path d="m6.289.015-.04 5.696h-5.657" transform="matrix(0 1 1 0 7.86 7.586)"/></g></svg></button>
@@ -1537,127 +1561,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 </table>
 </div>
@@ -1679,127 +1703,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -1821,127 +1845,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -1963,127 +1987,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -2105,127 +2129,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -2247,127 +2271,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 </table>
 </div>
@@ -2389,127 +2413,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 </table>
 </div>
@@ -2531,127 +2555,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -2673,127 +2697,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -2815,127 +2839,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 </table>
 </div>
@@ -2957,127 +2981,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 </table>
 </div>
@@ -3099,127 +3123,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 </table>
 </div>
@@ -3241,127 +3265,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -3383,127 +3407,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -3525,127 +3549,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 </table>
 </div>
@@ -3667,127 +3691,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 </table>
 </div>
@@ -3809,127 +3833,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -3951,127 +3975,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -4093,127 +4117,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -4235,127 +4259,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -4377,127 +4401,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td style="background-color:#FFFFFF"> </td>
-<td class="ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA">AAA</td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td style="background-color:#231F20"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td style="background-color:#00131D"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td style="background-color:#495961"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td style="background-color:#758D9A"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td style="background-color:#9FB1BD"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td style="background-color:#E1E8EC"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td style="background-color:#002E3B"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td style="background-color:#005C84"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td style="background-color:#74C9E5"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td style="background-color:#3CBAC6"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td style="background-color:#B3DBD2"> </td>
-<td class="ResultAA">AA</td>
+<td class="mobResultAA ResultAA">AA</td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td style="background-color:#1E8765"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td style="background-color:#C1D100"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td style="background-color:#FCBC00"> </td>
-<td class="ResultG">G</td>
+<td class="mobResultG ResultG">G</td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td style="background-color:#E73037"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td style="background-color:#E73238"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td style="background-color:#D5007F"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td style="background-color:#8D3970"> </td>
-<td class="ResultF">F</td>
+<td class="mobResultF ResultF">F</td>
 </tr>
 </table>
 </div>
@@ -4521,7 +4545,7 @@ Explaining the matrix.</caption>
 </tr>
 <tr>
 <td id="explainG" style="background-color: #B3DBD2; text-align: center;">G</td>
-<td><strong>Contrast ratio is at least 3:1 - 155 of 441 combinations (35%).</strong>
+<td><strong>Contrast ratio is at least 3:1 - 156 of 441 combinations (35%).</strong>
 <ul>
 <li>Suitable for User Interface Components and Graphical Objects where no text is used (<a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a>).</li>
 <li>Suitable for large-scale text (at least 18 point if not bold and at least 14 point if bold) and images of large-scale text (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a>.</li>
@@ -4531,7 +4555,7 @@ Explaining the matrix.</caption>
 </tr>
 <tr>
 <td id="explainAA" style="background-color: #FCBC00; text-align: center;">AA</td>
-<td><strong>Contrast ratio is at least 4.5:1 - 83 of 441 combinations (19%).</strong>
+<td><strong>Contrast ratio is at least 4.5:1 - 84 of 441 combinations (19%).</strong>
 <ul>
 <li>Suitable for the visual representation of text and images of text to minimum level (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a>.</li>
 <li>Suitable for large-scale text (at least 18 point if not bold and at least 14 point if bold) and images of large-scale text (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced">WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a></li>
@@ -4542,7 +4566,7 @@ Explaining the matrix.</caption>
 </tr>
 <tr>
 <td id="explainAAA" style="background-color: #C1D100;  text-align: center;">AAA</td>
-<td><strong>Contrast ratio is at least 7:1 - 51 of 441 combinations (12%).</strong>
+<td><strong>Contrast ratio is at least 7:1 - 52 of 441 combinations (12%).</strong>
 <ul>
 <li>Suitable for the visual representation of text and images of text at enhanced level (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced">WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a>.</li>
 <li>Suitable for User Interface Components and Graphical Objects where no text is used (<a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a>).</li>
@@ -4646,7 +4670,7 @@ Additional tools used are:
 <li><a href="https://sourceforge.net/projects/command-output-to-html-table/">Tabulate.sh</a> by <a href="https://sourceforge.net/u/nathan-sr/profile/">Nathan S.R.</a></li>
 <li><a href="https://systemuicons.com/">System UIcons</a> by <a href="https://corey.ginnivan.net/">Corey Ginnivan</a>.</li>
 </ul>
-Whilst I have attempted to follow best practice and make this content as accessibile as possible, there is always room for improvement.  Send any feedback about the matrix and any suggestions for improvements to Matthew Deeprose by <a href="https://www.linkedin.com/in/mattdeeprose/">connecting on LinkedIn</a>.
+Whilst I have attempted to follow good practice and make this content as accessible as possible, there is always room for improvement.  Send any feedback about the matrix and any suggestions for improvements to Matthew Deeprose by <a href="https://www.linkedin.com/in/mattdeeprose/">connecting on LinkedIn</a>.
 </details>
 </div>
 <div id="CC">
