@@ -144,9 +144,81 @@ body {
 
 }
 </style>
+<script>
+// Swap between colour blind emulations
+function showProta() {
+    // from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
 
+    let a = document.getElementsByClassName("Trichromacy");
+    [...a].forEach(x => x.className += " protanopia");
+    [...a].forEach(x => x.classList.remove("Trichromacy"));
+
+    let b = document.getElementsByClassName("deuteranopia");
+    [...b].forEach(x => x.className += " protanopia");
+    [...b].forEach(x => x.classList.remove("deuteranopia"));
+    // Hide irrelevant buttons
+    $("#showProta").css({
+        "display": "none"
+    });
+    $("#showTrich").show();
+    $("#showDeute").show();
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with Protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cones, those with this condition are unable to distinguish between colors in the green-yellow-red section of the spectrum.");
+}
+
+function showDeute() {
+    // from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("Trichromacy");
+    [...a].forEach(x => x.className += " deuteranopia");
+    [...a].forEach(x => x.classList.remove("Trichromacy"));
+
+    let b = document.getElementsByClassName("protanopia");
+    [...b].forEach(x => x.className += " deuteranopia");
+    [...b].forEach(x => x.classList.remove("protanopia"));
+    // Hide irrelevant buttons
+    $("#showDeute").css({
+        "display": "none"
+    });
+    $("#showTrich").show();
+    $("#showProta").show();
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with Deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cones, those affected are unable to distinguish between colors in the green-yellow-red section of the spectrum.");
+}
+
+function showTrich() {
+    // from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("deuteranopia");
+    [...a].forEach(x => x.className += " Trichromacy");
+    [...a].forEach(x => x.classList.remove("deuteranopia"));
+
+    let b = document.getElementsByClassName("protanopia");
+    [...b].forEach(x => x.className += " Trichromacy");
+    [...b].forEach(x => x.classList.remove("protanopia"));
+
+    // Hide irrelevant buttons
+    $("#showTrich").css({
+        "display": "none"
+    });
+    $("#showProta").show();
+    $("#showDeute").show();
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with Trichromatic vision. Trichromatic vision is what we consider to be standard ability to see colours.");
+}
+</script>
 
 <style>
+#return {
+display:none !important
+}
+/* Hide Trichromacy button */
+#showTrich {
+	display:none;
+}
 @media (prefers-color-scheme: dark) {
 body {
     color: #E1E8EC !important;
@@ -207,12 +279,104 @@ table {
     -moz-box-shadow: 10px 10px 32px -18px rgba(0, 0, 0, 0.75);
     box-shadow: 10px 10px 32px -18px rgba(0, 0, 0, 0.75);
 }
+
+#return {
+display:none !important
+}
+	
+	/* Hide Trichromacy button */
+#showTrich {
+	display:none;
+}
+
+@media (prefers-color-scheme: dark) {
+    /* Styling buttons */
+    button {
+        color: #231F20 !important;
+        background-color: #E1E8EC !important;
+        border: 1px solid #9FB1BD !important;
+    }
+    button:hover,
+    button:focus {
+        color: #E1E8EC !important;
+        background-color: #161415 !important;
+        box-shadow: 0 0 0 3pt #FCBC00 !important;
+        border: 1px solid #FCBC00 !important;
+    }
+	
+	    /* Styling button help text */
+    #buttonHelp {
+        background: #495961 !important;
+        color: white !important;
+        border: 0px solid #000000 !important;
+    }
+	}
+	
+button {
+    color: #231F20;
+    background-color: #E1E8EC;
+    border-radius: 4px;
+    border: solid black 1px;
+    vertical-align: middle;
+    padding: 0.4rem;
+}
+
+button:hover,
+button:focus {
+    color: #231F20;
+    background-color: white;
+    transition: .3s linear;
+    cursor: pointer;
+    outline: none !important;
+    box-shadow: 0 0 0 2pt #005C84;
+}
+
+button:active {
+    transform: translateY(4px) !important;
+}
+
+/* Styling button help text */
+#buttonHelp {
+    float: left;
+    background: #495961;
+    color: white;
+    padding: 0.5rem;
+    margin-left: 0.3em;
+    margin-bottom: 0.5rem;
+    border-radius: 5px 5px 5px 5px;
+    -moz-border-radius: 5px 5px 5px 5px;
+    -webkit-border-radius: 5px 5px 5px 5px;
+    border: 0px solid #000000;
+    font-size: 0.7rem;
+    font-weight: bold;
+	display:none;
+}
+/* Margin for buttons */
+button {
+    margin: 0.2rem;
+}
+	
+	/* For those who prefer reduced motion */
+@media (prefers-reduced-motion) {
+    button:hover,
+    button:focus,
+    a:focus {
+        transition-duration: 0s;
+    }
+}
+
 </style>
 </head>
 <body>
 <div id="Return">
 <p><a href="matrix.html">Return to colour matrix.</a></p>
 </div>
+<div id="tableButtons">
+	<button id="showProta" title="Simulate protanopia - blindness to red" type="button" onclick="showProta()">Simulate protanopia</button>
+	<button id="showDeute" title="Simulate deuteranopia - blindness to green" type="button" onclick="showDeute()">Simulate deuteranopia</button>
+	<button id="showTrich" title="Reset colours to Trichromatic default" type="button" onclick="showTrich()">Reset to trichromacy</button>
+</div>
+<div id="buttonHelp" aria-live="polite"></div><br /><br />
 <div align="center">
 
 <div style="overflow-x: auto;">
