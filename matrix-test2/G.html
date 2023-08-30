@@ -376,13 +376,71 @@ button {
     box-sizing: border-box;
     font-family: Arial, Helvetica, sans-serif;
 } 
+	@media only screen and (min-width: 468px) {
+		a#Ret {
+			font-size: 0.9rem !important;
+		}
+	}
 
+	@media only screen and (min-width: 668px) {
+		a#Ret {
+			font-size: 0.9rem !important;
+		}
+	}
+
+	@media only screen and (min-width: 768px) {
+		a#Ret {
+			font-size: 1rem !important;
+		}
+	}
+
+	a#Ret {
+		color: #231F20;
+		background-color: #E1E8EC;
+		border-radius: 4px;
+		border: solid black 1px;
+		vertical-align: middle;
+		padding: 0.4rem;
+		font-size: 1.5rem;
+		text-decoration: none;
+		float:left;
+		margin: 0.2rem;
+	}
+
+	a#Ret:hover,
+	a#Ret:focus {
+		color: #231F20;
+		background-color: white;
+		transition: .3s linear;
+		cursor: pointer;
+		outline: none !important;
+		box-shadow: 0 0 0 2pt #005C84;
+	}
+
+	a#Ret:active {
+		transform: translateY(4px) !important;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		a#Ret {
+			color: #231F20 !important;
+			background-color: #E1E8EC !important;
+			border: 1px solid #9FB1BD !important;
+		}
+		a#Ret:hover,
+		a#Ret:focus {
+			color: #E1E8EC !important;
+			background-color: #161415 !important;
+			box-shadow: 0 0 0 3pt #FCBC00 !important;
+			border: 1px solid #FCBC00 !important;
+		}
+	}
 	
 	/* For those who prefer reduced motion */
 @media (prefers-reduced-motion) {
     button:hover,
     button:focus,
-    a:focus {
+    a:focus, a:hover {
         transition-duration: 0s;
     }
 }
@@ -395,6 +453,7 @@ button {
 <p><a href="matrix.html">Return to colour matrix.</a></p>
 </div>
 <div id="tableButtons">
+	<a id="Ret" href="matrix.html">Return to colour matrix</a>
 	<button id="showProta" title="Simulate protanopia - blindness to red" type="button" onclick="showProta()">Simulate protanopia</button>
 	<button id="showDeute" title="Simulate deuteranopia - blindness to green" type="button" onclick="showDeute()">Simulate deuteranopia</button>
 	<button id="showTrich" title="Reset colours to Trichromatic default" type="button" onclick="showTrich()">Reset to trichromacy</button>
