@@ -210,6 +210,26 @@ function showTrich() {
 </script>
 
 <style>
+@media only screen and (min-width: 468px) {
+    #buttonHelp,
+    button  {
+        font-size: 0.9rem !important;
+    }
+}
+
+@media only screen and (min-width: 668px) {
+    #buttonHelp,
+    button  {
+        font-size: 0.9rem !important;
+    }
+}
+
+@media only screen and (min-width: 768px) {
+    #buttonHelp,
+    button  {
+        font-size: 1rem !important;
+    }
+}
 #return {
 display:none !important
 }
@@ -317,6 +337,7 @@ button {
     border: solid black 1px;
     vertical-align: middle;
     padding: 0.4rem;
+    font-size: 1.5rem;
 }
 
 button:hover,
@@ -335,7 +356,6 @@ button:active {
 
 /* Styling button help text */
 #buttonHelp {
-    float: left;
     background: #495961;
     color: white;
     padding: 0.5rem;
@@ -345,7 +365,7 @@ button:active {
     -moz-border-radius: 5px 5px 5px 5px;
     -webkit-border-radius: 5px 5px 5px 5px;
     border: 0px solid #000000;
-    font-size: 0.7rem;
+    font-size: 1.2rem;
     font-weight: bold;
 	display:none;
 }
@@ -353,6 +373,13 @@ button:active {
 button {
     margin: 0.2rem;
 }
+
+/* Styling for all elements */
+* {
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+} 
+
 	
 	/* For those who prefer reduced motion */
 @media (prefers-reduced-motion) {
@@ -366,6 +393,7 @@ button {
 </style>
 </head>
 <body>
+<nav>
 <div id="Return">
 <p><a href="matrix.html">Return to colour matrix.</a></p>
 </div>
@@ -375,6 +403,8 @@ button {
 	<button id="showTrich" title="Reset colours to Trichromatic default" type="button" onclick="showTrich()">Reset to trichromacy</button>
 </div>
 <div id="buttonHelp" aria-live="polite"></div><br /><br />
+</nav>
+<main>
 <div align="center">
 
 <div style="overflow-x: auto;">
@@ -3150,5 +3180,6 @@ button {
 </table></div>
 <p><br /></p>
 </div>
+</main>
 </body>
 </html>
