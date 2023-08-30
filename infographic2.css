@@ -1,4 +1,7 @@
-.infoGTitle {color: #00131d;}
+	/* Hide Trichromacy button */
+#showTrich {
+	display:none;
+}
 
 #infoTexT,
 .iconrow {
@@ -11,30 +14,6 @@
 	padding-left: 1rem;
 	padding-right: 1rem;
 }
-
-.page-header {
-    font-size: 1rem !important;
-}
-
-div#titleLink {
-    float: left !important;
-    text-align: left !important;
-	word-break: break-word;
-}
-
-div#titleLink {
-    box-shadow: none !important;
-}
-
-div#titleLink {
-    border: none !important;
-}
-@media screen and (max-width: 650px) {
-    div#titleLink {
-        display: inline;
-    }
-}
-
 @media only screen and (max-width: 400px) {
 	.infoIcon {
 
@@ -85,14 +64,35 @@ section .details {
 		white-space: pre-line;
 	}
 }
-@media (max-width: 800px) {
-	.result2 {
-		white-space: normal;
+	@media (max-width: 1100px) {
+		.result2 {
+			white-space: normal !important;
+		}
 	}
-}
 #infoGraphicBox {
 	transition: background-color 0.5s ease-in-out;
 }
+
+	.resourseList2 {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		grid-gap: 20px;
+	}
+
+	@media (max-width: 1000px) {
+
+		.resourseList2 {
+			display: grid;
+			grid-template-columns: 1fr;
+			grid-gap: 20px;
+		}
+	}
+
+	@media (max-width: 1200px) {
+		.page-wrap {
+			margin: 0 0% 0 0% !important;
+		}
+	}
 
 @media (prefers-reduced-motion: reduce) {
 	#infoGraphicBox {
@@ -121,6 +121,7 @@ dt.infoExplain {
 }
 
 /* Hide usual header */
+div#titleLink,
 #main-navigation {
 	display: none;
 }

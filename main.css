@@ -467,7 +467,7 @@ section.related {
 	}	
 }
 
-@media only screen and (max-width: 300px) {
+@media only screen and (max-width: 400px) {
     #panel {
         display: none !important;
     }
@@ -590,7 +590,7 @@ a:hover {
 
 }
 
-@media screen and (max-width: 400px) {
+@media screen and (max-width: 500px) {
     #myBtn,
     #myBtn2 {
         padding: 0rem;
