@@ -11,7 +11,7 @@
     <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
     <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
     <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-    <link rel="stylesheet" id="infographicCSS" href="infographic2.css" media="all">
+    <link rel="stylesheet" id="infographicCSS" href="infographic3.css" media="all">
     <script src="https://matthewdeeprose.github.io/scripts/jquery-3.6.0.min.js"></script>
 	<meta property="og:title" content="UoS Brand Accessible Colour Suggester - Matthew Deeprose">
     <meta property="og:description" content="">
@@ -34,66 +34,7 @@
     <meta name="twitter:image" content="https://matthewdeeprose.github.io/suggester.png" />
     <meta name="twitter:image:alt" content="" />
     <meta name="twitter:card" content="summary_large_image" />
-	<script>
-/*
-Copyright (c) 2016 Interaktiva rum Sverige (Interactive rooms Sweden)
 
-Website: http://www.interaktivarum.se/en
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-var path = document.location.pathname;
-var directory = path.substring(path.indexOf('/'), path.lastIndexOf('/'));
-
-
-document.onreadystatechange = function () {
-    if (document.readyState == "interactive") {
-        injectSVGFromFile(directory+"/rgblind.svg");
-        injectCSSFromFile(directory+"/rgblind-inject.css");
-    }
-}
-
-var injectCSSFromFile = function(filePath){
-	var xmlHttp = null;	
-	xmlHttp = new XMLHttpRequest();
-	xmlHttp.open( "GET", filePath, true);
-	xmlHttp.send( null );
-	xmlHttp.onreadystatechange = function() {
-	    if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-	        var inject  = document.createElement("style");
-			inject.innerHTML = xmlHttp.responseText;
-			//document.body.appendChild(inject);
-			document.body.insertBefore(inject, document.body.childNodes[0]);
-		}
-	};
-}
-
-var injectSVGFromFile = function(filePath){
-	var xmlHttp = null;	
-	xmlHttp = new XMLHttpRequest();
-	xmlHttp.open( "GET", filePath, true);
-	xmlHttp.send( null );
-	xmlHttp.onreadystatechange = function() {
-	    if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-	        var inject  = document.createElement("temp");
-			inject.innerHTML = xmlHttp.responseText;
-			//document.body.appendChild(inject.firstChild);
-			document.body.insertBefore(inject.firstChild, document.body.childNodes[0]);
-		}
-	};
-}
-
-var getScriptPath = function(){
-	var scripts= document.getElementsByTagName('script');
-	var path= scripts[scripts.length-1].src.split('?')[0];
-	return path.split('/').slice(0, -1).join('/')+'/';
-}
-</script>
 	<script>
 // Swap between colour blind emulations
 function showProta() {
@@ -164,6 +105,47 @@ function showTrich() {
       .page-wrap>* {
         grid-column: 1/-1 !important;
         grid-row: auto !important;
+      }
+    </style>
+	    <style>
+      .protanopia {
+        -webkit-filter: url('filters.svg#protanopia');
+        filter: url('filters.svg#protanopia');
+      }
+
+      .protanomaly {
+        -webkit-filter: url('filters.svg#protanomaly');
+        filter: url('filters.svg#protanomaly');
+      }
+
+      .deuteranopia {
+        -webkit-filter: url('filters.svg#deuteranopia');
+        filter: url('filters.svg#deuteranopia');
+      }
+
+      .deuteranomaly {
+        -webkit-filter: url('filters.svg#deuteranomaly');
+        filter: url('filters.svg#deuteranomaly');
+      }
+
+      .tritanopia {
+        -webkit-filter: url('filters.svg#tritanopia');
+        filter: url('filters.svg#tritanopia');
+      }
+
+      .tritanomaly {
+        -webkit-filter: url('filters.svg#tritanomaly');
+        filter: url('filters.svg#tritanomaly');
+      }
+
+      .achromatopsia {
+        -webkit-filter: url('filters.svg#achromatopsia');
+        filter: url('filters.svg#achromatopsia');
+      }
+
+      .achromatomaly {
+        -webkit-filter: url('filters.svg#achromatomaly');
+        filter: url('filters.svg#achromatomaly');
       }
     </style>
   </head>
