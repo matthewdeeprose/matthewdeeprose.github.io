@@ -1,0 +1,142 @@
+	/*page wrap fix 
+	.page-wrap {
+margin-top: -1.2rem;		
+	}*/
+	
+	
+	/* Hide Trichromacy button */
+#showTrich {
+	display:none;
+}
+
+#infoTexT,
+.iconrow {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+.infoIcon {
+	font-size: 5rem;
+	padding-left: 1rem;
+	padding-right: 1rem;
+}
+@media only screen and (max-width: 400px) {
+	.infoIcon {
+
+		padding-left: 0rem;
+		padding-right: 0rem;
+		white-space: pre-line;
+	}
+	#infoTexT,
+	.iconrow {
+		display: inline;
+		justify-content: normal;
+		align-items: normal;
+	}
+}
+
+#infoGraphicBox {
+	outline: transparent solid 2px;
+	padding: 15px;
+	width: auto;
+	margin: 0px;
+	display: block;
+	margin-block-start: 1em;
+	margin-block-end: 1em;
+	margin-inline-start: 0px;
+	margin-inline-end: 0px;
+	word-break: break-word;
+}
+.arrayDetails {
+	display: none;
+}
+.colorBox {
+	outline: transparent solid 2px;
+}
+
+
+.grid-child {
+	padding: 10px;
+}
+
+section .details {
+	font-family: "Courier New", Courier, monospace;
+}
+.result {
+	font-weight: bold;
+}
+@media (max-width: 1300px) {
+	.result2 {
+		white-space: pre-line;
+	}
+}
+	@media (max-width: 1100px) {
+		.result2 {
+			white-space: normal !important;
+		}
+	}
+#infoGraphicBox {
+	transition: background-color 0.5s ease-in-out;
+}
+
+	.resourseList2 {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		grid-gap: 20px;
+	}
+
+	@media (max-width: 1000px) {
+
+		.resourseList2 {
+			display: grid;
+			grid-template-columns: 1fr;
+			grid-gap: 20px;
+		}
+	}
+
+	@media (max-width: 1200px) {
+		.page-wrap {
+			margin: 0 0% 0 0% !important;
+		}
+	}
+
+@media (prefers-reduced-motion: reduce) {
+	#infoGraphicBox {
+		transition: background-color .0s linear !important;
+	}
+}
+
+@media only screen and (max-width: 400px) {
+	.infoIcon {
+
+		padding-left: 0.5rem;
+		padding-right: 0.5rem;
+		white-space: pre-line;
+	}
+	#infoTexT,
+	.iconrow {
+		display: inline;
+		justify-content: normal;
+		align-items: normal;
+	}
+}
+
+/* Explanation */
+dt.infoExplain {
+	font-size: 1.7rem;
+}
+
+/* Hide usual header */
+div#titleLink,
+#main-navigation {
+	display: none;
+}
+
+.page-header {
+	background-image: none !important;
+}
+/* h2 line up */
+#colDetailsH2 {    font-size: 1.5em;
+    margin-block-start: 0em;
+    margin-block-end: 1em;
+;}
