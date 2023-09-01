@@ -65,7 +65,7 @@ function showProta() {
 	$("#showTrita").show();	
     // Display helpful message
     $("#buttonHelp").show();
-    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cones, those with this condition are unable to distinguish between colors in the green-yellow-red section of the spectrum.");
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out.");
 }
 
 function showDeute() {
@@ -97,7 +97,7 @@ function showDeute() {
 	$("#showTrita").show();	
     // Display helpful message
     $("#buttonHelp").show();
-    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cones, those affected are unable to distinguish between colors in the green-yellow-red section of the spectrum.");
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out.");
 }
 
 function showTrita() {
@@ -129,7 +129,7 @@ function showTrita() {
 	$("#showTrich").show();	
     // Display helpful message
     $("#buttonHelp").show();
-    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with tritanopia. Tritanopia means lacking the blue cones for medium-wavelength sensitive retinal cones, those affected are unable to distinguish between colors in the green-yellow-red section of the spectrum.");
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with tritanopia. Tritanopia means lacking the blue cones for short-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between blue and green, purple and red, and yellow and pink. It also makes colors look less bright.");
 }
 function showTrich() {
 
@@ -197,6 +197,7 @@ function showTrich() {
   </head>
   <body>
   <svg style='height: 0; width: 0; padding: 0; margin: 0; line-height: 0;'>
+  <!-- from https://daltonlens.org/cvd-simulation-svg-filters/ and https://github.com/DaltonLens/libDaltonLens/tree/master/svg -->
     <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
     <filter id="protanopia" color-interpolation-filters="linearRGB">
         <feColorMatrix type="matrix" in="SourceGraphic" values="
