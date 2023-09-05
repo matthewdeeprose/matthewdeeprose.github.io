@@ -10,67 +10,132 @@
 // jQuery ends
 </script>
 <script>
-/*
-Copyright (c) 2016 Interaktiva rum Sverige (Interactive rooms Sweden)
+// Swap between colour blind emulations
+function showProta() {
+	  console.log("\n");
+      console.log("Simulating protanopia");
+      console.log("\n");
+	  
 
-Website: http://www.interaktivarum.se/en
+    // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+    let a = document.getElementsByClassName("Trichromacy");
+    [...a].forEach(x => x.className += " protanopia");
+    [...a].forEach(x => x.classList.remove("Trichromacy"));
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-var path = document.location.pathname;
-var directory = path.substring(path.indexOf('/'), path.lastIndexOf('/'));
-
-
-document.onreadystatechange = function () {
-    if (document.readyState == "interactive") {
-        injectSVGFromFile(directory+"/rgblind.svg");
-        injectCSSFromFile(directory+"/rgblind-inject.css");
-    }
+    let b = document.getElementsByClassName("deuteranopia");
+    [...b].forEach(x => x.className += " protanopia");
+    [...b].forEach(x => x.classList.remove("deuteranopia"));
+	
+	let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach(x => x.className += " protanopia");
+    [...c].forEach(x => x.classList.remove("tritanopia"));
+    // Hide irrelevant buttons
+    $("#showProta").css({
+        "display": "none"
+    });
+    $("#showTrich").show();
+    $("#showDeute").show();
+	$("#showTrita").show();	
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out.");
 }
 
-var injectCSSFromFile = function(filePath){
-	var xmlHttp = null;	
-	xmlHttp = new XMLHttpRequest();
-	xmlHttp.open( "GET", filePath, true);
-	xmlHttp.send( null );
-	xmlHttp.onreadystatechange = function() {
-	    if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-	        var inject  = document.createElement("style");
-			inject.innerHTML = xmlHttp.responseText;
-			//document.body.appendChild(inject);
-			document.body.insertBefore(inject, document.body.childNodes[0]);
-		}
-	};
+function showDeute() {
+
+	  console.log("\n");
+      console.log("Simulating deuteranopia");
+      console.log("\n");
+	  
+
+    // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("Trichromacy");
+    [...a].forEach(x => x.className += " deuteranopia");
+    [...a].forEach(x => x.classList.remove("Trichromacy"));
+
+    let b = document.getElementsByClassName("protanopia");
+    [...b].forEach(x => x.className += " deuteranopia");
+    [...b].forEach(x => x.classList.remove("protanopia"));
+	
+	let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach(x => x.className += " deuteranopia");
+    [...c].forEach(x => x.classList.remove("tritanopia"));
+    // Hide irrelevant buttons
+    $("#showDeute").css({
+        "display": "none"
+    });
+    $("#showTrich").show();
+    $("#showProta").show();
+	$("#showTrita").show();	
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out.");
 }
 
-var injectSVGFromFile = function(filePath){
-	var xmlHttp = null;	
-	xmlHttp = new XMLHttpRequest();
-	xmlHttp.open( "GET", filePath, true);
-	xmlHttp.send( null );
-	xmlHttp.onreadystatechange = function() {
-	    if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-	        var inject  = document.createElement("temp");
-			inject.innerHTML = xmlHttp.responseText;
-			//document.body.appendChild(inject.firstChild);
-			document.body.insertBefore(inject.firstChild, document.body.childNodes[0]);
-		}
-	};
+function showTrita() {
+
+	  console.log("\n");
+      console.log("Simulating tritanopia");
+      console.log("\n");
+	  
+    // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("protanopia");
+    [...a].forEach(x => x.className += " tritanopia");
+    [...a].forEach(x => x.classList.remove("protanopia"));
+
+    let b = document.getElementsByClassName("deuteranopia");
+    [...b].forEach(x => x.className += " tritanopia");
+    [...b].forEach(x => x.classList.remove("deuteranopia"));
+	
+	let c = document.getElementsByClassName("Trichromacy");
+    [...c].forEach(x => x.className += " tritanopia");
+    [...c].forEach(x => x.classList.remove("Trichromacy"));
+
+    // Hide irrelevant buttons
+    $("#showTrita").css({
+        "display": "none"
+    });
+    $("#showProta").show();
+    $("#showDeute").show();
+	$("#showTrich").show();	
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with tritanopia. Tritanopia means lacking the blue cones for short-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between blue and green, purple and red, and yellow and pink. It also makes colors look less bright.");
+}
+function showTrich() {
+
+	  console.log("\n");
+      console.log("trichromatic vision");
+      console.log("\n");
+    // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("deuteranopia");
+    [...a].forEach(x => x.className += " Trichromacy");
+    [...a].forEach(x => x.classList.remove("deuteranopia"));
+
+    let b = document.getElementsByClassName("protanopia");
+    [...b].forEach(x => x.className += " Trichromacy");
+    [...b].forEach(x => x.classList.remove("protanopia"));
+	
+	let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach(x => x.className += " Trichromacy");
+    [...c].forEach(x => x.classList.remove("tritanopia"));
+
+    // Hide irrelevant buttons
+    $("#showTrich").css({
+        "display": "none"
+    });
+    $("#showProta").show();
+    $("#showDeute").show();
+	$("#showTrita").show();	
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with trichromatic vision. Trichromatic vision is what we consider to be the standard ability to see colours.");
 }
 
-var getScriptPath = function(){
-	var scripts= document.getElementsByTagName('script');
-	var path= scripts[scripts.length-1].src.split('?')[0];
-	return path.split('/').slice(0, -1).join('/')+'/';
-}
-</script>
-
-<script>
 //Hide button help box by default
 $(document).ready(function() {
     $("#buttonHelp").hide();
@@ -349,70 +414,6 @@ $(document).ready(function() {
         $("#buttonHelp").text("Use the Reset Table button above to go back to the larger version of the matrix.");
     }
 });
-// Swap between colour blind emulations
-function showProta() {
-    // from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
-
-    let a = document.getElementsByClassName("Trichromacy");
-    [...a].forEach(x => x.className += " protanopia");
-    [...a].forEach(x => x.classList.remove("Trichromacy"));
-
-    let b = document.getElementsByClassName("deuteranopia");
-    [...b].forEach(x => x.className += " protanopia");
-    [...b].forEach(x => x.classList.remove("deuteranopia"));
-    // Hide irrelevant buttons
-    $("#showProta").css({
-        "display": "none"
-    });
-    $("#showTrich").show();
-    $("#showDeute").show();
-    // Display helpful message
-    $("#buttonHelp").show();
-    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cones, those with this condition are unable to distinguish between colors in the green–yellow–red section of the spectrum.");
-}
-
-function showDeute() {
-    // from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
-
-    let a = document.getElementsByClassName("Trichromacy");
-    [...a].forEach(x => x.className += " deuteranopia");
-    [...a].forEach(x => x.classList.remove("Trichromacy"));
-
-    let b = document.getElementsByClassName("protanopia");
-    [...b].forEach(x => x.className += " deuteranopia");
-    [...b].forEach(x => x.classList.remove("protanopia"));
-    // Hide irrelevant buttons
-    $("#showDeute").css({
-        "display": "none"
-    });
-    $("#showTrich").show();
-    $("#showProta").show();
-    // Display helpful message
-    $("#buttonHelp").show();
-    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cones, those affected are unable to distinguish between colors in the green–yellow–red section of the spectrum.");
-}
-
-function showTrich() {
-    // from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
-
-    let a = document.getElementsByClassName("deuteranopia");
-    [...a].forEach(x => x.className += " Trichromacy");
-    [...a].forEach(x => x.classList.remove("deuteranopia"));
-
-    let b = document.getElementsByClassName("protanopia");
-    [...b].forEach(x => x.className += " Trichromacy");
-    [...b].forEach(x => x.classList.remove("protanopia"));
-
-    // Hide irrelevant buttons
-    $("#showTrich").css({
-        "display": "none"
-    });
-    $("#showProta").show();
-    $("#showDeute").show();
-    // Display helpful message
-    $("#buttonHelp").show();
-    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with trichromatic vision. Trichromatic vision is what we consider to be standard ability to see colours.");
-}
 </script>
 
 <style>
@@ -584,10 +585,35 @@ function showTrich() {
 	display:none;
 }
 
-/* Header fix due to RGBlind odd behaviour */
-header {
-	margin-top: -2.5rem;
+
+.protanopia {
+    -webkit-filter: url(#protanopia);
+    -moz-filter: url(#protanopia);
+    -ms-filter: url(#protanopia);
+    -o-filter: url(#protanopia);
+    filter: url(#protanopia);
 }
+
+.deuteranopia {
+    -webkit-filter: url(#deuteranopia);
+    -moz-filter: url(#deuteranopia);
+    -ms-filter: url(#deuteranopia);
+    -o-filter: url(#deuteranopia);
+    filter: url(#deuteranopia);
+}
+
+.tritanopia {
+    -webkit-filter: url(#tritanopia);
+    -moz-filter: url(#tritanopia);
+    -ms-filter: url(#tritanopia);
+    -o-filter: url(#tritanopia);
+    filter: url(#tritanopia);
+}
+
+/* Header fix due to RGBlind odd behaviour */
+/* header {
+	margin-top: -2.5rem;
+} */
 
 /* Center align the html hex code row */
 #HTMLcolCodeline th {
@@ -1061,6 +1087,7 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
 <br />
 	<button id="showProta" title="Simulate protanopia - blindness to red" type="button" onclick="showProta()">Simulate protanopia</button>
 	<button id="showDeute" title="Simulate deuteranopia - blindness to green" type="button" onclick="showDeute()">Simulate deuteranopia</button>
+	<button id="showTrita" title="Simulate tritanopia  - blindness to blue" type="button" onclick="showTrita()">Simulate tritanopia </button>
 	<button id="showTrich" title="Reset colours to Trichromatic default" type="button" onclick="showTrich()">Reset to trichromacy</button>
 
 </div>
@@ -4805,7 +4832,7 @@ Additional tools used are:
 <li><a href="https://stedolan.github.io/jq/">JQ</a> by <a href="https://github.com/stedolan">Stephen Dolan</a> and others.</li>
 <li><a href="https://github.com/janloeffler/csvtool">csvtool</a> by <a href="https://github.com/janloeffler">Jan Loeffler</a>.</li>
 <li><a href="https://sourceforge.net/projects/command-output-to-html-table/">Tabulate.sh</a> by <a href="https://sourceforge.net/u/nathan-sr/profile/">Nathan S.R.</a></li>
-<li><a href="https://github.com/interaktivarum/rgblind">RGBlind</a> by <a href="http://www.interaktivarum.se/en" rel="nofollow">Interaktiva rum (Interactive rooms)</a> and funded by <a href="http://www.iis.se/english" rel="nofollow">The Internet Foundation in Sweden</a>.</li>
+<li><a href="https://raw.githubusercontent.com/DaltonLens/libDaltonLens/master/svg/cvd_svg_filters.html">DaltonLens SVG filters</a>.</li>
 <li><a href="https://systemuicons.com/">System UIcons</a> by <a href="https://corey.ginnivan.net/">Corey Ginnivan</a>.</li>
 </ul>
 Whilst I have attempted to follow good practice and make this content as accessible as possible, there is always room for improvement.  Send any feedback about the matrix and any suggestions for improvements to Matthew Deeprose by <a href="https://www.linkedin.com/in/mattdeeprose/">connecting on LinkedIn</a>.
@@ -4815,7 +4842,77 @@ Whilst I have attempted to follow good practice and make this content as accessi
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/InteractiveResource" property="dct:title" rel="dct:type">Colour Accessibility Matrix</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Matthew Deeprose</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
 </div>
 </footer>
+		  <svg style='height: 0; width: 0; padding: 0; margin: 0; line-height: 0;'>
+  <!-- from https://daltonlens.org/cvd-simulation-svg-filters/ and https://github.com/DaltonLens/libDaltonLens/tree/master/svg -->
+    <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
+    <filter id="protanopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" in="SourceGraphic" values="
+            0.10889,0.89111,-0.00000,0,0
+            0.10889,0.89111,0.00000,0,0
+            0.00447,-0.00447,1.00000,0,0
+            0,0,0,1,0"
+        />
+    </filter>
 
+    <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
+    <filter id="deuteranopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" in="SourceGraphic" values="
+            0.29031,0.70969,-0.00000,0,0
+            0.29031,0.70969,-0.00000,0,0
+            -0.02197,0.02197,1.00000,0,0
+            0,0,0,1,0"
+        />
+    </filter>
+
+    <!-- 
+        Brettel, Viénot & Mollon 1997 algorithms with two projection planes.
+
+        This is the only approach I know that is supposed to be reasonably
+        accurate for tritanopia, the single matrix approaches are NOT accurate.
+    -->
+    <filter id="tritanopia" color-interpolation-filters="linearRGB">
+        <!-- 
+            Projection 1, with a special alpha that encodes the separation plane.
+            If dot(rgb, n) > 0, then use projection 1, otherwise use projection 2.
+            This is encoded in alpha by:
+                - Applying a 1.0 factor on the source alpha so that 0 input alpha remains 0
+                - Subtracting 0.2 so that negative values become < 0.8 and position values >= 0.8
+                - It is important to normalize the factors to keep a good numerical accuracy
+                  and to keep a large alpha threshold since the RGB values are then stored
+                  premultiplied by alpha.
+                - This assumes that negative values get clipped to 0, and positive
+                  values clipped to 1, without overflowing, etc. Which seems to be the case
+                  on all browsers.
+          -->
+        <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane1" values="
+            1.01354, 0.14268, -0.15622, 0, 0
+            -0.01181, 0.87561, 0.13619, 0, 0
+            0.07707, 0.81208, 0.11085, 0, 0
+            7.92482, -5.66475, -2.26007, 1, -0.2"
+        />
+        <!-- 
+            Binarize alpha. 5 values means the last chunk will start at 0.8.
+            All the values below 0.8 will become 0 (correspond to the dot
+            product with the separation plane being negative) and above will become 1
+        -->        
+        <feComponentTransfer in="ProjectionOnPlane1" result="ProjectionOnPlane1">
+            <feFuncA type="discrete" tableValues="0 0 0 0 1"/>
+        </feComponentTransfer>
+
+        <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="
+            0.93337, 0.19999, -0.13336, 0, 0
+            0.05809, 0.82565, 0.11626, 0, 0
+            -0.37923, 1.13825, 0.24098, 0, 0
+            0,0,0,1,0"
+        />
+
+        <!-- Uncomment the debug black matrix to see which pixels go to which plane -->
+        <!-- <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="0,0,0,0,0 0,0,0,0,0 0,0,0,0,0 0,0,0,1,0"/> -->
+
+        <!-- Blend the two projections, picking one or the other depending on alpha. -->
+        <feBlend in="ProjectionOnPlane1" in2="ProjectionOnPlane2" mode="normal"/>
+    </filter>
+</svg>
 
 
 </body>
