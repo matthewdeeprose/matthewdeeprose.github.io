@@ -57,12 +57,23 @@ function showProta() {
     [...c].forEach(x => x.className += " protanopia");
     [...c].forEach(x => x.classList.remove("tritanopia"));
     // Hide irrelevant buttons
-    $("#showProta").css({
-        "display": "none"
-    });
-    $("#showTrich").show();
-    $("#showDeute").show();
-	$("#showTrita").show();	
+    //$("#showProta").css({
+    //    "display": "none"
+    //});
+	// make prota button disabled and set aria to disabled
+	document.getElementById("showProta").disabled = true;
+	document.getElementById("showProta").setAttribute("aria-disabled", "true");
+	// Show Trichromacy button
+    $("#showTrich").show(); //<--keep
+	// Set trich to enabled both button and aria
+	document.getElementById("showTrich").disabled = false;
+	document.getElementById("showTrich").setAttribute("aria-disabled", "false");
+    // Set showDeute to enabled both button and aria
+	document.getElementById("showDeute").disabled = false;
+	document.getElementById("showDeute").setAttribute("aria-disabled", "false");
+	// Set showTrita to enabled both button and aria
+	document.getElementById("showTrita").disabled = false;
+	document.getElementById("showTrita").setAttribute("aria-disabled", "false");	
     // Display helpful message
     $("#buttonHelp").show();
     $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out.");
@@ -88,13 +99,20 @@ function showDeute() {
 	let c = document.getElementsByClassName("tritanopia");
     [...c].forEach(x => x.className += " deuteranopia");
     [...c].forEach(x => x.classList.remove("tritanopia"));
-    // Hide irrelevant buttons
-    $("#showDeute").css({
-        "display": "none"
-    });
-    $("#showTrich").show();
-    $("#showProta").show();
-	$("#showTrita").show();	
+	// make Deute button disabled and set aria to disabled
+	document.getElementById("showDeute").disabled = true;
+	document.getElementById("showDeute").setAttribute("aria-disabled", "true");
+	// Show Trichromacy button
+    $("#showTrich").show(); //<--keep
+	// Set showTrich to enabled both button and aria
+	document.getElementById("showTrich").disabled = false;
+	document.getElementById("showTrich").setAttribute("aria-disabled", "false");
+    // Set showProta to enabled both button and aria
+	document.getElementById("showProta").disabled = false;
+	document.getElementById("showProta").setAttribute("aria-disabled", "false");
+	// Set showTrita to enabled both button and aria
+	document.getElementById("showTrita").disabled = false;
+	document.getElementById("showTrita").setAttribute("aria-disabled", "false");
     // Display helpful message
     $("#buttonHelp").show();
     $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out.");
@@ -119,14 +137,21 @@ function showTrita() {
 	let c = document.getElementsByClassName("Trichromacy");
     [...c].forEach(x => x.className += " tritanopia");
     [...c].forEach(x => x.classList.remove("Trichromacy"));
+	// make showTrita button disabled and set aria to disabled
+	document.getElementById("showTrita").disabled = true;
+	document.getElementById("showTrita").setAttribute("aria-disabled", "true");
+	// Show Trichromacy button
+    $("#showTrich").show(); //<--keep
+	// Set trich to enabled both button and aria
+	document.getElementById("showTrich").disabled = false;
+	document.getElementById("showTrich").setAttribute("aria-disabled", "false");
+    // Set showDeute to enabled both button and aria
+	document.getElementById("showDeute").disabled = false;
+	document.getElementById("showDeute").setAttribute("aria-disabled", "false");
+	// Set showTrita to enabled both button and aria
+	document.getElementById("showProta").disabled = false;
+	document.getElementById("showProta").setAttribute("aria-disabled", "false");
 
-    // Hide irrelevant buttons
-    $("#showTrita").css({
-        "display": "none"
-    });
-    $("#showProta").show();
-    $("#showDeute").show();
-	$("#showTrich").show();	
     // Display helpful message
     $("#buttonHelp").show();
     $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with tritanopia. Tritanopia means lacking the blue cones for short-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between blue and green, purple and red, and yellow and pink. It also makes colors look less bright.");
@@ -157,6 +182,15 @@ function showTrich() {
     $("#showProta").show();
     $("#showDeute").show();
 	$("#showTrita").show();	
+	// Set trich to enabled both button and aria
+	document.getElementById("showProta").disabled = false;
+	document.getElementById("showProta").setAttribute("aria-disabled", "false");
+    // Set showDeute to enabled both button and aria
+	document.getElementById("showDeute").disabled = false;
+	document.getElementById("showDeute").setAttribute("aria-disabled", "false");
+	// Set showTrita to enabled both button and aria
+	document.getElementById("showTrita").disabled = false;
+	document.getElementById("showTrita").setAttribute("aria-disabled", "false");	
     // Display helpful message
     $("#buttonHelp").show();
     $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with trichromatic vision. Trichromatic vision is what we consider to be the standard ability to see colours.");
