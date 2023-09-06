@@ -11,8 +11,9 @@
     <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
     <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
     <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-    <link rel="stylesheet" id="infographicCSS" href="infographic.css" media="all">
-    <meta property="og:title" content="UoS Brand Accessible Colour Suggester - Matthew Deeprose">
+    <link rel="stylesheet" id="infographicCSS" href="infographic4.css" media="all">
+    <script src="https://matthewdeeprose.github.io/scripts/jquery-3.6.0.min.js"></script>
+	<meta property="og:title" content="UoS Brand Accessible Colour Suggester - Matthew Deeprose">
     <meta property="og:description" content="">
     <meta property="og:image" content="https://matthewdeeprose.github.io/suggester.png">
     <meta property="og:image:alt" content="">
@@ -33,12 +34,200 @@
     <meta name="twitter:image" content="https://matthewdeeprose.github.io/suggester.png" />
     <meta name="twitter:image:alt" content="" />
     <meta name="twitter:card" content="summary_large_image" />
+
+		<script>
+// Swap between colour blind emulations
+function showProta() {
+	  console.log("\n");
+      console.log("Simulating protanopia");
+      console.log("\n");
+	  
+
+    // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("Trichromacy");
+    [...a].forEach(x => x.className += " protanopia");
+    [...a].forEach(x => x.classList.remove("Trichromacy"));
+
+    let b = document.getElementsByClassName("deuteranopia");
+    [...b].forEach(x => x.className += " protanopia");
+    [...b].forEach(x => x.classList.remove("deuteranopia"));
+	
+	let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach(x => x.className += " protanopia");
+    [...c].forEach(x => x.classList.remove("tritanopia"));
+    // Hide irrelevant buttons
+    //$("#showProta").css({
+    //    "display": "none"
+    //});
+	// make prota button disabled and set aria to disabled
+	document.getElementById("showProta").disabled = true;
+	document.getElementById("showProta").setAttribute("aria-disabled", "true");
+	// Show Trichromacy button
+    $("#showTrich").show(); //<--keep
+	// Set trich to enabled both button and aria
+	document.getElementById("showTrich").disabled = false;
+	document.getElementById("showTrich").setAttribute("aria-disabled", "false");
+    // Set showDeute to enabled both button and aria
+	document.getElementById("showDeute").disabled = false;
+	document.getElementById("showDeute").setAttribute("aria-disabled", "false");
+	// Set showTrita to enabled both button and aria
+	document.getElementById("showTrita").disabled = false;
+	document.getElementById("showTrita").setAttribute("aria-disabled", "false");	
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out.");
+}
+
+function showDeute() {
+
+	  console.log("\n");
+      console.log("Simulating deuteranopia");
+      console.log("\n");
+	  
+
+    // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("Trichromacy");
+    [...a].forEach(x => x.className += " deuteranopia");
+    [...a].forEach(x => x.classList.remove("Trichromacy"));
+
+    let b = document.getElementsByClassName("protanopia");
+    [...b].forEach(x => x.className += " deuteranopia");
+    [...b].forEach(x => x.classList.remove("protanopia"));
+	
+	let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach(x => x.className += " deuteranopia");
+    [...c].forEach(x => x.classList.remove("tritanopia"));
+	// make Deute button disabled and set aria to disabled
+	document.getElementById("showDeute").disabled = true;
+	document.getElementById("showDeute").setAttribute("aria-disabled", "true");
+	// Show Trichromacy button
+    $("#showTrich").show(); //<--keep
+	// Set showTrich to enabled both button and aria
+	document.getElementById("showTrich").disabled = false;
+	document.getElementById("showTrich").setAttribute("aria-disabled", "false");
+    // Set showProta to enabled both button and aria
+	document.getElementById("showProta").disabled = false;
+	document.getElementById("showProta").setAttribute("aria-disabled", "false");
+	// Set showTrita to enabled both button and aria
+	document.getElementById("showTrita").disabled = false;
+	document.getElementById("showTrita").setAttribute("aria-disabled", "false");
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out.");
+}
+
+function showTrita() {
+
+	  console.log("\n");
+      console.log("Simulating tritanopia");
+      console.log("\n");
+	  
+    // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("protanopia");
+    [...a].forEach(x => x.className += " tritanopia");
+    [...a].forEach(x => x.classList.remove("protanopia"));
+
+    let b = document.getElementsByClassName("deuteranopia");
+    [...b].forEach(x => x.className += " tritanopia");
+    [...b].forEach(x => x.classList.remove("deuteranopia"));
+	
+	let c = document.getElementsByClassName("Trichromacy");
+    [...c].forEach(x => x.className += " tritanopia");
+    [...c].forEach(x => x.classList.remove("Trichromacy"));
+	// make showTrita button disabled and set aria to disabled
+	document.getElementById("showTrita").disabled = true;
+	document.getElementById("showTrita").setAttribute("aria-disabled", "true");
+	// Show Trichromacy button
+    $("#showTrich").show(); //<--keep
+	// Set trich to enabled both button and aria
+	document.getElementById("showTrich").disabled = false;
+	document.getElementById("showTrich").setAttribute("aria-disabled", "false");
+    // Set showDeute to enabled both button and aria
+	document.getElementById("showDeute").disabled = false;
+	document.getElementById("showDeute").setAttribute("aria-disabled", "false");
+	// Set showTrita to enabled both button and aria
+	document.getElementById("showProta").disabled = false;
+	document.getElementById("showProta").setAttribute("aria-disabled", "false");
+
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with tritanopia. Tritanopia means lacking the blue cones for short-wavelength sensitive retinal cones. Those affected may be unable to tell the difference between blue and green, purple and red, and yellow and pink. It also makes colors look less bright.");
+}
+function showTrich() {
+
+	  console.log("\n");
+      console.log("trichromatic vision");
+      console.log("\n");
+    // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
+
+    let a = document.getElementsByClassName("deuteranopia");
+    [...a].forEach(x => x.className += " Trichromacy");
+    [...a].forEach(x => x.classList.remove("deuteranopia"));
+
+    let b = document.getElementsByClassName("protanopia");
+    [...b].forEach(x => x.className += " Trichromacy");
+    [...b].forEach(x => x.classList.remove("protanopia"));
+	
+	let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach(x => x.className += " Trichromacy");
+    [...c].forEach(x => x.classList.remove("tritanopia"));
+
+    // Hide irrelevant buttons
+    $("#showTrich").css({
+        "display": "none"
+    });
+    $("#showProta").show();
+    $("#showDeute").show();
+	$("#showTrita").show();	
+	// Set trich to enabled both button and aria
+	document.getElementById("showProta").disabled = false;
+	document.getElementById("showProta").setAttribute("aria-disabled", "false");
+    // Set showDeute to enabled both button and aria
+	document.getElementById("showDeute").disabled = false;
+	document.getElementById("showDeute").setAttribute("aria-disabled", "false");
+	// Set showTrita to enabled both button and aria
+	document.getElementById("showTrita").disabled = false;
+	document.getElementById("showTrita").setAttribute("aria-disabled", "false");	
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Palette colours now simulate how they may be perceived by someone with trichromatic vision. Trichromatic vision is what we consider to be the standard ability to see colours.");
+}
+</script>
     <style>
       .page-wrap>* {
         grid-column: 1/-1 !important;
         grid-row: auto !important;
       }
     </style>
+<style>
+
+.protanopia {
+    -webkit-filter: url(#protanopia);
+    -moz-filter: url(#protanopia);
+    -ms-filter: url(#protanopia);
+    -o-filter: url(#protanopia);
+    filter: url(#protanopia);
+}
+
+.deuteranopia {
+    -webkit-filter: url(#deuteranopia);
+    -moz-filter: url(#deuteranopia);
+    -ms-filter: url(#deuteranopia);
+    -o-filter: url(#deuteranopia);
+    filter: url(#deuteranopia);
+}
+
+.tritanopia {
+    -webkit-filter: url(#tritanopia);
+    -moz-filter: url(#tritanopia);
+    -ms-filter: url(#tritanopia);
+    -o-filter: url(#tritanopia);
+    filter: url(#tritanopia);
+}
+</style>
   </head>
   <body>
     <div class="page-wrap" id="start">
@@ -111,10 +300,10 @@
           <h1 id="top">UoS Brand Accessible Colour Suggester</h1>
           <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://sotonac.sharepoint.com/teams/Brand/SitePages/Visual-Identity/ColourPalette.aspx">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic. </p>
           <p>Use the Randomise button to get started!</p>
-          <div class="resourseList">
+          <div class="resourseList2">
             <div class="grid-child">
               <button id="genNew" class="actionButton" type="button" onclick="randomAll()">Randomise</button>
-              <section id="infoGraphicBox" class="" aria-hidden="true">
+              <section class="Trichromacy" id="infoGraphicBox" class="" aria-hidden="true">
                 <h2 id="infoTexT" class="">Text and information</h2>
                 <p class="iconrow">
                   <span id="icon1" class="infoIcon">&#x2745;</span>
@@ -122,6 +311,14 @@
                   <span id="icon3" class="infoIcon">&#10026;</span>
                 </p>
               </section>
+			  <div id="tableButtons">
+	
+	<button id="showProta" title="Simulate protanopia - blindness to red" type="button" onclick="showProta()" aria-disabled="false">Simulate protanopia</button>
+	<button id="showDeute" title="Simulate deuteranopia - blindness to green" type="button" onclick="showDeute()" aria-disabled="false">Simulate deuteranopia</button>
+	<button id="showTrita" title="Simulate tritanopia  - blindness to blue" type="button" onclick="showTrita()" aria-disabled="false">Simulate tritanopia </button>
+	<button id="showTrich" title="Reset colours to Trichromatic default" type="button" onclick="showTrich()" aria-disabled="true">Reset to trichromacy</button>
+</div>
+<span id="buttonHelp" aria-live="polite"></span>
             </div>
             <div class="grid-child" id="info">
               <section class="details" aria-hidden="true">
@@ -129,13 +326,13 @@
                 <p class="details">
                   <span id="bgC" class="details">Background colour: </span>
                   <span class="result2">
-                    <span id="bgColor" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="bgColor"  class="colorBox Trichromacy" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
                     <span class="details result" id="backgroundColor" aria-hidden="true"></span>
                     <span class="details result" id="backgroundName" aria-hidden="true"></span>
                   </span>
                 </p>
                 <p class="details">Text colour: <span class="result2">
-                    <span id="tColorColor" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="tColorColor" class="colorBox Trichromacy" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
                     <span class="details result" id="tcolor" aria-hidden="true"></span>
                     <span class="details result" id="tColorName" aria-hidden="true"></span>
                   </span>
@@ -146,7 +343,7 @@
                   </span>
 				  </p>
                 <p class="details">Graphic 1 <span aria-hidden="true">&#x2745;</span> colour: <span class="result2">
-                    <span id="g1colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="g1colourSpan2" class="colorBox Trichromacy" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
                     <span class="details result" id="g1colourSpan1" aria-hidden="true"></span>
                     <span class="details result" id="gfx1ColorName" aria-hidden="true"></span>
                   </span>
@@ -154,7 +351,7 @@
                   <br />WCAG Rating: <span class="details result" id="g1contrastWCAG" aria-hidden="true"></span>
                 </p>
                 <p class="details">Graphic 2 <span aria-hidden="true">&#9825;</span> colour: <span class="result2">
-                    <span id="g2colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="g2colourSpan2" class="colorBox Trichromacy" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
                     <span id="g2colourSpan1" class="details result" aria-hidden="true"></span>
                     <span class="details result" id="gfx2ColorName" aria-hidden="true"></span>
                   </span>
@@ -162,7 +359,7 @@
                   <br />WCAG Rating: <span class="details result" id="g2contrastWCAG" aria-hidden="true"></span>
                 </p>
                 <p class="details">Graphic 3 <span aria-hidden="true">&#10026;</span> colour: <span class="result2">
-                    <span id="g3colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="g3colourSpan2" class="colorBox Trichromacy" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
                     <span id="g3colourSpan1" class="details result" aria-hidden="true"></span>
                     <span class="details result" id="gfx3ColorName" aria-hidden="true"></span>
                   </span>
@@ -242,6 +439,77 @@
             <span id="myBtnBottom" class="panelLabel">Bottom</span>
           </button>
         </div>
+		  <svg style='height: 0; width: 0; padding: 0; margin: 0; line-height: 0;'>
+  <!-- from https://daltonlens.org/cvd-simulation-svg-filters/ and https://github.com/DaltonLens/libDaltonLens/tree/master/svg -->
+    <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
+    <filter id="protanopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" in="SourceGraphic" values="
+            0.10889,0.89111,-0.00000,0,0
+            0.10889,0.89111,0.00000,0,0
+            0.00447,-0.00447,1.00000,0,0
+            0,0,0,1,0"
+        />
+    </filter>
+
+    <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
+    <filter id="deuteranopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" in="SourceGraphic" values="
+            0.29031,0.70969,-0.00000,0,0
+            0.29031,0.70969,-0.00000,0,0
+            -0.02197,0.02197,1.00000,0,0
+            0,0,0,1,0"
+        />
+    </filter>
+
+    <!-- 
+        Brettel, Viénot & Mollon 1997 algorithms with two projection planes.
+
+        This is the only approach I know that is supposed to be reasonably
+        accurate for tritanopia, the single matrix approaches are NOT accurate.
+    -->
+    <filter id="tritanopia" color-interpolation-filters="linearRGB">
+        <!-- 
+            Projection 1, with a special alpha that encodes the separation plane.
+            If dot(rgb, n) > 0, then use projection 1, otherwise use projection 2.
+            This is encoded in alpha by:
+                - Applying a 1.0 factor on the source alpha so that 0 input alpha remains 0
+                - Subtracting 0.2 so that negative values become < 0.8 and position values >= 0.8
+                - It is important to normalize the factors to keep a good numerical accuracy
+                  and to keep a large alpha threshold since the RGB values are then stored
+                  premultiplied by alpha.
+                - This assumes that negative values get clipped to 0, and positive
+                  values clipped to 1, without overflowing, etc. Which seems to be the case
+                  on all browsers.
+          -->
+        <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane1" values="
+            1.01354, 0.14268, -0.15622, 0, 0
+            -0.01181, 0.87561, 0.13619, 0, 0
+            0.07707, 0.81208, 0.11085, 0, 0
+            7.92482, -5.66475, -2.26007, 1, -0.2"
+        />
+        <!-- 
+            Binarize alpha. 5 values means the last chunk will start at 0.8.
+            All the values below 0.8 will become 0 (correspond to the dot
+            product with the separation plane being negative) and above will become 1
+        -->        
+        <feComponentTransfer in="ProjectionOnPlane1" result="ProjectionOnPlane1">
+            <feFuncA type="discrete" tableValues="0 0 0 0 1"/>
+        </feComponentTransfer>
+
+        <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="
+            0.93337, 0.19999, -0.13336, 0, 0
+            0.05809, 0.82565, 0.11626, 0, 0
+            -0.37923, 1.13825, 0.24098, 0, 0
+            0,0,0,1,0"
+        />
+
+        <!-- Uncomment the debug black matrix to see which pixels go to which plane -->
+        <!-- <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="0,0,0,0,0 0,0,0,0,0 0,0,0,0,0 0,0,0,1,0"/> -->
+
+        <!-- Blend the two projections, picking one or the other depending on alpha. -->
+        <feBlend in="ProjectionOnPlane1" in2="ProjectionOnPlane2" mode="normal"/>
+    </filter>
+</svg>
       </main>
       <aside class="page-sidebar related">
         <section class="related">
