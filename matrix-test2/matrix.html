@@ -700,6 +700,9 @@ $(document).ready(function() {
 		fieldset.ctrl2 {
 			width: 100%;
 		}
+		div#control1 {
+			width: 100%;
+		}
 	}
 	/* Format button controls ends*/
 
@@ -1173,7 +1176,7 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
 <div id="tableButtons">
 <div id="tableButtonsRow1">
             <div id="control1">
-               <fieldset class="ctrl1">
+               <fieldset id="mControls" class="ctrl1">
                   <legend>Matrix controls</legend>
                   <button id="resetTable" title="Reset the table" type="button" onclick="location.reload(false)">Reset table</button>
                   <button id="showMobile" title="Show simple tables / mobile view" type="button" onclick="$.fn.showMobile()">Mobile / Single Column View</button>
@@ -1201,7 +1204,7 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
                      </svg>
                   </button>
                </fieldset>
-               <fieldset class="ctrl1">
+               <fieldset id="FilterResults" class="ctrl1">
                   <legend>Filter results</legend>
                   <button id="showGplus" title="Show WCAG colour combinations at G, AA, and AAA levels only" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
                   <button id="showAAplus" title="Show WCAG colour combinations at AA and AAA levels only" type="button" onclick="showAAplus()">Show AA and AAA only</button>
@@ -1209,7 +1212,7 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
                </fieldset>
             </div>
             <div id="control2">
-               <fieldset class="ctrl2">
+               <fieldset id="simulateColour" class="ctrl2">
                   <legend>Simulate colour vision deficiency</legend>
                   <button id="showProta" title="Simulate protanopia - blindness to red" type="button" onclick="showProta()" aria-disabled="false">Simulate protanopia</button>
                   <button id="showDeute" title="Simulate deuteranopia - blindness to green" type="button" onclick="showDeute()" aria-disabled="false">Simulate deuteranopia</button>
