@@ -669,11 +669,11 @@ $(document).ready(function() {
 	}
 	div#control2 {
 		clear: both;
-		padding-top: 0.5rem;
-		padding-bottom: 0.5rem;
 	}
 	fieldset {
 		padding: 0.3rem;
+		margin-top: 0.3rem;
+		margin-bottom: 0.3rem;
 		;
 	}
 	fieldset {
@@ -692,6 +692,14 @@ $(document).ready(function() {
 	legend {
 		font-size: 0.8rem;
 		padding: 3px 1rem;
+	}
+	@media only screen and (max-width: 768px) {
+		fieldset.ctrl1 {
+			width: 100%;
+		}
+		fieldset.ctrl2 {
+			width: 100%;
+		}
 	}
 	/* Format button controls ends*/
 
@@ -1102,7 +1110,7 @@ caption {	border: 0 !important;
 	width: 1px !important;
 	white-space: nowrap !important;            /* 3 */}
 
-div#linksToExamples {margin-bottom: 0.5rem;}	
+div#linksToExamples {margin-bottom: 0.3rem;}	
 
 /* Print fomatting */
 @media print {
@@ -1130,6 +1138,7 @@ div#linksToExamples {margin-bottom: 0.5rem;}
     summary:hover,
     button:hover,
     button:focus,
+    button:active,
     a:focus {
         transition-duration: 0s !important;
     }

@@ -512,8 +512,8 @@ button {
 	/* For those who prefer reduced motion */
 @media (prefers-reduced-motion) {
     button:hover,
-    button:focus,
-    a:focus, a:hover {
+    button:focus, button:active,
+    a:focus, a:hover, a:active, a#Ret:active {
         transition-duration: 0s;
     }
 }
