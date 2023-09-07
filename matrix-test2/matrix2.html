@@ -457,14 +457,6 @@ $(document).ready(function() {
         display: none;
     }
 
-		fieldset {
-			border: #758D9A solid 1px;
-		}
-		legend {
-			color: #fffff4;
-			border: #758D9A solid 1px;
-		}
-
     td.ResultG {
         background-color: #161415 !important;
         color: #B3DBD2;
@@ -555,12 +547,10 @@ $(document).ready(function() {
     }
     button:hover,
     button:focus {
-	background-color: #E1E8EC !important;
-	color: #00131D !important;
-	outline: 2px transparent solid !important;
-	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
-	transition: .3s linear !important;
-	border: #e1e8ec 1px solid !important;
+        color: #E1E8EC !important;
+        background-color: #161415 !important;
+        box-shadow: 0 0 0 3pt #FCBC00 !important;
+        border: 1px solid #FCBC00 !important;
     }
     /* Details and Summary styling */
     details {
@@ -629,10 +619,6 @@ $(document).ready(function() {
 	display:none;
 }
 
-/* Hide button help */
-#buttonHelp {
-	display:none;
-}
 
 .protanopia {
     -webkit-filter: url(#protanopia);
@@ -662,38 +648,6 @@ $(document).ready(function() {
 /* header {
 	margin-top: -2.5rem;
 } */
-
-	/* Format button controls */
-	div#control1 {
-		float: left;
-	}
-	div#control2 {
-		clear: both;
-		padding-top: 0.5rem;
-		padding-bottom: 0.5rem;
-	}
-	fieldset {
-		padding: 0.3rem;
-		;
-	}
-	fieldset {
-		border: #758D9A solid 1px;
-	}
-	legend {
-		background-color: #231F20;
-		color: #fffff4;
-	}
-	fieldset.ctrl1 {
-		display: inline;
-	}
-	fieldset.ctrl2 {
-		display: inline;
-	}
-	legend {
-		font-size: 0.8rem;
-		padding: 3px 1rem;
-	}
-	/* Format button controls ends*/
 
 /* Center align the html hex code row */
 #HTMLcolCodeline th {
@@ -809,12 +763,12 @@ button {
 
 button:hover,
 button:focus {
-	transition: .3s linear !important;
-	background-color: #E1E8EC !important;
-	color: #00131D !important;
-	outline: 2px transparent solid !important;
-	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
-	border: #00131D 1px solid !important;
+    color: #231F20;
+    background-color: white;
+    transition: .3s linear;
+    cursor: pointer;
+    outline: none !important;
+    box-shadow: 0 0 0 2pt #005C84;
 }
 
 button:active {
@@ -880,6 +834,7 @@ caption {
 
 /* Styling links to HTML examples */
 #linksToExamples {
+    font-size: 0.8rem;
     transition: .3s linear;
 }
 
@@ -1131,7 +1086,7 @@ div#linksToExamples {margin-bottom: 0.5rem;}
     button:hover,
     button:focus,
     a:focus {
-        transition-duration: 0s !important;
+        transition-duration: 0s;
     }
 }
 </style>
@@ -1163,51 +1118,31 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
 <nav>
 <div id="tableButtons">
 <div id="tableButtonsRow1">
-            <div id="control1">
-               <fieldset class="ctrl1">
-                  <legend>Matrix controls</legend>
-                  <button id="resetTable" title="Reset the table" type="button" onclick="location.reload(false)">Reset table</button>
-                  <button id="showMobile" title="Show simple tables / mobile view" type="button" onclick="$.fn.showMobile()">Mobile / Single Column View</button>
-                  <button id="Dark" title="Dark theme" type="button" onclick="$.fn.darkMode()">Apply Dark Theme</button>
-                  <button id="tableFit" title="Fit table width to page" type="button" onclick="$.fn.tableFit()">
-                     Fit table width to page 
-                     <svg aria-hidden="true" focusable="false" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
-                        <g fill="none" fill-rule="evenodd" stroke="#2a2e3b" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)">
-                           <path d="m9.45.814v5.657h-5.657" transform="matrix(-.70710678 .70710678 -.70710678 -.70710678 14.756959 6.39283)"/>
-                           <path d="m5.197-.948v12.028" transform="matrix(0 1 1 0 4.447762 3.302301)"/>
-                           <path d="m6.167.136-.04 5.697h-5.656" transform="matrix(.70710678 .70710678 .70710678 -.70710678 7.043131 8.291412)"/>
-                           <path d="m.5.5v16.021"/>
-                           <path d="m18.5.5v16.021"/>
-                        </g>
-                     </svg>
-                  </button>
-                  <button id="tableFull" title="Full size table" type="button" onclick="$.fn.tableFull()">
-                     Full size table 
-                     <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
-                        <g fill="none" fill-rule="evenodd" stroke="#2a2e3b" stroke-linecap="round" stroke-linejoin="round" transform="matrix(.70710678 -.70710678 .70710678 .70710678 .121489 10.313301)">
-                           <path d="m13.571.682v5.657l-5.667.01" transform="matrix(-1 0 0 -1 14.414 7.445)"/>
-                           <path d="m7.207-1.944v18" transform="matrix(-.70710678 .70710678 .70710678 .70710678 7.313773 -2.615464)"/>
-                           <path d="m6.289.015-.04 5.696h-5.657" transform="matrix(0 1 1 0 7.86 7.586)"/>
-                        </g>
-                     </svg>
-                  </button>
-               </fieldset>
-               <fieldset class="ctrl1">
-                  <legend>Filter results</legend>
-                  <button id="showGplus" title="Show WCAG colour combinations at G, AA, and AAA levels only" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
-                  <button id="showAAplus" title="Show WCAG colour combinations at AA and AAA levels only" type="button" onclick="showAAplus()">Show AA and AAA only</button>
-                  <button id="showAAA" title="Show WCAG colour combinations at AAA level only" type="button" onclick="showAAA()">Show AAA only</button>
-               </fieldset>
-            </div>
-            <div id="control2">
-               <fieldset class="ctrl2">
-                  <legend>Simulate colour vision deficiency</legend>
-                  <button id="showProta" title="Simulate protanopia - blindness to red" type="button" onclick="showProta()" aria-disabled="false">Simulate protanopia</button>
-                  <button id="showDeute" title="Simulate deuteranopia - blindness to green" type="button" onclick="showDeute()" aria-disabled="false">Simulate deuteranopia</button>
-                  <button id="showTrita" title="Simulate tritanopia  - blindness to blue" type="button" onclick="showTrita()" aria-disabled="false">Simulate tritanopia </button>
-                  <button id="showTrich" aria-live="polite" title="Reset colours to Trichromatic default" type="button" onclick="showTrich()" aria-disabled="true">Reset to trichromacy</button>
-               </fieldset>
-            </div>
+<div id="control1">	
+  <fieldset class="ctrl1">
+  <legend>Matrix controls</legend>
+        <button id="resetTable" title="Reset the table" type="button" onclick="location.reload(false)">Reset table</button>
+	<button id="showMobile" title="Show simple tables / mobile view" type="button" onclick="$.fn.showMobile()">Mobile / Single Column View</button>
+	<button id="Dark" title="Dark theme" type="button" onclick="$.fn.darkMode()">Apply Dark Theme</button>
+	<button id="tableFit" title="Fit table width to page" type="button" onclick="$.fn.tableFit()">Fit table width to page <svg aria-hidden="true" focusable="false" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#2a2e3b" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"><path d="m9.45.814v5.657h-5.657" transform="matrix(-.70710678 .70710678 -.70710678 -.70710678 14.756959 6.39283)"/><path d="m5.197-.948v12.028" transform="matrix(0 1 1 0 4.447762 3.302301)"/><path d="m6.167.136-.04 5.697h-5.656" transform="matrix(.70710678 .70710678 .70710678 -.70710678 7.043131 8.291412)"/><path d="m.5.5v16.021"/><path d="m18.5.5v16.021"/></g></svg></button>
+        <button id="tableFull" title="Full size table" type="button" onclick="$.fn.tableFull()">Full size table <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="#2a2e3b" stroke-linecap="round" stroke-linejoin="round" transform="matrix(.70710678 -.70710678 .70710678 .70710678 .121489 10.313301)"><path d="m13.571.682v5.657l-5.667.01" transform="matrix(-1 0 0 -1 14.414 7.445)"/><path d="m7.207-1.944v18" transform="matrix(-.70710678 .70710678 .70710678 .70710678 7.313773 -2.615464)"/><path d="m6.289.015-.04 5.696h-5.657" transform="matrix(0 1 1 0 7.86 7.586)"/></g></svg></button>
+	</fieldset>
+	  <fieldset class="ctrl1">
+  <legend>Filter results</legend>
+	<button id="showGplus" title="Show WCAG colour combinations at G, AA, and AAA levels only" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
+        <button id="showAAplus" title="Show WCAG colour combinations at AA and AAA levels only" type="button" onclick="showAAplus()">Show AA and AAA only</button>
+        <button id="showAAA" title="Show WCAG colour combinations at AAA level only" type="button" onclick="showAAA()">Show AAA only</button>
+        		</fieldset>
+</div>
+				
+<div id="control2">	
+  <fieldset class="ctrl2">
+  <legend>Simulate colour vision deficiency</legend>
+	<button id="showProta" title="Simulate protanopia - blindness to red" type="button" onclick="showProta()" aria-disabled="false">Simulate protanopia</button>
+	<button id="showDeute" title="Simulate deuteranopia - blindness to green" type="button" onclick="showDeute()" aria-disabled="false">Simulate deuteranopia</button>
+	<button id="showTrita" title="Simulate tritanopia  - blindness to blue" type="button" onclick="showTrita()" aria-disabled="false">Simulate tritanopia </button>
+	<button id="showTrich" title="Reset colours to Trichromatic default" type="button" onclick="showTrich()" aria-disabled="true">Reset to trichromacy</button>
+	  </fieldset>
 </div>
 <div id="buttonHelp" aria-live="polite"></div><br />
 </div>
@@ -4952,7 +4887,6 @@ Additional tools used are:
 <li><a href="https://sourceforge.net/projects/command-output-to-html-table/">Tabulate.sh</a> by <a href="https://sourceforge.net/u/nathan-sr/profile/">Nathan S.R.</a></li>
 <li><a href="https://raw.githubusercontent.com/DaltonLens/libDaltonLens/master/svg/cvd_svg_filters.html">DaltonLens SVG filters</a>.</li>
 <li><a href="https://systemuicons.com/">System UIcons</a> by <a href="https://corey.ginnivan.net/">Corey Ginnivan</a>.</li>
-<li><a href="https://iros.github.io/patternfills/sample_css.html">Pattern Fills: CSS Examples</a> by <a href="http://ireneros.com/">Irene Ros</a> is used for changing the appearance of inactive buttons.</li>
 </ul>
 Whilst I have attempted to follow good practice and make this content as accessible as possible, there is always room for improvement.  Send any feedback about the matrix and any suggestions for improvements to Matthew Deeprose by <a href="https://www.linkedin.com/in/mattdeeprose/">connecting on LinkedIn</a>.
 </details>

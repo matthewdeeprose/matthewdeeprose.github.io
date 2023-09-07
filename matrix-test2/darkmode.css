@@ -1,3 +1,11 @@
+		fieldset {
+			border: #758D9A solid 1px;
+		}
+		legend {
+			color: #fffff4;
+			border: #758D9A solid 1px;
+		}
+
 
 #myTable td:hover::before,
 #myTable .row:hover::before {
@@ -57,10 +65,12 @@ button {
 }
 button:hover,
 button:focus {
-    color: #E1E8EC;
-    background-color: #161415;
-    box-shadow: 0 0 0 3pt #FCBC00;
-    border: 1px solid #FCBC00;
+	transition: .3s linear !important;
+	background-color: #E1E8EC !important;
+	color: #00131D !important;
+	outline: 2px transparent solid !important;
+	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
+	border: #e1e8ec 1px solid !important;
 }
 /* Details and Summary styling */
 details {
