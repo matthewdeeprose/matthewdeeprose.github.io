@@ -59,18 +59,19 @@ a:focus {
 }
 /* Styling buttons */
 button {
-    color: #231F20;
-    background-color: #E1E8EC;
-    border: 1px solid #9FB1BD;
-}
+        border: 1px solid #9FB1BD !important;
+        color: #E1E8EC !important;
+        background-color:   #231F20 !important;
+	stroke:#E1E8EC !important;}
 button:hover,
 button:focus {
-	transition: .3s linear !important;
 	background-color: #E1E8EC !important;
 	color: #00131D !important;
 	outline: 2px transparent solid !important;
 	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
+	transition: .3s linear !important;
 	border: #e1e8ec 1px solid !important;
+	stroke:#231F20 !important;
 }
 /* Details and Summary styling */
 details {
