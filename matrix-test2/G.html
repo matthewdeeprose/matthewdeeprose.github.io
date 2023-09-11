@@ -375,10 +375,10 @@ display:none !important
 @media (prefers-color-scheme: dark) {
     /* Styling buttons */
     button {
-        color: #231F20 !important;
-        background-color: #E1E8EC !important;
         border: 1px solid #9FB1BD !important;
-    }
+        color: #E1E8EC !important;
+        background-color:   #231F20 !important;
+	stroke:#E1E8EC !important;    }
     button:hover,
     button:focus {
 	background-color: #E1E8EC !important;
@@ -387,6 +387,7 @@ display:none !important
 	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
 	transition: .3s linear !important;
 	border: #e1e8ec 1px solid !important;
+	stroke:#231F20 !important;
     }
 	
 	    /* Styling button help text */
@@ -399,13 +400,12 @@ display:none !important
 	
 button {
     color: #231F20;
-    background-color: #E1E8EC;
+    background-color: #fffff4;
     border-radius: 4px;
     border: solid black 1px;
     vertical-align: middle;
     padding: 0.4rem;
-    font-size: 1.5rem;
-}
+    stroke: #231F20;}
 
 button:hover,
 button:focus {
