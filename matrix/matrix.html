@@ -448,6 +448,142 @@ $(document).ready(function() {
         $("#buttonHelp").text("Use the Reset Table button above to go back to the larger version of the matrix.");
     }
 });
+// Add classes to columns using jquery
+$(document).ready(function() {
+$('#myTable tr td:nth-child(1)').addClass('hexCodesColumn');$('#myTable tr th:nth-child(1)').addClass('hexCodesColumn');
+$('#myTable tr td:nth-child(2)').addClass('colourExampleColumn');$('#myTable tr th:nth-child(2)').addClass('colourExampleColumn');
+$('#myTable tr td:nth-child(3)').addClass('FFFFFFColumn');$('#myTable tr th:nth-child(3)').addClass('FFFFFFColumn');
+$('#myTable tr td:nth-child(4)').addClass('231F20Column');$('#myTable tr th:nth-child(4)').addClass('231F20Column');
+$('#myTable tr td:nth-child(5)').addClass('00131DColumn');$('#myTable tr th:nth-child(5)').addClass('00131DColumn');
+$('#myTable tr td:nth-child(6)').addClass('495961Column');$('#myTable tr th:nth-child(6)').addClass('495961Column');
+$('#myTable tr td:nth-child(7)').addClass('758D9AColumn');$('#myTable tr th:nth-child(7)').addClass('758D9AColumn');
+$('#myTable tr td:nth-child(8)').addClass('9FB1BDColumn');$('#myTable tr th:nth-child(8)').addClass('9FB1BDColumn');
+$('#myTable tr td:nth-child(9)').addClass('E1E8ECColumn');$('#myTable tr th:nth-child(9)').addClass('E1E8ECColumn');
+$('#myTable tr td:nth-child(10)').addClass('002E3BColumn');$('#myTable tr th:nth-child(10)').addClass('002E3BColumn');
+$('#myTable tr td:nth-child(11)').addClass('005C84Column');$('#myTable tr th:nth-child(11)').addClass('005C84Column');
+$('#myTable tr td:nth-child(12)').addClass('74C9E5Column');$('#myTable tr th:nth-child(12)').addClass('74C9E5Column');
+$('#myTable tr td:nth-child(13)').addClass('3CBAC6Column');$('#myTable tr th:nth-child(13)').addClass('3CBAC6Column');
+$('#myTable tr td:nth-child(14)').addClass('B3DBD2Column');$('#myTable tr th:nth-child(14)').addClass('B3DBD2Column');
+$('#myTable tr td:nth-child(15)').addClass('4BB694Column');$('#myTable tr th:nth-child(15)').addClass('4BB694Column');
+$('#myTable tr td:nth-child(16)').addClass('1E8765Column');$('#myTable tr th:nth-child(16)').addClass('1E8765Column');
+$('#myTable tr td:nth-child(17)').addClass('C1D100Column');$('#myTable tr th:nth-child(17)').addClass('C1D100Column');
+$('#myTable tr td:nth-child(18)').addClass('FCBC00Column');$('#myTable tr th:nth-child(18)').addClass('FCBC00Column');
+$('#myTable tr td:nth-child(19)').addClass('EF7D00Column');$('#myTable tr th:nth-child(19)').addClass('EF7D00Column');
+$('#myTable tr td:nth-child(20)').addClass('E73037Column');$('#myTable tr th:nth-child(20)').addClass('E73037Column');
+$('#myTable tr td:nth-child(21)').addClass('E73238Column');$('#myTable tr th:nth-child(21)').addClass('E73238Column');
+$('#myTable tr td:nth-child(22)').addClass('D5007FColumn');$('#myTable tr th:nth-child(22)').addClass('D5007FColumn');
+$('#myTable tr td:nth-child(23)').addClass('8D3970Column');$('#myTable tr th:nth-child(23)').addClass('8D3970Column');
+});
+
+// Functions to hide columns using jquery
+$(document).ready(function() {
+$.fn._hexCodesColumnHide = function() {$('.hexCodesColumn').hide();}
+$.fn._colourExampleColumnHide = function() {$('.colourExampleColumn').hide();}
+$.fn._FFFFFFColumnHide = function() {$('.FFFFFFColumn').hide();}
+$.fn._231F20ColumnHide = function() {$('.231F20Column').hide();}
+$.fn._00131DColumnHide = function() {$('.00131DColumn').hide();}
+$.fn._495961ColumnHide = function() {$('.495961Column').hide();}
+$.fn._758D9AColumnHide = function() {$('.758D9AColumn').hide();}
+$.fn._9FB1BDColumnHide = function() {$('.9FB1BDColumn').hide();}
+$.fn._E1E8ECColumnHide = function() {$('.E1E8ECColumn').hide();}
+$.fn._002E3BColumnHide = function() {$('.002E3BColumn').hide();}
+$.fn._005C84ColumnHide = function() {$('.005C84Column').hide();}
+$.fn._74C9E5ColumnHide = function() {$('.74C9E5Column').hide();}
+$.fn._3CBAC6ColumnHide = function() {$('.3CBAC6Column').hide();}
+$.fn._B3DBD2ColumnHide = function() {$('.B3DBD2Column').hide();}
+$.fn._4BB694ColumnHide = function() {$('.4BB694Column').hide();}
+$.fn._1E8765ColumnHide = function() {$('.1E8765Column').hide();}
+$.fn._C1D100ColumnHide = function() {$('.C1D100Column').hide();}
+$.fn._FCBC00ColumnHide = function() {$('.FCBC00Column').hide();}
+$.fn._EF7D00ColumnHide = function() {$('.EF7D00Column').hide();}
+$.fn._E73037ColumnHide = function() {$('.E73037Column').hide();}
+$.fn._E73238ColumnHide = function() {$('.E73238Column').hide();}
+$.fn._D5007FColumnHide = function() {$('.D5007FColumn').hide();}
+$.fn._8D3970ColumnHide = function() {$('.8D3970Column').hide();}
+});
+
+// Functions to show columns using jquery
+$(document).ready(function() {
+$.fn._hexCodesColumnShow = function() {$('.hexCodesColumn').show();}
+$.fn._colourExampleColumnShow = function() {$('.colourExampleColumn').show();}
+$.fn._FFFFFFColumnShow = function() {$('.FFFFFFColumn').show();}
+$.fn._231F20ColumnShow = function() {$('.231F20Column').show();}
+$.fn._00131DColumnShow = function() {$('.00131DColumn').show();}
+$.fn._495961ColumnShow = function() {$('.495961Column').show();}
+$.fn._758D9AColumnShow = function() {$('.758D9AColumn').show();}
+$.fn._9FB1BDColumnShow = function() {$('.9FB1BDColumn').show();}
+$.fn._E1E8ECColumnShow = function() {$('.E1E8ECColumn').show();}
+$.fn._002E3BColumnShow = function() {$('.002E3BColumn').show();}
+$.fn._005C84ColumnShow = function() {$('.005C84Column').show();}
+$.fn._74C9E5ColumnShow = function() {$('.74C9E5Column').show();}
+$.fn._3CBAC6ColumnShow = function() {$('.3CBAC6Column').show();}
+$.fn._B3DBD2ColumnShow = function() {$('.B3DBD2Column').show();}
+$.fn._4BB694ColumnShow = function() {$('.4BB694Column').show();}
+$.fn._1E8765ColumnShow = function() {$('.1E8765Column').show();}
+$.fn._C1D100ColumnShow = function() {$('.C1D100Column').show();}
+$.fn._FCBC00ColumnShow = function() {$('.FCBC00Column').show();}
+$.fn._EF7D00ColumnShow = function() {$('.EF7D00Column').show();}
+$.fn._E73037ColumnShow = function() {$('.E73037Column').show();}
+$.fn._E73238ColumnShow = function() {$('.E73238Column').show();}
+$.fn._D5007FColumnShow = function() {$('.D5007FColumn').show();}
+$.fn._8D3970ColumnShow = function() {$('.8D3970Column').show();}
+});
+
+/*
+
+List of jquery functions to show columns:
+
+$.fn._hexCodesColumnShow();
+$.fn._colourExampleColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._758D9AColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._4BB694ColumnShow();
+$.fn._1E8765ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$.fn._EF7D00ColumnShow();
+$.fn._E73037ColumnShow();
+$.fn._E73238ColumnShow();
+$.fn._D5007FColumnShow();
+$.fn._8D3970ColumnShow();
+
+List of jquery functions to hide columns:
+
+$.fn._hexCodesColumnHide();
+$.fn._colourExampleColumnHide();
+$.fn._FFFFFFColumnHide();
+$.fn._231F20ColumnHide();
+$.fn._00131DColumnHide();
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+
+*/
 </script>
 
 <style>
