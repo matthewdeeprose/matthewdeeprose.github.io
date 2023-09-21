@@ -2,8 +2,17 @@
 /* Web ring */
 .a11y-webring-club {
 	border: 0.1rem #e1e8ec solid;}
-
+	
 .infoGTitle {color: #e1e8ec !important;}
+
+	button:disabled,
+	button[disabled] {
+		pointer-events: none;
+		color: #e1e8ec !important;
+		border: 0px !important;
+		background-image: none;
+		background-repeat: repeat;
+	}
 
 lite-youtube {
     border: 0.3rem solid #E1E8EC !important;

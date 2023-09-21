@@ -9,6 +9,17 @@ lite-youtube {
 	border: 0.3rem solid #495961 !important;
 }
 
+/* Style inactive buttons */
+		button:disabled,
+	button[disabled] {
+		pointer-events: none;
+		color: #00131d !important;
+		border: 0px !important;
+			background-color: #fffff4;
+		background-image: none;
+		background-repeat: repeat;
+	}
+
 /* Infographic */
 #infoGraphicBox {
 	border: 1px solid #00131D;

@@ -3,14 +3,7 @@
 margin-top: -1.2rem;		
 	}*/
 	
-	/* For inactive buttons */
-		button:disabled,
-	button[disabled] {
-		pointer-events: none;
-		color: #495961;
-		background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg==");
-		background-repeat: repeat;
-	}
+
 	
 	
 	/* Hide Trichromacy button */
