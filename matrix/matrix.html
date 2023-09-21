@@ -589,6 +589,14 @@ $.fn._8D3970ColumnHide();
 <style>
 
 @media (prefers-color-scheme: dark) {
+	button:disabled,
+	button[disabled] {
+		pointer-events: none;
+		color: #e1e8ec !important;
+		border: 0px !important;
+		background-image: none;
+		background-repeat: repeat;
+	}
     button#Dark {
         display: none;
     }
@@ -1063,8 +1071,9 @@ caption {
 	button:disabled,
 	button[disabled] {
 		pointer-events: none;
-		color: #231F20 !important;
-		background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg==");
+		color: #00131d 
+		border: 0px !important;
+		background-image: none;
 		background-repeat: repeat;
 	}
 
@@ -1298,7 +1307,6 @@ div#linksToExamples {margin-bottom: 0.3rem;}
 </div>
 <div id="afterHeader">
 <div id="explanation">
-<strong>New:</strong> Explore accessible on-brand colour combinations using the <a href="https://matthewdeeprose.github.io/infographic-colour-generator.html">UoS Brand Accessible Colour Suggester</a>.<br/><br />
 When we use our brand palette, we must ensure that the colours we choose for text and graphics have enough contrast to the background colour. Doing so means that the materials we create will be accessible to the largest audience. The table below lists all brand colour combinations. It shows which pairings have the required level of contrast for different uses. These uses include:
 <ul>
 <li>graphics and user interface elements</li>

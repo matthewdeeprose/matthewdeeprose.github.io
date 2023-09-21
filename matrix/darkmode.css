@@ -7,6 +7,15 @@
 		}
 
 
+		button:disabled,
+	button[disabled] {
+		pointer-events: none;
+		color: #00131d !important;
+		border: 0px !important;
+		background-image: none;
+		background-repeat: repeat;
+	}
+
 #myTable td:hover::before,
 #myTable .row:hover::before {
     outline: 0.0rem dotted #FCBC00;
