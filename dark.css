@@ -8,7 +8,7 @@
 	button:disabled,
 	button[disabled] {
 		pointer-events: none;
-		color: #e1e8ec !important;
+		color: #758D9A !important;
 		border: 0px !important;
 		background-image: none;
 		background-repeat: repeat;
