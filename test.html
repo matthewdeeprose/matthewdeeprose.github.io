@@ -44,6 +44,8 @@
 	font-family:"Lucida Grande","Lucida Sans Unicode","DejaVu Sans",Lucida,Arial,Helvetica,sans-serif;
 	}
 	
+	
+	
 		button.vidButton,button.vidButton:active {
 		border: 0px black solid !important;
 				border-radius: 0;	
@@ -904,6 +906,20 @@ figure[data-fullscreen=true] .controls .progress {
 			});
 		}
 	 }
+	 var track_elem = document.querySelector('track');
+
+track_elem.addEventListener('loaded',initialize_test,false); // Bug in FF31 MAC: wrong event name
+track_elem.addEventListener('load',initialize_test,false);
+
+function initialize_test() {
+  var i, j, track, video = document.querySelector('video');
+  track = video.textTracks;
+  for (i=0; i<track.length; i++)
+    for (j=0; j<track[i].cues.length; j++)
+      track[i].cues[j].line = -3;
+}
+
+initialize_test();
 
  })();
  </script>
