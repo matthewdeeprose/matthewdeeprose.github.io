@@ -244,7 +244,7 @@ button:focus {
 	border: 0.2rem solid #231F20 !important;
 }
 
-button:focus:not(:focus-visible) {
+button.regButton:focus:not(:focus-visible) {
 	color: #E1E8EC;
 	background: #231F20;
 	border: 0.2rem solid #E1E8EC !important;
@@ -402,8 +402,8 @@ input:focus {
 }
 
 
-/* Remove focus from mouse, replace with box shadow */
-:focus:not(:focus-visible) {
+ Remove focus from mouse, replace with box shadow 
+a:focus:not(:focus-visible) {
 	outline: 2px transparent solid;
 	border: 0px solid #ffffff;
 	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12);
