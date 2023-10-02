@@ -1,4 +1,13 @@
 /*Light mode */
+
+figure {
+	background-color:#9FB1BD !important;
+		max-height:41rem !important;
+}
+figcaption {
+	color:#00131D;
+}
+
 /* Webring */
 .a11y-webring-club {
 	border: 0.1rem #00131d solid;}
