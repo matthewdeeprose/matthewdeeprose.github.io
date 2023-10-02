@@ -412,30 +412,30 @@ figure[data-fullscreen=true] .controls .progress {
          <main class="page-main" id="main">
             <article class="standard">
                <h1 id="top">Presentation template</h1>
-
-			   	<figure id="videoContainer" data-fullscreen="false">
-		<video id="video" controls preload="metadata">
-			<source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-25807387_1" type="video/mp4">
-			<track label="English" kind="subtitles" srclang="en" src="subtitles/vtt/panel-2-final.vtt" default>
+			   			   	<figure id="videoContainer_id_123_1" data-fullscreen="false">
+		<video id="video_id_123_1" controls preload="metadata">
+			<source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-25761659_1" type="video/mp4">
+			<track label="English" kind="subtitles" srclang="en" src="subtitles/vtt/panel-1-final.vtt" default>
 		</video>
-		<div id="video-controls" class="controls" data-state="hidden">
-			<button id="playpause" class="vidButton" type="button" data-state="play">Play/Pause</button>
-			<button id="stop" class="vidButton"type="button" data-state="stop">Stop</button>
+		<div id="video-controls_id_123_1" class="controls" data-state="hidden">
+			<button id="playpause_id_123_1" class="vidButton" type="button" data-state="play">Play/Pause</button>
+			<button id="stop_id_123_1" class="vidButton"type="button" data-state="stop">Stop</button>
 			<div class="progress">
-				<progress id="progress" value="0" min="0">
-					<span id="progress-bar"></span>
+				<progress id="progress_id_123_1" value="0" min="0">
+					<span id="progress-bar_id_123_1"></span>
 				</progress>
 			</div>
-			<button id="mute" class="vidButton" type="button" data-state="mute">Mute/Unmute</button>
-			<button id="volinc" class="vidButton" type="button" data-state="volup">Vol+</button>
-			<button id="voldec" class="vidButton" type="button" data-state="voldown">Vol-</button>
-			<button id="fs" class="vidButton" type="button" data-state="go-fullscreen">Fullscreen</button>
-			<button id="subtitles" class="vidButton" type="button" data-state="subtitles">CC</button>
+			<button id="mute_id_123_1" class="vidButton" type="button" data-state="mute">Mute/Unmute</button>
+			<button id="volinc_id_123_1" class="vidButton" type="button" data-state="volup">Vol+</button>
+			<button id="voldec_id_123_1" class="vidButton" type="button" data-state="voldown">Vol-</button>
+			<button id="fs_id_123_1" class="vidButton" type="button" data-state="go-fullscreen">Fullscreen</button>
+			<button id="subtitles_id_123_1" class="vidButton" type="button" data-state="subtitles">CC</button>
 		</div>
 		<figcaption>
 			Watch X and Y talk about Z. Captions are available.
 		</figcaption>
 	</figure>
+	<hr />
             </article>
 			      <div id="panel">
          <button class="panelButton" onclick="topFunction()" id="myBtn">
@@ -654,7 +654,7 @@ figure[data-fullscreen=true] .controls .progress {
 	  <script src="scripts/lite-yt-embed.js"></script>
 	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
 	  <script>
-	  (function () {
+ 	  (function () {
 	'use strict';
 
 	// Does the browser actually support the video element?
@@ -662,269 +662,254 @@ figure[data-fullscreen=true] .controls .progress {
 
 	if (supportsVideo) {
 		// Obtain handles to main elements
-		var videoContainer = document.getElementById('videoContainer');
-		var video = document.getElementById('video');
-		var videoControls = document.getElementById('video-controls');
+		var videoContainer_id_123_1 = document.getElementById('videoContainer_id_123_1');
+		var video_id_123_1 = document.getElementById('video_id_123_1');
+		var videoControls_id_123_1 = document.getElementById('video-controls_id_123_1');
 
 		// Hide the default controls
-		video.controls = false;
+		video_id_123_1.controls = false;
 
 		// Display the user defined video controls
-		videoControls.setAttribute('data-state', 'visible');
+		videoControls_id_123_1.setAttribute('data-state', 'visible');
 
 		// Obtain handles to buttons and other elements
-		var playpause = document.getElementById('playpause');
-		var stop = document.getElementById('stop');
-		var mute = document.getElementById('mute');
-		var volinc = document.getElementById('volinc');
-		var voldec = document.getElementById('voldec');
-		var progress = document.getElementById('progress');
-		var progressBar = document.getElementById('progress-bar');
-		var fullscreen = document.getElementById('fs');
-		var subtitles = document.getElementById('subtitles');
+		var playpause_id_123_1 = document.getElementById('playpause_id_123_1');
+		var stop_id_123_1 = document.getElementById('stop_id_123_1');
+		var mute_id_123_1 = document.getElementById('mute_id_123_1');
+		var volinc_id_123_1 = document.getElementById('volinc_id_123_1');
+		var voldec_id_123_1 = document.getElementById('voldec_id_123_1');
+		var progress_id_123_1 = document.getElementById('progress_id_123_1');
+		var progressBar_id_123_1 = document.getElementById('progress-bar_id_123_1');
+		var fullscreen_id_123_1 = document.getElementById('fs_id_123_1');
+		var subtitles_id_123_1 = document.getElementById('subtitles_id_123_1');
 
 		// If the browser doesn't support the progress element, set its state for some different styling
-		var supportsProgress = (document.createElement('progress').max !== undefined);
-		if (!supportsProgress) progress.setAttribute('data-state', 'fake');
+		var supportsProgress_id_123_1 = (document.createElement('progress').max !== undefined);
+		if (!supportsProgress_id_123_1) progress.setAttribute('data-state', 'fake');
 
 		// Check if the browser supports the Fullscreen API
-		var fullScreenEnabled = !!(document.fullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled || document.webkitSupportsFullscreen || document.webkitFullscreenEnabled || document.createElement('video').webkitRequestFullScreen);
+		var fullScreenEnabled_id_123_1 = !!(document.fullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled || document.webkitSupportsFullscreen || document.webkitFullscreenEnabled || document.createElement('video_id_123_1').webkitRequestFullScreen);
 		// If the browser doesn't support the Fulscreen API then hide the fullscreen button
-		if (!fullScreenEnabled) {
+		if (!fullScreenEnabled_id_123_1) {
 			fullscreen.style.display = 'none';
 		}
 
 		// Check the volume
-		var checkVolume = function(dir) {
+		var checkVolume_id_123_1 = function(dir) {
 			if (dir) {
-				var currentVolume = Math.floor(video.volume * 10) / 10;
+				var currentVolume_id_123_1 = Math.floor(video_id_123_1.volume * 10) / 10;
 				if (dir === '+') {
-					if (currentVolume < 1) video.volume += 0.1;
+					if (currentVolume_id_123_1 < 1) video_id_123_1.volume += 0.1;
 				}
 				else if (dir === '-') {
-					if (currentVolume > 0) video.volume -= 0.1;
+					if (currentVolume_id_123_1 > 0) video_id_123_1.volume -= 0.1;
 				}
 				// If the volume has been turned off, also set it as muted
 				// Note: can only do this with the custom control set as when the 'volumechange' event is raised, there is no way to know if it was via a volume or a mute change
-				if (currentVolume <= 0) video.muted = true;
-				else video.muted = false;
+				if (currentVolume_id_123_1 <= 0) video_id_123_1.muted = true;
+				else video_id_123_1.muted = false;
 			}
-			changeButtonState('mute');
+			changeButtonState_id_123_1('mute');
 		}
 
 		// Change the volume
-		var alterVolume = function(dir) {
-			checkVolume(dir);
+		var alterVolume_id_123_1 = function(dir) {
+			checkVolume_id_123_1(dir);
 		}
 
 		// Set the video container's fullscreen state
-		var setFullscreenData = function(state) {
-			videoContainer.setAttribute('data-fullscreen', !!state);
+		var setFullscreenData_id_123_1 = function(state) {
+			videoContainer_id_123_1.setAttribute('data-fullscreen', !!state);
 			// Set the fullscreen button's 'data-state' which allows the correct button image to be set via CSS
-			fullscreen.setAttribute('data-state', !!state ? 'cancel-fullscreen' : 'go-fullscreen');
+			fullscreen_id_123_1.setAttribute('data-state', !!state ? 'cancel-fullscreen' : 'go-fullscreen');
 		}
 
 		// Checks if the document is currently in fullscreen mode
-		var isFullScreen = function() {
+		var isFullScreen_id_123_1 = function() {
 			return !!(document.fullScreen || document.webkitIsFullScreen || document.mozFullScreen || document.msFullscreenElement || document.fullscreenElement);
 		}
 
 		// Fullscreen
-		var handleFullscreen = function() {
+		var handleFullscreen_id_123_1 = function() {
 			// If fullscreen mode is active...	
-			if (isFullScreen()) {
+			if (isFullScreen_id_123_1()) {
 					// ...exit fullscreen mode
 					// (Note: this can only be called on document)
 					if (document.exitFullscreen) document.exitFullscreen();
 					else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
 					else if (document.webkitCancelFullScreen) document.webkitCancelFullScreen();
 					else if (document.msExitFullscreen) document.msExitFullscreen();
-					setFullscreenData(false);
+					setFullscreenData_id_123_1(false);
 				}
 				else {
 					// ...otherwise enter fullscreen mode
 					// (Note: can be called on document, but here the specific element is used as it will also ensure that the element's children, e.g. the custom controls, go fullscreen also)
-					if (videoContainer.requestFullscreen) videoContainer.requestFullscreen();
-					else if (videoContainer.mozRequestFullScreen) videoContainer.mozRequestFullScreen();
-					else if (videoContainer.webkitRequestFullScreen) {
+					if (videoContainer_id_123_1.requestFullscreen) videoContainer_id_123_1.requestFullscreen();
+					else if (videoContainer_id_123_1.mozRequestFullScreen) videoContainer_id_123_1.mozRequestFullScreen();
+					else if (videoContainer_id_123_1.webkitRequestFullScreen) {
 						// Safari 5.1 only allows proper fullscreen on the video element. This also works fine on other WebKit browsers as the following CSS (set in styles.css) hides the default controls that appear again, and 
 						// ensures that our custom controls are visible:
 						// figure[data-fullscreen=true] video::-webkit-media-controls { display:none !important; }
 						// figure[data-fullscreen=true] .controls { z-index:2147483647; }
-						video.webkitRequestFullScreen();
+						video_id_123_1.webkitRequestFullScreen();
 					}
-					else if (videoContainer.msRequestFullscreen) videoContainer.msRequestFullscreen();
-					setFullscreenData(true);
+					else if (videoContainer_id_123_1.msRequestFullscreen) videoContainer_id_123_1.msRequestFullscreen();
+					setFullscreenData_id_123_1(true);
 				}
 			}
 
 		// Only add the events if addEventListener is supported (IE8 and less don't support it, but that will use Flash anyway)
 		if (document.addEventListener) {
 			// Wait for the video's meta data to be loaded, then set the progress bar's max value to the duration of the video
-			video.addEventListener('loadedmetadata', function() {
-				progress.setAttribute('max', video.duration);
+			video_id_123_1.addEventListener('loadedmetadata', function() {
+				progress_id_123_1.setAttribute('max', video_id_123_1.duration);
 			});
 
 			// Changes the button state of certain button's so the correct visuals can be displayed with CSS
-			var changeButtonState = function(type) {
+			var changeButtonState_id_123_1 = function(type) {
 				// Play/Pause button
-				if (type == 'playpause') {
-					if (video.paused || video.ended) {
-						playpause.setAttribute('data-state', 'play');
+				if (type == 'playpause_id_123_1') {
+					if (video_id_123_1.paused || video_id_123_1.ended) {
+						playpause_id_123_1.setAttribute('data-state', 'play');
 					}
 					else {
-						playpause.setAttribute('data-state', 'pause');
+						playpause_id_123_1.setAttribute('data-state', 'pause');
 					}
 				}
 				// Mute button
 				else if (type == 'mute') {
-					mute.setAttribute('data-state', video.muted ? 'unmute' : 'mute');
+					mute.setAttribute('data-state', video_id_123_1.muted ? 'unmute' : 'mute');
 				}
 			}
 
 			// Add event listeners for video specific events
-			video.addEventListener('play', function() {
-				changeButtonState('playpause');
+			video_id_123_1.addEventListener('play', function() {
+				changeButtonState_id_123_1('playpause_id_123_1');
 			}, false);
-			video.addEventListener('pause', function() {
-				changeButtonState('playpause');
+			video_id_123_1.addEventListener('pause', function() {
+				changeButtonState_id_123_1('playpause_id_123_1');
 			}, false);
-			video.addEventListener('volumechange', function() {
-				checkVolume();
+			video_id_123_1.addEventListener('volumechange', function() {
+				checkVolume_id_123_1();
 			}, false);
 
 			// Add events for all buttons			
-			playpause.addEventListener('click', function(e) {
-				if (video.paused || video.ended) video.play();
-				else video.pause();
+			playpause_id_123_1.addEventListener('click', function(e) {
+				if (video_id_123_1.paused || video_id_123_1.ended) video_id_123_1.play();
+				else video_id_123_1.pause();
 			});	
 
 			// Turn off all subtitles
-			for (var i = 0; i < video.textTracks.length; i++) {
-				video.textTracks[i].mode = 'hidden';
+			for (var i = 0; i < video_id_123_1.textTracks.length; i++) {
+				video_id_123_1.textTracks[i].mode = 'hidden';
 			}
 
 			// Creates and returns a menu item for the subtitles language menu
-			var subtitleMenuButtons = [];
-			var createMenuItem = function(id, lang, label) {
-				var listItem = document.createElement('li');
-				var button = listItem.appendChild(document.createElement('button'));
-				button.setAttribute('id', id);
-				button.className = 'subtitles-button';
-				if (lang.length > 0) button.setAttribute('lang', lang);
-				button.value = label;
-				button.setAttribute('data-state', 'inactive');
-				button.appendChild(document.createTextNode(label));
-				button.addEventListener('click', function(e) {
+			var subtitleMenuButtons_id_123_1 = [];
+			var createMenuItem_id_123_1 = function(id, lang, label) {
+				var listItem_id_123_1 = document.createElement('li');
+				var button_id_123_1 = listItem_id_123_1.appendChild(document.createElement('button'));
+				button_id_123_1.setAttribute('id', id);
+				button_id_123_1.className = 'subtitles-button';
+				if (lang.length > 0) button_id_123_1.setAttribute('lang', lang);
+				button_id_123_1.value = label;
+				button_id_123_1.setAttribute('data-state', 'inactive');
+				button_id_123_1.appendChild(document.createTextNode(label));
+				button_id_123_1.addEventListener('click', function(e) {
 					// Set all buttons to inactive
-					subtitleMenuButtons.map(function(v, i, a) {
-						subtitleMenuButtons[i].setAttribute('data-state', 'inactive');
+					subtitleMenuButtons_id_123_1.map(function(v, i, a) {
+						subtitleMenuButtons_id_123_1[i].setAttribute('data-state', 'inactive');
 					});
 					// Find the language to activate
-					var lang = this.getAttribute('lang');
-					for (var i = 0; i < video.textTracks.length; i++) {
+					var lang_id_123_1 = this.getAttribute('lang');
+					for (var i = 0; i < video_id_123_1.textTracks.length; i++) {
 						// For the 'subtitles-off' button, the first condition will never match so all will subtitles be turned off
-						if (video.textTracks[i].language == lang) {
-							video.textTracks[i].mode = 'showing';
+						if (video_id_123_1.textTracks[i].language == lang) {
+							video_id_123_1.textTracks[i].mode = 'showing';
 							this.setAttribute('data-state', 'active');
 						}
 						else {
-							video.textTracks[i].mode = 'hidden';
+							video_id_123_1.textTracks[i].mode = 'hidden';
 						}
 					}
-					subtitlesMenu.style.display = 'none';
+					subtitlesMenu_id_123_1.style.display = 'none';
 				});
-				subtitleMenuButtons.push(button);
-				return listItem;
+				subtitleMenuButtons_id_123_1.push(button_id_123_1);
+				return listItem_id_123_1;
 			}
 			// Go through each one and build a small clickable list, and when each item is clicked on, set its mode to be "showing" and the others to be "hidden"
-			var subtitlesMenu;
-			if (video.textTracks) {
-				var df = document.createDocumentFragment();
-				var subtitlesMenu = df.appendChild(document.createElement('ul'));
-				subtitlesMenu.className = 'subtitles-menu';
-				subtitlesMenu.appendChild(createMenuItem('subtitles-off', '', 'Off'));
-				for (var i = 0; i < video.textTracks.length; i++) {
-					subtitlesMenu.appendChild(createMenuItem('subtitles-' + video.textTracks[i].language, video.textTracks[i].language, video.textTracks[i].label));
+			var subtitlesMenu_id_123_1;
+			if (video_id_123_1.textTracks) {
+				var df_id_123_1 = document.createDocumentFragment();
+				var subtitlesMenu_id_123_1 = df_id_123_1.appendChild(document.createElement('ul'));
+				subtitlesMenu_id_123_1.className = 'subtitles-menu';
+				subtitlesMenu_id_123_1.appendChild(createMenuItem_id_123_1('subtitles-off', '', 'Off'));
+				for (var i = 0; i < video_id_123_1.textTracks.length; i++) {
+					subtitlesMenu_id_123_1.appendChild(createMenuItem_id_123_1('subtitles-' + video_id_123_1.textTracks[i].language, video_id_123_1.textTracks[i].language, video_id_123_1.textTracks[i].label));
 				}
-				videoContainer.appendChild(subtitlesMenu);
+				videoContainer_id_123_1.appendChild(subtitlesMenu_id_123_1);
 			}
-			subtitles.addEventListener('click', function(e) {
-				if (subtitlesMenu) {
-					subtitlesMenu.style.display = (subtitlesMenu.style.display == 'block' ? 'none' : 'block');
+			subtitles_id_123_1.addEventListener('click', function(e) {
+				if (subtitlesMenu_id_123_1) {
+					subtitlesMenu_id_123_1.style.display = (subtitlesMenu_id_123_1.style.display == 'block' ? 'none' : 'block');
 				}
 			});
 
 			// The Media API has no 'stop()' function, so pause the video and reset its time and the progress bar
-			stop.addEventListener('click', function(e) {
-				video.pause();
-				video.currentTime = 0;
-				progress.value = 0;
+			stop_id_123_1.addEventListener('click', function(e) {
+				video_id_123_1.pause();
+				video_id_123_1.currentTime = 0;
+				progress_id_123_1.value = 0;
 				// Update the play/pause button's 'data-state' which allows the correct button image to be set via CSS
-				changeButtonState('playpause');
+				changeButtonState_id_123_1('playpause_id_123_1');
 			});
-			mute.addEventListener('click', function(e) {
-				video.muted = !video.muted;
-				changeButtonState('mute');
+			mute_id_123_1.addEventListener('click', function(e) {
+				video_id_123_1.muted = !video.muted;
+				changeButtonState_id_123_1('mute');
 			});
-			volinc.addEventListener('click', function(e) {
-				alterVolume('+');
+			volinc_id_123_1.addEventListener('click', function(e) {
+				alterVolume_id_123_1('+');
 			});
-			voldec.addEventListener('click', function(e) {
-				alterVolume('-');
+			voldec_id_123_1.addEventListener('click', function(e) {
+				alterVolume_id_123_1('-');
 			});
-			fs.addEventListener('click', function(e) {
-				handleFullscreen();
+			fs_id_123_1.addEventListener('click', function(e) {
+				handleFullscreen_id_123_1();
 			});
 
 			// As the video is playing, update the progress bar
-			video.addEventListener('timeupdate', function() {
+			video_id_123_1.addEventListener('timeupdate', function() {
 				// For mobile browsers, ensure that the progress element's max attribute is set
-				if (!progress.getAttribute('max')) progress.setAttribute('max', video.duration);
-				progress.value = video.currentTime;
-				progressBar.style.width = Math.floor((video.currentTime / video.duration) * 100) + '%';
+				if (!progress_id_123_1.getAttribute('max')) progress_id_123_1.setAttribute('max', video_id_123_1.duration);
+				progress_id_123_1.value = video_id_123_1.currentTime;
+				progressBar_id_123_1.style.width = Math.floor((video_id_123_1.currentTime / video_id_123_1.duration) * 100) + '%';
 			});
 
 			// React to the user clicking within the progress bar
-			progress.addEventListener('click', function(e) {
+			progress_id_123_1.addEventListener('click', function(e) {
 				// Also need to take the parents into account here as .controls and figure now have position:relative
-				var pos = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
-				video.currentTime = pos * video.duration;
+				var pos_id_123_1 = (e.pageX  - (this.offsetLeft + this.offsetParent.offsetLeft + this.offsetParent.offsetParent.offsetLeft)) / this.offsetWidth;
+				video_id_123_1.currentTime = pos_id_123_1 * video_id_123_1.duration;
 			});
 
 			// Listen for fullscreen change events (from other controls, e.g. right clicking on the video itself)
 			document.addEventListener('fullscreenchange', function(e) {
-				setFullscreenData(!!(document.fullScreen || document.fullscreenElement));
+				setFullscreenData_id_123_1(!!(document.fullScreen || document.fullscreenElement));
 			});
 			document.addEventListener('webkitfullscreenchange', function() {
-				setFullscreenData(!!document.webkitIsFullScreen);
+				setFullscreenData_id_123_1(!!document.webkitIsFullScreen);
 			});
 			document.addEventListener('mozfullscreenchange', function() {
-				setFullscreenData(!!document.mozFullScreen);
+				setFullscreenData_id_123_1(!!document.mozFullScreen);
 			});
 			document.addEventListener('msfullscreenchange', function() {
-				setFullscreenData(!!document.msFullscreenElement);
+				setFullscreenData_id_123_1(!!document.msFullscreenElement);
 			});
 		}
 	 }
-	 var track_elem = document.querySelector('track');
 
-track_elem.addEventListener('loaded',initialize_test,false); // Bug in FF31 MAC: wrong event name
-track_elem.addEventListener('load',initialize_test,false);
-
-function initialize_test() {
-  var i, j, track, video = document.querySelector('video');
-  track = video.textTracks;
-  for (i=0; i<track.length; i++)
-    for (j=0; j<track[i].cues.length; j++)
-      track[i].cues[j].line = -3;
-}
-
-initialize_test();
 
  })();
- 
-
  </script>
    </body>
 </html>
