@@ -52,12 +52,18 @@
         transition: 0s linear !important;
       }
 
-      button.vidButton:hover,
-      button.vidButton:focus {
+      button.vidButton:focus-visible {
+        box-shadow: 0 0 0 0.1rem rgba(0, 0, 0, 0) !important;
+        outline: 2px transparent solid !important;
+        border: 2px solid black !important;
+      }
+
+      button.vidButton:hover,  button.vidButton:focus:not(:focus-visible) {
         box-shadow: 0 0 0 0.1rem rgba(0, 0, 0, 0) !important;
         outline: 2px transparent solid !important;
         border-bottom: 2px solid black !important;
       }
+
 
       figure {
         position: relative;
@@ -1877,7 +1883,8 @@
 	    <script>
       (function() {
         'use strict';
-        // Does the browser actually support the video element?
+
+		// Does the browser actually support the video element?
         var supportsVideo = !!document.createElement('video').canPlayType;
         if (supportsVideo) {
           // Obtain handles to main elements
@@ -2111,7 +2118,7 @@
           for (i = 0; i < track.length; i++)
             for (j = 0; j < track[i].cues.length; j++) track[i].cues[j].line = -3;
         }
-        initialize_test_id_123_5();
+        initialize_test_id_123_5();		
       })();
     </script>
   </body>
