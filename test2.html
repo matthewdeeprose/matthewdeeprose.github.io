@@ -49,13 +49,14 @@
 		button.vidButton,button.vidButton:active {
 		border: 0px black solid !important;
 				border-radius: 0;	
-		
+		transition: 0s linear !important;
 	}
 	
 	button.vidButton:hover, button.vidButton:focus {
 		box-shadow: 0 0 0 0.1rem rgba(0, 0, 0, 0) !important;
 		outline: 2px transparent solid !important;
 		border-bottom: 2px solid black !important;
+		
 		}
 		 
 figure {
@@ -86,10 +87,10 @@ video {
 }
 .controls {
 	overflow:hidden;
-	background:transparent;
 	width:100%;
 	height: 2rem; /*7%;*/ /* of figure's height */
 	position:relative;
+	background-color: #9fb1bd;
 }
 .controls[data-state=hidden] {
 	display:none;
@@ -310,7 +311,7 @@ figure[data-fullscreen=true] .controls .progress {
 		height:40px;
 		height:2.5rem;
 		margin-top:2.5rem;
-	}
+		}
 	.controls .progress {
 		/*display:table-subtitle;*/ /* this trick doesn't work as elements are floated and the layout doesn't work */
 		position:absolute;
@@ -413,7 +414,7 @@ figure[data-fullscreen=true] .controls .progress {
             <article class="standard">
                <h1 id="top">Presentation template</h1>
 			   			   	<figure id="videoContainer_id_123_1" data-fullscreen="false">
-		<video id="video_id_123_1" controls preload="auto" poster="panel-1-final.PNG">
+		<video id="video_id_123_1" controls preload="auto" controlsList="nodownload" poster="panel-1-final.PNG">
 			<source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-25761659_1" type="video/mp4">
 			<track label="English" kind="subtitles" srclang="en" src="subtitles/vtt/panel-1-final.vtt" default>
 		</video>
