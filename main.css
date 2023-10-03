@@ -1,3 +1,24 @@
+/* Quotes */
+blockquote {
+	border-left: 10px solid #758D9A;
+	margin: 1.5em 10px;
+	padding: 0.5em 10px;
+	quotes: "\201C""\201D""\2018""\2019";
+}
+blockquote:before {
+	color: #758D9A;
+	content: "\201C";
+	font-size: 4em;
+	line-height: 0.1em;
+	margin-right: 0.25em;
+	vertical-align: -0.4em;
+}
+
+cite {
+	font-style: normal;
+	font-weight: bold;
+}
+
 /* Webring */
 .a11y-webring-club {
 	margin-top: 1.5rem;
@@ -827,7 +848,7 @@ img.articleImage {
 img.articleImageLeft {
     width: 40%;
     float: left;
-    margin: 1rem;
+    margin: 1.8rem;
     border-radius: 0.5rem;
 }
 
