@@ -5,6 +5,11 @@ blockquote {
 	padding: 0.5em 10px;
 	quotes: "\201C""\201D""\2018""\2019";
 }
+
+blockquote p {
+	font-size: 1.3rem;
+	font-family: Arial, sans-serif;
+}
 blockquote:before {
 	color: #758D9A;
 	content: "\201C";
