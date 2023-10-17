@@ -448,11 +448,184 @@ $(document).ready(function() {
         $("#buttonHelp").text("Use the Reset Table button above to go back to the larger version of the matrix.");
     }
 });
+// Add classes to columns using jquery
+$(document).ready(function() {
+$('#myTable tr td:nth-child(1)').addClass('hexCodesColumn');$('#myTable tr th:nth-child(1)').addClass('hexCodesColumn');
+$('#myTable tr td:nth-child(2)').addClass('colourExampleColumn');$('#myTable tr th:nth-child(2)').addClass('colourExampleColumn');
+$('#myTable tr td:nth-child(3)').addClass('FFFFFFColumn');$('#myTable tr th:nth-child(3)').addClass('FFFFFFColumn');
+$('#myTable tr td:nth-child(4)').addClass('231F20Column');$('#myTable tr th:nth-child(4)').addClass('231F20Column');
+$('#myTable tr td:nth-child(5)').addClass('00131DColumn');$('#myTable tr th:nth-child(5)').addClass('00131DColumn');
+$('#myTable tr td:nth-child(6)').addClass('495961Column');$('#myTable tr th:nth-child(6)').addClass('495961Column');
+$('#myTable tr td:nth-child(7)').addClass('758D9AColumn');$('#myTable tr th:nth-child(7)').addClass('758D9AColumn');
+$('#myTable tr td:nth-child(8)').addClass('9FB1BDColumn');$('#myTable tr th:nth-child(8)').addClass('9FB1BDColumn');
+$('#myTable tr td:nth-child(9)').addClass('E1E8ECColumn');$('#myTable tr th:nth-child(9)').addClass('E1E8ECColumn');
+$('#myTable tr td:nth-child(10)').addClass('002E3BColumn');$('#myTable tr th:nth-child(10)').addClass('002E3BColumn');
+$('#myTable tr td:nth-child(11)').addClass('005C84Column');$('#myTable tr th:nth-child(11)').addClass('005C84Column');
+$('#myTable tr td:nth-child(12)').addClass('74C9E5Column');$('#myTable tr th:nth-child(12)').addClass('74C9E5Column');
+$('#myTable tr td:nth-child(13)').addClass('3CBAC6Column');$('#myTable tr th:nth-child(13)').addClass('3CBAC6Column');
+$('#myTable tr td:nth-child(14)').addClass('B3DBD2Column');$('#myTable tr th:nth-child(14)').addClass('B3DBD2Column');
+$('#myTable tr td:nth-child(15)').addClass('4BB694Column');$('#myTable tr th:nth-child(15)').addClass('4BB694Column');
+$('#myTable tr td:nth-child(16)').addClass('1E8765Column');$('#myTable tr th:nth-child(16)').addClass('1E8765Column');
+$('#myTable tr td:nth-child(17)').addClass('C1D100Column');$('#myTable tr th:nth-child(17)').addClass('C1D100Column');
+$('#myTable tr td:nth-child(18)').addClass('FCBC00Column');$('#myTable tr th:nth-child(18)').addClass('FCBC00Column');
+$('#myTable tr td:nth-child(19)').addClass('EF7D00Column');$('#myTable tr th:nth-child(19)').addClass('EF7D00Column');
+$('#myTable tr td:nth-child(20)').addClass('E73037Column');$('#myTable tr th:nth-child(20)').addClass('E73037Column');
+$('#myTable tr td:nth-child(21)').addClass('E73238Column');$('#myTable tr th:nth-child(21)').addClass('E73238Column');
+$('#myTable tr td:nth-child(22)').addClass('D5007FColumn');$('#myTable tr th:nth-child(22)').addClass('D5007FColumn');
+$('#myTable tr td:nth-child(23)').addClass('8D3970Column');$('#myTable tr th:nth-child(23)').addClass('8D3970Column');
+});
+
+// Functions to hide columns using jquery
+$(document).ready(function() {
+$.fn._hexCodesColumnHide = function() {$('.hexCodesColumn').hide();}
+$.fn._colourExampleColumnHide = function() {$('.colourExampleColumn').hide();}
+$.fn._FFFFFFColumnHide = function() {$('.FFFFFFColumn').hide();}
+$.fn._231F20ColumnHide = function() {$('.231F20Column').hide();}
+$.fn._00131DColumnHide = function() {$('.00131DColumn').hide();}
+$.fn._495961ColumnHide = function() {$('.495961Column').hide();}
+$.fn._758D9AColumnHide = function() {$('.758D9AColumn').hide();}
+$.fn._9FB1BDColumnHide = function() {$('.9FB1BDColumn').hide();}
+$.fn._E1E8ECColumnHide = function() {$('.E1E8ECColumn').hide();}
+$.fn._002E3BColumnHide = function() {$('.002E3BColumn').hide();}
+$.fn._005C84ColumnHide = function() {$('.005C84Column').hide();}
+$.fn._74C9E5ColumnHide = function() {$('.74C9E5Column').hide();}
+$.fn._3CBAC6ColumnHide = function() {$('.3CBAC6Column').hide();}
+$.fn._B3DBD2ColumnHide = function() {$('.B3DBD2Column').hide();}
+$.fn._4BB694ColumnHide = function() {$('.4BB694Column').hide();}
+$.fn._1E8765ColumnHide = function() {$('.1E8765Column').hide();}
+$.fn._C1D100ColumnHide = function() {$('.C1D100Column').hide();}
+$.fn._FCBC00ColumnHide = function() {$('.FCBC00Column').hide();}
+$.fn._EF7D00ColumnHide = function() {$('.EF7D00Column').hide();}
+$.fn._E73037ColumnHide = function() {$('.E73037Column').hide();}
+$.fn._E73238ColumnHide = function() {$('.E73238Column').hide();}
+$.fn._D5007FColumnHide = function() {$('.D5007FColumn').hide();}
+$.fn._8D3970ColumnHide = function() {$('.8D3970Column').hide();}
+});
+
+// Functions to show columns using jquery
+$(document).ready(function() {
+$.fn._hexCodesColumnShow = function() {$('.hexCodesColumn').show();}
+$.fn._colourExampleColumnShow = function() {$('.colourExampleColumn').show();}
+$.fn._FFFFFFColumnShow = function() {$('.FFFFFFColumn').show();}
+$.fn._231F20ColumnShow = function() {$('.231F20Column').show();}
+$.fn._00131DColumnShow = function() {$('.00131DColumn').show();}
+$.fn._495961ColumnShow = function() {$('.495961Column').show();}
+$.fn._758D9AColumnShow = function() {$('.758D9AColumn').show();}
+$.fn._9FB1BDColumnShow = function() {$('.9FB1BDColumn').show();}
+$.fn._E1E8ECColumnShow = function() {$('.E1E8ECColumn').show();}
+$.fn._002E3BColumnShow = function() {$('.002E3BColumn').show();}
+$.fn._005C84ColumnShow = function() {$('.005C84Column').show();}
+$.fn._74C9E5ColumnShow = function() {$('.74C9E5Column').show();}
+$.fn._3CBAC6ColumnShow = function() {$('.3CBAC6Column').show();}
+$.fn._B3DBD2ColumnShow = function() {$('.B3DBD2Column').show();}
+$.fn._4BB694ColumnShow = function() {$('.4BB694Column').show();}
+$.fn._1E8765ColumnShow = function() {$('.1E8765Column').show();}
+$.fn._C1D100ColumnShow = function() {$('.C1D100Column').show();}
+$.fn._FCBC00ColumnShow = function() {$('.FCBC00Column').show();}
+$.fn._EF7D00ColumnShow = function() {$('.EF7D00Column').show();}
+$.fn._E73037ColumnShow = function() {$('.E73037Column').show();}
+$.fn._E73238ColumnShow = function() {$('.E73238Column').show();}
+$.fn._D5007FColumnShow = function() {$('.D5007FColumn').show();}
+$.fn._8D3970ColumnShow = function() {$('.8D3970Column').show();}
+});
+
+/*
+
+List of jquery functions to show columns:
+
+$.fn._hexCodesColumnShow();
+$.fn._colourExampleColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._758D9AColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._4BB694ColumnShow();
+$.fn._1E8765ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$.fn._EF7D00ColumnShow();
+$.fn._E73037ColumnShow();
+$.fn._E73238ColumnShow();
+$.fn._D5007FColumnShow();
+$.fn._8D3970ColumnShow();
+
+List of jquery functions to hide columns:
+
+$.fn._hexCodesColumnHide();
+$.fn._colourExampleColumnHide();
+$.fn._FFFFFFColumnHide();
+$.fn._231F20ColumnHide();
+$.fn._00131DColumnHide();
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+
+*/
+
+	  
+// ShowHide Functions Begins
+function showHideFFFFFF(){document.getElementById("select-FFFFFF").checked?($.fn._FFFFFFColumnShow(),$("#buttonHelp").text("#FFFFFF column included in Matrix."),$("#buttonHelp").show()):($.fn._FFFFFFColumnHide(),$("#buttonHelp").text("#FFFFFF column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide231F20(){document.getElementById("select-231F20").checked?($.fn._231F20ColumnShow(),$("#buttonHelp").text("#231F20 column included in Matrix."),$("#buttonHelp").show()):($.fn._231F20ColumnHide(),$("#buttonHelp").text("#231F20 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide00131D(){document.getElementById("select-00131D").checked?($.fn._00131DColumnShow(),$("#buttonHelp").text("#00131D column included in Matrix."),$("#buttonHelp").show()):($.fn._00131DColumnHide(),$("#buttonHelp").text("#00131D column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide495961(){document.getElementById("select-495961").checked?($.fn._495961ColumnShow(),$("#buttonHelp").text("#495961 column included in Matrix."),$("#buttonHelp").show()):($.fn._495961ColumnHide(),$("#buttonHelp").text("#495961 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide758D9A(){document.getElementById("select-758D9A").checked?($.fn._758D9AColumnShow(),$("#buttonHelp").text("#758D9A column included in Matrix."),$("#buttonHelp").show()):($.fn._758D9AColumnHide(),$("#buttonHelp").text("#758D9A column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide9FB1BD(){document.getElementById("select-9FB1BD").checked?($.fn._9FB1BDColumnShow(),$("#buttonHelp").text("#9FB1BD column included in Matrix."),$("#buttonHelp").show()):($.fn._9FB1BDColumnHide(),$("#buttonHelp").text("#9FB1BD column hidden from Matrix."),$("#buttonHelp").show())}
+function showHideE1E8EC(){document.getElementById("select-E1E8EC").checked?($.fn._E1E8ECColumnShow(),$("#buttonHelp").text("#E1E8EC column included in Matrix."),$("#buttonHelp").show()):($.fn._E1E8ECColumnHide(),$("#buttonHelp").text("#E1E8EC column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide002E3B(){document.getElementById("select-002E3B").checked?($.fn._002E3BColumnShow(),$("#buttonHelp").text("#002E3B column included in Matrix."),$("#buttonHelp").show()):($.fn._002E3BColumnHide(),$("#buttonHelp").text("#002E3B column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide005C84(){document.getElementById("select-005C84").checked?($.fn._005C84ColumnShow(),$("#buttonHelp").text("#005C84 column included in Matrix."),$("#buttonHelp").show()):($.fn._005C84ColumnHide(),$("#buttonHelp").text("#005C84 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide74C9E5(){document.getElementById("select-74C9E5").checked?($.fn._74C9E5ColumnShow(),$("#buttonHelp").text("#74C9E5 column included in Matrix."),$("#buttonHelp").show()):($.fn._74C9E5ColumnHide(),$("#buttonHelp").text("#74C9E5 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide3CBAC6(){document.getElementById("select-3CBAC6").checked?($.fn._3CBAC6ColumnShow(),$("#buttonHelp").text("#3CBAC6 column included in Matrix."),$("#buttonHelp").show()):($.fn._3CBAC6ColumnHide(),$("#buttonHelp").text("#3CBAC6 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHideB3DBD2(){document.getElementById("select-B3DBD2").checked?($.fn._B3DBD2ColumnShow(),$("#buttonHelp").text("#B3DBD2 column included in Matrix."),$("#buttonHelp").show()):($.fn._B3DBD2ColumnHide(),$("#buttonHelp").text("#B3DBD2 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide4BB694(){document.getElementById("select-4BB694").checked?($.fn._4BB694ColumnShow(),$("#buttonHelp").text("#4BB694 column included in Matrix."),$("#buttonHelp").show()):($.fn._4BB694ColumnHide(),$("#buttonHelp").text("#4BB694 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide1E8765(){document.getElementById("select-1E8765").checked?($.fn._1E8765ColumnShow(),$("#buttonHelp").text("#1E8765 column included in Matrix."),$("#buttonHelp").show()):($.fn._1E8765ColumnHide(),$("#buttonHelp").text("#1E8765 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHideC1D100(){document.getElementById("select-C1D100").checked?($.fn._C1D100ColumnShow(),$("#buttonHelp").text("#C1D100 column included in Matrix."),$("#buttonHelp").show()):($.fn._C1D100ColumnHide(),$("#buttonHelp").text("#C1D100 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHideFCBC00(){document.getElementById("select-FCBC00").checked?($.fn._FCBC00ColumnShow(),$("#buttonHelp").text("#FCBC00 column included in Matrix."),$("#buttonHelp").show()):($.fn._FCBC00ColumnHide(),$("#buttonHelp").text("#FCBC00 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHideEF7D00(){document.getElementById("select-EF7D00").checked?($.fn._EF7D00ColumnShow(),$("#buttonHelp").text("#EF7D00 column included in Matrix."),$("#buttonHelp").show()):($.fn._EF7D00ColumnHide(),$("#buttonHelp").text("#EF7D00 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHideE73037(){document.getElementById("select-E73037").checked?($.fn._E73037ColumnShow(),$("#buttonHelp").text("#E73037 column included in Matrix."),$("#buttonHelp").show()):($.fn._E73037ColumnHide(),$("#buttonHelp").text("#E73037 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHideE73238(){document.getElementById("select-E73238").checked?($.fn._E73238ColumnShow(),$("#buttonHelp").text("#E73238 column included in Matrix."),$("#buttonHelp").show()):($.fn._E73238ColumnHide(),$("#buttonHelp").text("#E73238 column hidden from Matrix."),$("#buttonHelp").show())}
+function showHideD5007F(){document.getElementById("select-D5007F").checked?($.fn._D5007FColumnShow(),$("#buttonHelp").text("#D5007F column included in Matrix."),$("#buttonHelp").show()):($.fn._D5007FColumnHide(),$("#buttonHelp").text("#D5007F column hidden from Matrix."),$("#buttonHelp").show())}
+function showHide8D3970(){document.getElementById("select-8D3970").checked?($.fn._8D3970ColumnShow(),$("#buttonHelp").text("#8D3970 column included in Matrix."),$("#buttonHelp").show()):($.fn._8D3970ColumnHide(),$("#buttonHelp").text("#8D3970 column hidden from Matrix."),$("#buttonHelp").show())}
+
+
 </script>
 
 <style>
 
 @media (prefers-color-scheme: dark) {
+	.colorBox {
+		border: #E1E8EC 2px solid !important;
+	}
+	button:disabled,
+	button[disabled] {
+		pointer-events: none;
+		color: #e1e8ec !important;
+		border: 0px !important;
+		background-image: none;
+		background-repeat: repeat;
+	}
     button#Dark {
         display: none;
     }
@@ -556,13 +729,13 @@ $(document).ready(function() {
     }
     button:hover,
     button:focus {
-	background-color: #E1E8EC !important;
-	color: #00131D !important;
+	background-color: #231F20   !important;
+	color: #E1E8EC  !important;
 	outline: 2px transparent solid !important;
 	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
-	transition: .3s linear !important;
+	transition: .3s linear;
 	border: #e1e8ec 1px solid !important;
-	stroke:#231F20 !important;
+	stroke: #E1E8EC  !important;
     }
     /* Details and Summary styling */
     details {
@@ -625,7 +798,17 @@ $(document).ready(function() {
         border: #FCBC00 solid 1rem !important;
         outline: 0px solid #74C9E5 !important;
     }
+/* Dark Mode ends */
 }
+
+	.colorBox {
+		outline: transparent solid 2px;
+	}
+
+.colorBox {
+	border: #00131D 2px solid;
+}
+
 /* Hide Trichromacy button */
 #showTrich {
 	display:none;
@@ -823,12 +1006,12 @@ button {
 
 button:hover,
 button:focus {
-	transition: .3s linear !important;
-	background-color: #E1E8EC !important;
-	color: #00131D !important;
-	outline: 2px transparent solid !important;
-	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
-	border: #00131D 1px solid !important;
+	transition: .3s linear;
+	background-color: #E1E8EC;
+	color: #00131D;
+	outline: 2px transparent solid;
+	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4;
+	border: #00131D 1px solid ;
 }
 
 button:active {
@@ -927,8 +1110,9 @@ caption {
 	button:disabled,
 	button[disabled] {
 		pointer-events: none;
-		color: #231F20 !important;
-		background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg==");
+		color: #00131d 
+		border: 0px !important;
+		background-image: none;
 		background-repeat: repeat;
 	}
 
@@ -1162,7 +1346,6 @@ div#linksToExamples {margin-bottom: 0.3rem;}
 </div>
 <div id="afterHeader">
 <div id="explanation">
-<strong>New:</strong> Explore accessible on-brand colour combinations using the <a href="https://matthewdeeprose.github.io/infographic-colour-generator.html">UoS Brand Accessible Colour Suggester</a>.<br/><br />
 When we use our brand palette, we must ensure that the colours we choose for text and graphics have enough contrast to the background colour. Doing so means that the materials we create will be accessible to the largest audience. The table below lists all brand colour combinations. It shows which pairings have the required level of contrast for different uses. These uses include:
 <ul>
 <li>graphics and user interface elements</li>
@@ -1225,14 +1408,40 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
                </fieldset>
             </div>
 </div>
+
+
+
+
+<!-- Begin Inputs -->
+<fieldset><legend>Filter colours</legend>
+<input class="matrixInput" type="checkbox" id="select-FFFFFF" name="FFFFFF-select" onchange="showHideFFFFFF()" checked /><label for="select-FFFFFF"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #FFFFFF">&nbsp;&nbsp;&nbsp;</span> #FFFFFF</label>
+<input class="matrixInput" type="checkbox" id="select-231F20" name="231F20-select" onchange="showHide231F20()" checked /><label for="select-231F20"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #231F20">&nbsp;&nbsp;&nbsp;</span> #231F20</label>
+<input class="matrixInput" type="checkbox" id="select-00131D" name="00131D-select" onchange="showHide00131D()" checked /><label for="select-00131D"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #00131D">&nbsp;&nbsp;&nbsp;</span> #00131D</label>
+<input class="matrixInput" type="checkbox" id="select-495961" name="495961-select" onchange="showHide495961()" checked /><label for="select-495961"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #495961">&nbsp;&nbsp;&nbsp;</span> #495961</label>
+<input class="matrixInput" type="checkbox" id="select-758D9A" name="758D9A-select" onchange="showHide758D9A()" checked /><label for="select-758D9A"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #758D9A">&nbsp;&nbsp;&nbsp;</span> #758D9A</label>
+<input class="matrixInput" type="checkbox" id="select-9FB1BD" name="9FB1BD-select" onchange="showHide9FB1BD()" checked /><label for="select-9FB1BD"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #9FB1BD">&nbsp;&nbsp;&nbsp;</span> #9FB1BD</label>
+<input class="matrixInput" type="checkbox" id="select-E1E8EC" name="E1E8EC-select" onchange="showHideE1E8EC()" checked /><label for="select-E1E8EC"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E1E8EC">&nbsp;&nbsp;&nbsp;</span> #E1E8EC</label>
+<input class="matrixInput" type="checkbox" id="select-002E3B" name="002E3B-select" onchange="showHide002E3B()" checked /><label for="select-002E3B"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #002E3B">&nbsp;&nbsp;&nbsp;</span> #002E3B</label>
+<input class="matrixInput" type="checkbox" id="select-005C84" name="005C84-select" onchange="showHide005C84()" checked /><label for="select-005C84"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #005C84">&nbsp;&nbsp;&nbsp;</span> #005C84</label>
+<input class="matrixInput" type="checkbox" id="select-74C9E5" name="74C9E5-select" onchange="showHide74C9E5()" checked /><label for="select-74C9E5"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #74C9E5">&nbsp;&nbsp;&nbsp;</span> #74C9E5</label>
+<input class="matrixInput" type="checkbox" id="select-3CBAC6" name="3CBAC6-select" onchange="showHide3CBAC6()" checked /><label for="select-3CBAC6"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #3CBAC6">&nbsp;&nbsp;&nbsp;</span> #3CBAC6</label>
+<input class="matrixInput" type="checkbox" id="select-B3DBD2" name="B3DBD2-select" onchange="showHideB3DBD2()" checked /><label for="select-B3DBD2"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #B3DBD2">&nbsp;&nbsp;&nbsp;</span> #B3DBD2</label>
+<input class="matrixInput" type="checkbox" id="select-4BB694" name="4BB694-select" onchange="showHide4BB694()" checked /><label for="select-4BB694"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #4BB694">&nbsp;&nbsp;&nbsp;</span> #4BB694</label>
+<input class="matrixInput" type="checkbox" id="select-1E8765" name="1E8765-select" onchange="showHide1E8765()" checked /><label for="select-1E8765"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #1E8765">&nbsp;&nbsp;&nbsp;</span> #1E8765</label>
+<input class="matrixInput" type="checkbox" id="select-C1D100" name="C1D100-select" onchange="showHideC1D100()" checked /><label for="select-C1D100"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #C1D100">&nbsp;&nbsp;&nbsp;</span> #C1D100</label>
+<input class="matrixInput" type="checkbox" id="select-FCBC00" name="FCBC00-select" onchange="showHideFCBC00()" checked /><label for="select-FCBC00"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #FCBC00">&nbsp;&nbsp;&nbsp;</span> #FCBC00</label>
+<input class="matrixInput" type="checkbox" id="select-EF7D00" name="EF7D00-select" onchange="showHideEF7D00()" checked /><label for="select-EF7D00"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #EF7D00">&nbsp;&nbsp;&nbsp;</span> #EF7D00</label>
+<input class="matrixInput" type="checkbox" id="select-E73037" name="E73037-select" onchange="showHideE73037()" checked /><label for="select-E73037"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E73037">&nbsp;&nbsp;&nbsp;</span> #E73037</label>
+<input class="matrixInput" type="checkbox" id="select-E73238" name="E73238-select" onchange="showHideE73238()" checked /><label for="select-E73238"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E73238">&nbsp;&nbsp;&nbsp;</span> #E73238</label>
+<input class="matrixInput" type="checkbox" id="select-D5007F" name="D5007F-select" onchange="showHideD5007F()" checked /><label for="select-D5007F"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #D5007F">&nbsp;&nbsp;&nbsp;</span> #D5007F</label>
+<input class="matrixInput" type="checkbox" id="select-8D3970" name="8D3970-select" onchange="showHide8D3970()" checked /><label for="select-8D3970"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #8D3970">&nbsp;&nbsp;&nbsp;</span> #8D3970</label>
+</fieldset>
+
+<!-- End Inputs -->
 <div id="buttonHelp" aria-live="polite"></div><br />
 </div>
 </nav>
 <main id="main">
-
-
-
-
 <div id="Matrix"><table id="myTable">
 <caption>
 Colour Accessibility Matrix.  Foreground colours are the columns, background colours are the rows.  Where a foreground column and background row intersect the cell shows the Web Content Accessibility Guidline (WCAG) contrast complicance level of the two colours when used together.
@@ -4989,7 +5198,7 @@ Additional tools used are:
 <li><a href="https://sourceforge.net/projects/command-output-to-html-table/">Tabulate.sh</a> by <a href="https://sourceforge.net/u/nathan-sr/profile/">Nathan S.R.</a></li>
 <li><a href="https://raw.githubusercontent.com/DaltonLens/libDaltonLens/master/svg/cvd_svg_filters.html">DaltonLens SVG filters</a>.</li>
 <li><a href="https://systemuicons.com/">System UIcons</a> by <a href="https://corey.ginnivan.net/">Corey Ginnivan</a>.</li>
-<li><a href="https://iros.github.io/patternfills/sample_css.html">Pattern Fills: CSS Examples</a> by <a href="http://ireneros.com/">Irene Ros</a> is used for changing the appearance of inactive buttons.</li>
+<li><a href="https://jquery.com/">jQuery</a> to help make some of the interactions easier to implement.</li>
 </ul>
 Whilst I have attempted to follow good practice and make this content as accessible as possible, there is always room for improvement.  Send any feedback about the matrix and any suggestions for improvements to Matthew Deeprose by <a href="https://www.linkedin.com/in/mattdeeprose/">connecting on LinkedIn</a>.
 </details>
