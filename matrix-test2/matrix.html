@@ -584,8 +584,6 @@ $.fn._D5007FColumnHide();
 $.fn._8D3970ColumnHide();
 
 */
-
-	  
 // ShowHide Functions Begins
 function showHideFFFFFF(){document.getElementById("select-FFFFFF").checked?($.fn._FFFFFFColumnShow(),$("#buttonHelp").text("#FFFFFF column included in Matrix."),$("#buttonHelp").show()):($.fn._FFFFFFColumnHide(),$("#buttonHelp").text("#FFFFFF column hidden from Matrix."),$("#buttonHelp").show())}
 function showHide231F20(){document.getElementById("select-231F20").checked?($.fn._231F20ColumnShow(),$("#buttonHelp").text("#231F20 column included in Matrix."),$("#buttonHelp").show()):($.fn._231F20ColumnHide(),$("#buttonHelp").text("#231F20 column hidden from Matrix."),$("#buttonHelp").show())}
@@ -609,7 +607,92 @@ function showHideE73238(){document.getElementById("select-E73238").checked?($.fn
 function showHideD5007F(){document.getElementById("select-D5007F").checked?($.fn._D5007FColumnShow(),$("#buttonHelp").text("#D5007F column included in Matrix."),$("#buttonHelp").show()):($.fn._D5007FColumnHide(),$("#buttonHelp").text("#D5007F column hidden from Matrix."),$("#buttonHelp").show())}
 function showHide8D3970(){document.getElementById("select-8D3970").checked?($.fn._8D3970ColumnShow(),$("#buttonHelp").text("#8D3970 column included in Matrix."),$("#buttonHelp").show()):($.fn._8D3970ColumnHide(),$("#buttonHelp").text("#8D3970 column hidden from Matrix."),$("#buttonHelp").show())}
 
+// ShowHide Functions Ends
 
+// Show All Function
+function showAllColumns() {
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._758D9AColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._4BB694ColumnShow();
+$.fn._1E8765ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$.fn._EF7D00ColumnShow();
+$.fn._E73037ColumnShow();
+$.fn._E73238ColumnShow();
+$.fn._D5007FColumnShow();
+$.fn._8D3970ColumnShow();
+}
+
+// Hide All Function
+function hideAllColumns() {
+$.fn._FFFFFFColumnHide();
+$.fn._231F20ColumnHide();
+$.fn._00131DColumnHide();
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+}
+
+
+$(document).ready(function() {
+    $("#checkedAll").change(function() {
+        if (this.checked) {
+            $(".matrixInput").each(function() {
+                this.checked = true;
+            })
+showAllColumns();
+
+        } else {
+            $(".matrixInput").each(function() {
+                this.checked = false;
+
+            })
+hideAllColumns();
+
+        }
+    });
+
+    $(".matrixInput").click(function() {
+        if ($(this).is(":checked")) {
+            var isAllChecked = 0;
+            $(".matrixInput").each(function() {
+                if (!this.checked)
+                    isAllChecked = 1;
+            })
+            if (isAllChecked == 0) {
+                $("#checkedAll").prop("checked", true);
+            }
+        } else {
+            $("#checkedAll").prop("checked", false);
+        }
+    });
+});
 </script>
 
 <style>
@@ -1342,7 +1425,7 @@ div#linksToExamples {margin-bottom: 0.3rem;}
 <div id="mainHeader">
 </div>
 
-<h1>Accessibility Matrix for University of Southampton Brand Colour Palette</h1>
+<h1>Accessibility Matrix for University of Brand Colour Palette</h1>
 </div>
 <div id="afterHeader">
 <div id="explanation">
@@ -1414,6 +1497,7 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
 
 <!-- Begin Inputs -->
 <fieldset><legend>Filter colours</legend>
+<input class="matrixInputSelectAll" type="checkbox" id="checkedAll" name="Select all / Select none" checked /><label for="checkedAll"><span id="selectAllNoneText">Select all / none</span></label>
 <input class="matrixInput" type="checkbox" id="select-FFFFFF" name="FFFFFF-select" onchange="showHideFFFFFF()" checked /><label for="select-FFFFFF"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #FFFFFF">&nbsp;&nbsp;&nbsp;</span> #FFFFFF</label>
 <input class="matrixInput" type="checkbox" id="select-231F20" name="231F20-select" onchange="showHide231F20()" checked /><label for="select-231F20"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #231F20">&nbsp;&nbsp;&nbsp;</span> #231F20</label>
 <input class="matrixInput" type="checkbox" id="select-00131D" name="00131D-select" onchange="showHide00131D()" checked /><label for="select-00131D"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #00131D">&nbsp;&nbsp;&nbsp;</span> #00131D</label>
