@@ -448,6 +448,42 @@ $(document).ready(function() {
         $("#buttonHelp").text("Use the Reset Table button above to go back to the larger version of the matrix.");
     }
 });
+
+// Select All / None function
+
+$(document).ready(function() {
+    $("#checkedAll").change(function() {
+        if (this.checked) {
+            $(".matrixInput").each(function() {
+                this.checked = true;
+            })
+            showAllColumns();
+
+        } else {
+            $(".matrixInput").each(function() {
+                this.checked = false;
+
+            })
+            hideAllColumns();
+
+        }
+    });
+
+    $(".matrixInput").click(function() {
+        if ($(this).is(":checked")) {
+            var isAllChecked = 0;
+            $(".matrixInput").each(function() {
+                if (!this.checked)
+                    isAllChecked = 1;
+            })
+            if (isAllChecked == 0) {
+                $("#checkedAll").prop("checked", true);
+            }
+        } else {
+            $("#checkedAll").prop("checked", false);
+        }
+    });
+});
 // Add classes to columns using jquery
 $(document).ready(function() {
 $('#myTable tr td:nth-child(1)').addClass('hexCodesColumn');$('#myTable tr th:nth-child(1)').addClass('hexCodesColumn');
@@ -659,40 +695,1021 @@ $.fn._D5007FColumnHide();
 $.fn._8D3970ColumnHide();
 }
 
+// Functions to show Palettes
 
-$(document).ready(function() {
-    $("#checkedAll").change(function() {
-        if (this.checked) {
-            $(".matrixInput").each(function() {
-                this.checked = true;
-            })
-showAllColumns();
+// Function to show #FFFFFF
 
-        } else {
-            $(".matrixInput").each(function() {
-                this.checked = false;
+$(document).ready(function() {$.fn.paletteFFFFFF = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to White (#FFFFFF).");
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._758D9AColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._1E8765ColumnShow();
+$.fn._E73037ColumnShow();
+$.fn._E73238ColumnShow();
+$.fn._D5007FColumnShow();
+$.fn._8D3970ColumnShow();
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-495961").prop("checked", true);
+$("#select-758D9A").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+$("#select-005C84").prop("checked", true);
+$("#select-1E8765").prop("checked", true);
+$("#select-E73037").prop("checked", true);
+$("#select-E73238").prop("checked", true);
+$("#select-D5007F").prop("checked", true);
+$("#select-8D3970").prop("checked", true);
+};});
 
-            })
-hideAllColumns();
+// Function to show #231F20
 
-        }
-    });
+$(document).ready(function() {$.fn.palette231F20 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Plain Black (#231F20).");
+$.fn._00131DColumnHide();
+$.fn._495961ColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._231F20ColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._758D9AColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._4BB694ColumnShow();
+$.fn._1E8765ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$.fn._EF7D00ColumnShow();
+$.fn._E73037ColumnShow();
+$.fn._E73238ColumnShow();
+$.fn._D5007FColumnShow();
+$("#select-00131D").prop("checked", false);
+$("#select-495961").prop("checked", false);
+$("#select-002E3B").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-231F20").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-758D9A").prop("checked", true);
+$("#select-9FB1BD").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-74C9E5").prop("checked", true);
+$("#select-3CBAC6").prop("checked", true);
+$("#select-B3DBD2").prop("checked", true);
+$("#select-4BB694").prop("checked", true);
+$("#select-1E8765").prop("checked", true);
+$("#select-C1D100").prop("checked", true);
+$("#select-FCBC00").prop("checked", true);
+$("#select-EF7D00").prop("checked", true);
+$("#select-E73037").prop("checked", true);
+$("#select-E73238").prop("checked", true);
+$("#select-D5007F").prop("checked", true);
+};});
 
-    $(".matrixInput").click(function() {
-        if ($(this).is(":checked")) {
-            var isAllChecked = 0;
-            $(".matrixInput").each(function() {
-                if (!this.checked)
-                    isAllChecked = 1;
-            })
-            if (isAllChecked == 0) {
-                $("#checkedAll").prop("checked", true);
-            }
-        } else {
-            $("#checkedAll").prop("checked", false);
-        }
-    });
-});
+// Function to show #00131D
+
+$(document).ready(function() {$.fn.palette00131D = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Rich Black (#00131D).");
+$.fn._231F20ColumnHide();
+$.fn._495961ColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._00131DColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._758D9AColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._4BB694ColumnShow();
+$.fn._1E8765ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$.fn._EF7D00ColumnShow();
+$.fn._E73037ColumnShow();
+$.fn._E73238ColumnShow();
+$.fn._D5007FColumnShow();
+$("#select-231F20").prop("checked", false);
+$("#select-495961").prop("checked", false);
+$("#select-002E3B").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-00131D").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-758D9A").prop("checked", true);
+$("#select-9FB1BD").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-74C9E5").prop("checked", true);
+$("#select-3CBAC6").prop("checked", true);
+$("#select-B3DBD2").prop("checked", true);
+$("#select-4BB694").prop("checked", true);
+$("#select-1E8765").prop("checked", true);
+$("#select-C1D100").prop("checked", true);
+$("#select-FCBC00").prop("checked", true);
+$("#select-EF7D00").prop("checked", true);
+$("#select-E73037").prop("checked", true);
+$("#select-E73238").prop("checked", true);
+$("#select-D5007F").prop("checked", true);
+};});
+
+// Function to show #495961
+
+$(document).ready(function() {$.fn.palette495961 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Neutral 1 (#495961).");
+$.fn._231F20ColumnHide();
+$.fn._00131DColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._495961ColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$("#select-231F20").prop("checked", false);
+$("#select-00131D").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-002E3B").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-495961").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-9FB1BD").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-74C9E5").prop("checked", true);
+$("#select-3CBAC6").prop("checked", true);
+$("#select-B3DBD2").prop("checked", true);
+$("#select-C1D100").prop("checked", true);
+$("#select-FCBC00").prop("checked", true);
+};});
+
+// Function to show #758D9A
+
+$(document).ready(function() {$.fn.palette758D9A = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Neutral 2 (#758D9A).");
+$.fn._495961ColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._758D9AColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._002E3BColumnShow();
+$("#select-495961").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-758D9A").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+};});
+
+// Function to show #9FB1BD
+
+$(document).ready(function() {$.fn.palette9FB1BD = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Neutral 3 (#9FB1BD).");
+$.fn._FFFFFFColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._9FB1BDColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._8D3970ColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-9FB1BD").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-495961").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+$("#select-005C84").prop("checked", true);
+$("#select-8D3970").prop("checked", true);
+};});
+
+// Function to show #E1E8EC
+
+$(document).ready(function() {$.fn.paletteE1E8EC = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Neutral 4 (#E1E8EC).");
+$.fn._FFFFFFColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E1E8ECColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._1E8765ColumnShow();
+$.fn._E73037ColumnShow();
+$.fn._E73238ColumnShow();
+$.fn._D5007FColumnShow();
+$.fn._8D3970ColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-495961").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+$("#select-005C84").prop("checked", true);
+$("#select-1E8765").prop("checked", true);
+$("#select-E73037").prop("checked", true);
+$("#select-E73238").prop("checked", true);
+$("#select-D5007F").prop("checked", true);
+$("#select-8D3970").prop("checked", true);
+};});
+
+// Function to show #002E3B
+
+$(document).ready(function() {$.fn.palette002E3B = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Prussian (#002E3B).");
+$.fn._231F20ColumnHide();
+$.fn._00131DColumnHide();
+$.fn._495961ColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._002E3BColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._758D9AColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._4BB694ColumnShow();
+$.fn._1E8765ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$.fn._EF7D00ColumnShow();
+$.fn._E73037ColumnShow();
+$.fn._E73238ColumnShow();
+$("#select-231F20").prop("checked", false);
+$("#select-00131D").prop("checked", false);
+$("#select-495961").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-002E3B").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-758D9A").prop("checked", true);
+$("#select-9FB1BD").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-74C9E5").prop("checked", true);
+$("#select-3CBAC6").prop("checked", true);
+$("#select-B3DBD2").prop("checked", true);
+$("#select-4BB694").prop("checked", true);
+$("#select-1E8765").prop("checked", true);
+$("#select-C1D100").prop("checked", true);
+$("#select-FCBC00").prop("checked", true);
+$("#select-EF7D00").prop("checked", true);
+$("#select-E73037").prop("checked", true);
+$("#select-E73238").prop("checked", true);
+};});
+
+// Function to show #005C84
+
+$(document).ready(function() {$.fn.palette005C84 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 1 (#005C84).");
+$.fn._231F20ColumnHide();
+$.fn._00131DColumnHide();
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._005C84ColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$("#select-231F20").prop("checked", false);
+$("#select-00131D").prop("checked", false);
+$("#select-495961").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-002E3B").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-005C84").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-9FB1BD").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-74C9E5").prop("checked", true);
+$("#select-3CBAC6").prop("checked", true);
+$("#select-B3DBD2").prop("checked", true);
+$("#select-C1D100").prop("checked", true);
+$("#select-FCBC00").prop("checked", true);
+};});
+
+// Function to show #74C9E5
+
+$(document).ready(function() {$.fn.palette74C9E5 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 2 (#74C9E5).");
+$.fn._FFFFFFColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._74C9E5ColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._8D3970ColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-74C9E5").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-495961").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+$("#select-005C84").prop("checked", true);
+$("#select-8D3970").prop("checked", true);
+};});
+
+// Function to show #3CBAC6
+
+$(document).ready(function() {$.fn.palette3CBAC6 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 3 (#3CBAC6).");
+$.fn._FFFFFFColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._3CBAC6ColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._8D3970ColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-3CBAC6").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-495961").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+$("#select-005C84").prop("checked", true);
+$("#select-8D3970").prop("checked", true);
+};});
+
+// Function to show #B3DBD2
+
+$(document).ready(function() {$.fn.paletteB3DBD2 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 4 (#B3DBD2).");
+$.fn._FFFFFFColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._B3DBD2ColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._D5007FColumnShow();
+$.fn._8D3970ColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-B3DBD2").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-495961").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+$("#select-005C84").prop("checked", true);
+$("#select-D5007F").prop("checked", true);
+$("#select-8D3970").prop("checked", true);
+};});
+
+// Function to show #4BB694
+
+$(document).ready(function() {$.fn.palette4BB694 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 5 (#4BB694).");
+$.fn._FFFFFFColumnHide();
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._4BB694ColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._002E3BColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-495961").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-4BB694").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+};});
+
+// Function to show #1E8765
+
+$(document).ready(function() {$.fn.palette1E8765 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Shamrock (#1E8765).");
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._1E8765ColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._002E3BColumnShow();
+$("#select-495961").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-1E8765").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+};});
+
+// Function to show #C1D100
+
+$(document).ready(function() {$.fn.paletteC1D100 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 6 (#C1D100).");
+$.fn._FFFFFFColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._C1D100ColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._8D3970ColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-C1D100").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-495961").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+$("#select-005C84").prop("checked", true);
+$("#select-8D3970").prop("checked", true);
+};});
+
+// Function to show #FCBC00
+
+$(document).ready(function() {$.fn.paletteFCBC00 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 1 (#FCBC00).");
+$.fn._FFFFFFColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._FCBC00ColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._495961ColumnShow();
+$.fn._002E3BColumnShow();
+$.fn._005C84ColumnShow();
+$.fn._8D3970ColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-FCBC00").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-495961").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+$("#select-005C84").prop("checked", true);
+$("#select-8D3970").prop("checked", true);
+};});
+
+// Function to show #EF7D00
+
+$(document).ready(function() {$.fn.paletteEF7D00 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 2 (#EF7D00).");
+$.fn._FFFFFFColumnHide();
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._E1E8ECColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._EF7D00ColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._002E3BColumnShow();
+$("#select-FFFFFF").prop("checked", false);
+$("#select-495961").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-E1E8EC").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-EF7D00").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+};});
+
+// Function to show #E73037
+
+$(document).ready(function() {$.fn.paletteE73037 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 3 (#E73037).");
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._E73037ColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._002E3BColumnShow();
+$("#select-495961").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-E73037").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+};});
+
+// Function to show #E73238
+
+$(document).ready(function() {$.fn.paletteE73238 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Coral (#E73238).");
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._B3DBD2ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._E73238ColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._002E3BColumnShow();
+$("#select-495961").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-B3DBD2").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-E73238").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-002E3B").prop("checked", true);
+};});
+
+// Function to show #D5007F
+
+$(document).ready(function() {$.fn.paletteD5007F = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 4 (#D5007F).");
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._9FB1BDColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._74C9E5ColumnHide();
+$.fn._3CBAC6ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._C1D100ColumnHide();
+$.fn._FCBC00ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._8D3970ColumnHide();
+$.fn._D5007FColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._231F20ColumnShow();
+$.fn._00131DColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._B3DBD2ColumnShow();
+$("#select-495961").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-9FB1BD").prop("checked", false);
+$("#select-002E3B").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-74C9E5").prop("checked", false);
+$("#select-3CBAC6").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-C1D100").prop("checked", false);
+$("#select-FCBC00").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-8D3970").prop("checked", false);
+$("#select-D5007F").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-231F20").prop("checked", true);
+$("#select-00131D").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-B3DBD2").prop("checked", true);
+};});
+
+// Function to show #8D3970
+
+$(document).ready(function() {$.fn.palette8D3970 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 5 (#8D3970).");
+$.fn._231F20ColumnHide();
+$.fn._00131DColumnHide();
+$.fn._495961ColumnHide();
+$.fn._758D9AColumnHide();
+$.fn._002E3BColumnHide();
+$.fn._005C84ColumnHide();
+$.fn._4BB694ColumnHide();
+$.fn._1E8765ColumnHide();
+$.fn._EF7D00ColumnHide();
+$.fn._E73037ColumnHide();
+$.fn._E73238ColumnHide();
+$.fn._D5007FColumnHide();
+$.fn._8D3970ColumnShow();
+$.fn._FFFFFFColumnShow();
+$.fn._9FB1BDColumnShow();
+$.fn._E1E8ECColumnShow();
+$.fn._74C9E5ColumnShow();
+$.fn._3CBAC6ColumnShow();
+$.fn._B3DBD2ColumnShow();
+$.fn._C1D100ColumnShow();
+$.fn._FCBC00ColumnShow();
+$("#select-231F20").prop("checked", false);
+$("#select-00131D").prop("checked", false);
+$("#select-495961").prop("checked", false);
+$("#select-758D9A").prop("checked", false);
+$("#select-002E3B").prop("checked", false);
+$("#select-005C84").prop("checked", false);
+$("#select-4BB694").prop("checked", false);
+$("#select-1E8765").prop("checked", false);
+$("#select-EF7D00").prop("checked", false);
+$("#select-E73037").prop("checked", false);
+$("#select-E73238").prop("checked", false);
+$("#select-D5007F").prop("checked", false);
+$("#select-8D3970").prop("checked", true);
+$("#select-FFFFFF").prop("checked", true);
+$("#select-9FB1BD").prop("checked", true);
+$("#select-E1E8EC").prop("checked", true);
+$("#select-74C9E5").prop("checked", true);
+$("#select-3CBAC6").prop("checked", true);
+$("#select-B3DBD2").prop("checked", true);
+$("#select-C1D100").prop("checked", true);
+$("#select-FCBC00").prop("checked", true);
+};});
+
+
+// List of functions to show palettes
+//
+// $.fn.paletteFFFFFF();
+// $.fn.palette231F20();
+// $.fn.palette00131D();
+// $.fn.palette495961();
+// $.fn.palette758D9A();
+// $.fn.palette9FB1BD();
+// $.fn.paletteE1E8EC();
+// $.fn.palette002E3B();
+// $.fn.palette005C84();
+// $.fn.palette74C9E5();
+// $.fn.palette3CBAC6();
+// $.fn.paletteB3DBD2();
+// $.fn.palette4BB694();
+// $.fn.palette1E8765();
+// $.fn.paletteC1D100();
+// $.fn.paletteFCBC00();
+// $.fn.paletteEF7D00();
+// $.fn.paletteE73037();
+// $.fn.paletteE73238();
+// $.fn.paletteD5007F();
+// $.fn.palette8D3970();
+//
+// List of functions to show palettes ends
 </script>
 
 <style>
@@ -884,8 +1901,14 @@ hideAllColumns();
 /* Dark Mode ends */
 }
 
+fieldset.selectBoxes {
+    line-height: 1.7rem;
+}
+
+
 	.colorBox {
 		outline: transparent solid 2px;
+   	        margin-left: 0.2rem;
 	}
 
 .colorBox {
@@ -1085,6 +2108,7 @@ button {
     vertical-align: middle;
     padding: 0.4rem;
     stroke: #231F20;
+    cursor: pointer;
 }
 
 button:hover,
@@ -1425,7 +2449,7 @@ div#linksToExamples {margin-bottom: 0.3rem;}
 <div id="mainHeader">
 </div>
 
-<h1>Accessibility Matrix for University of Brand Colour Palette</h1>
+<h1>Accessibility Matrix for University of Southampton Brand Colour Palette</h1>
 </div>
 <div id="afterHeader">
 <div id="explanation">
@@ -1448,10 +2472,10 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
             <div id="control1">
                <fieldset id="mControls" class="ctrl1">
                   <legend>Matrix controls</legend>
-                  <button id="resetTable" title="Reset the table" type="button" onclick="location.reload(false)">Reset table</button>
-                  <button id="showMobile" title="Show simple tables / mobile view" type="button" onclick="$.fn.showMobile()">Mobile / Single Column View</button>
-                  <button id="Dark" title="Dark theme" type="button" onclick="$.fn.darkMode()">Apply Dark Theme</button>
-                  <button id="tableFit" title="Fit table width to page" type="button" onclick="$.fn.tableFit()">
+                  <button id="resetTable" type="button" onclick="location.reload(false)">Reset table</button>
+                  <button id="showMobile" type="button" onclick="$.fn.showMobile()">Mobile / Single Column View</button>
+                  <button id="Dark" type="button" onclick="$.fn.darkMode()">Apply Dark Theme</button>
+                  <button id="tableFit" type="button" onclick="$.fn.tableFit()">
                      Fit table width to page 
                      <svg aria-hidden="true" focusable="false" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
                         <g fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)">
@@ -1463,7 +2487,7 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
                         </g>
                      </svg>
                   </button>
-                  <button id="tableFull" title="Full size table" type="button" onclick="$.fn.tableFull()">
+                  <button id="tableFull" type="button" onclick="$.fn.tableFull()">
                      Full size table 
                      <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
                         <g fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round" transform="matrix(.70710678 -.70710678 .70710678 .70710678 .121489 10.313301)">
@@ -1476,18 +2500,18 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
                </fieldset>
                <fieldset id="FilterResults" class="ctrl1">
                   <legend>Filter results</legend>
-                  <button id="showGplus" title="Show WCAG colour combinations at G, AA, and AAA levels only" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
-                  <button id="showAAplus" title="Show WCAG colour combinations at AA and AAA levels only" type="button" onclick="showAAplus()">Show AA and AAA only</button>
-                  <button id="showAAA" title="Show WCAG colour combinations at AAA level only" type="button" onclick="showAAA()">Show AAA only</button>
+                  <button id="showGplus" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
+                  <button id="showAAplus" type="button" onclick="showAAplus()">Show AA and AAA only</button>
+                  <button id="showAAA" type="button" onclick="showAAA()">Show AAA only</button>
                </fieldset>
             </div>
             <div id="control2">
                <fieldset id="simulateColour" class="ctrl2">
                   <legend>Simulate colour vision deficiency</legend>
-                  <button id="showProta" title="Simulate protanopia - blindness to red" type="button" onclick="showProta()" aria-disabled="false">Simulate protanopia</button>
-                  <button id="showDeute" title="Simulate deuteranopia - blindness to green" type="button" onclick="showDeute()" aria-disabled="false">Simulate deuteranopia</button>
-                  <button id="showTrita" title="Simulate tritanopia  - blindness to blue" type="button" onclick="showTrita()" aria-disabled="false">Simulate tritanopia </button>
-                  <button id="showTrich" aria-live="polite" title="Reset colours to Trichromatic default" type="button" onclick="showTrich()" aria-disabled="true">Reset to trichromacy</button>
+                  <button id="showProta" type="button" onclick="showProta()" aria-disabled="false">Simulate protanopia</button>
+                  <button id="showDeute" type="button" onclick="showDeute()" aria-disabled="false">Simulate deuteranopia</button>
+                  <button id="showTrita" type="button" onclick="showTrita()" aria-disabled="false">Simulate tritanopia </button>
+                  <button id="showTrich" aria-live="polite" type="button" onclick="showTrich()" aria-disabled="true">Reset to trichromacy</button>
                </fieldset>
             </div>
 </div>
@@ -1496,29 +2520,29 @@ View all examples of colour combinations suitable for: <a href="G.html">Graphica
 
 
 <!-- Begin Inputs -->
-<fieldset><legend>Filter colours</legend>
-<input class="matrixInputSelectAll" type="checkbox" id="checkedAll" name="Select all / Select none" checked /><label for="checkedAll"><span id="selectAllNoneText">Select all / none</span></label>
-<input class="matrixInput" type="checkbox" id="select-FFFFFF" name="FFFFFF-select" onchange="showHideFFFFFF()" checked /><label for="select-FFFFFF"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #FFFFFF">&nbsp;&nbsp;&nbsp;</span> #FFFFFF</label>
-<input class="matrixInput" type="checkbox" id="select-231F20" name="231F20-select" onchange="showHide231F20()" checked /><label for="select-231F20"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #231F20">&nbsp;&nbsp;&nbsp;</span> #231F20</label>
-<input class="matrixInput" type="checkbox" id="select-00131D" name="00131D-select" onchange="showHide00131D()" checked /><label for="select-00131D"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #00131D">&nbsp;&nbsp;&nbsp;</span> #00131D</label>
-<input class="matrixInput" type="checkbox" id="select-495961" name="495961-select" onchange="showHide495961()" checked /><label for="select-495961"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #495961">&nbsp;&nbsp;&nbsp;</span> #495961</label>
-<input class="matrixInput" type="checkbox" id="select-758D9A" name="758D9A-select" onchange="showHide758D9A()" checked /><label for="select-758D9A"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #758D9A">&nbsp;&nbsp;&nbsp;</span> #758D9A</label>
-<input class="matrixInput" type="checkbox" id="select-9FB1BD" name="9FB1BD-select" onchange="showHide9FB1BD()" checked /><label for="select-9FB1BD"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #9FB1BD">&nbsp;&nbsp;&nbsp;</span> #9FB1BD</label>
-<input class="matrixInput" type="checkbox" id="select-E1E8EC" name="E1E8EC-select" onchange="showHideE1E8EC()" checked /><label for="select-E1E8EC"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E1E8EC">&nbsp;&nbsp;&nbsp;</span> #E1E8EC</label>
-<input class="matrixInput" type="checkbox" id="select-002E3B" name="002E3B-select" onchange="showHide002E3B()" checked /><label for="select-002E3B"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #002E3B">&nbsp;&nbsp;&nbsp;</span> #002E3B</label>
-<input class="matrixInput" type="checkbox" id="select-005C84" name="005C84-select" onchange="showHide005C84()" checked /><label for="select-005C84"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #005C84">&nbsp;&nbsp;&nbsp;</span> #005C84</label>
-<input class="matrixInput" type="checkbox" id="select-74C9E5" name="74C9E5-select" onchange="showHide74C9E5()" checked /><label for="select-74C9E5"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #74C9E5">&nbsp;&nbsp;&nbsp;</span> #74C9E5</label>
-<input class="matrixInput" type="checkbox" id="select-3CBAC6" name="3CBAC6-select" onchange="showHide3CBAC6()" checked /><label for="select-3CBAC6"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #3CBAC6">&nbsp;&nbsp;&nbsp;</span> #3CBAC6</label>
-<input class="matrixInput" type="checkbox" id="select-B3DBD2" name="B3DBD2-select" onchange="showHideB3DBD2()" checked /><label for="select-B3DBD2"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #B3DBD2">&nbsp;&nbsp;&nbsp;</span> #B3DBD2</label>
-<input class="matrixInput" type="checkbox" id="select-4BB694" name="4BB694-select" onchange="showHide4BB694()" checked /><label for="select-4BB694"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #4BB694">&nbsp;&nbsp;&nbsp;</span> #4BB694</label>
-<input class="matrixInput" type="checkbox" id="select-1E8765" name="1E8765-select" onchange="showHide1E8765()" checked /><label for="select-1E8765"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #1E8765">&nbsp;&nbsp;&nbsp;</span> #1E8765</label>
-<input class="matrixInput" type="checkbox" id="select-C1D100" name="C1D100-select" onchange="showHideC1D100()" checked /><label for="select-C1D100"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #C1D100">&nbsp;&nbsp;&nbsp;</span> #C1D100</label>
-<input class="matrixInput" type="checkbox" id="select-FCBC00" name="FCBC00-select" onchange="showHideFCBC00()" checked /><label for="select-FCBC00"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #FCBC00">&nbsp;&nbsp;&nbsp;</span> #FCBC00</label>
-<input class="matrixInput" type="checkbox" id="select-EF7D00" name="EF7D00-select" onchange="showHideEF7D00()" checked /><label for="select-EF7D00"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #EF7D00">&nbsp;&nbsp;&nbsp;</span> #EF7D00</label>
-<input class="matrixInput" type="checkbox" id="select-E73037" name="E73037-select" onchange="showHideE73037()" checked /><label for="select-E73037"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E73037">&nbsp;&nbsp;&nbsp;</span> #E73037</label>
-<input class="matrixInput" type="checkbox" id="select-E73238" name="E73238-select" onchange="showHideE73238()" checked /><label for="select-E73238"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E73238">&nbsp;&nbsp;&nbsp;</span> #E73238</label>
-<input class="matrixInput" type="checkbox" id="select-D5007F" name="D5007F-select" onchange="showHideD5007F()" checked /><label for="select-D5007F"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #D5007F">&nbsp;&nbsp;&nbsp;</span> #D5007F</label>
-<input class="matrixInput" type="checkbox" id="select-8D3970" name="8D3970-select" onchange="showHide8D3970()" checked /><label for="select-8D3970"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #8D3970">&nbsp;&nbsp;&nbsp;</span> #8D3970</label>
+<fieldset class="selectBoxes"><legend>Filter colours</legend>
+<span class="filterSelect"><input class="matrixInputSelectAll" type="checkbox" id="checkedAll" name="Select all / Select none" checked /><label for="checkedAll"><span id="selectAllNoneText">Select all</span></label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-FFFFFF" name="FFFFFF-select" onchange="showHideFFFFFF()" checked /><label for="select-FFFFFF"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #FFFFFF">&nbsp;&nbsp;&nbsp;</span> #White</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-231F20" name="231F20-select" onchange="showHide231F20()" checked /><label for="select-231F20"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #231F20">&nbsp;&nbsp;&nbsp;</span> #Plain Black</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-00131D" name="00131D-select" onchange="showHide00131D()" checked /><label for="select-00131D"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #00131D">&nbsp;&nbsp;&nbsp;</span> #Rich Black</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-495961" name="495961-select" onchange="showHide495961()" checked /><label for="select-495961"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #495961">&nbsp;&nbsp;&nbsp;</span> #Neutral 1</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-758D9A" name="758D9A-select" onchange="showHide758D9A()" checked /><label for="select-758D9A"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #758D9A">&nbsp;&nbsp;&nbsp;</span> #Neutral 2</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-9FB1BD" name="9FB1BD-select" onchange="showHide9FB1BD()" checked /><label for="select-9FB1BD"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #9FB1BD">&nbsp;&nbsp;&nbsp;</span> #Neutral 3</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-E1E8EC" name="E1E8EC-select" onchange="showHideE1E8EC()" checked /><label for="select-E1E8EC"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E1E8EC">&nbsp;&nbsp;&nbsp;</span> #Neutral 4</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-002E3B" name="002E3B-select" onchange="showHide002E3B()" checked /><label for="select-002E3B"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #002E3B">&nbsp;&nbsp;&nbsp;</span> #Prussian</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-005C84" name="005C84-select" onchange="showHide005C84()" checked /><label for="select-005C84"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #005C84">&nbsp;&nbsp;&nbsp;</span> #Marine 1</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-74C9E5" name="74C9E5-select" onchange="showHide74C9E5()" checked /><label for="select-74C9E5"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #74C9E5">&nbsp;&nbsp;&nbsp;</span> #Marine 2</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-3CBAC6" name="3CBAC6-select" onchange="showHide3CBAC6()" checked /><label for="select-3CBAC6"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #3CBAC6">&nbsp;&nbsp;&nbsp;</span> #Marine 3</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-B3DBD2" name="B3DBD2-select" onchange="showHideB3DBD2()" checked /><label for="select-B3DBD2"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #B3DBD2">&nbsp;&nbsp;&nbsp;</span> #Marine 4</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-4BB694" name="4BB694-select" onchange="showHide4BB694()" checked /><label for="select-4BB694"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #4BB694">&nbsp;&nbsp;&nbsp;</span> #Marine 5</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-1E8765" name="1E8765-select" onchange="showHide1E8765()" checked /><label for="select-1E8765"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #1E8765">&nbsp;&nbsp;&nbsp;</span> #Shamrock</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-C1D100" name="C1D100-select" onchange="showHideC1D100()" checked /><label for="select-C1D100"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #C1D100">&nbsp;&nbsp;&nbsp;</span> #Marine 6</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-FCBC00" name="FCBC00-select" onchange="showHideFCBC00()" checked /><label for="select-FCBC00"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #FCBC00">&nbsp;&nbsp;&nbsp;</span> #Horizon 1</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-EF7D00" name="EF7D00-select" onchange="showHideEF7D00()" checked /><label for="select-EF7D00"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #EF7D00">&nbsp;&nbsp;&nbsp;</span> #Horizon 2</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-E73037" name="E73037-select" onchange="showHideE73037()" checked /><label for="select-E73037"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E73037">&nbsp;&nbsp;&nbsp;</span> #Horizon 3</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-E73238" name="E73238-select" onchange="showHideE73238()" checked /><label for="select-E73238"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #E73238">&nbsp;&nbsp;&nbsp;</span> #Coral</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-D5007F" name="D5007F-select" onchange="showHideD5007F()" checked /><label for="select-D5007F"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #D5007F">&nbsp;&nbsp;&nbsp;</span> #Horizon 4</label></span>
+<span class=><input class="matrixInput" type="checkbox" id="select-8D3970" name="8D3970-select" onchange="showHide8D3970()" checked /><label for="select-8D3970"><span class="colorBox Trichromacy" aria-hidden="true" style="background-color: #8D3970">&nbsp;&nbsp;&nbsp;</span> #Horizon 5</label></span>
 </fieldset>
 
 <!-- End Inputs -->

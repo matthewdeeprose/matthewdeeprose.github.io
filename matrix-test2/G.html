@@ -267,14 +267,14 @@ function showTrich() {
 }
 </script>
 <style>
-	button:disabled,
+		button:disabled,
 	button[disabled] {
 		pointer-events: none;
-		color: #231F20 !important;
-		background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg==");
+		color: #00131d !important;
+		border: 0px !important;
+		background-image: none;
 		background-repeat: repeat;
 	}
-
 @media only screen and (min-width: 468px) {
     #buttonHelp,
     button  {
@@ -307,6 +307,15 @@ body {
     color: #E1E8EC !important;
     background: #161415 !important;
 }
+
+	button:disabled,
+	button[disabled] {
+		pointer-events: none;
+		color: #e1e8ec !important;
+		border: 0px !important;
+		background-image: none;
+		background-repeat: repeat;
+	}
 
 a:hover {
     color: #3CBAC6 !important;
@@ -377,17 +386,17 @@ display:none !important
     button {
         border: 1px solid #9FB1BD !important;
         color: #E1E8EC !important;
-        background-color:   #231F20 !important;
+        background-color: #231F20 !important;
 	stroke:#E1E8EC !important;    }
     button:hover,
     button:focus {
-	background-color: #E1E8EC !important;
-	color: #00131D !important;
+	background-color: #231F20 !important;
+	color: #E1E8EC !important;
 	outline: 2px transparent solid !important;
 	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
-	transition: .3s linear !important;
+	transition: .3s linear;
 	border: #e1e8ec 1px solid !important;
-	stroke:#231F20 !important;
+	stroke: #E1E8EC !important;
     }
 	
 	    /* Styling button help text */
@@ -409,12 +418,12 @@ button {
 
 button:hover,
 button:focus {
-	transition: .3s linear !important;
-	background-color: #E1E8EC !important;
-	color: #00131D !important;
-	outline: 2px transparent solid !important;
-	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
-	border: #00131D 1px solid !important;
+	transition: .3s linear;
+	background-color: #E1E8EC;
+	color: #00131D;
+	outline: 2px transparent solid ;
+	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4;
+	border: #00131D 1px solid;
 }
 
 button:active {
