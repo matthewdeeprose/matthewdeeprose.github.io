@@ -443,6 +443,12 @@ $(document).ready(function() {
         $("#tableFull").css({
             "display": "none"
         });
+	$("fieldset.selectBoxes").css({
+            "display": "none"
+        });
+	$("fieldset.selectPalettes").css({
+            "display": "none"
+        });
         // Show help text
         $("#buttonHelp").show();
         $("#buttonHelp").text("Use the Reset Table button above to go back to the larger version of the matrix.");
@@ -1905,6 +1911,27 @@ $("#select-FCBC00").prop("checked", true);
 /* Dark Mode ends */
 }
 
+h1,h2,h3,h4,h5 {
+	text-wrap: balance;
+}
+
+p {
+	text-wrap: pretty;
+}
+
+body {
+    margin: 0 1rem 0 1rem;
+}
+
+button:focus:not(:focus-visible) {
+	outline: 2px transparent solid !important;
+	box-shadow: none !important;
+	}
+
+a:focus:not(:focus-visible) {
+		outline: 0px solid #00131D !important;
+	}
+
 .filterSelect, input {display: inline-block;}
 
 fieldset.selectBoxes {
@@ -2465,17 +2492,17 @@ div#linksToExamples {margin-bottom: 0.3rem;}
 </div>
 <div id="afterHeader">
 <div id="explanation">
-When we use our brand palette, we must ensure that the colours we choose for text and graphics have enough contrast to the background colour. Doing so means that the materials we create will be accessible to the largest audience. The table below lists all brand colour combinations. It shows which pairings have the required level of contrast for different uses. These uses include:
+<p>When we use our brand palette, we must ensure that the colours we choose for text and graphics have enough contrast to the background colour. Doing so means that the materials we create will be accessible to the largest audience. The table below lists all brand colour combinations. It shows which pairings have the required level of contrast for different uses. These uses include:</p>
 <ul>
 <li>graphics and user interface elements</li>
-<li>text and images of text.
+<li>text and images of text.</li>
 </ul>
 </div>
 </div>
 
 
 <div id="linksToExamples">
-View all examples of colour combinations suitable for: <a href="G.html">Graphical objects</a>, <a href="AA.html">text minimum (AA and AAA)</a>, and <a href="AAA.html">text enhanced (AAA)</a>.
+<p>View all examples of colour combinations suitable for: <a href="G.html">Graphical objects</a>, <a href="AA.html">text minimum (AA and AAA)</a>, and <a href="AAA.html">text enhanced (AAA)</a>.</p>
 </div>
 </header>
 <nav>
@@ -2668,7 +2695,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="Trichromacy" style="background-color:#8D3970"> </td>
 </tr>
 <tr>
-<th scope="row" class="row">#FFFFFF</th>
+<th scope="row" class="row">White (#FFFFFF)</th>
 <td class="Trichromacy" style="background-color:#FFFFFF"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAAA">AAA</td>
@@ -2693,7 +2720,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultAAA">AAA</td>
 </tr>
 <tr>
-<th scope="row" class="row">#231F20</th>
+<th scope="row" class="row">Plain Black (#231F20)</th>
 <td class="Trichromacy" style="background-color:#231F20"> </td>
 <td class="ResultAAA">AAA</td>
 <td class="ResultF">F</td>
@@ -2718,7 +2745,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#00131D</th>
+<th scope="row" class="row">Rich Black (#00131D)</th>
 <td class="Trichromacy" style="background-color:#00131D"> </td>
 <td class="ResultAAA">AAA</td>
 <td class="ResultF">F</td>
@@ -2743,7 +2770,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#495961</th>
+<th scope="row" class="row">Neutral 1 (#495961)</th>
 <td class="Trichromacy" style="background-color:#495961"> </td>
 <td class="ResultAAA">AAA</td>
 <td class="ResultF">F</td>
@@ -2768,7 +2795,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#758D9A</th>
+<th scope="row" class="row">Neutral 2 (#758D9A)</th>
 <td class="Trichromacy" style="background-color:#758D9A"> </td>
 <td class="ResultG">G</td>
 <td class="ResultAA">AA</td>
@@ -2793,7 +2820,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#9FB1BD</th>
+<th scope="row" class="row">Neutral 3 (#9FB1BD)</th>
 <td class="Trichromacy" style="background-color:#9FB1BD"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAAA">AAA</td>
@@ -2818,7 +2845,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultG">G</td>
 </tr>
 <tr>
-<th scope="row" class="row">#E1E8EC</th>
+<th scope="row" class="row">Neutral 4 (#E1E8EC)</th>
 <td class="Trichromacy" style="background-color:#E1E8EC"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAAA">AAA</td>
@@ -2843,7 +2870,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultAA">AA</td>
 </tr>
 <tr>
-<th scope="row" class="row">#002E3B</th>
+<th scope="row" class="row">Prussian (#002E3B)</th>
 <td class="Trichromacy" style="background-color:#002E3B"> </td>
 <td class="ResultAAA">AAA</td>
 <td class="ResultF">F</td>
@@ -2868,7 +2895,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#005C84</th>
+<th scope="row" class="row">Marine 1 (#005C84)</th>
 <td class="Trichromacy" style="background-color:#005C84"> </td>
 <td class="ResultAAA">AAA</td>
 <td class="ResultF">F</td>
@@ -2893,7 +2920,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#74C9E5</th>
+<th scope="row" class="row">Marine 2 (#74C9E5)</th>
 <td class="Trichromacy" style="background-color:#74C9E5"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAAA">AAA</td>
@@ -2918,7 +2945,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultG">G</td>
 </tr>
 <tr>
-<th scope="row" class="row">#3CBAC6</th>
+<th scope="row" class="row">Marine 3 (#3CBAC6)</th>
 <td class="Trichromacy" style="background-color:#3CBAC6"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAAA">AAA</td>
@@ -2943,7 +2970,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultG">G</td>
 </tr>
 <tr>
-<th scope="row" class="row">#B3DBD2</th>
+<th scope="row" class="row">Marine 4 (#B3DBD2)</th>
 <td class="Trichromacy" style="background-color:#B3DBD2"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAAA">AAA</td>
@@ -2968,7 +2995,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultAA">AA</td>
 </tr>
 <tr>
-<th scope="row" class="row">#4BB694</th>
+<th scope="row" class="row">Marine 5 (#4BB694)</th>
 <td class="Trichromacy" style="background-color:#4BB694"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAA">AA</td>
@@ -2993,7 +3020,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#1E8765</th>
+<th scope="row" class="row">Shamrock (#1E8765)</th>
 <td class="Trichromacy" style="background-color:#1E8765"> </td>
 <td class="ResultG">G</td>
 <td class="ResultG">G</td>
@@ -3018,7 +3045,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#C1D100</th>
+<th scope="row" class="row">Marine 6 (#C1D100)</th>
 <td class="Trichromacy" style="background-color:#C1D100"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAAA">AAA</td>
@@ -3043,7 +3070,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultG">G</td>
 </tr>
 <tr>
-<th scope="row" class="row">#FCBC00</th>
+<th scope="row" class="row">Horizon 1 (#FCBC00)</th>
 <td class="Trichromacy" style="background-color:#FCBC00"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAAA">AAA</td>
@@ -3068,7 +3095,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultG">G</td>
 </tr>
 <tr>
-<th scope="row" class="row">#EF7D00</th>
+<th scope="row" class="row">Horizon 2 (#EF7D00)</th>
 <td class="Trichromacy" style="background-color:#EF7D00"> </td>
 <td class="ResultF">F</td>
 <td class="ResultAA">AA</td>
@@ -3093,7 +3120,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#E73037</th>
+<th scope="row" class="row">Horizon 3 (#E73037)</th>
 <td class="Trichromacy" style="background-color:#E73037"> </td>
 <td class="ResultG">G</td>
 <td class="ResultG">G</td>
@@ -3118,7 +3145,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#E73238</th>
+<th scope="row" class="row">Coral (#E73238)</th>
 <td class="Trichromacy" style="background-color:#E73238"> </td>
 <td class="ResultG">G</td>
 <td class="ResultG">G</td>
@@ -3143,7 +3170,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#D5007F</th>
+<th scope="row" class="row">Horizon 4 (#D5007F)</th>
 <td class="Trichromacy" style="background-color:#D5007F"> </td>
 <td class="ResultAA">AA</td>
 <td class="ResultG">G</td>
@@ -3168,7 +3195,7 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td class="ResultF">F</td>
 </tr>
 <tr>
-<th scope="row" class="row">#8D3970</th>
+<th scope="row" class="row">Horizon 5 (#8D3970)</th>
 <td class="Trichromacy" style="background-color:#8D3970"> </td>
 <td class="ResultAAA">AAA</td>
 <td class="ResultF">F</td>
@@ -6266,7 +6293,7 @@ Explaining the matrix.</caption>
 <div id="viewExamples">
 <details>
 	<summary>View examples of all accessible colour combinations.</summary>
-			To help to choose accessible colour combinations follow these links to view examples of each possible accessible colour combination.
+			<p>To help to choose accessible colour combinations follow these links to view examples of each possible accessible colour combination.</p>
 				<ul>
 					<li><a href="G.html">View all examples of brand colour combinations with a ratio of 3:1 and above (G rating)</a>.</li>
 					<li><a href="AA.html">View all examples of brand colour combinations with a ratio of 4.5:1 and above (AA rating)</a>.</li>
@@ -6333,9 +6360,9 @@ Explaining the matrix.</caption>
 <div id="credits">
 <details>
     <summary>Credits</summary>
-When you use colours from a defined palette, such as a corporate brand, you should make accessible choices. This colour accessibility matrix helps you do this. A custom <a href="https://en.wikipedia.org/wiki/Bash_(Unix_shell)">bash script</a> created by <a href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a>, Senior Learning Designer at the University of Southampton, generated this web page.
+<p>When you use colours from a defined palette, such as a corporate brand, you should make accessible choices. This colour accessibility matrix helps you do this. A custom <a href="https://en.wikipedia.org/wiki/Bash_(Unix_shell)">bash script</a> created by <a href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a>, Senior Learning Designer at the University of Southampton, generated this web page.</p>
 <br />
-Additional tools used are:
+<p>Additional tools used are:</p>
 <ul>
 <li><a href="https://webaim.org/resources/contrastchecker/?fcolor=0000FF&bcolor=FFFFFF&api">WebAIM Colour Contrast API</a>.</li>
 <li><a href="https://stedolan.github.io/jq/">JQ</a> by <a href="https://github.com/stedolan">Stephen Dolan</a> and others.</li>
@@ -6345,7 +6372,7 @@ Additional tools used are:
 <li><a href="https://systemuicons.com/">System UIcons</a> by <a href="https://corey.ginnivan.net/">Corey Ginnivan</a>.</li>
 <li><a href="https://jquery.com/">jQuery</a> to help make some of the interactions easier to implement.</li>
 </ul>
-Whilst I have attempted to follow good practice and make this content as accessible as possible, there is always room for improvement.  Send any feedback about the matrix and any suggestions for improvements to Matthew Deeprose by <a href="https://www.linkedin.com/in/mattdeeprose/">connecting on LinkedIn</a>.
+<p>Whilst I have attempted to follow good practice and make this content as accessible as possible, there is always room for improvement.  Send any feedback about the matrix and any suggestions for improvements to Matthew Deeprose by <a href="https://www.linkedin.com/in/mattdeeprose/">connecting on LinkedIn</a>.</p>
 </details>
 </div>
 <div id="CC">
