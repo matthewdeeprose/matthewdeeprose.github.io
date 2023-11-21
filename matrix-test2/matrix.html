@@ -710,6 +710,7 @@ $("#buttonHelp").text("All columns are hidden.");
 // Function to show #FFFFFF
 
 $(document).ready(function() {$.fn.paletteFFFFFF = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to White (#FFFFFF).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._9FB1BDColumnHide();
 $.fn._E1E8ECColumnHide();
 $.fn._74C9E5ColumnHide();
@@ -752,11 +753,13 @@ $("#select-E73037").prop("checked", true);
 $("#select-E73238").prop("checked", true);
 $("#select-D5007F").prop("checked", true);
 $("#select-8D3970").prop("checked", true);
+$("#myTable").find(".FFFFFFColumn").addClass("selected");
 };});
 
 // Function to show #231F20
 
 $(document).ready(function() {$.fn.palette231F20 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Plain Black (#231F20).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._00131DColumnHide();
 $.fn._495961ColumnHide();
 $.fn._002E3BColumnHide();
@@ -799,11 +802,13 @@ $("#select-EF7D00").prop("checked", true);
 $("#select-E73037").prop("checked", true);
 $("#select-E73238").prop("checked", true);
 $("#select-D5007F").prop("checked", true);
+$("#myTable").find(".231F20Column").addClass("selected");
 };});
 
 // Function to show #00131D
 
 $(document).ready(function() {$.fn.palette00131D = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Rich Black (#00131D).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._231F20ColumnHide();
 $.fn._495961ColumnHide();
 $.fn._002E3BColumnHide();
@@ -846,11 +851,13 @@ $("#select-EF7D00").prop("checked", true);
 $("#select-E73037").prop("checked", true);
 $("#select-E73238").prop("checked", true);
 $("#select-D5007F").prop("checked", true);
+$("#myTable").find(".00131DColumn").addClass("selected");
 };});
 
 // Function to show #495961
 
 $(document).ready(function() {$.fn.palette495961 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Neutral 1 (#495961).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._231F20ColumnHide();
 $.fn._00131DColumnHide();
 $.fn._758D9AColumnHide();
@@ -893,11 +900,13 @@ $("#select-3CBAC6").prop("checked", true);
 $("#select-B3DBD2").prop("checked", true);
 $("#select-C1D100").prop("checked", true);
 $("#select-FCBC00").prop("checked", true);
+$("#myTable").find(".495961Column").addClass("selected");
 };});
 
 // Function to show #758D9A
 
 $(document).ready(function() {$.fn.palette758D9A = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Neutral 2 (#758D9A).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._495961ColumnHide();
 $.fn._9FB1BDColumnHide();
 $.fn._E1E8ECColumnHide();
@@ -940,11 +949,13 @@ $("#select-FFFFFF").prop("checked", true);
 $("#select-231F20").prop("checked", true);
 $("#select-00131D").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
+$("#myTable").find(".758D9AColumn").addClass("selected");
 };});
 
 // Function to show #9FB1BD
 
 $(document).ready(function() {$.fn.palette9FB1BD = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Neutral 3 (#9FB1BD).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._E1E8ECColumnHide();
@@ -987,11 +998,13 @@ $("#select-495961").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
 $("#select-005C84").prop("checked", true);
 $("#select-8D3970").prop("checked", true);
+$("#myTable").find(".9FB1BDColumn").addClass("selected");
 };});
 
 // Function to show #E1E8EC
 
 $(document).ready(function() {$.fn.paletteE1E8EC = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Neutral 4 (#E1E8EC).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1034,11 +1047,13 @@ $("#select-E73037").prop("checked", true);
 $("#select-E73238").prop("checked", true);
 $("#select-D5007F").prop("checked", true);
 $("#select-8D3970").prop("checked", true);
+$("#myTable").find(".E1E8ECColumn").addClass("selected");
 };});
 
 // Function to show #002E3B
 
 $(document).ready(function() {$.fn.palette002E3B = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Prussian (#002E3B).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._231F20ColumnHide();
 $.fn._00131DColumnHide();
 $.fn._495961ColumnHide();
@@ -1081,11 +1096,13 @@ $("#select-FCBC00").prop("checked", true);
 $("#select-EF7D00").prop("checked", true);
 $("#select-E73037").prop("checked", true);
 $("#select-E73238").prop("checked", true);
+$("#myTable").find(".002E3BColumn").addClass("selected");
 };});
 
 // Function to show #005C84
 
 $(document).ready(function() {$.fn.palette005C84 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 1 (#005C84).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._231F20ColumnHide();
 $.fn._00131DColumnHide();
 $.fn._495961ColumnHide();
@@ -1128,11 +1145,13 @@ $("#select-3CBAC6").prop("checked", true);
 $("#select-B3DBD2").prop("checked", true);
 $("#select-C1D100").prop("checked", true);
 $("#select-FCBC00").prop("checked", true);
+$("#myTable").find(".005C84Column").addClass("selected");
 };});
 
 // Function to show #74C9E5
 
 $(document).ready(function() {$.fn.palette74C9E5 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 2 (#74C9E5).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1175,11 +1194,13 @@ $("#select-495961").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
 $("#select-005C84").prop("checked", true);
 $("#select-8D3970").prop("checked", true);
+$("#myTable").find(".74C9E5Column").addClass("selected");
 };});
 
 // Function to show #3CBAC6
 
 $(document).ready(function() {$.fn.palette3CBAC6 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 3 (#3CBAC6).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1222,11 +1243,13 @@ $("#select-495961").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
 $("#select-005C84").prop("checked", true);
 $("#select-8D3970").prop("checked", true);
+$("#myTable").find(".3CBAC6Column").addClass("selected");
 };});
 
 // Function to show #B3DBD2
 
 $(document).ready(function() {$.fn.paletteB3DBD2 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 4 (#B3DBD2).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1269,11 +1292,13 @@ $("#select-002E3B").prop("checked", true);
 $("#select-005C84").prop("checked", true);
 $("#select-D5007F").prop("checked", true);
 $("#select-8D3970").prop("checked", true);
+$("#myTable").find(".B3DBD2Column").addClass("selected");
 };});
 
 // Function to show #4BB694
 
 $(document).ready(function() {$.fn.palette4BB694 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 5 (#4BB694).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._495961ColumnHide();
 $.fn._758D9AColumnHide();
@@ -1316,11 +1341,13 @@ $("#select-4BB694").prop("checked", true);
 $("#select-231F20").prop("checked", true);
 $("#select-00131D").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
+$("#myTable").find(".4BB694Column").addClass("selected");
 };});
 
 // Function to show #1E8765
 
 $(document).ready(function() {$.fn.palette1E8765 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Shamrock (#1E8765).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._495961ColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1363,11 +1390,13 @@ $("#select-231F20").prop("checked", true);
 $("#select-00131D").prop("checked", true);
 $("#select-E1E8EC").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
+$("#myTable").find(".1E8765Column").addClass("selected");
 };});
 
 // Function to show #C1D100
 
 $(document).ready(function() {$.fn.paletteC1D100 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Marine 6 (#C1D100).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1410,11 +1439,13 @@ $("#select-495961").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
 $("#select-005C84").prop("checked", true);
 $("#select-8D3970").prop("checked", true);
+$("#myTable").find(".C1D100Column").addClass("selected");
 };});
 
 // Function to show #FCBC00
 
 $(document).ready(function() {$.fn.paletteFCBC00 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 1 (#FCBC00).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1457,11 +1488,13 @@ $("#select-495961").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
 $("#select-005C84").prop("checked", true);
 $("#select-8D3970").prop("checked", true);
+$("#myTable").find(".FCBC00Column").addClass("selected");
 };});
 
 // Function to show #EF7D00
 
 $(document).ready(function() {$.fn.paletteEF7D00 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 2 (#EF7D00).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._FFFFFFColumnHide();
 $.fn._495961ColumnHide();
 $.fn._758D9AColumnHide();
@@ -1504,11 +1537,13 @@ $("#select-EF7D00").prop("checked", true);
 $("#select-231F20").prop("checked", true);
 $("#select-00131D").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
+$("#myTable").find(".EF7D00Column").addClass("selected");
 };});
 
 // Function to show #E73037
 
 $(document).ready(function() {$.fn.paletteE73037 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 3 (#E73037).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._495961ColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1551,11 +1586,13 @@ $("#select-231F20").prop("checked", true);
 $("#select-00131D").prop("checked", true);
 $("#select-E1E8EC").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
+$("#myTable").find(".E73037Column").addClass("selected");
 };});
 
 // Function to show #E73238
 
 $(document).ready(function() {$.fn.paletteE73238 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Coral (#E73238).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._495961ColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1598,11 +1635,13 @@ $("#select-231F20").prop("checked", true);
 $("#select-00131D").prop("checked", true);
 $("#select-E1E8EC").prop("checked", true);
 $("#select-002E3B").prop("checked", true);
+$("#myTable").find(".E73238Column").addClass("selected");
 };});
 
 // Function to show #D5007F
 
 $(document).ready(function() {$.fn.paletteD5007F = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 4 (#D5007F).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._495961ColumnHide();
 $.fn._758D9AColumnHide();
 $.fn._9FB1BDColumnHide();
@@ -1645,11 +1684,13 @@ $("#select-231F20").prop("checked", true);
 $("#select-00131D").prop("checked", true);
 $("#select-E1E8EC").prop("checked", true);
 $("#select-B3DBD2").prop("checked", true);
+$("#myTable").find(".D5007FColumn").addClass("selected");
 };});
 
 // Function to show #8D3970
 
 $(document).ready(function() {$.fn.palette8D3970 = function() {$("#checkedAll").prop("checked", false);$("#buttonHelp").show();$("#buttonHelp").text("Focus colour set to Horizon 5 (#8D3970).");
+$("#myTable").find("*").removeClass("selected");
 $.fn._231F20ColumnHide();
 $.fn._00131DColumnHide();
 $.fn._495961ColumnHide();
@@ -1692,6 +1733,7 @@ $("#select-3CBAC6").prop("checked", true);
 $("#select-B3DBD2").prop("checked", true);
 $("#select-C1D100").prop("checked", true);
 $("#select-FCBC00").prop("checked", true);
+$("#myTable").find(".8D3970Column").addClass("selected");
 };});
 
 
@@ -1725,6 +1767,8 @@ $("#select-FCBC00").prop("checked", true);
 <style>
 
 @media (prefers-color-scheme: dark) {
+	.selected {border: 2px #fffff4 dashed !important;
+	}
 	.colorBox {
 		border: #E1E8EC 2px solid !important;
 	}
@@ -1910,6 +1954,8 @@ $("#select-FCBC00").prop("checked", true);
     }
 /* Dark Mode ends */
 }
+
+.selected {border: 2px #231F20 dashed;}
 
 h1,h2,h3,h4,h5 {
 	text-wrap: balance;
@@ -2697,527 +2743,527 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <tr>
 <th scope="row" class="row">White (#FFFFFF)</th>
 <td class="Trichromacy" style="background-color:#FFFFFF"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultAAA">AAA</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Plain Black (#231F20)</th>
 <td class="Trichromacy" style="background-color:#231F20"> </td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAA">AA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultG">G</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Rich Black (#00131D)</th>
 <td class="Trichromacy" style="background-color:#00131D"> </td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAA">AA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Neutral 1 (#495961)</th>
 <td class="Trichromacy" style="background-color:#495961"> </td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Neutral 2 (#758D9A)</th>
 <td class="Trichromacy" style="background-color:#758D9A"> </td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Neutral 3 (#9FB1BD)</th>
 <td class="Trichromacy" style="background-color:#9FB1BD"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAA">AA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Neutral 4 (#E1E8EC)</th>
 <td class="Trichromacy" style="background-color:#E1E8EC"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Prussian (#002E3B)</th>
 <td class="Trichromacy" style="background-color:#002E3B"> </td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultG">G</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Marine 1 (#005C84)</th>
 <td class="Trichromacy" style="background-color:#005C84"> </td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Marine 2 (#74C9E5)</th>
 <td class="Trichromacy" style="background-color:#74C9E5"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Marine 3 (#3CBAC6)</th>
 <td class="Trichromacy" style="background-color:#3CBAC6"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAA">AA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Marine 4 (#B3DBD2)</th>
 <td class="Trichromacy" style="background-color:#B3DBD2"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Marine 5 (#4BB694)</th>
 <td class="Trichromacy" style="background-color:#4BB694"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAA">AA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Shamrock (#1E8765)</th>
 <td class="Trichromacy" style="background-color:#1E8765"> </td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Marine 6 (#C1D100)</th>
 <td class="Trichromacy" style="background-color:#C1D100"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Horizon 1 (#FCBC00)</th>
 <td class="Trichromacy" style="background-color:#FCBC00"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Horizon 2 (#EF7D00)</th>
 <td class="Trichromacy" style="background-color:#EF7D00"> </td>
-<td class="ResultF">F</td>
-<td class="ResultAA">AA</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Horizon 3 (#E73037)</th>
 <td class="Trichromacy" style="background-color:#E73037"> </td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Coral (#E73238)</th>
 <td class="Trichromacy" style="background-color:#E73238"> </td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Horizon 4 (#D5007F)</th>
 <td class="Trichromacy" style="background-color:#D5007F"> </td>
-<td class="ResultAA">AA</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <th scope="row" class="row">Horizon 5 (#8D3970)</th>
 <td class="Trichromacy" style="background-color:#8D3970"> </td>
-<td class="ResultAAA">AAA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultAA">AA</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultG">G</td>
-<td class="ResultG">G</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
-<td class="ResultF">F</td>
+<td class="ResultAAA"><span class="cellAAA">AAA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultAA"><span class="cellAA">AA</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultG"><span class="cellG">G</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
+<td class="ResultF"><span class="cellF">F</span></td>
 </tr>
 </table></div>
 <div id="mobileMatrix">
@@ -3241,127 +3287,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 </table>
 </div>
@@ -3384,127 +3430,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -3527,127 +3573,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -3670,127 +3716,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -3813,127 +3859,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -3956,127 +4002,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 </table>
 </div>
@@ -4099,127 +4145,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 </table>
 </div>
@@ -4242,127 +4288,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -4385,127 +4431,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -4528,127 +4574,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 </table>
 </div>
@@ -4671,127 +4717,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 </table>
 </div>
@@ -4814,127 +4860,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 </table>
 </div>
@@ -4957,127 +5003,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -5100,127 +5146,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -5243,127 +5289,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 </table>
 </div>
@@ -5386,127 +5432,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 </table>
 </div>
@@ -5529,127 +5575,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -5672,127 +5718,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -5815,127 +5861,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -5958,127 +6004,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -6101,127 +6147,127 @@ Colour Accessibility Matrix.  Foreground colours are the columns, background col
 <td>White</td>
 <th scope="row" class="mobrow">#FFFFFF</th>
 <td class=Trichromacy style="background-color:#FFFFFF"> </td>
-<td class="mobResultAAA ResultAAA">AAA</td>
+<td class="mobResultAAA ResultAAA"><span class="cellAAA">AAA</span></td>
 </tr>
 <tr>
 <td>Plain Black</td>
 <th scope="row" class="mobrow">#231F20</th>
 <td class=Trichromacy style="background-color:#231F20"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Rich Black</td>
 <th scope="row" class="mobrow">#00131D</th>
 <td class=Trichromacy style="background-color:#00131D"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 1</td>
 <th scope="row" class="mobrow">#495961</th>
 <td class=Trichromacy style="background-color:#495961"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 2</td>
 <th scope="row" class="mobrow">#758D9A</th>
 <td class=Trichromacy style="background-color:#758D9A"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Neutral 3</td>
 <th scope="row" class="mobrow">#9FB1BD</th>
 <td class=Trichromacy style="background-color:#9FB1BD"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Neutral 4</td>
 <th scope="row" class="mobrow">#E1E8EC</th>
 <td class=Trichromacy style="background-color:#E1E8EC"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Prussian</td>
 <th scope="row" class="mobrow">#002E3B</th>
 <td class=Trichromacy style="background-color:#002E3B"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 1</td>
 <th scope="row" class="mobrow">#005C84</th>
 <td class=Trichromacy style="background-color:#005C84"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 2</td>
 <th scope="row" class="mobrow">#74C9E5</th>
 <td class=Trichromacy style="background-color:#74C9E5"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 3</td>
 <th scope="row" class="mobrow">#3CBAC6</th>
 <td class=Trichromacy style="background-color:#3CBAC6"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Marine 4</td>
 <th scope="row" class="mobrow">#B3DBD2</th>
 <td class=Trichromacy style="background-color:#B3DBD2"> </td>
-<td class="mobResultAA ResultAA">AA</td>
+<td class="mobResultAA ResultAA"><span class="cellAA">AA</span></td>
 </tr>
 <tr>
 <td>Marine 5</td>
 <th scope="row" class="mobrow">#4BB694</th>
 <td class=Trichromacy style="background-color:#4BB694"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Shamrock</td>
 <th scope="row" class="mobrow">#1E8765</th>
 <td class=Trichromacy style="background-color:#1E8765"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Marine 6</td>
 <th scope="row" class="mobrow">#C1D100</th>
 <td class=Trichromacy style="background-color:#C1D100"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 1</td>
 <th scope="row" class="mobrow">#FCBC00</th>
 <td class=Trichromacy style="background-color:#FCBC00"> </td>
-<td class="mobResultG ResultG">G</td>
+<td class="mobResultG ResultG"><span class="cellG">G</span></td>
 </tr>
 <tr>
 <td>Horizon 2</td>
 <th scope="row" class="mobrow">#EF7D00</th>
 <td class=Trichromacy style="background-color:#EF7D00"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 3</td>
 <th scope="row" class="mobrow">#E73037</th>
 <td class=Trichromacy style="background-color:#E73037"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Coral</td>
 <th scope="row" class="mobrow">#E73238</th>
 <td class=Trichromacy style="background-color:#E73238"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 4</td>
 <th scope="row" class="mobrow">#D5007F</th>
 <td class=Trichromacy style="background-color:#D5007F"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 <tr>
 <td>Horizon 5</td>
 <th scope="row" class="mobrow">#8D3970</th>
 <td class=Trichromacy style="background-color:#8D3970"> </td>
-<td class="mobResultF ResultF">F</td>
+<td class="mobResultF ResultF"><span class="cellF">F</span></td>
 </tr>
 </table>
 </div>
@@ -6238,13 +6284,13 @@ Explaining the matrix.</caption>
 <th scope="col" class="col">Explanation</th> 
 </tr>
 <tr>
-<td style="text-align: center;">F</td>
+<td style="text-align: center;"><span class="cellF">F</span></td>
 <td><strong>FAIL - 285 of 441 combinations (65%).</strong>
 <ul>
 <li>Colour combination should not be used for user interface (UI) components or graphical objects where no text is used, nor for the visual representation of text.</li></ul></td>
 </tr>
 <tr>
-<td id="explainG" style="background-color: #B3DBD2; text-align: center;">G</td>
+<td id="explainG" style="background-color: #B3DBD2; text-align: center;"><span class="cellG">G</span></td>
 <td><strong>Contrast ratio is at least 3:1 - 156 of 441 combinations (35%).</strong>
 <ul>
 <li>Suitable for User Interface Components and Graphical Objects where no text is used (<a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a>).</li>
@@ -6254,7 +6300,7 @@ Explaining the matrix.</caption>
 </td>
 </tr>
 <tr>
-<td id="explainAA" style="background-color: #FCBC00; text-align: center;">AA</td>
+<td id="explainAA" style="background-color: #FCBC00; text-align: center;"><span class="cellAA">AA</span></td>
 <td><strong>Contrast ratio is at least 4.5:1 - 84 of 441 combinations (19%).</strong>
 <ul>
 <li>Suitable for the visual representation of text and images of text to minimum level (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a>.</li>
@@ -6265,7 +6311,7 @@ Explaining the matrix.</caption>
 </td>
 </tr>
 <tr>
-<td id="explainAAA" style="background-color: #C1D100;  text-align: center;">AAA</td>
+<td id="explainAAA" style="background-color: #C1D100;  text-align: center;"><span class="cellAAA">AAA</span></td>
 <td><strong>Contrast ratio is at least 7:1 - 52 of 441 combinations (12%).</strong>
 <ul>
 <li>Suitable for the visual representation of text and images of text at enhanced level (<a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced">WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a>.</li>

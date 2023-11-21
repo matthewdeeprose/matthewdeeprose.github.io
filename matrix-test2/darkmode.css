@@ -1,3 +1,5 @@
+        .selected {border: 2px #fffff4 dashed !important;
+        }
 	.colorBox {
 		border: #E1E8EC 2px solid !important;
 	}
