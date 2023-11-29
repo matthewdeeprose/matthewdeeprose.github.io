@@ -150,14 +150,12 @@ function showTrich() {
     [...c].forEach(x => x.className += " Trichromacy");
     [...c].forEach(x => x.classList.remove("tritanopia"));
 
-    // Hide irrelevant buttons
-    $("#showTrich").css({
-        "display": "none"
-    });
     $("#showProta").show();
     $("#showDeute").show();
-	$("#showTrita").show();	
+    $("#showTrita").show();	
 	// Set trich to enabled both button and aria
+        document.getElementById("showTrich").disabled = true;
+        document.getElementById("showTrich").setAttribute("aria-disabled", "true");
 	document.getElementById("showProta").disabled = false;
 	document.getElementById("showProta").setAttribute("aria-disabled", "false");
     // Set showDeute to enabled both button and aria
@@ -200,12 +198,12 @@ function myFunction() {
         }
     }
 }
-// Jquery function to set colours for G, AA and AAA
+/* // Jquery function to set colours for G, AA and AAA
 $(document).ready(function() {
     $("td.ResultG").css('background-color', '#B3DBD2');
     $("td.ResultAA").css('background-color', '#FCBC00');
     $("td.ResultAAA").css('background-color', '#C1D100');
-});
+}); */
 // Jquery function to make Matrix fit page-width
 $(document).ready(function() {
     $.fn.tableFit = function() {
@@ -229,167 +227,180 @@ $(document).ready(function() {
 
 // Updated functions
 
-// Show AAA only begins
-function showAAA() {
-    // Declare variables
-    var filter, table, tr, td, i;
-    filter = "AAA";
-    table = document.getElementById("myTable");
-    tr = table.getElementsByTagName("tr");
+// Reset WCAG filter starts
+$(document).ready(function() {
+    $.fn.resetWcagFilter = function() {
+        // start by clearing the localstorage value
+        localStorage.removeItem('wcagFilter');
+        delete wcagFilterStatus;
+        // set change .ResultHideF to .ResultF
+        $('.ResultHideF').removeClass('ResultHideF').addClass('ResultF');
+        // set change .cellHideF to .cellF 
+        $('.cellHideF').removeClass('cellHideF').addClass('cellF');
+        // set change .ResultHideG to .ResultG
+        $('.ResultHideG').removeClass('ResultHideG').addClass('ResultG');
+        // set change .cellHideG to .cellG
+        $('.cellHideG').removeClass('cellHideG').addClass('cellG');
+        // set change .ResultHideAA to .ResultAA
+        $('.ResultHideAA').removeClass('ResultHideAA').addClass('ResultAA');
+        // set change .cellHideAA to .cellAA
+        $('.cellHideAA').removeClass('cellHideAA').addClass('cellAA');
+        // Show F lines in mobile table
+        $(".mobResultF").parent('tr').show();
+        // Show G lines in mobile table
+        $(".mobResultG").parent('tr').show();
+        // Show AA lines in mobile table
+        $(".mobResultAA").parent('tr').show();
+        // Console log status
+        console.log("WCAG Filter removed");
+        // Button disabling or enabling
+        document.getElementById("resetWCAG").disabled = true;
+        document.getElementById("resetWCAG").setAttribute("aria-disabled", "true");
+        document.getElementById("showGplus").disabled = false;
+        document.getElementById("showGplus").setAttribute("aria-disabled", "false");
+        document.getElementById("showAAplus").disabled = false;
+        document.getElementById("showAAplus").setAttribute("aria-disabled", "false");
+        document.getElementById("showAAAplus").disabled = false;
+        document.getElementById("showAAAplus").setAttribute("aria-disabled", "false");
+    };
+});
 
-    // Loop through all table rows, and hide those who do not match the search query
-    for (i = 1; i < tr.length; i++) {
-        td = tr[i].getElementsByTagName("td");
-        for (j = 0; j < td.length; j++) {
-            var tdata = td[j];
-            if (tdata) {
-                if (tdata.innerHTML.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                    break;
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
-        }
-    }
-    // Hide F lines
-    $(".mobResultF").parent('tr').css('display', 'none');
+// Reset WCAG filter ends
 
-    // Hide G lines
-    $(".mobResultG").parent('tr').css('display', 'none');
+// Clear WCAG filter Status on page load
 
-    // Hide AA lines
-    $(".mobResultAA").parent('tr').css('display', 'none');
-
-    // Make F transparent
-    $("td.ResultF").css('background-color', 'transparent');
-    // Hide F
-    $("td.ResultF").html("");
-
-    // Make G transparent
-    $("td.ResultG").css('background-color', 'transparent');
-    // Hide G
-    $("td.ResultG").html("");
-
-    // Make AA transparent
-    $("td.ResultAA").css('background-color', 'transparent');
-    // Hide AA
-    $("td.ResultAA").html("");
-
-    // Show top colour row
-    $("tr#colorRow").show();
-
-    // Show HTML colour code line
-    $("tr#HTMLcolCodeline").show();
-
-    // Show help message
-    $("#buttonHelp").show();
-    $("#buttonHelp").text("Use the Reset Table button above to reveal all ratings again.");
-}
-// Show AAA only ends
-
-// Show AA and above only begins
-function showAAplus() {
-    // Declare variables
-    var filter, table, tr, td, i;
-    filter = "AA";
-    table = document.getElementById("myTable");
-    tr = table.getElementsByTagName("tr");
-
-    // Loop through all table rows, and hide those who do not match the search query
-    for (i = 1; i < tr.length; i++) {
-        td = tr[i].getElementsByTagName("td");
-        for (j = 0; j < td.length; j++) {
-            var tdata = td[j];
-            if (tdata) {
-                if (tdata.innerHTML.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                    break;
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
-        }
-    }
-    // Hide F lines
-    $(".mobResultF").parent('tr').css('display', 'none');
-
-    // Hide G lines
-    $(".mobResultG").parent('tr').css('display', 'none');
-
-    // Make F transparent
-    $("td.ResultF").css('background-color', 'transparent');
-    // Hide F
-    $("td.ResultF").html("");
-
-    // Make G transparent
-    $("td.ResultG").css('background-color', 'transparent');
-    // Hide G
-    $("td.ResultG").html("");
-
-    // Show colour row
-    $("tr#colorRow").show();
-
-    // Show HTML colour code line
-    $("tr#HTMLcolCodeline").show();
-
-    // Show help message
-    $("#buttonHelp").show();
-    $("#buttonHelp").text("Use the Reset Table button above to reveal all ratings again.");
-}
-// Show AA and above only ends
+$(document).ready(function() {
+    localStorage.removeItem('wcagFilter');
+    delete wcagFilterStatus;
+});
 
 // Show G and above only begins
-function showGplus() {
-    // Declare variables
-    var filter, table, tr, td, i;
-    filter = "G";
-    table = document.getElementById("myTable");
-    tr = table.getElementsByTagName("tr");
 
-    // Loop through all table rows, and hide those who do not match the search query
-    for (i = 1; i < tr.length; i++) {
-        td = tr[i].getElementsByTagName("td");
-        for (j = 0; j < td.length; j++) {
-            var tdata = td[j];
-            if (tdata) {
-                if (tdata.innerHTML.toUpperCase().indexOf(filter) > -1) {
-                    tr[i].style.display = "";
-                    break;
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
-        }
-    }
-    // Hide F lines
-    $(".mobResultF").parent('tr').css('display', 'none');
+$(document).ready(function() {
+    $.fn.showGplus = function() {
+        // start by clearing the localstorage value
+        localStorage.removeItem('wcagFilter');
+        delete wcagFilterStatus;
+        // run function to reset G,AA,AAA filters
+        $.fn.resetWcagFilter();
+        // set change .ResultF to .ResultHideF
+        $('.ResultF').removeClass('ResultF').addClass('ResultHideF');
+        // set change .cellF to .cellHideF
+        $('.cellF').removeClass('cellF').addClass('cellHideF');
+        // Hide F lines in mobile table
+        $(".mobResultF").parent('tr').hide();
+        // Set localstorage to hold gFilter
+        localStorage.setItem("wcagFilter", "G");
+        // Console log status
+        let wcagFilterStatus = localStorage.getItem("wcagFilter");
+        console.log("WCAG Filter set to ", wcagFilterStatus);
+        // Button disabling or enabling
+        document.getElementById("resetWCAG").disabled = false;
+        document.getElementById("resetWCAG").setAttribute("aria-disabled", "false");
+        document.getElementById("showGplus").disabled = true;
+        document.getElementById("showGplus").setAttribute("aria-disabled", "true");
+        document.getElementById("showAAplus").disabled = false;
+        document.getElementById("showAAplus").setAttribute("aria-disabled", "false");
+        document.getElementById("showAAAplus").disabled = false;
+        document.getElementById("showAAAplus").setAttribute("aria-disabled", "false");
+    };
+});
 
-
-
-    // Make F transparent
-    $("td.ResultF").css('background-color', 'transparent');
-    // Hide F
-    $("td.ResultF").html("");
-
-
-    // Show colour row
-    $("tr#colorRow").show();
-
-    // Show HTML colour code line
-    $("tr#HTMLcolCodeline").show();
-
-    // Show help message
-    $("#buttonHelp").show();
-    $("#buttonHelp").text("Use the Reset Table button above to reveal all ratings again.");
-}
 // Show G and above only ends
+
+// Show AA and above only begins
+
+$(document).ready(function() {
+    $.fn.showAAplus = function() {
+        // start by clearing the localstorage value
+        localStorage.removeItem('wcagFilter');
+        delete wcagFilterStatus;
+        // run function to reset G,AA,AAA filters
+        $.fn.resetWcagFilter();
+        // set change .ResultF to .ResultHideF
+        $('.ResultF').removeClass('ResultF').addClass('ResultHideF');
+        // set change .cellF to .cellHideF
+        $('.cellF').removeClass('cellF').addClass('cellHideF');
+        // set change .ResultG to .ResultHideG
+        $('.ResultG').removeClass('ResultG').addClass('ResultHideG');
+        // set change .cellG to .cellHideG
+        $('.cellG').removeClass('cellG').addClass('cellHideG');
+        // Hide F lines
+        $(".mobResultF").parent('tr').hide();
+        // Hide G lines
+        $(".mobResultG").parent('tr').hide();
+        // Set localstorage to hold aFilter
+        localStorage.setItem("wcagFilter", "AA");
+        // Console log status
+        let wcagFilterStatus = localStorage.getItem("wcagFilter");
+        console.log("WCAG Filter set to ", wcagFilterStatus);
+        // Button disabling or enabling
+        document.getElementById("resetWCAG").disabled = false;
+        document.getElementById("resetWCAG").setAttribute("aria-disabled", "false");
+        document.getElementById("showGplus").disabled = false;
+        document.getElementById("showGplus").setAttribute("aria-disabled", "false");
+        document.getElementById("showAAplus").disabled = true;
+        document.getElementById("showAAplus").setAttribute("aria-disabled", "true");
+        document.getElementById("showAAAplus").disabled = false;
+        document.getElementById("showAAAplus").setAttribute("aria-disabled", "false");
+
+    };
+});
+
+// Show AA and above only ends
+
+// Show AAA and above only begins
+
+$(document).ready(function() {
+    $.fn.showAAAplus = function() {
+        // start by clearing the localstorage value
+        localStorage.removeItem('wcagFilter');
+        delete wcagFilterStatus;
+        // run function to reset G,AA,AAA filters
+        $.fn.resetWcagFilter();
+        // set change .ResultF to .ResultHideF
+        $('.ResultF').removeClass('ResultF').addClass('ResultHideF');
+        // set change .cellF to .cellHideF
+        $('.cellF').removeClass('cellF').addClass('cellHideF');
+        // set change .ResultG to .ResultHideG
+        $('.ResultG').removeClass('ResultG').addClass('ResultHideG');
+        // set change .cellG to .cellHideG
+        $('.cellG').removeClass('cellG').addClass('cellHideG');
+        // set change .ResultAA to .ResultHideAA
+        $('.ResultAA').removeClass('ResultAA').addClass('ResultHideAA');
+        // set change .cellAA to .cellHideAA
+        $('.cellAA').removeClass('cellAA').addClass('cellHideAA');
+        // Hide F lines
+        $(".mobResultF").parent('tr').hide();
+        // Hide G lines
+        $(".mobResultG").parent('tr').hide();
+        // Hide AA lines
+        $(".mobResultAA").parent('tr').hide();
+        // Set localstorage to hold aFilter
+        localStorage.setItem("wcagFilter", "AAA");
+        // Console log status
+        let wcagFilterStatus = localStorage.getItem("wcagFilter");
+        console.log("WCAG Filter set to ", wcagFilterStatus);
+    // Button disabling or enabling
+    document.getElementById("resetWCAG").disabled = false;
+    document.getElementById("resetWCAG").setAttribute("aria-disabled", "false");
+    document.getElementById("showGplus").disabled = false;
+    document.getElementById("showGplus").setAttribute("aria-disabled", "false");
+    document.getElementById("showAAplus").disabled = false;
+    document.getElementById("showAAplus").setAttribute("aria-disabled", "false");
+    document.getElementById("showAAAplus").disabled = true;
+    document.getElementById("showAAAplus").setAttribute("aria-disabled", "true");
+
+    };
+});
+
+// Show AAA and above only ends
 
 //Dark mode change font size not border
 $(document).ready(function() {
     $.fn.darkMode = function() {
         $("head").append($("<link rel='stylesheet' href='darkmode.css' type='text/css' media='screen' />"));
-        $("td.ResultG").css({
+/*        $("td.ResultG").css({
             "background-color": "transparent",
             "color": "#B3DBD2",
             "font-size": "110 %",
@@ -416,7 +427,7 @@ $(document).ready(function() {
         $("td#explainAAA").css({
             "background-color": "transparent",
             "color": "#C1D100"
-        });
+        }); */
     }
 });
 
@@ -1765,32 +1776,36 @@ $("#myTable").find(".8D3970Column").addClass("selected");
 </script>
 
 <style>
-
 @media (prefers-color-scheme: dark) {
-	.selected {border: 2px #fffff4 dashed !important;
-	}
-	.colorBox {
-		border: #E1E8EC 2px solid !important;
-	}
-	button:disabled,
+    .selected {
+        border: 2px #fffff4 dashed !important;
+    }
+
+    .colorBox {
+        border: #E1E8EC 2px solid !important;
+    }
+
+    button:disabled,
 	button[disabled] {
-		pointer-events: none;
-		color: #e1e8ec !important;
-		border: 0px !important;
-		background-image: none;
-		background-repeat: repeat;
-	}
+        pointer-events: none;
+        color: #e1e8ec !important;
+        border: 0px !important;
+        background-image: none;
+        background-repeat: repeat;
+    }
+
     button#Dark {
         display: none;
     }
 
-		fieldset {
-			border: #758D9A solid 1px;
-		}
-		legend {
-			color: #fffff4;
-			border: #758D9A solid 1px;
-		}
+    fieldset {
+        border: #758D9A solid 1px;
+    }
+
+    legend {
+        color: #fffff4;
+        border: #758D9A solid 1px;
+    }
 
     td.ResultG {
         background-color: #161415 !important;
@@ -1802,24 +1817,26 @@ $("#myTable").find(".8D3970Column").addClass("selected");
         background-color: #161415 !important;
         color: #FCBC00;
     }
+
     td.ResultAAA {
         background-color: #161415 !important;
         color: #C1D100;
     }
+
     td#explainG {
         background-color: #161415 !important;
         color: #B3DBD2;
     }
+
     td#explainAA {
         background-color: #161415 !important;
         color: #FCBC00;
     }
+
     td#explainAAA {
         background-color: #161415 !important;
         color: #C1D100;
     }
-
-
 
     #myTable td:hover::before,
     #myTable .row:hover::before {
@@ -1844,6 +1861,7 @@ $("#myTable").find(".8D3970Column").addClass("selected");
         width: 100%;
         z-index: -1;
     }
+
     #myTable tr:hover,
     .mobileMat tr:hover {
         outline: 0.4rem dotted #FCBC00 !important;
@@ -1853,6 +1871,7 @@ $("#myTable").find(".8D3970Column").addClass("selected");
         color: #E1E8EC !important;
         background: #161415 !important;
     }
+
     a,
     a:visited {
         color: #FCBC00 !important;
@@ -1878,36 +1897,41 @@ $("#myTable").find(".8D3970Column").addClass("selected");
     button {
         border: 1px solid #9FB1BD !important;
         color: #E1E8EC !important;
-        background-color:   #231F20 !important;
-	stroke:#E1E8EC !important;
+        background-color: #231F20 !important;
+        stroke: #E1E8EC !important;
     }
+
     button:hover,
     button:focus {
-	background-color: #231F20   !important;
-	color: #E1E8EC  !important;
-	outline: 2px transparent solid !important;
-	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
-	transition: .3s linear;
-	border: #e1e8ec 1px solid !important;
-	stroke: #E1E8EC  !important;
+        background-color: #231F20   !important;
+        color: #E1E8EC  !important;
+        outline: 2px transparent solid !important;
+        box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
+        transition: .3s linear;
+        border: #e1e8ec 1px solid !important;
+        stroke: #E1E8EC  !important;
     }
     /* Details and Summary styling */
     details {
         border: 1px solid #E1E8EC !important;
         background: #231F20 !important;
     }
+
     summary:hover {
         background: #00131D !important;
         border: 2px solid #FCBC00 !important;
     }
+
     summary:focus {
         background: #00131D !important;
         border: 2px solid #FCBC00 !important;
     }
+
     summary:active {
         background: #002E3B !important;
         border: 2px solid #E1E8EC !important;
     }
+
     summary {
         border: 2px solid #E1E8EC !important;
         background: #00131D !important;
@@ -1955,14 +1979,48 @@ $("#myTable").find(".8D3970Column").addClass("selected");
 /* Dark Mode ends */
 }
 
-.selected {border: 2px #231F20 dashed;}
+td.ResultG {
+    background-color: #B3DBD2;
+}
+
+td.ResultAA {
+    background-color: #FCBC00;
+}
+
+td.ResultAAA {
+    background-color: #C1D100;
+}
+
+td.ResultHideG {
+    background-color: transparent;
+}
+
+td.ResultHideAA {
+    background-color: transparent;
+}
+
+span.cellHideF {
+    display: none;
+}
+
+span.cellHideG {
+    display: none;
+}
+
+span.cellHideAA {
+    display: none;
+}
+
+.selected {
+    border: 2px #231F20 dashed;
+}
 
 h1,h2,h3,h4,h5 {
-	text-wrap: balance;
+    text-wrap: balance;
 }
 
 p {
-	text-wrap: pretty;
+    text-wrap: pretty;
 }
 
 body {
@@ -1970,38 +2028,39 @@ body {
 }
 
 button:focus:not(:focus-visible) {
-	outline: 2px transparent solid !important;
-	box-shadow: none !important;
-	}
+    outline: 2px transparent solid !important;
+    box-shadow: none !important;
+}
 
 a:focus:not(:focus-visible) {
-		outline: 0px solid #00131D !important;
-	}
+    outline: 0px solid #00131D !important;
+}
 
-.filterSelect, input {display: inline-block;}
+.filterSelect, input {
+    display: inline-block;
+}
 
 fieldset.selectBoxes {
     line-height: 1.7rem;
 }
 
-
-	.colorBox {
-		outline: transparent solid 2px;
-   	        margin-left: 0.2rem;
-	}
+.colorBox {
+    outline: transparent solid 2px;
+    margin-left: 0.2rem;
+}
 
 .colorBox {
-	border: #00131D 2px solid;
+    border: #00131D 2px solid;
 }
 
-/* Hide Trichromacy button */
+/* Hide Trichromacy button 
 #showTrich {
 	display:none;
-}
+} */
 
 /* Hide button help */
 #buttonHelp {
-	display:none;
+    display: none;
 }
 
 .protanopia {
@@ -2034,46 +2093,56 @@ fieldset.selectBoxes {
 } */
 
 	/* Format button controls */
-	div#control1 {
-		float: left;
-	}
-	div#control2 {
-		clear: both;
-	}
-	fieldset {
-		padding: 0.3rem;
-		margin-top: 0.3rem;
-		margin-bottom: 0.3rem;
-		;
-	}
-	fieldset {
-		border: #758D9A solid 1px;
-	}
-	legend {
-		background-color: #231F20;
-		color: #fffff4;
-	}
-	fieldset.ctrl1 {
-		display: inline;
-	}
-	fieldset.ctrl2 {
-		display: inline;
-	}
-	legend {
-		font-size: 0.8rem;
-		padding: 3px 1rem;
-	}
-	@media only screen and (max-width: 768px) {
-		fieldset.ctrl1 {
-			width: 100%;
-		}
-		fieldset.ctrl2 {
-			width: 100%;
-		}
-		div#control1 {
-			width: 100%;
-		}
-	}
+div#control1 {
+    float: left;
+}
+
+div#control2 {
+    clear: both;
+}
+
+fieldset {
+    padding: 0.3rem;
+    margin-top: 0.3rem;
+    margin-bottom: 0.3rem;
+    ;
+}
+
+fieldset {
+    border: #758D9A solid 1px;
+}
+
+legend {
+    background-color: #231F20;
+    color: #fffff4;
+}
+
+fieldset.ctrl1 {
+    display: inline;
+}
+
+fieldset.ctrl2 {
+    display: inline;
+}
+
+legend {
+    font-size: 0.8rem;
+    padding: 3px 1rem;
+}
+
+@media only screen and (max-width: 768px) {
+    fieldset.ctrl1 {
+        width: 100%;
+    }
+
+    fieldset.ctrl2 {
+        width: 100%;
+    }
+
+    div#control1 {
+        width: 100%;
+    }
+}
 	/* Format button controls ends*/
 
 /* Center align the html hex code row */
@@ -2139,6 +2208,7 @@ th {
     width: 100%;
     z-index: -1;
 }
+
 #myTable tr:hover,
 .mobileMat tr:hover {
     outline: 0.3rem solid black;
@@ -2175,7 +2245,7 @@ a:visited {
 a:focus {
     outline: 3px solid #00131D;
     outline-offset: 5px;
- transition: all 0.3s ease-in-out !important;
+    transition: all 0.3s ease-in-out !important;
 }
 
 /* Styling buttons */
@@ -2192,12 +2262,12 @@ button {
 
 button:hover,
 button:focus {
-	transition: .3s linear;
-	background-color: #E1E8EC;
-	color: #00131D;
-	outline: 2px transparent solid;
-	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4;
-	border: #00131D 1px solid ;
+    transition: .3s linear;
+    background-color: #E1E8EC;
+    color: #00131D;
+    outline: 2px transparent solid;
+    box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4;
+    border: #00131D 1px solid;
 }
 
 button:active {
@@ -2209,10 +2279,12 @@ svg {
     display: inline-flex;
     align-self: center;
 }
+
 svg {
     height: 1em;
     width: 1em;
 }
+
 svg {
     top: .125em;
     position: relative;
@@ -2239,6 +2311,7 @@ summary:hover {
     transition: .3s linear;
     outline: 0.2rem solid black;
 }
+
 summary:focus {
     background: #E1E8EC;
     outline: 0.2rem solid black;
@@ -2283,7 +2356,8 @@ caption {
 }
 
 fieldset.selectBoxes {
-	font-size: 0.9rem;}
+    font-size: 0.9rem;
+}
 
 /* Styling the explanatory table */
 #explanatoryTable {
@@ -2295,14 +2369,14 @@ fieldset.selectBoxes {
     font-size: 0.8rem;
 }
 /* Style inactive buttons */
-	button:disabled,
+button:disabled,
 	button[disabled] {
-		pointer-events: none;
-		color: #00131d; 
-		border: 0px !important;
-		background-image: none;
-		background-repeat: repeat;
-	}
+    pointer-events: none;
+    color: #00131d;
+    border: 0px !important;
+    background-image: none;
+    background-repeat: repeat;
+}
 
 /* Margin for buttons */
 button {
@@ -2334,7 +2408,6 @@ th {
     border-bottom: 1px solid #ddd;
 }
 
-
 #myTable tr:first-child {
     font-weight: bold;
 }
@@ -2342,7 +2415,6 @@ th {
 #myTable td {
     text-align: center;
 }
-
 
 #myTable td:first-child {
     text-align: left;
@@ -2446,6 +2518,7 @@ fieldset.selectBoxes {
     fieldset.selectBoxes {
         display: inline;
     }
+
     #mobileMatrix {
         display: none;
     }
@@ -2469,7 +2542,7 @@ th.mobcol {
     text-decoration: underline;
     -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
     -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-    box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);   
+    box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
 }
 
 .skip-link:focus {
@@ -2480,19 +2553,26 @@ th.mobcol {
 }
 
 /* Hide caption */
-caption {	border: 0 !important;
-	clip: rect(1px, 1px, 1px, 1px) !important; /* 1 */
-	-webkit-clip-path: inset(50%) !important;
-		clip-path: inset(50%) !important;  /* 2 */
-	height: 1px !important;
-	margin: -1px !important;
-	overflow: hidden !important;
-	padding: 0 !important;
-	position: absolute !important;
-	width: 1px !important;
-	white-space: nowrap !important;            /* 3 */}
+caption {
+    border: 0 !important;
+    clip: rect(1px, 1px, 1px, 1px) !important;
+ /* 1 */
+    -webkit-clip-path: inset(50%) !important;
+    clip-path: inset(50%) !important;
+  /* 2 */
+    height: 1px !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    position: absolute !important;
+    width: 1px !important;
+    white-space: nowrap !important;
+            /* 3 */
+}
 
-div#linksToExamples {margin-bottom: 0.3rem;}	
+div#linksToExamples {
+    margin-bottom: 0.3rem;
+}	
 
 /* Print fomatting */
 @media print {
@@ -2504,9 +2584,11 @@ div#linksToExamples {margin-bottom: 0.3rem;}
     #ExplanationPostMatrix {
         display: none;
     }
+
     #Matrix {
         display: inline;
     }
+
     body, caption {
         background-color: transparent;
     }
@@ -2585,18 +2667,19 @@ div#linksToExamples {margin-bottom: 0.3rem;}
                </fieldset>
                <fieldset id="FilterResults" class="ctrl1">
                   <legend>Filter results</legend>
-                  <button id="showGplus" type="button" onclick="showGplus()">Show G, AA, and AAA only</button>
-                  <button id="showAAplus" type="button" onclick="showAAplus()">Show AA and AAA only</button>
-                  <button id="showAAA" type="button" onclick="showAAA()">Show AAA only</button>
+		  <button id="resetWCAG" type="button" onclick="$.fn.resetWcagFilter()"aria-disabled="true" disabled>Reset filter</button>
+                  <button id="showGplus" type="button" onclick="$.fn.showGplus()" aria-disabled="false">Show G, AA, and AAA only</button>
+                  <button id="showAAplus" type="button" onclick="$.fn.showAAplus()" aria-disabled="false">Show AA and AAA only</button>
+                  <button id="showAAAplus" type="button" onclick="$.fn.showAAAplus()" aria-disabled="false">Show AAA only</button>
                </fieldset>
             </div>
             <div id="control2">
                <fieldset id="simulateColour" class="ctrl2">
                   <legend>Simulate colour vision deficiency</legend>
+                  <button id="showTrich" type="button" onclick="showTrich()" aria-disabled="true" disabled>Reset to trichromacy</button>
                   <button id="showProta" type="button" onclick="showProta()" aria-disabled="false">Simulate protanopia</button>
                   <button id="showDeute" type="button" onclick="showDeute()" aria-disabled="false">Simulate deuteranopia</button>
                   <button id="showTrita" type="button" onclick="showTrita()" aria-disabled="false">Simulate tritanopia </button>
-                  <button id="showTrich" aria-live="polite" type="button" onclick="showTrich()" aria-disabled="true">Reset to trichromacy</button>
                </fieldset>
             </div>
 </div>

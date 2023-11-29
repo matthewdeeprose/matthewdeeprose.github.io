@@ -1,3 +1,26 @@
+        .selected {border: 2px #fffff4 dashed !important;
+        }
+	.colorBox {
+		border: #E1E8EC 2px solid !important;
+	}
+
+		fieldset {
+			border: #758D9A solid 1px;
+		}
+		legend {
+			color: #fffff4;
+			border: #758D9A solid 1px;
+		}
+
+
+		button:disabled,
+	button[disabled] {
+		pointer-events: none;
+		color: #00131d !important;
+		border: 0px !important;
+		background-image: none;
+		background-repeat: repeat;
+	}
 
 #myTable td:hover::before,
 #myTable .row:hover::before {
@@ -51,16 +74,19 @@ a:focus {
 }
 /* Styling buttons */
 button {
-    color: #231F20;
-    background-color: #E1E8EC;
-    border: 1px solid #9FB1BD;
-}
+        border: 1px solid #9FB1BD !important;
+        color: #E1E8EC !important;
+        background-color:   #231F20 !important;
+	stroke:#E1E8EC !important;}
 button:hover,
 button:focus {
-    color: #E1E8EC;
-    background-color: #161415;
-    box-shadow: 0 0 0 3pt #FCBC00;
-    border: 1px solid #FCBC00;
+	background-color: #231F20   !important;
+	color: #E1E8EC  !important;
+	outline: 2px transparent solid !important;
+	box-shadow: 0 0 0 2px #fffff4, 0 0 0 4px #002e3b, 0 0 4px 8px #fffff4 !important;
+	transition: .3s linear;
+	border: #e1e8ec 1px solid !important;
+	stroke: #E1E8EC  !important;
 }
 /* Details and Summary styling */
 details {

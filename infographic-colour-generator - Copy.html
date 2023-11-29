@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="UoS Brand Accessible Colour Suggester">
+    <meta name="keywords" content="accessibility, presentation, blog">
+    <meta name="author" content="Matthew Deeprose">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>UoS Brand Accessible Colour Suggester</title>
+    <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+    <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+    <link rel="stylesheet" id="infographicCSS" href="infographic.css" media="all">
+    <meta property="og:title" content="UoS Brand Accessible Colour Suggester - Matthew Deeprose">
+    <meta property="og:description" content="">
+    <meta property="og:image" content="https://matthewdeeprose.github.io/suggester.png">
+    <meta property="og:image:alt" content="">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://matthewdeeprose.github.io/infographic-colour-generator.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="favicon.ico">
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="UoS Brand Accessible Colour Suggester - Matthew Deeprose" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta name="twitter:image" content="https://matthewdeeprose.github.io/suggester.png" />
+    <meta name="twitter:image:alt" content="" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      .page-wrap>* {
+        grid-column: 1/-1 !important;
+        grid-row: auto !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+              <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                  <path d="m6.5 17.5h4" />
+                  <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                  <path d="m2.5 13.5h4" />
+                  <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+            <span id="hamburger">
+              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html" class="active">Projects</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 id="top">UoS Brand Accessible Colour Suggester</h1>
+          <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://sotonac.sharepoint.com/teams/Brand/SitePages/Visual-Identity/ColourPalette.aspx">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic. </p>
+          <p>Use the Randomise button to get started!</p>
+          <div class="resourseList">
+            <div class="grid-child">
+              <button id="genNew" class="actionButton" type="button" onclick="randomAll()">Randomise</button>
+              <section id="infoGraphicBox" class="" aria-hidden="true">
+                <h2 id="infoTexT" class="">Text and information</h2>
+                <p class="iconrow">
+                  <span id="icon1" class="infoIcon">&#x2745;</span>
+                  <span id="icon2" class="infoIcon">&#9825;</span>
+                  <span id="icon3" class="infoIcon">&#10026;</span>
+                </p>
+              </section>
+            </div>
+            <div class="grid-child" id="info">
+              <section class="details" aria-hidden="true">
+                <h2 id="colDetailsH2">Colour details</h2>
+                <p class="details">
+                  <span id="bgC" class="details">Background colour: </span>
+                  <span class="result2">
+                    <span id="bgColor" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span class="details result" id="backgroundColor" aria-hidden="true"></span>
+                    <span class="details result" id="backgroundName" aria-hidden="true"></span>
+                  </span>
+                </p>
+                <p class="details">Text colour: <span class="result2">
+                    <span id="tColorColor" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span class="details result" id="tcolor" aria-hidden="true"></span>
+                    <span class="details result" id="tColorName" aria-hidden="true"></span>
+                  </span>
+                  <br /> Text contrast: <span class="details result" id="tcontrast" aria-hidden="true"></span>
+                  <br />WCAG Rating: <span class="details result" id="tcontrastWCAG" aria-hidden="true"></span>
+                  <br />
+                  <span class="arrayDetails">Text contrast array used: <span class="details" id="tcontrastArray"></span>
+                  </span>
+				  </p>
+                <p class="details">Graphic 1 <span aria-hidden="true">&#x2745;</span> colour: <span class="result2">
+                    <span id="g1colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span class="details result" id="g1colourSpan1" aria-hidden="true"></span>
+                    <span class="details result" id="gfx1ColorName" aria-hidden="true"></span>
+                  </span>
+                  <br />Graphic 1 contrast: <span id="g1contrast" aria-hidden="true" class="details result"></span>
+                  <br />WCAG Rating: <span class="details result" id="g1contrastWCAG" aria-hidden="true"></span>
+                </p>
+                <p class="details">Graphic 2 <span aria-hidden="true">&#9825;</span> colour: <span class="result2">
+                    <span id="g2colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="g2colourSpan1" class="details result" aria-hidden="true"></span>
+                    <span class="details result" id="gfx2ColorName" aria-hidden="true"></span>
+                  </span>
+                  <br />Graphic 2 contrast: <span class="details result" id="g2contrast" aria-hidden="true"></span>
+                  <br />WCAG Rating: <span class="details result" id="g2contrastWCAG" aria-hidden="true"></span>
+                </p>
+                <p class="details">Graphic 3 <span aria-hidden="true">&#10026;</span> colour: <span class="result2">
+                    <span id="g3colourSpan2" class="colorBox" aria-hidden="true">&nbsp;&nbsp;&nbsp;</span>
+                    <span id="g3colourSpan1" class="details result" aria-hidden="true"></span>
+                    <span class="details result" id="gfx3ColorName" aria-hidden="true"></span>
+                  </span>
+                  <br />Graphic 3 contrast: <span id="g3contrast" class="details result" aria-hidden="true"></span>
+                  <br />WCAG Rating: <span id="g3contrastWCAG" class="details result" aria-hidden="true"></span>
+                </p>
+              </section>
+            </div>
+          </div>
+          <section id="srDetails" class="sr-only">
+			<h2>Results</h2>
+            <span id="srResults" aria-live="polite"></span>
+          </section>
+          <section class="infoDetails">
+            <h2>What does "WCAG Rating" mean?</h2>
+			<p>WCAG means the Web Content Accessibility Guidelines. The rating refers to a number of WCAG success criteria outlined below and for what purpose the level of contrast is suitable.</p>
+            <dl>
+              <dt class="infoExplain">G: Contrast ratio is at least 3:1</dt>
+              <dd class="infoExplain">
+                <ul>
+                  <li><a href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/">Tl;dr:</a> Use for graphics / icons, but not text.</li>
+                  <li>Suitable for User Interface Components and Graphical Objects where no text is used ( <a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a>). </li>
+                  <li>Suitable for large-scale text (at least 18 point if not bold and at least 14 point if bold) and images of large-scale text ( <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a>. </li>
+                  <li>View all examples of <a href="https://matthewdeeprose.github.io/matrix/G.html">brand colour combinations with a ratio of 3:1 and above</a>. </li>
+                </ul>
+              </dd>
+              <dt class="infoExplain">AA: Contrast ratio is at least 4.5:1</dt>
+              <dd class="infoExplain">
+                <ul>
+                  <li><a href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/">Tl;dr:</a> Use for text, graphics or icons.</li>
+                  <li>Suitable for the visual representation of text and images of text to minimum level ( <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a>. </li>
+                  <li>Suitable for large-scale text (at least 18 point if not bold and at least 14 point if bold) and images of large-scale text ( <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced">WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a>
+                  </li>
+                  <li>Suitable for User Interface Components and Graphical Objects where no text is used ( <a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast)</a>
+                  </li>
+                  <li>View all examples of <a href="https://matthewdeeprose.github.io/matrix/AA.html">brand colour combinations with a ratio of 4.5:1 and above</a>. </li>
+                </ul>
+              </dd>
+              <dt class="infoExplain">AAA: Contrast ratio is at least 7:1</dt>
+              <dd class="infoExplain">
+                <ul>
+                  <li><a href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/">Tl;dr:</a> Use for text, graphics or icons. This meets the enhanced AAA level.</li>
+                  <li>Suitable for the visual representation of text and images of text at enhanced level ( <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced">WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a>. </li>
+                  <li>Suitable for User Interface Components and Graphical Objects where no text is used ( <a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a>). </li>
+                  <li>View all examples of <a href="https://matthewdeeprose.github.io/matrix/AAA.html">brand colour combinations with a ratio of 7:1 and above</a>. </li>
+                </ul>
+              </dd>
+            </dl>
+          </section>
+          <script src="https://matthewdeeprose.github.io/scripts/chroma.min.js"></script>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related content</h2>
+          <ul class="relUL">
+            <li>
+              <a href="https://codepen.io/matthewdeeprose/pen/JjLMMob">View an early prototype of this tool in CodePen.</a>
+            </li>
+            <li>
+              <a href="https://matthewdeeprose.github.io/matrix/matrix.html">Accessibility Matrix for University of Southampton Brand Colour Palette</a>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS">
+          <a id="rssA" href="feed.rss">RSS</a>
+        </div>
+        <div id="SiteMap">
+          <a href="siteMap.html">Site Map</a>
+        </div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
+        </div>
+      </footer>
+    </div>
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false"
+        } else {
+          menuAriaAttrib = "true"
+        }
+        document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
+      window.onscroll = function() {
+        scrollFunction()
+      };
+
+      function scrollFunction() {
+        if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
+
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById('skipToContent').focus();
+      }
+
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById('rssA').focus();
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
+
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia('(prefers-color-scheme: dark)');
+        let dt;
+        if (d.matches) {
+          dt = 'dark';
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = 'light'
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == 'dark' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'light' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'dark' && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
+
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
+
+      function applyThemePreference() {
+        if (themePref == 'Dark') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          theButton.setAttribute("aria-pressed", "true");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        } else if (themePref == 'Light') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          theButton.setAttribute("aria-pressed", "false");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        }
+      }
+      applyThemePreference();
+    </script>
+    <script src="scripts/lite-yt-embed.js"></script>
+    <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+    <script>
+    function randomAll() {
+      console.log("\n");
+      console.log("Randomise function starts");
+      console.log("\n");
+      // Colournames array
+      let colournames = [{
+        "colourHex": "#FFFFFF",
+        "name": "White"
+      }, {
+        "colourHex": "#231F20",
+        "name": "Plain Black"
+      }, {
+        "colourHex": "#00131D",
+        "name": "Rich Black"
+      }, {
+        "colourHex": "#495961",
+        "name": "Neutral 1"
+      }, {
+        "colourHex": "#758D9A",
+        "name": "Neutral 2"
+      }, {
+        "colourHex": "#9FB1BD",
+        "name": "Neutral 3"
+      }, {
+        "colourHex": "#E1E8EC",
+        "name": "Neutral 4"
+      }, {
+        "colourHex": "#002E3B",
+        "name": "Prussian"
+      }, {
+        "colourHex": "#005C84",
+        "name": "Marine 1"
+      }, {
+        "colourHex": "#74C9E5",
+        "name": "Marine 2"
+      }, {
+        "colourHex": "#3CBAC6",
+        "name": "Marine 3"
+      }, {
+        "colourHex": "#B3DBD2",
+        "name": "Marine 4"
+      }, {
+        "colourHex": "#4BB694",
+        "name": "Marine 5"
+      }, {
+        "colourHex": "#C1D100",
+        "name": "Marine 6"
+      }, {
+        "colourHex": "#FCBC00",
+        "name": "Horizon 1"
+      }, {
+        "colourHex": "#EF7D00",
+        "name": "Horizon 2"
+      }, {
+        "colourHex": "#D5007F",
+        "name": "Horizon 4"
+      }, {
+        "colourHex": "#8D3970",
+        "name": "Horizon 5"
+      }]
+      // Loop through the colour names array to create an array with only the hex codes
+      // Based on https://stackoverflow.com/questions/19590865/from-an-array-of-objects-extract-value-of-a-property-as-array
+      let infoGraphicBackgrounds = colournames.map((item) => item.colourHex);
+      console.log("\n");
+      console.log("Colours in our set: ");
+      console.log(infoGraphicBackgrounds);
+      console.log("\n");
+      /*
+    /* put into the infographic box into the myInfoGraphicBox variable */
+      const myInfoGraphicBox = document.getElementById("infoGraphicBox");
+      const bgColId = document.getElementById("bgColor");
+      const tColId = document.getElementById("tColorColor");
+      const gCol1Id = document.getElementById("g1colourSpan2");
+      const gCol2Id = document.getElementById("g2colourSpan2");
+      const gCol3Id = document.getElementById("g3colourSpan2");
+      // This amazing function to get n number of random values from an array
+      // found on https://stackoverflow.com/questions/19269545/how-to-get-a-number-of-random-elements-from-an-array
+      function getRandom(arr, n) {
+        var result = new Array(n),
+          len = arr.length,
+          taken = new Array(len);
+        if (n > len) throw new RangeError("getRandom: more elements taken than available");
+        while (n--) {
+          var x = Math.floor(Math.random() * len);
+          result[n] = arr[x in taken ? taken[x] : x];
+          taken[x] = --len in taken ? taken[len] : len;
+        }
+        return result;
+      }
+      /* Get the element in which our text is */
+      let myInfoGraphicText = document.getElementById("infoTexT");
+      /* Get Graphics */
+      //
+      /* Get Graphic 1 */
+      let myInfoGraphicGfx1 = document.getElementById("icon1");
+      /* Get Graphic 2 */
+      let myInfoGraphicGfx2 = document.getElementById("icon2");
+      /* Get Graphic 3 */
+      let myInfoGraphicGfx3 = document.getElementById("icon3");
+      // Start Arrays
+      // Create empty array for text colour
+      let textColor = [];
+      // Create empty array for graphics colours
+      let gfxColor = [];
+      // list possible backgrounds
+      // pick random button background put in variable
+      const randomBackgroundColor = Math.floor(Math.random() * infoGraphicBackgrounds.length);
+      backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
+      // bgC.innerHTML = "Background colour: ";
+      myInfoGraphicBox.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
+      // Show the hex code of the colour on the web page
+      // backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
+      currentBackground = infoGraphicBackgrounds[randomBackgroundColor];
+      // Show the colour itself on the page
+      bgColId.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
+      // Start the first loop for text colours
+      console.log("\n");
+      console.log("*** TXT ARRAY LOOP START ***");
+      console.log("\n");
+      for (let i = 0; i < infoGraphicBackgrounds.length; i++) {
+        let currentColor = infoGraphicBackgrounds[i];
+        //console.log(infoGraphicBackgrounds[i]);
+        console.log("Current colour is " + currentColor);
+        let currentColorRatio = chroma.contrast(currentBackground, infoGraphicBackgrounds[i]);
+        // console.log(chroma.contrast(currentBackground, infoGraphicBackgrounds[i]));
+        console.log("Contrast with " + currentBackground + " = " + currentColorRatio)
+        // add thing that adds colors with contrast over 4.5:1 to textColor array
+        if (currentColorRatio >= 4.5) {
+          textColor.push(currentColor);
+          console.log("Added " + currentColor + " to the array");
+        }
+        console.log("Current array items: " + textColor);
+      }
+      console.log("\n");
+      console.log("*** TXT ARRAY LOOP ENDS ***");
+      console.log("\n");
+      // Pick a random colour from the textColor array
+      let h2TextColor = Math.floor(Math.random() * textColor.length);
+      myInfoGraphicText.style.color = textColor[h2TextColor];
+      var infTextColor = textColor[h2TextColor];
+      // set text colour display
+      tcolor.innerHTML = infTextColor;
+      // get contrast ratio of text and background
+      let textContrastDisplay = chroma.contrast(infTextColor, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
+      // show contrast ratio
+      tcontrast.innerHTML = textContrastDisplay + ":1";
+      // set colour examples:
+      // text colour example
+      tColId.style.backgroundColor = infTextColor;
+      // Start the second loop, this time for gfx colours
+      console.log("\n");
+      console.log("*** GFX ARRAY LOOP START ***");
+      console.log("\n");
+      for (let i = 0; i < infoGraphicBackgrounds.length; i++) {
+        let currentColor2 = infoGraphicBackgrounds[i];
+        console.log("Current colour is " + currentColor2);
+        let currentColor2Ratio = chroma.contrast(currentBackground, infoGraphicBackgrounds[i]);
+        console.log("Contrast with " + currentBackground + " = " + currentColor2Ratio)
+        // add thing that adds colors with contrast over 3:1 to textColor array
+        if (currentColor2Ratio >= 3) {
+          gfxColor.push(currentColor2);
+          console.log("Added " + currentColor2 + " to the array");
+        }
+        console.log("Current gfx array items: " + gfxColor);
+      }
+      console.log("\n");
+      console.log("*** GFX ARRAY LOOP END ***");
+      console.log("\n");
+      // NEED TO ADD SOMETHING ABOUT WHAT TO DO IF THERE ARE LESS THAN THREE COLOURS IN THE GFX ARRAY!
+      // Let's get 3 random colours
+      gfxArray = (getRandom(gfxColor, 3));
+      myInfoGraphicGfx1.style.color = gfxArray[0];
+      myInfoGraphicGfx1.style.color = gfxArray[0];
+      myInfoGraphicGfx2.style.color = gfxArray[1];
+      myInfoGraphicGfx3.style.color = gfxArray[2];
+      let myInfoGraphicGfx1Color = gfxArray[0];
+      let myInfoGraphicGfx2Color = gfxArray[1];
+      let myInfoGraphicGfx3Color = gfxArray[2];
+      g1colourSpan1.innerHTML = myInfoGraphicGfx1Color;
+      g2colourSpan1.innerHTML = myInfoGraphicGfx2Color;
+      g3colourSpan1.innerHTML = myInfoGraphicGfx3Color;
+      /*gContrastArray.innerHTML = "gfxContrastsFFFFFF";*/
+      gCol1Id.style.backgroundColor = myInfoGraphicGfx1Color;
+      gCol2Id.style.backgroundColor = myInfoGraphicGfx2Color;
+      gCol3Id.style.backgroundColor = myInfoGraphicGfx3Color;
+      // get contrast ratio of graphic 1 and background
+      let gfx1ContrastDisplay = chroma.contrast(myInfoGraphicGfx1Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
+      // show contrast ratio
+      g1contrast.innerHTML = gfx1ContrastDisplay + ":1";
+      // get contrast ratio of graphic 2 and background
+      let gfx2ContrastDisplay = chroma.contrast(myInfoGraphicGfx2Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
+      // show contrast ratio
+      g2contrast.innerHTML = gfx2ContrastDisplay + ":1";
+      // get contrast ratio of graphic 3 and background
+      let gfx3ContrastDisplay = chroma.contrast(myInfoGraphicGfx3Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
+      // show contrast ratio
+      g3contrast.innerHTML = gfx3ContrastDisplay + ":1";
+      //function to determine wcag rating from a Contrast Ratio
+      function getWcagRating(contrastRatio) {
+        if (contrastRatio >= 7) {
+          WcagRating = "AAA";
+        } else if (contrastRatio >= 4.5) {
+          WcagRating = "AA";
+        } else if (contrastRatio >= 3) {
+          WcagRating = "G";
+        } else {
+          WcagRating = "F";
+        }
+        return WcagRating;
+      }
+      // Set up the WCAG results to show
+      g1contrastWCAG.innerHTML = getWcagRating(gfx1ContrastDisplay);
+      g2contrastWCAG.innerHTML = getWcagRating(gfx2ContrastDisplay);
+      g3contrastWCAG.innerHTML = getWcagRating(gfx3ContrastDisplay);
+      // Text contrast WCAG results
+      tcontrastWCAG.innerHTML = getWcagRating(textContrastDisplay);
+      // Lookup function based on https://stackoverflow.com/questions/64456535/create-a-function-called-pricelookup-to-find-the-price-of-a-single-item 
+      function nameLookup(colournames, colour) {
+        let ret = colournames.find(x => x.colourHex === colour);
+        return ret ? ret.name : "No such item";
+      };
+      // Make names of colours appear
+      backgroundName.innerHTML = "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")";
+      tColorName.innerHTML = "(" + nameLookup(colournames, infTextColor) + ")";
+      gfx1ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")";
+      gfx2ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")";
+      gfx3ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")";
+      // Put results into a special span that is only visible to screen reader users
+      document.getElementById("srResults").innerHTML = "Results: Background colour " + infoGraphicBackgrounds[randomBackgroundColor] + " " + "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")" + ", Text colour: " + infTextColor + " " + "(" + nameLookup(colournames, infTextColor) + ")" + ", Text contrast: " + textContrastDisplay + ":1, " + "W C A G Rating: " + getWcagRating(textContrastDisplay) + ". Graphic 1 colour: " + myInfoGraphicGfx1Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")" + ". Graphic 1 contrast: " + gfx1ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx1ContrastDisplay) + ". " + "Graphic 2 colour: " + myInfoGraphicGfx2Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")" + ". Graphic 2 contrast: " + gfx2ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx2ContrastDisplay) + ". " + "Graphic 3 colour: " + myInfoGraphicGfx3Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")" + ". Graphic 3 contrast: " + gfx3ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx3ContrastDisplay);
+      console.log("\n");
+      console.log("Randomise function ends");
+      console.log("\n");
+    };
+      // Finally we run the function when the page loads
+      // It also runs when you press the button	  
+      // randomAll();
+    </script>
+  </body>
+</html>
