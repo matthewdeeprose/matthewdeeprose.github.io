@@ -262,6 +262,9 @@ $(document).ready(function() {
         document.getElementById("showAAplus").setAttribute("aria-disabled", "false");
         document.getElementById("showAAAplus").disabled = false;
         document.getElementById("showAAAplus").setAttribute("aria-disabled", "false");
+    // Show help message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("'WCAG Filter' reset");
     };
 });
 
@@ -303,6 +306,9 @@ $(document).ready(function() {
         document.getElementById("showAAplus").setAttribute("aria-disabled", "false");
         document.getElementById("showAAAplus").disabled = false;
         document.getElementById("showAAAplus").setAttribute("aria-disabled", "false");
+    // Show help message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Showing only colour combinations for use with user interface components and graphical objects ('G') (≥3:1 contrast), text at AA level (≥4.5:1 contrast) and text at AAA level (≥7:1 contrast).");
     };
 });
 
@@ -343,7 +349,9 @@ $(document).ready(function() {
         document.getElementById("showAAplus").setAttribute("aria-disabled", "true");
         document.getElementById("showAAAplus").disabled = false;
         document.getElementById("showAAAplus").setAttribute("aria-disabled", "false");
-
+    // Show help message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Showing only colour combinations for use with text, user interface components and graphical objects at AA level (≥4.5:1 contrast) and AAA level (≥7:1 contrast).");
     };
 });
 
@@ -390,7 +398,9 @@ $(document).ready(function() {
     document.getElementById("showAAplus").setAttribute("aria-disabled", "false");
     document.getElementById("showAAAplus").disabled = true;
     document.getElementById("showAAAplus").setAttribute("aria-disabled", "true");
-
+    // Show help message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text("Showing only colour combinations for use with text, user interface components and graphical objects at AAA level (≥7:1 contrast).");
     };
 });
 
@@ -1773,6 +1783,35 @@ $("#myTable").find(".8D3970Column").addClass("selected");
 // $.fn.palette8D3970();
 //
 // List of functions to show palettes ends
+
+// Add classes to row using jquery
+$(document).ready(function() {
+$('#myTable tr:nth-child(1)').addClass('VanityNameRow');$('#myTable tr:nth-child(1) td').addClass('VanityNameRow');
+$('#myTable tr:nth-child(2)').addClass('hexCodesRow');$('#myTable tr:nth-child(2) td').addClass('hexCodesRow');
+$('#myTable tr:nth-child(3)').addClass('colourExampleRow');$('#myTable tr:nth-child(3) td').addClass('colourExampleRow');
+$('#myTable tr:nth-child(4)').addClass('FFFFFFRow');$('#myTable tr:nth-child(4) td').addClass('FFFFFFRow');
+$('#myTable tr:nth-child(5)').addClass('231F20Row');$('#myTable tr:nth-child(5) td').addClass('231F20Row');
+$('#myTable tr:nth-child(6)').addClass('00131DRow');$('#myTable tr:nth-child(6) td').addClass('00131DRow');
+$('#myTable tr:nth-child(7)').addClass('495961Row');$('#myTable tr:nth-child(7) td').addClass('495961Row');
+$('#myTable tr:nth-child(8)').addClass('758D9ARow');$('#myTable tr:nth-child(8) td').addClass('758D9ARow');
+$('#myTable tr:nth-child(9)').addClass('9FB1BDRow');$('#myTable tr:nth-child(9) td').addClass('9FB1BDRow');
+$('#myTable tr:nth-child(10)').addClass('E1E8ECRow');$('#myTable tr:nth-child(10) td').addClass('E1E8ECRow');
+$('#myTable tr:nth-child(11)').addClass('002E3BRow');$('#myTable tr:nth-child(11) td').addClass('002E3BRow');
+$('#myTable tr:nth-child(12)').addClass('005C84Row');$('#myTable tr:nth-child(12) td').addClass('005C84Row');
+$('#myTable tr:nth-child(13)').addClass('74C9E5Row');$('#myTable tr:nth-child(13) td').addClass('74C9E5Row');
+$('#myTable tr:nth-child(14)').addClass('3CBAC6Row');$('#myTable tr:nth-child(14) td').addClass('3CBAC6Row');
+$('#myTable tr:nth-child(15)').addClass('B3DBD2Row');$('#myTable tr:nth-child(15) td').addClass('B3DBD2Row');
+$('#myTable tr:nth-child(16)').addClass('4BB694Row');$('#myTable tr:nth-child(16) td').addClass('4BB694Row');
+$('#myTable tr:nth-child(17)').addClass('1E8765Row');$('#myTable tr:nth-child(17) td').addClass('1E8765Row');
+$('#myTable tr:nth-child(18)').addClass('C1D100Row');$('#myTable tr:nth-child(18) td').addClass('C1D100Row');
+$('#myTable tr:nth-child(19)').addClass('FCBC00Row');$('#myTable tr:nth-child(19) td').addClass('FCBC00Row');
+$('#myTable tr:nth-child(20)').addClass('EF7D00Row');$('#myTable tr:nth-child(20) td').addClass('EF7D00Row');
+$('#myTable tr:nth-child(21)').addClass('E73037Row');$('#myTable tr:nth-child(21) td').addClass('E73037Row');
+$('#myTable tr:nth-child(22)').addClass('E73238Row');$('#myTable tr:nth-child(22) td').addClass('E73238Row');
+$('#myTable tr:nth-child(23)').addClass('D5007FRow');$('#myTable tr:nth-child(23) td').addClass('D5007FRow');
+$('#myTable tr:nth-child(24)').addClass('8D3970Row');$('#myTable tr:nth-child(24) td').addClass('8D3970Row');
+});
+
 </script>
 
 <style>
@@ -2623,7 +2662,6 @@ div#linksToExamples {
 </div>
 <div id="afterHeader">
 <div id="explanation">
-<strong>New:</strong> Explore accessible on-brand colour combinations using the <a href="https://matthewdeeprose.github.io/infographic-colour-generator.html">UoS Brand Accessible Colour Suggester</a>.<br/><br />
 <p>When we use our brand palette, we must ensure that the colours we choose for text and graphics have enough contrast to the background colour. Doing so means that the materials we create will be accessible to the largest audience. The table below lists all brand colour combinations. It shows which pairings have the required level of contrast for different uses. These uses include:</p>
 <ul>
 <li>graphics and user interface elements</li>
