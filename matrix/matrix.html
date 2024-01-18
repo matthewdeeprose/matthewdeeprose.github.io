@@ -246,6 +246,18 @@ $(document).ready(function() {
         $('.ResultHideAA').removeClass('ResultHideAA').addClass('ResultAA');
         // set change .cellHideAA to .cellAA
         $('.cellHideAA').removeClass('cellHideAA').addClass('cellAA');
+        // set change .hideRatioF to .ratioF 
+        $('.hideRatioF').removeClass('hideRatioF').addClass('ratioF');
+        // set change .hideRatioG to .ratioG
+        $('.hideRatioG').removeClass('hideRatioG').addClass('ratioG');
+        // set change .hideRatioAA to .ratioAA
+        $('.hideRatioAA').removeClass('hideRatioAA').addClass('ratioAA');
+        // set change .hideComboF to .comboF 
+        $('.hideComboF').removeClass('hideComboF').addClass('comboF');
+        // set change .hidecomboG to .comboG
+        $('.hideComboG').removeClass('hideComboG').addClass('comboG');
+        // set change .hideComboAA to .comboAA
+        $('.hideComboAA').removeClass('hideComboAA').addClass('comboAA');
         // Show F lines in mobile table
         $(".mobResultF").parent('tr').show();
         // Show G lines in mobile table
@@ -291,6 +303,10 @@ $(document).ready(function() {
         $('.ResultF').removeClass('ResultF').addClass('ResultHideF');
         // set change .cellF to .cellHideF
         $('.cellF').removeClass('cellF').addClass('cellHideF');
+        // set change .ratioF to .hideRatioF
+        $('.ratioF').removeClass('ratioF').addClass('hideRatioF');
+        // set change .comboF to .hideComboF
+        $('.comboF').removeClass('comboF').addClass('hideComboF');
         // Hide F lines in mobile table
         $(".mobResultF").parent('tr').hide();
         // Set localstorage to hold gFilter
@@ -309,7 +325,7 @@ $(document).ready(function() {
         document.getElementById("showAAAplus").setAttribute("aria-disabled", "false");
         // Show help message
         $("#buttonHelp").show();
-        $("#buttonHelp").text("Showing only colour combinations for use with user interface components and graphical objects ('G') (≥3:1 contrast), text at AA level (≥4.5:1 contrast) and text at AAA level (≥7:1 contrast).");
+        $("#buttonHelp").text("Showing only colour combinations for use with user interface components and graphical objects ('G') (=3:1 contrast), text at AA level (=4.5:1 contrast) and text at AAA level (=7:1 contrast).");
     };
 });
 
@@ -328,10 +344,18 @@ $(document).ready(function() {
         $('.ResultF').removeClass('ResultF').addClass('ResultHideF');
         // set change .cellF to .cellHideF
         $('.cellF').removeClass('cellF').addClass('cellHideF');
+        // set change .ratioF to .hideRatioF
+        $('.ratioF').removeClass('ratioF').addClass('hideRatioF');
+        // set change .comboF to .hideComboF
+        $('.comboF').removeClass('comboF').addClass('hideComboF');
         // set change .ResultG to .ResultHideG
         $('.ResultG').removeClass('ResultG').addClass('ResultHideG');
         // set change .cellG to .cellHideG
         $('.cellG').removeClass('cellG').addClass('cellHideG');
+        // set change .ratioG to .hideRatioG
+        $('.ratioG').removeClass('ratioG').addClass('hideRatioG');
+        // set change .comboG to .hideComboG
+        $('.comboG').removeClass('comboG').addClass('hideComboG');
         // Hide F lines
         $(".mobResultF").parent('tr').hide();
         // Hide G lines
@@ -352,7 +376,7 @@ $(document).ready(function() {
         document.getElementById("showAAAplus").setAttribute("aria-disabled", "false");
         // Show help message
         $("#buttonHelp").show();
-        $("#buttonHelp").text("Showing only colour combinations for use with text, user interface components and graphical objects at AA level (≥4.5:1 contrast) and AAA level (≥7:1 contrast).");
+        $("#buttonHelp").text("Showing only colour combinations for use with text, user interface components and graphical objects at AA level (=4.5:1 contrast) and AAA level (=7:1 contrast).");
     };
 });
 
@@ -371,14 +395,26 @@ $(document).ready(function() {
         $('.ResultF').removeClass('ResultF').addClass('ResultHideF');
         // set change .cellF to .cellHideF
         $('.cellF').removeClass('cellF').addClass('cellHideF');
+        // set change .ratioF to .hideRatioF
+        $('.ratioF').removeClass('ratioF').addClass('hideRatioF');
+        // set change .comboF to .hideComboF
+        $('.comboF').removeClass('comboF').addClass('hideComboF');
         // set change .ResultG to .ResultHideG
         $('.ResultG').removeClass('ResultG').addClass('ResultHideG');
         // set change .cellG to .cellHideG
         $('.cellG').removeClass('cellG').addClass('cellHideG');
+        // set change .ratioG to .hideRatioG
+        $('.ratioG').removeClass('ratioG').addClass('hideRatioG');
+        // set change .comboG to .hideComboG
+        $('.comboG').removeClass('comboG').addClass('hideComboG');
         // set change .ResultAA to .ResultHideAA
         $('.ResultAA').removeClass('ResultAA').addClass('ResultHideAA');
         // set change .cellAA to .cellHideAA
         $('.cellAA').removeClass('cellAA').addClass('cellHideAA');
+        // set change .ratioAA to .hideRatioAA
+        $('.ratioAA').removeClass('ratioAA').addClass('hideRatioAA');
+        // set change .comboAA to .hideComboAA
+        $('.comboAA').removeClass('comboAA').addClass('hideComboAA');
         // Hide F lines
         $(".mobResultF").parent('tr').hide();
         // Hide G lines
@@ -401,11 +437,9 @@ $(document).ready(function() {
         document.getElementById("showAAAplus").setAttribute("aria-disabled", "true");
         // Show help message
         $("#buttonHelp").show();
-        $("#buttonHelp").text("Showing only colour combinations for use with text, user interface components and graphical objects at AAA level (≥7:1 contrast).");
+        $("#buttonHelp").text("Showing only colour combinations for use with text, user interface components and graphical objects at AAA level (=7:1 contrast).");
     };
 });
-
-// Show AAA and above only ends
 
 //Dark mode change font size not border
 $(document).ready(function() {
@@ -5332,6 +5366,30 @@ td.ResultHideG {
 
 td.ResultHideAA {
     background-color: transparent;
+}
+
+span.hideRatioF {
+    display: none;
+}
+
+span.hideRatioG {
+    display: none;
+}
+
+span.hideRatioAA {
+    display: none;
+}
+
+span.hideComboF {
+    display: none;
+}
+
+span.hideComboG {
+    display: none;
+}
+
+span.hideComboAA {
+    display: none;
 }
 
 span.cellHideF {
