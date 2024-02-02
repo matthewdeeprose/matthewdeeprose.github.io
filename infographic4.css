@@ -7,9 +7,9 @@ margin-top: -1.2rem;
 	
 	
 	/* Hide Trichromacy button */
-#showTrich {
-	display:none;
-}
+	
+	
+
 
 #infoTexT,
 .iconrow {
@@ -48,6 +48,8 @@ margin-top: -1.2rem;
 	margin-inline-start: 0px;
 	margin-inline-end: 0px;
 	word-break: break-word;
+	z-index:2;
+	position: relative;
 }
 .arrayDetails {
 	display: none;

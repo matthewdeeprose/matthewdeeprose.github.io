@@ -20,6 +20,7 @@ figcaption {
 		pointer-events: none;
 		color: #758D9A !important;
 		border: 0px !important;
+		background-color: none;
 		background-image: none;
 		background-repeat: repeat;
 	}

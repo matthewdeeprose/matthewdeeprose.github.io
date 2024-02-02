@@ -29,9 +29,10 @@ lite-youtube {
 		pointer-events: none;
 		color: #00131d !important;
 		border: 0px !important;
-			background-color: #fffff4;
+		background-color: none;
 		background-image: none;
 		background-repeat: repeat;
+		z-index:1;
 	}
 
 /* Infographic */
