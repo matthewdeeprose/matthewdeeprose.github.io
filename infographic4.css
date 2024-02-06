@@ -5,6 +5,15 @@ margin-top: -1.2rem;
 	
 
 	
+
+button:focus:not(:focus-visible) {
+    outline: 2px transparent solid !important;
+    box-shadow: none !important;
+}
+
+a:focus:not(:focus-visible) {
+    outline: 0px solid #00131D !important;
+}
 	
 	/* Hide Trichromacy button */
 	
