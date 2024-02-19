@@ -862,6 +862,10 @@ img.articleImage {
     border-radius: 0.5rem;
 }
 
+img.articleImageAlly {
+    margin: 0rem 1rem 1rem 1rem !important;
+}
+
 img.articleImageLeft {
     width: 40%;
     float: left;
