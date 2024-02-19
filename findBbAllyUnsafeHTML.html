@@ -113,7 +113,7 @@
 		  <li>(In Firefox you can also right click on the link below and select <strong>Bookmark link</strong>).</li>
 		  <li>Then when you have a Collaborate recording open which you wish to save, select the bookmarklet from your bookmarks bar or bookmarks list and it will open the direct video in a new tab, allowing you to save the video.</li>
 		  </ol>
-		  <p><a href="javascript:(()=>{let fileID=document.querySelector('[data-ally-file-eid]');console.log(fileID.dataset.allyFileEid);let fileIdString=fileID.dataset.allyFileEid,fileIdString2=fileIdString.substr(1),baseUrl='https://blackboard.soton.ac.uk/bbcswebdav/xid-',finalUrl=baseUrl+=fileIdString2;window.open(finalUrl,'_blank');})()">Open UNSAFE_HTML in new window</a></p>
+		  <p><a href="javascript:(()=>{let fileIDArray=document.querySelectorAll('[data-ally-file-eid]'),list=[],unsafes=[];fileIDArray.forEach((l=>{list.push(l.dataset.allyFileEid)})),fileIDArray.forEach((l=>{unsafes.push(l.dataset.allyInvokePropWindowTitle)}));let list2=list.map((l=>l.slice(1))),list3=list2.map((l=>'https://blackboard.soton.ac.uk/bbcswebdav/xid-'+l));for(let l=0;l<unsafes.length;l++)console.log(unsafes[l]+=': '+list3[l]);alert('Check the console for a list of unsafe HTML files and links to view them');})()">Open UNSAFE_HTML in new window</a></p>
 		  <h2>Option 2: Use Dev Tools and paste JavaScript to generate the direct URL.</h2>
 		  <p>This option follows the same process as the bookmarklet, but allows you to be in control and follow the steps manually that the Bookmarklet uses.</p>
           <ol>
@@ -121,18 +121,10 @@
             <li>Press <strong>F12</strong> to open developer tools. If <strong>F12</strong> does not work, try <strong>CTRL + SHIFT + C</strong>.</li>
             <li>Select the <strong>console</strong> tab.</li>
             <li>Copy the text below and paste it within the editor part of the screen <br />
-              <pre><code class="language-javascript">// Get the file id attribute
-let fileID = document.querySelector('[data-ally-file-eid]');
-console.log(fileID.dataset.allyFileEid); 
-// Get the value of the file id attribute
-let fileIdString=fileID.dataset.allyFileEid;
-// remove the first character of the file id attribute
-let fileIdString2=fileIdString.substr(1);
-// build the url
-let baseUrl = "https://blackboard.soton.ac.uk/bbcswebdav/xid-";
-let finalUrl = baseUrl += fileIdString2;
-// Open the finalUrl in a new window
-window.open(finalUrl, '_blank');
+              <pre><code class="language-javascript">
+			  
+			  
+			  
 			  </code>
 																													</pre> and then press <strong>enter</strong>. Be sure to have copied and pasted all the text from the snippet.
             </li>
