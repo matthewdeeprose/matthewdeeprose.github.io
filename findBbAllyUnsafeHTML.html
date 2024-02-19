@@ -113,7 +113,7 @@
 		  <li>(In Firefox you can also right click on the link below and select <strong>Bookmark link</strong>).</li>
 		  <li>Then when viewing the Ally report run the bookmarklet and open the console (press F12 and select the 'console' tab) to view a list of the UNSAFE_HTML files and direct links to view them.</li>
 		  </ol>
-		  <p><a href="javascript:(()=>{let fileIDArray=document.querySelectorAll('[data-ally-file-eid]'),list=[],unsafes=[];fileIDArray.forEach((l=>{list.push(l.dataset.allyFileEid)})),fileIDArray.forEach((l=>{unsafes.push(l.dataset.allyInvokePropWindowTitle)}));let list2=list.map((l=>l.slice(1))),list3=list2.map((l=>'https://blackboard.soton.ac.uk/bbcswebdav/xid-'+l));for(let l=0;l<unsafes.length;l++)console.log(unsafes[l]+=': '+list3[l]);alert('Check the console for a list of unsafe HTML files and links to view them');})()">List UNSAFE_HTML files in the browser console</a></p>
+		  <p><a href="javascript:(()=>{let fileIDArray=document.querySelectorAll('[data-ally-file-eid]'),list=[],unsafes=[];fileIDArray.forEach((l=>{list.push(l.dataset.allyFileEid)})),fileIDArray.forEach((l=>{unsafes.push(l.dataset.allyInvokePropWindowTitle)}));let list2=list.map((l=>l.slice(1))),list3=list2.map((l=>'https://blackboard.soton.ac.uk/bbcswebdav/xid-'+l));for(let l=0;l<unsafes.length;l++)console.log(unsafes[l]+=': '+'\n'+list3[l]);alert('Check the console for a list of unsafe HTML files and links to view them');})()">List UNSAFE_HTML files in the browser console</a></p>
 		  <h2>Option 2: Use Dev Tools and paste JavaScript to generate the list.</h2>
 		  <p>This option follows the same process as the bookmarklet, but allows you to be in control and follow the steps manually that the Bookmarklet uses.</p>
           <ol>
@@ -141,7 +141,7 @@ let list2 = list.map(s => s.slice(1));
 let list3 = list2.map(i => 'https://blackboard.soton.ac.uk/bbcswebdav/xid-' + i);
 // list the details:
 for(let i=0;i&lt;unsafes.length;i++){
-	console.log(unsafes[i] +=': ' + list3[i]);
+	console.log(unsafes[i] +=': ' +'\n' + list3[i]);
 }
 // make an alert
 alert('Check the console for a list of unsafe HTML files and links to view them');</code></pre> and then press <strong>enter</strong>. Be sure to have copied and pasted all the text from the snippet.
@@ -149,6 +149,8 @@ alert('Check the console for a list of unsafe HTML files and links to view them'
             <li>The content should open in a new browser tab.
             </li>
           </ol>
+		  <h2>Work at another university and want to use this?</h2>
+		  The JavaScript is hard coded to our Blackboard address at University of Southampton. To use this at another institution, just change <pre>https://blackboard.soton.ac.uk/</pre> to the address of your institution's Blackboard environment.
         </article>
         <div id="panel">
           <button class="panelButton" onclick="topFunction()" id="myBtn">
