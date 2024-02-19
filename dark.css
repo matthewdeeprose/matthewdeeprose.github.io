@@ -1,9 +1,9 @@
 /* Dark mode */
-figure {
+figure.borders {
 	background-color:#9FB1BD !important;
 		max-height:41rem !important;
 }
-figcaption {
+figcaption.borders {
 	color:#00131D;
 }
 
@@ -23,6 +23,7 @@ figcaption {
 		background-color: none;
 		background-image: none;
 		background-repeat: repeat;
+		z-index:1;
 	}
 
 lite-youtube {
@@ -377,7 +378,9 @@ button#menu.icon:focus {
 }
 
 img.articleImage,
-img.articleImageLeft {
+img.articleImageLeft,
+img.articleImage2,
+a.bookmarklet {
 	border: 2px solid #E1E8EC;
 }
 

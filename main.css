@@ -2,6 +2,12 @@ h1,h2,h3,h4,h5 {
 	text-wrap: balance;
 }
 
+a.bookmarklet {
+border-radius: 0.5rem;
+margin: 1.5rem;
+padding: 1rem;
+}
+
 p {
 	text-wrap: pretty;
 }
@@ -493,9 +499,9 @@ section.related {
         margin-bottom: 1.5rem !important;
     }
     img.articleImage,
-    img.articleImageLeft {
+    img.articleImageLeft, img.articleImage2 {
         width: 99% !important;
-        margin: 0.2rem 0.5rem 1.5rem 0.5rem !important;
+        /* margin: 0.2rem 0.5rem 1.5rem 0.5rem !important; */
     }
     div#titleLink {
         display: none;
@@ -859,6 +865,14 @@ img.articleImage {
     width: 40%;
     float: right;
     margin: 1.8rem;
+    border-radius: 0.5rem;
+}
+
+img.articleImage2 {
+    width: 70%;
+    float: none;
+    /* margin: 0rem 1rem 1rem 1rem; */
+	margin: auto;
     border-radius: 0.5rem;
 }
 

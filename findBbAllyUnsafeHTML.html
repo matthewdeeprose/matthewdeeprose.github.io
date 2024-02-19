@@ -103,7 +103,7 @@
       <main class="page-main" id="main">
         <article class="standard">
           <script src="prism/prism.js"></script>
-          <h1 id="top">Identify the 'unsafe html' content from an accessibility report in Blackboard.</h1><img alt="A Blackboard report about accessibility of an unsafe HTML file. There is no preview of the content so you don't know what the error is about." class="articleImage articleImageAlly" src="unsafe-alert.png">		  
+          <h1 id="top">Identify the 'unsafe html' content from an accessibility report in Blackboard.</h1><img alt="A Blackboard report about accessibility of an unsafe HTML file. There is no preview of the content so you don't know what the error is about." class="articleImage2" src="unsafe-alert.png">		  
           <p>Sometimes the accessibility report in Ultra refers to "UNSAFE_HTML" files, yet it can be hard to work out what they are because there is no preview.</p>
 		  <p>This solution will list any UNSAFE_HTML files listed in an Ally report and their direct links to open them in the browser console.</p>
 		  <h2>Option 1: Use this bookmarklet</h2>
@@ -112,8 +112,19 @@
 		  <li>Select and drag the below bookmarklet link to your bookmarks bar.</li>
 		  <li>(In Firefox you can also right click on the link below and select <strong>Bookmark link</strong>).</li>
 		  <li>Then when viewing the Ally report run the bookmarklet and open the console (press F12 and select the 'console' tab) to view a list of the UNSAFE_HTML files and direct links to view them.</li>
-		  </ol>
-		  <p><a href="javascript:(()=>{let fileIDArray=document.querySelectorAll('[data-ally-file-eid]'),list=[],unsafes=[];fileIDArray.forEach((l=>{list.push(l.dataset.allyFileEid)})),fileIDArray.forEach((l=>{unsafes.push(l.dataset.allyInvokePropWindowTitle)}));let list2=list.map((l=>l.slice(1))),list3=list2.map((l=>'https://blackboard.soton.ac.uk/bbcswebdav/xid-'+l));for(let l=0;l<unsafes.length;l++)console.log(unsafes[l]+=': '+'\n'+list3[l]);alert('Check the console for a list of unsafe HTML files and links to view them');})()">List UNSAFE_HTML files in the browser console</a></p>
+		  
+		  		  </ol>
+		  <p><a class="bookmarklet" href="javascript:(()=>{let fileIDArray=document.querySelectorAll('[data-ally-file-eid]'),list=[],unsafes=[];fileIDArray.forEach((l=>{list.push(l.dataset.allyFileEid)})),fileIDArray.forEach((l=>{unsafes.push(l.dataset.allyInvokePropWindowTitle)}));let list2=list.map((l=>l.slice(1))),list3=list2.map((l=>'https://blackboard.soton.ac.uk/bbcswebdav/xid-'+l));for(let l=0;l<unsafes.length;l++)console.log(unsafes[l]+=': '+'\n'+list3[l]);alert('Check the console for a list of unsafe HTML files and links to view them');})()">List UNSAFE_HTML files in the browser console</a></p>
+		  <figure class="allybkmklt">
+		  <img alt="A Blackboard accessibility report listing three UNSAFE_HTML files which have the error 'the HTML does not have a language set'." class="articleImage2" src="unsafe-alert2.png">
+		  <figcaption class="allybkmklt">Run the bookmarklet on a report that shows one or more UNSAFE_HTML files.</figcaption>
+		  </figure>
+		  <figure class="allybkmklt">
+		  <img alt="A list of UNSAFE_HTML files and direct links to view them, shown in the browser console." class="articleImage2" src="unsafe-alert3.png">
+		  <figcaption class="allybkmklt">The results listing links to view each of those UNSAFE_HTML files will appear in the browser console, accessible through dev tools.</figcaption>
+		  </figure>
+		  
+
 		  <h2>Option 2: Use Dev Tools and paste JavaScript to generate the list.</h2>
 		  <p>This option follows the same process as the bookmarklet, but allows you to be in control and follow the steps manually that the Bookmarklet uses.</p>
           <ol>
