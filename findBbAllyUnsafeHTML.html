@@ -111,9 +111,9 @@
 		  <ol>
 		  <li>Select and drag the below bookmarklet link to your bookmarks bar.</li>
 		  <li>(In Firefox you can also right click on the link below and select <strong>Bookmark link</strong>).</li>
-		  <li>Then when you have a Collaborate recording open which you wish to save, select the bookmarklet from your bookmarks bar or bookmarks list and it will open the direct video in a new tab, allowing you to save the video.</li>
+		  <li>Then when viewing the Ally report run the bookmarklet and open the console (press F12 and select the 'console' tab) to view a list of the UNSAFE_HTML files and direct links to view them.</li>
 		  </ol>
-		  <p><a href="javascript:(()=>{let fileIDArray=document.querySelectorAll('[data-ally-file-eid]'),list=[],unsafes=[];fileIDArray.forEach((l=>{list.push(l.dataset.allyFileEid)})),fileIDArray.forEach((l=>{unsafes.push(l.dataset.allyInvokePropWindowTitle)}));let list2=list.map((l=>l.slice(1))),list3=list2.map((l=>'https://blackboard.soton.ac.uk/bbcswebdav/xid-'+l));for(let l=0;l<unsafes.length;l++)console.log(unsafes[l]+=': '+list3[l]);alert('Check the console for a list of unsafe HTML files and links to view them');})()">Open UNSAFE_HTML in new window</a></p>
+		  <p><a href="javascript:(()=>{let fileIDArray=document.querySelectorAll('[data-ally-file-eid]'),list=[],unsafes=[];fileIDArray.forEach((l=>{list.push(l.dataset.allyFileEid)})),fileIDArray.forEach((l=>{unsafes.push(l.dataset.allyInvokePropWindowTitle)}));let list2=list.map((l=>l.slice(1))),list3=list2.map((l=>'https://blackboard.soton.ac.uk/bbcswebdav/xid-'+l));for(let l=0;l<unsafes.length;l++)console.log(unsafes[l]+=': '+list3[l]);alert('Check the console for a list of unsafe HTML files and links to view them');})()">List UNSAFE_HTML files in the browser console</a></p>
 		  <h2>Option 2: Use Dev Tools and paste JavaScript to generate the list.</h2>
 		  <p>This option follows the same process as the bookmarklet, but allows you to be in control and follow the steps manually that the Bookmarklet uses.</p>
           <ol>
