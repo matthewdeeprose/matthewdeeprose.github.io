@@ -1,4 +1,47 @@
 /*Light mode */
+/* Tables starts here */
+ 	table {
+		border: 1px solid #231F20;
+	}
+
+	thead th {
+		background-color: #9FB1BD;
+		color: #00131D;
+	}
+
+	tr:nth-child(even) {
+		background-color: #E1E8EC;
+	}
+
+
+	tr:hover {
+-webkit-box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.31);
+-moz-box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.31);
+box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.31);
+	}
+
+	thead tr:hover {
+		background-color: #9FB1BD;
+	}
+	table tr {
+		border: 1px solid #00131D;
+		padding: .35em;
+	}
+
+
+	@media screen and (max-width: 1024px) {
+		table tr {
+			border-bottom: 3px solid #00131D;
+		}
+
+		table td {
+			border-bottom: 1px solid #00131D;
+		}
+
+	}
+	/* Tables ends here */
+
+
 blockquote:after {
 -webkit-box-shadow: 0px 0px 44px -11px rgba(0,0,0,0.58);
 -moz-box-shadow: 0px 0px 44px -11px rgba(0,0,0,0.58);

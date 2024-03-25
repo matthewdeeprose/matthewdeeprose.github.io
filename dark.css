@@ -1,4 +1,51 @@
 /* Dark mode */
+
+
+
+/* Tables starts here */
+ 	table {
+		border: 1px solid #9FB1BD;
+	}
+
+	thead th {
+		background-color: #9FB1BD;
+		color: #00131D;
+	}
+
+	tr:nth-child(even) {
+		background-color: #00131D;
+	}
+
+	tr:hover {
+		background-color: #002E3B;
+	}
+
+	thead tr:hover {
+		background-color: #9FB1BD;
+	}
+	table tr {
+		border: 1px solid #E1E8EC;
+		padding: .35em;
+	}
+
+
+	@media screen and (max-width: 1024px) {
+		table tr {
+			border-bottom: 3px solid #E1E8EC;
+		}
+
+		table td {
+			border-bottom: 1px solid #E1E8EC;
+		}
+
+	}
+
+
+
+
+/* Tables ends here */
+
+
 figure.borders {
 	background-color:#9FB1BD !important;
 		max-height:41rem !important;
