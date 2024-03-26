@@ -70,3 +70,7 @@ details > summary {
 details summary::-webkit-details-marker {
     display: none;
 }
+
+tr:nth-child(even) {
+		background: none !important;
+	}

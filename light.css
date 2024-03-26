@@ -21,7 +21,9 @@ box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.31);
 	}
 
 	thead tr:hover {
-		background-color: #9FB1BD;
+-webkit-box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.0);
+-moz-box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.0);
+box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.0);
 	}
 	table tr {
 		border: 1px solid #00131D;
