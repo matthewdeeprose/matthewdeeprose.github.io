@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Transcript: Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency - Matthew Deeprose">
+    <meta name="keywords" content="copilot, generative, ai, microsoft, education, higher education, accessibility, presentation, blog, gpt, llm">
+    <meta name="author" content="Matthew Deeprose">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</title>
+    <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+    <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+    <meta property="og:title" content="Transcript: Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency - Matthew Deeprose">
+    <meta property="og:description" content="Transcript: How can generative AI tools like Microsoft Copilot make us more effective and efficient in our digital accessibility work? I'll share techniques I've used successfully in several scenarios over the past six months that you can repeat at your institution.">
+    <meta property="og:image" content="https://matthewdeeprose.github.io/copilot-narrow.PNG">
+    <meta property="og:image:width" content="2500" />
+    <meta property="og:image:height" content="1306" />
+    <meta property="og:image:alt" content="">
+    <meta property="og:locale" content="en_GB">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://matthewdeeprose.github.io/harnessCopilot.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="favicon.ico">
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Transcript: Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency - Matthew Deeprose" />
+    <meta name="twitter:description" content="Transcript: How can generative AI tools like Microsoft Copilot make us more effective and efficient in our digital accessibility work? I'll share techniques I've used successfully in several scenarios over the past six months that you can repeat at your institution." />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta name="twitter:image" content="https://matthewdeeprose.github.io/copilot-narrow.PNG" />
+    <meta name="twitter:image:alt" content="" />
+    <meta name="twitter:card" content="summary_large_image" />
+	<style>
+article.standard {
+    max-width: clamp(320px, 90%, 1000px);
+    margin: auto;
+}
+      .page-wrap>* {
+        grid-column: 1/-1 !important;
+        grid-row: auto !important;
+      }
+</style>
+  </head>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+              <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                  <path d="m6.5 17.5h5" />
+                  <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                  <path d="m2.5 13.5h5" />
+                  <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z" />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon" aria-haspopup="menu" onclick="menuAction()">
+            <span id="hamburger">
+              <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                <g stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html" aria-current="page" class="active">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html">Projects</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 id="top">Transcript: Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</h1>
+          <h2>Welcome</h2>
+          <p>Hi, I'm Matthew Deeprose from the University of Southampton. For those who don't see me, I'm a white male in my late 40s. I'm wearing glasses, a navy blue suit, with a cornflower-coloured shirt and matching pocket square. My pronouns are he/him.</p>
+          <h2>Introduction</h2>
+          <p>Can we harness Copilot and other generative AI tools to increase digital accessibility efficiency?</p>
+          <p>To open the theme of this presentation and put it in context, let's start with a tweet from @McgarDana posted in 2021. It reads, "<a target="_blank" rel="noopener noreferrer" href="https://x.com/VLEguru/status/1808196756921860142">Accessibility isn't more work, you were just cutting corners before. The work was incomplete</a>". She is saying that a web page, document, or online service isn't ready until everyone can use it, regardless of any disability or impairment. </p>
+          <h3>Context</h3>
+          <p>But for us in universities, many of our colleagues are still unaware of what digital accessibility is. I'm sure you've heard responses like "no one ever told me about this before", or "I haven't got time for this" even from our most well-meaning colleagues.</p>
+          <p>And with statutory legislation such as the <a target="_blank" rel="noopener noreferrer" href="https://www.legislation.gov.uk/uksi/2022/1097/made?view=plain">Public Sector Bodies (Websites and Mobile (Applications) Accessibility Regulations</a> in the UK, the latest 2022 revision I have a screenshot of on screen. And other developments, like our <a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/BlackboardUltra/SitePages/BB-Universal-Standards.aspx?e=4%3A3cf8dab07d2941bbbf51d1e1aa675932&amp;web=1&amp;sharingv2=true&amp;fromShare=true&amp;at=9&amp;cid=cbd4d290-71e0-469b-9d3d-576ab1b66467">Blackboard Universal Standards</a> that set an expectation of meeting a minimum 70% accessibility score for online teaching materials. We have a growing expectation for staff across our institution to engage with accessibility. </p>
+          <p>For many this will be "more work" than they might have anticipated previously, and extra time and resource will not necessarily be allotted for this.</p>
+          <p>Workload is a significant matter for universities, our university is running a <a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/WorkloadPrinciplesProject">workload principles project</a> which aims to improve the way in which workload is managed, which will hopefully lead to improved wellbeing and engagement of the University community. </p>
+          <h4>Harnessing AI: The New University Digital Strategy</h4>
+          <p>Concurrently, <a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/UniversityStrategy/_layouts/15/viewer.aspx?sourcedoc=%7b64d54ccd-977c-443c-9bd1-d19d82ebc8cd%7d">our new university digital strategy</a> has a vision to harness AI in ways that are ethical and helpful... So, the question is, can we use AI to reduce effort or workload, or otherwise increase efficiency with any of the digital accessibility workflows we might expect our colleagues to complete? </p>
+          <h2>Why Copilot?</h2>
+          <p>Today, while I will mention other tools, I'll mainly focus on <a target="_blank" rel="noopener noreferrer" href="https://learn.microsoft.com/en-us/copilot/overview">Microsoft Copilot</a>. If your institution is a Google shop rather than Microsoft, I expect the Google Claude experience will be similar. </p>
+          <ul>
+            <li>
+              <p>Copilot uses a customised version of GPT-4 from Open AI.</p>
+            </li>
+            <li>
+              <p>As a Microsoft institution, we can log into it with our University account. This gives us <a target="_blank" rel="noopener noreferrer" href="https://learn.microsoft.com/en-us/copilot/privacy-and-protections">a level of protection</a> where our data isn't saved and won't be used to train AI models. </p>
+            </li>
+            <li>
+              <p>Microsoft can't view the chat data either. Usage isn't linked to individuals, and our university's identity is removed before the data is sent.</p>
+            </li>
+            <li>
+              <p>Using our institutional accounts, we have thirty responses a day we can use, compared with the standard ten.</p>
+            </li>
+          </ul>
+          <h3>Copilot Interfaces</h3>
+          <p>On the website <a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/">copilot.microsoft.com</a> there are two main interfaces for Copilot. Both can create text and images, but there are some differences between them. </p>
+          <h4>Copilot "Default"</h4>
+          <p>The default, which seems just to be named Copilot, is aimed at short questions and answers. As such there is an 8000-character limit for the prompts you can write. Microsoft's guides say 4000, but the web page is set to accept 8000.</p>
+          <p>My main reason to use this variant is that we can upload both images or documents (up to 1 MB in size) as part of our prompts. It accepts many types of document format, from standard office document formats to programming and scripting languages, markup content, LaTeX content and so on.</p>
+          <p>There's also the option to change conversation style, to switch from diverse and creative to deterministic and focussed. This is similar to the temperature parameter you may be familiar with in ChatGPT.</p>
+          <h4>Copilot Notebook</h4>
+          <p>
+            <a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/?showntbk=1">Copilot Notebook</a> is the variant I'll be focussing on. Apparently, it's designed for rewriting and iterating on prompts that you create.
+          </p>
+          <p>More importantly for my use-cases it has an 18,000-character limit for the prompts you can enter and can return answers of between 9 and 10,000 characters.</p>
+          <p>One limitation is that you can only attach images, although there is a larger file size limit of 50 MB.</p>
+          <p>So, having set out the context, it's time to review the four scenarios for which I've found copilot to be helpful. The first is creating a transcript from corrected video captions.</p>
+          <h2>Scenario 1: Creating a transcript from captions</h2>
+          <p>This story began back in January this year. My colleague <a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/in/zsjatoi/">Dr. Zubair Shafiq</a> and I were creating an accessibility video for our doctoral college. We had broken the content into ten-minute chunks and were working on each separately, which we then pulled together in a final edit. We had been using a brilliant tool called <a target="_blank" rel="noopener noreferrer" href="https://github.com/SubtitleEdit/subtitleedit">SubtitleEdit</a> to add, format, and time the captions. </p>
+          <p>Having completed the captions, we wanted to create a transcript.</p>
+          <h3>Benefits of Transcripts</h3>
+          <p>Transcripts have many benefits:</p>
+          <ul>
+            <li>
+              <p>Not everyone wants to or can watch a video. A transcript allows more options to engage with your content.</p>
+            </li>
+          </ul>
+          <p>This feedback from a member of our Neurodivergent Staff Group explains this well:</p>
+          <p>"The thing that I find most annoying is the way online training is often set up. I don't learn well with videos, flashy moving images on screens, or endless things to click on to flip or open or whatever. It can get disorientating, and it makes it harder to take in the information because of the demands of interacting with the screen. My attention goes on interacting with the screen rather than taking in the information. I'd rather just be given the information transcript-style so I can just read it (with images where they'll add something useful). I connect information into a whole better when I can see it all in one go, jump back and forth to double check things, and read it/process it at the speed I need to."</p>
+          <ul>
+            <li>
+              <p>If the transcript is suitable for publishing online, it may help to improve Search Engine Optimisation, bringing a greater audience to your content.</p>
+            </li>
+            <li>
+              <p>Having a transcript can help you to more easily create further resources like blog posts, articles, and so on from that transcript source, depending on the context and purpose of your original content.</p>
+            </li>
+            <li>
+              <p>From an accessibility point of view, as well as being a benefit, depending on the level of compliance we are aiming for, we are required to provide <a target="_blank" rel="noopener noreferrer" href="https://www.w3.org/WAI/WCAG22/Understanding/audio-only-and-video-only-prerecorded.html">equivalent alternatives to media content</a>, <a target="_blank" rel="noopener noreferrer" href="https://www.w3.org/WAI/WCAG22/Understanding/media-alternative-prerecorded.html">such as a well-prepared transcript.</a>
+              </p>
+            </li>
+          </ul>
+          <h3>Using Subtitle Edit</h3>
+          <p>Going back to my scenario, Subtitle Edit has an export text feature to turn the captions into a single block of text. That block of text is not very readable. While I have the punctuation that I had added when creating the captions, there are no paragraphs.</p>
+          <p>Editing that text to set it into paragraphs is a time-consuming and boring task. On screen, I have a recording of me going through that text and tidying it into sensible paragraphs. It's a slow process. It would be even slower if I had not written the original text myself.</p>
+          <figure id="" class="demoVideo" style="aspect-ratio: 241 / 252;" poster="">
+            <video id="" controls preload="metadata" controlsList="nodownload">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277417_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Manually applying formatting to a plain text transcript.</figcaption>
+          </figure>
+          <h3>Using Copilot for Faster Formatting</h3>
+          <p>Could Copilot make this faster?</p>
+          <p>I wrote a prompt asking it to reformat my transcript to be more readable. I specified that it could add headings, set paragraph breaks, and use bullet points where appropriate. In my initial testing, I found that it rewrote the text of my transcript, so I added further information explaining that the words and the order in which they appear should remain unchanged.</p>
+          <p>Instructions:</p>
+          <p>Please format the following transcript to be more readable.</p>
+          <p></p>
+          <p>Use headings, paragraph breaks, and bullet points as appropriate.</p>
+          <p></p>
+          <p>Important: because this is a transcript, it is essential that the text itself is kept verbatim. Please make sure you do not change any of the original words or the order in which they are presented.</p>
+          <p></p>
+          <p>Transcript:</p>
+          <p>...</p>
+          <p>On screen, I'm sharing a recording of Copilot notebook running that prompt. It is reformatting the transcript as I asked, adding paragraph breaks, headings, and using lists where appropriate. Of course, I had to check the results, and I changed them to suit my preference, but it saved me a lot of time and boredom.</p>
+		  <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
+            <video id="" controls preload="metadata" controlsList="nodownload">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277416_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Copilot is formatting the transcript. It is adding headings of its own choosing based on the context of the transcript content. In some places it is using bullet points where it thinks there is a list. It is breaking the text into paragraphs.</figcaption>
+          </figure>
+          <h3>Final Result</h3>
+          <p>The result is on screen. I'm showing a Word document version of the transcript, with the navigation pane open to show that I have set the headings using heading styles so they will be usable by assistive technologies.</p>
+          <p>Screenshot: final-transcript.png</p>
+          <h3>Tips for Making Transcripts</h3>
+          <p>A few tips from my experience of making transcripts:</p>
+          <ul>
+            <li>If you are the creator of the content, in your original video aim to describe what is happening on screen as much as possible. This should help you to avoid the requirement of a separate audio description of any unvoiced but important action. It should also make your transcript more meaningful to those who are reading it. <ul>
+                <li>For example, rather than saying "as you can see, the graph shows we have a significant number of students who disclose a disability" you could say instead "over the past five years around one fifth of our students have disclosed a disability each academic year".</li>
+              </ul>
+            </li>
+            <li>Transcripts can be more useful if you add hyperlinks to other websites or documents that you reference in your original media.</li>
+            <li>While not a requirement, if you add relevant images, with appropriate alternative text, the transcript will become even more useful especially for those who just prefer to engage with content in written form over video.</li>
+          </ul>
+          <h2>Scenario 2: Writing alternative text</h2>
+          <p>Next, can generative AI help us to write alternative text?</p>
+          <h3>What is Alternative Text?</h3>
+          <p>You may hear alternative text shortened to "alt text". I'm likely to use these terms interchangeably. To me, they mean the same thing. It's the written description of an image that we write for those who do not see it, helping them to get the intended meaning of that image. This might be those with visual impairments who use a screen reader, an assistive technology that speaks aloud what is on screen.</p>
+          <h3>Benefits of Alternative Text</h3>
+          <p>Alternative text benefits those who personalize their learning experience using alternative formats from Blackboard, such as the audio version. Those who listen to content rely on alternative text being provided for images; otherwise, they'll miss out on important details.</p>
+          <p>Alt text also appears when an image link is broken, or users have turned off images.</p>
+          <p>Those on pay-as-you-go internet may disable images on web pages to save bandwidth or data costs. If alternative text has been added, they won't miss out. A report last year from JISC found that <a target="_blank" rel="noopener noreferrer" href="https://digitalinsights.jisc.ac.uk/reports-and-briefings/our-reports/2022-23-uk-higher-education-students-digital-experience-insights-survey-findings/">around a third (34%) of UK students had problems with mobile data costs</a>. </p>
+          <p>When we don't add alternative text to images, we're creating a barrier for those who don't see them.</p>
+          <h3>Writing Effective Alt Text</h3>
+          <p>When we write alt text, we should consider:</p>
+          <ul>
+            <li>
+              <p>the context in which we use the image,</p>
+            </li>
+            <li>
+              <p>our intended audience - who is our target reader or listener,</p>
+            </li>
+            <li>
+              <p>and what is the function or purpose of that image?</p>
+            </li>
+          </ul>
+          <p>We may write different alternative text for the same image when we use it in different contexts, for different audiences, and depending on the purpose of the image.</p>
+          <h3>How much to write?</h3>
+          <p>While the general recommended length for alternative text is about two sentences, when an image is more complex like a chart or graph, we may need to write a longer description of the image.</p>
+          <p>I use this guide to explain when we may need to write a long description for an image.</p>
+          <ul>
+            <li>If we're just using the image for visual interest, we'll mark it as decorative.</li>
+            <li>If the image replicates text already in the document, then we should add a caption describing the essential content and context and use the alt text feature to mark the image as decorative.</li>
+            <li>If the image supports or rationalizes what is in the text, then I should write a brief alt text describing essentials of the image and use a caption or title.</li>
+            <li>If the image goes further than what is in the text, or I want students to use the graph in some way, then I should write a brief alternative text describing the essentials, add a caption, and then provide a full description elsewhere in the document.</li>
+            <li>Ideally, I should also provide any tabular data that was used to generate the graph or chart if my image was one of those.</li>
+          </ul>
+          <h3>Using AI Tools for Alt Text</h3>
+          <p>Our colleague <a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/in/tharindu-liyanagunawardena/">Dr. Tharindu Liyanagunawardena</a>, Digital Accessibility Officer at University of Reading, shared with me a few months ago this <a target="_blank" rel="noopener noreferrer" href="https://asuo-ai-labs.streamlit.app/Image_Accessibility">Image Accessibility Creator tool</a> from Arizona State University (ASU). </p>
+          <p>This tool allows you to upload an image file. It will use the GPT-4 model provided by OpenAI to create a long description, a short alternative text, and it will list any words it can detect in the image. You can also provide further information about the image to help it write a better description. With this detail, we may have all the information we need to create a suitable alt text based on our earlier considerations.</p>
+          <h4>Demonstration of Image Accessibility Creator from ASU</h4>
+          <p>On screen, I'm demonstrating how, having uploaded <a target="_blank" rel="noopener noreferrer" href="https://alexstevenmartin.tumblr.com/post/181707689676/console-cat-scifi-cat-nap-catnap-deepspace">a cartoon image of a cat sleeping on the dashboard or cockpit of a spaceship</a>, it describes the image impressively, sharing all the details, colours, and mood of the image. </p>
+          <p>Because ASU is using OpenAI's application programming interface (API), images are not kept or used by OpenAI.</p>
+		  <figure id="" class="demoVideo" style="aspect-ratio: 345 / 217;" poster="">
+            <video id="" controls preload="metadata" controlsList="nodownload">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277419_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Video of ASU 'Image Accessibility Creator'. I upload an a cartoon image of a cat sleeping on the dashboard or cockpit of a spaceship. It describes the image impressively, sharing all the details, colours, and mood of the image.</figcaption>
+          </figure>
+          <p>The ASU tool is really impressive, and it's currently open to anyone to use, but since it may be put behind a login at any time, I worked on a prompt to get Copilot to give just as good an answer.</p>
+          <h4>Copilot Prompt for Alt Text</h4>
+          <p>The prompt I have is <a target="_blank" rel="noopener noreferrer" href="https://www.purdue.edu/innovativelearning/tools-resources/accessibility/ai-prompt-example/">based on one that Purdue University shared</a> and I've fine-tuned a little. I'll read out the prompt: </p>
+          <p>"You are a university-level instructor working to ensure images in your online course materials conform to Web Content Accessibility Guidelines at Level AA. You need to accommodate for disabilities and impairments such as blindness, low vision, and colour vision deficiency to ensure equitable access to module content for all students.</p>
+          <p>You will be provided with an image. Please return a succinct title, alternative text (alt text), and a long description. You will also separately list verbatim all words that appear in the image.</p>
+          <p>The alt text should be no more than two sentences and should briefly describe the meaning conveyed by the image. The detailed description may be one or more paragraphs and must describe the image in great detail so that anyone who does not see it can gain a full understanding of everything in the image. Please format the detailed description such that it will be easily scannable. Use headings, paragraph breaks, and lists as appropriate."</p>
+          <p>I also recently added:</p>
+          <p>"Use active voice. Use UK English," because I noticed it would often write in passive voice. <a target="_blank" rel="noopener noreferrer" href="https://subjectguides.york.ac.uk/academic-language/voice">Active voice aids understanding</a>. By default, Copilot writes in US English, so I want it to write in UK English. </p>
+          <p>This is just a generic prompt; we could tailor it for each image, based on the context, function, and audience for that image. While this gives slightly better results in terms of formatting, the ASU tool is a lot faster.</p>
+          <h4>Reviewing Copilot's Image Descriptions</h4>
+          <p>Let's review the strengths and weaknesses of Copilot's image description with three example images.</p>
+          <h5>Example 1: Line Graph</h5>
+          <p>On screen, a line graph shows the percentage of "full person equivalent" students disclosing a disability at the University of Southampton from 2019/20 to 2023/24. Between one fifth and one sixth of students disclosed a disability during this period.</p>
+          <p>Copilot gave a pretty accurate title of "Student Disability Disclosure Rates at the University of Southampton."</p>
+          <p>I did have two issues with the alternative text.</p>
+          <ul>
+            <li>
+              <p>It correctly identifies it as a line graph, but it says it is about Full Time Equivalent students rather than Full Person Equivalent,</p>
+            </li>
+            <li>
+              <p>and while it says that the amount is increasing over time, it would be better to give us an idea of the proportion of students.</p>
+            </li>
+          </ul>
+          <p>The long description is broken into sections for a general description, details of the graph, and an examination of the data points and trend.</p>
+          <ul>
+            <li>
+              <p>It makes the same error around full time equivalent rather than full person equivalent students.</p>
+            </li>
+            <li>
+              <p>It describes the axis of the graph in detail, which for this graph I don't think is really necessary in the context for which I was using the graph, but that's still for me to judge.</p>
+            </li>
+            <li>
+              <p>And for the description of the data points it adds words like "approximately" and "around" the figures, which may not be necessary.</p>
+            </li>
+          </ul>
+          <p>Still, I think it's a good start, which could be quickly reviewed for accuracy by the author who will use this graph. My own alt text would be very similar:</p>
+          <p>"Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton. Between 2019 and 2023 the proportion remains between one fifth and one sixth of students."</p>
+          <p>For the long description, I set out the result for each academic year as an unordered list. This semantic detail will make it easier to anticipate and review the description for someone using a screen reader. It would also be easier to visually scan for readers as well. So, for example, I have:</p>
+          <ul>
+            <li>"Academic year 2019-20, 16%".</li>
+          </ul>
+          <p>Last week, a new feature, the AI Alt Text Assistant, was launched for Ally. I've turned it on in our testing environment. For the same graph, it gives the following suggested alternative text:</p>
+          <p>"A graph with numbers and a line".</p>
+          <h5>Example 2: Photosynthesis Diagram</h5>
+          <p>My next example is a basic diagram of the process of photosynthesis aimed at school children. Copilot's title is fine: "Photosynthesis Process Diagram".</p>
+          <p>The alt text is also pretty good: "A diagram illustrating the process of photosynthesis, showing how a plant takes in light energy, carbon dioxide, and water to produce oxygen and sugars."</p>
+          <p>However, when I show you my own description, I will highlight how I could make it a little better.</p>
+          <p>For the detailed description, Copilot produced an overview, a section describing the visual elements, and a section covering annotations and labels. I won't read out the whole description, which you can find in the slide deck, but I will point out a few aspects of the description to examine a little further. The description of the ground being brown, the sky being blue, and so on aren't necessary for the purposes of this description. In the way it is explaining the annotations and labels, for example: "The roots are labelled "Water h3O," indicating absorption from the soil," that could be described in a simpler way, as I'll cover in my own description.</p>
+          <p>While my alt text is three sentences, I would probably keep this as alt text and not write a longer description. My description is:</p>
+          <p>"Process of Photosynthesis. The plant takes in water through its roots, carbon dioxide and light energy through its leaves. The leaves release oxygen into the air and generate sugars as part of the process."</p>
+          <p>In this way, I believe I've covered the essential information in this diagram, without getting into the nitty gritty of describing labels and arrows, or colours.</p>
+          <p>
+            <span>Ally's AI Alt Text Assistant gives the following suggested alternative text:
+          </p>
+          <p>"A diagram of a plant with text and images".</p>
+          <h5>Example 3: 19th Century Physical Geography Map</h5>
+          <p>The final example is one suggested by my colleague Pete Boorman.</p>
+          <p>It's a chart comparing lengths of selected rivers and heights of selected mountains, from "General Atlas Of The World", published in 1854.</p>
+          <p>Along the top of the image are depictions of rivers like the Yangtze, Volga, and Ganges with their lengths listed in miles. Towards the bottom are hills and mountains from different regions and their height measured in feet.</p>
+          <p>Copilot suggests a good title, 19th Century Physical Geography Map.</p>
+          <p>The alt text, describing it as, "a 19th-century physical geography map, providing a cross-section view of various geographical features, including mountain ranges, plateaus, and rivers", is pretty good too.</p>
+          <p>Copilot broke down the long description into parts which I'm sharing across two slides. I won't read out everything on the page, but you can refer to my slide deck for this detail.</p>
+          <p>The structure of the long description is an overview, followed by descriptions of the top, middle and bottom sections of the image, And a commentary on the relevance of the image.</p>
+          <p>A big mistake is at the top section. It describes it as representing rainfall measurements, rather than rivers and their lengths.</p>
+          <p>The long description continues with an overview of the different sections, while The general description is ok, it gives specifics that are not actually in the image, like mentioning Mount Everest and the Plateau of Thibet.</p>
+          <p>So, it looks as though Copilot is confabulating these details. It has generated plausible-sounding but potentially inaccurate or fabricated information.</p>
+          <p>What did Ally's AI Alt Text Assistant suggest? "A map of a mountain range".</p>
+          <h4>Reflecting upon Copilot's usefulness for alternative text</h4>
+          <p>So, what lessons and tips can we draw from this? The images I used were all troublesome in one way or another. In my experience so far, images like photos or pictures, like the illustration of a cat sleeping in a space ship that we saw earlier work better, but I wanted to use images of the type we are more likely to use in Higher Education.</p>
+          <ul>
+            <li>
+              <p>I think that Copilot and similar tools can help us to go onto write better short and long descriptions, by presenting the structure of the long description that we can then improve. Or by adjusting a description to make it relevant to our context, audience and purpose.</p>
+            </li>
+            <li>
+              <p>The generic prompt is just a start, it could be fine-tuned or we could ask follow up questions.</p>
+            </li>
+            <li>
+              <p>Of course, we need to consider bias and confabulation - particularly if the description infers meaning or content that is not in the image.</p>
+            </li>
+            <li>
+              <p>I can see that using AI to create descriptions may frustrate colleagues into just doing it manually as they get a better understanding of what makes good alt text.</p>
+            </li>
+            <li>
+              <p>As ever, subject matter experts should be writing or reviewing the descriptions, however they have been initially created.</p>
+            </li>
+          </ul>
+          <h4>Learning to write image descriptions</h4>
+          <p>There's lots of resources out there to help <strong>you</strong> to write image descriptions. </p>
+          <p>I particularly recommend:</p>
+          <ul>
+            <li>
+              <p>
+                <a target="_blank" rel="noopener noreferrer" href="https://www.textboxdigital.com/described-home">"Described", from textbox Digital</a>,
+              </p>
+            </li>
+            <li>
+              <p>
+                <a target="_blank" rel="noopener noreferrer" href="https://www.learningapps.co.uk/moodle/xertetoolkits/play.php?template_id=3023">The "Complex images - making sense for accessibility" site</a>,
+              </p>
+            </li>
+            <li>
+              <p>and the <a target="_blank" rel="noopener noreferrer" href="https://www.nwea.org/content/uploads/2022/02/Image-Description-Guidelines-for-Assessments_NWEA_2021.pdf">NWEA's Image descriptions for assessments</a>. </p>
+            </li>
+          </ul>
+          <h5>Described</h5>
+          <p>
+            <a target="_blank" rel="noopener noreferrer" href="https://www.textboxdigital.com/described-home">TextBox digital's "described" service</a> provides guidance and worked examples of writing alternative text for different types of image.
+          </p>
+          <p>On screen, I'm listing the types of image they cover, examples include Diagrams, graphs, maps, and scientific images such as circuit diagrams.</p>
+          <p>I'm now sharing a list of examples from the scientific section. This includes astrophotography, chemical element notation and other scientific image types.</p>
+          <p>When you select an image type, Described provides an overall set of guidance, a step by step process, and a worked example with final complete description. Once you have a process you can follow it really helps you to unlock what once might have been a mystery and can make it seem simple. On screen, I have a screenshot of part of the explanation for describing circuit diagrams.</p>
+          <h2>Scenario 3: Podcast transcription</h2>
+          <p>In our third scenario we're going back to transcription, but from a different angle. This one is a bit more of a work in progress.</p>
+          <p>The <a target="_blank" rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Meliora Podcast</a> from the <a target="_blank" rel="noopener noreferrer" href="https://www.southampton.ac.uk/research/institutes-centres/sustainability-resilience-institute">Sustainability and Resilience Institute at the University of Southampton</a> examines topics surrounding sustainability. </p>
+          <p>On screen, the podcast is advertised in our internal university "staff matters" newsletter. However, one of our colleagues in our communications team who writes the newsletter is profoundly deaf and cannot listen to the podcast. She and the podcast host, <a target="_blank" rel="noopener noreferrer" href="https://www.southampton.ac.uk/people/5wykv5/professor-simon-kemp">Professor Simon Kemp</a>, got in touch with me to ask what options were available to make transcripts for the podcast. Simon has a small fund for paying students as casual staff to edit the podcast but has no extra funding to pay someone to make a transcript. </p>
+          <h3>Challenges and Solutions</h3>
+          <p>Since the podcast is an MP3 file, what tools did we have already that could help make a transcript?</p>
+          <p>We use <a target="_blank" rel="noopener noreferrer" href="https://www.microsoft.com/en-gb/microsoft-365/microsoft-stream">Microsoft Stream</a>, but it can only create captions for video files, not audio files. Converting an MP3 to a video file would work but requires additional software. </p>
+          <p>I came across <a target="_blank" rel="noopener noreferrer" href="https://github.com/Const-me/Whisper">Whisper Desktop</a>. It's a Windows open-source application designed to run with the open-source automatic speech recognition system "Whisper" created by OpenAI. If you have a good graphics card, <a target="_blank" rel="noopener noreferrer" href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">this tool can run on your Windows computer and transcribe audio or video files, or live speech captured through your microphone</a>. It can output that transcription to caption files or plain text. It supports 99 languages and it can translate between languages. </p>
+          <h3>Transcription Process</h3>
+          <p>During transcription, you can view a live preview. On screen, I'm sharing the preview while it transcribed one of Simon's podcasts. It's showing the words it has detected, each word has a colour going from green to yellow to red, indicating its confidence for accuracy. It took about 9 minutes to transcribe an hour-long podcast on my work computer. The transcription has a good level of accuracy. Unlike YouTube transcription, you do get punctuation.</p>
+          <figure id="" class="demoVideo" style="aspect-ratio: 425 / 234;" poster="">
+            <video id="" controls preload="metadata" controlsList="nodownload">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277420_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Screen recording of Whisper transcribing an episode of the Meliora podcast. It’s showing the words it has detected, each word has a colour going from green to yellow to red, the colour indicates its confidence for accuracy.</figcaption>
+          </figure>
+          <p>As an aside, having confidence levels for the transcription might be useful for our Lecture capture recordings. If we could focus on words with low confidence levels, it might make caption correction faster.</p>
+          <h3>Improving Readability</h3>
+          <p>Just like in our first scenario, we have a big lump of unformatted plain text. Not very readable. In this podcast, there are five different speakers. Can we get attribution added so we know who is speaking?</p>
+          <h4>Speaker Attribution</h4>
+          <p>I wrote a prompt for Copilot. I gave the speakers' names and who is the first speaker. I asked it to write the name of the speaker followed by a colon in bold formatting to appear before each person speaks. I'm asking it to do this based on the text transcript, not the audio file.</p>
+          <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
+            <video id="" controls preload="metadata" controlsList="nodownload">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277415_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Screen recording of copilot. I have asked it to add speaker attribution to a transcript, I have given the speaker names and who speaks first. Copilot quickly parses through the text, adding the names of each speaker in bold to precede the passages of text where they are speaking.</figcaption>
+          </figure>
+
+          <p>On screen, I'm sharing a screen recording of Copilot going through that task. It is adding the name of each speaker in bold before they speak.</p>
+          <h4>Formatting</h4>
+          <p>It would be great if we could add the formatting detail like headings, paragraph breaks, and so on that we saw in our first scenario.</p>
+		            <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
+            <video id="" controls preload="metadata" controlsList="nodownload">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277414_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Copilot is now reformatting the transcript with speaker attribution so that it is easier to read by using paragraph breaks, headings and bullet points.</figcaption>
+          </figure>
+			<p>I have another screen recording showing copilot reformatting that transcript with the speaker attribution added, it's using headings, bulleted lists and so on. I did try asking Copilot to do speaker attribution and formatting with a single prompt, but I found the results to be much worse than doing them separately.</p>
+          <h4>Before and After</h4>
+          <p>Now I'm showing the before and after, our initial block of plain text, in comparison with a transcript that has headings, more meaningful paragraph breaks, bullet points, and speaker attribution. It's definitely not perfect, but it would take someone much less time to fine-tune and correct this transcript using our adjusted version, in comparison to our original block of text.</p>
+          <figure id="" class="demoVideo" style="aspect-ratio: 239 / 219;" poster="">
+            <video id="" controls preload="metadata" controlsList="nodownload">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277418_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Manually applying formatting to a plain text transcript.</figcaption>
+          </figure>
+          <h3>Future Prospects</h3>
+          <p>So far, this is just a proof of concept.</p>
+          <p>In my testing, I had an 18,000-character limit for what I could ask Copilot, and it would not give me an answer longer than 10,000 characters. And the podcast transcript was 60,000 characters long!</p>
+          <p>I'm hoping to discuss with my colleagues if there is an opportunity for us to use the Copilot API to break these limits.</p>
+          <p>Ultimately, could we create an endpoint where a user could upload their MP3 file, and then have Whisper create the transcript and Copilot format it, rather than requiring them to do multiple separate steps?</p>
+          <p>I think the creation of an end-to-end solution like that could help because it is a good story to tell, from our profoundly deaf colleague being unable to listen to a university podcast, to an AI-based solution that can help to create a readable transcript with a much lower level of human effort to correct and adjust the final transcript.</p>
+          <h2>Scenario 4 - Sample content</h2>
+          <p>The final scenario is around creating what I call "sample content".</p>
+          <p>I'm meeting teams around the university who want an introduction to digital accessibility. We have <a target="_blank" rel="noopener noreferrer" href="https://abilitynet.org.uk/elearning-modules-higher-and-further-education-institutions">online training available</a>, but meeting teams and discussing accessibility within the context of their work, with examples to work through, can be quite effective. </p>
+          <p>I've also found it's better not to use "real-world" content. If we don't approach this in the right way, colleagues might feel that their content is being singled out. But creating example content that is more meaningful than a chunk of " <a target="_blank" rel="noopener noreferrer" href="https://loremipsum.io/">Lorem Ipsum placeholder text</a>" can be a challenge. </p>
+          <h3>Creating "sample content" with the help of Copilot</h3>
+          <p>I'll be working with a group of project managers and analysts soon. I asked Copilot to create a project update document for a fictitious project that aims to make project managers more efficient by using cats. I stated that the document should have:</p>
+          <ul>
+            <li>An overview of the project's aims</li>
+            <li>Red, green, amber ratings for time and cost</li>
+            <li>A list of deliverables</li>
+            <li>A roadmap</li>
+          </ul>
+          <p>I could then adjust the content it gave me by adding some accessibility issues myself that the group could remediate while we covered the topics.</p>
+          <p>On screen, I'm browsing through my document. I've added defects like:</p>
+          <ul>
+            <li>Aspects of low contrast</li>
+            <li>Red, amber, green rating using colour alone to express meaning</li>
+            <li>A table without proper headings</li>
+            <li>Poorly crafted links</li>
+            <li>Lists without list semantics</li>
+          </ul>
+          <p>The content itself is slightly facetious, but I've avoided using real-world content and Lorem Ipsum placeholder text. I've got elements that would appear in a project document, and it took 10 minutes altogether to create.</p>
+          <h4>Generating an image, encountering bias?</h4>
+          <p>At the end, I added an image that I asked Copilot to create of a project manager being assisted by a cat.</p>
+          <p>Copilot will always give a choice of four images, but on my original attempt, it gave me four white male project managers, perhaps an example of bias within the model.</p>
+          <p>So, I adjusted my prompt to specify the gender and ethnicity of the project manager.</p>
+		  <figure id="" class="demoVideo" style="aspect-ratio: 390 / 229;" poster="">
+            <video id="" controls preload="metadata" controlsList="nodownload">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29325806_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">A fictitious project update document about a University Cat Service. It includes red/amber/green ratings for time and cost, a set of deliverables, research findings and project roadmap. Within the content a number of accessibility issues have been added, such as poorly crafted links, headings that are not semantically created, lists without semantic detail. At the end is a project logo where a project manager is shown with a cat.</figcaption>
+          </figure>
+          <h2>Conclusion</h2>
+          <p>Now I'm going to draw us to my conclusion.</p>
+          <h3>Generative AI and climate sustainability</h3>
+          <p>Of course, we must consider the sustainability of AI tools as we face a climate emergency that will have an unthinkable impact on our lives within the next 20 years.</p>
+          <p>The <a target="_blank" rel="noopener noreferrer" href="https://www.reading.ac.uk/news/2024/University-News/Climate-stripes-off-the-scale-for-hot-2023">"Climate Stripes" image by Professor Ed Hawkins</a> shows global temperature rise over nearly two centuries. Each stripe represents a year's average temperature relative to the overall period. Blue stripes indicate cooler years, while red stripes show hotter years. The deep red stripes on the right highlight recent rapid warming. </p>
+          <p>
+            <a target="_blank" rel="noopener noreferrer" href="https://www.bailliegifford.com/en/uk/individual-investors/insights/ic-article/2023-q3-exposing-ai-s-costs-10037163/">A single generative AI exchange can consume the equivalent of half a litre of fresh water for data centre cooling and consume 100 times more energy than one Google search</a>. Understandably, there is a great deal of concern around the impact of AI on the climate.
+          </p>
+          <p>A post in Disconnect Blog, titled " <a target="_blank" rel="noopener noreferrer" href="https://disconnect.blog/generative-ai-is-a-climate-disaster/">Generative AI is a climate disaster</a>," explains that Google and Microsoft's emissions are increasing between 30 and 50% despite their goals to be climate neutral by 2030. </p>
+          <h3>Bias in Generative AI</h3>
+          <p>Bias has long been a concern of generative AI. I have some recent news articles:</p>
+          <ul>
+            <li>The University of Washington found that <a target="_blank" rel="noopener noreferrer" href="https://www.washington.edu/news/2024/06/21/chatgpt-ai-bias-ableism-disability-resume-cv/">Chat GPT was biased against resumes with credentials that implied the applicant had a disability</a>. </li>
+            <li>A recent <a target="_blank" rel="noopener noreferrer" href="https://arxiv.org/abs/2403.02726">paper from Cornell about the biases in generative AI</a>. </li>
+            <li>A recent blog post by Baldur Bjarnason <a target="_blank" rel="noopener noreferrer" href="https://www.baldurbjarnason.com/2024/ai-asbestos/">comparing generative AI with asbestos</a>. Baldur explains that just as asbestos use was rationalised as having positives that outweighed the negatives until it was banned in the US only this year, generative AI is in the same position, promising some positives and with advocates either ignoring the negatives or saying that the positives outweigh them. </li>
+          </ul>
+          <h3>Challenges and Opportunities</h3>
+          <p>These are more "open questions" for institutions to consider than answers.</p>
+          <p>Different answers from Copilot to the same question can occur due to model changes (e.g., switching from GPT-4 to GPT-3.5), adjustments to the model, or slight variations in punctuation or spacing in our initial question. Is reproducibility important? How do we explain this to users?</p>
+          <p>Likewise, the tools are changing frequently. In the weeks between me starting work on this presentation and today, both Chat GPT 4.0 mini was released, as was Ally's AI Alt Text Assistant.</p>
+          <p>The best scenarios involve manipulating text and using prompts. To mature these solutions, we might provide more "turn-key" options, possibly using local Large Language Models. Copying and pasting prompts into a browser is still immature and not necessarily user-friendly.</p>
+          <p>All of the scenarios I've looked at today are about reducing effort and time, but verification and completion by a subject matter expert is still required. There is rightfully a lot of anxiety around AI, particularly in terms of the ethics of how large language models are trained, their sustainability, and impact on the climate.</p>
+          <p>Can we account for our carbon usage of generative AI just as we do for university buildings and travel?</p>
+          <p>Finally, among all these challenges and concerns, I think that positive uses of AI to remove accessibility barriers is a good story to tell that may help to gain buy-in from university stakeholders, both toward digital accessibility and using AI to reduce the digital accessibility workload.</p>
+          <h3>Your ideas</h3>
+          <p>I hope that by sharing these simple ideas, we can continue the conversation and learn from each other about your ideas and uses for generative AI that help us in our digital accessibility work. I really want to learn what others in our community have been doing.</p>
+          <h3>Links</h3>
+          <p>At the end of the slide deck, which you can download from the community site, you'll find links to everything I referred to.</p>
+          <p>Thanks for listening.</p><p>Transcript ends.</p>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h3>Related content</h3>
+        </section>
+        <section class="related">
+          <h4>Presentations</h4>
+          <ul class="relUL">
+            <li>
+              <a href="#">Using Colours</a>
+            </li>
+            <li>
+              <a href="#">Future Teacher</a>
+            </li>
+            <li>
+              <a href="#">Bluffers guide to Blackboard theme accessibility</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h4>Blog posts</h4>
+          <ul class="relUL">
+            <li>
+              <a href="#">Using Colours</a>
+            </li>
+            <li>
+              <a href="#">Future Teacher</a>
+            </li>
+            <li>
+              <a href="#">Bluffers guide to Blackboard theme accessibility</a>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS">
+          <a id="rssA" href="feed.rss">RSS</a>
+        </div>
+        <div id="SiteMap">
+          <a href="siteMap.html">Site Map</a>
+        </div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/">&#169; Matthew Deeprose</a>
+        </div>
+      </footer>
+    </div>
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false"
+        } else {
+          menuAriaAttrib = "true"
+        }
+        document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
+      window.onscroll = function() {
+        scrollFunction()
+      };
+
+      function scrollFunction() {
+        if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
+
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById('skipToContent').focus();
+      }
+
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById('rssA').focus();
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
+
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia('(prefers-color-scheme: dark)');
+        let dt;
+        if (d.matches) {
+          dt = 'dark';
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = 'light'
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == 'dark' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'light' && themePref == 'Dark') {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == 'dark' && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
+
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+          let toggleButton = document.getElementById('modeToggle');
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
+
+      function applyThemePreference() {
+        if (themePref == 'Dark') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'dark.css';
+          document.getElementById('darkCSS').href = 'dark.css';
+          theButton.setAttribute("aria-pressed", "true");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        } else if (themePref == 'Light') {
+          let theButton = document.getElementById('modeToggle');
+          document.getElementById('lightCSS').href = 'light.css';
+          document.getElementById('darkCSS').href = 'light.css';
+          theButton.setAttribute("aria-pressed", "false");
+          console.log("Applied dark theme because site theme preference is set to", themePref);
+        }
+      }
+      applyThemePreference();
+    </script>
+    <script src="scripts/lite-yt-embed.js"></script>
+    <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+  </body>
+</html>

@@ -1,3 +1,103 @@
+/* Video and quotes */
+      .vidFancyControls {
+        display: none;
+      }
+	  
+	  figure.demoVideo {
+        position: relative;
+        max-width: 64rem;
+        width: 100%;
+        height: 100%;
+        margin: 1.25rem auto;
+        padding: 1.051%;
+        background: none;
+	background-color:#9FB1BD !important;
+	color:#00131D;
+	}
+	  
+      figure.borders {
+        position: relative;
+        max-width: 64rem;
+        width: 100%;
+        height: 100%;
+        max-height: 39rem;
+        margin: 20px auto;
+        margin: 1.25rem auto;
+        padding: 20px;
+        padding: 1.051%;
+        background: none;
+      }
+
+      figcaption {
+        display: block;
+        font-size: 12px;
+        font-size: 0.75rem;
+      }
+
+      video {
+        width: 100%;
+
+      }
+
+
+
+
+
+      /* Media Queries */
+      @media screen and (max-width:1024px) {
+        figure {
+          padding-left: 0;
+          padding-right: 0;
+          height: auto;
+        }
+
+
+
+        figcaption {
+          text-align: left;
+          margin: 0.5rem;
+        }
+      }
+
+      @media screen and (max-width:42.5em) {
+
+
+        figcaption {
+          text-align: left;
+          margin: 0.5rem;
+        }
+      }
+
+      @media only screen and (min-width: 1024px) {
+        blockquote.sharon:after {
+          content: url('sharon.jpg');
+        }
+
+        blockquote.Esin:after {
+          content: url('esin.png');
+        }
+
+        blockquote.terry:after {
+          content: url('terry.png');
+        }
+
+        blockquote.james:after {
+          content: url('james.png');
+        }
+
+        blockquote.tharindu:after {
+          content: url('tharindu.png');
+        }
+
+        blockquote.sarah:after {
+          content: url('sarah.jpg');
+        }
+
+        blockquote:after {
+          margin-left: 2.25em;
+        }
+      }
+
 /* Tables starts here */
 table {
   border-collapse: collapse;
