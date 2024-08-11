@@ -3,7 +3,11 @@
         display: none;
       }
 	  
-	  figure.demoVideo {
+	img.demoImg {
+		width: 100%;
+	}
+	  
+	  figure.demoVideo, figure.demoImage {
         position: relative;
         max-width: 64rem;
         width: 100%;

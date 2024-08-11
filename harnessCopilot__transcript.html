@@ -145,10 +145,18 @@ article.standard {
           <h3>Copilot Interfaces</h3>
           <p>On the website <a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/">copilot.microsoft.com</a> there are two main interfaces for Copilot. Both can create text and images, but there are some differences between them. </p>
           <h4>Copilot "Default"</h4>
+		  <figure id="" class="demoImage" style="aspect-ratio: 885 / 883;">
+            <img class="demoImg" src="copilot-images/copilot1.png" alt="Copilot's default user interface is focussed on the question a user asks. It minimises other user interface elements. It appears to take a less formal, more friendly design." loading="lazy">
+            <figcaption class="borders">Screenshot of Copilot's default interface. Note that I am logged in with my institutional account.</figcaption>
+          </figure>
           <p>The default, which seems just to be named Copilot, is aimed at short questions and answers. As such there is an 8000-character limit for the prompts you can write. Microsoft's guides say 4000, but the web page is set to accept 8000.</p>
           <p>My main reason to use this variant is that we can upload both images or documents (up to 1 MB in size) as part of our prompts. It accepts many types of document format, from standard office document formats to programming and scripting languages, markup content, LaTeX content and so on.</p>
           <p>There's also the option to change conversation style, to switch from diverse and creative to deterministic and focussed. This is similar to the temperature parameter you may be familiar with in ChatGPT.</p>
           <h4>Copilot Notebook</h4>
+		  <figure id="" class="demoImage" style="aspect-ratio: 885 / 883;">
+            <img class="demoImg" src="copilot-images/copilot2.png" alt="Copilot notebook's interface is focussed on both the question and the answer. It looks more formal and austere in its design language." loading="lazy">
+            <figcaption class="borders">Screenshot of Copilot's "notebook" interface.</figcaption>
+          </figure>
           <p>
             <a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/?showntbk=1">Copilot Notebook</a> is the variant I'll be focussing on. Apparently, it's designed for rewriting and iterating on prompts that you create.
           </p>
@@ -156,7 +164,11 @@ article.standard {
           <p>One limitation is that you can only attach images, although there is a larger file size limit of 50 MB.</p>
           <p>So, having set out the context, it's time to review the four scenarios for which I've found copilot to be helpful. The first is creating a transcript from corrected video captions.</p>
           <h2>Scenario 1: Creating a transcript from captions</h2>
-          <p>This story began back in January this year. My colleague <a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/in/zsjatoi/">Dr. Zubair Shafiq</a> and I were creating an accessibility video for our doctoral college. We had broken the content into ten-minute chunks and were working on each separately, which we then pulled together in a final edit. We had been using a brilliant tool called <a target="_blank" rel="noopener noreferrer" href="https://github.com/SubtitleEdit/subtitleedit">SubtitleEdit</a> to add, format, and time the captions. </p>
+          <p>This story began back in January this year. My colleague <a target="_blank" rel="noopener noreferrer" href="https://www.southampton.ac.uk/digital-learning/about/staff/zs2e12.page">Dr. Zubair Shafiq</a> and I were creating an accessibility video for our doctoral college. We had broken the content into ten-minute chunks and were working on each separately, which we then pulled together in a final edit. We had been using a brilliant tool called <a target="_blank" rel="noopener noreferrer" href="https://github.com/SubtitleEdit/subtitleedit">SubtitleEdit</a> to add, format, and time the captions. </p>
+		  <figure id="" class="demoImage" style="aspect-ratio: 1920 / 1030;">
+            <img class="demoImg" src="copilot-images/subtitle-edit-1.png" alt="Subtitle Edit interface. A video explaining what we mean by digital accessibility is previewed. The captions are listed for the video. The waveform of the sound is also displayed. A section of the waveform is in a different colour, to correspond with the caption selected." loading="lazy">
+            <figcaption class="borders">Editing captions and their timing in Subtitle Edit.</figcaption>
+          </figure>
           <p>Having completed the captions, we wanted to create a transcript.</p>
           <h3>Benefits of Transcripts</h3>
           <p>Transcripts have many benefits:</p>
@@ -166,7 +178,10 @@ article.standard {
             </li>
           </ul>
           <p>This feedback from a member of our Neurodivergent Staff Group explains this well:</p>
-          <p>"The thing that I find most annoying is the way online training is often set up. I don't learn well with videos, flashy moving images on screens, or endless things to click on to flip or open or whatever. It can get disorientating, and it makes it harder to take in the information because of the demands of interacting with the screen. My attention goes on interacting with the screen rather than taking in the information. I'd rather just be given the information transcript-style so I can just read it (with images where they'll add something useful). I connect information into a whole better when I can see it all in one go, jump back and forth to double check things, and read it/process it at the speed I need to."</p>
+		  <blockquote class="">
+            <p>The thing that I find most annoying is the way online training is often set up. I don't learn well with videos, flashy moving images on screens, or endless things to click on to flip or open or whatever. It can get disorientating, and it makes it harder to take in the information because of the demands of interacting with the screen. My attention goes on interacting with the screen rather than taking in the information. <br> I'd rather just be given the information transcript-style so I can just read it (with images where they'll add something useful). I connect information into a whole better when I can see it all in one go, jump back and forth to double check things, and read it/process it at the speed I need to.</p>
+            <cite>Feedback from a member of University of Southampton's Neurodivergent Staff Group</cite>
+          </blockquote>          
           <ul>
             <li>
               <p>If the transcript is suitable for publishing online, it may help to improve Search Engine Optimisation, bringing a greater audience to your content.</p>
@@ -180,7 +195,13 @@ article.standard {
             </li>
           </ul>
           <h3>Using Subtitle Edit</h3>
-          <p>Going back to my scenario, Subtitle Edit has an export text feature to turn the captions into a single block of text. That block of text is not very readable. While I have the punctuation that I had added when creating the captions, there are no paragraphs.</p>
+          <p>Going back to my scenario, Subtitle Edit has an export text feature to turn the captions into a single block of text.</p>
+		            <figure id="" class="demoImage" style="aspect-ratio: 1010 / 649;" poster="">
+            <img class="demoImg" src="copilot-images/subtitle-edit-2.png" alt="Captions from the video transformed into plain text. No timing information is included. It's one block of text, no paragraphs, no headings, it's very unattractive to read." loading="lazy">
+            <figcaption class="borders">Subtitle edit allows us to export all the captions as plain text.</figcaption>
+          </figure>
+		  
+		  <p>That block of text is not very readable. While I have the punctuation that I had added when creating the captions, there are no paragraphs.</p>
           <p>Editing that text to set it into paragraphs is a time-consuming and boring task. On screen, I have a recording of me going through that text and tidying it into sensible paragraphs. It's a slow process. It would be even slower if I had not written the original text myself.</p>
           <figure id="" class="demoVideo" style="aspect-ratio: 241 / 252;" poster="">
             <video id="" controls preload="metadata" controlsList="nodownload">
@@ -208,8 +229,11 @@ article.standard {
             <figcaption class="borders">Copilot is formatting the transcript. It is adding headings of its own choosing based on the context of the transcript content. In some places it is using bullet points where it thinks there is a list. It is breaking the text into paragraphs.</figcaption>
           </figure>
           <h3>Final Result</h3>
+		            <figure id="" class="demoImage" style="aspect-ratio: 1768 / 708;" poster="">
+            <img class="demoImg" src="copilot-images/final transcript.png" alt="" loading="lazy">
+            <figcaption class="borders">The final transcript in MS Word.</figcaption>
+          </figure>
           <p>The result is on screen. I'm showing a Word document version of the transcript, with the navigation pane open to show that I have set the headings using heading styles so they will be usable by assistive technologies.</p>
-          <p>Screenshot: final-transcript.png</p>
           <h3>Tips for Making Transcripts</h3>
           <p>A few tips from my experience of making transcripts:</p>
           <ul>
