@@ -9,9 +9,9 @@
 	  
 	  figure.demoVideo, figure.demoImage {
         position: relative;
-        max-width: 64rem;
+        /* max-width: 64rem;
         width: 100%;
-        height: 100%;
+        height: 100%; */
         margin: 1.25rem auto;
         padding: 1.051%;
         background: none;
@@ -37,7 +37,17 @@
         font-size: 12px;
         font-size: 0.75rem;
       }
+figcaption a {
+	color: #002E3B;
+}
+figcaption a:hover {
+	color: #00131D !important;
+}
 
+figcaption a:focus {
+	color: #00131D !important;
+	outline: 0.3rem solid #00131D !important;
+}
       video {
         width: 100%;
 

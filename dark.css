@@ -163,7 +163,7 @@ dd.from {
 main a:focus,
 aside a:focus,
 footer a:focus {
-	outline: 0.3rem solid #C1D100 !important;
+	outline: 0.3rem solid #C1D100;
 	color: #74C9E5;
 }
 
