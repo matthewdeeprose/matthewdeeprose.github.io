@@ -34,16 +34,17 @@
     <meta name="twitter:image" content="https://matthewdeeprose.github.io/copilot-narrow.PNG" />
     <meta name="twitter:image:alt" content="" />
     <meta name="twitter:card" content="summary_large_image" />
-	<style>
-article.standard {
-    max-width: clamp(320px, 90%, 1000px);
-    margin: auto;
-}
+    <style>
+      article.standard {
+        max-width: clamp(320px, 90%, 1000px);
+        margin: auto;
+      }
+
       .page-wrap>* {
         grid-column: 1/-1 !important;
         grid-row: auto !important;
       }
-</style>
+    </style>
   </head>
   <body>
     <div class="page-wrap" id="start">
@@ -118,7 +119,7 @@ article.standard {
           <p>Hi, I'm Matthew Deeprose from the University of Southampton. For those who don't see me, I'm a white male in my late 40s. I'm wearing glasses, a navy blue suit, with a cornflower-coloured shirt and matching pocket square. My pronouns are he/him.</p>
           <h2 id="Introduction">Introduction</h2>
           <p>Can we harness Copilot and other generative AI tools to increase digital accessibility efficiency?</p>
-          <p>To open the theme of this presentation and put it in context, let's start with a tweet from @McgarDana posted in 2021. It reads, "<a target="_blank" rel="noopener noreferrer" href="https://x.com/VLEguru/status/1808196756921860142">Accessibility isn't more work, you were just cutting corners before. The work was incomplete</a>". She is saying that a web page, document, or online service isn't ready until everyone can use it, regardless of any disability or impairment. </p>
+          <p>To open the theme of this presentation and put it in context, let's start with a tweet from <a href="https://x.com/McgarrDana">@McgarDana</a> posted in 2021. It reads, " <a target="_blank" rel="noopener noreferrer" href="https://x.com/VLEguru/status/1808196756921860142">Accessibility isn't more work, you were just cutting corners before. The work was incomplete</a>". She is saying that a web page, document, or online service isn't ready until everyone can use it, regardless of any disability or impairment. </p>
           <h3 id="Context">Context</h3>
           <p>But for us in universities, many of our colleagues are still unaware of what digital accessibility is. I'm sure you've heard responses like "no one ever told me about this before", or "I haven't got time for this" even from our most well-meaning colleagues.</p>
           <p>And with statutory legislation such as the <a target="_blank" rel="noopener noreferrer" href="https://www.legislation.gov.uk/uksi/2022/1097/made?view=plain">Public Sector Bodies (Websites and Mobile (Applications) Accessibility Regulations</a> in the UK, the latest 2022 revision I have a screenshot of on screen. And other developments, like our <a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/BlackboardUltra/SitePages/BB-Universal-Standards.aspx?e=4%3A3cf8dab07d2941bbbf51d1e1aa675932&amp;web=1&amp;sharingv2=true&amp;fromShare=true&amp;at=9&amp;cid=cbd4d290-71e0-469b-9d3d-576ab1b66467">Blackboard Universal Standards</a> that set an expectation of meeting a minimum 70% accessibility score for online teaching materials. We have a growing expectation for staff across our institution to engage with accessibility. </p>
@@ -145,7 +146,7 @@ article.standard {
           <h3 id="">Copilot Interfaces</h3>
           <p>On the website <a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/">copilot.microsoft.com</a> there are two main interfaces for Copilot. Both can create text and images, but there are some differences between them. </p>
           <h4 id="CopilotDefault">Copilot "Default"</h4>
-		  <figure id="" class="demoImage" style="aspect-ratio: 885 / 883;">
+          <figure id="" class="demoImage" style="aspect-ratio: 885 / 883;">
             <img class="demoImg" src="copilot-images/copilot1.png" alt="Copilot's default user interface is focussed on the question a user asks. It minimises other user interface elements. It appears to take a less formal, more friendly design." loading="lazy">
             <figcaption class="borders">Screenshot of Copilot's default interface. Note that I am logged in with my institutional account.</figcaption>
           </figure>
@@ -153,7 +154,7 @@ article.standard {
           <p>My main reason to use this variant is that we can upload both images or documents (up to 1 MB in size) as part of our prompts. It accepts many types of document format, from standard office document formats to programming and scripting languages, markup content, LaTeX content and so on.</p>
           <p>There's also the option to change conversation style, to switch from diverse and creative to deterministic and focussed. This is similar to the temperature parameter you may be familiar with in ChatGPT.</p>
           <h4 id="CopilotNotebook">Copilot Notebook</h4>
-		  <figure id="" class="demoImage" style="aspect-ratio: 885 / 883;">
+          <figure id="" class="demoImage" style="aspect-ratio: 885 / 883;">
             <img class="demoImg" src="copilot-images/copilot2.png" alt="Copilot notebook's interface is focussed on both the question and the answer. It looks more formal and austere in its design language." loading="lazy">
             <figcaption class="borders">Screenshot of Copilot's "notebook" interface.</figcaption>
           </figure>
@@ -165,7 +166,7 @@ article.standard {
           <p>So, having set out the context, it's time to review the four scenarios for which I've found copilot to be helpful. The first is creating a transcript from corrected video captions.</p>
           <h2 id="Scenario1">Scenario 1: Creating a transcript from captions</h2>
           <p>This story began back in January this year. My colleague <a target="_blank" rel="noopener noreferrer" href="https://www.southampton.ac.uk/digital-learning/about/staff/zs2e12.page">Dr. Zubair Shafiq</a> and I were creating an accessibility video for our doctoral college. We had broken the content into ten-minute chunks and were working on each separately, which we then pulled together in a final edit. We had been using a brilliant tool called <a target="_blank" rel="noopener noreferrer" href="https://github.com/SubtitleEdit/subtitleedit">SubtitleEdit</a> to add, format, and time the captions. </p>
-		  <figure id="" class="demoImage" style="aspect-ratio: 1920 / 1030;">
+          <figure id="" class="demoImage" style="aspect-ratio: 1920 / 1030;">
             <img class="demoImg" src="copilot-images/subtitle-edit-1.png" alt="Subtitle Edit interface. A video explaining what we mean by digital accessibility is previewed. The captions are listed for the video. The waveform of the sound is also displayed. A section of the waveform is in a different colour, to correspond with the caption selected." loading="lazy">
             <figcaption class="borders">Editing captions and their timing in Subtitle Edit.</figcaption>
           </figure>
@@ -178,10 +179,10 @@ article.standard {
             </li>
           </ul>
           <p>This feedback from a member of our Neurodivergent Staff Group explains this well:</p>
-		  <blockquote class="">
-            <p>The thing that I find most annoying is the way online training is often set up. I don't learn well with videos, flashy moving images on screens, or endless things to click on to flip or open or whatever. It can get disorientating, and it makes it harder to take in the information because of the demands of interacting with the screen. My attention goes on interacting with the screen rather than taking in the information. <br> I'd rather just be given the information transcript-style so I can just read it (with images where they'll add something useful). I connect information into a whole better when I can see it all in one go, jump back and forth to double check things, and read it/process it at the speed I need to.</p>
+          <blockquote class="">
+            <p>The thing that I find most annoying is the way online training is often set up. I don't learn well with videos, flashy moving images on screens, or endless things to click on to flip or open or whatever. It can get disorientating, and it makes it harder to take in the information because of the demands of interacting with the screen. My attention goes on interacting with the screen rather than taking in the information. <br> I'd rather just be given the information transcript-style so I can just read it (with images where they'll add something useful). I connect information into a whole better when I can see it all in one go, jump back and forth to double check things, and read it/process it at the speed I need to. </p>
             <cite>Feedback from a member of University of Southampton's Neurodivergent Staff Group</cite>
-          </blockquote>          
+          </blockquote>
           <ul>
             <li>
               <p>If the transcript is suitable for publishing online, it may help to improve Search Engine Optimisation, bringing a greater audience to your content.</p>
@@ -196,12 +197,11 @@ article.standard {
           </ul>
           <h3 id="UsingSubtitleEdit">Using Subtitle Edit</h3>
           <p>Going back to my scenario, Subtitle Edit has an export text feature to turn the captions into a single block of text.</p>
-		            <figure id="" class="demoImage" style="aspect-ratio: 1010 / 649;" poster="">
+          <figure id="" class="demoImage" style="aspect-ratio: 1010 / 649;" poster="">
             <img class="demoImg" src="copilot-images/subtitle-edit-2.png" alt="Captions from the video transformed into plain text. No timing information is included. It's one block of text, no paragraphs, no headings, it's very unattractive to read." loading="lazy">
             <figcaption class="borders">Subtitle edit allows us to export all the captions as plain text.</figcaption>
           </figure>
-		  
-		  <p>That block of text is not very readable. While I have the punctuation that I had added when creating the captions, there are no paragraphs.</p>
+          <p>That block of text is not very readable. While I have the punctuation that I had added when creating the captions, there are no paragraphs.</p>
           <p>Editing that text to set it into paragraphs is a time-consuming and boring task. On screen, I have a recording of me going through that text and tidying it into sensible paragraphs. It's a slow process. It would be even slower if I had not written the original text myself.</p>
           <figure id="" class="demoVideo" style="aspect-ratio: 241 / 252;" poster="">
             <video id="" controls preload="metadata" controlsList="nodownload">
@@ -222,14 +222,14 @@ article.standard {
           <p>Transcript:</p>
           <p>...</p>
           <p>On screen, I'm sharing a recording of Copilot notebook running that prompt. It is reformatting the transcript as I asked, adding paragraph breaks, headings, and using lists where appropriate. Of course, I had to check the results, and I changed them to suit my preference, but it saved me a lot of time and boredom.</p>
-		  <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
+          <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
             <video id="" controls preload="metadata" controlsList="nodownload">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277416_1" type="video/mp4">
             </video>
             <figcaption class="borders">Copilot is formatting the transcript. It is adding headings of its own choosing based on the context of the transcript content. In some places it is using bullet points where it thinks there is a list. It is breaking the text into paragraphs.</figcaption>
           </figure>
           <h3 id="">Final Result</h3>
-		            <figure id="" class="demoImage" style="aspect-ratio: 1768 / 708;" poster="">
+          <figure id="" class="demoImage" style="aspect-ratio: 1768 / 708;" poster="">
             <img class="demoImg" src="copilot-images/final transcript.png" alt="" loading="lazy">
             <figcaption class="borders">The final transcript in MS Word.</figcaption>
           </figure>
@@ -270,9 +270,10 @@ article.standard {
           <h3 id="HowMuchToWrite?">How much to write?</h3>
           <p>While the general recommended length for alternative text is about two sentences, when an image is more complex like a chart or graph, we may need to write a longer description of the image.</p>
           <p>I use this guide to explain when we may need to write a long description for an image.</p>
-		            <figure id="" class="demoImage" style="aspect-ratio: 2667 / 1500;" poster="">
+          <figure id="" class="demoImage" style="aspect-ratio: 2667 / 1500;" poster="">
             <img class="demoImg" src="copilot-images/Slide26.PNG" alt="" loading="lazy">
-            <figcaption class="borders">How much alternative text to write? Based on 'Echo' from <a target="_blank" rel="noopener noreferrer" href="https://www.textboxdigital.com/the-focus-locus-method">textBox Digital's Focus / Locus methodology</a></figcaption>
+            <figcaption class="borders">How much alternative text to write? Based on 'Echo' from <a target="_blank" rel="noopener noreferrer" href="https://www.textboxdigital.com/the-focus-locus-method">textBox Digital's Focus / Locus methodology</a>
+            </figcaption>
           </figure>
           <ul>
             <li>If we're just using the image for visual interest, we'll mark it as decorative.</li>
@@ -287,7 +288,7 @@ article.standard {
           <h4 id="ASUDemo">Demonstration of Image Accessibility Creator from ASU</h4>
           <p>On screen, I'm demonstrating how, having uploaded <a target="_blank" rel="noopener noreferrer" href="https://alexstevenmartin.tumblr.com/post/181707689676/console-cat-scifi-cat-nap-catnap-deepspace">a cartoon image of a cat sleeping on the dashboard or cockpit of a spaceship</a>, it describes the image impressively, sharing all the details, colours, and mood of the image. </p>
           <p>Because ASU is using OpenAI's application programming interface (API), images are not kept or used by OpenAI.</p>
-		  <figure id="" class="demoVideo" style="aspect-ratio: 345 / 217;" poster="">
+          <figure id="" class="demoVideo" style="aspect-ratio: 345 / 217;" poster="">
             <video id="" controls preload="metadata" controlsList="nodownload">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277419_1" type="video/mp4">
             </video>
@@ -305,10 +306,10 @@ article.standard {
           <h4 id="ReviewingCopilotImageDescriptions">Reviewing Copilot's Image Descriptions</h4>
           <p>Let's review the strengths and weaknesses of Copilot's image description with three example images.</p>
           <h5 id="Example1">Example 1: Line Graph</h5>
-		  <figure id="" class="demoImage" style="aspect-ratio: 2667 / 1500;" poster="">
+          <figure id="" class="demoImage" style="aspect-ratio: 2667 / 1500;" poster="">
             <img class="demoImg" src="copilot-images/graph.png" alt="Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton. Between 2019 and 2023 the percentage remains between one fifth and one sixth of students.
 " loading="lazy">
-            <figcaption class="borders">Example 1: Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton. <a href="#Example1LongDesc">View long description of image "Example 1"</a>.</figcaption>
+            <figcaption class="borders">Example 1: Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton. <br><a href="#Example1LongDesc">View long description of image "Example 1"</a>. </figcaption>
           </figure>
           <p>On screen, a line graph shows the percentage of "full person equivalent" students disclosing a disability at the University of Southampton from 2019/20 to 2023/24. Between one fifth and one sixth of students disclosed a disability during this period.</p>
           <p>Copilot gave a pretty accurate title of "Student Disability Disclosure Rates at the University of Southampton."</p>
@@ -339,22 +340,41 @@ article.standard {
           <ul>
             <li>"Academic year 2019-20, 16%".</li>
           </ul>
-          <p>Last week, a new feature, the AI Alt Text Assistant, was launched for Ally. I've turned it on in our testing environment. For the same graph, it gives the following suggested alternative text:</p>
+		  <h6 id="ally1">Suggested alt text by Ally's AI Alt Text Assistant</h6>
+                    <figure id="" class="demoImage" style="aspect-ratio: 1730 / 834;" poster="">
+            <img class="demoImg" src="copilot-images/allyExample1.png" alt="For the same graph we saw earlier about percentage of students who disclosed a disability, Ally suggested the following alt text: 'A graph with numbers and a line'.
+" loading="lazy">
+            <figcaption class="borders">Ally's AI Alt Text Assistant's description of our Example 1 image.</figcaption>
+          </figure>
+		  <p>Last week, a new feature, the <a href="https://usergroup.ally.ac/content/perma?id=62975">AI Alt Text Assistant, was launched for Ally</a>. I've turned it on in our testing environment. For the same graph, it gives the following suggested alternative text:</p>
           <p>"A graph with numbers and a line".</p>
           <h5 id="Example2">Example 2: Photosynthesis Diagram</h5>
+		            <figure id="" class="demoImage" style="aspect-ratio: 2000 / 1500;" poster="">
+            <img class="demoImg" src="copilot-images/photos.jpg" alt="Process of Photosynthesis. A plant is at the centre. It takes in water H2O through its roots, carbon dioxide C O2 and sunlight through its leaves. The leaves release oxygen O2 into the air and generate sugars as part of the cycle." loading="lazy">
+            <figcaption class="borders">Example 2: Process of Photosynthesis.<br><a href="#Example2LongDesc">View long description of image "Example 2"</a>.</figcaption>
+          </figure>
           <p>My next example is a basic diagram of the process of photosynthesis aimed at school children. Copilot's title is fine: "Photosynthesis Process Diagram".</p>
           <p>The alt text is also pretty good: "A diagram illustrating the process of photosynthesis, showing how a plant takes in light energy, carbon dioxide, and water to produce oxygen and sugars."</p>
           <p>However, when I show you my own description, I will highlight how I could make it a little better.</p>
-          <p>For the detailed description, Copilot produced an overview, a section describing the visual elements, and a section covering annotations and labels. I won't read out the whole description, which you can find in the slide deck, but I will point out a few aspects of the description to examine a little further. The description of the ground being brown, the sky being blue, and so on aren't necessary for the purposes of this description. In the way it is explaining the annotations and labels, for example: "The roots are labelled "Water h3O," indicating absorption from the soil," that could be described in a simpler way, as I'll cover in my own description.</p>
+          <p>For the detailed description, Copilot produced an overview, a section describing the visual elements, and a section covering annotations and labels. I won't read out the whole description, which you can find in the slide deck, but I will point out a few aspects of the description to examine a little further. The description of the ground being brown, the sky being blue, and so on aren't necessary for the purposes of this description. In the way it is explaining the annotations and labels, for example, "The roots are labelled 'Water H2O', indicating absorption from the soil." could be described in a simpler way, as I'll cover in my own description.</p>
           <p>While my alt text is three sentences, I would probably keep this as alt text and not write a longer description. My description is:</p>
           <p>"Process of Photosynthesis. The plant takes in water through its roots, carbon dioxide and light energy through its leaves. The leaves release oxygen into the air and generate sugars as part of the process."</p>
           <p>In this way, I believe I've covered the essential information in this diagram, without getting into the nitty gritty of describing labels and arrows, or colours.</p>
-          <p>
-            <span>Ally's AI Alt Text Assistant gives the following suggested alternative text:
+          <h6 id="ally1">Suggested alt text by Ally's AI Alt Text Assistant</h6>
+		                      <figure id="" class="demoImage" style="aspect-ratio: 1665 / 676;" poster="">
+            <img class="demoImg" src="copilot-images/allyExample2.png" alt="For the same process of photosynthesis diagram, Ally suggested the following alt text: 'A diagram of a plant with text and images'." loading="lazy">
+            <figcaption class="borders">Ally's AI Alt Text Assistant's description of our Example 2 image.</figcaption>
+          </figure>
+		  <p>
+            Ally's AI Alt Text Assistant gives the following suggested alternative text:
           </p>
           <p>"A diagram of a plant with text and images".</p>
           <h5 id="Example3">Example 3: 19th Century Physical Geography Map</h5>
-          <p>The final example is one suggested by my colleague Pete Boorman.</p>
+		            <figure id="" class="demoImage" style="aspect-ratio: 2592 / 1819;" poster="">
+            <img class="demoImg" src="copilot-images/map.jpg" alt="" loading="lazy">
+            <figcaption class="borders">Example 3: Chart comparing lengths of selected rivers and heights of selected mountains, from General Atlas Of The World by Adam & Charles Black, Sidney Hall and William Hughes, published in Edinburgh in 1854.<br><a href="#Example3LongDesc">View long description of image "Example 3"</a>. </figcaption>
+          </figure>
+          <p>The final example is one suggested by my colleague <a href="https://www.southampton.ac.uk/digital-learning/about/staff/pb1v23.page?">Pete Boorman</a>.</p>
           <p>It's a chart comparing lengths of selected rivers and heights of selected mountains, from "General Atlas Of The World", published in 1854.</p>
           <p>Along the top of the image are depictions of rivers like the Yangtze, Volga, and Ganges with their lengths listed in miles. Towards the bottom are hills and mountains from different regions and their height measured in feet.</p>
           <p>Copilot suggests a good title, 19th Century Physical Geography Map.</p>
@@ -364,7 +384,12 @@ article.standard {
           <p>A big mistake is at the top section. It describes it as representing rainfall measurements, rather than rivers and their lengths.</p>
           <p>The long description continues with an overview of the different sections, while The general description is ok, it gives specifics that are not actually in the image, like mentioning Mount Everest and the Plateau of Thibet.</p>
           <p>So, it looks as though Copilot is confabulating these details. It has generated plausible-sounding but potentially inaccurate or fabricated information.</p>
-          <p>What did Ally's AI Alt Text Assistant suggest? "A map of a mountain range".</p>
+          <h6 id="ally3">Suggested alt text by Ally's AI Alt Text Assistant</h6>
+		  <figure id="" class="demoImage" style="aspect-ratio: 1731 / 740;" poster="">
+            <img class="demoImg" src="copilot-images/allyExample3.png" alt="For the same image of rivers and mountain ranges, Ally suggested the following alt text: 'A map of a mountain range'." loading="lazy">
+            <figcaption class="borders">Ally's AI Alt Text Assistant's description of our Example 2 image.</figcaption>
+          </figure>
+		  <p>What did Ally's AI Alt Text Assistant suggest? "A map of a mountain range".</p>
           <h4 id="CopilotUsefulnessForAltText">Reflecting upon Copilot's usefulness for alternative text</h4>
           <p>So, what lessons and tips can we draw from this? The images I used were all troublesome in one way or another. In my experience so far, images like photos or pictures, like the illustration of a cat sleeping in a space ship that we saw earlier work better, but I wanted to use images of the type we are more likely to use in Higher Education.</p>
           <ul>
@@ -406,16 +431,70 @@ article.standard {
           <p>
             <a target="_blank" rel="noopener noreferrer" href="https://www.textboxdigital.com/described-home">TextBox digital's "described" service</a> provides guidance and worked examples of writing alternative text for different types of image.
           </p>
+          <figure id="" class="demoImage" style="aspect-ratio: 1061 / 1060;" poster="">
+            <img class="demoImg" src="copilot-images/described1.png" alt="Described has a number of categories for types of image to be described. These include:
+Advert
+Artwork
+Diagram
+Film
+Graph
+Icon
+Illustration
+List
+Logo
+Map
+Music
+Photograph
+Scientific
+Screenshot
+Sign
+Symbol
+Text
+Typeface." loading="lazy">
+            <figcaption class="borders">Categories of images for which Described provides a process for writing descriptions.</figcaption>
+          </figure>
           <p>On screen, I'm listing the types of image they cover, examples include Diagrams, graphs, maps, and scientific images such as circuit diagrams.</p>
+		            <figure id="" class="demoImage" style="aspect-ratio: 1158 / 1036;" poster="">
+            <img class="demoImg" src="copilot-images/described2.png" alt="Within the scientific section you might find guides on how to describe the following sub categories:
+Astrophotography.
+Chemical Element Notation.
+Chemistry Experiment Diagram.
+Electrical Network Diagram.
+Forensic.
+Geometry.
+Macroscopic Anatomy.
+Mathematical Equation.
+Microscopic Anatomy." loading="lazy">
+            <figcaption class="borders">Subcategories of image types from Described's "scientific" category</figcaption>
+          </figure>
           <p>I'm now sharing a list of examples from the scientific section. This includes astrophotography, chemical element notation and other scientific image types.</p>
+
           <p>When you select an image type, Described provides an overall set of guidance, a step by step process, and a worked example with final complete description. Once you have a process you can follow it really helps you to unlock what once might have been a mystery and can make it seem simple. On screen, I have a screenshot of part of the explanation for describing circuit diagrams.</p>
+		  		            <figure id="" class="demoImage" style="aspect-ratio: 1036 / 764;" poster="">
+            <img class="demoImg" src="copilot-images/described3.png" alt="An example Electrical Network Diagram from described. Buttons will link to the following. 
+
+Guidance.
+Process.
+Example.
+Description.
+Keywords." loading="lazy">
+            <figcaption class="borders">For a specific image type, Described offers overall guidance, a step by step process, a worked example, and a description of the sample image used in the guide. The actual guidance is not shown in this screenshot. </figcaption>
+          </figure>
           <h2 id="Scenario3">Scenario 3: Podcast transcription</h2>
           <p>In our third scenario we're going back to transcription, but from a different angle. This one is a bit more of a work in progress.</p>
-          <p>The <a target="_blank" rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Meliora Podcast</a> from the <a target="_blank" rel="noopener noreferrer" href="https://www.southampton.ac.uk/research/institutes-centres/sustainability-resilience-institute">Sustainability and Resilience Institute at the University of Southampton</a> examines topics surrounding sustainability. </p>
+          <p>The <a target="_blank" rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Meliora Podcast</a> from the <a target="_blank" rel="noopener noreferrer" href="https://www.southampton.ac.uk/research/institutes-centres/sustainability-resilience-institute">Sustainability and Resilience Institute at the University of Southampton</a> examines topics surrounding sustainability.</p>
+		            <figure id="" class="demoImage" style="aspect-ratio: 1882 / 1080;" poster="">
+            <img class="demoImg" src="copilot-images/promo.png" alt="University of Southampton Staff Matters page with information about the Meliora Podcast. It introduces that this podcast is about the 2023 United Nations Climate Change Conference or Conference of the Parties of the UNFCCC, more commonly known as COP28." loading="lazy">
+            <figcaption class="borders">Promotion of the Meliora Podcast in University of Southampton's internal 'Staff Matters" newsletter.</figcaption>
+          </figure>
           <p>On screen, the podcast is advertised in our internal university "staff matters" newsletter. However, one of our colleagues in our communications team who writes the newsletter is profoundly deaf and cannot listen to the podcast. She and the podcast host, <a target="_blank" rel="noopener noreferrer" href="https://www.southampton.ac.uk/people/5wykv5/professor-simon-kemp">Professor Simon Kemp</a>, got in touch with me to ask what options were available to make transcripts for the podcast. Simon has a small fund for paying students as casual staff to edit the podcast but has no extra funding to pay someone to make a transcript. </p>
-          <h3 id="ChallengesSolutions">Challenges and Solutions</h3>
+          <h3 id="WhisperDesktop">Finding Whisper Desktop</h3>
           <p>Since the podcast is an MP3 file, what tools did we have already that could help make a transcript?</p>
           <p>We use <a target="_blank" rel="noopener noreferrer" href="https://www.microsoft.com/en-gb/microsoft-365/microsoft-stream">Microsoft Stream</a>, but it can only create captions for video files, not audio files. Converting an MP3 to a video file would work but requires additional software. </p>
+		            <figure id="" class="demoImage" style="aspect-ratio: 681 / 446;" poster="">
+            <img class="demoImg" src="copilot-images/whisper.png" alt="Screenshot of Whisper Desktop software with options to select input language, translate to another language and choose different output formats." loading="lazy">
+            <figcaption class="borders">Whisper Desktop makes transcription very simple.</figcaption>
+          </figure>
           <p>I came across <a target="_blank" rel="noopener noreferrer" href="https://github.com/Const-me/Whisper">Whisper Desktop</a>. It's a Windows open-source application designed to run with the open-source automatic speech recognition system "Whisper" created by OpenAI. If you have a good graphics card, <a target="_blank" rel="noopener noreferrer" href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">this tool can run on your Windows computer and transcribe audio or video files, or live speech captured through your microphone</a>. It can output that transcription to caption files or plain text. It supports 99 languages and it can translate between languages. </p>
           <h3 id="WhisperAITranscriptionProcess">Whisper AI Transcription Process</h3>
           <p>During transcription, you can view a live preview. On screen, I'm sharing the preview while it transcribed one of Simon's podcasts. It's showing the words it has detected, each word has a colour going from green to yellow to red, indicating its confidence for accuracy. It took about 9 minutes to transcribe an hour-long podcast on my work computer. The transcription has a good level of accuracy. Unlike YouTube transcription, you do get punctuation.</p>
@@ -427,6 +506,10 @@ article.standard {
           </figure>
           <p>As an aside, having confidence levels for the transcription might be useful for our Lecture capture recordings. If we could focus on words with low confidence levels, it might make caption correction faster.</p>
           <h3 id="ImprovingReadability">Improving Readability</h3>
+		            <figure id="" class="demoImage" style="aspect-ratio: 908 / 822;" poster="">
+            <img class="demoImg" src="copilot-images/orig.png" alt="About 100 words of the start of a Meliora podcast transcript. The text is unformatted except for punctuation. The way it is presented in this slide, it is not inviting to read." loading="lazy">
+            <figcaption class="borders">Initial output from Whisper Desktop having transcribed an episode of the Meliora podcast.</figcaption>
+          </figure>
           <p>Just like in our first scenario, we have a big lump of unformatted plain text. Not very readable. In this podcast, there are five different speakers. Can we get attribution added so we know who is speaking?</p>
           <h4 id="SpeakerAttribution">Speaker Attribution</h4>
           <p>I wrote a prompt for Copilot. I gave the speakers' names and who is the first speaker. I asked it to write the name of the speaker followed by a colon in bold formatting to appear before each person speaks. I'm asking it to do this based on the text transcript, not the audio file.</p>
@@ -436,17 +519,16 @@ article.standard {
             </video>
             <figcaption class="borders">Screen recording of copilot. I have asked it to add speaker attribution to a transcript, I have given the speaker names and who speaks first. Copilot quickly parses through the text, adding the names of each speaker in bold to precede the passages of text where they are speaking.</figcaption>
           </figure>
-
           <p>On screen, I'm sharing a screen recording of Copilot going through that task. It is adding the name of each speaker in bold before they speak.</p>
           <h4 id="Formatting">Formatting</h4>
           <p>It would be great if we could add the formatting detail like headings, paragraph breaks, and so on that we saw in our first scenario.</p>
-		            <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
+          <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
             <video id="" controls preload="metadata" controlsList="nodownload">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277414_1" type="video/mp4">
             </video>
             <figcaption class="borders">Copilot is now reformatting the transcript with speaker attribution so that it is easier to read by using paragraph breaks, headings and bullet points.</figcaption>
           </figure>
-			<p>I have another screen recording showing copilot reformatting that transcript with the speaker attribution added, it's using headings, bulleted lists and so on. I did try asking Copilot to do speaker attribution and formatting with a single prompt, but I found the results to be much worse than doing them separately.</p>
+          <p>I have another screen recording showing copilot reformatting that transcript with the speaker attribution added, it's using headings, bulleted lists and so on. I did try asking Copilot to do speaker attribution and formatting with a single prompt, but I found the results to be much worse than doing them separately.</p>
           <h4 id="BeforeAfter">Before and After</h4>
           <p>Now I'm showing the before and after, our initial block of plain text, in comparison with a transcript that has headings, more meaningful paragraph breaks, bullet points, and speaker attribution. It's definitely not perfect, but it would take someone much less time to fine-tune and correct this transcript using our adjusted version, in comparison to our original block of text.</p>
           <figure id="" class="demoVideo" style="aspect-ratio: 239 / 219;" poster="">
@@ -487,7 +569,7 @@ article.standard {
           <p>At the end, I added an image that I asked Copilot to create of a project manager being assisted by a cat.</p>
           <p>Copilot will always give a choice of four images, but on my original attempt, it gave me four white male project managers, perhaps an example of bias within the model.</p>
           <p>So, I adjusted my prompt to specify the gender and ethnicity of the project manager.</p>
-		  <figure id="" class="demoVideo" style="aspect-ratio: 390 / 229;" poster="">
+          <figure id="" class="demoVideo" style="aspect-ratio: 390 / 229;" poster="">
             <video id="" controls preload="metadata" controlsList="nodownload">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29325806_1" type="video/mp4">
             </video>
@@ -497,6 +579,10 @@ article.standard {
           <p>Now I'm going to draw us to my conclusion.</p>
           <h3 id="Climate">Generative AI and climate sustainability</h3>
           <p>Of course, we must consider the sustainability of AI tools as we face a climate emergency that will have an unthinkable impact on our lives within the next 20 years.</p>
+		            <figure id="" class="demoImage" style="aspect-ratio: 1210 / 529;" poster="">
+            <img class="demoImg" src="copilot-images/climate.jpg" alt="A set of vertical stripes. From left to right the colour turns from blue to red." loading="lazy">
+            <figcaption class="borders">"Climate stripes", created by Professor Ed Hawkins at the University of Reading in 2018.</figcaption>
+          </figure>
           <p>The <a target="_blank" rel="noopener noreferrer" href="https://www.reading.ac.uk/news/2024/University-News/Climate-stripes-off-the-scale-for-hot-2023">"Climate Stripes" image by Professor Ed Hawkins</a> shows global temperature rise over nearly two centuries. Each stripe represents a year's average temperature relative to the overall period. Blue stripes indicate cooler years, while red stripes show hotter years. The deep red stripes on the right highlight recent rapid warming. </p>
           <p>
             <a target="_blank" rel="noopener noreferrer" href="https://www.bailliegifford.com/en/uk/individual-investors/insights/ic-article/2023-q3-exposing-ai-s-costs-10037163/">A single generative AI exchange can consume the equivalent of half a litre of fresh water for data centre cooling and consume 100 times more energy than one Google search</a>. Understandably, there is a great deal of concern around the impact of AI on the climate.
@@ -510,46 +596,46 @@ article.standard {
             <li>A recent blog post by Baldur Bjarnason <a target="_blank" rel="noopener noreferrer" href="https://www.baldurbjarnason.com/2024/ai-asbestos/">comparing generative AI with asbestos</a>. Baldur explains that just as asbestos use was rationalised as having positives that outweighed the negatives until it was banned in the US only this year, generative AI is in the same position, promising some positives and with advocates either ignoring the negatives or saying that the positives outweigh them. </li>
           </ul>
           <h3 id="ChallengesOpportunities">Challenges and Opportunities</h3>
-          <p>These are more "open questions" for institutions to consider than answers.</p>
+          <p>Now for some challenges and opportunities, these are more open questions for institutions to consider, than answers.</p>
+		  <h4>Reproducibility</h4>
           <p>Different answers from Copilot to the same question can occur due to model changes (e.g., switching from GPT-4 to GPT-3.5), adjustments to the model, or slight variations in punctuation or spacing in our initial question. Is reproducibility important? How do we explain this to users?</p>
+		  <h4>Dealing with constant change</h4>
           <p>Likewise, the tools are changing frequently. In the weeks between me starting work on this presentation and today, both Chat GPT 4.0 mini was released, as was Ally's AI Alt Text Assistant.</p>
+		  <h4>Maturity for specific workflows</h4>
           <p>The best scenarios involve manipulating text and using prompts. To mature these solutions, we might provide more "turn-key" options, possibly using local Large Language Models. Copying and pasting prompts into a browser is still immature and not necessarily user-friendly.</p>
-          <p>All of the scenarios I've looked at today are about reducing effort and time, but verification and completion by a subject matter expert is still required. There is rightfully a lot of anxiety around AI, particularly in terms of the ethics of how large language models are trained, their sustainability, and impact on the climate.</p>
+          <p>All of the scenarios I've looked at today are about reducing effort and time, but verification and completion by a subject matter expert is still required.</p>
+		  <h4>Anxiety and Ethics</h4>
+		  <p>
+		  There is rightfully a lot of anxiety around AI, particularly in terms of the ethics of how large language models are trained, their sustainability, and impact on the climate.</p>
           <p>Can we account for our carbon usage of generative AI just as we do for university buildings and travel?</p>
+		  <h4>Opportunities to gain buy-in?</h4>
           <p>Finally, among all these challenges and concerns, I think that positive uses of AI to remove accessibility barriers is a good story to tell that may help to gain buy-in from university stakeholders, both toward digital accessibility and using AI to reduce the digital accessibility workload.</p>
           <h3 id="YourIdeas">Your ideas</h3>
           <p>I hope that by sharing these simple ideas, we can continue the conversation and learn from each other about your ideas and uses for generative AI that help us in our digital accessibility work. I really want to learn what others in our community have been doing.</p>
           <h3 id="Links">Links</h3>
           <p>At the end of the slide deck, which you can download from the community site, you'll find links to everything I referred to.</p>
-          <p>Thanks for listening.</p><p>Transcript ends.</p>
-		  <h2 id="ImageLongDesc">Long Descriptions of Images</h2>
-		  <h3 id="Example1LongDesc">Long Description of Example 1</h3>
-		  <p>Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton in academic years starting between 2019 and 2023.</p>
-<ul>
-    <li>Academic year 2019-20: 16%.</li>
-    <li>Academic year 2020-21: 21%.</li>
-    <li>Academic year 2021-22: 17%.</li>
-    <li>Academic year 2022-23: 16%.</li>
-    <li>Academic year 2023-24: 18%.</li>
-</ul>
-		  <a href="#Example1">Back to Example 1</a>.
-		  
-		  
-		  <h3 id="Example2LongDesc">Long Description of Example 2</h3>
-		  <p>The alt text suffices for the long description, but for completeness I'm duplicating it here.</p>
-		  <p>Process of Photosynthesis. The plant takes in water through its roots, carbon dioxide and light energy through its leaves. The leaves release oxygen into the air and generate sugars as part of the process.</p>
-		  <a href="#Example2">Back to Example 2</a>.
-		  
-		  <h3 id="Example3LongDesc">Long Description of Example 3</h3>
-		  <p>The image is a detailed comparative chart from 1854 illustrating the lengths of several notable rivers and the heights of various mountains and hills worldwide. The chart is split into two sections. The upper section depicts rivers, and the lower section juxtaposes mountains and hills.</p>
-
-<h4>Rivers</h4>
-<p>The upper part features an array of rivers displayed from the top edge, each vertically extended downward. The rivers are labeled with their names and lengths at the top, with intricate branching patterns. The rivers include the Missouri-Mississippi, Amazon, Yenisei, Yang-tse-Kiang, Nile, Obi, and several others, each labeled with its name and length denoted in English miles. The rivers are drawn with thin, squiggly lines to represent their paths and tributaries, illustrating branching complexities.</p>
-
-<h4>Mountains</h4>
-<p>The bottom part highlights various mountain ranges and hills, grouped by their respective continents or regions. Mountains are illustrated as triangular peaks, with varying heights labeled along the right side, from 0 to 28,000 feet. Peaks labeled include famous ones like Chimborazo, Mont Blanc, and the Himalayas, with some depicted with snow caps to denote snow lines. The chart also includes hills and mountain ranges from different continents like Europe, America, Asia and Oceania, and Africa, each grouping indicated by textual labels. Topographical features are depicted with a combination of colors: green for lower elevations, transitioning to brown and grey for higher elevations, and white peaks where snow is present.</p>
-		  <a href="#Example3">Back to Example 3</a>.
-		  
+          <p>Thanks for listening.</p>
+          <p>Transcript ends.</p>
+          <h2 id="ImageLongDesc">Long Descriptions of Images</h2>
+          <h3 id="Example1LongDesc">Long Description of Example 1</h3>
+          <p>Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton in academic years starting between 2019 and 2023.</p>
+          <ul>
+            <li>Academic year 2019-20: 16%.</li>
+            <li>Academic year 2020-21: 21%.</li>
+            <li>Academic year 2021-22: 17%.</li>
+            <li>Academic year 2022-23: 16%.</li>
+            <li>Academic year 2023-24: 18%.</li>
+          </ul>
+          <a href="#Example1">Back to Example 1</a>. <h3 id="Example2LongDesc">Long Description of Example 2</h3>
+          <p>The alt text suffices for the long description, but for completeness I'm duplicating it here.</p>
+          <p>Process of Photosynthesis. The plant takes in water through its roots, carbon dioxide and light energy through its leaves. The leaves release oxygen into the air and generate sugars as part of the process.</p>
+          <a href="#Example2">Back to Example 2</a>. <h3 id="Example3LongDesc">Long Description of Example 3</h3>
+          <p>The image is a detailed comparative chart from 1854 illustrating the lengths of several notable rivers and the heights of various mountains and hills worldwide. The chart is split into two sections. The upper section depicts rivers, and the lower section juxtaposes mountains and hills.</p>
+          <h4>Rivers</h4>
+          <p>The upper part features an array of rivers displayed from the top edge, each vertically extended downward. The rivers are labeled with their names and lengths at the top, with intricate branching patterns. The rivers include the Missouri-Mississippi, Amazon, Yenisei, Yang-tse-Kiang, Nile, Obi, and several others, each labeled with its name and length denoted in English miles. The rivers are drawn with thin, squiggly lines to represent their paths and tributaries, illustrating branching complexities.</p>
+          <h4>Mountains</h4>
+          <p>The bottom part highlights various mountain ranges and hills, grouped by their respective continents or regions. Mountains are illustrated as triangular peaks, with varying heights labeled along the right side, from 0 to 28,000 feet. Peaks labeled include famous ones like Chimborazo, Mont Blanc, and the Himalayas, with some depicted with snow caps to denote snow lines. The chart also includes hills and mountain ranges from different continents like Europe, America, Asia and Oceania, and Africa, each grouping indicated by textual labels. Topographical features are depicted with a combination of colors: green for lower elevations, transitioning to brown and grey for higher elevations, and white peaks where snow is present.</p>
+          <a href="#Example3">Back to Example 3</a>.
         </article>
         <div id="panel">
           <button class="panelButton" onclick="topFunction()" id="myBtn">
