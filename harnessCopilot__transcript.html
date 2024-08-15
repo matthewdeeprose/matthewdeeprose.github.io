@@ -179,8 +179,8 @@
             </li>
           </ul>
           <p>This feedback from a member of our Neurodivergent Staff Group explains this well:</p>
-          <blockquote class="">
-            <p>The thing that I find most annoying is the way online training is often set up. I don't learn well with videos, flashy moving images on screens, or endless things to click on to flip or open or whatever. It can get disorientating, and it makes it harder to take in the information because of the demands of interacting with the screen. My attention goes on interacting with the screen rather than taking in the information. <br> I'd rather just be given the information transcript-style so I can just read it (with images where they'll add something useful). I connect information into a whole better when I can see it all in one go, jump back and forth to double check things, and read it/process it at the speed I need to. </p>
+          <blockquote class="borders">
+            <p>The thing that I find most annoying is the way online training is often set up. I don't learn well with videos, flashy moving images on screens, or endless things to click on to flip or open or whatever. It can get disorientating, and it makes it harder to take in the information because of the demands of interacting with the screen. My attention goes on interacting with the screen rather than taking in the information.</p><p>I'd rather just be given the information transcript-style so I can just read it (with images where they'll add something useful). I connect information into a whole better when I can see it all in one go, jump back and forth to double check things, and read it/process it at the speed I need to. </p>
             <cite>Feedback from a member of University of Southampton's Neurodivergent Staff Group</cite>
           </blockquote>
           <ul>
@@ -212,7 +212,8 @@
           <h3 id="UsingCopilotForTranscriptFormatting">Using Copilot for Transcript Formatting</h3>
           <p>Could Copilot make this faster?</p>
           <p>I wrote a prompt asking it to reformat my transcript to be more readable. I specified that it could add headings, set paragraph breaks, and use bullet points where appropriate. In my initial testing, I found that it rewrote the text of my transcript, so I added further information explaining that the words and the order in which they appear should remain unchanged.</p>
-          <p>Instructions:</p>
+          <blockquote class="prompt">
+                      <p>Instructions:</p>
           <p>Please format the following transcript to be more readable.</p>
           <p></p>
           <p>Use headings, paragraph breaks, and bullet points as appropriate.</p>
@@ -221,6 +222,8 @@
           <p></p>
           <p>Transcript:</p>
           <p>...</p>
+          </blockquote>
+            
           <p>On screen, I'm sharing a recording of Copilot notebook running that prompt. It is reformatting the transcript as I asked, adding paragraph breaks, headings, and using lists where appropriate. Of course, I had to check the results, and I changed them to suit my preference, but it saved me a lot of time and boredom.</p>
           <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
             <video id="" controls preload="metadata" controlsList="nodownload">
@@ -297,11 +300,17 @@
           <p>The ASU tool is really impressive, and it's currently open to anyone to use, but since it may be put behind a login at any time, I worked on a prompt to get Copilot to give just as good an answer.</p>
           <h4 id="CopilotPromptForAltText">Copilot Prompt for Alt Text</h4>
           <p>The prompt I have is <a target="_blank" rel="noopener noreferrer" href="https://www.purdue.edu/innovativelearning/tools-resources/accessibility/ai-prompt-example/">based on one that Purdue University shared</a> and I've fine-tuned a little. I'll read out the prompt: </p>
+		  <blockquote class="prompt">
+
+            
+          
           <p>"You are a university-level instructor working to ensure images in your online course materials conform to Web Content Accessibility Guidelines at Level AA. You need to accommodate for disabilities and impairments such as blindness, low vision, and colour vision deficiency to ensure equitable access to module content for all students.</p>
           <p>You will be provided with an image. Please return a succinct title, alternative text (alt text), and a long description. You will also separately list verbatim all words that appear in the image.</p>
           <p>The alt text should be no more than two sentences and should briefly describe the meaning conveyed by the image. The detailed description may be one or more paragraphs and must describe the image in great detail so that anyone who does not see it can gain a full understanding of everything in the image. Please format the detailed description such that it will be easily scannable. Use headings, paragraph breaks, and lists as appropriate."</p>
+		  </blockquote>
           <p>I also recently added:</p>
-          <p>"Use active voice. Use UK English," because I noticed it would often write in passive voice. <a target="_blank" rel="noopener noreferrer" href="https://subjectguides.york.ac.uk/academic-language/voice">Active voice aids understanding</a>. By default, Copilot writes in US English, so I want it to write in UK English. </p>
+		  <blockquote class="prompt">
+          <p>Use active voice. Use UK English</p></blockquote><p>... because I noticed it would often write in passive voice. <a target="_blank" rel="noopener noreferrer" href="https://subjectguides.york.ac.uk/academic-language/voice">Active voice aids understanding</a>. By default, Copilot writes in US English, so I want it to write in UK English. </p>
           <p>This is just a generic prompt; we could tailor it for each image, based on the context, function, and audience for that image. While this gives slightly better results in terms of formatting, the ASU tool is a lot faster.</p>
           <h4 id="ReviewingCopilotImageDescriptions">Reviewing Copilot's Image Descriptions</h4>
           <p>Let's review the strengths and weaknesses of Copilot's image description with three example images.</p>
@@ -513,6 +522,18 @@ Keywords." loading="lazy">
           <p>Just like in our first scenario, we have a big lump of unformatted plain text. Not very readable. In this podcast, there are five different speakers. Can we get attribution added so we know who is speaking?</p>
           <h4 id="SpeakerAttribution">Speaker Attribution</h4>
           <p>I wrote a prompt for Copilot. I gave the speakers' names and who is the first speaker. I asked it to write the name of the speaker followed by a colon in bold formatting to appear before each person speaks. I'm asking it to do this based on the text transcript, not the audio file.</p>
+		  		  <blockquote class="prompt">
+				  <p>Instructions:
+<br>I will paste a transcript from a podcast. The speakers’ names are:
+…
+<br>
+I would like you to add speaker attribution to the text I will paste, so we know who is talking. Do this by writing the name of the speaker followed by a colon in bold formatting when each speaker speaks. The first speaker is Simon Kemp.
+<br>
+Transcript:
+…</p>
+
+				  
+				  </blockquote>
           <figure id="" class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
             <video id="" controls preload="metadata" controlsList="nodownload">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277415_1" type="video/mp4">
@@ -555,7 +576,22 @@ Keywords." loading="lazy">
             <li>A list of deliverables</li>
             <li>A roadmap</li>
           </ul>
+		  <blockquote class="prompt">
+		  <p>Please create a project update document for a fictious project that aims to make university project managers more efficient in delivery of project outcomes using cats.</p>
+
+<p>The outline should include:</p>
+<ol>
+<li>an overview of the project aims.</li>
+<li>red/amber/green ratings for time and cost.</li>
+<li>a list of project deliverables.</li>
+<li>a project roadmap.</li>
+</ol>
+</blockquote>
           <p>I could then adjust the content it gave me by adding some accessibility issues myself that the group could remediate while we covered the topics.</p>
+		  
+		  
+		  
+		  
           <p>On screen, I'm browsing through my document. I've added defects like:</p>
           <ul>
             <li>Aspects of low contrast</li>

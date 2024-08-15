@@ -1,3 +1,20 @@
+/* Prompt */
+blockquote.prompt {
+  border: 10px solid #9fb1bd;
+  margin: 1.5em 10px;
+  padding: 0.5em 10px;
+}
+
+blockquote.prompt p {
+  font-size: 1rem;
+    font-family: "Lucida Console", "Courier New", monospace;
+}
+blockquote.prompt:before {
+              content: url('copilot-images/copilot-robot-head-test.svg');
+}
+
+
+
 /* Video and quotes */
       .vidFancyControls {
         display: none;
@@ -207,18 +224,18 @@ p {
 }
 
 /* Quotes */
-blockquote {
+blockquote.borders {
   border-left: 10px solid #758d9a;
   margin: 1.5em 10px;
   padding: 0.5em 10px;
   quotes: "\201C""\201D""\2018""\2019";
 }
 
-blockquote p {
+blockquote.borders p {
   font-size: 1.3rem;
   font-family: Arial, sans-serif;
 }
-blockquote:before {
+blockquote.borders:before {
   color: #758d9a;
   content: "\201C";
   font-size: 4em;

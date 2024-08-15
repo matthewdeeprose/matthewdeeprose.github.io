@@ -1,6 +1,16 @@
 /* Dark mode */
 
+/* Prompt */
+blockquote.prompt {
+  background-color: #00131D;
+}
 
+blockquote.prompt p {
+
+}
+blockquote.prompt:before {
+              content: url('copilot-images/copilot-robot-head-dark.svg') !important;
+}
 
 /* Tables starts here */
  	table {

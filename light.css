@@ -1,4 +1,17 @@
 /*Light mode */
+
+/* Prompt */
+blockquote.prompt {
+  background-color: #ffecc7;
+}
+
+blockquote.prompt p {
+
+}
+blockquote.prompt:before {
+              content: url('copilot-images/copilot-robot-head-light.svg');
+}
+
 /* Tables starts here */
  	table {
 		border: 1px solid #231F20;
