@@ -5,7 +5,7 @@ blockquote.prompt {
   padding: 0.5em 10px;
 }
 
-blockquote.prompt p {
+blockquote.prompt p, blockquote.prompt ol, blockquote.prompt li {
   font-size: 1.1rem;
     font-family: "Lucida Console", "Courier New", monospace;
 }
