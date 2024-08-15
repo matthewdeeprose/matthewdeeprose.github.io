@@ -5,127 +5,122 @@ blockquote.prompt {
   padding: 0.5em 10px;
 }
 
-blockquote.prompt p, blockquote.prompt ol, blockquote.prompt li {
+blockquote.prompt p,
+blockquote.prompt ol,
+blockquote.prompt li {
   font-size: 1.1rem;
-    font-family: "Lucida Console", "Courier New", monospace;
+  font-family: "Lucida Console", "Courier New", monospace;
 }
-
-
-
 
 /* Video and quotes */
-      .vidFancyControls {
-        display: none;
-      }
-	  
-	img.demoImg {
-		width: 100%;
-	}
-	  
-	  figure.demoVideo, figure.demoImage {
-        position: relative;
-        /* max-width: 64rem;
+.vidFancyControls {
+  display: none;
+}
+
+img.demoImg {
+  width: 100%;
+}
+
+figure.demoVideo,
+figure.demoImage {
+  position: relative;
+  /* max-width: 64rem;
         width: 100%;
         height: 100%; */
-        margin: 1.25rem auto;
-        padding: 1.051%;
-        background: none;
-	background-color:#9FB1BD !important;
-	color:#00131D;
-	}
-	  
-      figure.borders {
-        position: relative;
-        max-width: 64rem;
-        width: 100%;
-        height: 100%;
-        max-height: 39rem;
-        margin: 20px auto;
-        margin: 1.25rem auto;
-        padding: 20px;
-        padding: 1.051%;
-        background: none;
-      }
+  margin: 1.25rem auto;
+  padding: 1.051%;
+  background: none;
+  background-color: #9fb1bd !important;
+  color: #00131d;
+}
 
-      figcaption {
-        display: block;
-        font-size: 12px;
-        font-size: 0.75rem;
-      }
+figure.borders {
+  position: relative;
+  max-width: 64rem;
+  width: 100%;
+  height: 100%;
+  max-height: 39rem;
+  margin: 20px auto;
+  margin: 1.25rem auto;
+  padding: 20px;
+  padding: 1.051%;
+  background: none;
+}
+
+figcaption {
+  display: block;
+  font-size: 1.1rem;
+}
 figcaption a {
-	color: #002E3B;
+  color: #002e3b;
 }
 figcaption a:hover {
-	color: #00131D !important;
+  color: #00131d !important;
 }
 
 figcaption a:focus {
-	color: #00131D !important;
-	outline: 0.3rem solid #00131D !important;
+  color: #00131d !important;
+  outline: 0.3rem solid #00131d !important;
 }
-      video {
-        width: 100%;
+video {
+  width: 100%;
+}
 
-      }
+/* Media Queries */
+@media screen and (max-width: 1024px) {
+  figure {
+    /* padding-left: 0;
+    padding-right: 0; */
+    height: auto;
+  }
+  blockquote.prompt {
+    border: 4px solid #9fb1bd;
 
-
-
-
-
-      /* Media Queries */
-      @media screen and (max-width:1024px) {
-        figure {
-          padding-left: 0;
-          padding-right: 0;
-          height: auto;
-        }
-
+}
 
 
-        figcaption {
-          text-align: left;
-          margin: 0.5rem;
-        }
-      }
+  figcaption {
+    text-align: left;
+    margin: 0.5rem;
+  }
+}
 
-      @media screen and (max-width:42.5em) {
+@media screen and (max-width: 42.5em) {
+  figcaption {
+    text-align: left;
+    margin: 0.5rem;
+  }
+}
 
+@media only screen and (min-width: 1024px) {
+  blockquote.sharon:after {
+    content: url("sharon.jpg");
+  }
 
-        figcaption {
-          text-align: left;
-          margin: 0.5rem;
-        }
-      }
+  blockquote.Esin:after {
+    content: url("esin.png");
+  }
 
-      @media only screen and (min-width: 1024px) {
-        blockquote.sharon:after {
-          content: url('sharon.jpg');
-        }
+  blockquote.terry:after {
+    content: url("terry.png");
+  }
 
-        blockquote.Esin:after {
-          content: url('esin.png');
-        }
+  blockquote.james:after {
+    content: url("james.png");
+  }
 
-        blockquote.terry:after {
-          content: url('terry.png');
-        }
+  blockquote.tharindu:after {
+    content: url("tharindu.png");
+  }
 
-        blockquote.james:after {
-          content: url('james.png');
-        }
+  blockquote.sarah:after {
+    content: url("sarah.jpg");
+  }
 
-        blockquote.tharindu:after {
-          content: url('tharindu.png');
-        }
-
-        blockquote.sarah:after {
-          content: url('sarah.jpg');
-        }
-
-        blockquote:after {
-          margin-left: 2.25em;
-        }
-      }
+  blockquote:after {
+    margin-left: 2.25em;
+  }
+}
 
 /* Tables starts here */
 table {
@@ -199,7 +194,7 @@ table th {
   table th {
     font-size: 110%;
   }
-} 
+}
 
 /* Tables ends here */
 
@@ -209,6 +204,7 @@ h3,
 h4,
 h5 {
   text-wrap: balance;
+    font-family: Arial, Helvetica, sans-serif;
 }
 
 a.bookmarklet {
@@ -381,7 +377,6 @@ article.front {
 
 article.front h1 {
   line-height: 1.1;
-  font-size: 2.5rem;
 }
 
 aside li {
@@ -761,8 +756,24 @@ div#titleLink {
 }
 
 h1 {
-  font-size: 2.5em;
+  font-size: 2.5rem;
 }
+h2 {
+  font-size: 2.3rem;
+}
+h3 {
+  font-size: 2.1rem;
+}
+h4 {
+  font-size: 1.9rem;
+}
+h5 {
+  font-size: 1.7rem;
+}
+h6 {
+  font-size: 1.5rem;
+}
+
 
 a:focus {
   outline-offset: 5px;
