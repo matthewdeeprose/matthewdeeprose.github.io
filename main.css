@@ -6,12 +6,10 @@ blockquote.prompt {
 }
 
 blockquote.prompt p {
-  font-size: 1rem;
+  font-size: 1.1rem;
     font-family: "Lucida Console", "Courier New", monospace;
 }
-blockquote.prompt:before {
-              content: url('copilot-images/copilot-robot-head-test.svg');
-}
+
 
 
 
