@@ -1,4 +1,11 @@
 /* Dark mode */
+article.standard h1,
+article.standard h2,
+article.standard h3,
+article.standard h4,
+article.standard h5, article.standard h6 {
+  color: #9FB1BD;
+}
 
 /* Prompt */
 blockquote.prompt {
@@ -6,7 +13,7 @@ blockquote.prompt {
 }
 
 blockquote.prompt p {
-
+	color:#fffff4;
 }
 blockquote.prompt:before {
               content: url('copilot-images/copilot-robot-head-dark.svg') !important;

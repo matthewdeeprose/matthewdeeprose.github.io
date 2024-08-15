@@ -2,7 +2,7 @@
 blockquote.prompt {
   border: 10px solid #9fb1bd;
   margin: 1.5em 10px;
-  padding: 0.5em 10px;
+  padding: 0.5em 1.5rem;
 }
 
 blockquote.prompt p,
@@ -202,9 +202,17 @@ h1,
 h2,
 h3,
 h4,
-h5 {
+h5, h6 {
   text-wrap: balance;
-    font-family: Arial, Helvetica, sans-serif;
+}
+
+article.standard h1,
+article.standard h2,
+article.standard h3,
+article.standard h4,
+article.standard h5, article.standard h6 {
+  text-wrap: balance;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 a.bookmarklet {
