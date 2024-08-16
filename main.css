@@ -8,7 +8,7 @@ blockquote.prompt {
 blockquote.prompt p,
 blockquote.prompt ol,
 blockquote.prompt li {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   /* font-family: "Lucida Console", "Courier New", monospace; */
     font-family: 'Trebuchet MS', sans-serif;
 }
@@ -52,7 +52,7 @@ figcaption {
   display: block;
   font-size: 1.1rem;
 }
-figcaption a {
+figcaption a, .captionLink {
   color: #002e3b;
 }
 figcaption a:hover {

@@ -12,7 +12,9 @@ blockquote.prompt {
   background-color: #00131D;
 }
 
-blockquote.prompt p {
+blockquote.prompt p,
+blockquote.prompt ol,
+blockquote.prompt li {
 	color:#fffff4;
 }
 blockquote.prompt:before {
