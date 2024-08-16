@@ -318,7 +318,7 @@
           <figure id="" class="demoImage" style="aspect-ratio: 2667 / 1500;" poster="">
             <img class="demoImg" src="copilot-images/graph.png" alt="Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton. Between 2019 and 2023 the percentage remains between one fifth and one sixth of students.
 " loading="lazy">
-            <figcaption class="borders">Example 1: Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton. <br><a href="#Example1LongDesc">View long description of image "Example 1"</a>. </figcaption>
+            <figcaption class="borders">Example 1: Line graph showing percentage of 'full person equivalent' students who disclose a disability at University of Southampton. <br><a href="#Example1LongDesc">Read long description of image "Example 1"</a>. </figcaption>
           </figure>
           <p>On screen, a line graph shows the percentage of "full person equivalent" students disclosing a disability at the University of Southampton from 2019/20 to 2023/24. Between one fifth and one sixth of students disclosed a disability during this period.</p>
           <p>Copilot gave a pretty accurate title of "Student Disability Disclosure Rates at the University of Southampton."</p>
@@ -360,7 +360,7 @@
           <h5 id="Example2">Example 2: Photosynthesis Diagram</h5>
 		            <figure id="" class="demoImage" style="aspect-ratio: 2000 / 1500;" poster="">
             <img class="demoImg" src="copilot-images/photos.jpg" alt="Process of Photosynthesis. A plant is at the centre. It takes in water H2O through its roots, carbon dioxide C O2 and sunlight through its leaves. The leaves release oxygen O2 into the air and generate sugars as part of the cycle." loading="lazy">
-            <figcaption class="borders">Example 2: Process of Photosynthesis.<br><a href="#Example2LongDesc">View long description of image "Example 2"</a>.</figcaption>
+            <figcaption class="borders">Example 2: Process of Photosynthesis.<br><a href="#Example2LongDesc">Read long description of image "Example 2"</a>.</figcaption>
           </figure>
           <p>My next example is a basic diagram of the process of photosynthesis aimed at school children. Copilot's title is fine: "Photosynthesis Process Diagram".</p>
           <p>The alt text is also pretty good: "A diagram illustrating the process of photosynthesis, showing how a plant takes in light energy, carbon dioxide, and water to produce oxygen and sugars."</p>
@@ -381,7 +381,7 @@
           <h5 id="Example3">Example 3: 19th Century Physical Geography Map</h5>
 		            <figure id="" class="demoImage" style="aspect-ratio: 2592 / 1819;" poster="">
             <img class="demoImg" src="copilot-images/map.jpg" alt="" loading="lazy">
-            <figcaption class="borders">Example 3: Chart comparing lengths of selected rivers and heights of selected mountains, from General Atlas Of The World by Adam & Charles Black, Sidney Hall and William Hughes, published in Edinburgh in 1854.<br><a href="#Example3LongDesc">View long description of image "Example 3"</a>. </figcaption>
+            <figcaption class="borders">Example 3: Chart comparing lengths of selected rivers and heights of selected mountains, from General Atlas Of The World by Adam & Charles Black, Sidney Hall and William Hughes, published in Edinburgh in 1854.<br><a class="captionLink" href="#Example3LongDesc">Read long description of image "Example 3"</a>. </figcaption>
           </figure>
           <p>The final example is one suggested by my colleague <a href="https://www.southampton.ac.uk/digital-learning/about/staff/pb1v23.page?">Pete Boorman</a>.</p>
           <p>It's a chart comparing lengths of selected rivers and heights of selected mountains, from "General Atlas Of The World", published in 1854.</p>
@@ -502,7 +502,7 @@ Keywords." loading="lazy">
           <p>We use <a target="_blank" rel="noopener noreferrer" href="https://www.microsoft.com/en-gb/microsoft-365/microsoft-stream">Microsoft Stream</a>, but it can only create captions for video files, not audio files. Converting an MP3 to a video file would work but requires additional software. </p>
 		            <figure id="" class="demoImage" style="aspect-ratio: 681 / 446;" poster="">
             <img class="demoImg" src="copilot-images/whisper.png" alt="Screenshot of Whisper Desktop software with options to select input language, translate to another language and choose different output formats." loading="lazy">
-            <figcaption class="borders">Whisper Desktop. I've loaded the <a href="https://huggingface.co/ggerganov/whisper.cpp/blob/main/ggml-large-v2.bin">large-v2 model</a>.</figcaption>
+            <figcaption class="borders">Whisper Desktop. I've loaded the <a href="https://huggingface.co/ggerganov/whisper.cpp/blob/main/ggml-large-v2.bin">large-v2 model</a>. Small, medium and large models are available. Generally, smaller models use less memory but are less accurate.</figcaption>
           </figure>
           <p>I came across <a target="_blank" rel="noopener noreferrer" href="https://github.com/Const-me/Whisper">Whisper Desktop</a>. It's a Windows open-source application designed to run with the open-source automatic speech recognition system "Whisper" created by OpenAI. If you have a good graphics card, <a target="_blank" rel="noopener noreferrer" href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">this tool can run on your Windows computer and transcribe audio or video files, or live speech captured through your microphone</a>. It can output that transcription to caption files or plain text. It supports 99 languages and it can translate between languages. </p>
           <h3 id="WhisperAITranscriptionProcess">Whisper AI Transcription Process</h3>
@@ -593,11 +593,7 @@ I would like you to add speaker attribution to the text I will paste, so we know
 <li>a project roadmap.</li>
 </ol>
 </blockquote>
-          <p>I could then adjust the content it gave me by adding some accessibility issues myself that the group could remediate while we covered the topics.</p>
-		  
-		  
-		  
-		  
+          <p>I could then adjust the content it gave me by adding some accessibility issues myself that the group could remediate while we covered the topics.</p>		  
           <p>On screen, I'm browsing through my document. I've added defects like:</p>
           <ul>
             <li>Aspects of low contrast</li>
@@ -884,5 +880,43 @@ I would like you to add speaker attribution to the text I will paste, so we know
     </script>
     <script src="scripts/lite-yt-embed.js"></script>
     <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+	    <script src="scripts/jquery-3.6.0.slim.min.js"></script>
+    <script src="scripts/details.js"></script>
+    <script>
+      window.console || (window.console = {
+        'log': alert
+      });
+      $(function() {
+        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
+        $('details').details();
+        $('details').on({
+          'open.details': function() {
+            console.log('opened')
+          },
+          'close.details': function() {
+            console.log('closed')
+          }
+        })
+      });
+    </script>
+	    <script>
+      // Expand details / summary when printing
+      // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
+      window.matchMedia("print").addEventListener("change", evt => {
+        if (evt.matches) {
+          elms = document.body.querySelectorAll("details:not([open])");
+          for (e of elms) {
+            e.setAttribute("open", "");
+            e.dataset.wasclosed = "";
+          }
+        } else {
+          elms = document.body.querySelectorAll("details[data-wasclosed]");
+          for (e of elms) {
+            e.removeAttribute("open");
+            delete e.dataset.wasclosed;
+          }
+        }
+      })
+    </script>
   </body>
 </html>
