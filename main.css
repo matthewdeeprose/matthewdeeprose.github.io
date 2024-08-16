@@ -11,6 +11,7 @@ blockquote.prompt li {
   font-size: 1.3rem;
   /* font-family: "Lucida Console", "Courier New", monospace; */
     font-family: 'Trebuchet MS', sans-serif;
+	  line-height: 1.8;
 }
 
 /* Video and quotes */
