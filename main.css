@@ -53,7 +53,7 @@ figcaption {
   display: block;
   font-size: 1.1rem;
 }
-figcaption a, .captionLink {
+figcaption a, .captionLink, figcaption a:visited {
   color: #002e3b;
 }
 figcaption a:hover {
