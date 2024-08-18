@@ -53,9 +53,13 @@ figcaption {
   display: block;
   font-size: 1.1rem;
 }
-figcaption a, .captionLink, figcaption a:visited {
+figcaption a, .captionLink, figcaption a:visited, .captionLink:focus, a .captionLink:focus {
   color: #002e3b;
 }
+.captionLink:focus, a .captionLink:focus {
+text-decoration: none
+}
+
 figcaption a:hover {
   color: #00131d !important;
 }
