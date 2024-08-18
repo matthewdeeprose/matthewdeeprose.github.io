@@ -49,6 +49,10 @@ figure.borders {
   background: none;
 }
 
+video {
+	cursor: pointer;
+}
+
 figcaption {
   display: block;
   font-size: 1.1rem;
