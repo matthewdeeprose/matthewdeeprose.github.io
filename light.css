@@ -249,8 +249,6 @@ details {
 }
 
 summary:hover {
-	background-color: #00131D;
-	color: #FFFFF4;
 	box-shadow: 0 0 0 0.4rem #005C84 !important;
 	outline: 0.0rem solid #00131D !important;
 	border: 0.2rem solid #FFFFF4;
@@ -268,6 +266,16 @@ summary:focus {
 	outline-offset: .5rem !important;
 	border: 0.2rem solid #00131D;
 }
+
+summary:focus:not(:focus-visible) {
+	background-color: #fffff4;
+	color: #00131d;
+	outline: 0rem dotted #E1E8EC !important;
+	outline-offset: 0rem !important;
+	border: 0rem solid #00131D;
+}
+
+
 
 button {
 	color: #FFFFF4;
@@ -396,6 +404,15 @@ button#menu.icon:focus {
 	outline: 0.2rem dotted #005C84 !important;
 	box-shadow: 0 0 0 1.5rem #FFFFF4 !important;
 }
+
+button#menu.icon:focus:not(:focus-visible) {
+	background-color: #FCBC00;
+	color: #00131D;
+	border: 0.2rem solid #00131D !important;
+	outline: 0rem dotted #005C84 !important;
+	box-shadow: 0 0 0 1.5rem #FFFFF4 !important;
+}
+
 .topnav a.active,
 .topnav button.active {
 	background-color: #FCBC00;
@@ -434,7 +451,9 @@ input:focus {
 
 
 Remove focus from mouse, replace with box shadow 
-a:focus:not(:focus-visible) {
+a:focus:not(:focus-visible), main a:focus:not(:focus-visible),
+aside a:focus:not(:focus-visible),
+footer a:focus:not(:focus-visible) {
 	outline: none !important;
 	border: 0px solid #ffffff;
 	box-shadow: -1px 1px 30px 9px rgba(0, 0, 0, .27);

@@ -3,7 +3,7 @@ article.standard h1,
 article.standard h2,
 article.standard h3,
 article.standard h4,
-article.standard h5, article.standard h6 {
+article.standard h5, article.standard h6, *[aria-level="7"], *[aria-level="8"] {
   color: #9FB1BD;
 }
 
@@ -226,7 +226,9 @@ a:hover {
 	color: #74C9E5;
 }
 
-
+figcaption a:hover, figcaption a:active {
+    color: #00131d !important;
+}
 
 #myBtn:hover,
 #myBtn:focus,
@@ -270,25 +272,34 @@ details {
 }
 
 summary:hover {
-	background-color: #E1E8EC;
-	color: #00131D;
+	/* background-color: #E1E8EC; */
+	color: #E1E8EC;
 	box-shadow: 0 0 0 0.4rem #C1D100 !important;
 	outline: 0.0rem solid #161415 !important;
 	border: 0.2rem solid #00131D;
 }
+
+
 
 details:hover {
 	outline: 0.2rem solid #C1D100;
 }
 
 summary:focus {
-	background-color: #E1E8EC;
-	color: #00131D;
+	color: #E1E8EC;
 	box-shadow: 0 0 0 0.0rem #C1D100 !important;
 	outline: 0.3rem dotted #E1E8EC !important;
 	outline-offset: .5rem !important;
 	border: 0.2rem solid #00131D;
 }
+summary:focus:not(:focus-visible) {
+	background-color: #231f20;
+	color: #E1E8EC;
+	outline: 0rem dotted #E1E8EC !important;
+	outline-offset: 0rem !important;
+	border: 0rem solid #00131D;
+}
+
 
 summary:active {
 	border: 0px solid #E1E8EC !important;
@@ -391,6 +402,16 @@ button#menu.icon:focus {
 	outline: 0.2rem solid #C1D100 !important;
 	box-shadow: 0 0 0 1.5rem #231F20 !important;
 }
+
+button#menu.icon:focus:not(:focus-visible) {
+	background: #FCBC00;
+	color: #231F20;
+	border: 0.2rem solid #231F20 !important;
+	outline: 0rem solid #C1D100 !important;
+	box-shadow: 0 0 0 1.5rem #231F20 !important;
+}
+
+
 .topnav button.active {
 	background-color: #FCBC00;
 	color: #231F20;
@@ -474,8 +495,17 @@ input:focus {
 
 
  Remove focus from mouse, replace with box shadow 
-a:focus:not(:focus-visible) {
-	outline: 2px transparent solid;
-	border: 0px solid #ffffff;
-	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12);
+a:focus:not(:focus-visible), main a:focus:not(:focus-visible),
+aside a:focus:not(:focus-visible),
+footer a:focus:not(:focus-visible) {
+	outline: 2px transparent solid !important;
+	border: 0px solid #ffffff !important;
+	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12) !important;
 }
+figcaption a:focus:not(:focus-visible) {
+		outline: 2px transparent solid !important;
+	border: 0px solid #ffffff !important;
+	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12) !important;
+	color: #002e3b !important;
+}
+

@@ -61,8 +61,11 @@ figcaption a:hover {
 }
 
 figcaption a:focus {
-  color: #00131d !important;
-  outline: 0.3rem solid #00131d !important;
+  /* ensure high-contrast mode still has an indicator */
+  outline: 2px transparent solid !important;
+  /* Apply a thick white box-shadow with 
+	   a thin dark blue indicator in the middle */
+  box-shadow: 0 0 0 2px white, 0 0 0 4px #002e3b, 0 0 4px 8px white !important;
 }
 video {
   width: 100%;
@@ -204,15 +207,16 @@ h1,
 h2,
 h3,
 h4,
-h5, h6 {
+h5, h6, *[aria-level="7"],[aria-level="8"]   {
   text-wrap: balance;
+  font-weight: bold;
 }
 
 article.standard h1,
 article.standard h2,
 article.standard h3,
 article.standard h4,
-article.standard h5, article.standard h6 {
+article.standard h5, article.standard h6, article.standard *[aria-level="7"], article.standard *[aria-level="8"]  {
   text-wrap: balance;
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -786,6 +790,12 @@ h5 {
 }
 h6 {
   font-size: 1.5rem;
+}
+*[aria-level="7"] {
+    font-size:1.4rem;
+}
+*[aria-level="8"] {
+    font-size:1.35rem;
 }
 
 
