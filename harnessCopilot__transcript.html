@@ -115,6 +115,16 @@
       <main class="page-main" id="main">
         <article class="standard">
           <h1 id="top">Transcript: Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</h1>
+			<h2>About this transcript</h2>
+			<p>This is a transcript of the <a href="harnessCopilot.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</a> presentation. To make the transcript more readable as a standalone resource I have added images and videos from the presentation within the transcript. Since I described the parts relevant to the presentation within the transcript there will be some duplication.</p><p> You may prefer to use the radio buttons below to hide the images and videos to save bandwidth or reduce potentially duplicate content.</p>
+		              <fieldset id="imageVideoRadios" class="">
+              <legend>Show or hide images and videos</legend>
+		<input type="radio" id="showVideosImages" name="presentation" value="Show" onclick="$.fn.showFigures()" checked />
+		   <label for="showVideosImages" class="radio">Show Videos and Images</label>
+		<input type="radio" id="hideVideosImages" name="presentation" value="Hide" onclick="$.fn.hideFigures()" />
+		   <label for="hideVideosImages" class="radio">Hide Videos and Images</label>
+		              </fieldset>
+					  <span role="alert" class="hidden" aria-live="polite" id="imageVideoRadiosAlert"></span>
           <h2 id="Welcome">Welcome</h2>
           <p>Hi, I'm Matthew Deeprose from the University of Southampton. For those who don't see me, I'm a white male in my late 40s. I'm wearing glasses, a navy blue suit, with a cornflower-coloured shirt and matching pocket square. My pronouns are he/him.</p>
           <h2 id="Introduction">Introduction</h2>
@@ -593,8 +603,8 @@ Keywords." loading="lazy">
           <p>I came across <a target="_blank" rel="noopener noreferrer" href="https://github.com/Const-me/Whisper">Whisper Desktop</a>. It's a Windows open-source application designed to run with the open-source automatic speech recognition system "Whisper" created by OpenAI. If you have a good graphics card, <a target="_blank" rel="noopener noreferrer" href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">this tool can run on your Windows computer and transcribe audio or video files, or live speech captured through your microphone</a>. It can output that transcription to caption files or plain text. It supports 99 languages and it can translate between languages. </p>
           <h3 id="WhisperAITranscriptionProcess">Whisper AI Transcription Process</h3>
           <p>During transcription, you can view a live preview. On screen, I'm sharing the preview while it transcribed one of Simon's podcasts. Whisper processes the content in 30 second chunks. The words it detects appear within the preview. Each word has a colour going from green to yellow to red, indicating its confidence for accuracy. It took about 9 minutes to transcribe an hour-long podcast on my work computer. The transcription has a good level of accuracy. Unlike YouTube transcription, you do get punctuation.</p>
-          <figure  class="demoVideo" style="aspect-ratio: 425 / 234;" poster="">
-            <video  controls preload="metadata" controlsList="nodownload">
+          <figure  class="demoVideo" style="aspect-ratio: 425 / 234;" >
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster4.png">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277420_1" type="video/mp4">
             </video>
             <figcaption class="borders">Screen recording of Whisper transcribing an episode of the Meliora podcast. It's showing the words it has detected, each word has a shade of colour: green, yellow or red, the colour indicates its confidence for accuracy. This video has no sound.</figcaption>
@@ -627,16 +637,16 @@ I would like you to add speaker attribution to the text I will paste, so we know
 				  </blockquote>
           
           <p>On screen, I'm sharing a screen recording of Copilot going through that task. It is adding the name of each speaker in bold before they speak.</p>
-		  <figure  class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
-            <video  controls preload="metadata" controlsList="nodownload">
+		  <figure  class="demoVideo" style="aspect-ratio: 155 / 76;" >
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster5.png">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277415_1" type="video/mp4">
             </video>
             <figcaption class="borders">Screen recording of copilot. I have asked it to add speaker attribution to a transcript, I have given the speaker names and who speaks first. Copilot quickly parses through the text, adding the names of each speaker in bold to precede the passages of text where they are speaking. This video has no sound.</figcaption>
           </figure>
           <h4 id="Formatting">Formatting</h4>
           <p>It would be great if we could add the formatting detail like headings, paragraph breaks, and so on that we saw in our first scenario.</p>
-          <figure  class="demoVideo" style="aspect-ratio: 155 / 76;" poster="">
-            <video  controls preload="metadata" controlsList="nodownload">
+          <figure  class="demoVideo" style="aspect-ratio: 155 / 76;">
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster2.png">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277414_1" type="video/mp4">
             </video>
             <figcaption class="borders">Copilot is now reformatting the transcript with speaker attribution so that it is easier to read by using paragraph breaks, headings and bullet points. This video has no sound.</figcaption>
@@ -644,12 +654,14 @@ I would like you to add speaker attribution to the text I will paste, so we know
           <p>I have another screen recording showing copilot reformatting that transcript with the speaker attribution added, it's using headings, bulleted lists and so on. I did try asking Copilot to do speaker attribution and formatting with a single prompt, but I found the results to be much worse than doing them separately.</p>
           <h4 id="BeforeAfter">Before and After</h4>
           <p>Now I'm showing the before and after, our initial block of plain text, in comparison with a transcript that has headings, more meaningful paragraph breaks, bullet points, and speaker attribution. It's definitely not perfect, but it would take someone much less time to fine-tune and correct this transcript using our adjusted version, in comparison to our original block of text.</p>
-          <figure  class="demoVideo" style="aspect-ratio: 239 / 219;" poster="">
-            <video  controls preload="metadata" controlsList="nodownload">
-              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277418_1" type="video/mp4">
+          <figure  class="demoVideo" style="aspect-ratio: 239 / 219;" >
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster7.png">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277418_1" type="video/mp4" >
             </video>
-            <figcaption class="borders">Manually applying formatting to a plain text transcript. This video has no sound.</figcaption>
+            <figcaption class="borders">Transcript of an episode of the Meliora Podcast featuring speaker attribution and formatting. This video has no sound.</figcaption>
           </figure>
+		  		  <li><a href="copilot-images/Meliora_Podcast_Transcript.docx">Download the Meliora Podcast transcript (19.8KB DOCX)</a>.</li>
+		  </ul>
           <h3 id="FutureProspects">Future Prospects</h3>
           <p>So far, this is just a proof of concept.</p>
           <p>In my testing, I had an 18,000-character limit for what I could ask Copilot, and it would not give me an answer longer than 10,000 characters. And the podcast transcript was 60,000 characters long!</p>
@@ -693,12 +705,15 @@ I would like you to add speaker attribution to the text I will paste, so we know
           <p>At the end, I added an image that I asked Copilot to create of a project manager being assisted by a cat.</p>
           <p>Copilot will always give a choice of four images, but on my original attempt, it gave me four white male project managers, perhaps an example of bias within the model.</p>
           <p>So, I adjusted my prompt to specify the gender and ethnicity of the project manager.</p>
-          <figure  class="demoVideo" style="aspect-ratio: 390 / 229;" poster="">
-            <video  controls preload="metadata" controlsList="nodownload">
+          <figure  class="demoVideo" style="aspect-ratio: 390 / 229;" >
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster6.png">
               <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29325806_1" type="video/mp4">
             </video>
             <figcaption class="borders">A fictitious project update document about a University Cat Service. It includes red/amber/green ratings for time and cost, a set of deliverables, research findings and project roadmap. Within the content a number of accessibility issues have been added, such as poorly crafted links, headings that are not semantically created, lists without semantic detail. At the end is a project logo where a project manager is shown with a cat. This video has no sound.</figcaption>
           </figure>
+		  <ul>
+		  <li><a href="copilot-images/Example_document_to_remediate.docx">Download the example document to remediate (478KB DOCX)</a>.</li>
+		  </ul>
           <h2 id="Conclusion">Conclusion</h2>
           <p>Now I'm going to draw us to my conclusion.</p>
           <h3 id="Climate">Generative AI and climate sustainability</h3>
@@ -1027,5 +1042,23 @@ I would like you to add speaker attribution to the text I will paste, so we know
         }
       })
     </script>
+	<script>
+// Hide videos and images
+$(document).ready(function() {
+    $.fn.hideFigures = function() {
+		$('.demoVideo').hide();
+		$('.demoImage').hide();
+		$("#imageVideoRadiosAlert").text("Videos and images hidden.");
+    };
+});
+// Show videos and images
+$(document).ready(function() {
+    $.fn.showFigures = function() {
+		$('.demoVideo').show();
+		$('.demoImage').show();
+		$("#imageVideoRadiosAlert").text("Videos and images visible.");
+    };
+});
+</script>
   </body>
 </html>

@@ -1,4 +1,8 @@
 /* Dark mode */
+body {
+  accent-color: #FCBC00; 
+}
+
 article.standard h1,
 article.standard h2,
 article.standard h3,

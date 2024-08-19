@@ -1,3 +1,12 @@
+/* Inputs */
+	input {
+		cursor: pointer;
+	}
+	input:focus {
+		outline-offset: 7px;
+	
+	}
+
 /* Prompt */
 blockquote.prompt {
   border: 10px solid #9fb1bd;
@@ -329,6 +338,10 @@ h1#top {
   border: 0rem solid #e1e8ec !important;
   box-shadow: 0 0 0 0rem #c1d100 !important;
   outline: 0rem #e1e8ec dotted !important;
+}
+
+input:focus:not(:focus-visible) {
+	  outline: 1rem transparent solid !important;
 }
 
 #modeToggle:hover,

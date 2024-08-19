@@ -1,5 +1,9 @@
 /*Light mode */
 
+body {
+  accent-color: #005051; 
+}
+
 /* Prompt */
 blockquote.prompt {
   background-color: #ffecc7;
