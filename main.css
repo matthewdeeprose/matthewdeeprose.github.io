@@ -584,7 +584,7 @@ a:hover {
 /* Links Ends */
 /* Footer things */
 div#aboutFoot {
-  float: right;
+  float: left;
 }
 
 div#RSS,
