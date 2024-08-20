@@ -591,7 +591,8 @@ div#RSS,
 div#YouTubeChannelFoot,
 div#SiteMap,
 div#twitterFoot,
-div#AccessibilityFoot {
+div#AccessibilityFoot,
+div#aboutCodePen {
   float: left;
 }
 div#RSS,
@@ -599,7 +600,8 @@ div#YouTubeChannelFoot,
 div#SiteMap,
 div#twitterFoot,
 div#AccessibilityFoot,
-div#aboutFoot {
+div#aboutFoot,
+div#aboutCodePen  {
   padding: 5px;
 }
 
@@ -672,7 +674,7 @@ section.related {
   div#SiteMap,
   div#RSS,
   div#twitterFoot,
-  div#AccessibilityFoot {
+  div#AccessibilityFoot, div#aboutCodePen  {
     float: none;
   }
   #relPres {
