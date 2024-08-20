@@ -254,7 +254,7 @@ details {
 
 summary:hover {
 	box-shadow: 0 0 0 0.4rem #005C84 !important;
-	outline: 0.0rem solid #00131D !important;
+	outline: 0.2rem solid transparent !important;
 	border: 0.2rem solid #FFFFF4;
 }
 
@@ -279,7 +279,9 @@ summary:focus:not(:focus-visible) {
 	border: 0rem solid #00131D;
 }
 
-
+summary {
+	border: 0px solid #E1E8EC;
+}
 
 button {
 	color: #FFFFF4;

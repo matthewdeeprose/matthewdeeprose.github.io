@@ -279,7 +279,7 @@ summary:hover {
 	/* background-color: #E1E8EC; */
 	color: #E1E8EC;
 	box-shadow: 0 0 0 0.4rem #C1D100 !important;
-	outline: 0.0rem solid #161415 !important;
+	outline: 0.2rem solid transparent !important;
 	border: 0.2rem solid #00131D;
 }
 
