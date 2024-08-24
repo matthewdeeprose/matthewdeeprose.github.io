@@ -115,6 +115,13 @@
       <main class="page-main" id="main">
         <article class="standard">
           <h1 id="top">Transcript: Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</h1>
+			<details>
+            <summary class="Contents">
+              <h2 id="Contents">Contents</h2>
+            </summary>
+				<ul id="index">
+				</ul>
+			</details>
 			<h2>About this transcript</h2>
 			<p>This is a transcript of the <a href="harnessCopilot.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</a> presentation. To make the transcript more readable as a standalone resource I have added images and videos from the presentation within the transcript. Since I described the parts relevant to the presentation within the transcript there will be some duplication.</p><p> You may prefer to use the radio buttons below to hide the images and videos to save bandwidth or reduce potentially duplicate content.</p>
 		              <fieldset id="imageVideoRadios" class="">
@@ -669,7 +676,7 @@ I would like you to add speaker attribution to the text I will paste, so we know
           <p>I'm hoping to discuss with my colleagues if there is an opportunity for us to use the Copilot API to break these limits.</p>
           <p>Ultimately, could we create an endpoint where a user could upload their MP3 file, and then have Whisper create the transcript and Copilot format it, rather than requiring them to do multiple separate steps?</p>
           <p>I think the creation of an end-to-end solution like that could help because it is a good story to tell, from our profoundly deaf colleague being unable to listen to a university podcast, to an AI-based solution that can help to create a readable transcript with a much lower level of human effort to correct and adjust the final transcript.</p>
-          <h2 >Scenario 4 - Sample content</h2>
+          <h2 id="Scenario4">Scenario 4: Creating Sample Content for Accessibility Remediation Training</h2>
           <p>The final scenario is around creating what I call "sample content".</p>
           <p>I'm meeting teams around the university who want an introduction to digital accessibility. We have <a target="_blank" rel="noopener noreferrer" href="https://abilitynet.org.uk/elearning-modules-higher-and-further-education-institutions">online training available</a>, but meeting teams and discussing accessibility within the context of their work, with examples to work through, can be quite effective. </p>
           <p>I've also found it's better not to use "real-world" content. If we don't approach this in the right way, colleagues might feel that their content is being singled out. But creating example content that is more meaningful than a chunk of " <a target="_blank" rel="noopener noreferrer" href="https://loremipsum.io/">Lorem Ipsum placeholder text</a>" can be a challenge. </p>
@@ -1057,6 +1064,36 @@ $(document).ready(function() {
 		$('.demoImage').show();
 		$("#imageVideoRadiosAlert").text("Videos and images visible.");
     };
+});
+</script>
+<script>
+// Build contents 
+document.addEventListener("DOMContentLoaded", function() {
+    // Select the main element
+    const mainElement = document.querySelector('main');
+    // Select all h2 elements within the main element
+    const headings = mainElement.querySelectorAll('h2');
+    // Select the ul element with id "index"
+    const indexList = document.getElementById('index');
+
+    // Iterate over each h2 element
+    headings.forEach(heading => {
+        // Ignore h2 elements with id "Contents"
+        if (heading.id !== "Contents") {
+            // Create a new list item
+            const listItem = document.createElement('li');
+            // Create a new anchor element
+            const link = document.createElement('a');
+            // Set the href attribute to the id of the heading
+            link.href = `#${heading.id}`;
+            // Set the text content of the link to the text content of the heading
+            link.textContent = heading.textContent;
+            // Append the link to the list item
+            listItem.appendChild(link);
+            // Append the list item to the index list
+            indexList.appendChild(listItem);
+        }
+    });
 });
 </script>
   </body>
