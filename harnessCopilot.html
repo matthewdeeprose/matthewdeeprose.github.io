@@ -12,7 +12,7 @@
       <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
       <link rel="stylesheet" id="printCSS" href="print.css" media="print">
       <meta property="og:title" content="Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency - Matthew Deeprose">
-      <meta property="og:description" content="How can generative AI tools like Microsoft Copilot make us more effective and efficient in our digital accessibility work? I’ll share techniques I’ve used successfully in several scenarios over the past six months that you can repeat at your institution.">
+      <meta property="og:description" content="How can generative AI tools like Microsoft Copilot make us more effective and efficient in our digital accessibility work? I'll share techniques I've used successfully in several scenarios over the past six months that you can repeat at your institution.">
       <meta property="og:image" content="https://matthewdeeprose.github.io/copilot-narrow.PNG">
 	  <meta property="og:image:width" content="2500" />
 	  <meta property="og:image:height" content="1306" />
@@ -28,7 +28,7 @@
       <link rel="icon" href="favicon.svg" type="image/svg+xml">
       <meta name="twitter:card" content="summary_large_image">
       <meta name="twitter:title" content="Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency - Matthew Deeprose" />
-      <meta name="twitter:description" content="How can generative AI tools like Microsoft Copilot make us more effective and efficient in our digital accessibility work? I’ll share techniques I’ve used successfully in several scenarios over the past six months that you can repeat at your institution."/>
+      <meta name="twitter:description" content="How can generative AI tools like Microsoft Copilot make us more effective and efficient in our digital accessibility work? I'll share techniques I've used successfully in several scenarios over the past six months that you can repeat at your institution."/>
       <meta name="twitter:creator" content="@VLEguru"/>
       <meta name="twitter:site" content="@VLEguru"/>
       <meta name="twitter:image" content="https://matthewdeeprose.github.io/copilot-narrow.PNG"/>
@@ -105,6 +105,122 @@
             <article class="standard">
                <h1 id="top">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</h1>
 			   
+			   <details>
+			               <summary class="Contents">
+              <h2 id="Contents">Contents</h2>
+            </summary>
+				<ul id="index">
+				</ul>
+			</details>
+			<h2>Introduction</h2>
+			<p>This is an extended version of a presentation I gave at the July 2024 meeting of the <a href="allyUGsessions.html">Internation Ally User Group</a>.</p>
+			          <h2>Presentation recording, transcript and slide deck</h2>
+          <div class="videoWrapper">
+            <lite-youtube videoid="d5kdF9c5Q4o" style="background-image: url('copilot-wide.PNG');">
+              <a href="https://www.youtube.com/watch?v=d5kdF9c5Q4o" class="lty-playbtn" title="Play Video">
+                <span class="lyt-visually-hidden">Play Video: Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</span>
+              </a>
+            </lite-youtube>
+          </div>
+          <p>
+            <ul>
+			<li><a href="harnessCopilot__transcript.html">Read the transcript</a>.</li>
+			<li><a href="https://blackboard.soton.ac.uk/bbcswebdav/xid-29282994_1">Download the slide deck for "Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency" (96MB PowerPoint)</a>.</li>
+			</ul>
+          </p>
+			<h2>Prompts</h2>
+			<h3>Creating a transcript from captions</h3>
+			<p>The process begins by using <a href="https://github.com/SubtitleEdit/subtitleedit/releases">Subtitle Edit</a> or a similar tool to convert the captions file into plain text with any timings removed.</p>
+			          <blockquote class="prompt">
+                      <p>Instructions:</p>
+          <p>Please format the following transcript to be more readable.</p>
+          <p></p>
+          <p>Use headings, paragraph breaks, and bullet points as appropriate.</p>
+          <p></p>
+          <p>Important: because this is a transcript, it is essential that the text itself is kept verbatim. Please make sure you do not change any of the original words or the order in which they are presented.</p>
+          <p></p>
+          <p>Transcript:</p>
+          <p>...</p>
+          </blockquote>
+			<h3>Writing alternative text</h3>
+			<blockquote class="prompt">          
+          
+          <p>You are a university-level instructor working to ensure images in your online course materials conform to Web Content Accessibility Guidelines at Level AA. You need to accommodate for disabilities and impairments such as blindness, low vision, and colour vision deficiency to ensure equitable access to module content for all students.</p>
+          <p>You will be provided with an image. Please return a succinct title, alternative text (alt text), and a long description. You will also separately list verbatim all words that appear in the image.</p>
+          <p>The alt text should be no more than two sentences and should briefly describe the meaning conveyed by the image. The detailed description may be one or more paragraphs and must describe the image in great detail so that anyone who does not see it can gain a full understanding of everything in the image. Please format the detailed description such that it will be easily scannable. Use headings, paragraph breaks, and lists as appropriate.</p><p>Use active voice. Use UK English.</p>
+		  </blockquote>
+			<h3>Podcast transcription</h3>
+			<p>This process begins with using <a href="https://github.com/Const-me/Whisper">Whisper Desktop</a> to create the initial plain text transcript. Here is <a href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">my guide to setting up Whisper Desktop</a>.
+			<h4>Speaker Attribution</h4>
+			<blockquote class="prompt">
+				  <p>Instructions:</p>
+<p>I will paste a transcript from a podcast. The speakers' names are:<br>
+Simon Kemp<br>
+Grace Compton<br>
+Craig Hutton<br>
+Lily Kilner<br>
+Sophie Green<br></p>
+
+<p>
+I would like you to add speaker attribution to the text I will paste, so we know who is talking. Do this by writing the name of the speaker followed by a colon in bold formatting when each speaker speaks. The first speaker is Simon Kemp.
+</p>
+<p>Transcript:
+<br>...</p>
+
+				  
+				  </blockquote>
+				  <h4>Transcript formatting</h4>
+				  			          <blockquote class="prompt">
+                      <p>Instructions:</p>
+          <p>Please format the following transcript to be more readable.</p>
+          <p></p>
+          <p>Use headings, paragraph breaks, and bullet points as appropriate.</p>
+          <p></p>
+          <p>Important: because this is a transcript, it is essential that the text itself is kept verbatim. Please make sure you do not change any of the original words or the order in which they are presented.</p>
+          <p></p>
+          <p>Transcript:</p>
+          <p>...</p>
+          </blockquote>
+			<h3>Creating Sample Content for Accessibility Remediation Training</h3>
+			<p>Adjust this prompt to suit the context and content you require. This is just an example.</p>
+					  <blockquote class="prompt">
+		  <p>Please create a project update document for a fictious project that aims to make university project managers more efficient in delivery of project outcomes using cats.</p>
+
+<p>The outline should include:</p>
+<ol>
+<li>an overview of the project aims.</li>
+<li>red/amber/green ratings for time and cost.</li>
+<li>a list of project deliverables.</li>
+<li>a project roadmap.</li>
+</ol>
+</blockquote>
+			<h2>Example Files</h2>
+			<ul>
+			<li><a href="copilot-images/Meliora_Podcast_Transcript.docx">Download the Meliora Podcast transcript (19.8KB DOCX)</a></li>
+			<li><a href="copilot-images/Example_document_to_remediate.docx">Download the example document to remediate (478KB DOCX)</a>.</li>
+			</ul>
+			<h2>Links</h2>
+					  <ul>
+<li><a target="_blank" rel="noopener noreferrer" href="https://x.com/VLEguru/status/1808196756921860142">"Accessibility isn't more work, you were just cutting corners before. The work was incomplete".</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://www.legislation.gov.uk/uksi/2022/1097/made?view=plain">The Public Sector Bodies (Websites and Mobile Applications) Accessibility (Amendment) (EU Exit) Regulations 2022</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/BlackboardUltra/SitePages/BB-Universal-Standards.aspx?e=4%3A3cf8dab07d2941bbbf51d1e1aa675932&amp;web=1&amp;sharingv2=true&amp;fromShare=true&amp;at=9&amp;cid=cbd4d290-71e0-469b-9d3d-576ab1b66467">Blackboard Universal Standards 2024/25</a> (Internal link)</li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/WorkloadPrinciplesProject">Workload Principles Project</a>&nbsp; (Internal link)</li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/UniversityStrategy/_layouts/15/viewer.aspx?sourcedoc=%7b64d54ccd-977c-443c-9bd1-d19d82ebc8cd%7d">Digital Strategy Plan - Draft</a> (Internal link)</li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/">Copilot</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/?showntbk=1">Copilot Notebook</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://www.nikse.dk/subtitleedit">Subtitle edit</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://asuo-ai-labs.streamlit.app/Image_Accessibility">Arizona State University Image Accessibility Creator</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://www.textboxdigital.com/described-home">Described</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://www.learningapps.co.uk/moodle/xertetoolkits/play.php?template_id=3023">Complex images - making sense for accessibility</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://www.nwea.org/content/uploads/2022/02/Image-Description-Guidelines-for-Assessments_NWEA_2021.pdf">NWEA Image descriptions for Assessments</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Meliora podcast</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://github.com/Const-me/Whisper">Whisper Desktop</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">My quick guide on setting up Whisper Desktop</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://disconnect.blog/generative-ai-is-a-climate-disaster/">Generative AI is a climate disaster</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://www.washington.edu/news/2024/06/21/chatgpt-ai-bias-ableism-disability-resume-cv/">ChatGPT is biased against resumes with credentials that imply a disability - but it can improve</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://arxiv.org/abs/2403.02726">Bias in Generative AI</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://www.baldurbjarnason.com/2024/ai-asbestos/">AI and Asbestos: the offset and trade-off models for large-scale risks are inherently harmful.</a></li>
+</ul>
             </article>
 			      <div id="panel">
          <button class="panelButton" onclick="topFunction()" id="myBtn">
@@ -137,23 +253,32 @@
          </main>
          <aside class="page-sidebar related">
             <section class="related">
-			<h2>Related content</h2>
-			</section>
-            <section class="related">
-               <h3>Presentations</h3>
-               <ul class="relUL">
-                  <li><a href="#">Using Colours</a></li>
-                  <li><a href="#">Future Teacher</a></li>
-                  <li><a href="#">Bluffers guide to Blackboard theme accessibility</a></li>
-               </ul>
-            </section>
-            <section class="related">
-               <h3>Blog posts</h3>
-               <ul class="relUL">
-                  <li><a href="#">Using Colours</a></li>
-                  <li><a href="#">Future Teacher</a></li>
-                  <li><a href="#">Bluffers guide to Blackboard theme accessibility</a></li>
-               </ul>
+          <h4>Presentations</h4>
+          <ul class="relUL">
+            <li>
+              <a href="better_content_made_easy.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</a>
+            </li>
+            <li>
+              <a href="alt-text-images-charts-graphs.html">What is alternative text? How do I write it for images, charts, and graphs?</a>
+            </li>
+            <li>
+              <a href="high_quality-markup_impact.html">The impact that high quality mark-up can have on accessibility, performance, and discoverability</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h4>Blog posts</h4>
+          <ul class="relUL">
+            <li>
+              <a href="Accessibility-Beyond-Borders.html">Accessibility Beyond Borders!</a>
+            </li>
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/22/what-one-thing-can-it-staff-do-to-improve-accessibility/">What one thing can IT staff do to improve accessibility?</a>
+            </li>
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/17/how-can-we-correct-captions-and-create-transcripts-at-the-university-of-southampton/">How can we correct captions and create transcripts at the University of Southampton?</a>
+            </li>
+          </ul>
             </section>
          </aside>
          <footer class="page-footer">
@@ -317,6 +442,33 @@
          }
          applyThemePreference();                
       </script>
+	  <script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Step 1: Add IDs to all heading elements without IDs
+    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    headings.forEach(heading => {
+        if (!heading.id) {
+            heading.id = heading.textContent.replace(/\s+/g, '');
+        }
+    });
+
+    // Step 2: Create list items for each H2 in the ul with ID 'index'
+    const contentsList = document.getElementById("index");
+    if (contentsList) {
+        const h2Elements = document.querySelectorAll("h2");
+        h2Elements.forEach(h2 => {
+            if (h2.textContent !== "Contents") {
+                const listItem = document.createElement("li");
+                const link = document.createElement("a");
+                link.href = `#${h2.id}`;
+                link.textContent = h2.textContent;
+                listItem.appendChild(link);
+                contentsList.appendChild(listItem);
+            }
+        });
+    }
+});
+	  </script>
 	  <script src="scripts/lite-yt-embed.js"></script>
 	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
    </body>
