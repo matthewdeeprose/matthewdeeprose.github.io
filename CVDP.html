@@ -2,24 +2,24 @@
 <html lang="en-GB">
    <head>
       <meta charset="utf-8" />
-      <meta name="description" content="Presentation Template">
+      <meta name="description" content="Colour vision deficiency friendly palettes">
       <meta name="keywords" content="accessibility, presentation, blog">
       <meta name="author" content="Matthew Deeprose">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</title>
+      <title>Colour vision deficiency friendly palettes</title>
       <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
       <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
       <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
       <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-      <meta property="og:title" content="Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency - Matthew Deeprose">
-      <meta property="og:description" content="How can generative AI tools like Microsoft Copilot make us more effective and efficient in our digital accessibility work? I'll share techniques I've used successfully in several scenarios over the past six months that you can repeat at your institution.">
-      <meta property="og:image" content="https://matthewdeeprose.github.io/copilot-narrow.PNG">
+      <meta property="og:title" content="Colour vision deficiency friendly palettes - Matthew Deeprose">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
 	  <meta property="og:image:width" content="2500" />
 	  <meta property="og:image:height" content="1306" />
       <meta property="og:image:alt" content="">
       <meta property="og:locale" content="en_GB">
       <meta property="og:type" content="website">
-      <meta property="og:url" content="https://matthewdeeprose.github.io/harnessCopilot.html">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/CVDP.html">
       <meta name="twitter:card" content="summary_large_image">
       <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
       <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
@@ -27,13 +27,171 @@
       <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
       <link rel="icon" href="favicon.svg" type="image/svg+xml">
       <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency - Matthew Deeprose" />
-      <meta name="twitter:description" content="How can generative AI tools like Microsoft Copilot make us more effective and efficient in our digital accessibility work? I'll share techniques I've used successfully in several scenarios over the past six months that you can repeat at your institution."/>
+      <meta name="twitter:title" content="Colour vision deficiency friendly palettes - Matthew Deeprose" />
+      <meta name="twitter:description" content=""/>
       <meta name="twitter:creator" content="@VLEguru"/>
       <meta name="twitter:site" content="@VLEguru"/>
-      <meta name="twitter:image" content="https://matthewdeeprose.github.io/copilot-narrow.PNG"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
       <meta name="twitter:image:alt" content=""/>
       <meta name="twitter:card" content="summary_large_image"/>
+	  <style>
+	        *.page-wrap>* {
+        grid-column: 1/-1 !important;
+        grid-row: auto !important;
+      } *
+	  
+	  /* Reddit */
+.oneH {
+background-color: #15f1ff;
+
+}
+.twoH {
+background-color: #ffbc2d;
+
+
+}
+.threeH {
+background-color: #2d0097;
+
+}
+.fourH {
+background-color: #039534;
+
+}
+.fiveH {
+background-color: #f8f8cd;
+}
+
+/* TPM */
+
+.oneTPM {
+background-color: #dddddd;
+}
+.twoTPM {
+background-color: #2e2585;
+}
+.threeTPM {
+background-color: #337538;
+}
+.fourTPM {
+background-color: #5da899;
+}
+.fiveTPM {
+background-color: #94cbec;
+}
+.sixTPM {
+background-color: #dccd7d;
+}
+.sevenTPM {
+background-color: #c26a77;
+}
+.eightTPM {
+background-color: #9f4a96;
+}
+.nineTPM {
+background-color: #7e2954;
+}
+
+/* IBM */
+
+.oneIBM {
+background-color: #5b8efd;
+}
+.twoIBM {
+background-color: #725def;
+}
+.threeIBM {
+background-color: #dd217d;
+}
+.fourIBM {
+background-color: #ff5f00;
+}
+.fiveIBM {
+background-color: #ffb00d;
+}
+
+
+/* Filters */
+
+.protanopia {
+    -webkit-filter: url(#protanopia);
+    -moz-filter: url(#protanopia);
+    -ms-filter: url(#protanopia);
+    -o-filter: url(#protanopia);
+    filter: url(#protanopia);
+}
+
+.deuteranopia {
+    -webkit-filter: url(#deuteranopia);
+    -moz-filter: url(#deuteranopia);
+    -ms-filter: url(#deuteranopia);
+    -o-filter: url(#deuteranopia);
+    filter: url(#deuteranopia);
+}
+
+.tritanopia {
+    -webkit-filter: url(#tritanopia);
+    -moz-filter: url(#tritanopia);
+    -ms-filter: url(#tritanopia);
+    -o-filter: url(#tritanopia);
+    filter: url(#tritanopia);
+}
+
+
+
+@media only screen and (max-width: 20000px) {
+section.range {
+  display: grid;
+  grid-gap: 2rem;
+  grid-template-columns: repeat(7, 1fr);
+}
+}
+
+@media only screen and (max-width: 1500px) {
+section.range {
+  display: grid;
+  grid-gap: 2rem;
+  grid-template-columns: repeat(5, 1fr);
+}
+}
+
+@media only screen and (max-width: 1000px) {
+section.range {
+  display: grid;
+  grid-gap: 2rem;
+  grid-template-columns: repeat(5, 1fr);
+}
+}
+@media only screen and (max-width: 800px) {
+section.range {
+  display: grid;
+  grid-gap: 2rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+}
+@media only screen and (max-width: 600px) {
+section.range {
+  grid-template-columns: repeat(1, 1fr);
+}
+}
+.visual {
+  height: 100px;
+  width: 100%;
+  margin: 0.5rem 0;
+  border: 1px black solid;
+  outline: 1px solid white;
+}
+
+.cardCVD {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 2px solid black;
+  padding: 1rem;
+  outline: #fffff4 2px solid;
+}
+	  
+	  </style>
    </head>
    <body>
       <div class="page-wrap" id="start">
@@ -103,124 +261,533 @@
          </div>
          <main class="page-main" id="main">
             <article class="standard">
-               <h1 id="top">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</h1>
-			   
-			   <details>
-			               <summary class="Contents">
-              <h2 id="Contents">Contents</h2>
-            </summary>
-				<ul id="index">
-				</ul>
-			</details>
-			<h2>Introduction</h2>
-			<p>This is an extended version of a presentation I gave at the July 2024 meeting of the <a href="allyUGsessions.html">Internation Ally User Group</a>.</p>
-			          <h2>Presentation recording, transcript and slide deck</h2>
-          <div class="videoWrapper">
-            <lite-youtube videoid="d5kdF9c5Q4o" style="background-image: url('copilot-wide.PNG');">
-              <a href="https://www.youtube.com/watch?v=d5kdF9c5Q4o" class="lty-playbtn" title="Play Video">
-                <span class="lyt-visually-hidden">Play Video: Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</span>
-              </a>
-            </lite-youtube>
-          </div>
+               
+<h1>Colour vision deficiency friendly palettes</h1>
+<h2>Harry Helsing palette</h2>
+<p>Source: <a href="https://www.reddit.com/r/ColorBlind/comments/1eo1aaq/thoughts_on_this_five_colour_palette_for_a_video/?share_id=yO9xNRZqB6Z37FfSwIJZl">Thoughts on this five colour palette for a video game?</a></p>
+<hr>
+<h3>Trichromacy</h3>
+<section class="range Trichromacy">
+<div class="cardCVD">
+  <p>#15f1ff</p>
+  <div class="visual oneH"></div>
+</div>
+<div class="cardCVD">
+  <p>#ffbc2d</p>
 
-            <ul>
-			<li><a href="harnessCopilot__transcript.html">Read the transcript</a>.</li>
-			<li><a href="https://blackboard.soton.ac.uk/bbcswebdav/xid-29282994_1">Download the slide deck for "Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency" (96MB PowerPoint)</a>.</li>
-			</ul>
+  <div class="visual twoH"> </div>
+</div>
+<div class="cardCVD">
+  <p>#2d0097</p>
 
-			<h2>Prompts</h2>
-			<h3>Creating a transcript from captions</h3>
-			<p>The process begins by using <a href="https://github.com/SubtitleEdit/subtitleedit/releases">Subtitle Edit</a> or a similar tool to convert the captions file into plain text with any timings removed.</p>
-			          <blockquote class="prompt">
-                      <p>Instructions:</p>
-          <p>Please format the following transcript to be more readable.</p>
-          <p></p>
-          <p>Use headings, paragraph breaks, and bullet points as appropriate.</p>
-          <p></p>
-          <p>Important: because this is a transcript, it is essential that the text itself is kept verbatim. Please make sure you do not change any of the original words or the order in which they are presented.</p>
-          <p></p>
-          <p>Transcript:</p>
-          <p>...</p>
-          </blockquote>
-			<h3>Writing alternative text</h3>
-			<blockquote class="prompt">          
-          
-          <p>You are a university-level instructor working to ensure images in your online course materials conform to Web Content Accessibility Guidelines at Level AA. You need to accommodate for disabilities and impairments such as blindness, low vision, and colour vision deficiency to ensure equitable access to module content for all students.</p>
-          <p>You will be provided with an image. Please return a succinct title, alternative text (alt text), and a long description. You will also separately list verbatim all words that appear in the image.</p>
-          <p>The alt text should be no more than two sentences and should briefly describe the meaning conveyed by the image. The detailed description may be one or more paragraphs and must describe the image in great detail so that anyone who does not see it can gain a full understanding of everything in the image. Please format the detailed description such that it will be easily scannable. Use headings, paragraph breaks, and lists as appropriate.</p><p>Use active voice. Use UK English.</p>
-		  </blockquote>
-			<h3>Podcast transcription</h3>
-			<p>This process begins with using <a href="https://github.com/Const-me/Whisper">Whisper Desktop</a> to create the initial plain text transcript. Here is <a href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">my guide to setting up Whisper Desktop</a>.
-			<h4>Speaker Attribution</h4>
-			<blockquote class="prompt">
-				  <p>Instructions:</p>
-<p>I will paste a transcript from a podcast. The speakers' names are:<br>
-Simon Kemp<br>
-Grace Compton<br>
-Craig Hutton<br>
-Lily Kilner<br>
-Sophie Green<br></p>
+  <div class="visual threeH "> </div>
+</div>
+<div class="cardCVD">
+  <p>#039534</p>
 
-<p>
-I would like you to add speaker attribution to the text I will paste, so we know who is talking. Do this by writing the name of the speaker followed by a colon in bold formatting when each speaker speaks. The first speaker is Simon Kemp.
-</p>
-<p>Transcript:
-<br>...</p>
+  <div class="visual fourH "> </div>
+</div>
+<div class="cardCVD">
+  <p>#f8f8cd</p>
 
-				  
-				  </blockquote>
-				  <h4>Transcript formatting</h4>
-				  			          <blockquote class="prompt">
-                      <p>Instructions:</p>
-          <p>Please format the following transcript to be more readable.</p>
-          <p></p>
-          <p>Use headings, paragraph breaks, and bullet points as appropriate.</p>
-          <p></p>
-          <p>Important: because this is a transcript, it is essential that the text itself is kept verbatim. Please make sure you do not change any of the original words or the order in which they are presented.</p>
-          <p></p>
-          <p>Transcript:</p>
-          <p>...</p>
-          </blockquote>
-			<h3>Creating Sample Content for Accessibility Remediation Training</h3>
-			<p>Adjust this prompt to suit the context and content you require. This is just an example.</p>
-					  <blockquote class="prompt">
-		  <p>Please create a project update document for a fictious project that aims to make university project managers more efficient in delivery of project outcomes using cats.</p>
+  <div class="visual fiveH"> </div>
+</div>
+</section>
+<hr>
+<h3>Protanopia</h3>
+<section class="range protanopia">
+<div class="cardCVD">
+  <p>#15f1ff</p>
+  <div class="visual oneH"></div>
+</div>
+<div class="cardCVD">
+  <p>#ffbc2d</p>
 
-<p>The outline should include:</p>
-<ol>
-<li>an overview of the project aims.</li>
-<li>red/amber/green ratings for time and cost.</li>
-<li>a list of project deliverables.</li>
-<li>a project roadmap.</li>
-</ol>
-</blockquote>
-			<h2>Example Files</h2>
-			<ul>
-			<li><a href="copilot-images/Meliora_Podcast_Transcript.docx">Download the Meliora Podcast transcript (19.8KB DOCX)</a></li>
-			<li><a href="copilot-images/Example_document_to_remediate.docx">Download the example document to remediate (478KB DOCX)</a>.</li>
-			</ul>
-			<h2>Links</h2>
-					  <ul>
-<li><a target="_blank" rel="noopener noreferrer" href="https://x.com/VLEguru/status/1808196756921860142">"Accessibility isn't more work, you were just cutting corners before. The work was incomplete".</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://www.legislation.gov.uk/uksi/2022/1097/made?view=plain">The Public Sector Bodies (Websites and Mobile Applications) Accessibility (Amendment) (EU Exit) Regulations 2022</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/BlackboardUltra/SitePages/BB-Universal-Standards.aspx?e=4%3A3cf8dab07d2941bbbf51d1e1aa675932&amp;web=1&amp;sharingv2=true&amp;fromShare=true&amp;at=9&amp;cid=cbd4d290-71e0-469b-9d3d-576ab1b66467">Blackboard Universal Standards 2024/25</a> (Internal link)</li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/WorkloadPrinciplesProject">Workload Principles Project</a>&nbsp; (Internal link)</li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://sotonac.sharepoint.com/teams/UniversityStrategy/_layouts/15/viewer.aspx?sourcedoc=%7b64d54ccd-977c-443c-9bd1-d19d82ebc8cd%7d">Digital Strategy Plan - Draft</a> (Internal link)</li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/">Copilot</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://copilot.microsoft.com/?showntbk=1">Copilot Notebook</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://www.nikse.dk/subtitleedit">Subtitle edit</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://asuo-ai-labs.streamlit.app/Image_Accessibility">Arizona State University Image Accessibility Creator</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://www.textboxdigital.com/described-home">Described</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://www.learningapps.co.uk/moodle/xertetoolkits/play.php?template_id=3023">Complex images - making sense for accessibility</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://www.nwea.org/content/uploads/2022/02/Image-Description-Guidelines-for-Assessments_NWEA_2021.pdf">NWEA Image descriptions for Assessments</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Meliora podcast</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://github.com/Const-me/Whisper">Whisper Desktop</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">My quick guide on setting up Whisper Desktop</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://disconnect.blog/generative-ai-is-a-climate-disaster/">Generative AI is a climate disaster</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://www.washington.edu/news/2024/06/21/chatgpt-ai-bias-ableism-disability-resume-cv/">ChatGPT is biased against resumes with credentials that imply a disability - but it can improve</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://arxiv.org/abs/2403.02726">Bias in Generative AI</a></li>
-<li><a target="_blank" rel="noopener noreferrer" href="https://www.baldurbjarnason.com/2024/ai-asbestos/">AI and Asbestos: the offset and trade-off models for large-scale risks are inherently harmful.</a></li>
-</ul>
+  <div class="visual twoH"> </div>
+</div>
+<div class="cardCVD">
+  <p>#2d0097</p>
+
+  <div class="visual threeH "> </div>
+</div>
+<div class="cardCVD">
+  <p>#039534</p>
+
+  <div class="visual fourH "> </div>
+</div>
+<div class="cardCVD">
+  <p>#f8f8cd</p>
+
+  <div class="visual fiveH"> </div>
+</div>
+</section>
+<hr>
+<h3>Deuteranopia</h3>
+<section class="range deuteranopia">
+<div class="cardCVD">
+  <p>#15f1ff</p>
+  <div class="visual oneH"></div>
+</div>
+<div class="cardCVD">
+  <p>#ffbc2d</p>
+
+  <div class="visual twoH"> </div>
+</div>
+<div class="cardCVD">
+  <p>#2d0097</p>
+
+  <div class="visual threeH "> </div>
+</div>
+<div class="cardCVD">
+  <p>#039534</p>
+
+  <div class="visual fourH "> </div>
+</div>
+<div class="cardCVD">
+  <p>#f8f8cd</p>
+
+  <div class="visual fiveH"> </div>
+</div>
+</section>
+<hr>
+<h3>Tritanopia</h3>
+<section class="range tritanopia">
+<div class="cardCVD">
+  <p>#15f1ff</p>
+  <div class="visual oneH"></div>
+</div>
+<div class="cardCVD">
+  <p>#ffbc2d</p>
+
+  <div class="visual twoH"> </div>
+</div>
+<div class="cardCVD">
+  <p>#2d0097</p>
+
+  <div class="visual threeH "> </div>
+</div>
+<div class="cardCVD">
+  <p>#039534</p>
+
+  <div class="visual fourH "> </div>
+</div>
+<div class="cardCVD">
+  <p>#f8f8cd</p>
+
+  <div class="visual fiveH"> </div>
+</div>
+</section>
+<hr><hr>
+<h2>Paul Tol Muted</h2>
+<h3>Trichromacy</h3>
+<section class="range Trichromacy">
+<div class="cardCVD">
+  <p>#dddddd</p>
+  <div class="visual oneTPM"></div>
+</div>
+<div class="cardCVD">
+  <p>#2e2585</p>
+
+  <div class="visual twoTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#337538</p>
+
+  <div class="visual threeTPM "> </div>
+</div>
+<div class="cardCVD">
+  <p>#5da899</p>
+
+  <div class="visual fourTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#94cbec</p>
+
+  <div class="visual fiveTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#dccd7d</p>
+
+  <div class="visual sixTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#c26a77</p>
+
+  <div class="visual sevenTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#9f4a96</p>
+
+  <div class="visual eightTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#7e2954</p>
+
+  <div class="visual nineTPM"> </div>
+</div>
+
+
+</section>
+<hr>
+<h3>Protanopia</h3>
+<section class="range protanopia">
+<div class="cardCVD">
+  <p>#dddddd</p>
+  <div class="visual oneTPM"></div>
+</div>
+<div class="cardCVD">
+  <p>#2e2585</p>
+
+  <div class="visual twoTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#337538</p>
+
+  <div class="visual threeTPM "> </div>
+</div>
+<div class="cardCVD">
+  <p>#5da899</p>
+
+  <div class="visual fourTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#94cbec</p>
+
+  <div class="visual fiveTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#dccd7d</p>
+
+  <div class="visual sixTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#c26a77</p>
+
+  <div class="visual sevenTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#9f4a96</p>
+
+  <div class="visual eightTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#7e2954</p>
+
+  <div class="visual nineTPM"> </div>
+</div>
+
+
+</section>
+<hr>
+<h3>Deuteranopia</h3>
+<section class="range deuteranopia">
+<div class="cardCVD">
+  <p>#dddddd</p>
+  <div class="visual oneTPM"></div>
+</div>
+<div class="cardCVD">
+  <p>#2e2585</p>
+
+  <div class="visual twoTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#337538</p>
+
+  <div class="visual threeTPM "> </div>
+</div>
+<div class="cardCVD">
+  <p>#5da899</p>
+
+  <div class="visual fourTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#94cbec</p>
+
+  <div class="visual fiveTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#dccd7d</p>
+
+  <div class="visual sixTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#c26a77</p>
+
+  <div class="visual sevenTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#9f4a96</p>
+
+  <div class="visual eightTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#7e2954</p>
+
+  <div class="visual nineTPM"> </div>
+</div>
+
+
+</section>
+<hr>
+<h3>Tritanopia</h3>
+<section class="range tritanopia">
+<div class="cardCVD">
+  <p>#dddddd</p>
+  <div class="visual oneTPM"></div>
+</div>
+<div class="cardCVD">
+  <p>#2e2585</p>
+
+  <div class="visual twoTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#337538</p>
+
+  <div class="visual threeTPM "> </div>
+</div>
+<div class="cardCVD">
+  <p>#5da899</p>
+
+  <div class="visual fourTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#94cbec</p>
+
+  <div class="visual fiveTPM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#dccd7d</p>
+
+  <div class="visual sixTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#c26a77</p>
+
+  <div class="visual sevenTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#9f4a96</p>
+
+  <div class="visual eightTPM"> </div>
+</div>
+
+<div class="cardCVD">
+  <p>#7e2954</p>
+
+  <div class="visual nineTPM"> </div>
+</div>
+
+
+</section>
+
+<h2>IBM Design Library</h2>
+<hr>
+<h3>Trichromacy</h3>
+
+<section class="range Trichromacy">
+<div class="cardCVD">
+  <p>#5b8efd</p>
+  <div class="visual oneIBM"></div>
+</div>
+<div class="cardCVD">
+  <p>#725def</p>
+
+  <div class="visual twoIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#dd217d</p>
+
+  <div class="visual threeIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#ff5f00</p>
+
+  <div class="visual fourIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#ffb00d</p>
+
+  <div class="visual fiveIBM"> </div>
+</div>
+</section>
+<hr>
+<h3>Protanopia</h3>
+<section class="range protanopia">
+<div class="cardCVD">
+  <p>#5b8efd</p>
+  <div class="visual oneIBM"></div>
+</div>
+<div class="cardCVD">
+  <p>#725def</p>
+
+  <div class="visual twoIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#dd217d</p>
+
+  <div class="visual threeIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#ff5f00</p>
+
+  <div class="visual fourIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#ffb00d</p>
+
+  <div class="visual fiveIBM"> </div>
+</div>
+</section>
+<hr>
+<h3>Deuteranopia</h3>
+<section class="range deuteranopia">
+<div class="cardCVD">
+  <p>#5b8efd</p>
+  <div class="visual oneIBM"></div>
+</div>
+<div class="cardCVD">
+  <p>#725def</p>
+
+  <div class="visual twoIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#dd217d</p>
+
+  <div class="visual threeIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#ff5f00</p>
+
+  <div class="visual fourIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#ffb00d</p>
+
+  <div class="visual fiveIBM"> </div>
+</div>
+</section>
+<hr>
+<h3>Tritanopia</h3>
+<section class="range tritanopia">
+<div class="cardCVD">
+  <p>#5b8efd</p>
+  <div class="visual oneIBM"></div>
+</div>
+<div class="cardCVD">
+  <p>#725def</p>
+
+  <div class="visual twoIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#dd217d</p>
+
+  <div class="visual threeIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#ff5f00</p>
+
+  <div class="visual fourIBM"> </div>
+</div>
+<div class="cardCVD">
+  <p>#ffb00d</p>
+
+  <div class="visual fiveIBM"> </div>
+</div>
+</section>
+
+
+
+
+
+
+
+
+
+
+<p></p>
+
+<svg style='height: 0; width: 0; padding: 0; margin: 0; line-height: 0;'>
+  <!-- from https://daltonlens.org/cvd-simulation-svg-filters/ and https://github.com/DaltonLens/libDaltonLens/tree/master/svg -->
+    <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
+    <filter id="protanopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" in="SourceGraphic" values="
+            0.10889,0.89111,-0.00000,0,0
+            0.10889,0.89111,0.00000,0,0
+            0.00447,-0.00447,1.00000,0,0
+            0,0,0,1,0"
+        />
+    </filter>
+
+    <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
+    <filter id="deuteranopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" in="SourceGraphic" values="
+            0.29031,0.70969,-0.00000,0,0
+            0.29031,0.70969,-0.00000,0,0
+            -0.02197,0.02197,1.00000,0,0
+            0,0,0,1,0"
+        />
+    </filter>
+
+    <!-- 
+        Brettel, Viénot & Mollon 1997 algorithms with two projection planes.
+
+        This is the only approach I know that is supposed to be reasonably
+        accurate for tritanopia, the single matrix approaches are NOT accurate.
+    -->
+    <filter id="tritanopia" color-interpolation-filters="linearRGB">
+        <!-- 
+            Projection 1, with a special alpha that encodes the separation plane.
+            If dot(rgb, n) > 0, then use projection 1, otherwise use projection 2.
+            This is encoded in alpha by:
+                - Applying a 1.0 factor on the source alpha so that 0 input alpha remains 0
+                - Subtracting 0.2 so that negative values become < 0.8 and position values >= 0.8
+                - It is important to normalize the factors to keep a good numerical accuracy
+                  and to keep a large alpha threshold since the RGB values are then stored
+                  premultiplied by alpha.
+                - This assumes that negative values get clipped to 0, and positive
+                  values clipped to 1, without overflowing, etc. Which seems to be the case
+                  on all browsers.
+          -->
+        <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane1" values="
+            1.01354, 0.14268, -0.15622, 0, 0
+            -0.01181, 0.87561, 0.13619, 0, 0
+            0.07707, 0.81208, 0.11085, 0, 0
+            7.92482, -5.66475, -2.26007, 1, -0.2"
+        />
+        <!-- 
+            Binarize alpha. 5 values means the last chunk will start at 0.8.
+            All the values below 0.8 will become 0 (correspond to the dot
+            product with the separation plane being negative) and above will become 1
+        -->        
+        <feComponentTransfer in="ProjectionOnPlane1" result="ProjectionOnPlane1">
+            <feFuncA type="discrete" tableValues="0 0 0 0 1"/>
+        </feComponentTransfer>
+
+        <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="
+            0.93337, 0.19999, -0.13336, 0, 0
+            0.05809, 0.82565, 0.11626, 0, 0
+            -0.37923, 1.13825, 0.24098, 0, 0
+            0,0,0,1,0"
+        />
+
+        <!-- Uncomment the debug black matrix to see which pixels go to which plane -->
+        <!-- <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="0,0,0,0,0 0,0,0,0,0 0,0,0,0,0 0,0,0,1,0"/> -->
+
+        <!-- Blend the two projections, picking one or the other depending on alpha. -->
+        <feBlend in="ProjectionOnPlane1" in2="ProjectionOnPlane2" mode="normal"/>
+    </filter>
+</svg>
             </article>
 			      <div id="panel">
          <button class="panelButton" onclick="topFunction()" id="myBtn">
@@ -233,7 +800,7 @@ I would like you to add speaker attribution to the text I will paste, so we know
                   <path d="m8.5 4.5v8"/>
                </g>
             </svg>
-            <br>
+            <br />
             <span id="myBtnTop" class="panelLabel">Top</span>
          </button>
          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
@@ -246,44 +813,12 @@ I would like you to add speaker attribution to the text I will paste, so we know
                   <path d="m8.5 12.5v-8"/>
                </g>
             </svg>
-            <br>
+            <br />
             <span id="myBtnBottom" class="panelLabel">Bottom</span>
          </button>
       </div>
          </main>
-         <aside class="page-sidebar related">
-        <section class="related">
-          <h3>Related content</h3>
-        </section>
-        <section class="related">
-          <h4>Presentations</h4>
-          <ul class="relUL">
-            <li>
-              <a href="better_content_made_easy.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</a>
-            </li>
-            <li>
-              <a href="alt-text-images-charts-graphs.html">What is alternative text? How do I write it for images, charts, and graphs?</a>
-            </li>
-            <li>
-              <a href="high_quality-markup_impact.html">The impact that high quality mark-up can have on accessibility, performance, and discoverability</a>
-            </li>
-          </ul>
-        </section>
-        <section class="related">
-          <h4>Blog posts</h4>
-          <ul class="relUL">
-            <li>
-              <a href="Accessibility-Beyond-Borders.html">Accessibility Beyond Borders!</a>
-            </li>
-            <li>
-              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/22/what-one-thing-can-it-staff-do-to-improve-accessibility/">What one thing can IT staff do to improve accessibility?</a>
-            </li>
-            <li>
-              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/17/how-can-we-correct-captions-and-create-transcripts-at-the-university-of-southampton/">How can we correct captions and create transcripts at the University of Southampton?</a>
-            </li>
-          </ul>
-            </section>
-         </aside>
+
          <footer class="page-footer">
             <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
             <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
@@ -298,8 +833,8 @@ I would like you to add speaker attribution to the text I will paste, so we know
             </div>
             <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
                <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
-            </div></p>
-         </footer>
+            </div>
+         </p></footer>
       </div>
 
       <script>
@@ -445,34 +980,6 @@ I would like you to add speaker attribution to the text I will paste, so we know
          }
          applyThemePreference();                
       </script>
-	  <script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Step 1: Add IDs to all heading elements without IDs
-    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
-    headings.forEach(heading => {
-        if (!heading.id) {
-            heading.id = heading.textContent.replace(/\s+/g, '');
-        }
-    });
 
-    // Step 2: Create list items for each H2 in the ul with ID 'index'
-    const contentsList = document.getElementById("index");
-    if (contentsList) {
-        const h2Elements = document.querySelectorAll("h2");
-        h2Elements.forEach(h2 => {
-            if (h2.textContent !== "Contents") {
-                const listItem = document.createElement("li");
-                const link = document.createElement("a");
-                link.href = `#${h2.id}`;
-                link.textContent = h2.textContent;
-                listItem.appendChild(link);
-                contentsList.appendChild(listItem);
-            }
-        });
-    }
-});
-	  </script>
-	  <script src="scripts/lite-yt-embed.js"></script>
-	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
    </body>
 </html>
