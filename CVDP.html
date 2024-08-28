@@ -263,6 +263,13 @@ section.range {
             <article class="standard">
                
 <h1>Colour vision deficiency friendly palettes</h1>
+			   <details>
+			               <summary class="Contents">
+              <h2 id="Contents">Contents</h2>
+            </summary>
+				<ul id="index">
+				</ul>
+			</details>
 <h2>Harry Helsing palette</h2>
 <p>Source: <a href="https://www.reddit.com/r/ColorBlind/comments/1eo1aaq/thoughts_on_this_five_colour_palette_for_a_video/?share_id=yO9xNRZqB6Z37FfSwIJZl">Thoughts on this five colour palette for a video game?</a></p>
 <hr>
@@ -980,6 +987,33 @@ section.range {
          }
          applyThemePreference();                
       </script>
+	  	  <script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Step 1: Add IDs to all heading elements without IDs
+    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    headings.forEach(heading => {
+        if (!heading.id) {
+            heading.id = heading.textContent.replace(/\s+/g, '');
+        }
+    });
+
+    // Step 2: Create list items for each H2 in the ul with ID 'index'
+    const contentsList = document.getElementById("index");
+    if (contentsList) {
+        const h2Elements = document.querySelectorAll("h2");
+        h2Elements.forEach(h2 => {
+            if (h2.textContent !== "Contents") {
+                const listItem = document.createElement("li");
+                const link = document.createElement("a");
+                link.href = `#${h2.id}`;
+                link.textContent = h2.textContent;
+                listItem.appendChild(link);
+                contentsList.appendChild(listItem);
+            }
+        });
+    }
+});
+	  </script>
 
    </body>
 </html>
