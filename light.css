@@ -124,6 +124,11 @@ lite-youtube {
 	font-weight: bold;
 }
 
+.soundDescription {
+		font-weight: bold;
+		color: #002E3B;
+}
+
 html {
 	color: #00131D;
 }

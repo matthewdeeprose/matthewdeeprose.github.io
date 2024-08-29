@@ -130,6 +130,11 @@ lite-youtube > .lty-playbtn {
 	font-weight: bold;
 }
 
+.soundDescription {
+		font-weight: bold;
+		color: #B3DBD2;
+}
+
 
 /* Post source */
 dd.from {
