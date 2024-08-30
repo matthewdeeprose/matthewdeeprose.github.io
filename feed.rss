@@ -15,6 +15,26 @@
       <height>1125</height>
     </image>
     <item>
+      <title>Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</title>
+      <pubDate>Fri, 30 Aug 2024 06:25:13 +0100</pubDate>
+      <link>https://matthewdeeprose.github.io/harnessCopilot.html</link>
+      <description><![CDATA[Can generative AI save time and effort for certain digital accessibility workflows? This is an extended version of a presentation I gave at the July 2024 International Ally User Group.]]></description>
+    </item>
+    <item>
+      <title>International Ally User Group: sessions, slides and recordings</title>
+      <pubDate>Fri, 30 Aug 2024 06:24:49 +0100</pubDate>
+      <link>https://matthewdeeprose.github.io/allyUGsessions.html</link>
+      <description><![CDATA[I'm co-chair of the International Ally User Group. You can view a list of our sessions, slides and recordings.]]></description>
+    </item>
+    <item>
+      <title>Identify the 'unsafe html' content from an accessibility report in Blackboard.</title>
+      <pubDate>Fri, 30 Aug 2024 06:24:12 +0100</pubDate>
+      <link>https://matthewdeeprose.github.io/findBbAllyUnsafeHTML.html</link>
+      <description><![CDATA[Sometimes the accessibility report in Ultra refers to "UNSAFE_HTML" files, yet it can be hard to work out what they are because there is no preview.
+
+This solution will list any UNSAFE_HTML files listed in an Ally report and their direct links to open them in the browser console.]]></description>
+    </item>
+    <item>
       <title>Accessibility Beyond Borders!</title>
       <pubDate>Thu, 12 Oct 2023 09:38:02 +0100</pubDate>
       <link>https://matthewdeeprose.github.io/Accessibility-Beyond-Borders.html</link>
