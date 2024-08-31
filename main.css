@@ -1,3 +1,6 @@
+/* Content list item padding between */
+	ul#index li {padding-bottom: 0.5rem;}
+
 /* Inputs */
 	input {
 		cursor: pointer;
