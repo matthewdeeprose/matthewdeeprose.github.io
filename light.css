@@ -1,5 +1,15 @@
 /*Light mode */
 
+@media screen and (max-width: 33rem) {
+  .paletteTable  tr {
+    border-bottom: 3px solid #00131D !important;
+  }
+
+  .paletteTable  td {
+    border-bottom: 1px solid #00131D !important;
+  }
+}
+
 body {
   accent-color: #005051; 
 }
@@ -26,18 +36,18 @@ blockquote.prompt:before {
 		color: #00131D;
 	}
 
-	tr:nth-child(even) {
+	.allyTable tr:nth-child(even) {
 		background-color: #E1E8EC;
 	}
 
 
-	tr:hover {
+	.allyTable tr:hover {
 -webkit-box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.31);
 -moz-box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.31);
 box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.31);
 	}
 
-	thead tr:hover {
+	.allyTable thead tr:hover {
 -webkit-box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.0);
 -moz-box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.0);
 box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.0);
@@ -48,16 +58,20 @@ box-shadow: 4px 24px 39px 0px rgba(0,0,0,0.0);
 	}
 
 
+
 	@media screen and (max-width: 1024px) {
-		table tr {
+		.allyTable  tr {
 			border-bottom: 3px solid #00131D;
 		}
 
-		table td {
+		.allyTable  td {
 			border-bottom: 1px solid #00131D;
 		}
 
 	}
+	
+
+	
 	/* Tables ends here */
 
 

@@ -1,4 +1,19 @@
 /* Dark mode */
+
+/* Palette tables */
+@media screen and (max-width: 33rem) {
+  .paletteTable  tr {
+    border-bottom: 3px solid #E1E8EC;
+  }
+
+  .paletteTable  td {
+    border-bottom: 1px solid #E1E8EC;
+  }
+}
+
+
+/* Palette tables ends */
+
 body {
   accent-color: #FCBC00; 
 }
@@ -35,15 +50,15 @@ blockquote.prompt:before {
 		color: #00131D;
 	}
 
-	tr:nth-child(even) {
+	.allyTable tr:nth-child(even) {
 		background-color: #00131D;
 	}
 
-	tr:hover {
+	.allyTable tr:hover {
 		background-color: #002E3B;
 	}
 
-	thead tr:hover {
+	.allyTable thead tr:hover {
 		background-color: #9FB1BD;
 	}
 	table tr {
@@ -53,11 +68,11 @@ blockquote.prompt:before {
 
 
 	@media screen and (max-width: 1024px) {
-		table tr {
+		.allyTable table tr {
 			border-bottom: 3px solid #E1E8EC;
 		}
 
-		table td {
+		.allyTable table td {
 			border-bottom: 1px solid #E1E8EC;
 		}
 

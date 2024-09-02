@@ -1,4 +1,59 @@
+/* Palette tables */
+
+.paletteExampleCell {border: 1px #00131D solid;}
+
+@media screen and (max-width: 33rem) {
+  .paletteTable  {
+    border: 0 !important;
+  }
+
+  .paletteTable  thead {
+    border: none;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+  }
+
+  .paletteTable  tr {
+    border-bottom: 3px solid #ddd;
+    display: block;
+    margin-bottom: 0.625em;
+  }
+
+  .paletteTable  td {
+    border-bottom: 1px solid #ddd;
+    display: block;
+    font-size: 0.8em;
+    text-align: right;
+  }
+
+  .paletteTable  td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: bold;
+	  background-color: #231F20;
+	  color: #fffdf9;
+	  text-transform: capitalize;
+	  padding: 0.01rem;
+  }
+
+  .paletteTable  td:last-child {
+    border-bottom: 0;
+  }
+  .paletteTable  th::before {
+    content: 'Colour code ';
+  }
+}
+
+/* Palette tables ends */
+
+
 /* Content list item padding between */
+
 	ul#index li {padding-bottom: 0.5rem;}
 
 /* Inputs */
@@ -158,7 +213,7 @@ table {
   font-size: 90%;
 }
 
-thead th {
+.allyTable thead th {
   position: sticky;
   top: 0;
 }
@@ -179,11 +234,11 @@ table th {
 }
 
 @media screen and (max-width: 1024px) {
-  table {
+  .allyTable  {
     border: 0 !important;
   }
 
-  table thead {
+  .allyTable  thead {
     border: none;
     clip: rect(0 0 0 0);
     height: 1px;
@@ -194,29 +249,28 @@ table th {
     width: 1px;
   }
 
-  table tr {
-    border-bottom: 3px solid #ddd;
+  .allyTable  tr {
     display: block;
     margin-bottom: 0.625em;
   }
 
-  table td {
+  .allyTable  td {
     border-bottom: 1px solid #ddd;
     display: block;
     font-size: 0.8em;
     text-align: right;
   }
 
-  table td::before {
+  .allyTable  td::before {
     content: attr(data-label);
     float: left;
     font-weight: bold;
   }
 
-  table td:last-child {
+  .allyTable  td:last-child {
     border-bottom: 0;
   }
-  table th {
+  .allyTable  th {
     font-size: 110%;
   }
 }
