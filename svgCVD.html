@@ -624,7 +624,7 @@ function loadPalettes() {
             for (const [name, colors] of Object.entries(palettes)) {
                 const option = document.createElement('option');
                 option.value = name;
-                option.textContent = `${name} (${colors.length} colors)`;
+                option.textContent = `${name} (${colors.length} colours)`;
                 paletteSelect.appendChild(option);
 
                 if (colors.length > largestPaletteSize) {
