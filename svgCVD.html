@@ -13,7 +13,7 @@
       <link rel="stylesheet" id="printCSS" href="print.css" media="print">
       <meta property="og:title" content="SVG Palette Adjuster for Colour Vision Deficiency - Matthew Deeprose">
       <meta property="og:description" content="">
-      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/svgCVD-43.png">
 	  <meta property="og:image:width" content="2500" />
 	  <meta property="og:image:height" content="1306" />
       <meta property="og:image:alt" content="">
@@ -31,7 +31,7 @@
       <meta name="twitter:description" content=""/>
       <meta name="twitter:creator" content="@VLEguru"/>
       <meta name="twitter:site" content="@VLEguru"/>
-      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/svgCVD-43.png"/>
       <meta name="twitter:image:alt" content=""/>
       <meta name="twitter:card" content="summary_large_image"/>
 	  <style>
@@ -135,12 +135,101 @@
         #paletteMessage {
             margin-top: 10px;
             padding: 10px;
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
+
             border-radius: 5px;
-            color: #856404;
+
         }
 		
+		/* Custom select CSS */
+		.custom-select {
+    position: relative;
+    display: inline-block;
+	    margin-left: 10px;	
+} 
+.select-button {
+	display: flex;
+    align-items: center;
+    cursor: pointer;
+	border-radius: 0px;
+}  
+
+	@media only screen and (min-width: 400px) {
+		.select-button {
+			min-width: 15rem;
+		}
+					.options {
+		min-width: 240px;
+
+	}
+	}
+
+	
+		.selected-color {
+		width: 15px;
+		height: 15px;
+		margin-left: 10px;
+		border: 1px solid #fffff4 !important;
+		outline: 1px solid #00131d !important;
+	}
+	
+		.options {
+		display: none;
+		position: absolute;
+		top: 100%;
+		left: 0;
+		z-index: 1;
+		padding: 0;
+		margin: 0;
+		color: #00131d;
+		background-color: #E1E8EC;
+		border: 2px solid #fffff4;
+		outline: 2px solid #00131d;
+		max-height: 200px;
+		
+		overflow-y: auto;
+	}
+
+	.options::marker {
+		font-size: 0;
+	}
+	.options li {
+		padding: 5px 10px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+				font-family: monospace, monospace;
+	}
+
+	.options li + li {
+		text-transform: uppercase;
+
+	}
+	
+	              .color-preview {
+                             width: 30px;
+                             height: 30px;
+                             margin-right: 10px;
+                             border: 1px solid #fffff4 !important;
+                             outline: 1px solid #00131d !important;
+              }
+			  
+			  	.svgToolH2 {
+  font-size: 1.3rem;
+
+	}
+	
+		                .options li:hover       {
+                             background-color: #231F20;
+				  			 color: #fffff4;
+                             outline: 2px solid transparent;
+              }
+
+              .options li:focus {
+                                                          background-color: #231F20;
+				  			 color: #fffff4;
+                            outline: 2px solid transparent; 
+				  border: dashed 2px #fffff4;
+              }
 
 		
 			  /* Filters */
@@ -275,7 +364,7 @@
         <div id="paletteSelection">
             <label for="paletteSelect">Select a color blind friendly palette:</label>
             <select id="paletteSelect"></select>
-            <div id="paletteMessage"></div>
+            <div id="paletteMessage" aria-live="polite"></div>
         </div>
         <div id="colorSwapInterface"></div>
 		</div>
@@ -412,98 +501,97 @@
 <!------------------------------------------------------------------>
 	  <script src="scripts/svg.min.js"></script>
 	      <script>
-        // Global variables
-        let originalSvg;
-        let svgColors = [];
-        let selectedPalette = [];
+// Global variables
+let originalSvg;
+let svgColors = [];
+let selectedPalette = [];
+let currentColorSwaps = {};
 
-        // DOM Elements
-        const fileInput = document.getElementById('fileInput');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const saveBtn = document.getElementById('saveBtn');
-        const colorInfo = document.getElementById('colorInfo');
-        const paletteSelect = document.getElementById('paletteSelect');
-        const colorSwapInterface = document.getElementById('colorSwapInterface');
+// DOM Elements
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
+const resetBtn = document.getElementById('resetBtn');
+const saveBtn = document.getElementById('saveBtn');
+const colorInfo = document.getElementById('colorInfo');
+const paletteSelect = document.getElementById('paletteSelect');
+const colorSwapInterface = document.getElementById('colorSwapInterface');
 
-        // Event Listeners
-        uploadBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', handleFileUpload);
-        resetBtn.addEventListener('click', resetColors);
-        saveBtn.addEventListener('click', saveSvg);
-        paletteSelect.addEventListener('change', handlePaletteSelection);
+// Event Listeners
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', handleFileUpload);
+resetBtn.addEventListener('click', resetColors);
+saveBtn.addEventListener('click', saveSvg);
+paletteSelect.addEventListener('change', handlePaletteSelection);
 
-        // File upload handler
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (file && file.type === 'image/svg+xml') {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    originalSvg = e.target.result;
-                    displaySvg(originalSvg);
-                    identifyColors();
-                    loadPalettes();
-                    resetBtn.disabled = false;
-                    saveBtn.disabled = false;
-                };
-                reader.readAsText(file);
-            } else {
-                alert('Please upload a valid SVG file.');
+// File upload handler
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (file && file.type === 'image/svg+xml') {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            originalSvg = e.target.result;
+            displaySvg(originalSvg);
+            identifyColors();
+            loadPalettes();
+            resetBtn.disabled = false;
+            saveBtn.disabled = false;
+        };
+        reader.readAsText(file);
+    } else {
+        alert('Please upload a valid SVG file.');
+    }
+}
+
+// Display SVG in all containers
+function displaySvg(svgContent) {
+    const containers = ['container1', 'container2', 'container3', 'container4'];
+    containers.forEach(id => {
+        const container = document.getElementById(id);
+        container.innerHTML = svgContent;
+        const svg = container.querySelector('svg');
+        
+        if (svg) {
+            // Remove any existing width and height attributes
+            svg.removeAttribute('width');
+            svg.removeAttribute('height');
+
+            // Add class for styling
+            svg.classList.add('svg-content');
+
+            // Ensure viewBox is set
+            if (!svg.getAttribute('viewBox')) {
+                const bbox = svg.getBBox();
+                svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
             }
-        }
 
-        // Display SVG in all containers
-        function displaySvg(svgContent) {
-            const containers = ['container1', 'container2', 'container3', 'container4'];
-            containers.forEach(id => {
-                const container = document.getElementById(id);
-                container.innerHTML = svgContent;
-                const svg = container.querySelector('svg');
-				
-                if (svg) {
-                    // Remove any existing width and height attributes
-                    svg.removeAttribute('width');
-                    svg.removeAttribute('height');
+            // Set preserveAspectRatio to see the whole SVG
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        } 
+    });
+}
 
-                    // Add class for styling
-                    svg.classList.add('svg-content');
+// Identify unique colors in the SVG
+function identifyColors() {
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(originalSvg, 'image/svg+xml');
+    const elements = svgDoc.querySelectorAll('*');
+    const uniqueColors = new Set();
 
-                    // Ensure viewBox is set
-                    if (!svg.getAttribute('viewBox')) {
-                        const bbox = svg.getBBox();
-                        svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
-                    }
+    elements.forEach(el => {
+        const fill = el.getAttribute('fill');
+        const stroke = el.getAttribute('stroke');
+        if (fill && fill !== 'none') uniqueColors.add(fill);
+        if (stroke && stroke !== 'none') uniqueColors.add(stroke);
+    });
 
-                    // Set preserveAspectRatio to see the whole SVG
-                    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                } 
-            });
-        }
-		
+    svgColors = Array.from(uniqueColors);
+    displayColorInfo();
+}
 
-        // Identify unique colors in the SVG
-        function identifyColors() {
-            const parser = new DOMParser();
-            const svgDoc = parser.parseFromString(originalSvg, 'image/svg+xml');
-            const elements = svgDoc.querySelectorAll('*');
-            const uniqueColors = new Set();
-
-            elements.forEach(el => {
-                const fill = el.getAttribute('fill');
-                const stroke = el.getAttribute('stroke');
-                if (fill && fill !== 'none') uniqueColors.add(fill);
-                if (stroke && stroke !== 'none') uniqueColors.add(stroke);
-            });
-
-            svgColors = Array.from(uniqueColors);
-            displayColorInfo();
-        }
-
-        // Display color information
+// Display color information
 function displayColorInfo() {
-        const colorCount = svgColors.length;
+    const colorCount = svgColors.length;
     colorInfo.innerHTML = `
-        <h2>Colours used in SVG:</h2>
         <p>Number of colours: ${colorCount}</p>
     `;
     const ul = document.createElement('ul');
@@ -522,89 +610,190 @@ function displayColorInfo() {
     colorInfo.appendChild(ul);
 }
 
-        // Load color palettes from https://matthewdeeprose.github.io/cvdp.json
-        function loadPalettes() {
-            fetch('https://matthewdeeprose.github.io/cvdp.json')
-                .then(response => response.json())
-                .then(data => {
-                    const palettes = data.palettes;
-                    paletteSelect.innerHTML = '<option value="">Select a palette</option>';
-                    
-                    let largestPalette = null;
-                    let largestPaletteSize = 0;
+// Load color palettes from https://matthewdeeprose.github.io/cvdp.json
+function loadPalettes() {
+    fetch('https://matthewdeeprose.github.io/cvdp.json')
+        .then(response => response.json())
+        .then(data => {
+            const palettes = data.palettes;
+            paletteSelect.innerHTML = '<option value="">Select a palette</option>';
+            
+            let largestPalette = null;
+            let largestPaletteSize = 0;
 
-                    for (const [name, colors] of Object.entries(palettes)) {
-                        const option = document.createElement('option');
-                        option.value = name;
-                        option.textContent = `${name} (${colors.length} colors)`;
-                        paletteSelect.appendChild(option);
+            for (const [name, colors] of Object.entries(palettes)) {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = `${name} (${colors.length} colors)`;
+                paletteSelect.appendChild(option);
 
-                        if (colors.length > largestPaletteSize) {
-                            largestPalette = name;
-                            largestPaletteSize = colors.length;
-                        }
-                    }
-
-                    if (svgColors.length > largestPaletteSize) {
-                        paletteSelect.value = largestPalette;
-                        displayPaletteMessage(svgColors.length, largestPaletteSize);
-                    }
-
-                    // Trigger palette selection to update the interface
-                    handlePaletteSelection();
-                })
-                .catch(error => console.error('Error loading palettes:', error));
-        }
-
-        function displayPaletteMessage(svgColorCount, paletteColorCount) {
-            const messageDiv = document.getElementById('paletteMessage');
-            messageDiv.textContent = `Your SVG contains ${svgColorCount} colors, which exceeds the ${paletteColorCount} colors available in the largest palette. Some colors may not be replaced.`;
-        }
-
-        // Handle palette selection
-        function handlePaletteSelection() {
-            const selectedPaletteName = paletteSelect.value;
-            if (selectedPaletteName) {
-                fetch('https://matthewdeeprose.github.io/cvdp.json')
-                    .then(response => response.json())
-                    .then(data => {
-                        selectedPalette = data.palettes[selectedPaletteName];
-                        displayColorSwapInterface();
-                        
-                        // Clear the message if a palette is manually selected
-                        if (svgColors.length <= selectedPalette.length) {
-                            document.getElementById('paletteMessage').textContent = '';
-                        }
-                    })
-                    .catch(error => console.error('Error loading selected palette:', error));
-            } else {
-                colorSwapInterface.innerHTML = '';
-                document.getElementById('paletteMessage').textContent = '';
+                if (colors.length > largestPaletteSize) {
+                    largestPalette = name;
+                    largestPaletteSize = colors.length;
+                }
             }
-        }
 
- // Store the current state of color swaps
-let currentColorSwaps = {};
+            if (svgColors.length > largestPaletteSize) {
+                paletteSelect.value = largestPalette;
+                displayPaletteMessage(svgColors.length, largestPaletteSize);
+            }
 
-// Display color swap interface
+            // Trigger palette selection to update the interface
+            handlePaletteSelection();
+        })
+        .catch(error => console.error('Error loading palettes:', error));
+}
+
+function displayPaletteMessage(svgColorCount, paletteColorCount) {
+    const messageDiv = document.getElementById('paletteMessage');
+    messageDiv.textContent = `Your SVG contains ${svgColorCount} colours, which exceeds the ${paletteColorCount} colours available in the largest palette. Some colours may not be replaced.`;
+}
+
+// Handle palette selection
+function handlePaletteSelection() {
+    const selectedPaletteName = paletteSelect.value;
+    if (selectedPaletteName) {
+        fetch('https://matthewdeeprose.github.io/cvdp.json')
+            .then(response => response.json())
+            .then(data => {
+                selectedPalette = data.palettes[selectedPaletteName];
+                displayColorSwapInterface();
+                
+                // Clear the message if a palette is manually selected
+                if (svgColors.length <= selectedPalette.length) {
+                    document.getElementById('paletteMessage').textContent = '';
+                }
+            })
+            .catch(error => console.error('Error loading selected palette:', error));
+    } else {
+        colorSwapInterface.innerHTML = '';
+        document.getElementById('paletteMessage').textContent = '';
+    }
+}
+
+// Define closeAllDropdowns outside of displayColorSwapInterface
+let closeAllDropdowns;
+
 function displayColorSwapInterface() {
-    colorSwapInterface.innerHTML = '<h3>Swap Colors:</h3>';
+$('.color-list').hide();
+    colorSwapInterface.innerHTML = '<h2 class="svgToolH2">Swap Colors:</h3>';
+    const customSelects = [];
+
+    // Define closeAllDropdowns here so it has access to customSelects
+    closeAllDropdowns = function() {
+        customSelects.forEach(select => {
+            select.querySelector('.options').style.display = 'none';
+            select.querySelector('.select-button').setAttribute('aria-expanded', 'false');
+        });
+    };
+
     svgColors.forEach((originalColor, index) => {
         const swapDiv = document.createElement('div');
         swapDiv.className = 'color-item';
         swapDiv.innerHTML = `
             <div class="color-swatch" style="background-color: ${originalColor};"></div>
-            <span>${originalColor}</span>
-            <select aria-label="Select new color for ${originalColor}">
-                <option value="">Keep original</option>
-                ${selectedPalette.map(newColor => `<option value="${newColor}">${newColor}</option>`).join('')}
-            </select>
+            <span class="color-item-span">${originalColor}</span>
+            <div class="custom-select">
+                <button class="select-button" aria-haspopup="listbox" aria-labelledby="color-label-${index}">
+                    <span id="color-label-${index}" >Select new colour</span>
+                    <span class="selected-color"></span>
+                </button>
+                <ul class="options" role="listbox" tabindex="-1">
+                    <li role="option" tabindex="0" data-value="">
+                        <span class="color-preview" style="background-color: ${originalColor};"></span>
+                        Keep original
+                    </li>
+                    ${selectedPalette.map(newColor => `
+                        <li role="option" tabindex="0" data-value="${newColor}">
+                            <span class="color-preview" style="background-color: ${newColor};"></span>
+                            ${newColor}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
         `;
-        const select = swapDiv.querySelector('select');
-        select.value = currentColorSwaps[originalColor] || '';
-        select.addEventListener('change', () => updateSvgColors(originalColor, select.value));
+
+        const customSelect = swapDiv.querySelector('.custom-select');
+        const selectButton = customSelect.querySelector('.select-button');
+        const options = customSelect.querySelector('.options');
+        const selectedColorSpan = selectButton.querySelector('.selected-color');
+
+        // Set initial selected value
+        const initialValue = currentColorSwaps[originalColor] || '';
+        if (initialValue) {
+            selectButton.querySelector('#color-label-' + index).textContent = initialValue;
+            selectedColorSpan.style.backgroundColor = initialValue;
+        }
+
+        // Toggle options visibility
+        selectButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            closeAllDropdowns();
+            options.style.display = options.style.display === 'none' ? 'block' : 'none';
+            selectButton.setAttribute('aria-expanded', options.style.display === 'block');
+            if (options.style.display === 'block') {
+                options.querySelector('li').focus();
+            }
+        });
+
+        // Handle option selection
+        options.addEventListener('click', (event) => {
+            const selectedOption = event.target.closest('li');
+            if (selectedOption) {
+                selectOption(selectedOption);
+            }
+        });
+
+        function selectOption(selectedOption) {
+            const selectedValue = selectedOption.dataset.value;
+            selectButton.querySelector('#color-label-' + index).textContent = selectedValue || 'Keep original';
+            selectedColorSpan.style.backgroundColor = selectedValue;
+            options.style.display = 'none';
+            selectButton.setAttribute('aria-expanded', 'false');
+            updateSvgColors(originalColor, selectedValue);
+            selectButton.focus();
+        }
+
+        // Keyboard navigation
+        customSelect.addEventListener('keydown', (event) => {
+            const focusedOption = options.querySelector('li:focus');
+            switch (event.key) {
+                case 'ArrowUp':
+                case 'ArrowDown':
+                    event.preventDefault();
+                    if (options.style.display === 'none') {
+                        options.style.display = 'block';
+                        selectButton.setAttribute('aria-expanded', 'true');
+                        options.querySelector('li').focus();
+                    } else {
+                        const nextOption = event.key === 'ArrowDown' ? 
+                            (focusedOption.nextElementSibling || options.firstElementChild) :
+                            (focusedOption.previousElementSibling || options.lastElementChild);
+                        nextOption.focus();
+                    }
+                    break;
+                case 'Enter':
+                case ' ':
+                    event.preventDefault();
+                    if (focusedOption) {
+                        selectOption(focusedOption);
+                    } else {
+                        selectButton.click();
+                    }
+                    break;
+                case 'Escape':
+                    closeAllDropdowns();
+                    selectButton.focus();
+                    break;
+            }
+        });
+
         colorSwapInterface.appendChild(swapDiv);
+        customSelects.push(customSelect);
     });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', closeAllDropdowns);
 }
 
 // Update SVG colors
@@ -636,27 +825,35 @@ function updateSvgColors(originalColor, newColor) {
     displaySvg(updatedSvg);
 }
 
-        // Reset colors to original
-        function resetColors() {
-            displaySvg(originalSvg);
-            paletteSelect.value = '';
-            colorSwapInterface.innerHTML = '';
-            document.getElementById('paletteMessage').textContent = '';
-        }
+// Reset colors to original
+function resetColors() {
+    displaySvg(originalSvg);
+    paletteSelect.value = '';
+    colorSwapInterface.innerHTML = '';
+    document.getElementById('paletteMessage').textContent = '';
+    
+    // Clear the currentColorSwaps object
+    currentColorSwaps = {};
+    
+    // Reset the color swap interface
+    if (selectedPalette.length > 0) {
+        displayColorSwapInterface();
+    }
+}
 
-        // Save updated SVG
-        function saveSvg() {
-            const svgContent = document.getElementById('container1').innerHTML;
-            const blob = new Blob([svgContent], {type: 'image/svg+xml'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'updated_svg.svg';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
+// Save updated SVG
+function saveSvg() {
+    const svgContent = document.getElementById('container1').innerHTML;
+    const blob = new Blob([svgContent], {type: 'image/svg+xml'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'updated_svg.svg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
     </script>
 
       <script>
@@ -802,7 +999,43 @@ function updateSvgColors(originalColor, newColor) {
          }
          applyThemePreference();                
       </script>
-	  <script src="scripts/lite-yt-embed.js"></script>
-	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
+	    <script src="scripts/jquery-3.7.1.min.js"></script>
+    <script src="scripts/details.js"></script>
+    <script>
+      window.console || (window.console = {
+        'log': alert
+      });
+      $(function() {
+        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
+        $('details').details();
+        $('details').on({
+          'open.details': function() {
+            console.log('opened')
+          },
+          'close.details': function() {
+            console.log('closed')
+          }
+        })
+      });
+    </script>
+	    <script>
+      // Expand details / summary when printing
+      // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
+      window.matchMedia("print").addEventListener("change", evt => {
+        if (evt.matches) {
+          elms = document.body.querySelectorAll("details:not([open])");
+          for (e of elms) {
+            e.setAttribute("open", "");
+            e.dataset.wasclosed = "";
+          }
+        } else {
+          elms = document.body.querySelectorAll("details[data-wasclosed]");
+          for (e of elms) {
+            e.removeAttribute("open");
+            delete e.dataset.wasclosed;
+          }
+        }
+      })
+    </script>
    </body>
 </html>
