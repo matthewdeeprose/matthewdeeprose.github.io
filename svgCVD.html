@@ -2,24 +2,24 @@
 <html lang="en-GB">
    <head>
       <meta charset="utf-8" />
-      <meta name="description" content="Colour vision deficiency friendly palettes">
+      <meta name="description" content="SVG Palette Adjuster for Colour Vision Deficiency">
       <meta name="keywords" content="accessibility, presentation, blog">
       <meta name="author" content="Matthew Deeprose">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Colour vision deficiency friendly palettes</title>
+      <title>SVG Palette Adjuster for Colour Vision Deficiency</title>
       <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
       <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
       <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
       <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-      <meta property="og:title" content="Colour vision deficiency friendly palettes - Matthew Deeprose">
-      <meta property="og:description" content="The following colour scheme are taken from the document, 'Colorblind Safe Color Schemes', produced by Alexandra Phillips at the NCEAS Science Communication Resource Corner, with the exception of the HarryHelsing Palette which was posted in on Reddit: 'thoughts on this five colour palette for a video game'?.">
-      <meta property="og:image" content="https://matthewdeeprose.github.io/cvdp-43.png">
+      <meta property="og:title" content="SVG Palette Adjuster for Colour Vision Deficiency - Matthew Deeprose">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
 	  <meta property="og:image:width" content="2500" />
 	  <meta property="og:image:height" content="1306" />
       <meta property="og:image:alt" content="">
       <meta property="og:locale" content="en_GB">
       <meta property="og:type" content="website">
-      <meta property="og:url" content="https://matthewdeeprose.github.io/CVDP.html">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/svgCVD.html">
       <meta name="twitter:card" content="summary_large_image">
       <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
       <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
@@ -27,22 +27,123 @@
       <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
       <link rel="icon" href="favicon.svg" type="image/svg+xml">
       <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Colour vision deficiency friendly palettes - Matthew Deeprose" />
+      <meta name="twitter:title" content="SVG Palette Adjuster for Colour Vision Deficiency - Matthew Deeprose" />
       <meta name="twitter:description" content=""/>
       <meta name="twitter:creator" content="@VLEguru"/>
       <meta name="twitter:site" content="@VLEguru"/>
-      <meta name="twitter:image" content="https://matthewdeeprose.github.io/cvdp-43.png"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
       <meta name="twitter:image:alt" content=""/>
       <meta name="twitter:card" content="summary_large_image"/>
-	      <style>
-
-
-      *.page-wrap>* {
-        grid-column: 1/-1 !important;
-        grid-row: auto !important;
-      } 
+	  <style>
+	  /* wider border just for this page */
+@media (min-width: 60rem) {
+  .page-wrap {
+    margin: 0 5% 0 5%;
+  }
+} 
+	           .page-wrap > * {
+         grid-column: 1/-1 !important;
+         grid-row: auto !important;
+         }
+		 aside {
+		 display:none;
+		 }
+		 
+		  button.SVGCVDButton {
+		 font-size: 1rem !important;
+		 }
 	  
-	  /* Filters */
+        .container {
+            margin: 0 auto;
+        }
+
+        .svg-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .svg-wrapper {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .svg-wrapper h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+        .svg-content-wrapper {
+            width: 100%;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+			color: white;
+        }
+        .svg-content {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            object-position: center;
+        }
+        #fileInput {
+            display: none;
+        }
+		.svgCVDcontrols {
+		margin-bottom: 10px;
+		}
+        #colorInfo, #paletteSelection, #colorSwapInterface {
+            margin-top: 20px;
+        }
+        select {
+            font-size: 16px;
+            padding: 5px 10px;
+			margin-left: 0.5rem;
+        }
+        #colorSwapInterface {
+         /*   display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px; */
+        }
+        .color-item {
+            display: flex;
+            align-items: center;
+			margin-right: 20px;
+            margin-bottom: 10px;
+        }
+		
+		.color-list {
+    display: flex;
+    flex-wrap: wrap;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+	.color-item span {font-family: monospace, monospace;}
+	
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+            border: 1px solid #000000;
+			outline: 1px solid #FFFFFF;
+        }
+        #paletteMessage {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 5px;
+            color: #856404;
+        }
+		
+
+		
+			  /* Filters */
 
 .protanopia {
     -webkit-filter: url(#protanopia);
@@ -67,10 +168,11 @@
     -o-filter: url(#tritanopia);
     filter: url(#tritanopia);
 }
-
-    </style>
+		
+</style>
    </head>
    <body>
+
       <div class="page-wrap" id="start">
          <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
          <header class="page-header">
@@ -130,42 +232,54 @@
                   </span>
                </button>
                <a id="homeMenu" href="index.html">Home</a>
-               <a href="presentations.html" aria-current="page" class="active">Presentations</a>
+               <a href="presentations.html" >Presentations</a>
                <a href="posts.html">Blog Posts</a>
-               <a href="projects.html">Projects</a>
+               <a href="projects.html" aria-current="page" class="active">Projects</a>
                <a href="about.html">About</a>
             </nav>
          </div>
          <main class="page-main" id="main">
             <article class="standard">
-               <h1 id="top">Colour vision deficiency friendly palettes</h1>
-			   
-			   
-			   			   <details>
-			               <summary class="Contents">
-              <h2 id="Contents">Contents</h2>
-            </summary>
-				<ul id="index">
-				</ul>
-			</details>
-			  <h2>Introduction</h2>
-<p>The following colour schemes are taken from the document, <a href="https://www.nceas.ucsb.edu/sites/default/files/2022-06/Colorblind%20Safe%20Color%20Schemes.pdf">"Colorblind Safe Color Schemes", produced by Alexandra Phillips at the NCEAS Science Communication Resource Corner, with the exception of the HarryHelsing Palette which was posted in on Reddit: <a href="https://www.reddit.com/r/ColorBlind/comments/1eo1aaq/thoughts_on_this_five_colour_palette_for_a_video/">thoughts on this five colour palette for a video game?</a>. I created a <a href="https://matthewdeeprose.github.io/cvdp.json">JSON dataset</a> for these colour schemes, which is used to generate the tables below.</p><p>Colour vision deficiency simulation is provided using the <a href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a> by Nicolas Burrus.</p>
-			   
-			   
-			   
-			   
-			   
-			   
-			   
-			   <div id="insertHere">
-			   </div>
-			   
-			   
-			   
-			   
-			   
-			   
-			   
+               <h1 id="top">SVG Palette Adjuster for Colour Vision Deficiency</h1>
+			       <div class="container">
+		<div class="svgCVDcontrols">
+        <input type="file" id="fileInput" accept=".svg" aria-label="Upload SVG file">
+        <button id="uploadBtn" class="SVGCVDButton">Upload SVG</button>
+        <button id="resetBtn" class="SVGCVDButton" disabled>Reset Colors</button>
+        <button id="saveBtn" class="SVGCVDButton" disabled>Save SVG</button>
+		</div>
+
+        <div class="svg-container">
+            <div class="svg-wrapper">
+                <h2 class="CVDTool">Original (Trichromacy)</h2>
+                <div id="container1" class="trichromacy svg-content-wrapper"></div>
+            </div>
+            <div class="svg-wrapper">
+                <h2 class="CVDTool">Protanopia</h2>
+                <div id="container2" class="protanopia svg-content-wrapper"></div>
+            </div>
+            <div class="svg-wrapper">
+                <h2 class="CVDTool">Deuteranopia</h2>
+                <div id="container3" class="deuteranopia svg-content-wrapper"></div>
+            </div>
+            <div class="svg-wrapper">
+                <h2 class="CVDTool">Tritanopia</h2>
+                <div id="container4" class="tritanopia svg-content-wrapper"></div>
+            </div>
+        </div>
+		
+		
+		<div id="workingContainer">
+		
+        <div id="colorInfo"></div>
+        <div id="paletteSelection">
+            <label for="paletteSelect">Select a color blind friendly palette:</label>
+            <select id="paletteSelect"></select>
+            <div id="paletteMessage"></div>
+        </div>
+        <div id="colorSwapInterface"></div>
+		</div>
+    </div>
             </article>
 			      <div id="panel">
          <button class="panelButton" onclick="topFunction()" id="myBtn">
@@ -196,7 +310,6 @@
          </button>
       </div>
          </main>
-
          <footer class="page-footer">
             <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
             <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
@@ -214,8 +327,19 @@
             </div>
          </p></footer>
       </div>
-	  <svg style='height: 0; width: 0; padding: 0; margin: 0; line-height: 0;'>
-  <!-- from https://daltonlens.org/cvd-simulation-svg-filters/ and https://github.com/DaltonLens/libDaltonLens/tree/master/svg -->
+	     <!-------------------------------------------------------------------
+    DaltonLens SVG filters to simulate color vision deficiencies 
+    
+    https://daltonlens.org/opensource-cvd-simulation/ for a
+    discussion of the various methods.     
+
+    The various matrices were generated from DaltonLens-Python.
+
+    It is very important for these filters to get applied in     
+    linearRGB, which is supposed to be the default, but never
+    hurts to specify it explicitly.
+-------------------------------------------------------------------->
+<svg style='height: 0; width: 0; padding: 0; margin: 0; line-height: 0;'>
     <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
     <filter id="protanopia" color-interpolation-filters="linearRGB">
         <feColorMatrix type="matrix" in="SourceGraphic" values="
@@ -285,6 +409,255 @@
         <feBlend in="ProjectionOnPlane1" in2="ProjectionOnPlane2" mode="normal"/>
     </filter>
 </svg>
+<!------------------------------------------------------------------>
+	  <script src="scripts/svg.min.js"></script>
+	      <script>
+        // Global variables
+        let originalSvg;
+        let svgColors = [];
+        let selectedPalette = [];
+
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const colorInfo = document.getElementById('colorInfo');
+        const paletteSelect = document.getElementById('paletteSelect');
+        const colorSwapInterface = document.getElementById('colorSwapInterface');
+
+        // Event Listeners
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileUpload);
+        resetBtn.addEventListener('click', resetColors);
+        saveBtn.addEventListener('click', saveSvg);
+        paletteSelect.addEventListener('change', handlePaletteSelection);
+
+        // File upload handler
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'image/svg+xml') {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    originalSvg = e.target.result;
+                    displaySvg(originalSvg);
+                    identifyColors();
+                    loadPalettes();
+                    resetBtn.disabled = false;
+                    saveBtn.disabled = false;
+                };
+                reader.readAsText(file);
+            } else {
+                alert('Please upload a valid SVG file.');
+            }
+        }
+
+        // Display SVG in all containers
+        function displaySvg(svgContent) {
+            const containers = ['container1', 'container2', 'container3', 'container4'];
+            containers.forEach(id => {
+                const container = document.getElementById(id);
+                container.innerHTML = svgContent;
+                const svg = container.querySelector('svg');
+				
+                if (svg) {
+                    // Remove any existing width and height attributes
+                    svg.removeAttribute('width');
+                    svg.removeAttribute('height');
+
+                    // Add class for styling
+                    svg.classList.add('svg-content');
+
+                    // Ensure viewBox is set
+                    if (!svg.getAttribute('viewBox')) {
+                        const bbox = svg.getBBox();
+                        svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+                    }
+
+                    // Set preserveAspectRatio to see the whole SVG
+                    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                } 
+            });
+        }
+		
+
+        // Identify unique colors in the SVG
+        function identifyColors() {
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(originalSvg, 'image/svg+xml');
+            const elements = svgDoc.querySelectorAll('*');
+            const uniqueColors = new Set();
+
+            elements.forEach(el => {
+                const fill = el.getAttribute('fill');
+                const stroke = el.getAttribute('stroke');
+                if (fill && fill !== 'none') uniqueColors.add(fill);
+                if (stroke && stroke !== 'none') uniqueColors.add(stroke);
+            });
+
+            svgColors = Array.from(uniqueColors);
+            displayColorInfo();
+        }
+
+        // Display color information
+function displayColorInfo() {
+        const colorCount = svgColors.length;
+    colorInfo.innerHTML = `
+        <h2>Colours used in SVG:</h2>
+        <p>Number of colours: ${colorCount}</p>
+    `;
+    const ul = document.createElement('ul');
+    ul.className = 'color-list';
+    
+    svgColors.forEach(color => {
+        const li = document.createElement('li');
+        li.className = 'color-item';
+        li.innerHTML = `
+            <div class="color-swatch" style="background-color: ${color};"></div>
+            <span>${color}</span>
+        `;
+        ul.appendChild(li);
+    });
+    
+    colorInfo.appendChild(ul);
+}
+
+        // Load color palettes from https://matthewdeeprose.github.io/cvdp.json
+        function loadPalettes() {
+            fetch('https://matthewdeeprose.github.io/cvdp.json')
+                .then(response => response.json())
+                .then(data => {
+                    const palettes = data.palettes;
+                    paletteSelect.innerHTML = '<option value="">Select a palette</option>';
+                    
+                    let largestPalette = null;
+                    let largestPaletteSize = 0;
+
+                    for (const [name, colors] of Object.entries(palettes)) {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = `${name} (${colors.length} colors)`;
+                        paletteSelect.appendChild(option);
+
+                        if (colors.length > largestPaletteSize) {
+                            largestPalette = name;
+                            largestPaletteSize = colors.length;
+                        }
+                    }
+
+                    if (svgColors.length > largestPaletteSize) {
+                        paletteSelect.value = largestPalette;
+                        displayPaletteMessage(svgColors.length, largestPaletteSize);
+                    }
+
+                    // Trigger palette selection to update the interface
+                    handlePaletteSelection();
+                })
+                .catch(error => console.error('Error loading palettes:', error));
+        }
+
+        function displayPaletteMessage(svgColorCount, paletteColorCount) {
+            const messageDiv = document.getElementById('paletteMessage');
+            messageDiv.textContent = `Your SVG contains ${svgColorCount} colors, which exceeds the ${paletteColorCount} colors available in the largest palette. Some colors may not be replaced.`;
+        }
+
+        // Handle palette selection
+        function handlePaletteSelection() {
+            const selectedPaletteName = paletteSelect.value;
+            if (selectedPaletteName) {
+                fetch('https://matthewdeeprose.github.io/cvdp.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        selectedPalette = data.palettes[selectedPaletteName];
+                        displayColorSwapInterface();
+                        
+                        // Clear the message if a palette is manually selected
+                        if (svgColors.length <= selectedPalette.length) {
+                            document.getElementById('paletteMessage').textContent = '';
+                        }
+                    })
+                    .catch(error => console.error('Error loading selected palette:', error));
+            } else {
+                colorSwapInterface.innerHTML = '';
+                document.getElementById('paletteMessage').textContent = '';
+            }
+        }
+
+ // Store the current state of color swaps
+let currentColorSwaps = {};
+
+// Display color swap interface
+function displayColorSwapInterface() {
+    colorSwapInterface.innerHTML = '<h3>Swap Colors:</h3>';
+    svgColors.forEach((originalColor, index) => {
+        const swapDiv = document.createElement('div');
+        swapDiv.className = 'color-item';
+        swapDiv.innerHTML = `
+            <div class="color-swatch" style="background-color: ${originalColor};"></div>
+            <span>${originalColor}</span>
+            <select aria-label="Select new color for ${originalColor}">
+                <option value="">Keep original</option>
+                ${selectedPalette.map(newColor => `<option value="${newColor}">${newColor}</option>`).join('')}
+            </select>
+        `;
+        const select = swapDiv.querySelector('select');
+        select.value = currentColorSwaps[originalColor] || '';
+        select.addEventListener('change', () => updateSvgColors(originalColor, select.value));
+        colorSwapInterface.appendChild(swapDiv);
+    });
+}
+
+// Update SVG colors
+function updateSvgColors(originalColor, newColor) {
+    if (newColor) {
+        currentColorSwaps[originalColor] = newColor;
+    } else {
+        delete currentColorSwaps[originalColor];
+    }
+    
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(originalSvg, 'image/svg+xml');
+    const elements = svgDoc.querySelectorAll('*');
+    
+    elements.forEach(el => {
+        const fillColor = el.getAttribute('fill');
+        const strokeColor = el.getAttribute('stroke');
+        
+        if (fillColor && currentColorSwaps[fillColor]) {
+            el.setAttribute('fill', currentColorSwaps[fillColor]);
+        }
+        if (strokeColor && currentColorSwaps[strokeColor]) {
+            el.setAttribute('stroke', currentColorSwaps[strokeColor]);
+        }
+    });
+    
+    const serializer = new XMLSerializer();
+    const updatedSvg = serializer.serializeToString(svgDoc);
+    displaySvg(updatedSvg);
+}
+
+        // Reset colors to original
+        function resetColors() {
+            displaySvg(originalSvg);
+            paletteSelect.value = '';
+            colorSwapInterface.innerHTML = '';
+            document.getElementById('paletteMessage').textContent = '';
+        }
+
+        // Save updated SVG
+        function saveSvg() {
+            const svgContent = document.getElementById('container1').innerHTML;
+            const blob = new Blob([svgContent], {type: 'image/svg+xml'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'updated_svg.svg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
 
       <script>
          function menuAction() {
@@ -429,181 +802,7 @@
          }
          applyThemePreference();                
       </script>
-	    <script src="scripts/jquery-3.7.1.min.js"></script>
-    <script src="scripts/details.js"></script>
-    <script>
-      window.console || (window.console = {
-        'log': alert
-      });
-      $(function() {
-        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
-        $('details').details();
-        $('details').on({
-          'open.details': function() {
-            console.log('opened')
-          },
-          'close.details': function() {
-            console.log('closed')
-          }
-        })
-      });
-    </script>
-	    <script>
-      // Expand details / summary when printing
-      // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
-      window.matchMedia("print").addEventListener("change", evt => {
-        if (evt.matches) {
-          elms = document.body.querySelectorAll("details:not([open])");
-          for (e of elms) {
-            e.setAttribute("open", "");
-            e.dataset.wasclosed = "";
-          }
-        } else {
-          elms = document.body.querySelectorAll("details[data-wasclosed]");
-          for (e of elms) {
-            e.removeAttribute("open");
-            delete e.dataset.wasclosed;
-          }
-        }
-      })
-    </script>
-<script>
-document.addEventListener('DOMContentLoaded', async function() {    
-    await createTables();
-    appendTestToCells();
-    indexCreate();
-});
-
-async function createTables() {
-    try {
-        const response = await fetch('https://matthewdeeprose.github.io/cvdp.json');
-        const data = await response.json();
-        const palettes = data.palettes;
-        const container = document.getElementById('insertHere');
-
-        for (const paletteName in palettes) {
-            if (palettes.hasOwnProperty(paletteName)) {
-                const colors = palettes[paletteName];
-
-                // Create section
-                const section = document.createElement('section');
-                section.id = paletteName.replace(/\s+/g, '') + 'Section';
-
-                // Create h2
-                const h2 = document.createElement('h2');
-                h2.textContent = paletteName;
-                section.appendChild(h2);
-
-                // Create table
-                const table = document.createElement('table');
-                table.id = paletteName.replace(/\s+/g, '') + 'Table';
-                table.classList.add("paletteTable");
-
-                // Create caption
-                const caption = document.createElement('caption');
-                caption.className = 'hidden';
-                caption.textContent = paletteName;
-                table.appendChild(caption);
-
-                // Create thead
-                const thead = document.createElement('thead');
-                thead.setAttribute('role', 'rowgroup');
-                const headerRow = document.createElement('tr');
-                headerRow.setAttribute('role', 'row');
-
-                const headers = ['Colour', 'Trichromacy', 'Protanopia', 'Deuteranopia', 'Tritanopia'];
-                headers.forEach(headerText => {
-                    const th = document.createElement('th');
-                    th.setAttribute('scope', 'col');
-                    th.setAttribute('role', 'columnheader');
-                    th.textContent = headerText;
-					th.classList.add("paletteColumnHeader");
-                    headerRow.appendChild(th);
-                });
-
-                thead.appendChild(headerRow);
-                table.appendChild(thead);
-
-                // Create tbody
-                const tbody = document.createElement('tbody');
-                tbody.setAttribute('role', 'rowgroup');
-
-                colors.forEach(color => {
-                    const row = document.createElement('tr');
-                    row.setAttribute('role', 'row');
-
-                    // Create row header
-                    const rowHeader = document.createElement('th');
-                    rowHeader.setAttribute('scope', 'row');
-                    rowHeader.setAttribute('data-label', 'colour');
-                    rowHeader.setAttribute('role', 'rowheader');
-                    rowHeader.textContent = color;
-                    row.appendChild(rowHeader);
-
-                    // Create data cells
-                    ['Trichromacy', 'protanopia', 'deuteranopia', 'tritanopia'].forEach(label => {
-                        const cell = document.createElement('td');
-                        cell.className = label;
-                        cell.setAttribute('data-label', label);
-                        cell.setAttribute('role', 'cell');
-                        cell.style.backgroundColor = color;
-						cell.style.color = color;
-						cell.classList.add("paletteExampleCell");
-                        row.appendChild(cell);
-                    });
-
-                    tbody.appendChild(row);
-                });
-
-                table.appendChild(tbody);
-                section.appendChild(table);
-                container.appendChild(section);
-            }
-        }
-        console.log('Tables created');
-    } catch (error) {
-        console.error('Error fetching the JSON data:', error);
-    }
-}
-
-function appendTestToCells() {
-    // Get all <td> elements in the document
-    const cells = document.querySelectorAll('td');
-
-    // Loop through each <td> element
-    cells.forEach(cell => {
-        // Append the word "Example" to the cell's content
-        cell.textContent += 'Example';
-    });
-    console.log('Text appended to cells');
-}
-
-function indexCreate() {
-    // Step 1: Add IDs to all heading elements without IDs
-    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
-    headings.forEach(heading => {
-        if (!heading.id) {
-            heading.id = heading.textContent.replace(/\s+/g, '');
-        }
-    });
-
-    // Step 2: Create list items for each H2 in the ul with ID 'index'
-    const contentsList = document.getElementById("index");
-    if (contentsList) {
-        const h2Elements = document.querySelectorAll("h2");
-        h2Elements.forEach(h2 => {
-            if (h2.textContent !== "Contents") {
-                const listItem = document.createElement("li");
-                const link = document.createElement("a");
-                link.href = `#${h2.id}`;
-                link.textContent = h2.textContent;
-                listItem.appendChild(link);
-                contentsList.appendChild(listItem);
-            }
-        });
-        console.log('Index created');
-    }
-}
-</script>
+	  <script src="scripts/lite-yt-embed.js"></script>
+	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
    </body>
 </html>
