@@ -1,5 +1,8 @@
 /*Light mode */
 
+/* select */
+
+
 @media screen and (max-width: 33rem) {
   .paletteTable  tr {
     border-bottom: 3px solid #00131D !important;

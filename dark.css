@@ -1,5 +1,30 @@
 /* Dark mode */
 
+	select {         color: #E1E8EC;
+        background: #231F20;
+        border: 0.2rem solid #E1E8EC !important;
+		font-family: monospace;
+		    vertical-align: middle;
+
+    font-size: 1.2rem;
+
+    margin: 0.5rem 0.3rem 0.5rem 0rem;
+			
+    }
+	
+	select:focus, select:hover {
+		
+
+	background-color: #E1E8EC;
+	color: #00131D;
+	box-shadow: 0 0 0 0.3rem #C1D100 !important;
+	outline: 0.0rem solid #161415 !important;
+	border: 0.2rem solid #231F20 !important;
+
+
+
+	}
+
 /* Palette tables */
 @media screen and (max-width: 33rem) {
   .paletteTable  tr {
