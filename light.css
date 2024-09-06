@@ -1,4 +1,12 @@
 /*Light mode */
+
+#paletteMessage {
+	border: 2px solid #00131D;
+}
+.svg-wrapper {
+    border: 2px solid #00131D;
+}
+
 select {
 	color: #FFFFF4;
     border: 0.2rem solid #00131D;

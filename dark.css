@@ -1,13 +1,14 @@
 /* Dark mode */
-
+#paletteMessage {
+	border: 2px solid #E1E8EC;
+}
+.svg-wrapper {
+    border: 2px solid #E1E8EC;
+}
 select {
 	color: #E1E8EC;
 	background: #231F20;
 	border: 0.2rem solid #E1E8EC !important;
-	font-family: monospace;
-	vertical-align: middle;
-	font-size: 1.2rem;
-	margin: 0.5rem 0.3rem 0.5rem 0rem;
 }
 
 select:focus,
