@@ -1,4 +1,18 @@
 /*Light mode */
+select {
+	color: #FFFFF4;
+    border: 0.2rem solid #00131D;
+	background-color: #00131D;	
+}
+
+select:focus,
+select:hover {
+	background-color: #FFFFF4;
+	color: #00131D;
+	box-shadow: 0 0 0 0.4rem #005C84;
+	outline: 0.2rem solid #FFFFF4 !important;
+	border: 0.2rem solid #00131D;
+}
 
 /* select */
 
