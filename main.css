@@ -1,3 +1,14 @@
+/* Select */
+select#paletteSelect {font-size: 1.2rem;}
+
+select {
+	font-family: monospace, monospace;
+	vertical-align: middle;
+	font-size: 1.2rem;
+	margin: 0.5rem 0.3rem 0.5rem 0rem;
+}
+
+
 /* Palette tables */
 
 .paletteExampleCell {border: 1px #00131D solid;}

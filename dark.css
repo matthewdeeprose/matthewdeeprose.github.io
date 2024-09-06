@@ -1,145 +1,146 @@
 /* Dark mode */
 
-	select {         color: #E1E8EC;
-        background: #231F20;
-        border: 0.2rem solid #E1E8EC !important;
-		font-family: monospace;
-		    vertical-align: middle;
+select {
+	color: #E1E8EC;
+	background: #231F20;
+	border: 0.2rem solid #E1E8EC !important;
+	font-family: monospace;
+	vertical-align: middle;
+	font-size: 1.2rem;
+	margin: 0.5rem 0.3rem 0.5rem 0rem;
+}
 
-    font-size: 1.2rem;
-
-    margin: 0.5rem 0.3rem 0.5rem 0rem;
-			
-    }
-	
-	select:focus, select:hover {
-		
-
+select:focus,
+select:hover {
 	background-color: #E1E8EC;
 	color: #00131D;
 	box-shadow: 0 0 0 0.3rem #C1D100 !important;
 	outline: 0.0rem solid #161415 !important;
 	border: 0.2rem solid #231F20 !important;
-
-
-
-	}
+}
 
 /* Palette tables */
 @media screen and (max-width: 33rem) {
-  .paletteTable  tr {
-    border-bottom: 3px solid #E1E8EC;
-  }
+	.paletteTable tr {
+		border-bottom: 3px solid #E1E8EC;
+	}
 
-  .paletteTable  td {
-    border-bottom: 1px solid #E1E8EC;
-  }
+	.paletteTable td {
+		border-bottom: 1px solid #E1E8EC;
+	}
 }
 
 
 /* Palette tables ends */
 
 body {
-  accent-color: #FCBC00; 
+	accent-color: #FCBC00;
 }
 
 article.standard h1,
 article.standard h2,
 article.standard h3,
 article.standard h4,
-article.standard h5, article.standard h6, *[aria-level="7"], *[aria-level="8"] {
-  color: #9FB1BD;
+article.standard h5,
+article.standard h6,
+*[aria-level="7"],
+*[aria-level="8"] {
+	color: #9FB1BD;
 }
 
 /* Prompt */
 blockquote.prompt {
-  background-color: #00131D;
+	background-color: #00131D;
 }
 
 blockquote.prompt p,
 blockquote.prompt ol,
 blockquote.prompt li {
-	color:#fffff4;
+	color: #fffff4;
 }
+
 blockquote.prompt:before {
-              content: url('copilot-images/copilot-robot-head-dark.svg') !important;
+	content: url('copilot-images/copilot-robot-head-dark.svg') !important;
 }
 
 /* Tables starts here */
- 	table {
-		border: 1px solid #9FB1BD;
+table {
+	border: 1px solid #9FB1BD;
+}
+
+thead th {
+	background-color: #9FB1BD;
+	color: #00131D;
+}
+
+.allyTable tr:nth-child(even) {
+	background-color: #00131D;
+}
+
+.allyTable tr:hover {
+	background-color: #002E3B;
+}
+
+.allyTable thead tr:hover {
+	background-color: #9FB1BD;
+}
+
+table tr {
+	border: 1px solid #E1E8EC;
+	padding: .35em;
+}
+
+
+@media screen and (max-width: 1024px) {
+	.allyTable table tr {
+		border-bottom: 3px solid #E1E8EC;
 	}
 
-	thead th {
-		background-color: #9FB1BD;
-		color: #00131D;
+	.allyTable table td {
+		border-bottom: 1px solid #E1E8EC;
 	}
 
-	.allyTable tr:nth-child(even) {
-		background-color: #00131D;
-	}
-
-	.allyTable tr:hover {
-		background-color: #002E3B;
-	}
-
-	.allyTable thead tr:hover {
-		background-color: #9FB1BD;
-	}
-	table tr {
-		border: 1px solid #E1E8EC;
-		padding: .35em;
-	}
-
-
-	@media screen and (max-width: 1024px) {
-		.allyTable table tr {
-			border-bottom: 3px solid #E1E8EC;
-		}
-
-		.allyTable table td {
-			border-bottom: 1px solid #E1E8EC;
-		}
-
-	}
-
-
+}
 
 
 /* Tables ends here */
 
 
 figure.borders {
-	background-color:#9FB1BD !important;
-		max-height:41rem !important;
-}
-figcaption.borders {
-	color:#00131D;
+	background-color: #9FB1BD !important;
+	max-height: 41rem !important;
 }
 
+figcaption.borders {
+	color: #00131D;
+}
 
 
 /* Web ring */
 .a11y-webring-club {
-	border: 0.1rem #e1e8ec solid;}
-	
-.infoGTitle {color: #e1e8ec !important;}
+	border: 0.1rem #e1e8ec solid;
+}
 
-	button:disabled,
-	button[disabled] {
-		pointer-events: none;
-		color: #758D9A !important;
-		border: 0px !important;
-		background-color: none;
-		background-image: none;
-		background-repeat: repeat;
-		z-index:1;
-	}
+.infoGTitle {
+	color: #e1e8ec !important;
+}
+
+button:disabled,
+button[disabled] {
+	pointer-events: none;
+	color: #758D9A !important;
+	border: 0px !important;
+	background-color: none;
+	background-image: none;
+	background-repeat: repeat;
+	z-index: 1;
+}
 
 lite-youtube {
-    border: 0.3rem solid #E1E8EC !important;
+	border: 0.3rem solid #E1E8EC !important;
 }
-lite-youtube > .lty-playbtn {
+
+lite-youtube>.lty-playbtn {
 	border: none !important;
 }
 
@@ -152,7 +153,6 @@ lite-youtube > .lty-playbtn {
 }
 
 
-
 .colorBox {
 	border: #E1E8EC 2px solid;
 }
@@ -161,6 +161,7 @@ lite-youtube > .lty-playbtn {
 #logoSVG {
 	color: #FCBC00
 }
+
 #logoSVG-Off {
 	display: none;
 }
@@ -171,8 +172,8 @@ lite-youtube > .lty-playbtn {
 }
 
 .soundDescription {
-		font-weight: bold;
-		color: #B3DBD2;
+	font-weight: bold;
+	color: #B3DBD2;
 }
 
 
@@ -214,7 +215,6 @@ dd.from {
 #Example {
 	border: 0.2rem solid #E1E8EC !important;
 }
-
 
 
 .presentations {
@@ -275,8 +275,9 @@ a:hover {
 	color: #74C9E5;
 }
 
-figcaption a:hover, figcaption a:active {
-    color: #00131d !important;
+figcaption a:hover,
+figcaption a:active {
+	color: #00131d !important;
 }
 
 #myBtn:hover,
@@ -329,7 +330,6 @@ summary:hover {
 }
 
 
-
 details:hover {
 	outline: 0.2rem solid #C1D100;
 }
@@ -341,6 +341,7 @@ summary:focus {
 	outline-offset: .5rem !important;
 	border: 0.2rem solid #00131D;
 }
+
 summary:focus:not(:focus-visible) {
 	background-color: #231f20;
 	color: #E1E8EC;
@@ -422,6 +423,7 @@ body {
 	border: 0.2rem solid #E1E8EC !important;
 	margin: 0.2rem;
 }
+
 button#menu.icon,
 button#menu.icon:active,
 button#menu.icon:hover,
@@ -444,6 +446,7 @@ button#menu.icon:hover {
 	outline: 0.2rem solid #C1D100 !important;
 	box-shadow: 0 0 0 1.5rem #231F20 !important;
 }
+
 button#menu.icon:focus {
 	background-color: #E1E8EC;
 	color: #231F20;
@@ -526,35 +529,36 @@ input:focus {
 
 
 /*position new box*/
-.wrapper input + label::before {
+.wrapper input+label::before {
 	background: #E1E8EC;
 }
 
 
 /*focus styles*/
-.wrapper input:focus + label::before {
+.wrapper input:focus+label::before {
 	box-shadow: 0 0 0 3px #C1D100;
 }
 
 
 /*focus styles*/
-.wrapper2 input:focus + label::before {
+.wrapper2 input:focus+label::before {
 	box-shadow: 0 0 0 3px #C1D100;
 }
 
 
- Remove focus from mouse, replace with box shadow 
-a:focus:not(:focus-visible), main a:focus:not(:focus-visible),
+Remove focus from mouse,
+replace with box shadow a:focus:not(:focus-visible),
+main a:focus:not(:focus-visible),
 aside a:focus:not(:focus-visible),
 footer a:focus:not(:focus-visible) {
 	outline: 2px transparent solid !important;
 	border: 0px solid #ffffff !important;
 	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12) !important;
 }
+
 figcaption a:focus:not(:focus-visible) {
-		outline: 2px transparent solid !important;
+	outline: 2px transparent solid !important;
 	border: 0px solid #ffffff !important;
 	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12) !important;
 	color: #002e3b !important;
 }
-
