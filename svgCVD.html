@@ -42,6 +42,10 @@
 	}
 }
 
+div#paletteSelection  {display: none;}
+
+div#paletteMessage {display: none;}
+
 .page-wrap>* {
 	grid-column: 1/-1 !important;
 	grid-row: auto !important;
@@ -623,6 +627,7 @@ function displayColorInfo() {
     });
     
     colorInfo.appendChild(ul);
+	$('div#paletteSelection').show();
 }
 
 // Load color palettes from https://matthewdeeprose.github.io/cvdp.json
@@ -660,6 +665,7 @@ function loadPalettes() {
 }
 
 function displayPaletteMessage(svgColorCount, paletteColorCount) {
+	$('div#paletteMessage').show();
     const messageDiv = document.getElementById('paletteMessage');
     messageDiv.textContent = `Your SVG contains ${svgColorCount} colours, which exceeds the ${paletteColorCount} colours available in the largest palette. Some colours may not be replaced.`;
 }
