@@ -1,7 +1,16 @@
 /* Dark mode */
-#paletteMessage {
-	border: 2px solid #E1E8EC;
+#myMessage {
+	border: 2px dashed #E1E8EC;
 }
+@media only screen and (min-width: 800px) {
+#myMessageIcon {
+              content: url('icons/alert-dark.svg');	
+	float:left;
+	padding: 5px 15px 15px 15px;
+}
+
+}
+
 .svg-wrapper {
     border: 2px solid #E1E8EC;
 }

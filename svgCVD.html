@@ -42,9 +42,12 @@
 	}
 }
 
+
+
+
 div#paletteSelection  {display: none;}
 
-div#paletteMessage {display: none;}
+div#myMessage {display: none;}
 
 .page-wrap>* {
 	grid-column: 1/-1 !important;
@@ -152,7 +155,7 @@ select {
 	outline: 1px solid #FFFFFF;
 }
 
-#paletteMessage {
+#myMessage {
 	margin-top: 10px;
 	padding: 10px;
 	border-radius: 5px;
@@ -378,13 +381,16 @@ select {
 		
 		
 		<div id="workingContainer">
-		
+		            <div id="myMessage"><div id="myMessageIcon"></div><span id="pageMessage" aria-live="polite"></span>
+			<button onclick="clearMessage();" class="clearMessageButton">Clear message</button>
+			
+			</div>
+        </div>
         <div id="colorInfo"></div>
         <div id="paletteSelection">
             <label for="paletteSelect">Select a colour blind friendly palette:</label>
             <select id="paletteSelect"></select>
-            <div id="paletteMessage" aria-live="polite"></div>
-        </div>
+
         <div id="colorSwapInterface"></div>
 		</div>
     </div>
@@ -521,10 +527,10 @@ select {
 	  <script src="scripts/svg.min.js"></script>
 	      <script>
 // Global variables
-let originalSvg;
-let svgColors = [];
-let selectedPalette = [];
-let currentColorSwaps = {};
+let originalSvg;         // Stores the original SVG content
+let svgColors = [];      // Array to store unique colors found in the SVG
+let selectedPalette = []; // Array to store the selected color palette
+let currentColorSwaps = {}; // Object to store current color swap selections
 
 // DOM Elements
 const fileInput = document.getElementById('fileInput');
@@ -542,7 +548,16 @@ resetBtn.addEventListener('click', resetColors);
 saveBtn.addEventListener('click', saveSvg);
 paletteSelect.addEventListener('change', handlePaletteSelection);
 
-// File upload handler
+// Clear message function
+function clearMessage() {
+	document.getElementById('pageMessage').textContent = '';
+	document.getElementById('myMessage').style.display = 'none';
+}
+
+/**
+ * Handles the file upload process when a user selects an SVG file.
+ * @param {Event} event - The file input change event.
+ */
 function handleFileUpload(event) {
     const file = event.target.files[0];
     if (file && file.type === 'image/svg+xml') {
@@ -561,7 +576,10 @@ function handleFileUpload(event) {
     }
 }
 
-// Display SVG in all containers
+/**
+ * Displays the SVG content in all designated containers.
+ * @param {string} svgContent - The SVG content to display.
+ */
 function displaySvg(svgContent) {
     const containers = ['container1', 'container2', 'container3', 'container4'];
     containers.forEach(id => {
@@ -589,7 +607,9 @@ function displaySvg(svgContent) {
     });
 }
 
-// Identify unique colors in the SVG
+/**
+ * Identifies unique colors in the SVG and stores them in the svgColors array.
+ */
 function identifyColors() {
     const parser = new DOMParser();
     const svgDoc = parser.parseFromString(originalSvg, 'image/svg+xml');
@@ -607,7 +627,9 @@ function identifyColors() {
     displayColorInfo();
 }
 
-// Display color information
+/**
+ * Displays color information and creates a list of unique colors found in the SVG.
+ */
 function displayColorInfo() {
     const colorCount = svgColors.length;
     colorInfo.innerHTML = `
@@ -627,10 +649,12 @@ function displayColorInfo() {
     });
     
     colorInfo.appendChild(ul);
-	$('div#paletteSelection').show();
+    document.querySelector('div#paletteSelection').style.display = 'block';
 }
 
-// Load color palettes from https://matthewdeeprose.github.io/cvdp.json
+/**
+ * Loads color palettes from an external JSON file and populates the palette select dropdown.
+ */
 function loadPalettes() {
     fetch('https://matthewdeeprose.github.io/cvdp.json')
         .then(response => response.json())
@@ -664,13 +688,19 @@ function loadPalettes() {
         .catch(error => console.error('Error loading palettes:', error));
 }
 
+/**
+ * Displays a message when the SVG has more colors than the largest available palette.
+ */
+
+
 function displayPaletteMessage(svgColorCount, paletteColorCount) {
-	$('div#paletteMessage').show();
-    const messageDiv = document.getElementById('paletteMessage');
-    messageDiv.textContent = `Your SVG contains ${svgColorCount} colours, which exceeds the ${paletteColorCount} colours available in the largest palette. Some colours may not be replaced.`;
+    const message = `Your SVG file contains ${svgColorCount} colours, which exceeds the ${paletteColorCount} colours available in the largest palette. Some colours may not be replaced.`;
+    displayNotification(message, 'error');
 }
 
-// Handle palette selection
+/**
+ * Handles the selection of a colour palette and updates the color swap interface.
+ */
 function handlePaletteSelection() {
     const selectedPaletteName = paletteSelect.value;
     if (selectedPaletteName) {
@@ -682,22 +712,25 @@ function handlePaletteSelection() {
                 
                 // Clear the message if a palette is manually selected
                 if (svgColors.length <= selectedPalette.length) {
-                    document.getElementById('paletteMessage').textContent = '';
+                    document.getElementById('pageMessage').textContent = '';
                 }
             })
             .catch(error => console.error('Error loading selected palette:', error));
     } else {
         colorSwapInterface.innerHTML = '';
-        document.getElementById('paletteMessage').textContent = '';
+        document.getElementById('pageMessage').textContent = '';
     }
 }
 
 // Define closeAllDropdowns outside of displayColorSwapInterface
 let closeAllDropdowns;
 
+/**
+ * Displays the color swap interface with custom dropdown selects for each color.
+ */
 function displayColorSwapInterface() {
-$('.color-list').hide();
-    colorSwapInterface.innerHTML = '<h2 class="svgToolH2">Swap Colors:</h3>';
+    document.querySelector('.color-list').style.display = 'none';
+    colorSwapInterface.innerHTML = '<h2 class="svgToolH2">Swap Colors:</h2>';
     const customSelects = [];
 
     // Define closeAllDropdowns here so it has access to customSelects
@@ -716,7 +749,7 @@ $('.color-list').hide();
             <span class="color-item-span">${originalColor}</span>
             <div class="custom-select">
                 <button class="select-button" aria-haspopup="listbox" aria-labelledby="color-label-${index}">
-                    <span id="color-label-${index}" >Select new colour</span>
+                    <span id="color-label-${index}">Select new colour</span>
                     <span class="selected-color"></span>
                 </button>
                 <ul class="options" role="listbox" tabindex="-1">
@@ -817,7 +850,11 @@ $('.color-list').hide();
     document.addEventListener('click', closeAllDropdowns);
 }
 
-// Update SVG colors
+/**
+ * Updates the SVG colors based on user selections.
+ * @param {string} originalColor - The original color to be replaced.
+ * @param {string} newColor - The new color to replace the original color.
+ */
 function updateSvgColors(originalColor, newColor) {
     if (newColor) {
         currentColorSwaps[originalColor] = newColor;
@@ -846,12 +883,14 @@ function updateSvgColors(originalColor, newColor) {
     displaySvg(updatedSvg);
 }
 
-// Reset colors to original
+/**
+ * Resets the SVG to its original colors and clears all color swap selections.
+ */
 function resetColors() {
     displaySvg(originalSvg);
     paletteSelect.value = '';
     colorSwapInterface.innerHTML = '';
-    document.getElementById('paletteMessage').textContent = '';
+    document.getElementById('pageMessage').textContent = '';
     
     // Clear the currentColorSwaps object
     currentColorSwaps = {};
@@ -862,19 +901,96 @@ function resetColors() {
     }
 }
 
-// Save updated SVG
+/**
+ * Saves the updated SVG file with the applied color changes.
+ */
+/**
+ * Saves the updated SVG file with the applied color changes and a CSV file with color swap data.
+ * Includes error handling for various potential issues.
+ */
 function saveSvg() {
-    const svgContent = document.getElementById('container1').innerHTML;
-    const blob = new Blob([svgContent], {type: 'image/svg+xml'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'updated_svg.svg';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+        // Get the original filename from the file input
+        const originalFilename = fileInput.files[0] ? fileInput.files[0].name : 'unnamed_svg';
+        const baseFilename = originalFilename.replace(/\.[^/.]+$/, ""); // Remove file extension
+
+        // Sanitize the filename
+        const sanitizedFilename = sanitizeFilename(baseFilename);
+
+        // Save updated SVG
+        const svgContent = document.getElementById('container1').innerHTML;
+        if (!svgContent) {
+            throw new Error("No SVG content found to save.");
+        }
+
+        const svgBlob = new Blob([svgContent], {type: 'image/svg+xml'});
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const svgLink = document.createElement('a');
+        svgLink.href = svgUrl;
+        svgLink.download = `${sanitizedFilename}_updated.svg`;
+
+        // Prepare CSV content
+        let csvContent = 'Original Color,Updated Color\n';
+        if (Object.keys(currentColorSwaps).length === 0) {
+            throw new Error("No color swaps have been made.");
+        }
+        for (const [originalColor, newColor] of Object.entries(currentColorSwaps)) {
+            const originalHex = originalColor.toUpperCase();
+            const newHex = newColor.toUpperCase();
+            csvContent += `${originalHex},${newHex}\n`;
+        }
+
+        // Save CSV with descriptive filename
+        const csvBlob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+        const csvUrl = URL.createObjectURL(csvBlob);
+        const csvLink = document.createElement('a');
+        csvLink.href = csvUrl;
+        csvLink.download = `${sanitizedFilename}__colour_swap_data.csv`;
+
+        // Append links to body, trigger clicks, and clean up
+        document.body.appendChild(svgLink);
+        document.body.appendChild(csvLink);
+        
+        svgLink.click();
+        csvLink.click();
+        
+        document.body.removeChild(svgLink);
+        document.body.removeChild(csvLink);
+        
+        URL.revokeObjectURL(svgUrl);
+        URL.revokeObjectURL(csvUrl);
+
+        // Inform the user about the saved files
+        displayNotification(`The updated SVG (${svgLink.download}) and color swap data CSV (${csvLink.download}) have been saved. Please check your downloads.`, 'success');
+    } catch (error) {
+        console.error('Error saving files:', error);
+        displayNotification(`An error occurred while saving the files: ${error.message}`, 'error');
+    }
 }
+
+/**
+ * Sanitizes a filename by removing or replacing invalid characters.
+ * @param {string} filename - The filename to sanitize.
+ * @return {string} The sanitized filename.
+ */
+function sanitizeFilename(filename) {
+    // Remove or replace characters that are typically not allowed in filenames
+    return filename.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+}
+
+/**
+ * Displays a notification to the user.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification ('success' or 'error').
+ */
+function displayNotification(message, type) {
+	document.getElementById('myMessage').style.display = 'block';
+    const notification = document.getElementById('pageMessage');
+    notification.textContent = message;
+
+}
+
+
     </script>
 
       <script>

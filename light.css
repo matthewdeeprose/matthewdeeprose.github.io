@@ -1,7 +1,16 @@
 /*Light mode */
 
-#paletteMessage {
-	border: 2px solid #00131D;
+#myMessage {
+	border: 2px dashed #00131D;
+}
+
+@media only screen and (min-width: 800px) {
+#myMessageIcon {
+              content: url('icons/alert.svg');	
+	float:left;
+	padding: 5px 15px 15px 15px;
+}
+
 }
 .svg-wrapper {
     border: 2px solid #00131D;
