@@ -302,7 +302,7 @@ a:hover {
 
 /* Details and Summary styling */
 details {
-	outline: 0.2rem solid #495961;
+	outline: 0.2rem solid #00131d;
 }
 
 summary:hover {
@@ -333,7 +333,7 @@ summary:focus:not(:focus-visible) {
 }
 
 summary {
-	border: 0.2rem solid #495961;
+	border: 0.2rem solid #00131d;
 }
 
 button {
