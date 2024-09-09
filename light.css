@@ -333,7 +333,7 @@ summary:focus:not(:focus-visible) {
 }
 
 summary {
-	border: 0px solid #E1E8EC;
+	border: 0.2rem solid #495961;
 }
 
 button {
