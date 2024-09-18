@@ -1,48 +1,48 @@
 {
   "palettes": {
     "IBM Design Library Palette": [
-      "#5b8efd",
-      "#725def",
-      "#dd217d",
-      "#ff5f00",
-      "#ffb00d"
+      "#5B8EFD",
+      "#725DEF",
+      "#DD217D",
+      "#FF5F00",
+      "#FFB00D"
     ],
     "Harry Helsing Palette": [
-      "#15f1ff",
-      "#ffbc2d",
-      "#2d0097",
+      "#15F1FF",
+      "#FFBC2D",
+      "#2D0097",
       "#039534",
-      "#f8f8cd"
+      "#F8F8CD"
     ],
     "Paul Tol Bright Palette": [
-      "#bbbbbb",
-      "#4477aa",
+      "#BBBBBB",
+      "#4477AA",
       "#228833",
-      "#66ccee",
-      "#ccbb44",
-      "#ee6677",
-      "#aa3377"
+      "#66CCEE",
+      "#CCBB44",
+      "#EE6677",
+      "#AA3377"
     ],
     "Okabe and Ito": [
       "#000000",
-      "#009e73",
-      "#0072b2",
-      "#56b4e9",
-      "#f0e442",
-      "#e69f00",
-      "#d55e00",
-      "#cc79a7"
+      "#009E73",
+      "#0072B2",
+      "#56B4E9",
+      "#F0E442",
+      "#E69F00",
+      "#D55E00",
+      "#CC79A7"
     ],
     "Paul Tol Muted Palette": [
-      "#dddddd",
-      "#2e2585",
+      "#DDDDDD",
+      "#2E2585",
       "#337538",
-      "#5da899",
-      "#94cbec",
-      "#dccd7d",
-      "#c26a77",
-      "#9f4a96",
-      "#7e2954"
+      "#5DA899",
+      "#94CBEC",
+      "#DCCD7D",
+      "#C26A77",
+      "#9F4A96",
+      "#7E2954"
     ]
   }
 }
