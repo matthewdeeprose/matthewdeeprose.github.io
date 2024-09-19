@@ -1,48 +1,15 @@
 {
   "palettes": {
     "IBM Design Library Palette": [
-      "#5B8EFD",
-      "#725DEF",
-      "#DD217D",
-      "#FF5F00",
-      "#FFB00D"
-    ],
+      "#5B8EFD","#725DEF","#DD217D","#FF5F00", "#FFB00D"],
     "Harry Helsing Palette": [
-      "#15F1FF",
-      "#FFBC2D",
-      "#2D0097",
-      "#039534",
-      "#F8F8CD"
-    ],
+      "#15F1FF","#FFBC2D","#2D0097","#039534","#F8F8CD"],
     "Paul Tol Bright Palette": [
-      "#BBBBBB",
-      "#4477AA",
-      "#228833",
-      "#66CCEE",
-      "#CCBB44",
-      "#EE6677",
-      "#AA3377"
-    ],
+      "#BBBBBB","#4477AA","#228833","#66CCEE","#CCBB44","#EE6677","#AA3377"],
     "Okabe and Ito": [
-      "#000000",
-      "#009E73",
-      "#0072B2",
-      "#56B4E9",
-      "#F0E442",
-      "#E69F00",
-      "#D55E00",
-      "#CC79A7"
-    ],
+      "#000000","#009E73","#0072B2","#56B4E9","#F0E442","#E69F00","#D55E00",
+      "#CC79A7"],
     "Paul Tol Muted Palette": [
-      "#DDDDDD",
-      "#2E2585",
-      "#337538",
-      "#5DA899",
-      "#94CBEC",
-      "#DCCD7D",
-      "#C26A77",
-      "#9F4A96",
-      "#7E2954"
-    ]
+      "#DDDDDD","#2E2585","#337538","#5DA899","#94CBEC","#DCCD7D","#C26A77",     "#9F4A96","#7E2954"]
   }
 }
