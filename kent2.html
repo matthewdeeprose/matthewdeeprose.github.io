@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+   <head>
+      <meta charset="utf-8" />
+      <meta name="description" content="Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude">
+      <meta name="keywords" content="accessibility, presentation, blog, Copilot, Whisper, and Claude">
+      <meta name="author" content="Matthew Deeprose">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude</title>
+      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+      <meta property="og:title" content="Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude - Matthew Deeprose">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
+	  <meta property="og:image:width" content="2500" />
+	  <meta property="og:image:height" content="1306" />
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/kent2.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude - Matthew Deeprose" />
+      <meta name="twitter:description" content=""/>
+      <meta name="twitter:creator" content="@VLEguru"/>
+      <meta name="twitter:site" content="@VLEguru"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
+      <meta name="twitter:image:alt" content=""/>
+      <meta name="twitter:card" content="summary_large_image"/>
+	  <style>
+	        .page-wrap>* {
+        grid-column: 1/-1 !important;
+        grid-row: auto !important;
+      }
+	  </style>
+   </head>
+   <body>
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Change theme</title>
+                        <desc id="svgDesc">Select to switch to light theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4"/>
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                           <path d="m8.5 1.5v-1"/>
+                           <path d="m13.5 3.5 1-1"/>
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
+                           <path d="m1.5 7.5h-1"/>
+                           <path d="m16.5 7.5h-1"/>
+                        </g>
+                     </svg>
+                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                        <title id="svgTitleX">Change theme</title>
+                        <desc id="svgDescX">Select to switch to dark theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                           <path d="m2.5 13.5h4"/>
+                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                        </g>
+                     </svg>
+                  </button>
+               </div>
+               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+               <div id="titleLink">Matthew Deeprose</div>
+            </div>
+         </header>
+         <div id="main-navigation" class="page-nav">
+            <nav aria-label="Main menu" class="topnav" id="myTopnav">
+               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+                  <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span>
+                  <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+                           <path  d="m16.5,10.5l-13,0"/>
+                        </g>
+                     </svg>
+                  </span>
+               </button>
+               <a id="homeMenu" href="index.html">Home</a>
+               <a href="presentations.html" aria-current="page" class="active">Presentations</a>
+               <a href="posts.html">Blog Posts</a>
+               <a href="projects.html">Projects</a>
+               <a href="about.html">About</a>
+            </nav>
+         </div>
+         <main class="page-main" id="main">
+            <article class="standard">
+               <h1 id="top">Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude</h1>
+			   
+			   		   <details>
+			               <summary class="Contents">
+              <h2 id="Contents">Contents</h2>
+            </summary>
+				<ul id="index">
+				</ul>
+			</details>
+			
+			<h2>Slide Deck</h2>
+			
+			<h2>Resources from the presentation</h2>
+			
+			
+			
+						<h2>Prompts</h2>
+						
+						
+						<h3>Creating Sample Content for Accessibility Remediation Training</h3>
+			<p>Adjust this prompt to suit the context and content you require. This is just an example.</p>
+					  <blockquote class="prompt">
+		  <p>Please create a project update document for a fictious project that aims to make university project managers more efficient in delivery of project outcomes using cats.</p>
+
+<p>The outline should include:</p>
+<ol>
+<li>an overview of the project aims.</li>
+<li>red/amber/green ratings for time and cost.</li>
+<li>a list of project deliverables.</li>
+<li>a project roadmap.</li>
+</ol>
+</blockquote>			
+			<h3>Creating a transcript from captions</h3>
+			<p>The process begins by using <a href="https://github.com/SubtitleEdit/subtitleedit/releases">Subtitle Edit</a> or a similar tool to convert the captions file into plain text with any timings removed.</p>
+			          <blockquote class="prompt">
+                      <p>Instructions:</p>
+          <p>Please format the following transcript to be more readable.</p>
+          <p></p>
+          <p>Use headings, paragraph breaks, and bullet points as appropriate.</p>
+          <p></p>
+          <p>Important: because this is a transcript, it is essential that the text itself is kept verbatim. Please make sure you do not change any of the original words or the order in which they are presented.</p>
+          <p></p>
+          <p>Transcript:</p>
+          <p>...</p>
+          </blockquote>
+
+			<h3>Podcast transcription</h3>
+			<p>This process begins with using <a href="https://github.com/Const-me/Whisper">Whisper Desktop</a> to create the initial plain text transcript. Here is <a href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">my guide to setting up Whisper Desktop</a>.
+			<h4>Speaker Attribution</h4>
+			<blockquote class="prompt">
+				  <p>Instructions:</p>
+<p>I will paste a transcript from a podcast. The speakers' names are:<br>
+Simon Kemp<br>
+Grace Compton<br>
+Craig Hutton<br>
+Lily Kilner<br>
+Sophie Green<br></p>
+
+<p>
+I would like you to add speaker attribution to the text I will paste, so we know who is talking. Do this by writing the name of the speaker followed by a colon in bold formatting when each speaker speaks. The first speaker is Simon Kemp.
+</p>
+<p>Transcript:
+<br>...</p>
+
+				  
+				  </blockquote>
+				  
+				  
+	<h4>Creating a table showing different colour vision deficincy friendly palettes</h4>
+			<blockquote class="prompt">
+
+<p >You are a senior software engineer with a passion for digital accessibility and the web content accessibility guidelines at level A and level AA. When you create content, you strive to make it as digitally accessible as possible.</p>
+<p >You are also confident when given instructions to ask questions and suggest alternative routes to achieve the same goal if you think they will be better.</p>
+<p >You have been given the following task. The overall goal is to create set of tables based on data of colour palettes.</p>
+<p >Please create a JavaScript or snippet that will do the following.</p>
+<p >You will use a set of data held in the cvdp.json file in the same directory as the webpage you will work on.</p>
+<p >The cvdp.json is structured as follows. A key called “palettes” contains multiple colour palettes. These are structure as a further key for the name of the palette, with an array containing a set of colour codes in hex format that make up each palette.</p>
+<p >Within a div with an id of “insertHere”, for every palette in the JSON file,&nbsp;you will:</p>
+<ol>
+    <li>
+        <p >create a &lt;section&gt; element with an ID of the palette name with the word “Section” appended to it. You will remove any spaces from the ID e.g. abcPaletteSection.</p>
+    </li>
+    <li>
+        <p >Create an &lt;h2&gt; element at the start of the section containing the name of the palette e.g. “abc Palette”.</p>
+    </li>
+    <li>
+        <p >Create a &lt;table&gt; with an ID of the palette name with the word Table appended to it, e.g. abcTable.</p>
+    </li>
+    <li>
+        <p >Create a &lt;caption&gt; for the table with a class of “hidden”. The caption will contain the name of the palette.</p>
+    </li>
+    <li>
+        <p >The structure of the table is to be as follows.</p>
+    </li>
+    <li>
+        <p >The first row is the column heading. There will be five columns in every table. The first column name is “Colour”, the second column name is “Trichromacy”, the third column name is “Protanopia”, the forth column name is “Deuteranopia” and the fifth column name is “Tritanopia”. These names will be the content of each cell that makes up the column heading row.</p>
+    </li>
+    <li>
+        <p >The first column will be part of a &lt;tr&gt; element with a “role” of “row” within a &lt;thead&gt; element with a “role” of “rowgroup”</p>
+    </li>
+    <li>
+        <p >Each cell for the column heading will be a &lt;th&gt; element with a “scope” of “col” and “role” of “columnheader”</p>
+    </li>
+    <li>
+        <p >Each subsequent row will be for each colour in the palette. It will be part of a &lt;tbody&gt; element with a “role” of “rowgroup”. Each row within that will be a &lt;tr&gt; element with a role of “row”.</p>
+    </li>
+    <li>
+        <p >The first cell of each row will be a row header, it will be a &lt;th&gt; element with a “scope” of “row”, a “data-label” of “colour” and a “role” of “rowheader”. The content of the cell will be the colour code in hex format from Json data for the palette. So for example the second row, which is the first non-column row will be about the first colour in the palette, the next row will be the second colour and so on. The rows will finish when all the colours in the palette have been parsed.</p>
+    </li>
+    <li>
+        <p >All the cells in the second column from this row onwards will be &lt;td&gt; elements given a class and “data-label” of “trichromacy” and role of “cell”. Each cell will have a style where the “background-color” of the cell is set to the current hex colour from the content of the palette being parsed and will match the content of the first cell in each particular row.</p>
+    </li>
+    <li>
+        <p >All the cells in the third column from this point will be &lt;td&gt; elements given a class and data-label of “protanopia” and role of “cell”. Each cell will have a style where the “background-color” of the cell is set to the current hex colour from the content of the palette being parsed and will match the content of the first cell in each particular row.</p>
+    </li>
+    <li>
+        <p >All the cells in the fourth column from this point will be &lt;td&gt; elements given a class and data-label of “deuteranopia” and role of “cell”. Each cell will have a style where the “background-color” of the cell is set to the current hex colour from the content of the palette being parsed and will match the content of the first cell in each particular row.</p>
+    </li>
+    <li>
+        <p >All the cells in the fifth column from this point will be &lt;td&gt; elements given a class and data-label of “tritanopia” and role of “cell”. Each cell will have a style where the “background-color” of the cell is set to the current hex colour from the content of the palette being parsed and will match the content of the first cell in each particular row.</p>
+    </li>
+</ol>
+</blockquote>			
+
+	<h4>Creating a table showing different colour vision deficincy friendly palettes</h4>
+			<blockquote class="prompt">
+<p >You are a senior software engineer with a passion for digital accessibility and the web content accessibility guidelines at level A and level AA. When you create content, you strive to make it as digitally accessible as possible.</p>
+<p >You are also confident when given instructions to ask questions and suggest alternative routes to achieve the same goal if you think they will be better.</p>
+<p >You are working on a project that aims to help people adjust SVG images to use a selection of colour blind friendly colour palettes so that the SVG images will be more understandable by those who are colour blind.</p>
+<p >The task you have been given is:</p>
+<ol>
+    <li>
+        <p >Create a webpage using HTML, CSS and Javascript or Jquery that allows a user to upload a SVG file. No data will go to a server, everything will occur on the client side.</p>
+    </li>
+    <li>
+        <p >Once the SVG file is uploaded, display the same image in four containers.</p>
+    </li>
+    <li>
+        <p >The first should have the class “trichromacy”,</p>
+    </li>
+    <li>
+        <p >The second should have the class “protanopia”,</p>
+    </li>
+    <li>
+        <p >the third should have the class “deuteranopia”,</p>
+    </li>
+    <li>
+        <p >the fourth should have the class “tritanopia”.</p>
+    </li>
+    <li>
+        <p >Note that we already have a solution to implement colour blind simulation, so for your task, all that is important is setting the class for each container.</p>
+    </li>
+    <li>
+        <p >Since these four images may not display tidily, it’s important that this is a responsive webpage.</p>
+    </li>
+    <li>
+        <p >The containers should show the whole centered SVG, maintaining its aspect ratio, using for example object-fit: contain; and object-position: center; If the SVG doesn't have a viewBox attribute, one should be calculated and added to ensure proper scaling.</p>
+    </li>
+    <li>
+        <p >Identify all the unique colours used in the SVG and display their names and their colours on screen to the user.</p>
+    </li>
+    <li>
+        <p >We have prepared a list of colour blind friendly colour palettes in the https://matthewdeeprose.github.io/cvdp.json file. The cvdp.json is structured as follows. A key called “palettes” contains multiple colour palettes. These are structured as a further key for the name of the palette, with an array containing a set of colour codes in hex format that make up each palette.&nbsp;</p>
+    </li>
+    <li>
+        <p >Provide the user with a drop down menu to select a colour blind friendly colour palette from the cvdp.json file. Since the palettes have different numbers of colours, only show in the drop down the name of the palette and how many colours are available and only allow the user to select a palette that has the greater than or equal to the number of colours in the palette.</p>
+    </li>
+    <li>
+        <p >If the number of colours in the SVG file is larger than the number of colours in any of the palettes, then offer the palette with the largest number of colours available. Inform the user how many colours are in their SVG and that it exceeds the amount available in the palette.</p>
+    </li>
+    <li>
+        <p >Once the user has chosen a colour palette, show them an interface that shows the colours in the original SVG file and the colours in their chosen colour blind friendly colour palette from the cvdp.json file. Make this attractive and usable by showing the colours in the SVG side by side with the colours available in the palette.</p>
+    </li>
+    <li>
+        <p >Allow the user to choose to swap colours in their original SVG for colours in their chosen colour blind friendly colour palette.</p>
+    </li>
+    <li>
+        <p >Dynamically update the on-screen image in the four containers with the new colours as the user chooses them. They can then view the results and experiment with different palettes and different colours until they find a palette that will present their image in a way that those who are colour blind can distinguish.</p>
+    </li>
+    <li>
+        <p >When the user is happy with the result, provide a way for them to save the SVG file with their updated colour scheme.</p>
+    </li>
+    <li>
+        <p >Provide a “reset” button so that users can reset the colours back to how they started.</p>
+    </li>
+    <li>
+        <p >Provide an “upload new SVG” button so that users can start the process again with a new SVG file.</p>
+    </li>
+</ol>			
+			
+	</blockquote>			
+
+<h2>Links</h2>
+
+  <ul>
+<li><a  rel="noopener noreferrer" href="https://x.com/VLEguru/status/1808196756921860142">"Accessibility isn't more work, you were just cutting corners before. The work was incomplete".</a></li>
+
+<li><a  rel="noopener noreferrer" href="https://www.nikse.dk/subtitleedit">Subtitle edit</a></li>
+<li><a  rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Meliora podcast</a></li>
+<li><a  rel="noopener noreferrer" href="https://github.com/Const-me/Whisper">Whisper Desktop</a></li>
+<li><a  rel="noopener noreferrer" href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">My quick guide on setting up Whisper Desktop</a></li>
+<li><a rel="noopener noreferrer" href="https://chromaphobe.com/the-cones-types-of-colorblindness/">The cones and types of colour blindness</a> by <a href="https://chromaphobe.com/">Chromaphobe</a>.</li>
+<li><a rel="noopener noreferrer" href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a>.</li>
+<li><a href="https://www.nceas.ucsb.edu/sites/default/files/2022-06/Colorblind%20Safe%20Color%20Schemes.pdf">"Colorblind Safe Color Schemes", produced by Alexandra Phillips at the NCEAS Science Communication Resource Corner</a>.</li>
+</ul>
+			   
+			   
+			   
+			   
+            </article>
+			      <div id="panel">
+         <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+               <title id="svgTitle2">Top.</title>
+               <desc id="svgDesc2">Move to the top of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m11.5 7.5-3-3-3 3"/>
+                  <path d="m8.5 4.5v8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+         </button>
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+               <title id="svgTitle3">Bottom.</title>
+               <desc id="svgDesc3">Move to the bottom of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m5.5 9.5 3 3 3-3"/>
+                  <path d="m8.5 12.5v-8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+         </button>
+      </div>
+         </main>
+         <aside class="page-sidebar related">
+        <section class="related">
+          <h3>Related content</h3>
+        </section>
+        <section class="related">
+          <h4>Presentations</h4>
+          <ul class="relUL">
+            <li>
+              <a href="harnessCopilot.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</a>
+            </li>
+            <li>
+              <a href="high_quality-markup_impact.html">The impact that high quality mark-up can have on accessibility, performance, and discoverability</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h4>Blog posts</h4>
+          <ul class="relUL">
+            <li>
+              <a href="Accessibility-Beyond-Borders.html">Accessibility Beyond Borders!</a>
+            </li>
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/22/what-one-thing-can-it-staff-do-to-improve-accessibility/">What one thing can IT staff do to improve accessibility?</a>
+            </li>
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/17/how-can-we-correct-captions-and-create-transcripts-at-the-university-of-southampton/">How can we correct captions and create transcripts at the University of Southampton?</a>
+            </li>
+          </ul>
+            </section>
+         </aside>
+         <footer class="page-footer">
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="AccessibilityFoot">
+               <a href="Accessibility_Statement.html">Accessibility Statement</a>
+            </div>
+            <div id="twitterFoot">
+               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+            </div>
+            <div id="YouTubeChannelFoot">
+               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+            </div>
+            <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
+               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
+            </div>
+         </p></footer>
+      </div>
+
+      <script>
+         function menuAction() {
+             let menuSwitch = document.getElementById("myTopnav");
+             if (menuSwitch.className === "topnav") {
+                 menuSwitch.className += " responsive";
+                 
+             } else {
+                 menuSwitch.className = "topnav";
+             }
+             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+             if (menuAriaAttrib === "true") {
+                 menuAriaAttrib = "false"
+             } else {
+                 menuAriaAttrib = "true"
+             }
+             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");
+         
+         
+         window.onscroll = function() {
+             scrollFunction()
+         };
+         
+         function scrollFunction() {
+             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+                 mybutton.style.display = "block";
+         		mybutton2.style.display = "block";
+             } else {
+                 mybutton.style.display = "none";
+         		mybutton2.style.display = "none";
+             }
+         }
+         
+         
+         
+         function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
+         }
+         
+         function bottomFunction() {
+         window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
+         }
+      </script>
+      <script>
+         let themePref = localStorage.getItem("theme");
+         console.log("Has a theme preference been saved?", themePref);        
+         
+         
+         function setLight() {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById("modeToggle");
+             const d = matchMedia('(prefers-color-scheme: dark)');
+             let dt;
+             if (d.matches) {
+                 dt = 'dark';
+                 console.log("Prefers dark theme in OS");
+             } else {
+                 dt = 'light'
+                 console.log("Prefers light theme in OS");
+             }
+             if (dt == 'dark' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'light' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'dark' && !themePref) {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else {
+                 theButton.setAttribute("aria-pressed", "false");
+             }
+         }
+         setLight();
+         
+         function toggle(btnID) {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById(btnID);
+             if (theButton.getAttribute("aria-pressed") == "true") {
+                 theButton.setAttribute("aria-pressed", "false");
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 console.log("Turned on light mode");
+                 localStorage.setItem("theme", "Light");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "false");
+             } else {
+                 theButton.setAttribute("aria-pressed", "true");
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 console.log("Turned on dark mode");
+                 localStorage.setItem("theme", "Dark");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference set to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "true");
+             }
+         }
+         
+         function applyThemePreference() {
+             if (themePref == 'Dark') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 theButton.setAttribute("aria-pressed", "true");
+                 console.log("Applied dark theme because site theme preference is set to", themePref);
+             } else if (themePref == 'Light') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 theButton.setAttribute("aria-pressed", "false");
+                 console.log("Applied dark theme because site theme preference is set to", themePref);
+             }
+         }
+         applyThemePreference();                
+      </script>
+	  <script src="scripts/lite-yt-embed.js"></script>
+	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
+	  	    <script src="scripts/jquery-3.7.1.min.js"></script>
+    <script src="scripts/details.js"></script>
+		  <script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Step 1: Add IDs to all heading elements without IDs
+    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    headings.forEach(heading => {
+        if (!heading.id) {
+            heading.id = heading.textContent.replace(/\s+/g, '');
+        }
+    });
+
+    // Step 2: Create list items for each H2 in the ul with ID 'index'
+    const contentsList = document.getElementById("index");
+    if (contentsList) {
+        const h2Elements = document.querySelectorAll("h2");
+        h2Elements.forEach(h2 => {
+            if (h2.textContent !== "Contents") {
+                const listItem = document.createElement("li");
+                const link = document.createElement("a");
+                link.href = `#${h2.id}`;
+                link.textContent = h2.textContent;
+                listItem.appendChild(link);
+                contentsList.appendChild(listItem);
+            }
+        });
+    }
+});
+	  </script>
+    <script>
+      window.console || (window.console = {
+        'log': alert
+      });
+      $(function() {
+        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
+        $('details').details();
+        $('details').on({
+          'open.details': function() {
+            console.log('opened')
+          },
+          'close.details': function() {
+            console.log('closed')
+          }
+        })
+      });
+    </script>
+	    <script>
+      // Expand details / summary when printing
+      // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
+      window.matchMedia("print").addEventListener("change", evt => {
+        if (evt.matches) {
+          elms = document.body.querySelectorAll("details:not([open])");
+          for (e of elms) {
+            e.setAttribute("open", "");
+            e.dataset.wasclosed = "";
+          }
+        } else {
+          elms = document.body.querySelectorAll("details[data-wasclosed]");
+          for (e of elms) {
+            e.removeAttribute("open");
+            delete e.dataset.wasclosed;
+          }
+        }
+      })
+    </script>
+   </body>
+</html>

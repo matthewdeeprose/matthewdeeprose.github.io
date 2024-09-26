@@ -68,6 +68,49 @@
     filter: url(#tritanopia);
 }
 
+
+
+
+    </style>
+	
+    <style>
+        .color-input, .palette-controls, .button-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+/*        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        } */
+        .color-cell {
+            width: 100px;
+            height: 30px;
+        }
+        #fileInput {
+            display: none;
+        }
+        #paletteName {
+            flex-grow: 1;
+        }
+		.palette-controls {
+	clear: left;
+	display: flow-root;
+}
+
+.userTable th[scope=row] {
+    text-transform: uppercase;;
+}
+
+
     </style>
    </head>
    <body>
@@ -139,25 +182,107 @@
          <main class="page-main" id="main">
             <article class="standard">
                <h1 id="top">Colour vision deficiency friendly palettes</h1>
+			   <section id="contentsSection">
 			   
 			   
-			   			   <details>
+			   			   <details id="contentDetails">
 			               <summary class="Contents">
               <h2 id="Contents">Contents</h2>
             </summary>
 				<ul id="index">
 				</ul>
 			</details>
+			</section>
+			<section id="introSection">
+						   			   <details id="introdcutionDetails">
+									   <summary>
 			  <h2>Introduction</h2>
+			              </summary>
 <p>The following colour schemes are taken from the document, <a href="https://www.nceas.ucsb.edu/sites/default/files/2022-06/Colorblind%20Safe%20Color%20Schemes.pdf">"Colorblind Safe Color Schemes", produced by Alexandra Phillips at the NCEAS Science Communication Resource Corner, with the exception of the HarryHelsing Palette which was posted in on Reddit: <a href="https://www.reddit.com/r/ColorBlind/comments/1eo1aaq/thoughts_on_this_five_colour_palette_for_a_video/">thoughts on this five colour palette for a video game?</a>. I created a <a href="https://matthewdeeprose.github.io/cvdp.json">JSON dataset</a> for these colour schemes, which is used to generate the tables below.</p><p>Colour vision deficiency simulation is provided using the <a href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a> by Nicolas Burrus.</p>
-<h3>Creating your own colour vision deficiency friendly palettes</h3>
-<p>Adobe has built a tool for creating <a href="https://color.adobe.com/create/color-accessibility">colour vision deficiency friendly palettes</a>. If you make one that you would like to add to the selection below, let me know.</p>
+
+<h3>Want to create your own colour vision deficiency friendly palette?</h3>
+<p>You can use the dropdown below to create your own palette. Adobe has built a tool for creating <a href="https://color.adobe.com/create/color-accessibility">colour vision deficiency friendly palettes that may help you</a>. If you make one that you would like to add to the standard selection below, let me know.</p>
+			</details>
+			</section>
+
+			   
+<section id ="customPaletteSection">			   
+     <div id="multiPaletteManager">
+	 <details id="paletteManagerDetails">
+	 <summary>
+        <h2>Creating your own Colour Palette (Beta)</h2>
+		</summary>
+        <div class="palette-controls">
+		  <fieldset>
+    <legend>Make your own palette</legend>
+            <button id="createPalette">Create New Palette</button>
+			<label id="paletteNameLabel" for="paletteName">Palette Name</label>
+            <input type="text" id="paletteName">
+  </fieldset>
+		
+		
+				  <fieldset>
+    <legend>Palette Controls</legend>
+            <label id="paletteSelectLabel" for="paletteSelect">Select Palette</label>
+			<select id="paletteSelect"></select>
+            <button id="renamePalette">Rename Palette</button>
+            <button id="deletePalette">Delete Palette</button>
+  </fieldset>
+		
 
 
-			   
-			   
-			   
-			   
+
+        </div>
+
+
+        <div class="button-container">
+				  <fieldset>
+    <legend>Save / Load / Import / Export your own palette</legend>
+
+			<div id="localStorageButtons">
+            <button id="savePalettes">Save Palettes to Browser Storage</button>
+            <button id="loadPalettes">Load Palettes from Browser Storage</button>
+			</div>
+			<div id="externalStorageButtons">
+            <button id="exportPalettes">Export Palettes</button>
+            <button id="importPalettes">Import Palettes</button>
+            <input type="file" id="fileInput" accept=".json">
+			</div>
+			  </fieldset>
+        </div>
+		 <div id="myMessage"><div id="myMessageIcon"></div><span id="pageMessage" aria-live="assertive" role="alert"></span>
+			<button onclick="clearMessage();" class="clearMessageButton">Clear message</button>
+			
+			</div>
+			
+			        <div class="color-input">
+		<fieldset>
+		    <legend>Add colours to your custom palette</legend>
+
+			<label id="colorPickerLabel" for="colorPicker">Pick Colour</label>
+            <input type="color" id="colorPicker" class="color-swatch" value="#000000">
+			<label id="colorHexLabel" for="colorHex">or enter hex code</label>
+            <input type="text" id="colorHex" value="#000000">
+            <button id="addColor">Add Colour to Palette</button>
+
+			  </fieldset>
+        </div>
+			
+			        <table id="userColorTable">
+            <thead>
+                <tr>
+                    <th>Trichromacy</th>
+                    <th>Protanopia</th>
+                    <th>Deuteranopia</th>
+                    <th>Tritanopia</th>
+                    <th>Delete?</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+			</details>
+    </div>
+			   </section>
 			   
 			   
 			   
@@ -214,8 +339,9 @@
                <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
             </div>
             <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
-               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
-            </div>
+               <div id="CC">
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/InteractiveResource" property="dct:title" rel="dct:type">CVDP</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName"><a href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a></span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+<p>To simulate CVD it uses <a href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a> by Nicolas Burrus, released as "free and unencumbered software released into the public domain".</p></div>
          </p></footer>
       </div>
 	  <svg style='height: 0; width: 0; padding: 0; margin: 0; line-height: 0;'>
@@ -289,7 +415,330 @@
         <feBlend in="ProjectionOnPlane1" in2="ProjectionOnPlane2" mode="normal"/>
     </filter>
 </svg>
+    <script>
+	
+	// Palette Editing 
+	
+	
+// Wait for the DOM to be fully loaded before running the script
+document.addEventListener('DOMContentLoaded', function() {
+    // Get references to all the necessary DOM elements
+    const colorPicker = document.getElementById('colorPicker');
+    const colorHex = document.getElementById('colorHex');
+    const addColorBtn = document.getElementById('addColor');
+	const userColorTable = document.getElementById('userColorTable').getElementsByTagName('tbody')[0];
+    const paletteSelect = document.getElementById('paletteSelect');
+    const paletteName = document.getElementById('paletteName');
+    const createPaletteBtn = document.getElementById('createPalette');
+    const renamePaletteBtn = document.getElementById('renamePalette');
+    const deletePaletteBtn = document.getElementById('deletePalette');
+    const savePalettesBtn = document.getElementById('savePalettes');
+    const loadPalettesBtn = document.getElementById('loadPalettes');
+    const exportPalettesBtn = document.getElementById('exportPalettes');
+    const importPalettesBtn = document.getElementById('importPalettes');
+    const fileInput = document.getElementById('fileInput');
 
+    // Initialize variables to store palettes and current palette
+    let palettes = {};
+    let currentPalette = '';
+
+    // Synchronize color picker and hex input
+    colorPicker.addEventListener('input', function() {
+        colorHex.value = this.value;
+    });
+
+    colorHex.addEventListener('input', function() {
+        colorPicker.value = this.value;
+    });
+
+// Function to validate hex color code
+function isValidHexColor(color) {
+    return /^#?[0-9A-F]{6}$/i.test(color);
+}
+
+// Function to add color to palette
+function addColorToPalette() {
+    if (currentPalette) {
+        let colorValue = colorHex.value.trim();
+        
+        // Add # if it's missing
+        if (colorValue.charAt(0) !== '#') {
+            colorValue = '#' + colorValue;
+        }
+        
+        // Validate the hex color code
+        if (isValidHexColor(colorValue)) {
+            addColor(colorValue);
+            let addedColorCode = colorValue.toUpperCase();
+            displayNotification(addedColorCode + ' added to palette.');
+        } else {
+            displayNotification('Error: Invalid hex color code. Please use the format #RRGGBB.');
+        }
+    } else {
+        displayNotification('Please create or select a palette first.');
+    }
+}
+
+// Get references to the input and button
+
+
+
+// Add color to current palette when button is clicked
+addColorBtn.addEventListener('click', addColorToPalette);
+
+// Add color to current palette when Enter is pressed in the input field
+colorHex.addEventListener('keyup', function(event) {
+    if (event.key === 'Enter') {
+        addColorToPalette();
+    }
+});
+
+    // Create a new palette
+    createPaletteBtn.addEventListener('click', function() {
+        const name = paletteName.value.trim();
+        if (name && !palettes[name]) {
+            palettes[name] = [];
+            currentPalette = name;
+            updatePaletteSelect();
+            renderTable();
+            paletteName.value = '';
+        } else {
+            displayNotification('Please enter a unique palette name.');
+        }
+    });
+
+    // Rename the current palette
+    renamePaletteBtn.addEventListener('click', function() {
+        const newName = paletteName.value.trim();
+        if (currentPalette && newName && !palettes[newName]) {
+            palettes[newName] = palettes[currentPalette];
+            delete palettes[currentPalette];
+            currentPalette = newName;
+            updatePaletteSelect();
+            paletteName.value = '';
+        } else {
+            displayNotification('Please select a palette and enter a unique new name.');
+			document.getElementById('paletteName').focus();
+        }
+    });
+
+    // Delete the current palette
+    deletePaletteBtn.addEventListener('click', function() {
+        if (currentPalette) {
+            if (confirm(`Are you sure you want to delete the palette "${currentPalette}"?`)) {
+                delete palettes[currentPalette];
+                currentPalette = Object.keys(palettes)[0] || '';
+                updatePaletteSelect();
+                renderTable();
+            }
+        } else {
+            displayNotification('Please select a palette to delete.');
+        }
+    });
+
+    // Switch between palettes
+    paletteSelect.addEventListener('change', function() {
+        currentPalette = this.value;
+        renderTable();
+    });
+
+    // Save all palettes to localStorage
+    savePalettesBtn.addEventListener('click', function() {
+        localStorage.setItem('colorPalettes', JSON.stringify(palettes));
+        displayNotification('All palettes saved to LocalStorage!');
+    });
+
+    // Load palettes from localStorage
+    loadPalettesBtn.addEventListener('click', function() {
+        const savedPalettes = localStorage.getItem('colorPalettes');
+        if (savedPalettes) {
+            palettes = JSON.parse(savedPalettes);
+            currentPalette = Object.keys(palettes)[0] || '';
+            updatePaletteSelect();
+            renderTable();
+            displayNotification('Palettes loaded from LocalStorage!');
+        } else {
+            displayNotification('No saved palettes found in LocalStorage.');
+        }
+    });
+
+    // Export all palettes to JSON file
+    exportPalettesBtn.addEventListener('click', function() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palettes));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "color_palettes.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    });
+
+    // Import palettes from JSON file
+    importPalettesBtn.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedPalettes = JSON.parse(e.target.result);
+                    palettes = { ...palettes, ...importedPalettes };
+                    currentPalette = Object.keys(palettes)[0] || '';
+                    updatePaletteSelect();
+                    renderTable();
+                    displayNotification('Palettes imported successfully!');
+                } catch (error) {
+                    displayNotification('Error importing palettes. Please make sure the file is a valid JSON.');
+                }
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    // Function to add a color to the current palette
+    function addColor(hex) {
+        palettes[currentPalette].push(hex);
+        renderTable();
+    }
+
+    // Function to render the color table
+    function renderTable() {
+        const table = document.getElementById('userColorTable');
+        table.innerHTML = ''; // Clear existing content
+
+        if (currentPalette && palettes[currentPalette]) {
+            // Add caption for accessibility
+            const caption = document.createElement('caption');
+            caption.textContent = currentPalette;
+            caption.className = 'hidden';
+            table.appendChild(caption);
+			table.classList.add('userTable');
+
+            // Create thead
+            const thead = document.createElement('thead');
+            thead.setAttribute('role', 'rowgroup');
+            const headerRow = document.createElement('tr');
+            headerRow.setAttribute('role', 'row');
+
+            const headers = ['Colour', 'Trichromacy', 'Protanopia', 'Deuteranopia', 'Tritanopia', 'Delete'];
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.setAttribute('scope', 'col');
+                th.setAttribute('role', 'columnheader');
+                th.textContent = header;
+				th.setAttribute("id", header);
+                headerRow.appendChild(th);
+            });
+
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create tbody
+            const tbody = document.createElement('tbody');
+            tbody.setAttribute('role', 'rowgroup');
+
+            palettes[currentPalette].forEach((color, index) => {
+                const row = document.createElement('tr');
+                row.setAttribute('role', 'row');
+
+                // Color header cell
+                const colorHeader = document.createElement('th');
+                colorHeader.setAttribute('scope', 'row');
+                colorHeader.setAttribute('data-label', 'colour');
+                colorHeader.setAttribute('role', 'rowheader');
+                colorHeader.textContent = color;
+                row.appendChild(colorHeader);
+
+                // Color cells
+                const cellTypes = ['trichromacy', 'protanopia', 'deuteranopia', 'tritanopia'];
+                cellTypes.forEach(type => {
+                    const td = document.createElement('td');
+                    td.className = type;
+                    td.setAttribute('data-label', type);
+                    td.setAttribute('role', 'cell');
+                    td.style.backgroundColor = color;
+					td.style.color = color;
+                    row.appendChild(td);
+					td.textContent += 'Example';
+					td.classList.add("paletteExampleCell");
+                });
+
+                // Actions cell
+                const actionsCell = document.createElement('td');
+                actionsCell.setAttribute('data-label', 'actions');
+                actionsCell.setAttribute('role', 'cell');
+                const removeButton = document.createElement('button');
+                // removeButton.textContent = '\u232B';
+				removeButton.innerHTML = `<span aria-hidden="true">\u232B</span>`;
+                removeButton.setAttribute('aria-label', `Remove colour ${color}`);
+                removeButton.onclick = () => removeColor(index);
+                actionsCell.appendChild(removeButton);
+				actionsCell.classList.add("actionClass")
+                row.appendChild(actionsCell);
+
+                tbody.appendChild(row);
+            });
+
+            table.appendChild(tbody);
+        }
+    }
+
+    // Function to remove a color from the current palette
+    function removeColor(index) {
+        if (currentPalette && palettes[currentPalette]) {
+            palettes[currentPalette].splice(index, 1);
+            renderTable();
+        }
+    }
+
+    // Function to update the palette select dropdown
+    function updatePaletteSelect() {
+        paletteSelect.innerHTML = '';
+        Object.keys(palettes).forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            paletteSelect.appendChild(option);
+        });
+        paletteSelect.value = currentPalette;
+    }
+
+    // Expose removeColor function globally
+    window.removeColor = removeColor;
+
+    // Load saved palettes on initial load
+    const savedPalettes = localStorage.getItem('colorPalettes');
+    if (savedPalettes) {
+        palettes = JSON.parse(savedPalettes);
+        currentPalette = Object.keys(palettes)[0] || '';
+        updatePaletteSelect();
+        renderTable();
+    }
+});
+
+// Palette Editing ends
+
+// Clear message function
+function clearMessage() {
+	document.getElementById('pageMessage').textContent = '';
+	document.getElementById('myMessage').style.display = 'none';
+}
+
+/**
+ * Displays a notification to the user.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification ('success' or 'error').
+ */
+function displayNotification(message, type) {
+	document.getElementById('myMessage').style.display = 'block';
+    const notification = document.getElementById('pageMessage');
+    notification.textContent = message;
+
+}
+    </script>
       <script>
          function menuAction() {
              let menuSwitch = document.getElementById("myTopnav");
@@ -433,7 +882,7 @@
          }
          applyThemePreference();                
       </script>
-	    <script src="scripts/jquery-3.7.1.min.js"></script>
+	  <script src="scripts/jquery-3.7.1.min.js"></script>
     <script src="scripts/details.js"></script>
     <script>
       window.console || (window.console = {
@@ -571,15 +1020,16 @@ async function createTables() {
 }
 
 function appendTestToCells() {
-    // Get all <td> elements in the document
-    const cells = document.querySelectorAll('td');
-
+    // Get all <td> elements that are not in tables with class 'userTable'
+    const cells = document.querySelectorAll('table:not(.userTable) td');
+    
     // Loop through each <td> element
     cells.forEach(cell => {
         // Append the word "Example" to the cell's content
         cell.textContent += 'Example';
     });
-    console.log('Text appended to cells');
+    
+    console.log('Text appended to cells (excluding userTable)');
 }
 
 function indexCreate() {
@@ -609,5 +1059,6 @@ function indexCreate() {
     }
 }
 </script>
+
    </body>
 </html>

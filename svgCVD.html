@@ -41,14 +41,6 @@
 		margin: 0 5% 0 5%;
 	}
 }
-
-
-
-
-div#paletteSelection  {display: none;}
-
-div#myMessage {display: none;}
-
 .page-wrap>* {
 	grid-column: 1/-1 !important;
 	grid-row: auto !important;
@@ -58,201 +50,18 @@ aside {
 	display: none;
 }
 
-button.SVGCVDButton {
-	font-size: 1rem !important;
-}
+@media only screen and (max-width: 500px) {
 
-.container {
-	margin: 0 auto;
-}
 
-.svg-container {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-	gap: 20px;
-	margin-bottom: 20px;
-}
-
-.svg-wrapper {
-	padding: 10px;
-	border-radius: 5px;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-}
-
-.svg-wrapper h3 {
-	margin-top: 0;
-	text-align: center;
-}
-
-.svg-content-wrapper {
-	width: 100%;
-	height: 200px;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	color: white;
-}
-
-.svg-content {
-	max-width: 100%;
-	max-height: 100%;
-	object-fit: contain;
-	object-position: center;
-}
-
-#fileInput {
-	display: none;
-}
-
-.svgCVDcontrols {
-	margin-bottom: 10px;
-}
-
-#colorInfo,
-#paletteSelection,
-#colorSwapInterface {
-	margin-top: 20px;
-}
-
-select {
-	font-size: 16px;
-	padding: 5px 10px;
-	margin-left: 0.5rem;
-}
-
-#colorSwapInterface {
-	/*   display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px; */
-}
-
-.color-item {
-	display: flex;
-	align-items: center;
-	margin-right: 20px;
-	margin-bottom: 10px;
-}
-
-.color-list {
-	display: flex;
-	flex-wrap: wrap;
-	list-style-type: none;
-	padding: 0;
-	margin: 0;
-}
-
-.color-item span {
-	font-family: monospace, monospace;
-}
-
-.color-swatch {
-	width: 30px;
-	height: 30px;
-	margin-right: 10px;
-	border: 1px solid #000000;
-	outline: 1px solid #FFFFFF;
-}
-
-#myMessage {
-	margin-top: 10px;
-	padding: 10px;
-	border-radius: 5px;
-}
-
-/* Custom select CSS */
-.custom-select {
-	position: relative;
-	display: inline-block;
-	margin-left: 10px;
-}
-
-.select-button {
-	display: flex;
-	align-items: center;
-	cursor: pointer;
-	border-radius: 0px;
-}
-
-@media only screen and (min-width: 400px) {
-	.select-button {
-		min-width: 15rem;
-	}
-
-	.options {
-		min-width: 240px;
+	select#paletteSelect {
+		font-size: 1.1rem;
+		margin: 10px 0px 0px 0px;
+		padding: 5px;
+		margin-left: 0;
+		text-overflow: ellipsis;
+		max-width: 100%;
 	}
 }
-
-
-.selected-color {
-	width: 15px;
-	height: 15px;
-	margin-left: 10px;
-	border: 1px solid #fffff4 !important;
-	outline: 1px solid #00131d !important;
-}
-
-.options {
-	display: none;
-	position: absolute;
-	top: 100%;
-	left: 0;
-	z-index: 1;
-	padding: 0;
-	margin: 0;
-	color: #00131d;
-	background-color: #E1E8EC;
-	border: 2px solid #fffff4;
-	outline: 2px solid #00131d;
-	max-height: 200px;
-	overflow-y: auto;
-}
-
-.options::marker {
-	font-size: 0;
-}
-
-.options li {
-	padding: 5px 10px;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	font-family: monospace, monospace;
-}
-
-.options li+li {
-	text-transform: uppercase;
-
-}
-
-.color-preview {
-	width: 30px;
-	height: 30px;
-	margin-right: 10px;
-	border: 1px solid #fffff4 !important;
-	outline: 1px solid #00131d !important;
-}
-
-.svgToolH2 {
-	font-size: 1.3rem;
-
-}
-
-.options li:hover {
-	background-color: #231F20;
-	color: #fffff4;
-	outline: 2px solid transparent;
-}
-
-.options li:focus {
-	background-color: #231F20;
-	color: #fffff4;
-	outline: 2px solid transparent;
-	border: dashed 2px #fffff4;
-}
-
 
 /* Filters */
 
@@ -417,7 +226,7 @@ select {
         </div>
         <div id="colorInfo"></div>
         <div id="paletteSelection">
-            <label for="paletteSelect">Select a colour blind friendly palette:</label>
+            <label for="paletteSelect">Select a "colour vision deficiency friendly" palette:</label>
             <select id="paletteSelect"></select>
 
         <div id="colorSwapInterface"></div>
@@ -466,7 +275,9 @@ select {
                <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
             </div>
             <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
-               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
+               <div id="CC">
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/InteractiveResource" property="dct:title" rel="dct:type">svgCVD</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName"><a href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a></span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+<p>It uses SVG.js which is Copyright (c) 2012-2018 Wout Fierens and was released under the terms of the <a href="https://github.com/svgdotjs/svg.js/blob/master/LICENSE.txt" rel="noopener noreferrer" target="_blank">MIT License</a>.<br>To simulate CVD it uses <a href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a> by Nicolas Burrus, released as "free and unencumbered software released into the public domain".</p></div>
             </div>
          </p></footer>
       </div>
@@ -671,7 +482,7 @@ function displayColorInfo() {
         const li = document.createElement('li');
         li.className = 'color-item';
         li.innerHTML = `
-            <div class="color-swatch" style="background-color: ${color};"></div>
+            <div class="color-swatch" style="background-color: ${color};">&nbsp;</div>
             <span>${color}</span>
         `;
         ul.appendChild(li);
@@ -774,7 +585,7 @@ function displayColorSwapInterface() {
         const swapDiv = document.createElement('div');
         swapDiv.className = 'color-item';
         swapDiv.innerHTML = `
-            <div class="color-swatch" style="background-color: ${originalColor};"></div>
+            <div class="color-swatch" style="background-color: ${originalColor};">&nbsp;</div>
             <span class="color-item-span">${originalColor}</span>
             <div class="custom-select">
                 <button class="select-button" aria-haspopup="listbox" aria-labelledby="color-label-${index}">

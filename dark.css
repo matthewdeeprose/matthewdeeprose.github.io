@@ -1,4 +1,18 @@
 /* Dark mode */
+input[type=text] {
+	border: 0.2rem solid #231F20 !important;
+}
+
+
+input[type=text]:hover,input[type=text]:focus {
+	background-color: #E1E8EC;
+	color: #00131D;
+	box-shadow: 0 0 0 0.3rem #C1D100 !important;
+	outline: 0.0rem solid #161415 !important;
+
+}
+	
+
 #myMessage {
 	border: 2px dashed #E1E8EC;
 }

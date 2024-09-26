@@ -1,5 +1,25 @@
 /*Light mode */
 
+input[type=text] {
+	border: 0.2rem solid #00131D;	
+	outline: 0.2rem solid #FFFFF4 !important;
+}
+
+
+input.color-swatch:focus,input.color-swatch:hover {
+    border: 1px dotted #000000;
+    outline: 4px dotted #FFFFFF;
+	outline-offset: 4px;
+	box-shadow: 0 0 0 0.4rem #005C84;
+}
+
+input[type=text]:hover,input[type=text]:focus {
+	background-color: #FFFFF4;
+	color: #00131D;
+	box-shadow: 0 0 0 0.4rem #005C84;
+	outline: 1px solid transparent !important;
+}
+
 #myMessage {
 	border: 2px dashed #00131D;
 }
