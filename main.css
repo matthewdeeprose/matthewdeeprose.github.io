@@ -3,6 +3,14 @@
 .page-sidebar {
 	font-size: 1rem;
 }
+
+.page-sidebar h2 {
+	font-size: 1.6rem;
+}
+
+.page-sidebar h3 {
+	font-size: 1.4rem;
+}
 .mermaid {background-color: #E1E8EC; border: 1px solid #231F20; outline: 1px solid #fffff4; }
 
 #CC {
