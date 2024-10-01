@@ -322,13 +322,13 @@
                  document.getElementById('lightCSS').href = 'dark.css';
                  document.getElementById('darkCSS').href = 'dark.css';
                  theButton.setAttribute("aria-pressed", "true");
-                 console.log("Applied dark theme because site theme preference is set to", themePref);
+                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
              } else if (themePref == 'Light') {
                  let theButton = document.getElementById('modeToggle');
                  document.getElementById('lightCSS').href = 'light.css';
                  document.getElementById('darkCSS').href = 'light.css';
                  theButton.setAttribute("aria-pressed", "false");
-                 console.log("Applied dark theme because site theme preference is set to", themePref);
+                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
              }
          }
          applyThemePreference();                
