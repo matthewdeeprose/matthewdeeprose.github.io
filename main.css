@@ -11,6 +11,10 @@
 .page-sidebar h3 {
 	font-size: 1.4rem;
 }
+
+.page-sidebar h3 {
+	font-size: 1.2rem;
+}
 .mermaid {background-color: #E1E8EC; border: 1px solid #231F20; outline: 1px solid #fffff4; }
 
 #CC {
@@ -1332,7 +1336,7 @@ details {
   border-radius: 0.5rem;
   padding: 0.5em 0.5em 0;
   margin: 1rem 0rem 1rem 0rem;
-  cursor: pointer;
+
 }
 
 summary {
@@ -1342,6 +1346,7 @@ summary {
   text-decoration: underline;
   text-underline-offset: 0.3em;
   border-radius: 0.5rem;
+    cursor: pointer;
 }
 
 summary:hover {

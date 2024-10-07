@@ -156,7 +156,7 @@ lite-youtube {
 /* Style inactive buttons */
 		button:disabled,
 	button[disabled] {
-		pointer-events: none;
+		pointer-events: none !important;
 		color: #00131d !important;
 		border: 0px !important;
 		background-color: #fefef3 !important;
