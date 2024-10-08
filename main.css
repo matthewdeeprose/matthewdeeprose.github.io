@@ -12,7 +12,7 @@
 	font-size: 1.4rem;
 }
 
-.page-sidebar h3 {
+.page-sidebar h4, h4#presentations, h4#Blogposts {
 	font-size: 1.2rem;
 }
 .mermaid {background-color: #E1E8EC; border: 1px solid #231F20; outline: 1px solid #fffff4; }
