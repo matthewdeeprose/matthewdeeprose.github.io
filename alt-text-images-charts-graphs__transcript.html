@@ -421,6 +421,17 @@
 	}
 	applyThemePreference();
 	</script>
+				  <script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Step 1: Add IDs to all heading elements without IDs
+    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    headings.forEach(heading => {
+        if (!heading.id) {
+            heading.id = heading.textContent.replace(/\s+/g, '');
+        }
+    });
+});
+	  </script>
 	<script src="scripts/lite-yt-embed.js"></script>
 	<link rel="stylesheet" href="scripts/lite-yt-embed.css" /> </body>
 
