@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+   <head>
+      <meta charset="utf-8" />
+      <meta name="description" content="Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude">
+      <meta name="keywords" content="accessibility, presentation, blog, Copilot, Whisper, and Claude">
+      <meta name="author" content="Matthew Deeprose">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Transcript: Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude</title>
+      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+      <meta property="og:title" content="Transcript: Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude - Matthew Deeprose">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/genAI_a11y_efficiency43.png">
+	  <meta property="og:image:width" content="2500" />
+	  <meta property="og:image:height" content="1306" />
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/genAI_a11y_efficiency__transcript.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="Transcript: Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude - Matthew Deeprose" />
+      <meta name="twitter:description" content=""/>
+      <meta name="twitter:creator" content="@VLEguru"/>
+      <meta name="twitter:site" content="@VLEguru"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/genAI_a11y_efficiency43.png"/>
+      <meta name="twitter:image:alt" content=""/>
+      <meta name="twitter:card" content="summary_large_image"/>
+	  <style>
+	        .page-wrap>* {
+        grid-column: 1/-1 !important;
+        grid-row: auto !important;
+      }
+	        article.standard {
+        max-width: clamp(320px, 90%, 1000px);
+        margin: auto;
+      }
+	  </style>
+   </head>
+   <body>
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Change theme</title>
+                        <desc id="svgDesc">Select to switch to light theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4"/>
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                           <path d="m8.5 1.5v-1"/>
+                           <path d="m13.5 3.5 1-1"/>
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
+                           <path d="m1.5 7.5h-1"/>
+                           <path d="m16.5 7.5h-1"/>
+                        </g>
+                     </svg>
+                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                        <title id="svgTitleX">Change theme</title>
+                        <desc id="svgDescX">Select to switch to dark theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                           <path d="m2.5 13.5h4"/>
+                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                        </g>
+                     </svg>
+                  </button>
+               </div>
+               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+               <div id="titleLink">Matthew Deeprose</div>
+            </div>
+         </header>
+         <div id="main-navigation" class="page-nav">
+            <nav aria-label="Main menu" class="topnav" id="myTopnav">
+               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+                  <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span>
+                  <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+                           <path  d="m16.5,10.5l-13,0"/>
+                        </g>
+                     </svg>
+                  </span>
+               </button>
+               <a id="homeMenu" href="index.html">Home</a>
+               <a href="presentations.html" aria-current="page" class="active">Presentations</a>
+               <a href="posts.html">Blog Posts</a>
+               <a href="projects.html">Projects</a>
+               <a href="about.html">About</a>
+            </nav>
+         </div>
+         <main class="page-main" id="main">
+            <article class="standard">
+               <h1 id="top">Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude</h1>
+			   
+			   		   <details>
+			               <summary class="Contents">
+              <h2 id="Contents">Contents</h2>
+            </summary>
+				<ul id="index">
+				</ul>
+			</details>
+						<h2>About this transcript</h2>
+			<p>This is a transcript of the <a href="genAI_a11y_efficiency.html">Using generative AI to improve digital accessibility efficiency, featuring Copilot, Whisper, and Claude</a> presentation. To make the transcript more readable as a standalone resource I have added images and videos from the presentation within the transcript. Since I described the parts relevant to the presentation within the transcript there will be some duplication.</p><p> You may prefer to use the radio buttons below to hide the images and videos to save bandwidth or reduce potentially duplicate content.</p>
+		              <fieldset id="imageVideoRadios" class="">
+              <legend>Show or hide images and videos</legend>
+		<input type="radio" id="showVideosImages" name="presentation" value="Show" onclick="$.fn.showFigures()" checked>
+		   <label for="showVideosImages" class="radio">Show Videos and Images</label> <br>
+		<input type="radio" id="hideVideosImages" name="presentation" value="Hide" onclick="$.fn.hideFigures()">
+		   <label for="hideVideosImages" class="radio">Hide Videos and Images</label>
+		              </fieldset>
+					  <span role="alert" class="hidden" aria-live="polite" id="imageVideoRadiosAlert"></span>
+<h2 >Introduction</h2>
+<p ><span class="transcriptSpeaker">Matthew Deeprose: </span>Thank you very much, Phil. Just want to check I've got that setting. Hopefully, you can hear me and see my slides.</p>
+<p >I'm <a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a>, Accessible Solutions Architect from the University of Southampton. For those who don't see me: I'm a white male in my late 40s. I'm wearing glasses, a charcoal suit with a moss green shirt and matching pocket square. My pronouns are he/him.</p>
+<h2 >Overview of the Presentation</h2>
+<p >Today, I'll share how I've used generative AI to improve digital accessibility efficiency based on my experiences with:</p>
+<ol>
+    <li>Copilot</li>
+    <li>Whisper</li>
+    <li>Claude AI</li>
+</ol>
+<p >I have a webpage with all the details I share today, along with the slide deck, available at <a target="_blank" rel="noopener noreferrer" href="https://go.soton.ac.uk/kent2">go.soton.ac.uk/kent2</a>. That's the number two at the end, all as one word. Stephen has added the link to the chat.</p>
+<h3 >Opening Theme</h3>
+<p >To open the theme of this presentation, let's start with a tweet from <a target="_blank" rel="noopener noreferrer" href="https://x.com/McgarrDana">@McgarDana</a>, posted in 2021:</p>
+<p ><a target="_blank" rel="noopener noreferrer" href="https://x.com/McgarrDana/status/1387870476178006020">"Accessibility isn't more work. You were just cutting corners before. The work was incomplete."</a></p>
+<p >She's saying that a webpage, document, or online service isn't ready until everyone can use it, regardless of any disability or impairment. However, for our colleagues, making content accessible may seem like more work, as it is a new area for them.</p>
+<p >So, my question is can we use AI to:</p>
+<ol>
+    <li>Reduce effort?</li>
+    <li>Decrease workload?</li>
+    <li>Increase efficiency in any digital accessibility workflows we might expect our colleagues to complete?</li>
+</ol>
+<h3 >Structure of the Presentation</h3>
+<p >My presentation has two parts to answer these questions.</p>
+<p>First, I'll share how Microsoft Copilot, OpenAI's Whisper and Anthropic's Claude.AI made certain digital accessibility workflows more efficient by reducing my time. There's more details on these in a recent presentation on my website, so this will be more of an overview and you can find more detail on my site…</p>
+<p>Next, using a recent example, I'll discuss how Copilot and Claude.AI helped me create a tool for academic staff to make certain resources more accessible to a specific student group.</p>
+<h2 >Scenario 1: Sample content</h2>
+<p >Let's start with a short and fairly niche scenario, which I call:</p>
+<p >I'm meeting teams around the university who want an introduction to digital accessibility. We have online training available, but meeting teams and discussing accessibility within the context of their work with examples can be quite effective.</p>
+<p >However, I've found it's better not to use real-world content. If we don't approach this carefully, colleagues might feel that their content is being singled out.</p>
+<p >Creating example content that is more meaningful than a chunk of lorem ipsum placeholder text can be a challenge.</p>
+<p >I gave a session to a group of project managers and analysts. In preparation, I asked Copilot to create a project update document for a fictitious project aimed at making project managers more efficient by using cats.</p>
+<ol>
+    <li>The document was to include:</li>
+    <li>An overview of the project aims</li>
+    <li>Red-amber-green ratings for time and cost</li>
+    <li>A list of deliverables</li>
+    <li>A roadmap</li>
+</ol>
+<p >I could then adjust the content by adding accessibility issues myself for the group to remediate during the session.</p>
+          <figure  class="demoVideo" style="aspect-ratio: 390 / 229;" >
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster6.png">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29325806_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">A fictitious project update document about a University Cat Service. It includes red/amber/green ratings for time and cost, a set of deliverables, research findings and project roadmap. Within the content a number of accessibility issues have been added, such as poorly crafted links, headings that are not semantically created, lists without semantic detail. At the end is a project logo where a project manager is shown with a cat. This video has no sound.</figcaption>
+          </figure>
+<p >On-screen, I'm browsing through my document. I’ve added defects like:</p>
+<ol>
+    <li>Low contrast issues</li>
+    <li>Red-amber-green ratings that use colour alone to express meaning</li>
+    <li>A table without proper headings</li>
+    <li>Poorly crafted links</li>
+    <li>Lists without proper list semantics</li>
+</ol>
+<p >The content itself is slightly facetious but I’ve avoided using real-world content or lorem ipsum placeholder text. <a href="https://matthewdeeprose.github.io/copilot-images/Example_document_to_remediate.docx">The document contains elements that would typically appear in a project document, and it took me only 10 minutes to create.</a></p>
+<p >Creating fictitious content from scratch is time-consuming. Using Copilot for this task saved me a lot of time.</p>
+<h2 >Scenario 2: Creating a Transcript from Corrected Video Captions</h2>
+<p >Back in January this year, we were creating an accessibility video for our doctoral college. Having completed the captions using <a target="_blank" rel="noopener noreferrer" href="https://www.nikse.dk/subtitleedit">Subtitle Edit</a>, we wanted to create a transcript.</p>
+          <figure  class="demoImage" style="aspect-ratio: 1920 / 1030;">
+            <img class="demoImg" src="copilot-images/subtitle-edit-1.png" alt="Subtitle Edit interface. A video explaining what we mean by digital accessibility is previewed. The captions are listed for the video. The waveform of the sound is also displayed. A section of the waveform is in a different colour, to correspond with the caption selected." loading="lazy">
+            <figcaption class="borders">Editing captions and their timing in Subtitle Edit.</figcaption>
+          </figure>
+<h3 >Importance of Transcripts</h3>
+<p >Transcripts have many benefits:</p>
+<ol>
+    <li>Not everyone wants to or can watch a video.</li>
+    <li>Transcripts allow for more ways to engage with content.</li>
+</ol>
+<p >Here’s feedback from a member of our neurodivergent staff group that explains this well:</p>
+          <blockquote class="borders">
+            <p>The thing that I find most annoying is the way online training is often set up. I don't learn well with videos, flashy moving images on screens, or endless things to click on to flip or open or whatever. It can get disorientating, and it makes it harder to take in the information because of the demands of interacting with the screen. My attention goes on interacting with the screen rather than taking in the information.</p><p>I'd rather just be given the information transcript-style so I can just read it (with images where they'll add something useful). I connect information into a whole better when I can see it all in one go, jump back and forth to double check things, and read it/process it at the speed I need to. </p>
+            <cite>Feedback from a member of University of Southampton's Neurodivergent Staff Group</cite>
+          </blockquote>
+<h3 >Further Benefits of Transcripts</h3>
+<ol>
+    <li>Transcripts make it easier to create further resources, such as blog posts or articles, depending on the context and purpose of the original content.</li>
+            <li>
+              From an accessibility point of view, as well as being a benefit, depending on the level of compliance we are aiming for, we are required to provide <a target="_blank" rel="noopener noreferrer" href="https://www.w3.org/WAI/WCAG22/Understanding/audio-only-and-video-only-prerecorded.html">equivalent alternatives to media content</a>, <a target="_blank" rel="noopener noreferrer" href="https://www.w3.org/WAI/WCAG22/Understanding/media-alternative-prerecorded.html">such as a well-prepared transcript.</a>
+              
+            </li>
+</ol>
+<h3 >Creating a Readable Transcript</h3>
+<figure  class="demoImage" style="aspect-ratio: 1010 / 649;">
+            <img class="demoImg" src="copilot-images/subtitle-edit-2.png" alt="Captions from the video transformed into plain text. No timing information is included. It's one block of text, no paragraphs, no headings, it's very unattractive to read." loading="lazy">
+            <figcaption class="borders">Subtitle edit allows us to export all the captions as plain text.</figcaption>
+          </figure>
+<p >While Subtitle Edit has an export text feature to turn captions into a single block of text, that block is not very readable. Although I had added punctuation while creating the captions, there were no paragraph breaks. Editing the text to insert paragraphs is time-consuming and tedious, especially if you’re unfamiliar with the original content.</p>
+<p >I wondered if Copilot could make this process faster. So, I wrote a prompt asking it to:</p>
+<ol>
+    <li>Reformat my transcript to be more readable.</li>
+    <li>Add headings, paragraph breaks, and use bullet points where appropriate.</li>
+</ol>
+<p >In my initial testing, I found that Copilot rewrote the text of my transcript. To resolve this, I added further instructions, specifying that the words and their order must remain unchanged.</p>
+<figure class="demoVideo" style="aspect-ratio: 155 / 76;" >
+            <video id="video_id_124_0_M" controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster2.png" >
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277416_1" type="video/mp4" >
+            </video>
+            <figcaption class="borders">Copilot is formatting the transcript. It adds headings of its own choosing based on the context of the transcript content. In some places it is using bullet points where it thinks there is a list. It is breaking the text into paragraphs. This video has no sound.</figcaption>
+          </figure>
+<p >On-screen, I’m showing a recording of Copilot Notebook running that prompt. It reformats the transcript as requested, adding:</p>
+<ol>
+    <li>Paragraph breaks</li>
+    <li>Headings</li>
+    <li>Bullet points, where appropriate</li>
+</ol>
+<p >Although I still had to check the results and make some changes to suit my preferences, it saved me a lot of time and avoided the monotony of manual editing.</p>
+<p >I’m now showing a Word document version of the transcript, with the navigation pane open. The headings have been set using heading styles, making them usable by assistive technologies.</p>
+<figure  class="demoImage" style="aspect-ratio: 1768 / 708;" >
+            <img class="demoImg" src="copilot-images/final-transcript.png" alt="" loading="lazy">
+            <figcaption class="borders">The final transcript in MS Word.</figcaption>
+          </figure>
+<h2 >Scenario 3: Creating a transcript for a podcast</h2>
+<p >In our third scenario, we're approaching transcription from a different angle.</p>
+<p >The <a target="_blank" rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Meliora podcast from the Sustainability and Resilience Institute at the University of Southampton</a> examines topics surrounding sustainability.</p>
+		            <figure  class="demoImage" style="aspect-ratio: 1882 / 1080;">
+            <img class="demoImg" src="copilot-images/promo.png" alt="University of Southampton Staff Matters page with information about the Meliora Podcast. It introduces that this podcast is about the 2023 United Nations Climate Change Conference or Conference of the Parties of the UNFCCC, more commonly known as COP28." loading="lazy">
+            <figcaption class="borders">Promotion of the Meliora Podcast in University of Southampton's internal 'Staff Matters" newsletter.</figcaption>
+          </figure>
+<p >On-screen, the podcast is advertised in our internal <i>University Staff Matters</i> newsletter. However, one of our colleagues in our communications team, who writes the newsletter, is profoundly deaf and cannot listen to the podcast. She and the podcast host, Professor Simon Kemp, got in touch with me to ask what options were available to make transcripts for the podcast.</p>
+<p >Since the podcast is an MP3 file, what tools did we already have that could help make a transcript?</p>
+<ul >
+    <li>We use Microsoft Stream, but it can only create captions for video files, not audio files.</li>
+    <li>Converting an MP3 to a video file would work, but it requires additional software.</li>
+</ul>
+<h3 ><strong>Whisper Desktop</strong></h3>
+<figure  class="demoImage" style="aspect-ratio: 681 / 446;" >
+            <img class="demoImg" src="copilot-images/whisper.png" alt="Screenshot of Whisper Desktop software with options to select input language, translate to another language and choose different output formats." loading="lazy">
+            <figcaption class="borders">Whisper Desktop. I've loaded the <a href="https://huggingface.co/ggerganov/whisper.cpp/blob/main/ggml-large-v2.bin">large-v2 model</a>. Small, medium and large models are available. Generally, smaller models use less memory but are less accurate.</figcaption>
+          </figure>
+<p >I came across <a target="_blank" rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Whisper Desktop</a>. It’s a Windows open-source application designed to run with the open-source automatic speech recognition system Whisper, created by OpenAI.</p>
+<p >If you have a good graphics card, this tool can run on your Windows computer and transcribe audio or video files, or live speech captured through your microphone.</p>
+<p >On my presentation web page, I have a link to <a target="_blank" rel="noopener noreferrer" href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">a quick setup guide that I wrote for using Whisper Desktop</a>.</p>
+<p >During transcription, you can view a live preview.</p>
+          <figure  class="demoVideo" style="aspect-ratio: 425 / 234;" >
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster4.png">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277420_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Screen recording of Whisper transcribing an episode of the Meliora podcast. It's showing the words it has detected, each word has a shade of colour: green, yellow or red, the colour indicates its confidence for accuracy. This video has no sound.</figcaption>
+          </figure>
+<p >On screen, I'm showing the preview while it transcribed one of Simon’s podcasts.</p>
+<ul >
+    <li>It’s showing the words it has detected.</li>
+    <li>Each word has a colour going from green to yellow to red.</li>
+    <li>The colour indicates its confidence for accuracy.</li>
+</ul>
+<p >Now, using colour to express meaning is obviously an accessibility barrier, but this preview is optional and more of a curiosity.</p>
+<p >It took about nine minutes to transcribe an hour-long podcast on my work computer with a high level of accuracy.</p>
+<h3 >Improving the Transcript</h3>
+<p >Just like in our first scenario, we have a big lump of unformatted plain text, not very readable. In this podcast, there are five different speakers.</p>
+<p >Can we get attribution added so we know who is speaking?</p>
+<p >I wrote a prompt for Co-pilot. I gave the speakers names and identified who the first speaker was. I asked it to write the name of the speaker followed by a colon in bold formatting to appear before each person speaks. I'm asking it to do this based on the text transcript, not the audio file.</p>
+		  <figure  class="demoVideo" style="aspect-ratio: 155 / 76;" >
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster5.png">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277415_1" type="video/mp4">
+            </video>
+            <figcaption class="borders">Screen recording of copilot. I have asked it to add speaker attribution to a transcript, I have given the speaker names and who speaks first. Copilot quickly parses through the text, adding the names of each speaker in bold to precede the passages of text where they are speaking. This video has no sound.</figcaption>
+          </figure>
+<p >On screen, I’m showing a screen recording of Co-pilot going through that task. It is adding the name of each speaker in bold before they speak.</p>
+<p >Of course, I then ran our formatting prompt we saw earlier.</p>
+<p >Now, I’m showing the before and after.</p>
+          <figure  class="demoVideo" style="aspect-ratio: 239 / 219;" >
+            <video  controls preload="metadata" controlsList="nodownload" poster="copilot-images/poster7.png">
+              <source src="https://blackboard.soton.ac.uk/bbcswebdav/xid-29277418_1" type="video/mp4" >
+            </video>
+            <figcaption class="borders">Transcript of an episode of the Meliora Podcast featuring speaker attribution and formatting. This video has no sound.</figcaption>
+          </figure>
+<p >Our initial block of plain text in comparison with <a href="https://matthewdeeprose.github.io/copilot-images/Meliora_Podcast_Transcript.docx">a transcript that has headings, more meaningful paragraph breaks, bullet points, and speaker attribution.</a></p>
+<p >It’s definitely not perfect, but it would take someone much less time to fine-tune and correct this transcript using our adjusted version in comparison to our original block of text.</p>
+<h2 >Scenario 4: Visualising and describing processes</h2>
+<p >My final scenario in this first section of the presentation is something I came across just last week.</p>
+<h3 >Access to Work</h3>
+<p >We're finding some challenges with the way the <a target="_blank" rel="noopener noreferrer" href="https://www.gov.uk/access-to-work">Access to Work scheme</a> is currently implemented, and I wanted to get an overview of the process. <a target="_blank" rel="noopener noreferrer" href="https://www.gov.uk/access-to-work/print">The government web page describing the process is 11 pages long</a> if you print it out.</p>
+<p >My colleagues use <a target="_blank" rel="noopener noreferrer" href="https://mermaid.js.org/">a tool called Mermaid to create flow charts and other types of chart and graph</a>. You can write out a process in a markdown-style language, and it will dynamically convert it into graphical diagrams.</p>
+<h3 >Creating a Flow Chart with Claude</h3>
+<p >I made a PDF printout and asked Claude to create a flow chart of the Access to Work process. I specified some accessibility settings it should use. I had already prepared a web page that I could paste the Mermaid markup it produced into.</p>
+<p >Graphical charts need text descriptions as well, of course. I asked Claude to create a text description of the process in HTML format as an ordered list. I specified that where there was branching in the flow chart, it should specify which numbered step the reader should go to. I could then paste the HTML as a readable written description of the process into my web page.</p>
+<p >Results of the Experiment<br>In less than a minute <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/mermaid.html">I had a visual and written high level overview of the process.</a></p>
+<p >This use case was more of an experiment, but I like the idea of getting the AI to create the process map in a simple format I can edit myself as well as providing the long description of that process map. <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/alt-text-images-charts-graphs__transcript.html#Example3:Aflowchartordecisiontree">Using a semantically ordered list by the way gives someone using a screen reader a much more predictable and navigable overview of the process</a>.</p>
+<p >Copilot can do this too, but I found it would produce errors that I had to fix manually before it would work.</p>
+<h2 >Concluding the first part and starting the second</h2>
+<p >That concludes my section on using generative AI to make workflows more efficient.</p>
+<p ></p>
+<p ></p>
+<h2 >Back to 2021 – Colour matrix</h2>
+<p >To introduce the next section, let's go back to February 5, 2021, when Phil invited me to speak at what I think might have been <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/kent">the fifth of the Digitally Enhanced Education webinars</a>.</p>
+<p >I explained colour contrast and digital accessibility and introduced <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/matrix/matrix.html">a tool I made that checked which university brand colours we could use together while meeting the Web Content Accessibility Guidelines criteria for contrast</a>. Since that presentation, I've used the tool to create these look up tables for around 20 universities and organisations.</p>
+<h2 >Accessibility helpers</h2>
+<p >I love these minimal webpages that offer one useful feature. Here are a few of my favourites:</p>
+<ul>
+    <li>Arizona State University has brilliant AI tools anyone can use. Recently, I used their <a target="_blank" rel="noopener noreferrer" href="https://asuo-ai-labs.streamlit.app/Voiceover_Generator">Voiceover generator</a> to create an audio description for a video.</li>
+    <li><a target="_blank" rel="noopener noreferrer" href="https://buttonbuddy.dev/">Button Buddy</a> helps you choose accessible colours for your buttons, including focus and hover states.</li>
+    <li>The <a target="_blank" rel="noopener noreferrer" href="https://contrast-finder.tanaguru.com/result.html?foreground=%23FFFFFF&amp;background=%234BB694&amp;ratio=4.5&amp;isBackgroundTested=true&amp;algo=Rgb&amp;distanceSort=asc">tanaguru contrast finder</a> helps when you must use a certain shade, like orange with white text, which usually lacks sufficient contrast. This tool finds shades close to your intended colour but with sufficient contrast.</li>
+</ul>
+<p >I often have ideas for tools like this, but as a non-professional developer with only fundamental JavaScript knowledge, it takes me weeks or months to complete a project in my own time.</p>
+<p >Could AI help?</p>
+<h2 >Medicine diagram request</h2>
+<p >A few weeks ago, a colleague forwarded me a question from someone in our Medicine faculty who teaches Embryology and prefers creating their own diagrams. They attended an accessibility session and wanted to ensure their diagrams wouldn't present a barrier to those with colour vision deficiency or colour blindness. The screen shows an example: a section of the developing embryo with ridges (green &amp; pink) that will form the urogenital system.</p>
+<p >In my slide deck I have a hidden section that explains colour blindness or <a target="_blank" rel="noopener noreferrer" href="https://www.nhs.uk/conditions/colour-vision-deficiency/">colour vision deficiency, which is the term the NHS uses</a> and which I will now abbreviate to just CVD. I had to drop it for the live presentation so I could fit it into our available time.</p>
+<h3 >First experiments with CVD – colour randomiser</h3>
+<p >I explored CVD a little already when I created this <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/infographic-colour-generator.html">colour suggester web page</a>, a follow-up to the colour matrix, aiming to help colleagues find new colour combinations from our brand that have sufficient contrast.</p>
+<p >Pressing the randomise button selects a random background colour and shows a text colour and three graphic colours, all with sufficient contrast. I added buttons to simulate how those colours look with different types of CVD.</p>
+<p >It took me about three and a half weeks of evenings to complete this as a personal project, as I first had to figure out what I needed to do and then search online to learn how to do it.</p>
+<p >To simulate CVD, I used <a target="_blank" rel="noopener noreferrer" href="https://daltonlens.org/cvd-simulation-svg-filters/">Nicolas Burrus' public domain implementation</a>.</p>
+<h3 >Using colour for meaning</h3>
+<p >When expressing meaning with colour, we should add another method to aid understanding. This fictitious example shows an assignment submission screen with a red "no" button and a green "yes" button, challenging for those with protanopia or deuteranopia, which are types of CVD. Colours can have different cultural meanings too.</p>
+<p >Adding Yes and No labels make this easier to understand for everyone.</p>
+<h3 >Colour vision deficiency friendly colour palettes</h3>
+<p >In this case with Medical diagrams, labels may not always be desirable for example in an assessment. I found a helpful document by Alexandra Phillips at the National Center for Ecological Analysis and Synthesis, which lists <a target="_blank" rel="noopener noreferrer" href="https://www.nceas.ucsb.edu/sites/default/files/2022-06/Colorblind%20Safe%20Color%20Schemes.pdf">CVD "safe" palettes</a>.</p>
+<p >I first wanted to confirm these colour schemes would work as intended. I wanted to view how these colours would appear to those with CVD.</p>
+<p ><a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/cvdp.json">I took the colour codes for each palette and put them into a small piece of JSON data</a>. I wanted to use this seed to create a web page showing the colours with different types of CVD, but I lacked experience creating web content from data. So, I wrote a prompt for Copilot.</p>
+<p >The prompt is quite long, so I'll highlight a few key points. You can find all the prompts on the presentation web page.</p>
+<p >First, I told Copilot to roleplay as a senior software engineer passionate about digital accessibility. I explain the structure of the data that I want to it to use. I didn’t know how to generate content using data, but I did know how I wanted the data presentation to be structured, so I was very specific about every detail.</p>
+<p >Copilot wrote the JavaScript to do exactly what I wanted. I used that to <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/CVDP.html">build the page, implement the CVD simulation, and verify each palette's performance</a>. On the screen, I'm scrolling through the resulting web page.</p>
+<h3 >Making a tool</h3>
+<p >So, we had potential colour palettes and could verify their effectiveness, but it still wasn't user-friendly. What could we do? Fortunately, the example images provided were vector-based, and I could save them as <a target="_blank" rel="noopener noreferrer" href="https://en.wikipedia.org/wiki/SVG">SVG files, Scalable Vector Graphics</a>. SVG files are just text and they use HTML colour codes, giving me an idea.</p>
+<p >What if we had a tool where you could:</p>
+<ol>
+    <li>Load your SVG file</li>
+    <li>See how it looks with different types of CVD</li>
+    <li>Identify the colours used in the file</li>
+    <li>Swap colours using a CVD-friendly palette</li>
+    <li>Save the modified file</li>
+</ol>
+<p >So, I wrote another prompt for Copilot, trying to be as specific and descriptive as possible. Again, you can read the whole prompt on the presentation web page. Because it is quite long. Copilot wasn't able to do it for me though.</p>
+<p >I've heard great things about Claude AI from Anthropic. It's supposed to excel at tasks like this. Out of curiosity I paid for my own personal licence to use Claude. It quickly built something for me from the same prompt.</p>
+<p >After a few back-and-forths to improve it, I had a version I could build upon. This is the version Claude made. We have buttons to upload the SVG file. The image displays in four windows, but the CVD simulation isn't implemented yet. We have the list of colours in the SVG and options to change the colours using a palette from the JSON file we saw earlier.</p>
+<p ><a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/svgCVD">Next I took that code and added it into my website, and implemented the CVD simulation.</a></p>
+<p >After about four hours of effort across four days, I was ready to meet the academic and demonstrate the tool.</p>
+<ol>
+    <li>I show how to download the picture in SVG format from the PowerPoint he provided</li>
+    <li>Load it into the tool I made</li>
+    <li>Preview the image with different types of colour vision deficiency</li>
+    <li>Get a list of the colours used in the image</li>
+    <li>Pick a CVD friendly palette</li>
+    <li>Change a colour in the image to one from the palette</li>
+    <li>Preview how the change looks</li>
+    <li>Download the SVG </li>
+    <li>and load it back into our PowerPoint.</li>
+</ol>
+<p >In this demo I'm just demonstrating the process, I'll leave it to the academic to judge whether his images need updating, and to find out which palettes may work best. We've arranged to meet in December to follow up.</p>
+<h3 >Using AI to help create accessibility tools</h3>
+<p >So, can AI help us to create tools like this? In my limited experience so far, Yes.</p>
+<p >Of course, I kept the scope of my idea as limited as possible, and I'm not doing anything that would need authentication or storage, so the technical scope is very simple.</p>
+<p >With this use-case, what else could I do? Maybe hope there would be a hackathon at some point where teams could come up with ideas and produce proofs of concept in a limited time.</p>
+<p >Using AI in this way made me feel like I was in my own little hackathon with me playing the role of the product manager and the AI working as a developer, helping to realise my vision.</p>
+<p >Of course, this approach won't work for everyone, in my case I already have some knowledge of web technologies and I have a website to host these types of tools. I also have an idea of what should be possible and how it might be done, which can help to write good prompts.</p>
+<p >Most importantly, I know how to test that the results are accessible and if I find problems I should have a good idea of how to resolve any defects.</p>
+<h2 >Conclusion</h2>
+<p >Let’s draw to our conclusion.</p>
+<p >Reflecting on the first part of the presentation, which covered whether gen-AI could make certain digital accessibility workflows more efficient, the crucial first steps are identifying potential use cases where AI could help. Finding these requires imagination and inspiration, followed by patience to test and validate. This is where I feel I am most of the time.</p>
+<p >Next, we must find ways to make this more approachable and user-friendly. Not everyone wants to use a prompt. Web-based "turn-key" solutions will be more effective and can use APIs to parse more text. I really love <a target="_blank" rel="noopener noreferrer" href="https://asuo-ai-labs.streamlit.app/">Arizona State University's approach, which uses simple pages to perform discrete generative AI tasks</a>.</p>
+<p >In the second part, we saw that generative AI tools helped me to quickly turn ideas I wasn't sure how to implement into reality. This use case may be particular to me, but I'm sure others in similar roles could explore this if they are not already. I often have ideas for useful tools that can benefit an area of digital accessibility, and now I look forward to using this new power.</p>
+<h3 >Your ideas</h3>
+<p >I hope at least one of the ideas I shared from my experience is new to you. I'm very keen to hear from colleagues about any use cases they identified where genAI can assist with digital accessibility, so please share your experiences in the chat. Feel free to <a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/in/mattdeeprose/">connect with me on LinkedIn</a> to continue the conversation.</p>
+<p >Thanks and back to you, Phil.</p>
+<h2 >Questions and answers</h2>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span>Blimey, Matthew, that was outstanding. I would suggest sitting down if you weren't already because that was quite something. I would just like to say, I posted in the chat, that was a lot to take in quite a short space of time, but don't worry because we're recording the session. You can re-watch this recording on our YouTube channel. We'll hopefully get that up there tomorrow.</p>
+<p >But wow, what a great talk. I'm just going by the number of reactions that were coming in throughout your talk, Matthew. I know that lots of people were really enjoying that.</p>
+<p >We have a number of questions. If you would like to ask a question, if you could raise your hand and if we've got time to come to you, we will. But in the Q&amp;A, we've got one from Ros.</p>
+<h3 >Whisper vs Word Dictate</h3>
+<p >Ros asks, "Is the Whisper audio transcription any better than the built-in ones within <a target="_blank" rel="noopener noreferrer" href="https://support.microsoft.com/en-gb/office/transcribe-your-recordings-7fc2efec-245e-45f0-b053-2a97531ecf57">Dictate in Microsoft Word, where you can upload an MP3</a>?"</p>
+<p ><span class="transcriptSpeaker">Matthew Deeprose: </span>That is a great question, Ros. I'm afraid I haven’t tested. I didn’t even know you could upload an MP3 into Microsoft for dictation. So I need to test that myself. I can’t answer it, but I do know that I have been very impressed with the quality of Whisper’s transcription. But you do need to have a good graphics card in your PC to use it.</p>
+<p >Although I just read, things are moving so fast. I read yesterday a new version has been put out there, which should work on lower-powered machines as well. If I can find it, I’ll dig out the link. Thanks, and back to you, Phil.</p>
+<h3 >Headings from Generative AI tools that transfer into Word</h3>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span>Great. Thank you. We've got another one from Gill. "Matt, how do you create headings with AI that work in Microsoft Word?"</p>
+<p ><span class="transcriptSpeaker">Matthew Deeprose: </span>Great question. Hello, Gill. Great to have you with us. What I have found is the outputs produced by Copilot are in a type of Markdown language. So it’s a markup language, but for some reason, it’s called Markdown. I have found that if you Google, you can find a Markdown to Word converter.</p>
+<p >Also, I have had experience where I’ve downloaded the result from Copilot as a Word document. But in those cases, sometimes I found that the headings hadn’t been actually transferred across properly.</p>
+<p >But it’s very quick to apply headings. My top tip, if this is new to you: the keyboard shortcut, hold down "Control Alt" and then the number 1, 2, or 3, and when you’re in Word, that will change the text to heading level 1, 2, or 3. If you use 4, you get a Euro symbol, but 5 and 6 also work. I haven’t worked out how to make it not do the Euro symbol and do heading level 4, but it’s very rare that I get down to level 4 headings usually. Although I don’t have a great answer, hopefully, I’ve given you a coping strategy to get your headings done faster.</p>
+<p >Thanks, and back to you, Phil.</p>
+<h3 >What version of Copilot was involved?</h3>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span>Thank you. We've got one more in the Q&amp;A and then we’ll open it up. So if anyone wants to ask a question, I think we do still have a couple of minutes left. So this one’s from Emma. "What version of Copilot are you using here?" She's wondering if it's Copilot for 365, for example, in Word, or the browser version in Edge.</p>
+<p ><span class="transcriptSpeaker">Matthew Deeprose: </span>I’m using the version in the browser that anyone else should be able to use. So you should be able to use it as well, Emma, and great to see you here.</p>
+<p >One thing I would say, if you’re a Microsoft institution, once you’ve logged into Copilot, just make sure you see that nice green symbol that shows that you are under either <a target="_blank" rel="noopener noreferrer" href="https://learn.microsoft.com/en-us/copilot/privacy-and-protections">commercial data protection or enterprise data protection</a>, which should mean that anything that you enter into Copilot will not be used for training and it won’t be remembered. Once you log in, you should get 30 uses a day rather than the standard 10, which everyone else seems to get.</p>
+<p >Thanks, and back to you, Phil.</p>
+<h3 >Getting started with Prompts</h3>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span><br>Great. Thank you. So if anyone has any questions, we’ve got a couple of minutes. If you’d like to raise your hand, we can take them. While we’re waiting, I don’t think any hands have come up, none that I can see.</p>
+<p >You've covered this already, Matt, but there's one question I'd like to ask you: what advice would you give to anyone who's just at the beginning of this? How would you advise that they start integrating AI tools, like some of the ones that you’ve mentioned? Is there any that you’d recommend playing with first to ease people in?</p>
+<p ><span class="transcriptSpeaker">Matthew Deeprose: </span>Well, I guess Copilot is a great one to start with because many institutions have a relationship with Microsoft, so you don’t have to have too many concerns around privacy and so on.</p>
+<p >In terms of starting out using the prompts, I think having an idea of what you want to do—it might sound obvious, but for me, when AI first came along, I thought, "Oh, that’s cool, but I don’t know how I’m going to use it." It took me until the start of this year that I started having those ideas for actual positive and useful uses.</p>
+<p >I think in terms of crafting your prompt, if you Google <a target="_blank" rel="noopener noreferrer" href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview">Anthropic Prompt Guide</a>, the company Anthropic has a really good resource on how to craft your prompts. There’s also a video on their YouTube channel where <a target="_blank" rel="noopener noreferrer" href="https://www.youtube.com/watch?v=T9aRN5JkmL8">they talk to a bunch of their engineers about how they craft prompts</a>. I’d recommend just having a watch of that because I’ve watched that myself to get some ideas.</p>
+<p >I would also recommend, as someone who uses the Reddit website, there are Reddits for <a target="_blank" rel="noopener noreferrer" href="https://www.reddit.com/r/OpenAI/">OpenAI</a>, <a target="_blank" rel="noopener noreferrer" href="https://www.reddit.com/r/LocalLLaMA/">local LLM</a>s (which is for people that run LLMs on their own machines), and <a target="_blank" rel="noopener noreferrer" href="https://www.reddit.com/r/ClaudeAI/">Anthropic or Claude Reddit</a>. I often find people sharing what they are doing and what’s worked for them. I found that a very good way to learn from others.</p>
+<p >I suppose the final thing is just to have a go because you can’t really go wrong with Copilot. You need to work it out for yourself because it depends on what you want to do. I’m afraid that was a bit of a wishy-washy answer, Phil, but back to you for now.</p>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span>You’re absolutely right. Just having a go is probably the first step. Just play around with it because you’ll find out stuff really quickly as you go. I think that’s sound advice.</p>
+<h3 >How accessible is generative AI?</h3>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span>Benedict, I have allowed you to unmute yourself and turn on your camera if you’d like to ask your question.</p>
+<p ><span class="transcriptSpeaker">Benedict:</span>Microphone is unmuted. Am I audible now? Cool. Can you all hear me?</p>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span>Yes, we can hear you.</p>
+<p ><span class="transcriptSpeaker">Benedict:</span>Thank you. I don’t know what’s wrong with my camera. Thanks for the presentation. I’m always keen when someone mentions accessibility because I’m one of those that depend on accessibility.</p>
+<p >My question is, how much of those accessibility features that you spoke about can respond to the needs of people who rely more on screen readers?</p>
+<p >Because what I often find is that sometimes things seem accessible until people like myself, who rely more on screen readers, get to use them and find, oh, this is not quite as accessible as we thought. Did you consider or have you ever thought of maybe looking at accessibility in relation to screen readers or screen reader users? Thank you.</p>
+<p ><span class="transcriptSpeaker">Matthew Deeprose: </span>Thanks, great question. I have not yet tested the web-based versions of ChatGPT and Copilot with a screen reader. I do have a colleague who uses a screen reader, and he uses both Copilot and ChatGPT themselves a lot, and they haven’t shared with me any issues with the performance of those actual tools.</p>
+<p >What I can say from my experiences is that I’m always keeping in mind the necessity that the outputs I use AI to create should be accessible. For example, with my prompt for coming up with the tool for changing colours, I specified that they role-play someone with a passion for digital accessibility. Later on, I asked it to write comments on the code that it made to help both me and AI later better understand it.</p>
+<p >While it was doing that, it came up with a few ideas. It would say, “I’ve spotted there is a keyboard handler here, so make sure we need to add one with an ARIA label to make sure that it will work correctly with a screen reader.”</p>
+<p >The best answer I can give is to have in mind the necessity for an accessible experience as the outcome. But because I wasn’t using the AI as someone with a disability or impairment myself, I can’t give a better answer to the true nature of your question.</p>
+<p ><span class="transcriptSpeaker">Benedict:</span>Thank you so much.</p>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span>Thank you. I’m so sorry, Paul, we have run out of time for this one. But if you could place your question in the Q&amp;A, I’m sure Matthew will be able to take a look at that one at some point during the webinar. So thank you, and thank you, Matt.</p>
+<p >In order to keep time, we’re going to move on. So thank you again, Matthew. It’s lovely to have you back on and great work. Really, really great stuff you’re doing there.</p>
+<p ><span class="transcriptSpeaker">Matthew Deeprose: </span>Thank you.</p>
+<p ><span class="transcriptSpeaker">Dr Phil Anthony: </span>Thank you.</p>
+			   
+			   
+			   
+			   
+            </article>
+			      <div id="panel">
+         <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+               <title id="svgTitle2">Top.</title>
+               <desc id="svgDesc2">Move to the top of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m11.5 7.5-3-3-3 3"/>
+                  <path d="m8.5 4.5v8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+         </button>
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+               <title id="svgTitle3">Bottom.</title>
+               <desc id="svgDesc3">Move to the bottom of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m5.5 9.5 3 3 3-3"/>
+                  <path d="m8.5 12.5v-8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+         </button>
+      </div>
+         </main>
+         <aside class="page-sidebar related">
+        <section class="related">
+          <h3>Related content</h3>
+        </section>
+        <section class="related">
+          <h4>Presentations</h4>
+          <ul class="relUL">
+            <li>
+              <a href="harnessCopilot.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</a>
+            </li>
+            <li>
+              <a href="high_quality-markup_impact.html">The impact that high quality mark-up can have on accessibility, performance, and discoverability</a>
+            </li>
+          </ul>
+        </section>
+        <section class="related">
+          <h4>Blog posts</h4>
+          <ul class="relUL">
+            <li>
+              <a href="Accessibility-Beyond-Borders.html">Accessibility Beyond Borders!</a>
+            </li>
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/22/what-one-thing-can-it-staff-do-to-improve-accessibility/">What one thing can IT staff do to improve accessibility?</a>
+            </li>
+            <li>
+              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/17/how-can-we-correct-captions-and-create-transcripts-at-the-university-of-southampton/">How can we correct captions and create transcripts at the University of Southampton?</a>
+            </li>
+          </ul>
+            </section>
+         </aside>
+         <footer class="page-footer">
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="AccessibilityFoot">
+               <a href="Accessibility_Statement.html">Accessibility Statement</a>
+            </div>
+            <div id="twitterFoot">
+               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+            </div>
+            <div id="YouTubeChannelFoot">
+               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+            </div>
+            <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
+               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
+            </div>
+         </p></footer>
+      </div>
+
+      <script>
+         function menuAction() {
+             let menuSwitch = document.getElementById("myTopnav");
+             if (menuSwitch.className === "topnav") {
+                 menuSwitch.className += " responsive";
+                 
+             } else {
+                 menuSwitch.className = "topnav";
+             }
+             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+             if (menuAriaAttrib === "true") {
+                 menuAriaAttrib = "false"
+             } else {
+                 menuAriaAttrib = "true"
+             }
+             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");
+         
+         
+         window.onscroll = function() {
+             scrollFunction()
+         };
+         
+         function scrollFunction() {
+             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+                 mybutton.style.display = "block";
+         		mybutton2.style.display = "block";
+             } else {
+                 mybutton.style.display = "none";
+         		mybutton2.style.display = "none";
+             }
+         }
+         
+         
+         
+         function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
+         }
+         
+         function bottomFunction() {
+         window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
+         }
+      </script>
+      <script>
+         let themePref = localStorage.getItem("theme");
+         console.log("Has a theme preference been saved?", themePref);        
+         
+         
+         function setLight() {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById("modeToggle");
+             const d = matchMedia('(prefers-color-scheme: dark)');
+             let dt;
+             if (d.matches) {
+                 dt = 'dark';
+                 console.log("Prefers dark theme in OS");
+             } else {
+                 dt = 'light'
+                 console.log("Prefers light theme in OS");
+             }
+             if (dt == 'dark' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'light' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'dark' && !themePref) {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else {
+                 theButton.setAttribute("aria-pressed", "false");
+             }
+         }
+         setLight();
+         
+         function toggle(btnID) {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById(btnID);
+             if (theButton.getAttribute("aria-pressed") == "true") {
+                 theButton.setAttribute("aria-pressed", "false");
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 console.log("Turned on light mode");
+                 localStorage.setItem("theme", "Light");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "false");
+             } else {
+                 theButton.setAttribute("aria-pressed", "true");
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 console.log("Turned on dark mode");
+                 localStorage.setItem("theme", "Dark");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference set to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "true");
+             }
+         }
+         
+         function applyThemePreference() {
+             if (themePref == 'Dark') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 theButton.setAttribute("aria-pressed", "true");
+                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
+             } else if (themePref == 'Light') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 theButton.setAttribute("aria-pressed", "false");
+                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
+             }
+         }
+         applyThemePreference();                
+      </script>
+	  <script src="scripts/lite-yt-embed.js"></script>
+	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
+	  	    <script src="scripts/jquery-3.7.1.min.js"></script>
+    <script src="scripts/details.js"></script>
+		  <script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Step 1: Add IDs to all heading elements without IDs
+    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    headings.forEach(heading => {
+        if (!heading.id) {
+            heading.id = heading.textContent.replace(/\s+/g, '');
+        }
+    });
+
+    // Step 2: Create list items for each H2 in the ul with ID 'index'
+    const contentsList = document.getElementById("index");
+    if (contentsList) {
+        const h2Elements = document.querySelectorAll("h2");
+        h2Elements.forEach(h2 => {
+            if (h2.textContent !== "Contents") {
+                const listItem = document.createElement("li");
+                const link = document.createElement("a");
+                link.href = `#${h2.id}`;
+                link.textContent = h2.textContent;
+                listItem.appendChild(link);
+                contentsList.appendChild(listItem);
+            }
+        });
+    }
+});
+	  </script>
+    <script>
+      window.console || (window.console = {
+        'log': alert
+      });
+      $(function() {
+        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
+        $('details').details();
+        $('details').on({
+          'open.details': function() {
+            console.log('opened')
+          },
+          'close.details': function() {
+            console.log('closed')
+          }
+        })
+      });
+    </script>
+	    <script>
+      // Expand details / summary when printing
+      // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
+      window.matchMedia("print").addEventListener("change", evt => {
+        if (evt.matches) {
+          elms = document.body.querySelectorAll("details:not([open])");
+          for (e of elms) {
+            e.setAttribute("open", "");
+            e.dataset.wasclosed = "";
+          }
+        } else {
+          elms = document.body.querySelectorAll("details[data-wasclosed]");
+          for (e of elms) {
+            e.removeAttribute("open");
+            delete e.dataset.wasclosed;
+          }
+        }
+      })
+    </script>
+		<script>
+// Hide videos and images
+$(document).ready(function() {
+    $.fn.hideFigures = function() {
+		$('.demoVideo').hide();
+		$('.demoImage').hide();
+		$("#imageVideoRadiosAlert").text("Videos and images hidden.");
+    };
+});
+// Show videos and images
+$(document).ready(function() {
+    $.fn.showFigures = function() {
+		$('.demoVideo').show();
+		$('.demoImage').show();
+		$("#imageVideoRadiosAlert").text("Videos and images visible.");
+    };
+});
+</script>
+   </body>
+</html>
