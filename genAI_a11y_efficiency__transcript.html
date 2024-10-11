@@ -187,6 +187,22 @@
 </ol>
 <p >The content itself is slightly facetious but I’ve avoided using real-world content or lorem ipsum placeholder text. <a href="https://matthewdeeprose.github.io/copilot-images/Example_document_to_remediate.docx">The document contains elements that would typically appear in a project document, and it took me only 10 minutes to create.</a></p>
 <p >Creating fictitious content from scratch is time-consuming. Using Copilot for this task saved me a lot of time.</p>
+<details>
+<summary>
+<h3>Read the prompt I wrote for creating sample content</h3>
+</summary>
+			<p>Adjust this prompt to suit the context and content you require. This is just an example.</p>
+					  <blockquote class="prompt">
+		  <p>Please create a project update document for a fictious project that aims to make university project managers more efficient in delivery of project outcomes using cats.</p>
+
+<p>The outline should include:</p>
+<ol>
+<li>an overview of the project aims.</li>
+<li>red/amber/green ratings for time and cost.</li>
+<li>a list of project deliverables.</li>
+<li>a project roadmap.</li>
+</ol>
+</blockquote>	</details>
 <h2 >Scenario 2: Creating a Transcript from Corrected Video Captions</h2>
 <p >Back in January this year, we were creating an accessibility video for our doctoral college. Having completed the captions using <a target="_blank" rel="noopener noreferrer" href="https://www.nikse.dk/subtitleedit">Subtitle Edit</a>, we wanted to create a transcript.</p>
           <figure  class="demoImage" style="aspect-ratio: 1920 / 1030;">
@@ -242,6 +258,24 @@
             <img class="demoImg" src="copilot-images/final-transcript.png" alt="" loading="lazy">
             <figcaption class="borders">The final transcript in MS Word.</figcaption>
           </figure>
+		  
+<details>
+<summary>
+<h3>Read the prompt I wrote for creating a transcript from captions</h3>
+</summary>
+			<p>The process begins by using <a href="https://github.com/SubtitleEdit/subtitleedit/releases">Subtitle Edit</a> or a similar tool to convert the captions file into plain text with any timings removed.</p>
+			          <blockquote class="prompt">
+                      <p>Instructions:</p>
+          <p>Please format the following transcript to be more readable.</p>
+          <p></p>
+          <p>Use headings, paragraph breaks, and bullet points as appropriate.</p>
+          <p></p>
+          <p>Important: because this is a transcript, it is essential that the text itself is kept verbatim. Please make sure you do not change any of the original words or the order in which they are presented.</p>
+          <p></p>
+          <p>Transcript:</p>
+          <p>...</p>
+          </blockquote>	
+</details>
 <h2 >Scenario 3: Creating a transcript for a podcast</h2>
 <p >In our third scenario, we're approaching transcription from a different angle.</p>
 <p >The <a target="_blank" rel="noopener noreferrer" href="https://meliorapodcast.buzzsprout.com/share">Meliora podcast from the Sustainability and Resilience Institute at the University of Southampton</a> examines topics surrounding sustainability.</p>
@@ -299,6 +333,30 @@
           </figure>
 <p >Our initial block of plain text in comparison with <a href="https://matthewdeeprose.github.io/copilot-images/Meliora_Podcast_Transcript.docx">a transcript that has headings, more meaningful paragraph breaks, bullet points, and speaker attribution.</a></p>
 <p >It’s definitely not perfect, but it would take someone much less time to fine-tune and correct this transcript using our adjusted version in comparison to our original block of text.</p>
+<details>
+<summary>
+<h3>Read the prompt I wrote for podcast transcription</h3>
+</summary>
+<p>This process begins with using <a href="https://github.com/Const-me/Whisper">Whisper Desktop</a> to create the initial plain text transcript. Here is <a href="https://blackboard.soton.ac.uk/bbcswebdav/xid-27959503_1">my guide to setting up Whisper Desktop</a>.
+			<h4>Speaker Attribution</h4>
+			<blockquote class="prompt">
+				  <p>Instructions:</p>
+<p>I will paste a transcript from a podcast. The speakers' names are:<br>
+Simon Kemp<br>
+Grace Compton<br>
+Craig Hutton<br>
+Lily Kilner<br>
+Sophie Green<br></p>
+
+<p>
+I would like you to add speaker attribution to the text I will paste, so we know who is talking. Do this by writing the name of the speaker followed by a colon in bold formatting when each speaker speaks. The first speaker is Simon Kemp.
+</p>
+<p>Transcript:
+<br>...</p>
+
+				  
+				  </blockquote>
+</details>
 <h2 >Scenario 4: Visualising and describing processes</h2>
 <p >My final scenario in this first section of the presentation is something I came across just last week.</p>
 <h3 >Access to Work</h3>
@@ -323,6 +381,45 @@
 <p>In less than a minute <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/mermaid.html">I had a visual and written high level overview of the process.</a></p>
 <p >This use case was more of an experiment, but I like the idea of getting the AI to create the process map in a simple format I can edit myself as well as providing the long description of that process map. <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/alt-text-images-charts-graphs__transcript.html#Example3:Aflowchartordecisiontree">Using a semantically ordered list by the way gives someone using a screen reader a much more predictable and navigable overview of the process</a>.</p>
 <p >Copilot can do this too, but I found it would produce errors that I had to fix manually before it would work.</p>
+<details>
+<summary>
+<h3>Read the prompt I wrote for creating a process flow diagram and an written version of the process</h3>
+</summary>
+			<blockquote class="prompt">			  
+	<p >You are working on a project to provide a process map or flow diagram explaining the access to work process.</p>
+<p >I will provide a PDF print out of the government website describing the access to work process.</p>
+<p >Please create mermaid markup describing this process. Make sure in the mermaid markup to include suitable accTitle and accDescr keywords and description that you determine are appropriate from the source text.</p>
+
+<p >Follow up with:</p>
+<p >Please write a text version of the process, in HTML in the following way.</p>
+<ol>
+    <li>
+        <p >Add an H2 element that contains a heading something like “Readable Description of the [insert name] process</p>
+    </li>
+    <li>
+        <p >Create an ordered list element.</p>
+    </li>
+    <li>
+        <p >Within it create list items describing the process step by step.</p>
+    </li>
+    <li>
+        <p >Where there are choices, please use the numbers to explain which step to go to, e.g. if Yes, go to step 4, if No go to step 8.</p>
+    </li>
+    <li>
+        <p >Close the ordered list element when complete.</p>
+    </li>
+</ol>
+<p >&nbsp;</p>
+<p >I will then paste the html you make me into the webpage. I have already included a script element to import mermaid from a CDN.</p>		
+			
+			
+			</blockquote>
+			
+			<ul>
+			<li>Result: <a href="https://matthewdeeprose.github.io/mermaid.html">Access to Work process flow chart using Mermaid</a>.</li>
+			</ul>
+			<p>Of course, results must be checked for accuracy. But this should reduce the initial workload.</p>
+</details>
 <h2 >Concluding the first part and starting the second</h2>
 <p >That concludes my section on using generative AI to make workflows more efficient.</p>
 <p ></p>
@@ -375,6 +472,70 @@
           </figure>
 
 <p >Copilot wrote the JavaScript to do exactly what I wanted. I used that to <a target="_blank" rel="noopener noreferrer" href="https://matthewdeeprose.github.io/CVDP.html">build the page, implement the CVD simulation, and verify each palette's performance</a>. On the screen, I'm scrolling through the resulting web page.</p>
+<details>
+<summary>
+<h3>Read the prompt I wrote for creating a table showing different colour vision deficiency friendly palettes</h3>
+</summary>
+
+			<blockquote class="prompt">
+
+<p >You are a senior software engineer with a passion for digital accessibility and the web content accessibility guidelines at level A and level AA. When you create content, you strive to make it as digitally accessible as possible.</p>
+<p >You are also confident when given instructions to ask questions and suggest alternative routes to achieve the same goal if you think they will be better.</p>
+<p >You have been given the following task. The overall goal is to create set of tables based on data of colour palettes.</p>
+<p >Please create a JavaScript or snippet that will do the following.</p>
+<p >You will use a set of data held in the cvdp.json file in the same directory as the webpage you will work on.</p>
+<p >The cvdp.json is structured as follows. A key called “palettes” contains multiple colour palettes. These are structure as a further key for the name of the palette, with an array containing a set of colour codes in hex format that make up each palette.</p>
+<p >Within a div with an id of “insertHere”, for every palette in the JSON file,&nbsp;you will:</p>
+<ol>
+    <li>
+        <p >create a &lt;section&gt; element with an ID of the palette name with the word “Section” appended to it. You will remove any spaces from the ID e.g. abcPaletteSection.</p>
+    </li>
+    <li>
+        <p >Create an &lt;h2&gt; element at the start of the section containing the name of the palette e.g. “abc Palette”.</p>
+    </li>
+    <li>
+        <p >Create a &lt;table&gt; with an ID of the palette name with the word Table appended to it, e.g. abcTable.</p>
+    </li>
+    <li>
+        <p >Create a &lt;caption&gt; for the table with a class of “hidden”. The caption will contain the name of the palette.</p>
+    </li>
+    <li>
+        <p >The structure of the table is to be as follows.</p>
+    </li>
+    <li>
+        <p >The first row is the column heading. There will be five columns in every table. The first column name is “Colour”, the second column name is “Trichromacy”, the third column name is “Protanopia”, the forth column name is “Deuteranopia” and the fifth column name is “Tritanopia”. These names will be the content of each cell that makes up the column heading row.</p>
+    </li>
+    <li>
+        <p >The first column will be part of a &lt;tr&gt; element with a “role” of “row” within a &lt;thead&gt; element with a “role” of “rowgroup”</p>
+    </li>
+    <li>
+        <p >Each cell for the column heading will be a &lt;th&gt; element with a “scope” of “col” and “role” of “columnheader”</p>
+    </li>
+    <li>
+        <p >Each subsequent row will be for each colour in the palette. It will be part of a &lt;tbody&gt; element with a “role” of “rowgroup”. Each row within that will be a &lt;tr&gt; element with a role of “row”.</p>
+    </li>
+    <li>
+        <p >The first cell of each row will be a row header, it will be a &lt;th&gt; element with a “scope” of “row”, a “data-label” of “colour” and a “role” of “rowheader”. The content of the cell will be the colour code in hex format from Json data for the palette. So for example the second row, which is the first non-column row will be about the first colour in the palette, the next row will be the second colour and so on. The rows will finish when all the colours in the palette have been parsed.</p>
+    </li>
+    <li>
+        <p >All the cells in the second column from this row onwards will be &lt;td&gt; elements given a class and “data-label” of “trichromacy” and role of “cell”. Each cell will have a style where the “background-color” of the cell is set to the current hex colour from the content of the palette being parsed and will match the content of the first cell in each particular row.</p>
+    </li>
+    <li>
+        <p >All the cells in the third column from this point will be &lt;td&gt; elements given a class and data-label of “protanopia” and role of “cell”. Each cell will have a style where the “background-color” of the cell is set to the current hex colour from the content of the palette being parsed and will match the content of the first cell in each particular row.</p>
+    </li>
+    <li>
+        <p >All the cells in the fourth column from this point will be &lt;td&gt; elements given a class and data-label of “deuteranopia” and role of “cell”. Each cell will have a style where the “background-color” of the cell is set to the current hex colour from the content of the palette being parsed and will match the content of the first cell in each particular row.</p>
+    </li>
+    <li>
+        <p >All the cells in the fifth column from this point will be &lt;td&gt; elements given a class and data-label of “tritanopia” and role of “cell”. Each cell will have a style where the “background-color” of the cell is set to the current hex colour from the content of the palette being parsed and will match the content of the first cell in each particular row.</p>
+    </li>
+</ol>
+</blockquote>		
+<ul>
+<li>Result, after some manual tweaking: <a href="https://matthewdeeprose.github.io/CVDP.html">Colour vision deficiency friendly palettes</a>.</li>
+</ul>	
+</details>
+
 <h3 >Making a tool</h3>
 <p >So, we had potential colour palettes and could verify their effectiveness, but it still wasn't user-friendly. What could we do? Fortunately, the example images provided were vector-based, and I could save them as <a target="_blank" rel="noopener noreferrer" href="https://en.wikipedia.org/wiki/SVG">SVG files, Scalable Vector Graphics</a>. SVG files are just text and they use HTML colour codes, giving me an idea.</p>
 <p >What if we had a tool where you could:</p>
@@ -408,6 +569,84 @@
             <figcaption class="borders">Demonstrating the "svgCVD" tool.</figcaption>
           </figure>
 <p >In this demo I'm just demonstrating the process, I'll leave it to the academic to judge whether his images need updating, and to find out which palettes may work best. We've arranged to meet in December to follow up.</p>
+
+<details>
+<summary>
+<h3>Read the prompt I wrote for creating a tool to adjust SVG images with CVD friendly palettes</h3>
+</summary>
+
+			<blockquote class="prompt">
+<p >You are a senior software engineer with a passion for digital accessibility and the web content accessibility guidelines at level A and level AA. When you create content, you strive to make it as digitally accessible as possible.</p>
+<p >You are also confident when given instructions to ask questions and suggest alternative routes to achieve the same goal if you think they will be better.</p>
+<p >You are working on a project that aims to help people adjust SVG images to use a selection of colour blind friendly colour palettes so that the SVG images will be more understandable by those who are colour blind.</p>
+<p >The task you have been given is:</p>
+<ol>
+    <li>
+        <p >Create a webpage using HTML, CSS and Javascript or Jquery that allows a user to upload a SVG file. No data will go to a server, everything will occur on the client side.</p>
+    </li>
+    <li>
+        <p >Once the SVG file is uploaded, display the same image in four containers.</p>
+    </li>
+    <li>
+        <p >The first should have the class “trichromacy”,</p>
+    </li>
+    <li>
+        <p >The second should have the class “protanopia”,</p>
+    </li>
+    <li>
+        <p >the third should have the class “deuteranopia”,</p>
+    </li>
+    <li>
+        <p >the fourth should have the class “tritanopia”.</p>
+    </li>
+    <li>
+        <p >Note that we already have a solution to implement colour blind simulation, so for your task, all that is important is setting the class for each container.</p>
+    </li>
+    <li>
+        <p >Since these four images may not display tidily, it’s important that this is a responsive webpage.</p>
+    </li>
+    <li>
+        <p >The containers should show the whole centered SVG, maintaining its aspect ratio, using for example object-fit: contain; and object-position: center; If the SVG doesn't have a viewBox attribute, one should be calculated and added to ensure proper scaling.</p>
+    </li>
+    <li>
+        <p >Identify all the unique colours used in the SVG and display their names and their colours on screen to the user.</p>
+    </li>
+    <li>
+        <p >We have prepared a list of colour blind friendly colour palettes in the https://matthewdeeprose.github.io/cvdp.json file. The cvdp.json is structured as follows. A key called “palettes” contains multiple colour palettes. These are structured as a further key for the name of the palette, with an array containing a set of colour codes in hex format that make up each palette.&nbsp;</p>
+    </li>
+    <li>
+        <p >Provide the user with a drop down menu to select a colour blind friendly colour palette from the cvdp.json file. Since the palettes have different numbers of colours, only show in the drop down the name of the palette and how many colours are available and only allow the user to select a palette that has the greater than or equal to the number of colours in the palette.</p>
+    </li>
+    <li>
+        <p >If the number of colours in the SVG file is larger than the number of colours in any of the palettes, then offer the palette with the largest number of colours available. Inform the user how many colours are in their SVG and that it exceeds the amount available in the palette.</p>
+    </li>
+    <li>
+        <p >Once the user has chosen a colour palette, show them an interface that shows the colours in the original SVG file and the colours in their chosen colour blind friendly colour palette from the cvdp.json file. Make this attractive and usable by showing the colours in the SVG side by side with the colours available in the palette.</p>
+    </li>
+    <li>
+        <p >Allow the user to choose to swap colours in their original SVG for colours in their chosen colour blind friendly colour palette.</p>
+    </li>
+    <li>
+        <p >Dynamically update the on-screen image in the four containers with the new colours as the user chooses them. They can then view the results and experiment with different palettes and different colours until they find a palette that will present their image in a way that those who are colour blind can distinguish.</p>
+    </li>
+    <li>
+        <p >When the user is happy with the result, provide a way for them to save the SVG file with their updated colour scheme.</p>
+    </li>
+    <li>
+        <p >Provide a “reset” button so that users can reset the colours back to how they started.</p>
+    </li>
+    <li>
+        <p >Provide an “upload new SVG” button so that users can start the process again with a new SVG file.</p>
+    </li>
+</ol>			
+			
+	</blockquote>			
+	
+	<ul>
+	<li>Result, after several iterations, manual tweaks and follow up prompts: <a href="https://matthewdeeprose.github.io/svgCVD.html">SVG Palette Adjuster for Colour Vision Deficiency</a>.</li>
+	</ul>
+</details>
+
 <h3 >Using AI to help create accessibility tools</h3>
 <p >So, can AI help us to create tools like this? In my limited experience so far, Yes.</p>
 <p >Of course, I kept the scope of my idea as limited as possible, and I'm not doing anything that would need authentication or storage, so the technical scope is very simple.</p>

@@ -1332,6 +1332,10 @@ summary h2 {
   font-size: 1.3rem;
 }
 
+summary h3 {
+  font-size: 1.3rem;
+}
+
 details {
   border-radius: 0.5rem;
   padding: 0.5em 0.5em 0;
