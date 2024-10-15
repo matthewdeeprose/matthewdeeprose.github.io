@@ -106,7 +106,7 @@
           <!-- Acccessible card component based on https://codepen.io/joelstrohmeier/pen/bGEMpmz -->
           <section>
             <h2>Recent updates</h2>
-            <ul class="cards">
+            <ul class="cards updates">
 						   <li>
                         <article class="card reorder plainBlack">
                            <h2><a href="genAI_a11y_efficiency.html">Gen AI and digital accessibility efficiency</a></h2>
@@ -259,65 +259,8 @@
             </ul>
             <a href="presentations.html">More presentations</a>
             <h2>Highlighted projects and resources</h2>
-            <ul class="cards">
-							  				  				                       <!--  Card X    -->
-                     <li>
-                        <article class="card reorder plainBlack">
-                           <h2><a href="allyUGsessions.html">International Ally User Group</a></h2>
-                           <img src="allugsessions2.png" alt="" loading="lazy" width="533" height="300">
-                           <p>I'm co-chair of the International Ally User Group. You can view a list of our sessions, slides and recordings.</p>
-                        </article>
-                        <!--  End of card X   -->
-                     </li>
-				  				  				                       <!--  Card X    -->
-                     <li>
-                        <article class="card reorder plainBlack">
-                           <h2><a href="findBbAllyUnsafeHTML.html">Bb Ally: Identify 'unsafe html' content</a></h2>
-                           <img src="unsafe-cover2.png" alt="" loading="lazy" width="533" height="300">
-                           <p>Identify the 'unsafe html' content from an accessibility report in Blackboard.</p>
-                        </article>
-                        <!--  End of card X   -->
-                     </li>
-			<!--  Card 2    -->
-                     <li>
-                        <article class="card reorder plainBlack">
-                           <h2><a href="inspector_for_all">Accessibility inspector for everyone</a></h2>
-                           <img src="inspector-4-all.png" alt="" loading="lazy" width="533" height="300">
-                           <p>Use group policy to set the accessibility inspector to "check as I work" on managed Windows PCs.</p>
-                        </article>
-                        <!--  End of card 2   -->
-                     </li>
-				                       <!--  Card 2    -->
-                     <li>
-                        <article class="card reorder plainBlack">
-                           <h2><a href="infographic-colour-generator.html">Brand Colour Combination Suggester</a></h2>
-                           <img src="suggester.png" alt="A randomomise button, next to a selection of colours selected for an infographic" loading="lazy" width="533" height="300">
-                           <p>Discover "on brand" colour combinations that meet accessibility guidelines.</p>
-                        </article>
-                        <!--  End of card 2   -->
-                     </li>
-              <!--  Card X    -->
-              <li>
-                <article class="card reorder plainBlack">
-                  <h2>
-                    <a href="matrix/matrix.html">Brand Palette Colour Contrast Matrix</a>
-                  </h2>
-                  <img src="matrix.PNG" alt="" loading="lazy" width="533" height="300">
-                  <p>A colour contrast matrix for brand palettes. <a href="kent.html#request">Request one for your brand.</a>
-                  </p>
-                </article>
-                <!--  End of card X   -->
-              </li>
-              <li>
-                <article class="card reorder plainBlack">
-                  <h2>
-                    <a href="resources.html">Accessibility Newsletters and Blogs</a>
-                  </h2>
-                  <img src="resources.png" alt="" loading="lazy" width="533" height="300">
-                  <p>A collated list of newsletters and blogs about digital accessibility.</p>
-                </article>
-                <!--   End of card x   -->
-              </li>
+            <ul class="cards projects">
+
             </ul>
             <a href="projects.html">More projects and resources</a>
           </section>
@@ -593,5 +536,80 @@
       }
       applyThemePreference();
     </script>
+	<script>
+	function renderProjects() {
+  return new Promise((resolve, reject) => {
+    const projectsContainer = document.querySelector('.projects');
+    projectsContainer.innerHTML = ''; // Clear existing content
+    // Fetch the projects.json file
+    fetch('https://matthewdeeprose.github.io/data/projects.json')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        data.projects.forEach(project => {
+          if (project.isHighlighted) {  // Only render if isHighlighted is true
+            const projectHTML = `
+              <li>
+                <article class="card reorder plainBlack">
+                  <h2><a href="${project.link}">${project.title}</a></h2>
+                  <img src="${project.imageSrc}" alt="${project.imageAlt}" loading="lazy" width="533" height="300">
+                  <p>${project.description}</p>
+                </article>
+              </li>
+            `;
+            projectsContainer.innerHTML += projectHTML;
+          }
+        });
+        resolve(); // Resolve the promise when rendering is complete
+      })
+      .catch(error => {
+        console.error('Error loading projects:', error);
+        projectsContainer.innerHTML = '<li>Error loading projects. Please try again later.</li>';
+        reject(error); // Reject the promise if there's an error
+      });
+  });
+}
+
+function linkBoxes() {
+  var boxes = document.querySelectorAll("article.card");
+  boxes.forEach(function (box) {
+    var link = box.querySelector("a");
+    if (link) {
+      var url = link.getAttribute("href");
+      box.addEventListener("click", function () {
+        location.href = url;
+        link.preventDefault;
+      });
+      box.classList.add("linkify");
+      link.addEventListener("focus", function () {
+        box.classList.add("isfocused");
+      });
+      link.addEventListener("blur", function () {
+        box.classList.remove("isfocused");
+      });
+      /* Inject CTA in to cards as visual affordance but hide from assistive tech announcements */
+      box.insertAdjacentHTML("beforeend", '<span class="cta" aria-hidden="true"></span>');
+    }
+  });
+}
+
+function initializePage() {
+  renderProjects()
+    .then(() => {
+      linkBoxes();
+      console.log('Highlighted projects rendered and accessibility enhancements applied');
+    })
+    .catch(error => {
+      console.error('Error initializing page:', error);
+    });
+}
+
+// Call the initialization function when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', initializePage);
+</script>
   </body>
 </html>
