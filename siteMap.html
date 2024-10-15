@@ -174,22 +174,7 @@
                            <li>
                               Accessibility related
                               <ul id="accPosts">
-								 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/22/what-one-thing-can-it-staff-do-to-improve-accessibility/">What one thing can IT staff do to improve accessibility?</a></li>
-								 <li><a href="Accessibility-Beyond-Borders.html">Accessibility Beyond Borders! What did we learn from accessibility leaders at six global Higher Education institutions?</a></li>
-								 <li><a href="https://www.timeshighereducation.com/campus/how-do-we-write-alternative-text-images-education">How do we write alternative text for images in education?</a></li>
-								 <li><a href="https://www.fenews.co.uk/education/is-the-secret-to-achieving-accessibility-for-all-community-collaboration/">Is the secret to achieving Accessibility for All Community Collaboration?</a></li>
-								 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/22/what-one-thing-can-it-staff-do-to-improve-accessibility/">What one thing can IT staff do to improve accessibility?</a></li>
-								 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/17/how-can-we-correct-captions-and-create-transcripts-at-the-university-of-southampton/">How can we correct captions and create transcripts at the University of Southampton?</a></li>
-								 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/02/24/tef-accessibility/">How did we make the University’s Teaching Excellence Framework (TEF) submission more accessible?</a></li>
-								 <li><a href="https://www.textboxdigital.com/lunchbox-011">Interview with textBOX</a></li>
-                                 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2022/01/17/da_cop_2021_review/">iSolutions Digital Accessibility Community of Practice: what did we do in 2021 and what was the impact?</a></li>
-                                 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/accessibility-allies/">Accessibility Allies</a></li>
-                                 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/author/matthew-deeprose/">Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</a></li>
-                                 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/07/20/design-ideas-three-ways-overview/">Three ways PowerPoint's "Design Ideas" excludes your audience, and how to fix it.</a></li>
-                                 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2021/04/04/how-can-i-use-colour-accessibly/">How can I use colour accessibly?</a></li>
-                                 <li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2020/11/23/how-can-i-improve-accessibility-of-my-emails/">How can I improve the accessibility of my emails?</a> </li>
-                                 <li><a href="https://abilitynet.org.uk/news-blogs/guest-blog-how-check-your-brands-colour-contrast-accessibility">Guest blog: How to check your brand's colour contrast for accessibility</a></li>
-                                 <li><a href="https://www.textboxdigital.com/lunchbox-011">Interview with textBOX</a></li>
+
                               </ul>
                            </li>
                            <li>
@@ -236,22 +221,7 @@
                      <li>
                         <a href="projects.html">Projects</a>
                         <ul id="projects">
-							<li><a href="CVDP.html">Colour vision deficiency friendly palettes.</a></li>
-							<li><a href="svgCVD.html">SVG Palette Adjuster for Colour Vision Deficiency.</a></li>
-						   <li><a href="allyUGsessions">International Ally User Group: sessions, slides and recordings.</a></li>
-						   <li><a href="findBbAllyUnsafeHTML.html">Identify the 'unsafe html' content from an accessibility report in Blackboard.</a></li>
-                           <li><a href="matrix/matrix.html">Brand Palette Colour Contrast Matrix</a></li>
-                           <li><a href="pathway.html">Pathway to PSBAR</a></li>
-                           <li><a href="workshops.html">Accessibility Workshops</a></li>
-                           <li><a href="https://thevleguru.blogspot.com/2020/07/my-updated-theme-for-blackboard-380013.html">Complete, customisable Blackboard Theme</a></li>
-                           <li><a href="bbh.html">Customisable Blackboard inline help framework</a></li>
-                           <li><a href="level3.html">Level 3 Accessibility Test</a></li>
-                           <li><a href="resources.html">Accessibility Newsletters and Blogs</a></li>
-						   <li><a href="axe22.html">Axe-con 2022 Recordings list</a></li>
-						   <li><a href="CPACC.html">CPACC BoK</a></li>
-						   <li><a href="infographic-colour-generator.html">Infographic Colour Generator</a></li>
-						   <li><a href="inspector_for_all.html">Use group policy to set the Microsoft Office Accessibility Inspector to "check while you work" by default</a></li>
-						   <li><a href="request.html">Request your own Brand Palette Colour Contrast Matrix</a></li>
+							
                         </ul>
                      </li>
                      <li><a href="about.html">About</a></li>
@@ -489,5 +459,87 @@
          }
          applyThemePreference();                
       </script>
+<script>
+// Configuration object for different sections of the sitemap
+const sectionConfig = {
+  projects: {
+    url: 'https://matthewdeeprose.github.io/data/projects.json',
+    elementId: 'projects',
+    dataKey: 'projects',
+    errorMessage: 'Error loading projects. Please try again later.'
+  },
+  blogPosts: {
+    url: 'https://matthewdeeprose.github.io/data/a11yBlogPosts.json',
+    elementId: 'accPosts',
+    dataKey: 'blogPosts',
+    errorMessage: 'Error loading blog posts. Please try again later.'
+  }
+  // Add more sections here as needed
+};
+
+/**
+ * Fetches data from a given URL and populates a section of the sitemap
+ * @param {Object} config - Configuration object for the section
+ */
+function fetchAndPopulateSection(config) {
+  fetch(config.url)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      // Extract items from the data using the specified key
+      const items = data[config.dataKey];
+
+      // Sort items alphabetically by title
+      const sortedItems = items.sort((a, b) => 
+        a.title.localeCompare(b.title, 'en', { sensitivity: 'base' })
+      );
+
+      // Get the list element where we'll add our items
+      const list = document.getElementById(config.elementId);
+
+      // Clear existing content
+      list.innerHTML = '';
+
+      // Create and append list items for each sorted item
+      sortedItems.forEach(item => {
+        const listItem = document.createElement('li');
+        const link = document.createElement('a');
+        
+        // Set the link's href and text content
+        link.href = item.link || item.url;
+        link.textContent = item.title;
+
+        // Append the link to the list item, then the list item to the list
+        listItem.appendChild(link);
+        list.appendChild(listItem);
+      });
+    })
+    .catch(error => {
+      // Log the error to the console for debugging
+      console.error(`Error loading ${config.dataKey}:`, error);
+
+      // Display an error message to the user
+      const list = document.getElementById(config.elementId);
+      list.innerHTML = `<li>${config.errorMessage}</li>`;
+    });
+}
+
+/**
+ * Populates the entire sitemap by calling fetchAndPopulateSection for each config
+ */
+function populateSitemap() {
+  Object.values(sectionConfig).forEach(fetchAndPopulateSection);
+}
+
+// Call the populateSitemap function when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', populateSitemap);
+</script>
+	  
+	  
+	  
    </body>
 </html>
