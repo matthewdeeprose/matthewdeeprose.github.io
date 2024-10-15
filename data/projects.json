@@ -5,91 +5,104 @@
       "link": "svgCVD.html",
       "imageSrc": "svgCVD-16-9.png",
       "imageAlt": "",
-      "description": "Adjust SVG images using colour vision deficiency \"friendly\" palettes."
+      "description": "Adjust SVG images using colour vision deficiency \"friendly\" palettes.",
+	  "isHighlighted": false
     },
     {
       "title": "Colour vision deficiency friendly palettes",
       "link": "CVDP.html",
       "imageSrc": "cvdp-169.png",
       "imageAlt": "",
-      "description": "A collection of colour vision deficiency \"friendly\" palettes."
+      "description": "A collection of colour vision deficiency \"friendly\" palettes.",
+	     "isHighlighted": false
     },
     {
       "title": "International Ally User Group",
       "link": "allyUGsessions.html",
       "imageSrc": "allugsessions2.png",
       "imageAlt": "",
-      "description": "I'm co-chair of the International Ally User Group. You can view a list of our sessions, slides and recordings."
+      "description": "I'm co-chair of the International Ally User Group. You can view a list of our sessions, slides and recordings.",
+	     "isHighlighted": true
     },
     {
       "title": "Bb Ally: Identify 'unsafe html' content",
       "link": "findBbAllyUnsafeHTML.html",
       "imageSrc": "unsafe-cover2.png",
       "imageAlt": "",
-      "description": "Identify the 'unsafe html' content from an accessibility report in Blackboard."
+      "description": "Identify the 'unsafe html' content from an accessibility report in Blackboard.",
+	     "isHighlighted": true
     },
     {
       "title": "Accessibility inspector for everyone",
       "link": "inspector_for_all.html",
       "imageSrc": "inspector-4-all.png",
       "imageAlt": "",
-      "description": "Use group policy to set the accessibility inspector to \"check as I work\" on managed Windows PCs."
+      "description": "Use group policy to set the accessibility inspector to \"check as I work\" on managed Windows PCs.",
+	     "isHighlighted": true
     },
     {
       "title": "Brand Colour Combination Suggester",
       "link": "infographic-colour-generator.html",
       "imageSrc": "suggester.png",
       "imageAlt": "A randomomise button, next to a selection of colours selected for an infographic",
-      "description": "Discover \"on brand\" colour combinations that meet accessibility guidelines."
+      "description": "Discover \"on brand\" colour combinations that meet accessibility guidelines.",
+	     "isHighlighted": true
     },
     {
       "title": "Brand Palette Colour Contrast Matrix",
       "link": "matrix/matrix.html",
       "imageSrc": "matrix.PNG",
       "imageAlt": "",
-      "description": "A colour contrast matrix for brand palettes. Request one for your brand."
+      "description": "A colour contrast matrix for brand palettes. Request one for your brand.",
+	     "isHighlighted": true
     },
     {
       "title": "Pathway to PSBAR",
       "link": "pathway.html",
       "imageSrc": "pathway.PNG",
       "imageAlt": "Determine which services are in-scope. Identify which parts of each in-scope service and content hosted within each in-scope service do NOT meet the new accessibility regulations and why.  Baseline the accessibility of all content held within each in-scope service. Prioritise which non-accessible content should be made accessible first. Build a programme for making inaccessible content accessible, assign and report on progress.  Initiate staff development on the creation of accessible content. Design a mechanism where those with access needs can obtain alternative accessible versions of inaccessible content hosted within in-scope services. Establish method for users to report accessibility problems to the University and how they can escalate to a government website if they are not satisfied with the University’s response. Create template accessibility statement to be used for in-scope services.  Legal Services / other board to approve accessibility statement template. Embed these new processes within the procedures for initiating new/future services. This includes a process for checking changes to existing services. Service owners of relevant services to complete the template to suit each of the services for which they are responsible. Legal services / other board to approve the accessibility statements of each service. Service owners to arrange for publication of accessibility statements on each in-scope service.",
-      "description": "Suggested compliance pathway for Public Sector Bodies (Websites and Mobile Applications) Accessibility Regulations, produced in January 2019."
+      "description": "Suggested compliance pathway for Public Sector Bodies (Websites and Mobile Applications) Accessibility Regulations, produced in January 2019.",
+	     "isHighlighted": false
     },
     {
       "title": "Accessibility Workshops",
       "link": "workshops.html",
       "imageSrc": "workshops.PNG",
       "imageAlt": "",
-      "description": "Reusable materials from our Community of Practice."
+      "description": "Reusable materials from our Community of Practice.",
+	     "isHighlighted": false
     },
     {
       "title": "Accessibility Newsletters and Blogs",
       "link": "resources.html",
       "imageSrc": "resources.png",
       "imageAlt": "",
-      "description": "A collated list of newsletters and blogs about digital accessibility."
+      "description": "A collated list of newsletters and blogs about digital accessibility.",
+	     "isHighlighted": true
     },
     {
       "title": "'Level 3' Accessibility Test",
       "link": "level3.html",
       "imageSrc": "level3.png",
       "imageAlt": "",
-      "description": "Go beyond the 'easy checks' with a set of accessibility tests that go into more detail."
+      "description": "Go beyond the 'easy checks' with a set of accessibility tests that go into more detail.",
+	     "isHighlighted": false
     },
     {
       "title": "Complete, customisable Blackboard Theme",
       "link": "https://thevleguru.blogspot.com/2020/07/my-updated-theme-for-blackboard-380013.html",
       "imageSrc": "theme.PNG",
       "imageAlt": "",
-      "description": "Revised, clean Blackboard theme, with numerous fixes, improvements, and accessibility remediations."
+      "description": "Revised, clean Blackboard theme, with numerous fixes, improvements, and accessibility remediations.",
+	     "isHighlighted": false
     },
     {
       "title": "Customisable inline help framework for Blackboard",
       "link": "bbh.html",
       "imageSrc": "bbhelp.PNG",
       "imageAlt": "",
-      "description": "Completely customisable framework for applying inline help messages within Blackboard."
+      "description": "Completely customisable framework for applying inline help messages within Blackboard.",
+	     "isHighlighted": false
     }
   ]
 }
