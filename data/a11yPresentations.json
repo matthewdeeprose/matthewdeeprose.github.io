@@ -1,0 +1,260 @@
+{
+  "presentations": [
+    {
+      "title": "Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude",
+      "url": "genAI_a11y_efficiency.html",
+      "summary": "An updated version of the previous presentation. As well as a summary of workflows I've discussed before, I look at how AI helped me to create web-based resources that can help make certain accessibility workflows more user-friendly.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency",
+      "url": "harnessCopilot.html",
+      "summary": "Can generative AI save time and effort for certain digital accessibility workflows? This is an extended version of a presentation I gave at the July 2024 International Ally User Group.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Demystifying alternative text for complex images",
+      "url": "https://www.youtube.com/watch?v=O9GLdzQYI2M&t=1872s",
+      "summary": "My presentation during a Future Teacher session, \"Future Teacher Reflection: Rich Media Images\".",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Making accessibility simpler in Higher Education and beyond!",
+      "url": "techshare_pro_22__simplify_accessibility.html",
+      "summary": "A lunch and learn at TechShare Pro 2022.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Making accessibility easier",
+      "url": "making_accessibility_easier.html",
+      "summary": "A short presentation to the European Ally User Group explaining recent work attempting to make accessibility easier.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel",
+      "url": "better_content_made_easy.html",
+      "summary": "In this session we introduce the accessibility inspector in Word, PowerPoint, and Excel. The accessibility inspector identifies possible improvements you can make to the accessibility of your documents, runs whilst you’re working, will show you how to make your document more accessible.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Two steps forward? Making accessibility easier",
+      "url": "two-steps.html",
+      "summary": "The UCISA-UX team asked whether we \"made something easier for everyone to use\"? In this five-minute slot I will share two topics on that theme: 'brand colour contrast made easy', and 'accessibility inspector for everyone'.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "What is alternative text? How do I write it for images, charts, and graphs?",
+      "url": "alt-text-images-charts-graphs.html",
+      "summary": "What do we mean by alternative text? Who is it useful for? What strategies can we use for writing it? How might we write alternative text for more complex images like graphs, flow charts, and venn diagrams? I attempt to explain in this video. It was recorded live as a webinar for the University of Southampton's Office 365 Community. I've included the questions and answers from the session.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Sustaining accessibility efforts through accessibility-related appraisal objectives",
+      "url": "objectives.html",
+      "summary": "How can IT departments sustain their accessibility efforts? While there are vital procedural and technical answers we should also consider the importance of cultural change. In this presentation, Tamsyn Smith and Matthew Deeprose will discuss early work on embedding accessibility within appraisal objectives.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Power BI: Accessibility Tips",
+      "url": "powerBI.html",
+      "summary": "What can we do to make our PowerBI reports more accessible? In this 20 minute presentation I explain the four principles of the Web Content Accessibility Guidelines and how they relate to the creation of Power BI reports.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "The impact that high quality mark-up can have on accessibility, performance, and discoverability",
+      "url": "high_quality-markup_impact.html",
+      "summary": "Going beyond accessibility checklists, you may quickly get bogged down with technical details and acronyms that you feel you may never understand. In this fast-paced 30-minute presentation I use worked examples, with screen reader demonstrations to explain...",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Making IT accessible for all!",
+      "url": "makeITaccessible.html",
+      "summary": "University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Accessibility Allies at the University of Southampton",
+      "url": "allies.html",
+      "summary": "How 5 student interns improved digital accessibility for more than 6000 students.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Worldwide Digital Accessibility - 001 - Just sit down and do it!",
+      "url": "WDA001.html",
+      "summary": "Cam Beaudoin invited Peter J. Jonas and I to take part in the first Worldwide Digital Accessibility vodcast.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Toward amazing accessibility!",
+      "url": "amazing.html",
+      "summary": "IT departments in the Higher Education sector and elsewhere know they must commit to accessibility, but how can we take this ambition and embed it within our operations?",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Why should we care about Digital Accessibility?",
+      "url": "whycare.html",
+      "summary": "This is a presentation I gave to our IT department using a variety of techniques to try to persuade reluctant colleagues to care about Digital Accessibility.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Introduction to Alternative Text",
+      "url": "altext.html",
+      "summary": "A presentation, lesson plan, video, and breakout materials created for running an interactive webinar on alternative text. Created with my fantastic colleague, Tamsyn Smith.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Introduction to Keyboard Navigation and Accessibility",
+      "url": "keyboardnav.html",
+      "summary": "A presentation, lesson plan, video, and breakout materials created for running an interactive webinar on keyboard navigation and introducing accessibility in general.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Making it simple to ensure the use of colour is both on brand and accessible",
+      "url": "kent.html",
+      "summary": "Presented as part of the \"Using technology to develop inclusive learning experiences\" webinar at the University of Kent.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "How to ensure accessible use of color in learning resources and materials aligned to your institution’s brand",
+      "url": "udlhe.html",
+      "summary": "A Lightning Talk at UDLHE Digicon 2021, together with Tamsyn Smith.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
+	    {
+      "title": "Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel (Transcript)",
+      "url": "better_content_made_easy__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency (Transcript)",
+      "url": "https://matthewdeeprose.github.io/harnessCopilot__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Making IT accessible for all! (Preview)",
+      "url": "makeITaccessible_preview.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Making IT accessible for all! (Transcript)",
+      "url": "makeITaccessible_transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Making accessibility easier (Transcript)",
+      "url": "making_accessibility_easier__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Making accessibility simpler in Higher Education and beyond! (TechSharePro 2022) (Transcript)",
+      "url": "techshare_pro_22__simplify_accessibility__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "PowerBI Accessibility Tips (Transcript)",
+      "url": "powerBI__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Sustaining accessibility efforts through accessibility-related appraisal objectives (Transcript)",
+      "url": "objectives__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "The impact that high quality mark-up can have on accessibility, performance, and discoverability  (Transcript)",
+      "url": "high_quality-markup_impact__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Two steps forward? Making accessibility easier (Transcript).",
+      "url": "two-steps__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude (Transcript)",
+      "url": "genAI_a11y_efficiency__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    },
+    {
+      "title": "What is alternative text? How do I write it for images, charts, and graphs? (Transcript)",
+      "url": "alt-text-images-charts-graphs__transcript.html",
+      "isTranscript": true,
+      "summary": "",
+      "tags": [],
+      "theme": ""
+    }
+  ]
+}

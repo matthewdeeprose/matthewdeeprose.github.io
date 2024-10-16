@@ -316,13 +316,13 @@
         </section>
         <section class="related">
           <h3>Latest presentation</h3>
-          <ul class="relUL">
+          <ul class="relUL latPres">
 			<li><a href="genAI_a11y_efficiency.html">Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude</a></li>
           </ul>
         </section>
         <section class="related">
           <h3>Recent presentations</h3>
-          <ul class="relUL">
+          <ul class="relUL recPres">
 		  <li><a href="harnessCopilot.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</a></li>
 		  <li><a href="techshare_pro_22__simplify_accessibility.html">Simplify accessibility in Higher Education...</a></li>
 		              <li>
@@ -338,25 +338,8 @@
         </section>
         <section class="related">
           <h3>Recent blog posts</h3>
-          <ul class="relUL">
-			<li><a href="Accessibility-Beyond-Borders.html">Accessibility Beyond Borders! What did we learn from accessibility leaders at six global Higher Education institutions?</a></li>
-			<li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/03/17/how-can-we-correct-captions-and-create-transcripts-at-the-university-of-southampton/">How can we correct captions and create transcripts at the University of Southampton?</a></li>
-			<li><a href="https://generic.wordpress.soton.ac.uk/digital-learning/2023/02/24/tef-accessibility/">How did we make the University’s Teaching Excellence Framework (TEF) submission more accessible?</a></li>
-            <li>
-              <a href="https://www.textboxdigital.com/lunchbox-011">Interview with textBOX</a>
-            </li>
-            <li>
-              <a href="https://generic.wordpress.soton.ac.uk/digital-learning/2022/01/17/da_cop_2021_review/">iSolutions Digital Accessibility Community of Practice: what did we do in 2021 and what was the impact?</a>
-            </li>
-            <li>
-              <a href="http://generic.wordpress.soton.ac.uk/digital-learning/accessibility-allies/">Accessibility Allies</a>
-            </li>
-            <li>
-              <a href="http://generic.wordpress.soton.ac.uk/digital-learning/author/matthew-deeprose/">Accessibility does not impede agility! Six ways that Digital Accessibility maps to Agile Practices</a>
-            </li>
-            <li>
-              <a href="http://generic.wordpress.soton.ac.uk/digital-learning/2021/07/20/design-ideas-three-ways-overview/">Three ways PowerPoint 'Design Ideas' excludes your audience, and how to fix it.</a>
-            </li>
+          <ul class="relUL recPosts">
+			
           </ul>
         </section>
       </aside>
@@ -610,6 +593,38 @@ function initializePage() {
 
 // Call the initialization function when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', initializePage);
+</script>
+<script>
+// Function to populate recent blog posts
+function populateRecentPosts() {
+    // Fetch the JSON data
+    fetch('https://matthewdeeprose.github.io/data/a11yBlogPosts.json')
+        .then(response => response.json())
+        .then(data => {
+            // Get the ul element
+            const ul = document.querySelector('.recPosts');
+
+            // Get the first 8 blog posts
+            const recentPosts = data.blogPosts.slice(0, 8);
+
+            // Clear existing content
+            ul.innerHTML = '';
+
+            // Create and append list items
+            recentPosts.forEach(post => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = post.url;
+                a.textContent = post.title;
+                li.appendChild(a);
+                ul.appendChild(li);
+            });
+        })
+        .catch(error => console.error('Error fetching blog posts:', error));
+}
+
+// Call the function when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', populateRecentPosts);
 </script>
   </body>
 </html>
