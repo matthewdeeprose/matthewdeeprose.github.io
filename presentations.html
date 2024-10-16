@@ -111,48 +111,9 @@
                <div class="pres">
                   <section class="presentations" id="accessibilityP">
                      <h2>Accessibility Presentations</h2>
-                     <dl id="a11yPres">
-					 <dt><a href="genAI_a11y_efficiency.html">Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude</a></dt>
-						<dd>An updated version of the previous presentation. As well as a summary of workflows I've discussed before, I look at how AI helped me to create web-based resources that can help make certain accessibility workflows more user-friendly.</dd>
+                     
+					 <dl id="a11yPres">
 					 
-					 <dt><a href="harnessCopilot.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</a></dt>
-						<dd>Can generative AI save time and effort for certain digital accessibility workflows? This is an extended version of a presentation I gave at the <a href="https://eu.bbcollab.com/recording/c3e1e7c9e83d4cd9981c93c74888d496">July 2024 International Ally User Group</a>.</dd>
-						<dt><a href="https://www.youtube.com/watch?v=O9GLdzQYI2M&t=1872s">Demystifying alternative text for complex images</a></dt>
-						<dd>My presentation during a Future Teacher session, "Future Teacher Reflection: Rich Media Images".</dd>
-						<dt><a href="techshare_pro_22__simplify_accessibility.html">Making accessibility simpler in Higher Education and beyond!</a></dt>
-						<dd>A lunch and learn at TechShare Pro 2022.</dd>
-						<dt><a href="making_accessibility_easier.html">Making accessibility easier</a></dt>
-						<dd>A short presentation to the European Ally User Group explaining recent work attempting to make accessibility easier.</dd>
-						<dt><a href="better_content_made_easy.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</a></dt>
-						<dd>In this session we introduce the accessibility inspector in Word, PowerPoint, and Excel. The accessibility inspector identifies possible improvements you can make to the accessibility of your documents, runs whilst you’re working, will show you how to make your document more accessible.</dd>
-						<dt><a href="two-steps.html">Two steps forward? Making accessibility easier</a></dt>
-						<dd>The UCISA-UX team asked whether we "made something easier for everyone to use"? In this five-minute slot I will share two topics on that theme: 'brand colour contrast made easy', and 'accessibility inspector for everyone'.</dd>
-						<dt><a href="alt-text-images-charts-graphs.html">What is alternative text? How do I write it for images, charts, and graphs?</a></dt>
-						<dd>What do we mean by alternative text? Who is it useful for? What strategies can we use for writing it? How might we write alternative text for more complex images like graphs, flow charts, and venn diagrams? I attempt to explain in this video. It was recorded live as a webinar for the University of Southampton's Office 365 Community. I've included the questions and answers from the session.</dd>
-						<dt><a href="objectives.html">Sustaining accessibility efforts through accessibility-related appraisal objectives</a></dt>
-						<dd>How can IT departments sustain their accessibility efforts? While there are vital procedural and technical answers we should also consider the importance of cultural change. In this presentation, Tamsyn Smith and Matthew Deeprose will discuss early work on embedding accessibility within appraisal objectives.</dd>
-						<dt><a href="powerBI.html">Power BI: Accessibility Tips</a></dt>
-						<dd>What can we do to make our PowerBI reports more accessible? In this 20 minute presentation I explain the four principles of the Web Content Accessibility Guidelines and how they relate to the creation of Power BI reports.</dd>
-						<dt><a href="high_quality-markup_impact.html">The impact that high quality mark-up can have on accessibility, performance, and discoverability</a></dt>
-						<dd>Going beyond accessibility checklists, you may quickly get bogged down with technical details and acronyms that you feel you may never understand. In this fast-paced 30-minute presentation I use worked examples, with screen reader demonstrations to explain...</dd>
-                        <dt><a href="makeITaccessible.html">Making IT accessible for all!</a></dt>
-                        <dd>University Information Technology departments know they must commit to accessibility; indeed, they have a legal obligation to do so, but how can they take this ambition and embed accessibility within their policies and processes?</dd>
-                        <dt><a href="allies.html">Accessibility Allies at the University of Southampton</a></dt>
-                        <dd>How 5 student interns improved digital accessibility for more than 6000 students.</dd>
-                        <dt><a href="WDA001.html">Worldwide Digital Accessibility - 001 - Just sit down and do it!</a></dt>
-                        <dd>Cam Beaudoin invited Peter J. Jonas and I to take part in the first Worldwide Digital Accessibility vodcast.</dd>
-                        <dt><a href="amazing.html">Toward amazing accessibility!</a></dt>
-                        <dd>IT departments in the Higher Education sector and elsewhere know they must commit to accessibility, but how can we take this ambition and embed it within our operations?</dd>
-                        <dt><a href="whycare.html">Why should we care about Digital Accessibility?</a></dt>
-                        <dd>This is a presentation I gave to our IT department using a variety of techniques to try to persuade reluctant colleagues to care about Digital Accessibility.</dd>
-                        <dt><a href="altext.html">Introduction to Alternative Text</a></dt>
-                        <dd>A presentation, lesson plan, video, and breakout materials created for running an interactive webinar on alternative text. Created with my fantastic colleague, Tamsyn Smith.</dd>
-                        <dt><a href="keyboardnav.html">Introduction to Keyboard Navigation and Accessibility</a></dt>
-                        <dd>A presentation, lesson plan, video, and breakout materials created for running an interactive webinar on keyboard navigation and introducing accessibility in general.</dd>
-                        <dt><a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a></dt>
-                        <dd>Presented as part of the "Using technology to develop inclusive learning experiences" webinar at the University of Kent.</dd>
-                        <dt><a href="udlhe.html">How to ensure accessible use of color in learning resources and materials aligned to your institution’s brand</a></dt>
-                        <dd>A Lightning Talk at UDLHE Digicon 2021, together with Tamsyn Smith.</dd>
                      </dl>
                   </section>
 
@@ -377,5 +338,45 @@
          }
          applyThemePreference();                
       </script>
+	  <script>
+// Function to populate the presentations list
+function populatePresentationsList(data) {
+  const dlElement = document.getElementById('a11yPres');
+  
+  if (!dlElement) {
+    console.error("Element with id 'a11yPres' not found. Make sure it exists in your HTML.");
+    return;
+  }
+  
+  data.presentations.forEach(presentation => {
+    if (!presentation.isTranscript) {
+      const dtElement = document.createElement('dt');
+      const aElement = document.createElement('a');
+      aElement.href = presentation.url;
+      aElement.textContent = presentation.title;
+      dtElement.appendChild(aElement);
+      
+      const ddElement = document.createElement('dd');
+      ddElement.textContent = presentation.summary;
+      
+      dlElement.appendChild(dtElement);
+      dlElement.appendChild(ddElement);
+    }
+  });
+}
+
+// Function to fetch data and populate list
+function fetchAndPopulatePresentations() {
+  fetch('https://matthewdeeprose.github.io/data/a11yPresentations.json')
+    .then(response => response.json())
+    .then(data => {
+      populatePresentationsList(data);
+    })
+    .catch(error => console.error('Error fetching presentations:', error));
+}
+
+// Run the function when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', fetchAndPopulatePresentations);
+  </script>
    </body>
 </html>
