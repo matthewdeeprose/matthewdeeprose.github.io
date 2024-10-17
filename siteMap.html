@@ -117,38 +117,8 @@
                            <li>
                               Accessibility related
                               <ul id="accPres">
-							  <li><a href="genAI_a11y_efficiency.html">Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude</a></li>
-							  <li><a href="genAI_a11y_efficiency__transcript.html">Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude (Transcript)</a></li>
-							  <li><a href="https://matthewdeeprose.github.io/harnessCopilot.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</a></li>
-							  <li><a href="https://matthewdeeprose.github.io/harnessCopilot__transcript.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency (Transcript)</a></li>
-								<li><a href="https://www.youtube.com/watch?v=O9GLdzQYI2M&t=1872s">Future Teacher: Demystifying alternative text for complex images</a></li>
-							    <li><a href="techshare_pro_22__simplify_accessibility.html">Making accessibility simpler in Higher Education and beyond! (TechSharePro 2022)</a></li>
-								<li><a href="techshare_pro_22__simplify_accessibility__transcript.html">Making accessibility simpler in Higher Education and beyond! (TechSharePro 2022) (Transcript)</a></li>
-								<li><a href="making_accessibility_easier.html">Making accessibility easier</a></li>
-								<li><a href="making_accessibility_easier__transcript.html">Making accessibility easier (Transcript)</a></li>
-								 <li><a href="better_content_made_easy.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</a></li>
-								 <li><a href="better_content_made_easy__transcript.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel (Transcript)</a></li>
-								 <li><a href="two-steps.html">Two steps forward? Making accessibility easier.</a></li>
-								 <li><a href="two-steps__transcript.html">Two steps forward? Making accessibility easier (Transcript).</a></li>
-								 <li><a href="alt-text-images-charts-graphs.html">What is alternative text? How do I write it for images, charts, and graphs?</a></li>
-								 <li><a href="alt-text-images-charts-graphs__transcript.html">What is alternative text? How do I write it for images, charts, and graphs? (Transcript)</a></li>
-								 <li><a href="objectives.html">Sustaining accessibility efforts through accessibility-related appraisal objectives</a></li>
-								 <li><a href="objectives__transcript.html">Sustaining accessibility efforts through accessibility-related appraisal objectives (Transcript)</a></li>
-								 <li><a href="powerBI.html">PowerBI: Accessibility Tips</a></li>
-								 <li><a href="powerBI__transcript.html">PowerBI Accessibility Tips (Transcript)</a></li>
-								 <li><a href="high_quality-markup_impact.html">The impact that high quality mark-up can have on accessibility, performance, and discoverability</a></li>
-								 <li><a href="high_quality-markup_impact__transcript.html">The impact that high quality mark-up can have on accessibility, performance, and discoverability  (Transcript)</a></li>
-                                 <li><a href="makeITaccessible.html">Making IT accessible for all!</a></li>
-                                 <li><a href="makeITaccessible_transcript.html">Making IT accessible for all! (Transcript)</a></li>
-                                 <li><a href="makeITaccessible_preview.html">Making IT accessible for all! (Preview)</a></li>
-                                 <li><a href="allies.html">Accessibility Allies at the University of Southampton</a></li>
-                                 <li><a href="WDA001.html">Worldwide Digital Accessibility - 001 - Just sit down and do it!</a></li>
-                                 <li><a href="amazing.html">Toward amazing accessibility!</a></li>
-                                 <li><a href="whycare.html">Why should we care about Digital Accessibility?</a></li>
-                                 <li><a href="altext.html">Introduction to Alternative Text</a></li>
-                                 <li><a href="keyboardnav.html">Introduction to Keyboard Navigation and Accessibility</a></li>
-                                 <li><a href="kent.html">Making it simple to ensure the use of colour is both on brand and accessible</a></li>
-                                 <li><a href="udlhe.html">How to ensure accessible use of color in learning resources and materials aligned to your institution's brand</a></li>
+
+
                               </ul>
                            </li>
 
@@ -460,7 +430,6 @@
          applyThemePreference();                
       </script>
 <script>
-// Configuration object for different sections of the sitemap
 const sectionConfig = {
   projects: {
     url: 'https://matthewdeeprose.github.io/data/projects.json',
@@ -473,8 +442,13 @@ const sectionConfig = {
     elementId: 'accPosts',
     dataKey: 'blogPosts',
     errorMessage: 'Error loading blog posts. Please try again later.'
+  },
+  presentations: {
+    url: 'https://matthewdeeprose.github.io/data/a11yPresentations.json',
+    elementId: 'accPres',
+    dataKey: 'presentations',
+    errorMessage: 'Error loading presentations. Please try again later.'
   }
-  // Add more sections here as needed
 };
 
 /**
@@ -492,18 +466,14 @@ function fetchAndPopulateSection(config) {
     .then(data => {
       // Extract items from the data using the specified key
       const items = data[config.dataKey];
-
       // Sort items alphabetically by title
       const sortedItems = items.sort((a, b) => 
         a.title.localeCompare(b.title, 'en', { sensitivity: 'base' })
       );
-
       // Get the list element where we'll add our items
       const list = document.getElementById(config.elementId);
-
       // Clear existing content
       list.innerHTML = '';
-
       // Create and append list items for each sorted item
       sortedItems.forEach(item => {
         const listItem = document.createElement('li');
@@ -512,7 +482,8 @@ function fetchAndPopulateSection(config) {
         // Set the link's href and text content
         link.href = item.link || item.url;
         link.textContent = item.title;
-
+        
+        
         // Append the link to the list item, then the list item to the list
         listItem.appendChild(link);
         list.appendChild(listItem);
@@ -521,7 +492,6 @@ function fetchAndPopulateSection(config) {
     .catch(error => {
       // Log the error to the console for debugging
       console.error(`Error loading ${config.dataKey}:`, error);
-
       // Display an error message to the user
       const list = document.getElementById(config.elementId);
       list.innerHTML = `<li>${config.errorMessage}</li>`;
