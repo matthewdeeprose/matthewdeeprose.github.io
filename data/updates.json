@@ -1,0 +1,88 @@
+{
+  "updates": [
+    {
+      "title": "Gen AI and digital accessibility efficiency",
+      "link": "genAI_a11y_efficiency.html",
+      "imageSrc": "genAI_a11y_efficiency169.png",
+      "imageAlt": "",
+      "description": "Featuring Copilot, Whisper, and Claude."
+    },
+    {
+      "title": "SVG Palette Adjuster for CVD",
+      "link": "svgCVD.html",
+      "imageSrc": "svgCVD-16-9.png",
+      "imageAlt": "",
+      "description": "Adjust SVG images using colour vision deficiency \"friendly\" palettes."
+    },
+    {
+      "title": "Colour vision deficiency friendly palettes",
+      "link": "CVDP.html",
+      "imageSrc": "cvdp-169.png",
+      "imageAlt": "",
+      "description": "A collection of colour vision deficiency \"friendly\" palettes."
+    },
+    {
+      "title": "Harnessing Copilot for digital accessibility.",
+      "link": "harnessCopilot.html",
+      "imageSrc": "copilot-wide.PNG",
+      "imageAlt": "",
+      "description": "Can generative AI save time and effort for certain digital accessibility workflows?"
+    },
+    {
+      "title": "Accessibility beyond borders",
+      "link": "Accessibility-Beyond-Borders.html",
+      "imageSrc": "border-panel.png",
+      "imageAlt": "Accessibility Beyond Borders. Global roundtable discussing the challenges and opportunities of digital accessibility in Higher Education. Sharon Austin, Academic Technology Accessibility Specialist, University of Tampa. Terry Greene, Senior eLearning Designer, Trent University, Canada. James Northridge, Inclusive UCC Project Manager, University College Cork (UCC), Ireland. Dr Tharindu Liyanagunawardena, Digital Accessibility Officer, University of Reading, UK. Esin Caglayan, Ph.D., Director of Teaching and Learning Center, Izmir University of Economics, Turkey. Sarah Whittaker, Senior Manager Teaching with Technology, working in United Arab Emirates. Anthology Ally User Group.",
+      "description": "What did we learn from accessibility leaders at six global Higher Education institutions?\n                    "
+    },
+    {
+      "title": "Simplify accessibility in HE",
+      "link": "techshare_pro_22__simplify_accessibility.html",
+      "imageSrc": "Making_accessibility_simpler.png",
+      "imageAlt": "",
+      "description": "A \"Lunch and Learn\" session at TechSharePro 2022.\n                    "
+    },
+    {
+      "title": "Better content, made easy",
+      "link": "better_content_made_easy.html",
+      "imageSrc": "betterContent.png",
+      "imageAlt": "",
+      "description": "Using the accessibility inspector in Word, PowerPoint, and Excel to create better, more accessible content."
+    },
+    {
+      "title": "Alt text for images, charts, and graphs",
+      "link": "alt-text-images-charts-graphs.html",
+      "imageSrc": "alt-text-images-charts-graphs2.png",
+      "imageAlt": "",
+      "description": "How do we write alternative text for complex images like graphs, flow charts, and venn diagrams?"
+    },
+    {
+      "title": "Accessibility: Appraisal Objectives",
+      "link": "objectives.html",
+      "imageSrc": "objectives.png",
+      "imageAlt": "",
+      "description": "Sustaining accessibility efforts through accessibility-related appraisal objectives."
+    },
+    {
+      "title": "Mark-up's impact on accessibility...",
+      "link": "high_quality-markup_impact.html",
+      "imageSrc": "high_quality-markup_impact.png",
+      "imageAlt": "The impact that high quality mark-up can have on accessibility, performance, and discoverability.",
+      "description": "Sharing practical examples of ARIA, Semantic HTML, dark/light themes, and much more."
+    },
+    {
+      "title": "Power BI: Accessibility Tips",
+      "link": "powerBI.html",
+      "imageSrc": "PowerBI--accessibility-cover.png",
+      "imageAlt": "",
+      "description": "How do we apply WCAG principles to Power BI reports?"
+    },
+    {
+      "title": "Making IT accessible for all!",
+      "link": "makeITaccessible.html",
+      "imageSrc": "makeITaccessible.png",
+      "imageAlt": "",
+      "description": "How can University IT departments embed accessibility within their policies and processes?"
+    }
+  ]
+}

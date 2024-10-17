@@ -317,23 +317,17 @@
         <section class="related">
           <h3>Latest presentation</h3>
           <ul class="relUL latPres">
-			<li><a href="genAI_a11y_efficiency.html">Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude</a></li>
+
+
+
           </ul>
         </section>
         <section class="related">
           <h3>Recent presentations</h3>
           <ul class="relUL recPres">
-		  <li><a href="harnessCopilot.html">Harnessing Copilot and other gen-AI tools to increase digital accessibility efficiency</a></li>
-		  <li><a href="techshare_pro_22__simplify_accessibility.html">Simplify accessibility in Higher Education...</a></li>
-		              <li>
-              <a href="better_content_made_easy.html">Better content, made easy: using the accessibility inspector in Word, PowerPoint, and Excel</a>
-            </li>
-            <li>
-              <a href="alt-text-images-charts-graphs.html.html">What is alternative text? How do I write it for images, charts, and graphs?</a>
-            </li>
-            <li>
-              <a href="powerBI.html">Power BI: Accessibility Tips.</a>
-            </li>
+
+
+
           </ul>
         </section>
         <section class="related">
@@ -625,6 +619,98 @@ function populateRecentPosts() {
 
 // Call the function when the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', populateRecentPosts);
+</script>
+<script>
+// Function to create list items with error handling
+function createListItem(presentation) {
+  const li = document.createElement('li');
+  
+  if (presentation && typeof presentation === 'object') {
+    const a = document.createElement('a');
+    
+    // Check if url exists, otherwise use a fallback
+    if (presentation.url) {
+      a.href = presentation.url;
+    } else {
+      a.href = '#';
+      console.warn('Presentation URL is missing:', presentation);
+    }
+    
+    // Check if title exists, otherwise use a fallback
+    a.textContent = presentation.title || 'Untitled Presentation';
+    
+    li.appendChild(a);
+  } else {
+    li.textContent = 'Invalid presentation data';
+    console.error('Invalid presentation object:', presentation);
+  }
+  
+  return li;
+}
+
+// Function to populate lists
+function populatePresentationLists() {
+  fetch('https://matthewdeeprose.github.io/data/a11yPresentations.json')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      let presentations = data;
+
+      // Check if the data is nested within an object
+      if (typeof data === 'object' && !Array.isArray(data)) {
+        // Try to find an array property
+        const arrayProp = Object.keys(data).find(key => Array.isArray(data[key]));
+        if (arrayProp) {
+          presentations = data[arrayProp];
+        } else {
+          throw new Error('Could not find an array of presentations in the data');
+        }
+      }
+
+      if (!Array.isArray(presentations)) {
+        throw new Error('Presentations data is not an array');
+      }
+
+      // Filter out presentations where isTranscript is true
+      presentations = presentations.filter(pres => !pres.isTranscript);
+
+      const latestPres = document.querySelector('ul.latPres');
+      const recentPres = document.querySelector('ul.recPres');
+
+      if (!latestPres || !recentPres) {
+        throw new Error('Required list elements not found');
+      }
+
+      // Clear existing list items
+      latestPres.innerHTML = '';
+      recentPres.innerHTML = '';
+
+      // Add the most recent presentation
+      if (presentations.length > 0) {
+        latestPres.appendChild(createListItem(presentations[0]));
+      }
+
+      // Add the next 5 most recent presentations
+      for (let i = 1; i < 6 && i < presentations.length; i++) {
+        recentPres.appendChild(createListItem(presentations[i]));
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching or processing presentations:', error);
+      // Display an error message to the user
+      const errorMsg = document.createElement('p');
+      errorMsg.textContent = 'Sorry, we couldn\'t load the presentations. Please try again later.';
+      errorMsg.setAttribute('role', 'alert');
+      document.body.appendChild(errorMsg);
+    });
+}
+
+// Call the function when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', populatePresentationLists);
 </script>
   </body>
 </html>
