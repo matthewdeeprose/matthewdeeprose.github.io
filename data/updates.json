@@ -1,7 +1,7 @@
 {
   "updates": [
     {
-      "title": "Gen AI and digital accessibility efficiency",
+      "title": "AI and digital accessibility",
       "link": "genAI_a11y_efficiency.html",
       "imageSrc": "genAI_a11y_efficiency169.png",
       "imageAlt": "",
@@ -50,7 +50,7 @@
       "description": "Using the accessibility inspector in Word, PowerPoint, and Excel to create better, more accessible content."
     },
     {
-      "title": "Alt text for images, charts, and graphs",
+      "title": "Alt text for complex images",
       "link": "alt-text-images-charts-graphs.html",
       "imageSrc": "alt-text-images-charts-graphs2.png",
       "imageAlt": "",
