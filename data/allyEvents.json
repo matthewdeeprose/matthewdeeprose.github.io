@@ -192,13 +192,23 @@
     }
   ],
   "2024": [
+        {
+      "date": "24-Oct",
+      "sessionTitle": "Impromptu discussion of my recent work in accessibility with AI.",
+      "institution": "University of Southampton",
+      "presenters": "Matthew Deeprose",
+      "recordingLink": "",
+      "recordingText": "TBC",
+      "slidesLink": "",
+      "slidesText": "N/A"
+    },
       {
       "date": "24-Oct",
       "sessionTitle": "Is 'plus one' enough? Addressing accessibility challenges in legacy resources",
       "institution": "University of Southampton",
       "presenters": "Anna Ruff",
-      "recordingLink": "",
-      "recordingText": "October 2024 Recording Link TBA",
+      "recordingLink": "https://southampton.cloud.panopto.eu/Panopto/Pages/Viewer.aspx?id=bc922b08-8748-44a2-98a8-b21000adb37f",
+      "recordingText": "Watch Anna's specially recorded presenation",
       "slidesLink": "https://blackboard.soton.ac.uk/bbcswebdav/xid-30059369_1",
       "slidesText": "Slides: Is 'plus one' enough? Addressing accessibility challenges in legacy resources"
     },
