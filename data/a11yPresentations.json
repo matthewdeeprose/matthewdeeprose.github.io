@@ -1,5 +1,13 @@
 {
   "presentations": [
+      {
+      "title": "Mermaids and unicorns – further adventures with AI and accessibility",
+      "url": "MermaidsUnicorns.html",
+      "summary": "An Impromptu presentation for International Ally User Group.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
     {
       "title": "Using generative AI to improve digital accessibility efficiency, featuring , Copilot, Whisper, and Claude",
       "url": "genAI_a11y_efficiency.html",
