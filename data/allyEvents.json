@@ -194,13 +194,13 @@
   "2024": [
         {
       "date": "24-Oct",
-      "sessionTitle": "Impromptu discussion of my recent work in accessibility with AI.",
+      "sessionTitle": "Mermaids and unicorns – further adventures with AI and accessibility",
       "institution": "University of Southampton",
       "presenters": "Matthew Deeprose",
       "recordingLink": "",
       "recordingText": "TBC",
-      "slidesLink": "",
-      "slidesText": "N/A"
+      "slidesLink": "https://matthewdeeprose.github.io/MermaidsUnicorns.html",
+      "slidesText": "Site: Mermaids and unicorns – further adventures with AI and accessibility"
     },
       {
       "date": "24-Oct",
@@ -219,8 +219,8 @@
       "presenters": "Maite Saco and Cate Dowman",
       "recordingLink": "",
       "recordingText": "October 2024 Recording Link TBA",
-      "slidesLink": "",
-      "slidesText": "TBC"
+      "slidesLink": "https://blackboard.soton.ac.uk/bbcswebdav/xid-30097577_1",
+      "slidesText": "Slides: Ally Rapid Remediation"
     },
     {
       "date": "26-Sep",
