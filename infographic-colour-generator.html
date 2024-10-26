@@ -301,7 +301,7 @@ function showTrich() {
           <p>Use the Randomise button to get started!</p>
           <div class="resourseList2">
             <div class="grid-child">
-              <button id="genNew" class="actionButton regButton" type="button" onclick="randomAll()">Randomise</button>
+              <button id="genNew" class="actionButton regButton" type="button" onclick="ColorChecker.randomAll();">Randomise</button>
               <section class="Trichromacy" id="infoGraphicBox" class="" aria-hidden="true">
                 <h2 id="infoTexT" class="">Text and information</h2>
                 <p class="iconrow">
@@ -668,242 +668,237 @@ function showTrich() {
     <script src="scripts/lite-yt-embed.js"></script>
     <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
     <script>
-    function randomAll() {
-      console.log("\n");
-      console.log("Randomise function starts");
-      console.log("\n");
-      // Colournames array
-      let colournames = [{
-        "colourHex": "#FFFFFF",
-        "name": "White"
-      }, {
-        "colourHex": "#231F20",
-        "name": "Plain Black"
-      }, {
-        "colourHex": "#00131D",
-        "name": "Rich Black"
-      }, {
-        "colourHex": "#495961",
-        "name": "Neutral 1"
-      }, {
-        "colourHex": "#758D9A",
-        "name": "Neutral 2"
-      }, {
-        "colourHex": "#9FB1BD",
-        "name": "Neutral 3"
-      }, {
-        "colourHex": "#E1E8EC",
-        "name": "Neutral 4"
-      }, {
-        "colourHex": "#002E3B",
-        "name": "Prussian"
-      }, {
-        "colourHex": "#005C84",
-        "name": "Marine 1"
-      }, {
-        "colourHex": "#74C9E5",
-        "name": "Marine 2"
-      }, {
-        "colourHex": "#3CBAC6",
-        "name": "Marine 3"
-      }, {
-        "colourHex": "#B3DBD2",
-        "name": "Marine 4"
-      }, {
-        "colourHex": "#4BB694",
-        "name": "Marine 5"
-      }, {
-        "colourHex": "#C1D100",
-        "name": "Marine 6"
-      }, {
-        "colourHex": "#FCBC00",
-        "name": "Horizon 1"
-      }, {
-        "colourHex": "#EF7D00",
-        "name": "Horizon 2"
-      }, {
-        "colourHex": "#D5007F",
-        "name": "Horizon 4"
-      }, {
-        "colourHex": "#8D3970",
-        "name": "Horizon 5"
-      }]
-      // Loop through the colour names array to create an array with only the hex codes
-      // Based on https://stackoverflow.com/questions/19590865/from-an-array-of-objects-extract-value-of-a-property-as-array
-      let infoGraphicBackgrounds = colournames.map((item) => item.colourHex);
-      console.log("\n");
-      console.log("Colours in our set: ");
-      console.log(infoGraphicBackgrounds);
-      console.log("\n");
-      /*
-    /* put into the infographic box into the myInfoGraphicBox variable */
-      const myInfoGraphicBox = document.getElementById("infoGraphicBox");
-      const bgColId = document.getElementById("bgColor");
-      const tColId = document.getElementById("tColorColor");
-      const gCol1Id = document.getElementById("g1colourSpan2");
-      const gCol2Id = document.getElementById("g2colourSpan2");
-      const gCol3Id = document.getElementById("g3colourSpan2");
-      // This amazing function to get n number of random values from an array
-      // found on https://stackoverflow.com/questions/19269545/how-to-get-a-number-of-random-elements-from-an-array
-      function getRandom(arr, n) {
-        var result = new Array(n),
-          len = arr.length,
-          taken = new Array(len);
-        if (n > len) throw new RangeError("getRandom: more elements taken than available");
-        while (n--) {
-          var x = Math.floor(Math.random() * len);
-          result[n] = arr[x in taken ? taken[x] : x];
-          taken[x] = --len in taken ? taken[len] : len;
-        }
-        return result;
+/**
+ * Color Contrast Checker and Randomizer
+ * This script helps ensure accessible color combinations by checking contrast ratios
+ * against WCAG 2.1 guidelines.
+ * 
+ * Dependencies:
+ * - chroma.js for color contrast calculations
+ * 
+ * WCAG Contrast Requirements:
+ * - Text: Minimum 4.5:1 for AA compliance
+ * - Large Graphics: Minimum 3:1 for AA compliance
+ */
+
+// Use strict mode for better error catching and improved performance
+'use strict';
+
+const ColorChecker = {
+  // Our predefined brand colors with their hex codes and friendly names
+  colournames: [
+    { "colourHex": "#FFFFFF", "name": "White" },
+    { "colourHex": "#231F20", "name": "Plain Black" },
+    { "colourHex": "#00131D", "name": "Rich Black" },
+    { "colourHex": "#495961", "name": "Neutral 1" },
+    { "colourHex": "#758D9A", "name": "Neutral 2" },
+    { "colourHex": "#9FB1BD", "name": "Neutral 3" },
+    { "colourHex": "#E1E8EC", "name": "Neutral 4" },
+    { "colourHex": "#002E3B", "name": "Prussian" },
+    { "colourHex": "#005C84", "name": "Marine 1" },
+    { "colourHex": "#74C9E5", "name": "Marine 2" },
+    { "colourHex": "#3CBAC6", "name": "Marine 3" },
+    { "colourHex": "#B3DBD2", "name": "Marine 4" },
+    { "colourHex": "#4BB694", "name": "Marine 5" },
+    { "colourHex": "#C1D100", "name": "Marine 6" },
+    { "colourHex": "#FCBC00", "name": "Horizon 1" },
+    { "colourHex": "#EF7D00", "name": "Horizon 2" },
+    { "colourHex": "#D5007F", "name": "Horizon 4" },
+    { "colourHex": "#8D3970", "name": "Horizon 5" }
+  ],
+
+  // DOM element references
+  elements: {},
+
+  /**
+   * Initialize the color checker
+   * Sets up DOM references and event listeners
+   */
+  init() {
+    // Get all required DOM elements
+    const elementIds = [
+      'infoGraphicBox', 'bgColor', 'tColorColor', 
+      'g1colourSpan2', 'g2colourSpan2', 'g3colourSpan2',
+      'infoTexT', 'icon1', 'icon2', 'icon3',
+      'backgroundColor', 'tcolor', 'tcontrast', 'tcontrastWCAG',
+      'tColorName', 'g1colourSpan1', 'g1contrast', 'g1contrastWCAG',
+      'gfx1ColorName', 'g2colourSpan1', 'g2contrast', 'g2contrastWCAG',
+      'gfx2ColorName', 'g3colourSpan1', 'g3contrast', 'g3contrastWCAG',
+      'gfx3ColorName', 'backgroundName', 'srResults'
+    ];
+
+    // Store DOM references
+    elementIds.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        this.elements[id] = element;
+      } else {
+        console.warn(`Element with id '${id}' not found`);
       }
-      /* Get the element in which our text is */
-      let myInfoGraphicText = document.getElementById("infoTexT");
-      /* Get Graphics */
-      //
-      /* Get Graphic 1 */
-      let myInfoGraphicGfx1 = document.getElementById("icon1");
-      /* Get Graphic 2 */
-      let myInfoGraphicGfx2 = document.getElementById("icon2");
-      /* Get Graphic 3 */
-      let myInfoGraphicGfx3 = document.getElementById("icon3");
-      // Start Arrays
-      // Create empty array for text colour
-      let textColor = [];
-      // Create empty array for graphics colours
-      let gfxColor = [];
-      // list possible backgrounds
-      // pick random button background put in variable
-      const randomBackgroundColor = Math.floor(Math.random() * infoGraphicBackgrounds.length);
-      backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
-      // bgC.innerHTML = "Background colour: ";
-      myInfoGraphicBox.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
-      // Show the hex code of the colour on the web page
-      // backgroundColor.innerHTML = infoGraphicBackgrounds[randomBackgroundColor];
-      currentBackground = infoGraphicBackgrounds[randomBackgroundColor];
-      // Show the colour itself on the page
-      bgColId.style.backgroundColor = infoGraphicBackgrounds[randomBackgroundColor];
-      // Start the first loop for text colours
-      console.log("\n");
-      console.log("*** TXT ARRAY LOOP START ***");
-      console.log("\n");
-      for (let i = 0; i < infoGraphicBackgrounds.length; i++) {
-        let currentColor = infoGraphicBackgrounds[i];
-        //console.log(infoGraphicBackgrounds[i]);
-        console.log("Current colour is " + currentColor);
-        let currentColorRatio = chroma.contrast(currentBackground, infoGraphicBackgrounds[i]);
-        // console.log(chroma.contrast(currentBackground, infoGraphicBackgrounds[i]));
-        console.log("Contrast with " + currentBackground + " = " + currentColorRatio)
-        // add thing that adds colors with contrast over 4.5:1 to textColor array
-        if (currentColorRatio >= 4.5) {
-          textColor.push(currentColor);
-          console.log("Added " + currentColor + " to the array");
-        }
-        console.log("Current array items: " + textColor);
+    });
+
+    // Ensure chroma.js is available
+    if (typeof chroma === 'undefined') {
+      throw new Error('chroma.js is required but not loaded');
+    }
+  },
+
+  /**
+   * Get multiple random items from an array
+   * @param {Array} arr - The source array
+   * @param {number} n - Number of items to pick
+   * @returns {Array} Array of n random items
+   */
+  getRandom(arr, n) {
+    const result = new Array(n);
+    const taken = new Set();
+    const len = arr.length;
+
+    if (n > len) {
+      throw new RangeError("getRandom: more elements taken than available");
+    }
+
+    while (taken.size < n) {
+      const x = Math.floor(Math.random() * len);
+      if (!taken.has(x)) {
+        taken.add(x);
+        result[taken.size - 1] = arr[x];
       }
-      console.log("\n");
-      console.log("*** TXT ARRAY LOOP ENDS ***");
-      console.log("\n");
-      // Pick a random colour from the textColor array
-      let h2TextColor = Math.floor(Math.random() * textColor.length);
-      myInfoGraphicText.style.color = textColor[h2TextColor];
-      var infTextColor = textColor[h2TextColor];
-      // set text colour display
-      tcolor.innerHTML = infTextColor;
-      // get contrast ratio of text and background
-      let textContrastDisplay = chroma.contrast(infTextColor, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
-      // show contrast ratio
-      tcontrast.innerHTML = textContrastDisplay + ":1";
-      // set colour examples:
-      // text colour example
-      tColId.style.backgroundColor = infTextColor;
-      // Start the second loop, this time for gfx colours
-      console.log("\n");
-      console.log("*** GFX ARRAY LOOP START ***");
-      console.log("\n");
-      for (let i = 0; i < infoGraphicBackgrounds.length; i++) {
-        let currentColor2 = infoGraphicBackgrounds[i];
-        console.log("Current colour is " + currentColor2);
-        let currentColor2Ratio = chroma.contrast(currentBackground, infoGraphicBackgrounds[i]);
-        console.log("Contrast with " + currentBackground + " = " + currentColor2Ratio)
-        // add thing that adds colors with contrast over 3:1 to textColor array
-        if (currentColor2Ratio >= 3) {
-          gfxColor.push(currentColor2);
-          console.log("Added " + currentColor2 + " to the array");
-        }
-        console.log("Current gfx array items: " + gfxColor);
-      }
-      console.log("\n");
-      console.log("*** GFX ARRAY LOOP END ***");
-      console.log("\n");
-      // NEED TO ADD SOMETHING ABOUT WHAT TO DO IF THERE ARE LESS THAN THREE COLOURS IN THE GFX ARRAY!
-      // Let's get 3 random colours
-      gfxArray = (getRandom(gfxColor, 3));
-      myInfoGraphicGfx1.style.color = gfxArray[0];
-      myInfoGraphicGfx1.style.color = gfxArray[0];
-      myInfoGraphicGfx2.style.color = gfxArray[1];
-      myInfoGraphicGfx3.style.color = gfxArray[2];
-      let myInfoGraphicGfx1Color = gfxArray[0];
-      let myInfoGraphicGfx2Color = gfxArray[1];
-      let myInfoGraphicGfx3Color = gfxArray[2];
-      g1colourSpan1.innerHTML = myInfoGraphicGfx1Color;
-      g2colourSpan1.innerHTML = myInfoGraphicGfx2Color;
-      g3colourSpan1.innerHTML = myInfoGraphicGfx3Color;
-      /*gContrastArray.innerHTML = "gfxContrastsFFFFFF";*/
-      gCol1Id.style.backgroundColor = myInfoGraphicGfx1Color;
-      gCol2Id.style.backgroundColor = myInfoGraphicGfx2Color;
-      gCol3Id.style.backgroundColor = myInfoGraphicGfx3Color;
-      // get contrast ratio of graphic 1 and background
-      let gfx1ContrastDisplay = chroma.contrast(myInfoGraphicGfx1Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
-      // show contrast ratio
-      g1contrast.innerHTML = gfx1ContrastDisplay + ":1";
-      // get contrast ratio of graphic 2 and background
-      let gfx2ContrastDisplay = chroma.contrast(myInfoGraphicGfx2Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
-      // show contrast ratio
-      g2contrast.innerHTML = gfx2ContrastDisplay + ":1";
-      // get contrast ratio of graphic 3 and background
-      let gfx3ContrastDisplay = chroma.contrast(myInfoGraphicGfx3Color, infoGraphicBackgrounds[randomBackgroundColor]).toFixed(2);
-      // show contrast ratio
-      g3contrast.innerHTML = gfx3ContrastDisplay + ":1";
-      //function to determine wcag rating from a Contrast Ratio
-      function getWcagRating(contrastRatio) {
-        if (contrastRatio >= 7) {
-          WcagRating = "AAA";
-        } else if (contrastRatio >= 4.5) {
-          WcagRating = "AA";
-        } else if (contrastRatio >= 3) {
-          WcagRating = "G";
-        } else {
-          WcagRating = "F";
-        }
-        return WcagRating;
-      }
-      // Set up the WCAG results to show
-      g1contrastWCAG.innerHTML = getWcagRating(gfx1ContrastDisplay);
-      g2contrastWCAG.innerHTML = getWcagRating(gfx2ContrastDisplay);
-      g3contrastWCAG.innerHTML = getWcagRating(gfx3ContrastDisplay);
-      // Text contrast WCAG results
-      tcontrastWCAG.innerHTML = getWcagRating(textContrastDisplay);
-      // Lookup function based on https://stackoverflow.com/questions/64456535/create-a-function-called-pricelookup-to-find-the-price-of-a-single-item 
-      function nameLookup(colournames, colour) {
-        let ret = colournames.find(x => x.colourHex === colour);
-        return ret ? ret.name : "No such item";
-      };
-      // Make names of colours appear
-      backgroundName.innerHTML = "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")";
-      tColorName.innerHTML = "(" + nameLookup(colournames, infTextColor) + ")";
-      gfx1ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")";
-      gfx2ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")";
-      gfx3ColorName.innerHTML = "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")";
-      // Put results into a special span that is only visible to screen reader users
-      document.getElementById("srResults").innerHTML = "Results: Background colour " + infoGraphicBackgrounds[randomBackgroundColor] + " " + "(" + nameLookup(colournames, infoGraphicBackgrounds[randomBackgroundColor]) + ")" + ", Text colour: " + infTextColor + " " + "(" + nameLookup(colournames, infTextColor) + ")" + ", Text contrast: " + textContrastDisplay + ":1, " + "W C A G Rating: " + getWcagRating(textContrastDisplay) + ". Graphic 1 colour: " + myInfoGraphicGfx1Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx1Color) + ")" + ". Graphic 1 contrast: " + gfx1ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx1ContrastDisplay) + ". " + "Graphic 2 colour: " + myInfoGraphicGfx2Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx2Color) + ")" + ". Graphic 2 contrast: " + gfx2ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx2ContrastDisplay) + ". " + "Graphic 3 colour: " + myInfoGraphicGfx3Color + " " + "(" + nameLookup(colournames, myInfoGraphicGfx3Color) + ")" + ". Graphic 3 contrast: " + gfx3ContrastDisplay + ":1," + " W C A G Rating: " + getWcagRating(gfx3ContrastDisplay);
-      console.log("\n");
-      console.log("Randomise function ends");
-      console.log("\n");
-    };
-      // Finally we run the function when the page loads
-      // It also runs when you press the button	  
-      // randomAll();
+    }
+
+    return result;
+  },
+
+  /**
+   * Get WCAG rating based on contrast ratio
+   * @param {number} contrastRatio 
+   * @returns {string} WCAG rating
+   */
+  getWcagRating(contrastRatio) {
+    if (contrastRatio >= 7) return "AAA";
+    if (contrastRatio >= 4.5) return "AA";
+    if (contrastRatio >= 3) return "G";
+    return "F";
+  },
+
+  /**
+   * Find color name from hex code
+   * @param {string} colour - Hex code
+   * @returns {string} Color name
+   */
+  getColorName(colour) {
+    const colorObj = this.colournames.find(x => x.colourHex === colour);
+    return colorObj ? colorObj.name : "Unknown color";
+  },
+
+  /**
+   * Update UI elements with new color information
+   */
+  updateUI(backgroundColor, textColor, graphicColors) {
+    const { elements } = this;
+
+    // Background color updates
+    elements.backgroundColor.textContent = backgroundColor;
+    elements.infoGraphicBox.style.backgroundColor = backgroundColor;
+    elements.bgColor.style.backgroundColor = backgroundColor;
+    elements.backgroundName.textContent = `(${this.getColorName(backgroundColor)})`;
+
+    // Text color updates
+    const textContrastRatio = chroma.contrast(textColor, backgroundColor).toFixed(2);
+    elements.tcolor.textContent = textColor;
+    elements.tcontrast.textContent = `${textContrastRatio}:1`;
+    elements.tcontrastWCAG.textContent = this.getWcagRating(textContrastRatio);
+    elements.tColorName.textContent = `(${this.getColorName(textColor)})`;
+    elements.tColorColor.style.backgroundColor = textColor;
+    elements.infoTexT.style.color = textColor;
+
+    // Graphics colors updates
+    graphicColors.forEach((color, index) => {
+      const num = index + 1;
+      const contrastRatio = chroma.contrast(color, backgroundColor).toFixed(2);
+      
+      elements[`icon${num}`].style.color = color;
+      elements[`g${num}colourSpan1`].textContent = color;
+      elements[`g${num}contrast`].textContent = `${contrastRatio}:1`;
+      elements[`g${num}contrastWCAG`].textContent = this.getWcagRating(contrastRatio);
+      elements[`gfx${num}ColorName`].textContent = `(${this.getColorName(color)})`;
+      elements[`g${num}colourSpan2`].style.backgroundColor = color;
+    });
+
+    // Update screen reader text
+    this.updateScreenReaderText(backgroundColor, textColor, graphicColors);
+  },
+
+  /**
+   * Update screen reader results text
+   */
+  updateScreenReaderText(backgroundColor, textColor, graphicColors) {
+    const bgName = this.getColorName(backgroundColor);
+    const textContrastRatio = chroma.contrast(textColor, backgroundColor).toFixed(2);
+    const textWCAG = this.getWcagRating(textContrastRatio);
+
+    let srText = `Results: Background colour ${backgroundColor} (${bgName}), `;
+    srText += `Text colour: ${textColor} (${this.getColorName(textColor)}), `;
+    srText += `Text contrast: ${textContrastRatio}:1, WCAG Rating: ${textWCAG}. `;
+
+    graphicColors.forEach((color, index) => {
+      const contrastRatio = chroma.contrast(color, backgroundColor).toFixed(2);
+      srText += `Graphic ${index + 1} colour: ${color} (${this.getColorName(color)}), `;
+      srText += `Graphic ${index + 1} contrast: ${contrastRatio}:1, `;
+      srText += `WCAG Rating: ${this.getWcagRating(contrastRatio)}. `;
+    });
+
+    this.elements.srResults.textContent = srText.trim();
+  },
+
+  /**
+   * Main function to randomize and check colors
+   */
+  randomAll() {
+    console.log("Randomise function starts");
+
+    // Get all hex codes from our color objects
+    const availableColors = this.colournames.map(item => item.colourHex);
+    
+    // Pick random background color
+    const backgroundColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+
+    // Find colors with sufficient contrast
+    const textColors = availableColors.filter(color => 
+      chroma.contrast(backgroundColor, color) >= 4.5
+    );
+
+    const graphicColors = availableColors.filter(color => 
+      chroma.contrast(backgroundColor, color) >= 3
+    );
+
+    // Check if we have enough contrasting colors
+    if (textColors.length === 0 || graphicColors.length < 3) {
+      console.error("Not enough colors with sufficient contrast");
+      return;
+    }
+
+    // Pick random colors from our filtered arrays
+    const textColor = textColors[Math.floor(Math.random() * textColors.length)];
+    const selectedGraphicColors = this.getRandom(graphicColors, 3);
+
+    // Update the UI with our chosen colors
+    this.updateUI(backgroundColor, textColor, selectedGraphicColors);
+
+    console.log("Randomise function ends");
+  }
+};
+
+// Initialize when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    ColorChecker.init();
+    // Run initial randomization if needed
+    // ColorChecker.randomAll();
+  } catch (error) {
+    console.error('Failed to initialize ColorChecker:', error);
+  }
+});
     </script>
   </body>
 </html>
