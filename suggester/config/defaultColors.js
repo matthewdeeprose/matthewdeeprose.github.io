@@ -1,0 +1,20 @@
+export const defaultColors = [
+      { "colourHex": "#FFFFFF", "name": "White" },
+      { "colourHex": "#231F20", "name": "Plain Black" },
+      { "colourHex": "#00131D", "name": "Rich Black" },
+      { "colourHex": "#495961", "name": "Neutral 1" },
+      { "colourHex": "#758D9A", "name": "Neutral 2" },
+      { "colourHex": "#9FB1BD", "name": "Neutral 3" },
+      { "colourHex": "#E1E8EC", "name": "Neutral 4" },
+      { "colourHex": "#002E3B", "name": "Prussian" },
+      { "colourHex": "#005C84", "name": "Marine 1" },
+      { "colourHex": "#74C9E5", "name": "Marine 2" },
+      { "colourHex": "#3CBAC6", "name": "Marine 3" },
+      { "colourHex": "#B3DBD2", "name": "Marine 4" },
+      { "colourHex": "#4BB694", "name": "Marine 5" },
+      { "colourHex": "#C1D100", "name": "Marine 6" },
+      { "colourHex": "#FCBC00", "name": "Horizon 1" },
+      { "colourHex": "#EF7D00", "name": "Horizon 2" },
+      { "colourHex": "#D5007F", "name": "Horizon 4" },
+      { "colourHex": "#8D3970", "name": "Horizon 5" }
+    ];
