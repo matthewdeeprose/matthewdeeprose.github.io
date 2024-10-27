@@ -5,6 +5,15 @@ import { ColorStorage } from './services/colorStorage.js';
 import { FileHandler } from './services/fileHandler.js';
 import { UIManager } from './ui/uiManager.js';
 
+console.log('Imports loaded:', {
+    defaultColors: defaultColors,
+    ColorValidator: ColorValidator,
+    MathUtils: MathUtils,
+    ColorStorage: ColorStorage,
+    FileHandler: FileHandler,
+    UIManager: UIManager
+});
+
 export class ColorChecker {
     constructor() {
         this.storage = new ColorStorage();
@@ -165,41 +174,52 @@ export class ColorChecker {
      * @returns {Object} Selected color combination
      * @throws {Error} If no valid combinations are available
      */
-    randomAll() {
-        console.log("Randomise function starts");
+   randomAll() {
+    console.log("Randomise function starts");
 
-        if (!this.initialized) {
-            throw new Error('ColorChecker not initialized');
-        }
-
-        const validBackgrounds = Array.from(this.storage.validColorSets.keys());
-        if (validBackgrounds.length === 0) {
-            throw new Error("No valid color combinations available");
-        }
-
-        // Select random background color
-        const backgroundColor = validBackgrounds[Math.floor(Math.random() * validBackgrounds.length)];
-        const colorSet = this.storage.validColorSets.get(backgroundColor);
-
-        // Select random text color
-        const textColor = colorSet.textColors[Math.floor(Math.random() * colorSet.textColors.length)].colourHex;
-        
-        // Select random graphic colors
-        const selectedGraphicColors = MathUtils.getRandom(
-            colorSet.graphicColors.map(c => c.colourHex),
-            3
-        );
-
-        // Update UI with new colors
-        this.uiManager.updateUI(backgroundColor, textColor, selectedGraphicColors);
-
-        console.log("Randomise function ends");
-        return {
-            background: backgroundColor,
-            text: textColor,
-            graphics: selectedGraphicColors
-        };
+    if (!this.initialized) {
+        console.error('Not initialized!');
+        throw new Error('ColorChecker not initialized');
     }
+
+    console.log("Checking valid backgrounds...");
+    const validBackgrounds = Array.from(this.storage.validColorSets.keys());
+    console.log("Valid backgrounds:", validBackgrounds);
+    
+    if (validBackgrounds.length === 0) {
+        console.error("No valid color combinations found");
+        throw new Error("No valid color combinations available");
+    }
+
+    console.log("Selecting background color...");
+    const backgroundColor = validBackgrounds[Math.floor(Math.random() * validBackgrounds.length)];
+    console.log("Selected background:", backgroundColor);
+    
+    console.log("Getting color set...");
+    const colorSet = this.storage.validColorSets.get(backgroundColor);
+    console.log("Color set:", colorSet);
+
+    console.log("Selecting text color...");
+    const textColor = colorSet.textColors[Math.floor(Math.random() * colorSet.textColors.length)].colourHex;
+    console.log("Selected text color:", textColor);
+    
+    console.log("Selecting graphic colors...");
+    const selectedGraphicColors = MathUtils.getRandom(
+        colorSet.graphicColors.map(c => c.colourHex),
+        3
+    );
+    console.log("Selected graphic colors:", selectedGraphicColors);
+
+    console.log("Updating UI...");
+    this.uiManager.updateUI(backgroundColor, textColor, selectedGraphicColors);
+
+    console.log("Randomise function ends");
+    return {
+        background: backgroundColor,
+        text: textColor,
+        graphics: selectedGraphicColors
+    };
+}
 
     /**
      * Add event listener for randomize button
