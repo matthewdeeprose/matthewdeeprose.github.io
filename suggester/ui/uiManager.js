@@ -1,9 +1,10 @@
 // /ui/uiManager.js
 
 export class UIManager {
-    constructor(elements) {
+    constructor(elements, colorStorage) {  // Add colorStorage parameter
         console.log("UIManager initialized with elements:", elements);
         this.elements = elements;
+        this.colorStorage = colorStorage;  // Store the reference
     }
 
     /**
@@ -135,7 +136,7 @@ export class UIManager {
      * Get color name (placeholder - should be implemented based on your color storage)
      */
     getColorName(colour) {
-        // This should be implemented based on your color storage
-        return colour;
+        // Use the colorStorage to get the name
+        return this.colorStorage.getColorName(colour);
     }
 }
