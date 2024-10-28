@@ -25,24 +25,25 @@ export class ColorChecker {
      * Initialize the color checker
      * @throws {Error} If initialization fails
      */
-    async init() {
-        // Check for required dependencies
-        if (typeof chroma === 'undefined') {
-            throw new Error('chroma.js is required but not loaded');
-        }
-
-        // Get and validate DOM elements
-        const elements = this.getDomElements();
-        this.uiManager = new UIManager(elements);
-
-        // Initialize file uploads
-        this.initFileUploads();
-
-        // Load default colors
-        await this.loadDefaultColors();
-
-        this.initialized = true;
+async init() {
+    // Check for required dependencies
+    if (typeof chroma === 'undefined') {
+        throw new Error('chroma.js is required but not loaded');
     }
+
+    // Get and validate DOM elements
+    const elements = this.getDomElements();
+    // Pass this.storage when creating UIManager
+    this.uiManager = new UIManager(elements, this.storage);
+
+    // Initialize file uploads
+    this.initFileUploads();
+
+    // Load default colors
+    await this.loadDefaultColors();
+
+    this.initialized = true;
+}
 
     /**
      * Get all required DOM elements
