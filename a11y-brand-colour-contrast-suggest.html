@@ -229,7 +229,6 @@ function showTrich() {
 </style>
 <style>
 .upload-container {
-  max-width: 800px;
   margin: 20px auto;
   padding: 20px;
 }
@@ -241,20 +240,28 @@ function showTrich() {
   margin: 20px 0;
 }
 
+@media only screen and (max-width: 800px){
+.file-upload-section {
+  grid-template-columns: 1fr;
+  }
+ 
+}
+
 .upload-option {
   padding: 20px;
-  border: 2px dashed #ccc;
+  border: 2px dashed #758D9A;
   border-radius: 8px;
 }
 
 .upload-option:hover {
-  border-color: #666;
+  border: 2px solid #758D9A;
 }
 
 .sample-format {
   margin-top: 15px;
   font-size: 0.9em;
-  background: #f5f5f5;
+  background: #9FB1BD;
+  color: #00131d;
   padding: 10px;
   border-radius: 4px;
 }
@@ -262,9 +269,11 @@ function showTrich() {
 .sample-format pre {
   margin: 10px 0;
   padding: 10px;
-  background: #fff;
   border-radius: 4px;
   overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  text-align: justify;
 }
 
 .stats-container {
@@ -288,8 +297,9 @@ input[type="file"] {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  width: 100%;
 }
+
+
 </style>
   </head>
   <body>
@@ -368,10 +378,10 @@ input[type="file"] {
 		  </details>
 		  
 		   <details id="customisationDetails">
-									   <summary><h2>Customisation</h2></summary>
+									   <summary><h2>Upload your own colours</h2></summary>
 									   
 <div class="upload-container">
-  <h2>Upload Your Colors</h2>
+
   
   <div class="file-upload-section">
     <div class="upload-option">
@@ -379,7 +389,7 @@ input[type="file"] {
       <p>JSON file with color hex codes and names</p>
       <input type="file" id="jsonFileInput" accept=".json" aria-label="Upload JSON file with colors">
       <div class="sample-format">
-        Example format:
+	  <p>Example format:</p>
         <pre>[
   {"colourHex": "#FFFFFF", "name": "White"},
   {"colourHex": "#000000", "name": "Black"}
@@ -392,7 +402,7 @@ input[type="file"] {
       <p>CSV file with colors (supports multiple formats)</p>
       <input type="file" id="csvFileInput" accept=".csv" aria-label="Upload CSV file with colors">
       <div class="sample-format">
-        Supported formats:
+        <p>Supported formats:</p>
         <pre>HEX,NAME
 #FFFFFF,White
 #000000,Black</pre>
@@ -406,16 +416,15 @@ Black,#000000</pre>
     </div>
   </div>
 
-  <div id="uploadStats" class="stats-container" aria-live="polite">
-    <!-- Statistics will be displayed here -->
-  </div>
 
   <div id="uploadError" class="error-container" role="alert">
     <!-- Error messages will be displayed here -->
   </div>
 </div>
 		  </details>
-		  
+		    <div id="uploadStats" class="stats-container" aria-live="polite">
+    <!-- Statistics will be displayed here -->
+  </div>
           <p>Use the Randomise button to get started!</p>
           <div class="resourseList2">
             <div class="grid-child">

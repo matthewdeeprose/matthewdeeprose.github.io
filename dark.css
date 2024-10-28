@@ -1,4 +1,16 @@
 /* Dark mode */
+
+/* Suggester */
+
+.sample-format pre {
+
+  background: #fffff4;
+color: #00131d !important;
+}
+
+/* Suggester ends */
+
+
 input[type=text] {
 	border: 0.2rem solid #231F20 !important;
 }

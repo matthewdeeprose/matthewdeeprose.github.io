@@ -1,5 +1,17 @@
 /*Light mode */
 
+.sample-format pre {
+
+  background: #fffff4;
+color: #00131d;
+}
+
+/* Suggester */
+
+
+
+/* Suggester ends */
+
 input[type=text] {
 	border: 0.2rem solid #00131D;	
 	outline: 0.2rem solid #FFFFF4 !important;
