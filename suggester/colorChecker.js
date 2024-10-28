@@ -64,6 +64,20 @@ export class ColorChecker {
 
         // Mark as initialized so other methods know they can run
         this.initialized = true;
+		
+		this.storage.initActiveColors();
+        this.uiManager.updateColorManagementUI(
+            this.storage.colors,
+            this.storage.activeColors,
+            (colorHex) => {
+                const stats = this.storage.toggleColor(colorHex);
+                this.uiManager.displayUploadStats(stats);
+            },
+            (active) => {
+                const stats = this.storage.toggleAllColors(active);
+                this.uiManager.displayUploadStats(stats);
+            }
+        );
     }
 
     /**
