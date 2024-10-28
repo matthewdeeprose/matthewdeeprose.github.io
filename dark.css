@@ -4,8 +4,12 @@
 
 .sample-format pre {
 
-  background: #fffff4;
-color: #00131d !important;
+  background: #00131D; 
+  color: #fffff4;
+}
+
+.stats-container, .error-container {
+  background: #00131D;
 }
 
 /* Suggester ends */

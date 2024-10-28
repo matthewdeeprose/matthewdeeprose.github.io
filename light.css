@@ -6,6 +6,10 @@
 color: #00131d;
 }
 
+.stats-container, .error-container {
+  background: #E1E8EC;
+}
+
 /* Suggester */
 
 

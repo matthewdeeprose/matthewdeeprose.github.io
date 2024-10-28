@@ -58,7 +58,7 @@ export class UIManager {
         }
 
         statsContainer.innerHTML = `
-            <h3>Color Set Statistics</h3>
+            <h3>Colour Set Statistics</h3>
             <ul>
                 <li>Total colors loaded: ${stats.totalColors}</li>
                 <li>Valid background colors: ${stats.validBackgrounds}</li>
