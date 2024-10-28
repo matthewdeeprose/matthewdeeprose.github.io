@@ -12,9 +12,12 @@ export const defaultColors = [
       { "colourHex": "#3CBAC6", "name": "Marine 3" },
       { "colourHex": "#B3DBD2", "name": "Marine 4" },
       { "colourHex": "#4BB694", "name": "Marine 5" },
+      { "colourHex": "#1E8765", "name": "Shamrock" },
       { "colourHex": "#C1D100", "name": "Marine 6" },
       { "colourHex": "#FCBC00", "name": "Horizon 1" },
       { "colourHex": "#EF7D00", "name": "Horizon 2" },
+      { "colourHex": "#E73037", "name": "Horizon 3" },
+      { "colourHex": "#E73238", "name": "Coral" },
       { "colourHex": "#D5007F", "name": "Horizon 4" },
       { "colourHex": "#8D3970", "name": "Horizon 5" }
-    ];
+];
