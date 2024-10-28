@@ -1,14 +1,34 @@
+/**
+ * @fileoverview Color Storage and Validation Manager
+ * 
+ * This class manages the storage and validation of color combinations according to
+ * WCAG accessibility guidelines. It ensures:
+ * - Text colors have sufficient contrast (4.5:1 ratio) with backgrounds
+ * - Graphic elements have sufficient contrast (3:1 ratio) with backgrounds
+ * - Efficient storage and retrieval of valid color combinations
+ * 
+ * WCAG Success Criteria Referenced:
+ * - 1.4.3 Contrast (Minimum) Level AA
+ * - 1.4.11 Non-text Contrast Level AA
+ */
+
 export class ColorStorage {
+    /**
+     * Creates a new ColorStorage instance
+     * Initializes empty storage for colors and valid combinations
+     */
     constructor() {
         console.log("ColorStorage initialized");
+        // Array to store all available colors
         this.colors = [];
+        // Map to store valid color combinations for each background color
         this.validColorSets = new Map();
     }
 
     /**
-     * Load colors into storage and validate combinations
-     * @param {Array} colors Array of color objects
-     * @returns {Object} Statistics about valid combinations
+     * Loads colors into storage and validates all possible combinations
+     * @param {Array<{colourHex: string, name: string}>} colors Array of color objects
+     * @returns {Object} Statistics about valid combinations found
      */
     loadColors(colors) {
         console.log("Loading colors:", colors);
@@ -17,19 +37,22 @@ export class ColorStorage {
     }
 
     /**
-     * Pre-validates all possible color combinations
-     * @returns {Object} Statistics about valid combinations
+     * Pre-validates all possible color combinations against WCAG criteria
+     * This is done once at load time to avoid repeated contrast calculations
+     * @returns {Object} Statistics about the validation results
      */
     preValidateColorCombinations() {
         console.log("Pre-validating color combinations...");
         console.log("Current colors:", this.colors);
 
+        // Initialize statistics tracking
         const stats = {
             totalColors: this.colors.length,
             validBackgrounds: 0,
             totalCombinations: 0
         };
 
+        // Clear any existing validation results
         this.validColorSets.clear();
 
         console.log("Checking each color as potential background...");
@@ -38,20 +61,24 @@ export class ColorStorage {
             
             console.log(`Checking ${backgroundColor} (${bgColor.name}) as background`);
 
+            // Find colors that meet WCAG text contrast requirement (4.5:1)
             const validTextColors = this.colors.filter(color => {
                 const contrast = chroma.contrast(backgroundColor, color.colourHex);
                 console.log(`Text contrast with ${color.colourHex}: ${contrast}`);
-                return contrast >= 4.5;
+                return contrast >= 4.5; // WCAG AA standard for regular text
             });
 
+            // Find colors that meet WCAG graphic contrast requirement (3:1)
             const validGraphicColors = this.colors.filter(color => {
                 const contrast = chroma.contrast(backgroundColor, color.colourHex);
                 console.log(`Graphic contrast with ${color.colourHex}: ${contrast}`);
-                return contrast >= 3;
+                return contrast >= 3; // WCAG AA standard for graphic elements
             });
 
             console.log(`Found ${validTextColors.length} valid text colors and ${validGraphicColors.length} valid graphic colors`);
 
+            // Store valid combinations if we have enough colors for a complete set
+            // We need at least 1 text color and 3 graphic colors
             if (validTextColors.length >= 1 && validGraphicColors.length >= 3) {
                 this.validColorSets.set(backgroundColor, {
                     background: bgColor,
@@ -59,7 +86,9 @@ export class ColorStorage {
                     graphicColors: validGraphicColors
                 });
                 stats.validBackgrounds++;
-                stats.totalCombinations += validTextColors.length * this.calculateCombinations(validGraphicColors.length, 3);
+                // Calculate total possible combinations for this background
+                stats.totalCombinations += validTextColors.length * 
+                    this.calculateCombinations(validGraphicColors.length, 3);
                 console.log(`Added ${backgroundColor} as valid background`);
             } else {
                 console.log(`${backgroundColor} rejected as background - insufficient valid color combinations`);
@@ -73,9 +102,10 @@ export class ColorStorage {
     }
 
     /**
-     * Calculate number of possible combinations
-     * @param {number} n Total number of items
-     * @param {number} r Number of items to choose
+     * Calculates the number of possible combinations (nCr)
+     * Using the combination formula: n!/(r!(n-r)!)
+     * @param {number} n Total number of items to choose from
+     * @param {number} r Number of items being chosen
      * @returns {number} Number of possible combinations
      */
     calculateCombinations(n, r) {
@@ -88,9 +118,9 @@ export class ColorStorage {
     }
 
     /**
-     * Get color name from hex code
-     * @param {string} colour Hex color code
-     * @returns {string} Color name
+     * Retrieves the human-readable name for a color
+     * @param {string} colour Hex color code to look up
+     * @returns {string} Color name or "Unknown color" if not found
      */
     getColorName(colour) {
         console.log("Getting name for color:", colour);
@@ -101,25 +131,28 @@ export class ColorStorage {
     }
 
     /**
-     * Get all valid background colors
-     * @returns {Array} Array of valid background colors
+     * Gets all colors that can serve as valid backgrounds
+     * @returns {Array<string>} Array of valid background color hex codes
      */
     getValidBackgrounds() {
         return Array.from(this.validColorSets.keys());
     }
 
     /**
-     * Check if a color combination is valid
+     * Validates a specific color combination against WCAG requirements
      * @param {string} backgroundColor Background color hex
      * @param {string} textColor Text color hex
-     * @param {Array} graphicColors Array of graphic color hexes
-     * @returns {boolean} True if combination is valid
+     * @param {Array<string>} graphicColors Array of graphic color hexes
+     * @returns {boolean} True if the combination meets WCAG requirements
      */
     isValidCombination(backgroundColor, textColor, graphicColors) {
         const colorSet = this.validColorSets.get(backgroundColor);
         if (!colorSet) return false;
 
+        // Check if text color meets contrast requirements
         const isValidText = colorSet.textColors.some(c => c.colourHex === textColor);
+        
+        // Check if all graphic colors meet contrast requirements
         const allValidGraphics = graphicColors.every(gc => 
             colorSet.graphicColors.some(c => c.colourHex === gc)
         );
@@ -128,7 +161,7 @@ export class ColorStorage {
     }
 
     /**
-     * Get the number of valid color combinations
+     * Calculates total number of valid color combinations possible
      * @returns {number} Total number of valid combinations
      */
     getTotalCombinations() {
@@ -140,7 +173,8 @@ export class ColorStorage {
     }
 
     /**
-     * Clear all stored colors and combinations
+     * Clears all stored colors and validated combinations
+     * Useful when reloading a new color palette
      */
     clear() {
         console.log("Clearing color storage");

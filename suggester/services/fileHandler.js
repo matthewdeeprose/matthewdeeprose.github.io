@@ -1,33 +1,63 @@
+/**
+ * @fileoverview File Handler for Color Palette Imports
+ * 
+ * This class handles the import of color palettes from JSON and CSV files.
+ * It includes validation to ensure:
+ * - Proper file formats
+ * - Valid color hex codes
+ * - Required color metadata
+ * - Reasonable file sizes
+ * 
+ * Accessibility Considerations:
+ * - Validates hex colors for proper format to ensure reliable contrast checking
+ * - Requires color names for better screen reader experience
+ * - Provides clear error messages for better user feedback
+ */
+
 import { ColorValidator } from '../utils/colorValidation.js';
 
 export class FileHandler {
     /**
-     * Handle JSON file upload
-     * @param {File} file - The uploaded JSON file
-     * @returns {Promise<Array>} Array of color objects
-     * @throws {Error} If file is invalid
+     * Processes a JSON file containing color definitions
+     * @param {File} file Uploaded JSON file
+     * @returns {Promise<Array<{colourHex: string, name: string}>>} Array of validated color objects
+     * @throws {Error} If file format or content is invalid
+     * 
+     * Expected JSON format:
+     * [
+     *   {
+     *     "colourHex": "#FFFFFF",
+     *     "name": "White"
+     *   },
+     *   ...
+     * ]
      */
     static async handleJsonUpload(file) {
         try {
-            // Validate file type
+            // Ensure file has .json extension
             if (!file.name.toLowerCase().endsWith('.json')) {
                 throw new Error('File must be a JSON file');
             }
 
+            // Read file content as text
             const text = await file.text();
             const colors = JSON.parse(text);
 
-            // Validate the JSON structure
+            // JSON must contain an array of colors
             if (!Array.isArray(colors)) {
                 throw new Error('JSON must contain an array of colors');
             }
 
-            // Validate each color object
+            // Validate each color object in the array
             colors.forEach((color, index) => {
+                // Check for required properties
                 if (!color.colourHex || !color.name) {
-                    throw new Error(`Invalid color object at index ${index}. Each color must have 'colourHex' and 'name' properties`);
+                    throw new Error(
+                        `Invalid color object at index ${index}. ` +
+                        `Each color must have 'colourHex' and 'name' properties`
+                    );
                 }
-                // Validate hex color format
+                // Validate and standardize hex color format
                 color.colourHex = ColorValidator.validateHex(color.colourHex);
             });
 
@@ -38,18 +68,29 @@ export class FileHandler {
     }
 
     /**
-     * Handle CSV file upload
-     * @param {File} file - The uploaded CSV file
-     * @returns {Promise<Array>} Array of color objects
-     * @throws {Error} If file is invalid
+     * Processes a CSV file containing color definitions
+     * @param {File} file Uploaded CSV file
+     * @returns {Promise<Array<{colourHex: string, name: string}>>} Array of validated color objects
+     * @throws {Error} If file format or content is invalid
+     * 
+     * Supported CSV formats:
+     * 1. HEX,NAME
+     * 2. NAME,HEX
+     * 3. HEX (names will be auto-generated)
+     * 
+     * Example:
+     * #FFFFFF,White
+     * Black,#000000
+     * #FF0000
      */
     static async handleCsvUpload(file) {
         try {
-            // Validate file type
+            // Ensure file has .csv extension
             if (!file.name.toLowerCase().endsWith('.csv')) {
                 throw new Error('File must be a CSV file');
             }
 
+            // Read and parse CSV content
             const text = await file.text();
             return this.parseCsvColors(text);
         } catch (error) {
@@ -58,13 +99,14 @@ export class FileHandler {
     }
 
     /**
-     * Parse CSV text into color objects
-     * @param {string} csvText - Raw CSV text
-     * @returns {Array} Array of color objects
+     * Parses CSV text into color objects
+     * Handles multiple CSV formats and includes format auto-detection
+     * @param {string} csvText Raw CSV text content
+     * @returns {Array<{colourHex: string, name: string}>} Array of validated color objects
      * @throws {Error} If CSV format is invalid
      */
     static parseCsvColors(csvText) {
-        // Split into lines and remove empty lines
+        // Split into lines, clean up whitespace, and remove empty lines
         const lines = csvText.split('\n')
             .map(line => line.trim())
             .filter(line => line.length > 0);
@@ -73,17 +115,21 @@ export class FileHandler {
             throw new Error('CSV file is empty');
         }
 
-        // Try to determine CSV format
+        // Check first line for header row
         const header = lines[0].toLowerCase();
         const hasHeader = header.includes('hex') || header.includes('name');
         const startIndex = hasHeader ? 1 : 0;
 
-        // Process lines into color objects
+        // Process each line into a color object
         return lines.slice(startIndex).map((line, index) => {
             const parts = line.split(',').map(part => part.trim());
             
+            // Validate line format
             if (parts.length === 0 || parts.length > 2) {
-                throw new Error(`Invalid format in line ${index + 1}. Expected: "HEX,NAME" or "NAME,HEX"`);
+                throw new Error(
+                    `Invalid format in line ${index + 1}. ` +
+                    `Expected: "HEX,NAME" or "NAME,HEX"`
+                );
             }
 
             let hexColor = '';
@@ -91,11 +137,11 @@ export class FileHandler {
 
             // Handle different CSV formats
             if (parts.length === 1) {
-                // Format: HEX only
+                // Single column format: HEX only
                 hexColor = ColorValidator.validateHex(parts[0]);
-                name = `Color ${index + 1}`;
+                name = `Color ${index + 1}`; // Auto-generate name
             } else if (parts.length === 2) {
-                // Determine which part is the hex color
+                // Two column format: Detect which column is the hex color
                 if (ColorValidator.isHexColor(parts[0])) {
                     // Format: HEX,NAME
                     hexColor = ColorValidator.validateHex(parts[0]);
@@ -109,17 +155,14 @@ export class FileHandler {
                 }
             }
 
-            return {
-                colourHex: hexColor,
-                name: name
-            };
+            return { colourHex: hexColor, name: name };
         });
     }
 
     /**
-     * Read a file as text
-     * @param {File} file - The file to read
-     * @returns {Promise<string>} The file contents as text
+     * Reads a file and returns its contents as text
+     * @param {File} file File to read
+     * @returns {Promise<string>} File contents as text
      */
     static readFileAsText(file) {
         return new Promise((resolve, reject) => {
@@ -131,14 +174,16 @@ export class FileHandler {
     }
 
     /**
-     * Validate file size
-     * @param {File} file - The file to validate
-     * @param {number} maxSize - Maximum file size in bytes
-     * @throws {Error} If file is too large
+     * Validates file size against maximum allowed size
+     * @param {File} file File to validate
+     * @param {number} maxSize Maximum allowed size in bytes (default: 1MB)
+     * @throws {Error} If file exceeds maximum size
      */
-    static validateFileSize(file, maxSize = 1024 * 1024) { // Default 1MB
+    static validateFileSize(file, maxSize = 1024 * 1024) {
         if (file.size > maxSize) {
-            throw new Error(`File size exceeds maximum allowed size of ${maxSize / 1024}KB`);
+            throw new Error(
+                `File size exceeds maximum allowed size of ${maxSize / 1024}KB`
+            );
         }
     }
 }

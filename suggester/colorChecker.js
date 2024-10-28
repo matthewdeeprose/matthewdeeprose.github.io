@@ -1,3 +1,16 @@
+/**
+ * @fileoverview Color Checker Class
+ * This class manages color combinations checking for WCAG contrast compliance.
+ * It handles color storage, UI updates, and file uploads for an accessible
+ * color combination tool.
+ * 
+ * Accessibility Features:
+ * - Validates color combinations against WCAG 2.1 contrast requirements
+ * - Provides clear feedback for screen readers via srResults element
+ * - Handles both mouse and keyboard interactions
+ */
+
+// Import required dependencies and utilities
 import { defaultColors } from './config/defaultColors.js';
 import { ColorValidator } from './utils/colorValidation.js';
 import { MathUtils } from './utils/mathUtils.js';
@@ -5,16 +18,21 @@ import { ColorStorage } from './services/colorStorage.js';
 import { FileHandler } from './services/fileHandler.js';
 import { UIManager } from './ui/uiManager.js';
 
+// Log imports for debugging - helpful during development
 console.log('Imports loaded:', {
-    defaultColors: defaultColors,
-    ColorValidator: ColorValidator,
-    MathUtils: MathUtils,
-    ColorStorage: ColorStorage,
-    FileHandler: FileHandler,
-    UIManager: UIManager
+    defaultColors,
+    ColorValidator,
+    MathUtils,
+    ColorStorage,
+    FileHandler,
+    UIManager
 });
 
 export class ColorChecker {
+    /**
+     * Creates a new ColorChecker instance
+     * Initializes storage but waits for init() to set up UI
+     */
     constructor() {
         this.storage = new ColorStorage();
         this.uiManager = null;
@@ -22,49 +40,60 @@ export class ColorChecker {
     }
 
     /**
-     * Initialize the color checker
-     * @throws {Error} If initialization fails
+     * Initializes the color checker system
+     * This needs to be called before using any other methods
+     * @throws {Error} If initialization fails or required elements are missing
      */
-async init() {
-    // Check for required dependencies
-    if (typeof chroma === 'undefined') {
-        throw new Error('chroma.js is required but not loaded');
+    async init() {
+        // Make sure we have the required color manipulation library
+        if (typeof chroma === 'undefined') {
+            throw new Error('chroma.js is required but not loaded');
+        }
+
+        // Get all required DOM elements and verify they exist
+        const elements = this.getDomElements();
+        
+        // Create UI manager with references to DOM elements and color storage
+        this.uiManager = new UIManager(elements, this.storage);
+
+        // Set up file upload handlers for JSON and CSV imports
+        this.initFileUploads();
+
+        // Load the default color palette
+        await this.loadDefaultColors();
+
+        // Mark as initialized so other methods know they can run
+        this.initialized = true;
     }
 
-    // Get and validate DOM elements
-    const elements = this.getDomElements();
-    // Pass this.storage when creating UIManager
-    this.uiManager = new UIManager(elements, this.storage);
-
-    // Initialize file uploads
-    this.initFileUploads();
-
-    // Load default colors
-    await this.loadDefaultColors();
-
-    this.initialized = true;
-}
-
     /**
-     * Get all required DOM elements
-     * @returns {Object} Object containing DOM element references
-     * @throws {Error} If required elements are missing
+     * Gets all required DOM elements for the application
+     * @returns {Object} Map of element IDs to DOM elements
+     * @throws {Error} If any required elements are missing
      */
     getDomElements() {
+        // List of all required element IDs
         const elementIds = [
+            // Visual elements
             'infoGraphicBox', 'bgColor', 'tColorColor',
             'g1colourSpan2', 'g2colourSpan2', 'g3colourSpan2',
             'infoTexT', 'icon1', 'icon2', 'icon3',
+            
+            // Color information displays
             'backgroundColor', 'tcolor', 'tcontrast', 'tcontrastWCAG',
             'tColorName', 'g1colourSpan1', 'g1contrast', 'g1contrastWCAG',
             'gfx1ColorName', 'g2colourSpan1', 'g2contrast', 'g2contrastWCAG',
             'gfx2ColorName', 'g3colourSpan1', 'g3contrast', 'g3contrastWCAG',
-            'gfx3ColorName', 'backgroundName', 'srResults'
+            'gfx3ColorName', 'backgroundName',
+            
+            // Screen reader results
+            'srResults'
         ];
 
         const elements = {};
         const missingElements = [];
 
+        // Check for existence of each required element
         elementIds.forEach(id => {
             const element = document.getElementById(id);
             if (element) {
@@ -74,6 +103,7 @@ async init() {
             }
         });
 
+        // If any elements are missing, throw an error
         if (missingElements.length > 0) {
             throw new Error(`Missing required DOM elements: ${missingElements.join(', ')}`);
         }
@@ -82,28 +112,24 @@ async init() {
     }
 
     /**
-     * Initialize file upload handlers
+     * Sets up file upload handlers for JSON and CSV color palette imports
+     * Includes validation and error handling
      */
     initFileUploads() {
         const jsonInput = document.getElementById('jsonFileInput');
         const csvInput = document.getElementById('csvFileInput');
 
+        // Set up JSON file upload handler
         if (jsonInput) {
             jsonInput.addEventListener('change', async (e) => {
                 try {
                     const file = e.target.files[0];
                     if (!file) return;
 
-                    // Validate file size
                     FileHandler.validateFileSize(file);
-
-                    // Process the file
                     const colors = await FileHandler.handleJsonUpload(file);
-                    
-                    // Load the colors into storage
                     const stats = this.storage.loadColors(colors);
                     
-                    // Update UI
                     this.uiManager.displayUploadStats(stats);
                     this.uiManager.clearError();
                 } catch (error) {
@@ -112,22 +138,17 @@ async init() {
             });
         }
 
+        // Set up CSV file upload handler
         if (csvInput) {
             csvInput.addEventListener('change', async (e) => {
                 try {
                     const file = e.target.files[0];
                     if (!file) return;
 
-                    // Validate file size
                     FileHandler.validateFileSize(file);
-
-                    // Process the file
                     const colors = await FileHandler.handleCsvUpload(file);
-                    
-                    // Load the colors into storage
                     const stats = this.storage.loadColors(colors);
                     
-                    // Update UI
                     this.uiManager.displayUploadStats(stats);
                     this.uiManager.clearError();
                 } catch (error) {
@@ -138,7 +159,7 @@ async init() {
     }
 
     /**
-     * Load default colors
+     * Loads the default color palette into storage
      */
     async loadDefaultColors() {
         try {
@@ -150,20 +171,20 @@ async init() {
     }
 
     /**
-     * Calculate WCAG rating based on contrast ratio
-     * @param {number} contrastRatio 
-     * @returns {string} WCAG rating
+     * Determines WCAG compliance level based on contrast ratio
+     * @param {number} contrastRatio The calculated contrast ratio between colors
+     * @returns {string} WCAG compliance level (AAA, AA, G, or F)
      */
     getWcagRating(contrastRatio) {
-        if (contrastRatio >= 7) return "AAA";
-        if (contrastRatio >= 4.5) return "AA";
-        if (contrastRatio >= 3) return "G";
-        return "F";
+        if (contrastRatio >= 7) return "AAA";    // Best contrast
+        if (contrastRatio >= 4.5) return "AA";   // Good contrast
+        if (contrastRatio >= 3) return "G";      // Minimal contrast for Graphical objects
+        return "F";                              // Failed contrast
     }
 
     /**
-     * Get color name from hex code
-     * @param {string} colour - Hex color code
+     * Gets the human-readable name for a color
+     * @param {string} colour Hex color code
      * @returns {string} Color name
      */
     getColorName(colour) {
@@ -171,70 +192,61 @@ async init() {
     }
 
     /**
-     * Main function to randomize and check colors
-     * @returns {Object} Selected color combination
-     * @throws {Error} If no valid combinations are available
+     * Generates a random accessible color combination
+     * Includes detailed logging for debugging
+     * @returns {Object} Selected colors for background, text, and graphics
+     * @throws {Error} If not initialized or no valid combinations exist
      */
-   randomAll() {
-    console.log("Randomise function starts");
+    randomAll() {
+        console.log("Randomise function starts");
 
-    if (!this.initialized) {
-        console.error('Not initialized!');
-        throw new Error('ColorChecker not initialized');
-    }
-
-    console.log("Checking valid backgrounds...");
-    const validBackgrounds = Array.from(this.storage.validColorSets.keys());
-    console.log("Valid backgrounds:", validBackgrounds);
-    
-    if (validBackgrounds.length === 0) {
-        console.error("No valid color combinations found");
-        throw new Error("No valid color combinations available");
-    }
-
-    console.log("Selecting background color...");
-    const backgroundColor = validBackgrounds[Math.floor(Math.random() * validBackgrounds.length)];
-    console.log("Selected background:", backgroundColor);
-    
-    console.log("Getting color set...");
-    const colorSet = this.storage.validColorSets.get(backgroundColor);
-    console.log("Color set:", colorSet);
-
-    console.log("Selecting text color...");
-    const textColor = colorSet.textColors[Math.floor(Math.random() * colorSet.textColors.length)].colourHex;
-    console.log("Selected text color:", textColor);
-    
-    console.log("Selecting graphic colors...");
-    const selectedGraphicColors = MathUtils.getRandom(
-        colorSet.graphicColors.map(c => c.colourHex),
-        3
-    );
-    console.log("Selected graphic colors:", selectedGraphicColors);
-
-    console.log("Updating UI...");
-    this.uiManager.updateUI(backgroundColor, textColor, selectedGraphicColors);
-
-    console.log("Randomise function ends");
-    return {
-        background: backgroundColor,
-        text: textColor,
-        graphics: selectedGraphicColors
-    };
-}
-
-    /**
-     * Add event listener for randomize button
-     */
-    initRandomizeButton() {
-        const randomizeBtn = document.getElementById('randomizeBtn');
-        if (randomizeBtn) {
-            randomizeBtn.addEventListener('click', () => {
-                try {
-                    this.randomAll();
-                } catch (error) {
-                    this.uiManager.displayError(error.message);
-                }
-            });
+        if (!this.initialized) {
+            console.error('Not initialized!');
+            throw new Error('ColorChecker not initialized');
         }
+
+        // Get list of valid background colors
+        console.log("Checking valid backgrounds...");
+        const validBackgrounds = Array.from(this.storage.validColorSets.keys());
+        console.log("Valid backgrounds:", validBackgrounds);
+        
+        if (validBackgrounds.length === 0) {
+            console.error("No valid color combinations found");
+            throw new Error("No valid color combinations available");
+        }
+
+        // Select random background color
+        console.log("Selecting background color...");
+        const backgroundColor = validBackgrounds[Math.floor(Math.random() * validBackgrounds.length)];
+        console.log("Selected background:", backgroundColor);
+        
+        // Get matching color set for selected background
+        console.log("Getting color set...");
+        const colorSet = this.storage.validColorSets.get(backgroundColor);
+        console.log("Color set:", colorSet);
+
+        // Select random text color from valid options
+        console.log("Selecting text color...");
+        const textColor = colorSet.textColors[Math.floor(Math.random() * colorSet.textColors.length)].colourHex;
+        console.log("Selected text color:", textColor);
+        
+        // Select random graphic colors
+        console.log("Selecting graphic colors...");
+        const selectedGraphicColors = MathUtils.getRandom(
+            colorSet.graphicColors.map(c => c.colourHex),
+            3
+        );
+        console.log("Selected graphic colors:", selectedGraphicColors);
+
+        // Update the UI with new colors
+        console.log("Updating UI...");
+        this.uiManager.updateUI(backgroundColor, textColor, selectedGraphicColors);
+
+        console.log("Randomise function ends");
+        return {
+            background: backgroundColor,
+            text: textColor,
+            graphics: selectedGraphicColors
+        };
     }
 }
