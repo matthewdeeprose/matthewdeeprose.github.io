@@ -113,115 +113,132 @@ export class UIManager {
     }
 
     /**
-     * Create and update the color management UI with improved accessibility
-     * @param {Array} colors - Array of color objects
-     * @param {Set} activeColors - Set of currently active color hexes
-     * @param {Function} onColorToggle - Callback for when a color is toggled
-     * @param {Function} onToggleAll - Callback for when select all/none is toggled
-     */
-    updateColorManagementUI(colors, activeColors, onColorToggle, onToggleAll) {
-        const container = document.getElementById('colorManagement');
-        if (!container) {
-            console.warn('Colour management container not found');
-            return;
-        }
-
-        // Clear existing content
-        container.innerHTML = '';
-
-        // Add descriptive heading
-        const heading = document.createElement('h2');
-        heading.textContent = 'Color Selection';
-        heading.className = 'color-management-heading';
-        container.appendChild(heading);
-
-        // Create fieldset for better grouping
-        const fieldset = document.createElement('fieldset');
-        const legend = document.createElement('legend');
-        legend.textContent = 'Available Colors';
-        fieldset.appendChild(legend);
-
-        // Create select all checkbox with enhanced accessibility
-        const selectAllDiv = document.createElement('div');
-        selectAllDiv.className = 'select-all-container';
-        
-        const selectAllCheckbox = document.createElement('input');
-        selectAllCheckbox.type = 'checkbox';
-        selectAllCheckbox.id = 'selectAllColors';
-        selectAllCheckbox.checked = colors.length === activeColors.size;
-        selectAllCheckbox.setAttribute('aria-controls', 'colorList');
-        
-        const selectAllLabel = document.createElement('label');
-        selectAllLabel.htmlFor = 'selectAllColors';
-        selectAllLabel.textContent = 'Select all colors';
-        
-        // Add keyboard handling for better accessibility
-        selectAllCheckbox.addEventListener('change', (e) => {
-            onToggleAll(e.target.checked);
-            this.announceSelectionChange(e.target.checked ? 'all' : 'none');
-        });
-
-        selectAllDiv.appendChild(selectAllCheckbox);
-        selectAllDiv.appendChild(selectAllLabel);
-        fieldset.appendChild(selectAllDiv);
-
-        // Create color list using ul/li for semantic structure
-        const colorList = document.createElement('ul');
-        colorList.id = 'colorList';
-        colorList.className = 'color-list';
-        colorList.setAttribute('role', 'group');
-        colorList.setAttribute('aria-label', 'Color options');
-
-        colors.forEach(color => {
-            const colorItem = document.createElement('li');
-            colorItem.className = 'color-item';
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = `color-${color.colourHex}`;
-            checkbox.checked = activeColors.has(color.colourHex);
-            checkbox.setAttribute('aria-describedby', `desc-${color.colourHex}`);
-            
-            // Add keyboard handling for the checkbox
-            checkbox.addEventListener('change', (e) => {
-                onColorToggle(color.colourHex);
-                this.announceColorSelection(color.name, e.target.checked);
-            });
-
-            const colorSwatch = document.createElement('span');
-            colorSwatch.className = 'color-swatch';
-            colorSwatch.style.backgroundColor = color.colourHex;
-            colorSwatch.setAttribute('role', 'presentation');
-            
-            const label = document.createElement('label');
-            label.htmlFor = `color-${color.colourHex}`;
-            label.textContent = color.name;
-
-            // Add hidden description for screen readers
-            const description = document.createElement('span');
-            description.id = `desc-${color.colourHex}`;
-            description.className = 'sr-only';
-            description.textContent = `Color: ${color.name}, Hex value: ${color.colourHex}`;
-
-            colorItem.appendChild(checkbox);
-            colorItem.appendChild(colorSwatch);
-            colorItem.appendChild(label);
-            colorItem.appendChild(description);
-            colorList.appendChild(colorItem);
-        });
-
-        fieldset.appendChild(colorList);
-        container.appendChild(fieldset);
-
-        // Add live region for announcing changes
-        const liveRegion = document.createElement('div');
-        liveRegion.id = 'colorSelectionAnnouncement';
-        liveRegion.className = 'sr-only';
-        liveRegion.setAttribute('role', 'status');
-        liveRegion.setAttribute('aria-live', 'polite');
-        container.appendChild(liveRegion);
+ * Create and update the color management UI with improved accessibility
+ * @param {Array} colors - Array of color objects
+ * @param {Set} activeColors - Set of currently active color hexes
+ * @param {Function} onColorToggle - Callback for when a color is toggled
+ * @param {Function} onToggleAll - Callback for when select all/none is toggled
+ */
+updateColorManagementUI(colors, activeColors, onColorToggle, onToggleAll) {
+    const container = document.getElementById('colorManagement');
+    if (!container) {
+        console.warn('Colour management container not found');
+        return;
     }
 
+    // Clear existing content
+    container.innerHTML = '';
+
+    // Add descriptive heading
+    const heading = document.createElement('h2');
+    heading.textContent = 'Color Selection';
+    heading.className = 'color-management-heading';
+    container.appendChild(heading);
+
+    // Create fieldset for better grouping
+    const fieldset = document.createElement('fieldset');
+    const legend = document.createElement('legend');
+    legend.textContent = 'Available Colors';
+    fieldset.appendChild(legend);
+
+    // Create select all checkbox with enhanced accessibility
+    const selectAllDiv = document.createElement('div');
+    selectAllDiv.className = 'select-all-container';
+    
+    const selectAllCheckbox = document.createElement('input');
+    selectAllCheckbox.type = 'checkbox';
+    selectAllCheckbox.id = 'selectAllColors';
+    selectAllCheckbox.checked = colors.length === activeColors.size;
+    selectAllCheckbox.setAttribute('aria-controls', 'colorList');
+    
+    const selectAllLabel = document.createElement('label');
+    selectAllLabel.htmlFor = 'selectAllColors';
+    selectAllLabel.textContent = 'Select all colors';
+
+    // Create color list using ul/li for semantic structure
+    const colorList = document.createElement('ul');
+    colorList.id = 'colorList';
+    colorList.className = 'color-list';
+    colorList.setAttribute('role', 'group');
+    colorList.setAttribute('aria-label', 'Color options');
+
+    // Function to update select all checkbox state
+    const updateSelectAllState = () => {
+        const allCheckboxes = colorList.querySelectorAll('input[type="checkbox"]');
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+    };
+
+    // Add keyboard handling for better accessibility and select all functionality
+    selectAllCheckbox.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        const colorCheckboxes = colorList.querySelectorAll('input[type="checkbox"]');
+        colorCheckboxes.forEach(checkbox => {
+            if (checkbox.checked !== isChecked) {
+                checkbox.checked = isChecked;
+                onColorToggle(checkbox.id.replace('color-', ''));
+            }
+        });
+        onToggleAll(isChecked);
+        this.announceSelectionChange(isChecked ? 'all' : 'none');
+    });
+
+    colors.forEach(color => {
+        const colorItem = document.createElement('li');
+        colorItem.className = 'color-item';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `color-${color.colourHex}`;
+        checkbox.checked = activeColors.has(color.colourHex);
+        checkbox.setAttribute('aria-describedby', `desc-${color.colourHex}`);
+        
+        // Add keyboard handling for the checkbox and update select all state
+        checkbox.addEventListener('change', (e) => {
+            onColorToggle(color.colourHex);
+            this.announceColorSelection(color.name, e.target.checked);
+            updateSelectAllState();
+        });
+
+        const colorSwatch = document.createElement('span');
+        colorSwatch.className = 'color-swatch Trichromacy'; // Added Trichromacy class
+        colorSwatch.style.backgroundColor = color.colourHex;
+        colorSwatch.setAttribute('role', 'presentation');
+        
+        const label = document.createElement('label');
+        label.htmlFor = `color-${color.colourHex}`;
+        label.textContent = color.name;
+
+        // Add hidden description for screen readers
+        const description = document.createElement('span');
+        description.id = `desc-${color.colourHex}`;
+        description.className = 'sr-only';
+        description.textContent = `Color: ${color.name}, Hex value: ${color.colourHex}`;
+
+        colorItem.appendChild(checkbox);
+        colorItem.appendChild(colorSwatch);
+        colorItem.appendChild(label);
+        colorItem.appendChild(description);
+        colorList.appendChild(colorItem);
+    });
+
+    selectAllDiv.appendChild(selectAllCheckbox);
+    selectAllDiv.appendChild(selectAllLabel);
+    fieldset.appendChild(selectAllDiv);
+    fieldset.appendChild(colorList);
+    container.appendChild(fieldset);
+
+    // Add live region for announcing changes
+    const liveRegion = document.createElement('div');
+    liveRegion.id = 'colorSelectionAnnouncement';
+    liveRegion.className = 'sr-only';
+    liveRegion.setAttribute('role', 'status');
+    liveRegion.setAttribute('aria-live', 'polite');
+    container.appendChild(liveRegion);
+
+    // Initialize select all state
+    updateSelectAllState();
+}
     /**
      * Displays upload statistics in an accessible manner
      * @param {Object} stats - Statistics about color combinations
