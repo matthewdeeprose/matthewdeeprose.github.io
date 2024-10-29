@@ -254,8 +254,8 @@ updateColorManagementUI(colors, activeColors, onColorToggle, onToggleAll) {
         statsContainer.innerHTML = `
             <h3>Colour Set Statistics</h3>
             <ul role="list">
-                <li>Total colors loaded: ${stats.totalColors}</li>
-                <li>Valid background colors: ${stats.validBackgrounds}</li>
+                <li>Total colours loaded: ${stats.totalColors}</li>
+                <li>Valid background colours: ${stats.validBackgrounds}</li>
                 <li>Possible combinations: ${stats.totalCombinations.toLocaleString()}</li>
             </ul>
         `;
