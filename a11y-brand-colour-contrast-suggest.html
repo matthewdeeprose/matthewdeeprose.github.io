@@ -306,8 +306,8 @@ input[type="file"] {
 		}
 		
 	input[type="checkbox"] {
-  width: 2em;
-  height: 2em;
+  width: 32px;
+  height: 32px;
 }
 
 
@@ -326,39 +326,22 @@ input[type="file"] {
 
 .color-swatch {
     display: inline-block;
+    margin-right: 1px;
 }
 
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    border: 0;
-}
 
-/* Focus styles */
-input[type="checkbox"]:focus-visible {
-    outline: 2px solid #4A90E2;
-    outline-offset: 2px;
-}
 
 /* Large enough touch targets */
 .color-item label,
 .select-all-container label {
     padding: 4px;
     min-height: 44px;
+	margin-right:20px;
     display: flex;
     align-items: center;
 }
 
-/* High contrast focus indicator */
-fieldset:focus-within {
-    outline: 2px solid #4A90E2;
-    outline-offset: 4px;
-}
+
 
 </style>
   </head>
