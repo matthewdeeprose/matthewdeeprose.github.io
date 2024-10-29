@@ -19,7 +19,7 @@ import { FileHandler } from './services/fileHandler.js';
 import { UIManager } from './ui/uiManager.js';
 
 // Log imports for debugging - helpful during development
-console.log('Imports loaded:', {
+console.log('ColorChecker imports loaded:', {
     defaultColors,
     ColorValidator,
     MathUtils,
@@ -64,8 +64,9 @@ export class ColorChecker {
 
         // Mark as initialized so other methods know they can run
         this.initialized = true;
-		
-		this.storage.initActiveColors();
+        
+        // Initialize active colors and update UI
+        this.storage.initActiveColors();
         this.uiManager.updateColorManagementUI(
             this.storage.colors,
             this.storage.activeColors,
@@ -130,46 +131,11 @@ export class ColorChecker {
      * Includes validation and error handling
      */
     initFileUploads() {
-        const jsonInput = document.getElementById('jsonFileInput');
-        const csvInput = document.getElementById('csvFileInput');
-
-        // Set up JSON file upload handler
-        if (jsonInput) {
-            jsonInput.addEventListener('change', async (e) => {
-                try {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    FileHandler.validateFileSize(file);
-                    const colors = await FileHandler.handleJsonUpload(file);
-                    const stats = this.storage.loadColors(colors);
-                    
-                    this.uiManager.displayUploadStats(stats);
-                    this.uiManager.clearError();
-                } catch (error) {
-                    this.uiManager.displayError(error.message);
-                }
-            });
-        }
-
-        // Set up CSV file upload handler
-        if (csvInput) {
-            csvInput.addEventListener('change', async (e) => {
-                try {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    FileHandler.validateFileSize(file);
-                    const colors = await FileHandler.handleCsvUpload(file);
-                    const stats = this.storage.loadColors(colors);
-                    
-                    this.uiManager.displayUploadStats(stats);
-                    this.uiManager.clearError();
-                } catch (error) {
-                    this.uiManager.displayError(error.message);
-                }
-            });
-        }
+        // Initialize file handler with storage and UI manager references
+        FileHandler.initFileUploads({
+            colorStorage: this.storage,
+            uiManager: this.uiManager
+        });
     }
 
     /**

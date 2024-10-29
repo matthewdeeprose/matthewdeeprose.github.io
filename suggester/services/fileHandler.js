@@ -18,6 +18,89 @@ import { ColorValidator } from '../utils/colorValidation.js';
 
 export class FileHandler {
     /**
+     * Initializes file upload handlers with UI update callback
+     * @param {Object} options Configuration object
+     * @param {Object} options.colorStorage Reference to ColorStorage instance
+     * @param {Object} options.uiManager Reference to UIManager instance
+     */
+    static initFileUploads(options) {
+        const jsonInput = document.getElementById('jsonFileInput');
+        const csvInput = document.getElementById('csvFileInput');
+
+        // Set up JSON file upload handler
+        if (jsonInput) {
+            jsonInput.addEventListener('change', async (e) => {
+                try {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    FileHandler.validateFileSize(file);
+                    const colors = await FileHandler.handleJsonUpload(file);
+                    const stats = options.colorStorage.loadColors(colors);
+                    
+                    options.uiManager.displayUploadStats(stats);
+                    options.uiManager.clearError();
+                    
+                    // Update color management UI with new colors
+                    options.uiManager.updateColorManagementUI(
+                        options.colorStorage.colors,
+                        options.colorStorage.activeColors,
+                        (colorHex) => {
+                            const stats = options.colorStorage.toggleColor(colorHex);
+                            options.uiManager.displayUploadStats(stats);
+                        },
+                        (active) => {
+                            const stats = options.colorStorage.toggleAllColors(active);
+                            options.uiManager.displayUploadStats(stats);
+                        }
+                    );
+
+                    // Reset file input
+                    e.target.value = '';
+                } catch (error) {
+                    options.uiManager.displayError(error.message);
+                }
+            });
+        }
+
+        // Set up CSV file upload handler
+        if (csvInput) {
+            csvInput.addEventListener('change', async (e) => {
+                try {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    FileHandler.validateFileSize(file);
+                    const colors = await FileHandler.handleCsvUpload(file);
+                    const stats = options.colorStorage.loadColors(colors);
+                    
+                    options.uiManager.displayUploadStats(stats);
+                    options.uiManager.clearError();
+                    
+                    // Update color management UI with new colors
+                    options.uiManager.updateColorManagementUI(
+                        options.colorStorage.colors,
+                        options.colorStorage.activeColors,
+                        (colorHex) => {
+                            const stats = options.colorStorage.toggleColor(colorHex);
+                            options.uiManager.displayUploadStats(stats);
+                        },
+                        (active) => {
+                            const stats = options.colorStorage.toggleAllColors(active);
+                            options.uiManager.displayUploadStats(stats);
+                        }
+                    );
+
+                    // Reset file input
+                    e.target.value = '';
+                } catch (error) {
+                    options.uiManager.displayError(error.message);
+                }
+            });
+        }
+    }
+
+    /**
      * Processes a JSON file containing color definitions
      * @param {File} file Uploaded JSON file
      * @returns {Promise<Array<{colourHex: string, name: string}>>} Array of validated color objects
@@ -77,11 +160,6 @@ export class FileHandler {
      * 1. HEX,NAME
      * 2. NAME,HEX
      * 3. HEX (names will be auto-generated)
-     * 
-     * Example:
-     * #FFFFFF,White
-     * Black,#000000
-     * #FF0000
      */
     static async handleCsvUpload(file) {
         try {
@@ -160,20 +238,6 @@ export class FileHandler {
     }
 
     /**
-     * Reads a file and returns its contents as text
-     * @param {File} file File to read
-     * @returns {Promise<string>} File contents as text
-     */
-    static readFileAsText(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (event) => resolve(event.target.result);
-            reader.onerror = (error) => reject(error);
-            reader.readAsText(file);
-        });
-    }
-
-    /**
      * Validates file size against maximum allowed size
      * @param {File} file File to validate
      * @param {number} maxSize Maximum allowed size in bytes (default: 1MB)
@@ -185,5 +249,19 @@ export class FileHandler {
                 `File size exceeds maximum allowed size of ${maxSize / 1024}KB`
             );
         }
+    }
+
+    /**
+     * Reads a file and returns its contents as text
+     * @param {File} file File to read
+     * @returns {Promise<string>} File contents as text
+     */
+    static readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target.result);
+            reader.onerror = (error) => reject(error);
+            reader.readAsText(file);
+        });
     }
 }
