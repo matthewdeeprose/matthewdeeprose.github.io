@@ -298,37 +298,57 @@ input[type="file"] {
 
 /* Add to your existing CSS file */
 
-.color-management {
-    margin: 20px 0;
-    padding: 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-.select-all-container {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
-
 .color-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 10px;
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
 }
 
 .color-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 5px;
+    margin: 0.5rem 0;
+    gap: 0.5rem;
 }
 
 .color-swatch {
-    width: 20px;
-    height: 20px;
-    border: 1px solid #ccc;
     display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+/* Focus styles */
+input[type="checkbox"]:focus-visible {
+    outline: 2px solid #4A90E2;
+    outline-offset: 2px;
+}
+
+/* Large enough touch targets */
+.color-item label,
+.select-all-container label {
+    padding: 4px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+/* High contrast focus indicator */
+fieldset:focus-within {
+    outline: 2px solid #4A90E2;
+    outline-offset: 4px;
 }
 
 </style>
