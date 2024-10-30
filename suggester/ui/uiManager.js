@@ -1,5 +1,5 @@
 /**
- * @fileoverview UI Manager for Color Contrast Tool 30/11/24 15:14
+ * @fileoverview UI Manager for Color Contrast Tool 30/11/24 15:29
  * 
  * This class manages the user interface updates and accessibility features for
  * the color contrast checking tool. It ensures:
@@ -247,7 +247,7 @@ updateColorManagementUI(colors, activeColors, onColorToggle, onToggleAll) {
     updateSelectAllState();
 }
 /**
- * Displays upload statistics and valid background colors in an accessible manner
+ * Displays upload statistics and both valid and invalid background colors
  * @param {Object} stats - Statistics about color combinations
  */
 displayUploadStats(stats) {
@@ -264,42 +264,69 @@ displayUploadStats(stats) {
         <ul role="list">
             <li>Total colours loaded: ${stats.totalColors}</li>
             <li>Valid background colours: ${stats.validBackgrounds}</li>
+            <li>Invalid background colours: ${stats.totalColors - stats.validBackgrounds}</li>
             <li>Possible combinations: ${stats.totalCombinations.toLocaleString()}</li>
         </ul>
     `;
 
-    // Only attempt to show valid backgrounds if we have storage initialized
-    // and there are valid backgrounds to show
     let backgroundsSection = '';
-    if (this.colorStorage && stats.validBackgrounds > 0) {
+    if (this.colorStorage && stats.totalColors > 0) {
         try {
             const validBackgrounds = this.colorStorage.getValidBackgroundsWithNames();
+            const invalidBackgrounds = this.colorStorage.getInvalidBackgroundsWithNames();
+            
             backgroundsSection = `
-                <div class="valid-backgrounds-section">
-                    <button class="toggle-backgrounds" aria-expanded="false" aria-controls="validBackgroundsList">
-                        Show valid background colours
-                    </button>
-                    <div id="validBackgroundsList" class="valid-backgrounds-list" hidden>
-                        <h4>Valid Background Colours (${validBackgrounds.length})</h4>
-                        <ul class="color-swatches" role="list">
-                            ${validBackgrounds.map(color => `
-                                <li class="color-swatch-item">
-                                    <span class="color-swatch Trichromacy" 
-                                          style="background-color: ${color.hex};"
-                                          role="presentation"></span>
-                                    <span class="color-info">
-                                        <span class="color-name">${color.name}</span>
-                                        <span class="color-value">${color.hex}</span>
-                                    </span>
-                                </li>
-                            `).join('')}
-                        </ul>
+                <div class="backgrounds-section">
+                    <!-- Valid Backgrounds Section -->
+                    <div class="valid-backgrounds-section">
+                        <button class="toggle-backgrounds" aria-expanded="false" aria-controls="validBackgroundsList">
+                            Show valid background colours (${validBackgrounds.length})
+                        </button>
+                        <div id="validBackgroundsList" class="backgrounds-list" hidden>
+                            <h4>Valid Background Colours</h4>
+                            <ul class="color-swatches" role="list">
+                                ${validBackgrounds.map(color => `
+                                    <li class="color-swatch-item">
+                                        <span class="color-swatch Trichromacy" 
+                                              style="background-color: ${color.hex};"
+                                              role="presentation"></span>
+                                        <span class="color-info">
+                                            <span class="color-name">${color.name}</span>
+                                            <span class="color-value">${color.hex}</span>
+                                        </span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Invalid Backgrounds Section -->
+                    <div class="invalid-backgrounds-section">
+                        <button class="toggle-backgrounds" aria-expanded="false" aria-controls="invalidBackgroundsList">
+                            Show invalid background colours (${invalidBackgrounds.length})
+                        </button>
+                        <div id="invalidBackgroundsList" class="backgrounds-list" hidden>
+                            <h4>Invalid Background Colours</h4>
+                            <ul class="color-swatches" role="list">
+                                ${invalidBackgrounds.map(color => `
+                                    <li class="color-swatch-item">
+                                        <span class="color-swatch Trichromacy" 
+                                              style="background-color: ${color.hex};"
+                                              role="presentation"></span>
+                                        <span class="color-info">
+                                            <span class="color-name">${color.name}</span>
+                                            <span class="color-value">${color.hex}</span>
+                                            <span class="color-reason" role="note">${color.reason}</span>
+                                        </span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
                     </div>
                 </div>
             `;
         } catch (error) {
-            console.error('Error generating valid backgrounds display:', error);
-            // Don't show the backgrounds section if there's an error
+            console.error('Error generating backgrounds display:', error);
             backgroundsSection = '';
         }
     }
@@ -307,24 +334,31 @@ displayUploadStats(stats) {
     // Combine both sections
     statsContainer.innerHTML = statsHtml + backgroundsSection;
 
-    // Add toggle functionality if the elements exist
-    const toggleButton = statsContainer.querySelector('.toggle-backgrounds');
-    const backgroundsList = document.getElementById('validBackgroundsList');
-
-    if (toggleButton && backgroundsList) {
-        toggleButton.addEventListener('click', () => {
-            const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
-            toggleButton.setAttribute('aria-expanded', !isExpanded);
-            toggleButton.textContent = isExpanded ? 'Show valid background colours' : 'Hide valid background colours';
-            backgroundsList.hidden = isExpanded;
-        });
-    }
+    // Add toggle functionality for both sections
+    const toggleButtons = statsContainer.querySelectorAll('.toggle-backgrounds');
+    toggleButtons.forEach(button => {
+        const targetId = button.getAttribute('aria-controls');
+        const targetList = document.getElementById(targetId);
+        
+        if (button && targetList) {
+            button.addEventListener('click', () => {
+                const isExpanded = button.getAttribute('aria-expanded') === 'true';
+                button.setAttribute('aria-expanded', !isExpanded);
+                button.textContent = button.textContent.replace(
+                    isExpanded ? 'Hide' : 'Show',
+                    isExpanded ? 'Show' : 'Hide'
+                );
+                targetList.hidden = isExpanded;
+            });
+        }
+    });
 
     // Announce stats update to screen readers
     if (this.elements.srResults) {
         this.elements.srResults.textContent = 
             `Statistics updated: ${stats.totalColors} colors loaded, ` +
             `${stats.validBackgrounds} valid backgrounds, ` +
+            `${stats.totalColors - stats.validBackgrounds} invalid backgrounds, ` +
             `${stats.totalCombinations.toLocaleString()} possible combinations.`;
     }
 }
