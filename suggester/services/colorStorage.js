@@ -11,7 +11,7 @@
  * - 1.4.3 Contrast (Minimum) Level AA
  * - 1.4.11 Non-text Contrast Level AA
  *
- * Updated 10:41 29/10/2024
+ * Updated 15:28 30/10/2024
  *
  */
 
@@ -263,4 +263,49 @@ getValidBackgroundsWithNames() {
         this.validColorSets.clear();
         this.activeColors.clear();
     }
+	
+	/**
+ * Gets all colors that cannot serve as valid backgrounds
+ * A color is invalid if it can't meet minimum contrast requirements with enough other colors
+ * @returns {Array<{hex: string, name: string, reason: string}>} Array of invalid background colors with names and reasons
+ */
+getInvalidBackgroundsWithNames() {
+    if (!this.colors || !this.validColorSets) {
+        console.warn('Colors or valid color sets not yet initialized');
+        return [];
+    }
+    
+    // Get set of valid background colors for quick lookup
+    const validBackgrounds = new Set(this.validColorSets.keys());
+    
+    // Find colors that aren't in valid backgrounds
+    return this.colors
+        .filter(color => !validBackgrounds.has(color.colourHex))
+        .map(color => {
+            // Count how many colors provide sufficient contrast
+            const textContrastCount = this.colors.filter(textColor => 
+                chroma.contrast(color.colourHex, textColor.colourHex) >= 4.5
+            ).length;
+            
+            const graphicContrastCount = this.colors.filter(graphicColor => 
+                chroma.contrast(color.colourHex, graphicColor.colourHex) >= 3
+            ).length;
+
+            // Determine reason for invalidity
+            let reason = '';
+            if (textContrastCount < 1) {
+                reason = 'Does not have sufficient contrast (4.5:1) with any color for text';
+            } else if (graphicContrastCount < 3) {
+                reason = `Has sufficient contrast for text but only has sufficient contrast (3:1) with ${graphicContrastCount} colors for graphics (minimum 3 required)`;
+            } else {
+                reason = 'Does not meet minimum contrast requirements';
+            }
+
+            return {
+                hex: color.colourHex,
+                name: color.name,
+                reason
+            };
+        });
+}
 }
