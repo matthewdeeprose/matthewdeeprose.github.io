@@ -275,35 +275,19 @@ updateColorManagementUI(colors, activeColors, onColorToggle, onToggleAll) {
      */
     displayError(message) {
         console.error("Displaying error:", message);
-        const errorContainer = document.getElementById('uploadError');
-        if (!errorContainer) {
-            console.warn('Error container not found');
-            return;
-        }
-
-        errorContainer.innerHTML = `
-            <div role="alert" class="error">
-                <strong>Error:</strong> ${message}
-            </div>
-        `;
-        errorContainer.style.display = 'block';
+        displayNotification(message, 'error');
     }
 
     /**
      * Clears error messages
      */
     clearError() {
-        console.log("Clearing error messages");
-        const errorContainer = document.getElementById('uploadError');
-        if (!errorContainer) {
-            console.warn('Error container not found');
-            return;
+        const messageDiv = document.getElementById('myMessage');
+        if (messageDiv) {
+            messageDiv.style.display = 'none';
+			document.getElementById('pageMessage').textContent = '';
         }
-
-        errorContainer.innerHTML = '';
-        errorContainer.style.display = 'none';
     }
-
     /**
      * Updates screen reader announcement text with current color information
      * @param {string} backgroundColor - Hex code for background color

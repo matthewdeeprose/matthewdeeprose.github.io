@@ -468,7 +468,10 @@ Black,#000000</pre>
 		    <div id="uploadStats" class="stats-container" aria-live="polite">
     <!-- Statistics will be displayed here -->
   </div>
-  
+  		 <div id="myMessage"><div id="myMessageIcon"></div><span id="pageMessage" aria-live="assertive" role="alert"></span>
+			<button onclick="clearMessage();" class="clearMessageButton">Clear message</button>
+			
+			</div>
   <div id="colorManagement" class="color-management"></div>
   
           <p>Use the Randomise button to get started!</p>
@@ -838,5 +841,25 @@ Black,#000000</pre>
       }
       applyThemePreference();
     </script>
+	<script>
+	/**
+ * Clears the notification message from the page
+ */
+function clearMessage() {
+    document.getElementById('pageMessage').textContent = '';
+    document.getElementById('myMessage').style.display = 'none';
+}
+
+/**
+ * Displays a notification message to the user
+ * @param {string} message - The message to display
+ * @param {string} type - The type of notification ('success' or 'error')
+ */
+function displayNotification(message, type) {
+    document.getElementById('myMessage').style.display = 'block';
+    const notification = document.getElementById('pageMessage');
+    notification.textContent = message;
+}
+</script>
   </body>
 </html>
