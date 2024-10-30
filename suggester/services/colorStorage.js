@@ -181,13 +181,34 @@ export class ColorStorage {
         return name;
     }
 
-    /**
-     * Gets all colors that can serve as valid backgrounds
-     * @returns {Array<string>} Array of valid background color hex codes
-     */
-    getValidBackgrounds() {
-        return Array.from(this.validColorSets.keys());
+/**
+ * Gets all colors that can serve as valid backgrounds
+ * Ensures we return an empty array if validColorSets isn't initialized
+ * @returns {Array<string>} Array of valid background color hex codes
+ */
+getValidBackgrounds() {
+    if (!this.validColorSets) {
+        console.warn('Valid color sets not yet initialized');
+        return [];
     }
+    return Array.from(this.validColorSets.keys());
+}
+
+/**
+ * Gets the name and hex value for each valid background color
+ * @returns {Array<{hex: string, name: string}>} Array of valid background colors with names
+ */
+getValidBackgroundsWithNames() {
+    if (!this.validColorSets) {
+        console.warn('Valid color sets not yet initialized');
+        return [];
+    }
+    
+    return Array.from(this.validColorSets.keys()).map(hex => ({
+        hex,
+        name: this.getColorName(hex)
+    }));
+}
 
     /**
      * Validates a specific color combination against WCAG requirements
