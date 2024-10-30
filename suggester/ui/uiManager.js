@@ -15,22 +15,29 @@
  */
 
 export class UIManager {
-    /**
-     * Creates a new UIManager instance
-     * @param {Object} elements - Map of DOM elements used by the UI
-     * @param {ColorStorage} colorStorage - Reference to the color storage system
-     */
-    constructor(elements, colorStorage) {
-        console.log("UIManager initialized with elements:", elements);
-        this.elements = elements;
-        this.colorStorage = colorStorage;
-        
-        // Set up ARIA live regions for dynamic updates
-        if (this.elements.srResults) {
-            this.elements.srResults.setAttribute('aria-live', 'polite');
-            this.elements.srResults.setAttribute('role', 'status');
-        }
+/**
+ * Creates a new UIManager instance
+ * @param {Object} elements - Map of DOM elements used by the UI
+ * @param {ColorStorage} colorStorage - Reference to the color storage system
+ */
+constructor(elements, colorStorage) {
+    console.log("UIManager initialized with elements:", elements);
+    if (!elements) {
+        throw new Error('Elements map is required for UIManager');
     }
+    if (!colorStorage) {
+        throw new Error('ColorStorage reference is required for UIManager');
+    }
+    
+    this.elements = elements;
+    this.colorStorage = colorStorage;
+    
+    // Set up ARIA live regions for dynamic updates
+    if (this.elements.srResults) {
+        this.elements.srResults.setAttribute('aria-live', 'polite');
+        this.elements.srResults.setAttribute('role', 'status');
+    }
+}
 
     /**
      * Updates all UI elements with new color combinations
