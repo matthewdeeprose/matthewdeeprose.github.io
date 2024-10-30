@@ -240,34 +240,77 @@ updateColorManagementUI(colors, activeColors, onColorToggle, onToggleAll) {
     updateSelectAllState();
 }
     /**
-     * Displays upload statistics in an accessible manner
-     * @param {Object} stats - Statistics about color combinations
-     */
-    displayUploadStats(stats) {
-        console.log("Displaying upload stats:", stats);
-        const statsContainer = document.getElementById('uploadStats');
-        if (!statsContainer) {
-            console.warn('Stats container not found');
-            return;
-        }
-
-        statsContainer.innerHTML = `
-            <h3>Colour Set Statistics</h3>
-            <ul role="list">
-                <li>Total colours loaded: ${stats.totalColors}</li>
-                <li>Valid background colours: ${stats.validBackgrounds}</li>
-                <li>Possible combinations: ${stats.totalCombinations.toLocaleString()}</li>
-            </ul>
-        `;
-        
-        // Announce stats update to screen readers
-        if (this.elements.srResults) {
-            this.elements.srResults.textContent = 
-                `Statistics updated: ${stats.totalColors} colors loaded, ` +
-                `${stats.validBackgrounds} valid backgrounds, ` +
-                `${stats.totalCombinations.toLocaleString()} possible combinations.`;
-        }
+ * Displays upload statistics and valid background colors in an accessible manner
+ * @param {Object} stats - Statistics about color combinations
+ */
+displayUploadStats(stats) {
+    console.log("Displaying upload stats:", stats);
+    const statsContainer = document.getElementById('uploadStats');
+    if (!statsContainer) {
+        console.warn('Stats container not found');
+        return;
     }
+
+    // Create the statistics section
+    const statsHtml = `
+        <h3>Colour Set Statistics</h3>
+        <ul role="list">
+            <li>Total colours loaded: ${stats.totalColors}</li>
+            <li>Valid background colours: ${stats.validBackgrounds}</li>
+            <li>Possible combinations: ${stats.totalCombinations.toLocaleString()}</li>
+        </ul>
+    `;
+
+    // Create the valid backgrounds section with toggle button
+    const validBackgrounds = this.storage.getValidBackgrounds();
+    const backgroundsSection = `
+        <div class="valid-backgrounds-section">
+            <button class="toggle-backgrounds" aria-expanded="false" aria-controls="validBackgroundsList">
+                Show valid background colours
+            </button>
+            <div id="validBackgroundsList" class="valid-backgrounds-list" hidden>
+                <h4>Valid Background Colours (${validBackgrounds.length})</h4>
+                <ul class="color-swatches" role="list">
+                    ${validBackgrounds.map(color => `
+                        <li class="color-swatch-item">
+                            <span class="color-swatch Trichromacy" 
+                                  style="background-color: ${color};"
+                                  role="presentation"></span>
+                            <span class="color-info">
+                                <span class="color-name">${this.getColorName(color)}</span>
+                                <span class="color-value">${color}</span>
+                            </span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    // Combine both sections
+    statsContainer.innerHTML = statsHtml + backgroundsSection;
+
+    // Add toggle functionality
+    const toggleButton = statsContainer.querySelector('.toggle-backgrounds');
+    const backgroundsList = document.getElementById('validBackgroundsList');
+
+    if (toggleButton && backgroundsList) {
+        toggleButton.addEventListener('click', () => {
+            const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+            toggleButton.setAttribute('aria-expanded', !isExpanded);
+            toggleButton.textContent = isExpanded ? 'Show valid background colours' : 'Hide valid background colours';
+            backgroundsList.hidden = isExpanded;
+        });
+    }
+
+    // Announce stats update to screen readers
+    if (this.elements.srResults) {
+        this.elements.srResults.textContent = 
+            `Statistics updated: ${stats.totalColors} colors loaded, ` +
+            `${stats.validBackgrounds} valid backgrounds, ` +
+            `${stats.totalCombinations.toLocaleString()} possible combinations.`;
+    }
+}
 
     /**
      * Displays error messages accessibly
