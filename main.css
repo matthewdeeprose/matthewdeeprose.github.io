@@ -611,7 +611,7 @@ article.standard h5, article.standard h6, article.standard *[aria-level="7"], ar
 }
 
 a.bookmarklet {
-  border-radius: 0.5rem;
+  border-radius: 4px;
   margin: 1.5rem;
   padding: 1rem;
 }
@@ -654,7 +654,7 @@ cite {
 .a11y-webring-club {
   margin-top: 1.5rem;
   margin-bottom: 1.5rem;
-  border-radius: 0.5rem;
+  border-radius: 4px;
   padding: 0.5rem;
 }
 
@@ -668,7 +668,7 @@ cite {
   color: #fffff4 !important;
   cursor: pointer;
   padding: 0.3rem 0rem 0.3rem 0rem;
-  border-radius: 0.5rem;
+  border-radius: 4px;
   width: 4.5rem;
   border: 0.3rem solid #fffff4;
   outline: 0.3rem solid #00131d;
@@ -752,7 +752,7 @@ ul.tick li:before {
     padding: 0rem 0rem 0rem 0rem !important;
   }
   .presentations {
-    border-radius: 0.5rem;
+    border-radius: 4px;
     padding: 0;
     margin: 0rem;
     line-height: 1.75;
@@ -811,7 +811,7 @@ aside li {
 .card {
   margin: 0.3rem 0.3rem 1rem 0.3rem;
   padding: 0.5em;
-  border-radius: 0.5rem;
+  border-radius: 4px;
   min-height: 33rem;
 }
 
@@ -848,7 +848,7 @@ ul.cards {
 .card img {
   width: 100%;
   height: auto;
-  border-radius: 0.5rem;
+  border-radius: 4px;
 }
 
 .cards .isfocused {
@@ -870,7 +870,7 @@ dd.from {
 
 /* Presentations */
 .presentations {
-  border-radius: 0.5rem;
+  border-radius: 4px;
   padding: 0rem 1rem 1rem 1rem;
   margin: 0rem 0rem 1rem 0rem;
   line-height: 1.75;
@@ -930,7 +930,7 @@ aside img {
 
 .relatedPresExample {
   margin-bottom: 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: 4px;
 }
 
 /* aside.page-sidebar.related {
@@ -1150,7 +1150,7 @@ div#titleLink {
 div#titleLink,
 div#logo {
   box-shadow: inset 0 0 0 1000px rgba(0, 19, 29, 0.7);
-  border-radius: 0.5rem;
+  border-radius: 4px;
 }
 
 div#logo {
@@ -1256,7 +1256,7 @@ a:hover {
   #myBtn2 {
     padding: 0rem;
     margin: 0.5rem 1rem 0.2rem 0.5rem;
-    border-radius: 0.5rem;
+    border-radius: 4px;
     width: auto;
     border: 0.1rem solid #fffff4;
     outline: 0.1rem solid #00131d;
@@ -1271,7 +1271,7 @@ a:hover {
   #myBtn2 {
     padding: 0rem;
     margin: 0.5rem 1rem 0.2rem 0.5rem;
-    border-radius: 0.5rem;
+    border-radius: 4px;
     width: auto;
   }
   .panelLabel {
@@ -1337,7 +1337,7 @@ summary h3 {
 }
 
 details {
-  border-radius: 0.5rem;
+  border-radius: 4px;
   padding: 0.5em 0.5em 0;
   margin: 1rem 0rem 1rem 0rem;
 
@@ -1349,7 +1349,7 @@ summary {
   padding: 0.5em;
   text-decoration: underline;
   text-underline-offset: 0.3em;
-  border-radius: 0.5rem;
+  border-radius: 4px;
     cursor: pointer;
 }
 
@@ -1376,7 +1376,7 @@ div#login {
 }
 
 button {
-  border-radius: 0.5rem;
+  border-radius: 4px;
   vertical-align: middle;
   padding: 0.5rem 1rem 0.5rem 1rem;
   font-size: 1.2rem;
@@ -1468,7 +1468,7 @@ nav#myTopnav {
   text-align: left;
   padding: 14px 16px;
   font-size: 100%;
-  border-radius: 0.5rem;
+  border-radius: 4px;
   margin-right: 0.5rem !important;
   text-decoration: none;
 }
@@ -1491,7 +1491,7 @@ nav#myTopnav {
 .topnav a.icon,
 .topnav button.icon {
   padding: 10px;
-  border-radius: 0.5rem;
+  border-radius: 4px;
   border: 0.2rem #00131d solid;
 }
 
@@ -1499,7 +1499,7 @@ img.articleImage {
   width: 40%;
   float: right;
   margin: auto;
-  border-radius: 0.5rem;
+  border-radius: 4px;
 }
 
 img.articleImage2 {
@@ -1507,7 +1507,7 @@ img.articleImage2 {
   float: none;
   /* margin: 0rem 1rem 1rem 1rem; */
   margin: auto;
-  border-radius: 0.5rem;
+  border-radius: 4px;
 }
 
 img.articleImageAlly {
@@ -1518,7 +1518,7 @@ img.articleImageLeft {
   width: 40%;
   float: left;
   margin: 1.8rem;
-  border-radius: 0.5rem;
+  border-radius: 4px;
 }
 
 a:focus {

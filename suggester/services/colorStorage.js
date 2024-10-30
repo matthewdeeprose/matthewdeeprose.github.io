@@ -294,7 +294,7 @@ getInvalidBackgroundsWithNames() {
             // Determine reason for invalidity
             let reason = '';
             if (textContrastCount < 1) {
-                reason = 'Does not have sufficient contrast (4.5:1) with any color for text';
+                reason = 'Does not have sufficient contrast (4.5:1 or higher) with any color for text';
             } else if (graphicContrastCount < 3) {
                 reason = `Has sufficient contrast for text but only has sufficient contrast (3:1) with ${graphicContrastCount} colors for graphics (minimum 3 required)`;
             } else {

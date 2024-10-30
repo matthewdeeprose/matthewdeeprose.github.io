@@ -9,13 +9,17 @@
 }
 
 .stats-container, .error-container {
-  background: #00131D;
+
   border: 1px solid #E1E8EC;
 }
 
 input[type="checkbox"]:focus-visible {
     outline: 4px solid #C1D100;
 	outline-offset: 4px;
+}
+
+.color-reason {
+    color: #9FB1BD;
 }
 
 /* Suggester ends */

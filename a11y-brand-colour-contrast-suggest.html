@@ -356,25 +356,6 @@ input[type="file"] {
     margin-top: 1rem;
 }
 
-.toggle-backgrounds {
-    background: none;
-    border: 1px solid currentColor;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-}
-
-.toggle-backgrounds:hover,
-.toggle-backgrounds:focus {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
-.toggle-backgrounds:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
-}
 
 .backgrounds-list {
     margin-top: 1rem;
@@ -399,10 +380,6 @@ input[type="file"] {
 
 .color-swatch {
     flex-shrink: 0;
-    width: 2.5rem;
-    height: 2.5rem;
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
 }
 
 .color-info {
@@ -422,9 +399,17 @@ input[type="file"] {
 
 .color-reason {
     font-size: 0.9em;
-    color: #666;
     margin-top: 0.25rem;
-    font-style: italic;
+}
+.toggle-backgrounds {
+	min-width:500px;
+}
+
+@media only screen and (max-width: 600px) {
+.toggle-backgrounds {
+	min-width:auto;
+	text-align:left;
+}
 }
 
 </style>

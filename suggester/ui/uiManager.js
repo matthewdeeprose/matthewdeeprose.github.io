@@ -166,8 +166,7 @@ updateColorManagementUI(colors, activeColors, onColorToggle, onToggleAll) {
     const colorList = document.createElement('ul');
     colorList.id = 'colorList';
     colorList.className = 'color-list';
-    colorList.setAttribute('role', 'group');
-    colorList.setAttribute('aria-label', 'Color options');
+    colorList.setAttribute('aria-label', 'Colour options');
 
     // Function to update select all checkbox state
     const updateSelectAllState = () => {
@@ -303,7 +302,7 @@ displayUploadStats(stats) {
                     <!-- Invalid Backgrounds Section -->
                     <div class="invalid-backgrounds-section">
                         <button class="toggle-backgrounds" aria-expanded="false" aria-controls="invalidBackgroundsList">
-                            Show invalid background colours (${invalidBackgrounds.length})
+                            Show background colours we cannot use (${invalidBackgrounds.length})
                         </button>
                         <div id="invalidBackgroundsList" class="backgrounds-list" hidden>
                             <h4>Invalid Background Colours</h4>
