@@ -8,9 +8,9 @@
  * - Validates color combinations against WCAG 2.1 contrast requirements
  * - Provides clear feedback for screen readers via srResults element
  * - Handles both mouse and keyboard interactions
+ * - Supports color hold feature for better user control
  */
 
-// Import required dependencies and utilities
 import { defaultColors } from './config/defaultColors.js';
 import { ColorValidator } from './utils/colorValidation.js';
 import { MathUtils } from './utils/mathUtils.js';
@@ -27,8 +27,87 @@ export class ColorChecker {
         this.storage = new ColorStorage();
         this.uiManager = null;
         this.initialized = false;
-        
         console.log('ColorChecker instance created');
+    }
+
+    /**
+     * Gets all required DOM elements for the color checker
+     * @returns {Object} Object containing all required DOM elements
+     * @throws {Error} If any required elements are missing
+     */
+    getDomElements() {
+        try {
+            const elements = {
+                // Color display elements
+                backgroundColor: this.getRequiredElement('backgroundColor', 'Background color display element'),
+                backgroundName: this.getRequiredElement('backgroundName', 'Background color name element'),
+                bgColor: this.getRequiredElement('bgColor', 'Background color box'),
+                
+                // Text color elements
+                tcolor: this.getRequiredElement('tcolor', 'Text color display element'),
+                tColorName: this.getRequiredElement('tColorName', 'Text color name element'),
+                tColorColor: this.getRequiredElement('tColorColor', 'Text color box'),
+                tcontrast: this.getRequiredElement('tcontrast', 'Text contrast display'),
+                tcontrastWCAG: this.getRequiredElement('tcontrastWCAG', 'Text WCAG rating display'),
+                
+                // Graphic color elements
+                icon1: this.getRequiredElement('icon1', 'Graphic 1 icon'),
+                icon2: this.getRequiredElement('icon2', 'Graphic 2 icon'),
+                icon3: this.getRequiredElement('icon3', 'Graphic 3 icon'),
+                
+                // Graphic color boxes and info
+                g1colourSpan1: this.getRequiredElement('g1colourSpan1', 'Graphic 1 color code'),
+                g1colourSpan2: this.getRequiredElement('g1colourSpan2', 'Graphic 1 color box'),
+                g1contrast: this.getRequiredElement('g1contrast', 'Graphic 1 contrast'),
+                g1contrastWCAG: this.getRequiredElement('g1contrastWCAG', 'Graphic 1 WCAG rating'),
+                gfx1ColorName: this.getRequiredElement('gfx1ColorName', 'Graphic 1 color name'),
+                
+                g2colourSpan1: this.getRequiredElement('g2colourSpan1', 'Graphic 2 color code'),
+                g2colourSpan2: this.getRequiredElement('g2colourSpan2', 'Graphic 2 color box'),
+                g2contrast: this.getRequiredElement('g2contrast', 'Graphic 2 contrast'),
+                g2contrastWCAG: this.getRequiredElement('g2contrastWCAG', 'Graphic 2 WCAG rating'),
+                gfx2ColorName: this.getRequiredElement('gfx2ColorName', 'Graphic 2 color name'),
+                
+                g3colourSpan1: this.getRequiredElement('g3colourSpan1', 'Graphic 3 color code'),
+                g3colourSpan2: this.getRequiredElement('g3colourSpan2', 'Graphic 3 color box'),
+                g3contrast: this.getRequiredElement('g3contrast', 'Graphic 3 contrast'),
+                g3contrastWCAG: this.getRequiredElement('g3contrastWCAG', 'Graphic 3 WCAG rating'),
+                gfx3ColorName: this.getRequiredElement('gfx3ColorName', 'Graphic 3 color name'),
+                
+                // Display areas
+                infoGraphicBox: this.getRequiredElement('infoGraphicBox', 'Info graphic box'),
+                infoTexT: this.getRequiredElement('infoTexT', 'Info text display'),
+                
+                // Screen reader and accessibility elements
+                srResults: this.getRequiredElement('srResults', 'Screen reader results')
+            };
+
+            // Add file input elements if they exist (optional)
+            const jsonInput = document.getElementById('jsonFileInput');
+            const csvInput = document.getElementById('csvFileInput');
+            if (jsonInput) elements.jsonFileInput = jsonInput;
+            if (csvInput) elements.csvFileInput = csvInput;
+
+            return elements;
+        } catch (error) {
+            console.error('Failed to get DOM elements:', error);
+            throw new Error(`Failed to initialize: ${error.message}`);
+        }
+    }
+
+    /**
+     * Helper method to get a required DOM element
+     * @param {string} id - Element ID to find
+     * @param {string} description - Description of the element for error messages
+     * @returns {HTMLElement} The found DOM element
+     * @throws {Error} If the element is not found
+     */
+    getRequiredElement(id, description) {
+        const element = document.getElementById(id);
+        if (!element) {
+            throw new Error(`Required ${description} (ID: ${id}) not found in the DOM`);
+        }
+        return element;
     }
 
     /**
@@ -50,31 +129,20 @@ export class ColorChecker {
             this.uiManager = new UIManager(elements, this.storage);
 
             // Set up file upload handlers
-            this.initFileUploads();
+            FileHandler.initFileUploads({
+                colorStorage: this.storage,
+                uiManager: this.uiManager
+            });
 
             // Load and activate default colors
             await this.loadDefaultColors();
             
             // Initialize active colors (all colors active by default)
-            this.storage.initActiveColors();
-            
-            // Pre-validate color combinations with active colors
-            const stats = this.storage.preValidateColorCombinations();
+            const stats = this.storage.initActiveColors();
             
             // Update UI with current color management state
-            this.uiManager.updateColorManagementUI(
-                this.storage.colors,
-                this.storage.activeColors,
-                (colorHex) => {
-                    const stats = this.storage.toggleColor(colorHex);
-                    this.uiManager.displayUploadStats(stats);
-                },
-                (active) => {
-                    const stats = this.storage.toggleAllColors(active);
-                    this.uiManager.displayUploadStats(stats);
-                }
-            );
-
+            this.updateColorManagement();
+            
             // Display initial statistics
             this.uiManager.displayUploadStats(stats);
 
@@ -84,6 +152,26 @@ export class ColorChecker {
             console.log('ColorChecker initialized successfully with stats:', stats);
         } catch (error) {
             console.error('Failed to initialize ColorChecker:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Loads default colors from configuration
+     * @returns {Promise<void>}
+     */
+    async loadDefaultColors() {
+        try {
+            // Validate default colors before loading
+            ColorValidator.validateColorJson(defaultColors);
+            
+            // Load colors into storage
+            const stats = this.storage.loadColors(defaultColors);
+            console.log('Default colors loaded:', stats);
+            
+            return stats;
+        } catch (error) {
+            console.error('Failed to load default colors:', error);
             throw error;
         }
     }
