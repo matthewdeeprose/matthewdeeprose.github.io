@@ -10,9 +10,6 @@
  * WCAG Success Criteria Referenced:
  * - 1.4.3 Contrast (Minimum) Level AA
  * - 1.4.11 Non-text Contrast Level AA
- *
- * Updated 15:28 30/10/2024
- *
  */
 
 export class ColorStorage {
@@ -28,6 +25,14 @@ export class ColorStorage {
         this.validColorSets = new Map();
         // Set to track active colors
         this.activeColors = new Set();
+        // Object to track held colors
+        this.heldColors = {
+            background: null,
+            text: null,
+            graphic1: null,
+            graphic2: null,
+            graphic3: null
+        };
     }
 
     /**
@@ -90,6 +95,53 @@ export class ColorStorage {
     }
 
     /**
+     * Toggle hold state for a specific color
+     * @param {string} colorType - Type of color (background, text, graphic1, etc.)
+     * @param {string} colorValue - Hex code of the color
+     * @returns {boolean} True if color is now held, false if released
+     */
+    toggleHoldColor(colorType, colorValue) {
+        console.log(`Toggling hold for ${colorType}:`, colorValue);
+        
+        // If this color is already held, release it
+        if (this.heldColors[colorType] === colorValue) {
+            this.heldColors[colorType] = null;
+            return false; // Return false to indicate color is no longer held
+        } 
+        // Otherwise, hold this color
+        else {
+            this.heldColors[colorType] = colorValue;
+            return true; // Return true to indicate color is now held
+        }
+    }
+
+    /**
+     * Check if a color is currently held
+     * @param {string} colorType - Type of color to check
+     * @returns {boolean} True if the color is held
+     */
+    isColorHeld(colorType) {
+        return this.heldColors[colorType] !== null;
+    }
+
+    /**
+     * Get the held color value for a specific type
+     * @param {string} colorType - Type of color to get
+     * @returns {string|null} Hex code of held color or null if not held
+     */
+    getHeldColor(colorType) {
+        return this.heldColors[colorType];
+    }
+
+    /**
+     * Clear all held colors
+     */
+    clearHeldColors() {
+        Object.keys(this.heldColors).forEach(key => {
+            this.heldColors[key] = null;
+        });
+    }
+	/**
      * Pre-validates all possible color combinations against WCAG criteria
      * @returns {Object} Statistics about the validation results
      */
@@ -169,6 +221,75 @@ export class ColorStorage {
     }
 
     /**
+     * Gets all valid background colors
+     * @returns {Array<string>} Array of valid background color hex codes
+     */
+    getValidBackgrounds() {
+        if (!this.validColorSets) {
+            console.warn('Valid color sets not yet initialized');
+            return [];
+        }
+        return Array.from(this.validColorSets.keys());
+    }
+
+    /**
+     * Gets all colors that can serve as valid backgrounds
+     * @returns {Array<{hex: string, name: string}>} Array of valid background colors with names
+     */
+    getValidBackgroundsWithNames() {
+        if (!this.validColorSets) {
+            console.warn('Valid color sets not yet initialized');
+            return [];
+        }
+        
+        return Array.from(this.validColorSets.keys()).map(hex => ({
+            hex,
+            name: this.getColorName(hex)
+        }));
+    }
+
+    /**
+     * Gets all colors that cannot serve as valid backgrounds with reasons
+     * @returns {Array<{hex: string, name: string, reason: string}>} Array of invalid background colors
+     */
+    getInvalidBackgroundsWithNames() {
+        if (!this.colors || !this.validColorSets) {
+            console.warn('Colors or valid color sets not yet initialized');
+            return [];
+        }
+        
+        // Get set of valid background colors for quick lookup
+        const validBackgrounds = new Set(this.validColorSets.keys());
+        
+        return this.colors
+            .filter(color => !validBackgrounds.has(color.colourHex))
+            .map(color => {
+                const textContrastCount = this.colors.filter(textColor => 
+                    chroma.contrast(color.colourHex, textColor.colourHex) >= 4.5
+                ).length;
+                
+                const graphicContrastCount = this.colors.filter(graphicColor => 
+                    chroma.contrast(color.colourHex, graphicColor.colourHex) >= 3
+                ).length;
+
+                let reason = '';
+                if (textContrastCount < 1) {
+                    reason = 'Does not have sufficient contrast (4.5:1 or higher) with any color for text';
+                } else if (graphicContrastCount < 3) {
+                    reason = `Has sufficient contrast for text but only has sufficient contrast (3:1) with ${graphicContrastCount} colors for graphics (minimum 3 required)`;
+                } else {
+                    reason = 'Does not meet minimum contrast requirements';
+                }
+
+                return {
+                    hex: color.colourHex,
+                    name: color.name,
+                    reason
+                };
+            });
+    }
+
+    /**
      * Retrieves the human-readable name for a color
      * @param {string} colour Hex color code to look up
      * @returns {string} Color name or "Unknown color" if not found
@@ -179,69 +300,6 @@ export class ColorStorage {
         const name = colorObj ? colorObj.name : "Unknown color";
         console.log("Found name:", name);
         return name;
-    }
-
-/**
- * Gets all colors that can serve as valid backgrounds
- * Ensures we return an empty array if validColorSets isn't initialized
- * @returns {Array<string>} Array of valid background color hex codes
- */
-getValidBackgrounds() {
-    if (!this.validColorSets) {
-        console.warn('Valid color sets not yet initialized');
-        return [];
-    }
-    return Array.from(this.validColorSets.keys());
-}
-
-/**
- * Gets the name and hex value for each valid background color
- * @returns {Array<{hex: string, name: string}>} Array of valid background colors with names
- */
-getValidBackgroundsWithNames() {
-    if (!this.validColorSets) {
-        console.warn('Valid color sets not yet initialized');
-        return [];
-    }
-    
-    return Array.from(this.validColorSets.keys()).map(hex => ({
-        hex,
-        name: this.getColorName(hex)
-    }));
-}
-
-    /**
-     * Validates a specific color combination against WCAG requirements
-     * @param {string} backgroundColor Background color hex
-     * @param {string} textColor Text color hex
-     * @param {Array<string>} graphicColors Array of graphic color hexes
-     * @returns {boolean} True if the combination meets WCAG requirements
-     */
-    isValidCombination(backgroundColor, textColor, graphicColors) {
-        const colorSet = this.validColorSets.get(backgroundColor);
-        if (!colorSet) return false;
-
-        // Check if text color meets contrast requirements
-        const isValidText = colorSet.textColors.some(c => c.colourHex === textColor);
-        
-        // Check if all graphic colors meet contrast requirements
-        const allValidGraphics = graphicColors.every(gc => 
-            colorSet.graphicColors.some(c => c.colourHex === gc)
-        );
-
-        return isValidText && allValidGraphics;
-    }
-
-    /**
-     * Returns active color statistics
-     * @returns {Object} Statistics about current active colors
-     */
-    getActiveColorStats() {
-        return {
-            total: this.colors.length,
-            active: this.activeColors.size,
-            inactive: this.colors.length - this.activeColors.size
-        };
     }
 
     /**
@@ -262,50 +320,6 @@ getValidBackgroundsWithNames() {
         this.colors = [];
         this.validColorSets.clear();
         this.activeColors.clear();
+        this.clearHeldColors();
     }
-	
-	/**
- * Gets all colors that cannot serve as valid backgrounds
- * A color is invalid if it can't meet minimum contrast requirements with enough other colors
- * @returns {Array<{hex: string, name: string, reason: string}>} Array of invalid background colors with names and reasons
- */
-getInvalidBackgroundsWithNames() {
-    if (!this.colors || !this.validColorSets) {
-        console.warn('Colors or valid color sets not yet initialized');
-        return [];
-    }
-    
-    // Get set of valid background colors for quick lookup
-    const validBackgrounds = new Set(this.validColorSets.keys());
-    
-    // Find colors that aren't in valid backgrounds
-    return this.colors
-        .filter(color => !validBackgrounds.has(color.colourHex))
-        .map(color => {
-            // Count how many colors provide sufficient contrast
-            const textContrastCount = this.colors.filter(textColor => 
-                chroma.contrast(color.colourHex, textColor.colourHex) >= 4.5
-            ).length;
-            
-            const graphicContrastCount = this.colors.filter(graphicColor => 
-                chroma.contrast(color.colourHex, graphicColor.colourHex) >= 3
-            ).length;
-
-            // Determine reason for invalidity
-            let reason = '';
-            if (textContrastCount < 1) {
-                reason = 'Does not have sufficient contrast (4.5:1 or higher) with any color for text';
-            } else if (graphicContrastCount < 3) {
-                reason = `Has sufficient contrast for text but only has sufficient contrast (3:1) with ${graphicContrastCount} colors for graphics (minimum 3 required)`;
-            } else {
-                reason = 'Does not meet minimum contrast requirements';
-            }
-
-            return {
-                hex: color.colourHex,
-                name: color.name,
-                reason
-            };
-        });
-}
 }
