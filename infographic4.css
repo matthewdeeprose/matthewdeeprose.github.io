@@ -89,7 +89,7 @@ dt.infoExplain {
 }
 
 .hold-button:hover {
-    color: black;
+    color: #231F20;
 }
 
 .hold-button svg {
@@ -101,8 +101,8 @@ dt.infoExplain {
 
 button.hold-button[aria-pressed="true"]{
   background-color: #4BB694;
-	color: black;
-	border: black 2px solid !important;
+	color: #231F20;
+	border: #231F20 0.2rem solid !important;
 }
 
 /* Media Queries */
