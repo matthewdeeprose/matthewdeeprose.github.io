@@ -35,10 +35,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Create a new instance of the ColorChecker
         colorChecker = new ColorChecker();
+        console.log('ColorChecker instance created');
         
         // Initialize the color checker
-        // Using await because init() likely fetches color data or performs setup
         await colorChecker.init();
+        console.log('ColorChecker core initialization complete');
+        
+        // Log the state after initialization
+        console.log('Colors loaded:', colorChecker.storage.colors);
+        console.log('Active colors:', colorChecker.storage.activeColors);
         
         // Find the randomize button in the DOM
         const randomizeBtn = document.getElementById('randomizeBtn');
@@ -57,12 +62,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     colorChecker.uiManager.displayError(error.message);
                 }
             });
+            console.log('Randomize button event listener attached');
         } else {
             // Log a warning if the button isn't found - helpful for debugging
             console.warn('Randomize button not found in the DOM');
         }
         
-        console.log('ColorChecker initialized successfully');
+        console.log('Application initialization complete - ready for user interaction');
     } catch (error) {
         // Log any errors that occur during initialization
         console.error('Failed to initialize ColorChecker:', error);
