@@ -116,6 +116,7 @@ export class ColorChecker {
      * @throws {Error} If initialization fails or required elements are missing
      */
     async init() {
+		console.log('ColorChecker init started');
         // Verify chroma.js is available
         if (typeof chroma === 'undefined') {
             throw new Error('chroma.js is required but not loaded');
@@ -124,22 +125,27 @@ export class ColorChecker {
         try {
             // Get required DOM elements
             const elements = this.getDomElements();
+			console.log('DOM elements retrieved');
             
             // Create UI manager
             this.uiManager = new UIManager(elements, this.storage);
+			 console.log('UI manager created');
 
             // Set up file upload handlers
             FileHandler.initFileUploads({
                 colorStorage: this.storage,
                 uiManager: this.uiManager
             });
+			console.log('File upload handlers initialized');
 
             // Load and activate default colors
             await this.loadDefaultColors();
-            
+            console.log('Default colors loaded:', defaultStats);
+			
             // Initialize active colors (all colors active by default)
             const stats = this.storage.initActiveColors();
-            
+             console.log('Active colors initialized:', stats);
+			 
             // Update UI with current color management state
             this.updateColorManagement();
             
@@ -149,11 +155,11 @@ export class ColorChecker {
             // Mark as initialized
             this.initialized = true;
             
-            console.log('ColorChecker initialized successfully with stats:', stats);
-        } catch (error) {
-            console.error('Failed to initialize ColorChecker:', error);
-            throw error;
-        }
+        console.log('ColorChecker initialization complete');
+    } catch (error) {
+        console.error('Failed to initialize ColorChecker:', error);
+        throw error;
+    }
     }
 
     /**
@@ -288,20 +294,31 @@ export class ColorChecker {
      * Updates the color management UI
      * Should be called after changes to active colors
      */
-    updateColorManagement() {
-        if (this.initialized && this.uiManager) {
-            this.uiManager.updateColorManagementUI(
-                this.storage.colors,
-                this.storage.activeColors,
-                (colorHex) => {
-                    const stats = this.storage.toggleColor(colorHex);
-                    this.uiManager.displayUploadStats(stats);
-                },
-                (active) => {
-                    const stats = this.storage.toggleAllColors(active);
-                    this.uiManager.displayUploadStats(stats);
-                }
-            );
-        }
+updateColorManagement() {
+    console.log('updateColorManagement called');
+    console.log('Is initialized?', this.initialized);
+    console.log('Has UI manager?', !!this.uiManager);
+    
+    if (this.initialized && this.uiManager) {
+        console.log('Updating color management UI with:', {
+            colors: this.storage.colors,
+            activeColors: this.storage.activeColors
+        });
+        
+        this.uiManager.updateColorManagementUI(
+            this.storage.colors,
+            this.storage.activeColors,
+            (colorHex) => {
+                const stats = this.storage.toggleColor(colorHex);
+                this.uiManager.displayUploadStats(stats);
+            },
+            (active) => {
+                const stats = this.storage.toggleAllColors(active);
+                this.uiManager.displayUploadStats(stats);
+            }
+        );
+    } else {
+        console.warn('Cannot update color management - system not fully initialized');
     }
+}
 }
