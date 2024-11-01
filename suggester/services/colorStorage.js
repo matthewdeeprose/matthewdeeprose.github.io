@@ -40,17 +40,42 @@ export class ColorStorage {
      * @param {Array<{colourHex: string, name: string}>} colors Array of color objects
      * @returns {Object} Initial statistics about loaded colors
      */
-    loadColors(colors) {
-        console.log("Loading colors:", colors);
-        this.colors = colors;
-        // Return initial stats without validation
-        return {
-            totalColors: this.colors.length,
-            activeColors: 0,
-            validBackgrounds: 0,
-            totalCombinations: 0
-        };
+
+loadColors(colors) {
+    console.log("Loading colors into storage:", colors);
+    if (!Array.isArray(colors)) {
+        console.error("Invalid colors data:", colors);
+        throw new Error('Colors must be an array');
     }
+    
+    this.colors = colors;
+    
+    // Return initial stats without validation
+    const stats = {
+        totalColors: this.colors.length,
+        activeColors: 0,
+        validBackgrounds: 0,
+        totalCombinations: 0
+    };
+    
+    console.log("Colors loaded with stats:", stats);
+    return stats;
+}
+
+// Also modify initActiveColors
+initActiveColors() {
+    console.log("Initializing active colors");
+    console.log("Current colors:", this.colors);
+    
+    // Activate all colors by default
+    this.activeColors = new Set(this.colors.map(c => c.colourHex));
+    console.log("Active colors initialized:", this.activeColors);
+    
+    // Now that we have active colors, validate combinations
+    const stats = this.preValidateColorCombinations();
+    console.log("Color validation complete with stats:", stats);
+    return stats;
+}
 
     /**
      * Initialize active colors
