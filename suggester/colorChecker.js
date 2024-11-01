@@ -9,6 +9,9 @@
  * - Provides clear feedback for screen readers via srResults element
  * - Handles both mouse and keyboard interactions
  * - Supports color hold feature for better user control
+ *
+ * Updated 12:42 01/11/24
+ *
  */
 
 import { defaultColors } from './config/defaultColors.js';
@@ -300,27 +303,42 @@ updateColorManagement() {
     console.log('updateColorManagement called');
     console.log('Is initialized?', this.initialized);
     console.log('Has UI manager?', !!this.uiManager);
+    console.log('Has storage?', !!this.storage);
+    console.log('Storage colors:', this.storage?.colors);
+    console.log('Storage active colors:', this.storage?.activeColors);
     
-    if (this.initialized && this.uiManager) {
-        console.log('Updating color management UI with:', {
-            colors: this.storage.colors,
-            activeColors: this.storage.activeColors
-        });
-        
-        this.uiManager.updateColorManagementUI(
-            this.storage.colors,
-            this.storage.activeColors,
-            (colorHex) => {
-                const stats = this.storage.toggleColor(colorHex);
-                this.uiManager.displayUploadStats(stats);
-            },
-            (active) => {
-                const stats = this.storage.toggleAllColors(active);
-                this.uiManager.displayUploadStats(stats);
-            }
-        );
-    } else {
+    if (!this.initialized) {
         console.warn('Cannot update color management - system not fully initialized');
+        return;
     }
+    
+    if (!this.uiManager) {
+        console.warn('Cannot update color management - UI manager not available');
+        return;
+    }
+    
+    if (!this.storage || !this.storage.colors || !this.storage.activeColors) {
+        console.warn('Cannot update color management - storage not properly initialized');
+        return;
+    }
+    
+    console.log('Updating color management UI with:', {
+        colors: this.storage.colors,
+        activeColors: this.storage.activeColors
+    });
+    
+    this.uiManager.updateColorManagementUI(
+        this.storage.colors,
+        this.storage.activeColors,
+        (colorHex) => {
+            const stats = this.storage.toggleColor(colorHex);
+            this.uiManager.displayUploadStats(stats);
+        },
+        (active) => {
+            const stats = this.storage.toggleAllColors(active);
+            this.uiManager.displayUploadStats(stats);
+        }
+    );
 }
+
 }
