@@ -147,14 +147,15 @@ async init() {
         const stats = this.storage.initActiveColors();
         console.log('Active colors initialized:', stats);
         
-        // Update UI with current color management state
+        // Mark as initialized BEFORE updating UI
+        this.initialized = true;
+        console.log('System marked as initialized');
+        
+        // Now update UI with current color management state
         this.updateColorManagement();
         
         // Display initial statistics
         this.uiManager.displayUploadStats(stats);
-
-        // Mark as initialized
-        this.initialized = true;
         
         console.log('ColorChecker initialization complete');
     } catch (error) {
