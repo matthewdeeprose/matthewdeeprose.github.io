@@ -115,52 +115,53 @@ export class ColorChecker {
      * This needs to be called before using any other methods
      * @throws {Error} If initialization fails or required elements are missing
      */
-    async init() {
-		console.log('ColorChecker init started');
-        // Verify chroma.js is available
-        if (typeof chroma === 'undefined') {
-            throw new Error('chroma.js is required but not loaded');
-        }
+async init() {
+    console.log('ColorChecker init started');
+    
+    // Verify chroma.js is available
+    if (typeof chroma === 'undefined') {
+        throw new Error('chroma.js is required but not loaded');
+    }
 
-        try {
-            // Get required DOM elements
-            const elements = this.getDomElements();
-			console.log('DOM elements retrieved');
-            
-            // Create UI manager
-            this.uiManager = new UIManager(elements, this.storage);
-			 console.log('UI manager created');
+    try {
+        // Get required DOM elements
+        const elements = this.getDomElements();
+        console.log('DOM elements retrieved');
+        
+        // Create UI manager
+        this.uiManager = new UIManager(elements, this.storage);
+        console.log('UI manager created');
 
-            // Set up file upload handlers
-            FileHandler.initFileUploads({
-                colorStorage: this.storage,
-                uiManager: this.uiManager
-            });
-			console.log('File upload handlers initialized');
+        // Set up file upload handlers
+        FileHandler.initFileUploads({
+            colorStorage: this.storage,
+            uiManager: this.uiManager
+        });
+        console.log('File upload handlers initialized');
 
-            // Load and activate default colors
-            await this.loadDefaultColors();
-            console.log('Default colors loaded:', defaultStats);
-			
-            // Initialize active colors (all colors active by default)
-            const stats = this.storage.initActiveColors();
-             console.log('Active colors initialized:', stats);
-			 
-            // Update UI with current color management state
-            this.updateColorManagement();
-            
-            // Display initial statistics
-            this.uiManager.displayUploadStats(stats);
+        // Load and activate default colors
+        const defaultStats = await this.loadDefaultColors();
+        console.log('Default colors loaded:', defaultStats);
+        
+        // Initialize active colors (all colors active by default)
+        const stats = this.storage.initActiveColors();
+        console.log('Active colors initialized:', stats);
+        
+        // Update UI with current color management state
+        this.updateColorManagement();
+        
+        // Display initial statistics
+        this.uiManager.displayUploadStats(stats);
 
-            // Mark as initialized
-            this.initialized = true;
-            
+        // Mark as initialized
+        this.initialized = true;
+        
         console.log('ColorChecker initialization complete');
     } catch (error) {
         console.error('Failed to initialize ColorChecker:', error);
         throw error;
     }
-    }
+}
 
     /**
      * Loads default colors from configuration
