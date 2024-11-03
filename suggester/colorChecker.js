@@ -27,6 +27,9 @@ export class ColorChecker {
      * Initializes storage but waits for init() to set up UI
      */
     constructor() {
+		// Initialize click counter
+		this.randomizeClickCount = 0;
+		console.log('Randomize click counter initialized');
         this.storage = new ColorStorage();
         this.uiManager = null;
         this.initialized = false;
@@ -80,7 +83,8 @@ export class ColorChecker {
                 // Display areas
                 infoGraphicBox: this.getRequiredElement('infoGraphicBox', 'Info graphic box'),
                 infoTexT: this.getRequiredElement('infoTexT', 'Info text display'),
-                
+				// Counter display element
+                counterDisplay: this.getRequiredElement('counterDisplay', 'Randomize counter display'),    
                 // Screen reader and accessibility elements
                 srResults: this.getRequiredElement('srResults', 'Screen reader results')
             };
@@ -193,7 +197,9 @@ async init() {
      * @throws {Error} If not initialized or no valid combinations exist
      */
     randomAll() {
-        console.log("Randomise function starts");
+        // Increment the click counter
+        this.randomizeClickCount++;
+        console.log('Randomize clicked:', this.randomizeClickCount, 'times');
 
         if (!this.initialized) {
             console.error('Not initialized!');
