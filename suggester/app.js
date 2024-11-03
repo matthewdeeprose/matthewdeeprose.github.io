@@ -6,10 +6,15 @@
  * Accessibility Note: This tool helps ensure colour combinations meet WCAG 
  * contrast requirements for better readability for all users, including those
  * with visual impairments.
+ *
+ * Updated 3/11/2024
  */
 
-// Import the ColorChecker class from a separate module
 import { ColorChecker } from './colorChecker.js';
+import { CodeLocationHelper } from './utils/codeLocationHelper.js';  // Add for development
+
+// Make helper available globally for development use
+window.CodeLocationHelper = CodeLocationHelper;
 
 // Log that the app is starting to load (helpful for debugging)
 console.log('App.js is loading...');
