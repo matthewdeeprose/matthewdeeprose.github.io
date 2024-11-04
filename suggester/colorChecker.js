@@ -197,9 +197,10 @@ async init() {
      * @throws {Error} If not initialized or no valid combinations exist
      */
     randomAll() {
-        // Increment the click counter
+		// Increment the click counter and update UI
         this.randomizeClickCount++;
         console.log('Randomize clicked:', this.randomizeClickCount, 'times');
+        this.uiManager.updateRandomizeCounter(this.randomizeClickCount);
 
         if (!this.initialized) {
             console.error('Not initialized!');
