@@ -40,12 +40,11 @@ export class CodeLocationHelper {
 		},
 		UIMANAGER_UPDATEUI: {
 			file: 'uiManager.js',
-			searchFor: 'updateUI(backgroundColor, textColor, graphicColors) {',
+			searchFor: 'updateUI(',
 			insertAfter: true,
-			indentLevel: 1, // Changed to match your tab indentation
+			indentLevel: 1,
 			description: 'Inside UIManager updateUI method'
 		},
-
 		// ColorStorage.js locations
 		COLORSTORAGE_CONSTRUCTOR: {
 			file: 'colorStorage.js',
