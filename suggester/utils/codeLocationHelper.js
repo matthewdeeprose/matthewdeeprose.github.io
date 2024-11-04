@@ -73,17 +73,15 @@ export class CodeLocationHelper {
 		if (!location) {
 			throw new Error(`Unknown location ID: ${locationId}`);
 		}
-
 		// Add indentation to each line
 		const indent = ' '.repeat(location.indentLevel * 4);
 		const formattedCode = newCode
 			.split('\n')
 			.map(line => line.trim() ? indent + line : line)
 			.join('\n');
-
 		return {
 			file: location.file,
-			searchPattern: location.searchFor,
+			searchFor: location.searchFor, // Changed from searchPattern to searchFor
 			insertAfter: location.insertAfter,
 			code: formattedCode,
 			description: location.description
