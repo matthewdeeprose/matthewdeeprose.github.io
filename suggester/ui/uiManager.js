@@ -52,6 +52,19 @@ export class UIManager {
 	 * @param {Array<string>} graphicColors - Array of hex codes for graphic colors
 	 */
 	updateUI(backgroundColor, textColor, graphicColors) {
+		 /**
+         * Updates the randomize counter display
+         * @param {number} count - Current count of randomizations
+         */
+        updateRandomizeCounter(count) {
+            if (this.elements.counterDisplay) {
+                this.elements.counterDisplay.textContent = `Randomized ${count} ${count === 1 ? 'time' : 'times'}`;
+                // Update for screen readers
+                if (this.elements.srResults) {
+                    this.elements.srResults.textContent += ` Randomize button clicked ${count} ${count === 1 ? 'time' : 'times'}.`;
+                }
+            }
+        }
 		console.log("Updating UI with colors:", {
 			backgroundColor,
 			textColor,
@@ -576,4 +589,6 @@ updateHoldButtonIcons() {
 			srResults.textContent = `${colorType} color ${colorName} ${action}`;
 		}
 	}
+	
+	
 }
