@@ -52,19 +52,6 @@ export class UIManager {
 	 * @param {Array<string>} graphicColors - Array of hex codes for graphic colors
 	 */
 	updateUI(backgroundColor, textColor, graphicColors) {
-		 /**
-         * Updates the randomize counter display
-         * @param {number} count - Current count of randomizations
-         */
-        updateRandomizeCounter(count) {
-            if (this.elements.counterDisplay) {
-                this.elements.counterDisplay.textContent = `Randomized ${count} ${count === 1 ? 'time' : 'times'}`;
-                // Update for screen readers
-                if (this.elements.srResults) {
-                    this.elements.srResults.textContent += ` Randomize button clicked ${count} ${count === 1 ? 'time' : 'times'}.`;
-                }
-            }
-        }
 		console.log("Updating UI with colors:", {
 			backgroundColor,
 			textColor,
@@ -88,6 +75,20 @@ export class UIManager {
 
 		// Add this line:
 		this.updateHoldButtonIcons();
+	}
+
+	/**
+	 * Updates the randomize counter display
+	 * @param {number} count - Current count of randomizations
+	 */
+	updateRandomizeCounter(count) {
+		if (this.elements.counterDisplay) {
+			this.elements.counterDisplay.textContent = `Randomized ${count} ${count === 1 ? 'time' : 'times'}`;
+			// Update for screen readers
+			if (this.elements.srResults) {
+				this.elements.srResults.textContent += ` Randomize button clicked ${count} ${count === 1 ? 'time' : 'times'}.`;
+			}
+		}
 	}
 
 	/**
@@ -489,82 +490,82 @@ export class UIManager {
 		}
 	}
 
-/**
- * Initializes hold buttons with SVG icons
- */
-initializeHoldButtons() {
-    console.log("Initializing hold buttons");
+	/**
+	 * Initializes hold buttons with SVG icons
+	 */
+	initializeHoldButtons() {
+		console.log("Initializing hold buttons");
 
-    // Find all hold buttons
-    const holdButtons = document.querySelectorAll('.hold-button');
+		// Find all hold buttons
+		const holdButtons = document.querySelectorAll('.hold-button');
 
-    holdButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            const colorType = button.dataset.colorType;
-            const targetId = button.dataset.colorTarget;
-            const colorElement = document.getElementById(targetId);
-            const computedStyle = window.getComputedStyle(colorElement);
-            const backgroundColor = computedStyle.backgroundColor;
+		holdButtons.forEach(button => {
+			button.addEventListener('click', (e) => {
+				const colorType = button.dataset.colorType;
+				const targetId = button.dataset.colorTarget;
+				const colorElement = document.getElementById(targetId);
+				const computedStyle = window.getComputedStyle(colorElement);
+				const backgroundColor = computedStyle.backgroundColor;
 
-            // Convert RGB to hex
-            const hexColor = this.rgbToHex(backgroundColor);
+				// Convert RGB to hex
+				const hexColor = this.rgbToHex(backgroundColor);
 
-            // Toggle hold state in storage
-            const isNowHeld = this.colorStorage.toggleHoldColor(colorType, hexColor);
+				// Toggle hold state in storage
+				const isNowHeld = this.colorStorage.toggleHoldColor(colorType, hexColor);
 
-            // Update all button icons
-            this.updateHoldButtonIcons();
+				// Update all button icons
+				this.updateHoldButtonIcons();
 
-            // Announce change to screen readers
-            this.announceHoldStateChange(colorType, isNowHeld);
-        });
-    });
+				// Announce change to screen readers
+				this.announceHoldStateChange(colorType, isNowHeld);
+			});
+		});
 
-    // Initialize initial icon states
-    this.updateHoldButtonIcons();
-}
-/**
- * Updates the hold button icons based on their pressed state
- * Uses SVG icons for consistent cross-platform display
- */
-updateHoldButtonIcons() {
-    const holdButtons = document.querySelectorAll('.hold-button');
-    
-    holdButtons.forEach(button => {
-        const colorType = button.dataset.colorType;
-        const isHeld = this.colorStorage.isColorHeld(colorType);
-        
-        // Update aria-pressed state
-        button.setAttribute('aria-pressed', isHeld);
-        
-        // Clear existing icon content
-        button.innerHTML = '';
-        
-        // Create new SVG use element
-        const iconUse = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        iconUse.setAttribute('width', '20');
-        iconUse.setAttribute('height', '20');
-        iconUse.setAttribute('aria-hidden', 'true');
-        iconUse.setAttribute('focusable', 'false');
-        
-        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-        use.setAttributeNS(
-            'http://www.w3.org/1999/xlink',
-            'href',
-            isHeld ? '#icon-lock' : '#icon-unlock'
-        );
-        
-        iconUse.appendChild(use);
-        
-        // Add visually hidden text for screen readers
-        const srText = document.createElement('span');
-        srText.className = 'visually-hidden';
-        srText.textContent = `${isHeld ? 'Unlock' : 'Lock'} ${colorType} color`;
-        
-        button.appendChild(iconUse);
-        button.appendChild(srText);
-    });
-}
+		// Initialize initial icon states
+		this.updateHoldButtonIcons();
+	}
+	/**
+	 * Updates the hold button icons based on their pressed state
+	 * Uses SVG icons for consistent cross-platform display
+	 */
+	updateHoldButtonIcons() {
+		const holdButtons = document.querySelectorAll('.hold-button');
+
+		holdButtons.forEach(button => {
+			const colorType = button.dataset.colorType;
+			const isHeld = this.colorStorage.isColorHeld(colorType);
+
+			// Update aria-pressed state
+			button.setAttribute('aria-pressed', isHeld);
+
+			// Clear existing icon content
+			button.innerHTML = '';
+
+			// Create new SVG use element
+			const iconUse = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+			iconUse.setAttribute('width', '20');
+			iconUse.setAttribute('height', '20');
+			iconUse.setAttribute('aria-hidden', 'true');
+			iconUse.setAttribute('focusable', 'false');
+
+			const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+			use.setAttributeNS(
+				'http://www.w3.org/1999/xlink',
+				'href',
+				isHeld ? '#icon-lock' : '#icon-unlock'
+			);
+
+			iconUse.appendChild(use);
+
+			// Add visually hidden text for screen readers
+			const srText = document.createElement('span');
+			srText.className = 'visually-hidden';
+			srText.textContent = `${isHeld ? 'Unlock' : 'Lock'} ${colorType} color`;
+
+			button.appendChild(iconUse);
+			button.appendChild(srText);
+		});
+	}
 	// Helper method to convert RGB to Hex
 	rgbToHex(rgb) {
 		// Remove spaces and 'rgb(' and ')'
@@ -589,6 +590,6 @@ updateHoldButtonIcons() {
 			srResults.textContent = `${colorType} color ${colorName} ${action}`;
 		}
 	}
-	
-	
+
+
 }
