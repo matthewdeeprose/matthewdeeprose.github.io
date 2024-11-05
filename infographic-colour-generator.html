@@ -227,6 +227,70 @@ function showTrich() {
     filter: url(#tritanopia);
 }
 </style>
+<style>
+.upload-container {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+}
+
+.file-upload-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.upload-option {
+  padding: 20px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+}
+
+.upload-option:hover {
+  border-color: #666;
+}
+
+.sample-format {
+  margin-top: 15px;
+  font-size: 0.9em;
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.sample-format pre {
+  margin: 10px 0;
+  padding: 10px;
+  background: #fff;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.stats-container {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f0f8ff;
+  border-radius: 4px;
+}
+
+.error-container {
+  margin: 20px 0;
+  padding: 15px;
+  background: #fff0f0;
+  border-radius: 4px;
+  color: #d00;
+  display: none;
+}
+
+input[type="file"] {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100%;
+}
+</style>
   </head>
   <body>
     <div class="page-wrap" id="start">
@@ -297,11 +361,65 @@ function showTrich() {
       <main class="page-main" id="main">
         <article class="standard">
           <h1 id="top">UoS Brand Accessible Colour Suggester</h1>
+		  <details id="introductionDetails">
+									   <summary><h2>Introduction</h2></summary>
+									   
           <p id="explainSuggester">When we use a corporate brand, the requirement to ensure we make accessible choices may leave us reliant on a small set of colours. With each use of the Randomise button, a background colour, text colour, and three graphic colours will appear at random from the <a href="https://sotonac.sharepoint.com/teams/Brand/SitePages/Visual-Identity/ColourPalette.aspx">UoS brand</a>. This may help you to choose a new accessible and on-brand colour combination for your next document, presentation, or infographic. </p>
+		  </details>
+		  
+		   <details id="customisationDetails">
+									   <summary><h2>Customisation</h2></summary>
+									   
+<div class="upload-container">
+  <h2>Upload Your Colors</h2>
+  
+  <div class="file-upload-section">
+    <div class="upload-option">
+      <h3>Upload JSON</h3>
+      <p>JSON file with color hex codes and names</p>
+      <input type="file" id="jsonFileInput" accept=".json" aria-label="Upload JSON file with colors">
+      <div class="sample-format">
+        Example format:
+        <pre>[
+  {"colourHex": "#FFFFFF", "name": "White"},
+  {"colourHex": "#000000", "name": "Black"}
+]</pre>
+      </div>
+    </div>
+
+    <div class="upload-option">
+      <h3>Upload CSV</h3>
+      <p>CSV file with colors (supports multiple formats)</p>
+      <input type="file" id="csvFileInput" accept=".csv" aria-label="Upload CSV file with colors">
+      <div class="sample-format">
+        Supported formats:
+        <pre>HEX,NAME
+#FFFFFF,White
+#000000,Black</pre>
+        <pre>NAME,HEX
+White,#FFFFFF
+Black,#000000</pre>
+        <pre>HEX
+#FFFFFF
+#000000</pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="uploadStats" class="stats-container" aria-live="polite">
+    <!-- Statistics will be displayed here -->
+  </div>
+
+  <div id="uploadError" class="error-container" role="alert">
+    <!-- Error messages will be displayed here -->
+  </div>
+</div>
+		  </details>
+		  
           <p>Use the Randomise button to get started!</p>
           <div class="resourseList2">
             <div class="grid-child">
-              <button id="genNew" class="actionButton regButton" type="button" onclick="ColorChecker.randomAll();">Randomise</button>
+              <button id="genNew" class="actionButton regButton" type="button" onclick="ColorChecker.randomAll()">Randomise</button>
               <section class="Trichromacy" id="infoGraphicBox" class="" aria-hidden="true">
                 <h2 id="infoTexT" class="">Text and information</h2>
                 <p class="iconrow">
@@ -681,40 +799,26 @@ function showTrich() {
  * - Large Graphics: Minimum 3:1 for AA compliance
  */
 
-// Use strict mode for better error catching and improved performance
 'use strict';
 
 const ColorChecker = {
-  // Our predefined brand colors with their hex codes and friendly names
-  colournames: [
-    { "colourHex": "#FFFFFF", "name": "White" },
-    { "colourHex": "#231F20", "name": "Plain Black" },
-    { "colourHex": "#00131D", "name": "Rich Black" },
-    { "colourHex": "#495961", "name": "Neutral 1" },
-    { "colourHex": "#758D9A", "name": "Neutral 2" },
-    { "colourHex": "#9FB1BD", "name": "Neutral 3" },
-    { "colourHex": "#E1E8EC", "name": "Neutral 4" },
-    { "colourHex": "#002E3B", "name": "Prussian" },
-    { "colourHex": "#005C84", "name": "Marine 1" },
-    { "colourHex": "#74C9E5", "name": "Marine 2" },
-    { "colourHex": "#3CBAC6", "name": "Marine 3" },
-    { "colourHex": "#B3DBD2", "name": "Marine 4" },
-    { "colourHex": "#4BB694", "name": "Marine 5" },
-    { "colourHex": "#C1D100", "name": "Marine 6" },
-    { "colourHex": "#FCBC00", "name": "Horizon 1" },
-    { "colourHex": "#EF7D00", "name": "Horizon 2" },
-    { "colourHex": "#D5007F", "name": "Horizon 4" },
-    { "colourHex": "#8D3970", "name": "Horizon 5" }
-  ],
-
-  // DOM element references
+  // Store for our colors
+  colournames: [],
+  validColorSets: new Map(),
+  
+  // Store for DOM elements
   elements: {},
 
-  /**
+    /**
    * Initialize the color checker
    * Sets up DOM references and event listeners
    */
   init() {
+    // Ensure chroma.js is available
+    if (typeof chroma === 'undefined') {
+      throw new Error('chroma.js is required but not loaded');
+    }
+
     // Get all required DOM elements
     const elementIds = [
       'infoGraphicBox', 'bgColor', 'tColorColor', 
@@ -737,10 +841,314 @@ const ColorChecker = {
       }
     });
 
-    // Ensure chroma.js is available
-    if (typeof chroma === 'undefined') {
-      throw new Error('chroma.js is required but not loaded');
+    // Initialize file uploads
+    this.initFileUploads();
+
+    // Load default colors if no custom colors are provided
+    this.loadDefaultColors();
+  },
+
+  /**
+   * Initialize file upload handlers
+   */
+  initFileUploads() {
+    const jsonInput = document.getElementById('jsonFileInput');
+    const csvInput = document.getElementById('csvFileInput');
+
+    if (jsonInput) {
+      jsonInput.addEventListener('change', (e) => this.handleJsonUpload(e));
     }
+
+    if (csvInput) {
+      csvInput.addEventListener('change', (e) => this.handleCsvUpload(e));
+    }
+  },
+  /**
+   * Handle JSON file upload
+   * @param {Event} event - File input change event
+   */
+  async handleJsonUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const stats = this.loadColorsFromJson(text);
+      this.displayUploadStats(stats);
+      this.clearError();
+    } catch (error) {
+      this.displayError(error.message);
+    }
+  },
+
+  /**
+   * Handle CSV file upload
+   * @param {Event} event - File input change event
+   */
+  async handleCsvUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const colors = this.parseCsvColors(text);
+      const jsonColors = JSON.stringify(colors);
+      const stats = this.loadColorsFromJson(jsonColors);
+      this.displayUploadStats(stats);
+      this.clearError();
+    } catch (error) {
+      this.displayError(error.message);
+    }
+  },
+
+  /**
+   * Parse CSV data into color objects
+   * @param {string} csvText - Raw CSV text
+   * @returns {Array} Array of color objects
+   */
+  parseCsvColors(csvText) {
+    // Split into lines and remove empty lines
+    const lines = csvText.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    if (lines.length === 0) {
+      throw new Error('CSV file is empty');
+    }
+
+    // Try to determine CSV format
+    const header = lines[0].toLowerCase();
+    const hasHeader = header.includes('hex') || header.includes('name');
+    const startIndex = hasHeader ? 1 : 0;
+
+    // Process lines based on format
+    return lines.slice(startIndex).map((line, index) => {
+      const parts = line.split(',').map(part => part.trim());
+      
+      // Validate and extract hex color
+      let hexColor = '';
+      let name = '';
+
+      if (parts.length === 1) {
+        // Format: HEX only
+        hexColor = this.validateAndFormatHex(parts[0]);
+        name = `Color ${index + 1}`;
+      } else if (parts.length === 2) {
+        if (this.isHexColor(parts[0])) {
+          // Format: HEX,NAME
+          hexColor = this.validateAndFormatHex(parts[0]);
+          name = parts[1] || `Color ${index + 1}`;
+        } else if (this.isHexColor(parts[1])) {
+          // Format: NAME,HEX
+          hexColor = this.validateAndFormatHex(parts[1]);
+          name = parts[0] || `Color ${index + 1}`;
+        } else {
+          throw new Error(`Invalid color format in line ${index + 1}`);
+        }
+      } else {
+        throw new Error(`Invalid number of columns in line ${index + 1}`);
+      }
+
+      return {
+        colourHex: hexColor,
+        name: name
+      };
+    });
+  },
+
+  /**
+   * Validate and format hex color
+   * @param {string} hex - Hex color code
+   * @returns {string} Formatted hex color
+   */
+  validateAndFormatHex(hex) {
+    // Remove any spaces and # if present
+    hex = hex.replace(/\s/g, '');
+    if (!hex.startsWith('#')) {
+      hex = '#' + hex;
+    }
+
+    // Check if it's a valid hex color
+    if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+      throw new Error(`Invalid hex color: ${hex}`);
+    }
+
+    // Return uppercase version
+    return hex.toUpperCase();
+  },
+
+  /**
+   * Check if a string is a hex color
+   * @param {string} str - String to check
+   * @returns {boolean} True if string is a hex color
+   */
+  isHexColor(str) {
+    str = str.replace(/\s/g, '');
+    if (!str.startsWith('#')) {
+      str = '#' + str;
+    }
+    return /^#[0-9A-Fa-f]{6}$/.test(str);
+  },
+
+  /**
+   * Display upload statistics
+   * @param {Object} stats - Statistics about uploaded colors
+   */
+  displayUploadStats(stats) {
+    const statsContainer = document.getElementById('uploadStats');
+    if (!statsContainer) return;
+
+    statsContainer.innerHTML = `
+      <h3>Color Set Statistics</h3>
+      <ul>
+        <li>Total colors loaded: ${stats.totalColors}</li>
+        <li>Valid background colors: ${stats.validBackgrounds}</li>
+        <li>Possible combinations: ${stats.totalCombinations.toLocaleString()}</li>
+      </ul>
+    `;
+  },
+
+  /**
+   * Display error message
+   * @param {string} message - Error message to display
+   */
+  displayError(message) {
+    const errorContainer = document.getElementById('uploadError');
+    if (!errorContainer) return;
+
+    errorContainer.innerHTML = `<p>Error: ${message}</p>`;
+    errorContainer.style.display = 'block';
+  },
+
+  /**
+   * Clear error message
+   */
+  clearError() {
+    const errorContainer = document.getElementById('uploadError');
+    if (!errorContainer) return;
+
+    errorContainer.innerHTML = '';
+    errorContainer.style.display = 'none';
+  },
+
+
+
+
+
+
+  /**
+   * Load the default set of colors
+   */
+  loadDefaultColors() {
+    const defaultColors = [
+      { "colourHex": "#FFFFFF", "name": "White" },
+      { "colourHex": "#231F20", "name": "Plain Black" },
+      { "colourHex": "#00131D", "name": "Rich Black" },
+      { "colourHex": "#495961", "name": "Neutral 1" },
+      { "colourHex": "#758D9A", "name": "Neutral 2" },
+      { "colourHex": "#9FB1BD", "name": "Neutral 3" },
+      { "colourHex": "#E1E8EC", "name": "Neutral 4" },
+      { "colourHex": "#002E3B", "name": "Prussian" },
+      { "colourHex": "#005C84", "name": "Marine 1" },
+      { "colourHex": "#74C9E5", "name": "Marine 2" },
+      { "colourHex": "#3CBAC6", "name": "Marine 3" },
+      { "colourHex": "#B3DBD2", "name": "Marine 4" },
+      { "colourHex": "#4BB694", "name": "Marine 5" },
+      { "colourHex": "#C1D100", "name": "Marine 6" },
+      { "colourHex": "#FCBC00", "name": "Horizon 1" },
+      { "colourHex": "#EF7D00", "name": "Horizon 2" },
+      { "colourHex": "#D5007F", "name": "Horizon 4" },
+      { "colourHex": "#8D3970", "name": "Horizon 5" }
+    ];
+
+    this.colournames = defaultColors;
+    return this.preValidateColorCombinations();
+  },
+
+  /**
+   * Validates the JSON format of color definitions
+   * @param {Object} jsonData - The parsed JSON data
+   * @returns {boolean} True if valid, throws error if invalid
+   */
+  validateColorJson(jsonData) {
+    if (!Array.isArray(jsonData)) {
+      throw new Error('Color data must be an array');
+    }
+
+    const requiredFields = ['colourHex', 'name'];
+    const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+
+    jsonData.forEach((color, index) => {
+      requiredFields.forEach(field => {
+        if (!(field in color)) {
+          throw new Error(`Missing required field '${field}' in color at index ${index}`);
+        }
+      });
+
+      if (!hexColorRegex.test(color.colourHex)) {
+        throw new Error(`Invalid hex color format '${color.colourHex}' at index ${index}`);
+      }
+
+      if (!color.name.trim()) {
+        throw new Error(`Empty color name at index ${index}`);
+      }
+    });
+
+    return true;
+  },
+
+  /**
+   * Load colors from JSON and validate combinations
+   * @param {string} jsonData - JSON string containing color definitions
+   * @returns {Object} Statistics about valid color combinations
+   */
+  loadColorsFromJson(jsonData) {
+    try {
+      const colors = JSON.parse(jsonData);
+      this.validateColorJson(colors);
+      this.colournames = colors;
+      return this.preValidateColorCombinations();
+    } catch (error) {
+      throw new Error(`Failed to load colors: ${error.message}`);
+    }
+  },
+
+  /**
+   * Pre-validates all possible color combinations
+   * @returns {Object} Statistics about valid combinations
+   */
+  preValidateColorCombinations() {
+    const stats = {
+      totalColors: this.colournames.length,
+      validBackgrounds: 0,
+      totalCombinations: 0
+    };
+
+    this.validColorSets.clear();
+
+    this.colournames.forEach(bgColor => {
+      const backgroundColor = bgColor.colourHex;
+      
+      const validTextColors = this.colournames.filter(color =>
+        chroma.contrast(backgroundColor, color.colourHex) >= 4.5
+      );
+
+      const validGraphicColors = this.colournames.filter(color =>
+        chroma.contrast(backgroundColor, color.colourHex) >= 3
+      );
+
+      if (validTextColors.length >= 1 && validGraphicColors.length >= 3) {
+        this.validColorSets.set(backgroundColor, {
+          background: bgColor,
+          textColors: validTextColors,
+          graphicColors: validGraphicColors
+        });
+        stats.validBackgrounds++;
+        stats.totalCombinations += validTextColors.length * this.calculateCombinations(validGraphicColors.length, 3);
+      }
+    });
+
+    return stats;
   },
 
   /**
@@ -770,6 +1178,21 @@ const ColorChecker = {
   },
 
   /**
+   * Calculate number of possible combinations
+   * @param {number} n - Total number of items
+   * @param {number} r - Number of items to choose
+   * @returns {number} Number of possible combinations
+   */
+  calculateCombinations(n, r) {
+    if (r > n) return 0;
+    let result = 1;
+    for (let i = 1; i <= r; i++) {
+      result *= (n - r + i) / i;
+    }
+    return Math.floor(result);
+  },
+
+  /**
    * Get WCAG rating based on contrast ratio
    * @param {number} contrastRatio 
    * @returns {string} WCAG rating
@@ -779,16 +1202,6 @@ const ColorChecker = {
     if (contrastRatio >= 4.5) return "AA";
     if (contrastRatio >= 3) return "G";
     return "F";
-  },
-
-  /**
-   * Find color name from hex code
-   * @param {string} colour - Hex code
-   * @returns {string} Color name
-   */
-  getColorName(colour) {
-    const colorObj = this.colournames.find(x => x.colourHex === colour);
-    return colorObj ? colorObj.name : "Unknown color";
   },
 
   /**
@@ -830,6 +1243,16 @@ const ColorChecker = {
   },
 
   /**
+   * Find color name from hex code
+   * @param {string} colour - Hex code
+   * @returns {string} Color name
+   */
+  getColorName(colour) {
+    const colorObj = this.colournames.find(x => x.colourHex === colour);
+    return colorObj ? colorObj.name : "Unknown color";
+  },
+
+  /**
    * Update screen reader results text
    */
   updateScreenReaderText(backgroundColor, textColor, graphicColors) {
@@ -857,35 +1280,28 @@ const ColorChecker = {
   randomAll() {
     console.log("Randomise function starts");
 
-    // Get all hex codes from our color objects
-    const availableColors = this.colournames.map(item => item.colourHex);
-    
-    // Pick random background color
-    const backgroundColor = availableColors[Math.floor(Math.random() * availableColors.length)];
-
-    // Find colors with sufficient contrast
-    const textColors = availableColors.filter(color => 
-      chroma.contrast(backgroundColor, color) >= 4.5
-    );
-
-    const graphicColors = availableColors.filter(color => 
-      chroma.contrast(backgroundColor, color) >= 3
-    );
-
-    // Check if we have enough contrasting colors
-    if (textColors.length === 0 || graphicColors.length < 3) {
-      console.error("Not enough colors with sufficient contrast");
-      return;
+    const validBackgrounds = Array.from(this.validColorSets.keys());
+    if (validBackgrounds.length === 0) {
+      throw new Error("No valid color combinations available");
     }
 
-    // Pick random colors from our filtered arrays
-    const textColor = textColors[Math.floor(Math.random() * textColors.length)];
-    const selectedGraphicColors = this.getRandom(graphicColors, 3);
+    const backgroundColor = validBackgrounds[Math.floor(Math.random() * validBackgrounds.length)];
+    const colorSet = this.validColorSets.get(backgroundColor);
 
-    // Update the UI with our chosen colors
+    const textColor = colorSet.textColors[Math.floor(Math.random() * colorSet.textColors.length)].colourHex;
+    const selectedGraphicColors = this.getRandom(
+      colorSet.graphicColors.map(c => c.colourHex),
+      3
+    );
+
     this.updateUI(backgroundColor, textColor, selectedGraphicColors);
 
     console.log("Randomise function ends");
+    return {
+      background: backgroundColor,
+      text: textColor,
+      graphics: selectedGraphicColors
+    };
   }
 };
 
@@ -893,7 +1309,7 @@ const ColorChecker = {
 document.addEventListener('DOMContentLoaded', () => {
   try {
     ColorChecker.init();
-    // Run initial randomization if needed
+    // Uncomment the next line if you want it to run automatically on page load
     // ColorChecker.randomAll();
   } catch (error) {
     console.error('Failed to initialize ColorChecker:', error);
