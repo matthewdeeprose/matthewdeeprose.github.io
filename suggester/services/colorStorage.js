@@ -42,10 +42,10 @@ export class ColorStorage {
      */
 
 loadColors(colors) {
-    console.log("Loading colors into storage:", colors);
+    console.log("Loading colours into storage:", colors);
     if (!Array.isArray(colors)) {
-        console.error("Invalid colors data:", colors);
-        throw new Error('Colors must be an array');
+        console.error("Invalid colours data:", colors);
+        throw new Error('Colours must be an array');
     }
     
     this.colors = colors;
@@ -58,14 +58,14 @@ loadColors(colors) {
         totalCombinations: 0
     };
     
-    console.log("Colors loaded with stats:", stats);
+    console.log("Colours loaded with stats:", stats);
     return stats;
 }
 
 // Also modify initActiveColors
 initActiveColors() {
-    console.log("Initializing active colors");
-    console.log("Current colors:", this.colors);
+    console.log("Initializing active colours");
+    console.log("Current colours:", this.colors);
     
     // Activate all colors by default
     this.activeColors = new Set(this.colors.map(c => c.colourHex));
@@ -73,7 +73,7 @@ initActiveColors() {
     
     // Now that we have active colors, validate combinations
     const stats = this.preValidateColorCombinations();
-    console.log("Color validation complete with stats:", stats);
+    console.log("Colour validation complete with stats:", stats);
     return stats;
 }
 
@@ -82,7 +82,7 @@ initActiveColors() {
      * @returns {Object} Statistics about valid combinations
      */
     initActiveColors() {
-        console.log("Initializing active colors");
+        console.log("Initializing active colours");
         // Activate all colors by default
         this.activeColors = new Set(this.colors.map(c => c.colourHex));
         // Now that we have active colors, validate combinations
@@ -95,7 +95,7 @@ initActiveColors() {
      * @returns {Object} Updated statistics
      */
     toggleColor(colorHex) {
-        console.log(`Toggling color: ${colorHex}`);
+        console.log(`Toggling colour: ${colorHex}`);
         if (this.activeColors.has(colorHex)) {
             this.activeColors.delete(colorHex);
         } else {
@@ -110,7 +110,7 @@ initActiveColors() {
      * @returns {Object} Updated statistics
      */
     toggleAllColors(active) {
-        console.log(`Toggling all colors: ${active}`);
+        console.log(`Toggling all colours: ${active}`);
         if (active) {
             this.activeColors = new Set(this.colors.map(c => c.colourHex));
         } else {
@@ -171,9 +171,9 @@ initActiveColors() {
      * @returns {Object} Statistics about the validation results
      */
     preValidateColorCombinations() {
-        console.log("Pre-validating color combinations...");
-        console.log("All colors:", this.colors);
-        console.log("Active colors:", this.activeColors);
+        console.log("Pre-validating colour combinations...");
+        console.log("All colours:", this.colors);
+        console.log("Active colours:", this.activeColors);
 
         const stats = {
             totalColors: this.colors.length,
@@ -186,7 +186,7 @@ initActiveColors() {
 
         // Filter to only use active colors
         const activeColorObjects = this.colors.filter(c => this.activeColors.has(c.colourHex));
-        console.log("Active color objects:", activeColorObjects);
+        console.log("Active colour objects:", activeColorObjects);
 
         // Check each active color as a potential background
         activeColorObjects.forEach(bgColor => {
@@ -207,7 +207,7 @@ initActiveColors() {
                 return contrast >= 3;
             });
 
-            console.log(`Found ${validTextColors.length} valid text colors and ${validGraphicColors.length} valid graphic colors`);
+            console.log(`Found ${validTextColors.length} valid text colours and ${validGraphicColors.length} valid graphic colors`);
 
             // Only add to valid sets if we have enough colors for a complete combination
             if (validTextColors.length >= 1 && validGraphicColors.length >= 3) {
@@ -251,7 +251,7 @@ initActiveColors() {
      */
     getValidBackgrounds() {
         if (!this.validColorSets) {
-            console.warn('Valid color sets not yet initialized');
+            console.warn('Valid colour sets not yet initialized');
             return [];
         }
         return Array.from(this.validColorSets.keys());
@@ -263,7 +263,7 @@ initActiveColors() {
      */
     getValidBackgroundsWithNames() {
         if (!this.validColorSets) {
-            console.warn('Valid color sets not yet initialized');
+            console.warn('Valid colour sets not yet initialized');
             return [];
         }
         
@@ -299,9 +299,9 @@ initActiveColors() {
 
                 let reason = '';
                 if (textContrastCount < 1) {
-                    reason = 'Does not have sufficient contrast (4.5:1 or higher) with any color for text';
+                    reason = 'Does not have sufficient contrast (4.5:1 or higher) with any colour for text';
                 } else if (graphicContrastCount < 3) {
-                    reason = `Has sufficient contrast for text but only has sufficient contrast (3:1) with ${graphicContrastCount} colors for graphics (minimum 3 required)`;
+                    reason = `Has sufficient contrast for text but only has sufficient contrast (3:1) with ${graphicContrastCount} colours for graphics (minimum 3 required)`;
                 } else {
                     reason = 'Does not meet minimum contrast requirements';
                 }
