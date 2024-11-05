@@ -252,12 +252,6 @@
         text-align: justify;
       }
 
-      .stats-container {
-        margin: 20px 0;
-        padding: 15px;
-        border-radius: 4px;
-      }
-
       .error-container {
         margin: 20px 0;
         padding: 15px;
@@ -314,6 +308,9 @@
         display: flex;
         align-items: center;
       }
+      .color-swatches.expanded-view {
+    grid-template-columns: 1fr;
+    }
     </style>
     <style>
       /* This section is for valid/invalid backgrounds */
@@ -604,13 +601,18 @@ Black,#000000</pre>
           </details>
           <details>
             <summary>
-              <h2>Manage colours in use and view statistics <h2>
+              <h2>View insights and statistics<h2>
             </summary>
             <div id="uploadStats" class="stats-container" aria-live="polite">
               <!-- Statistics will be displayed here -->
             </div>
-            <div id="colorManagement" class="color-management"></div>
-          </details>
+            </details>
+            <details>
+          <summary>
+            <h2>Manage colours in use<h2>
+          </summary>
+          <div id="colorManagement" class="color-management"></div>
+        </details>
           <div id="myMessage">
             <div id="myMessageIcon"></div>
             <span id="pageMessage" aria-live="assertive" role="alert"></span>

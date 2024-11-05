@@ -299,8 +299,7 @@ export class UIManager {
 
     // Create the statistics section
     const statsHtml = `
-        <h3>Colour Set Statistics</h3>
-        <ul role="list">
+            <ul role="list">
             <li>Total colours loaded: ${stats.totalColors}</li>
             <li>Valid background colours: ${stats.validBackgrounds}</li>
             <li>Background colours we cannot use: ${
@@ -484,15 +483,18 @@ export class UIManager {
           button.setAttribute("aria-expanded", !isExpanded);
           targetList.hidden = isExpanded;
 
-          // New code: Handle grid layout for combination panels
+          // Handle grid layout for combination panels
           if (button.classList.contains("show-combinations")) {
             const colorSwatchesList = button.closest(".color-swatches");
             if (colorSwatchesList) {
               colorSwatchesList.classList.toggle("expanded-view", !isExpanded);
             }
-          }
-
-          if (button.classList.contains("toggle-backgrounds")) {
+            // Update button text for show combinations
+            button.textContent = isExpanded
+              ? "Show compatible colours"
+              : "Hide compatible colours";
+          } else if (button.classList.contains("toggle-backgrounds")) {
+            // Existing code for toggle backgrounds button
             button.textContent = button.textContent.replace(
               isExpanded ? "Hide" : "Show",
               isExpanded ? "Show" : "Hide"

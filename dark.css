@@ -3,16 +3,17 @@
 /* Versatility section */
 
 .versatility-score {
-    color: #9FB1BD;  
+  color: #9fb1bd;
 }
-.text-options, .graphic-options {
-    color: #B3DBD2;
+.text-options,
+.graphic-options {
+  color: #b3dbd2;
 }
 .combinations-panel {
-    background: #00131D;
+  background: #00131d;
 }
 .aaa-group h6 {
-    color: #E1E8EC;
+  color: #e1e8ec;
 }
 
 /* Versatility section ends */
@@ -20,88 +21,81 @@
 /* Suggester */
 
 .sample-format pre {
-
-  background: #00131D; 
+  background: #00131d;
   color: #fffff4;
 }
 
-.stats-container, .error-container {
-
-  border: 1px solid #E1E8EC;
+.error-container {
+  border: 1px solid #e1e8ec;
 }
 
 input[type="checkbox"]:focus-visible {
-    outline: 4px solid #C1D100;
-	outline-offset: 4px;
+  outline: 4px solid #c1d100;
+  outline-offset: 4px;
 }
 
 .color-reason {
-    color: #9FB1BD;
+  color: #9fb1bd;
 }
 
 /* Suggester ends */
 
-
-input[type=text] {
-	border: 0.2rem solid #231F20 !important;
+input[type="text"] {
+  border: 0.2rem solid #231f20 !important;
 }
 
-
-input[type=text]:hover,input[type=text]:focus {
-	background-color: #E1E8EC;
-	color: #00131D;
-	box-shadow: 0 0 0 0.3rem #C1D100 !important;
-	outline: 0.0rem solid #161415 !important;
-
+input[type="text"]:hover,
+input[type="text"]:focus {
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
 }
-	
 
 #myMessage {
-	border: 2px dashed #E1E8EC;
+  border: 2px dashed #e1e8ec;
 }
 @media only screen and (min-width: 800px) {
-#myMessageIcon {
-              content: url('icons/alert-dark.svg');	
-	float:left;
-	padding: 5px 15px 15px 15px;
-}
-
+  #myMessageIcon {
+    content: url("icons/alert-dark.svg");
+    float: left;
+    padding: 5px 15px 15px 15px;
+  }
 }
 
 .svg-wrapper {
-    border: 2px solid #E1E8EC;
+  border: 2px solid #e1e8ec;
 }
 select {
-	color: #E1E8EC;
-	background: #231F20;
-	border: 0.2rem solid #E1E8EC !important;
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
 }
 
 select:focus,
 select:hover {
-	background-color: #E1E8EC;
-	color: #00131D;
-	box-shadow: 0 0 0 0.3rem #C1D100 !important;
-	outline: 0.0rem solid #161415 !important;
-	border: 0.2rem solid #231F20 !important;
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
+  border: 0.2rem solid #231f20 !important;
 }
 
 /* Palette tables */
 @media screen and (max-width: 33rem) {
-	.paletteTable tr {
-		border-bottom: 3px solid #E1E8EC;
-	}
+  .paletteTable tr {
+    border-bottom: 3px solid #e1e8ec;
+  }
 
-	.paletteTable td {
-		border-bottom: 1px solid #E1E8EC;
-	}
+  .paletteTable td {
+    border-bottom: 1px solid #e1e8ec;
+  }
 }
-
 
 /* Palette tables ends */
 
 body {
-	accent-color: #FCBC00;
+  accent-color: #fcbc00;
 }
 
 article.standard h1,
@@ -112,383 +106,368 @@ article.standard h5,
 article.standard h6,
 *[aria-level="7"],
 *[aria-level="8"] {
-	color: #9FB1BD;
+  color: #9fb1bd;
 }
 
 /* Prompt */
 blockquote.prompt {
-	background-color: #00131D;
+  background-color: #00131d;
 }
 
 blockquote.prompt p,
 blockquote.prompt ol,
 blockquote.prompt li {
-	color: #fffff4;
+  color: #fffff4;
 }
 
 blockquote.prompt:before {
-	content: url('copilot-images/copilot-robot-head-dark.svg') !important;
+  content: url("copilot-images/copilot-robot-head-dark.svg") !important;
 }
 
 /* Tables starts here */
 table {
-	border: 1px solid #9FB1BD;
+  border: 1px solid #9fb1bd;
 }
 
 thead th {
-	background-color: #9FB1BD;
-	color: #00131D;
+  background-color: #9fb1bd;
+  color: #00131d;
 }
 
 .allyTable tr:nth-child(even) {
-	background-color: #00131D;
+  background-color: #00131d;
 }
 
 .allyTable tr:hover {
-	background-color: #002E3B;
+  background-color: #002e3b;
 }
 
 .allyTable thead tr:hover {
-	background-color: #9FB1BD;
+  background-color: #9fb1bd;
 }
 
 table tr {
-	border: 1px solid #E1E8EC;
-	padding: .35em;
+  border: 1px solid #e1e8ec;
+  padding: 0.35em;
 }
-
 
 @media screen and (max-width: 1024px) {
-	.allyTable table tr {
-		border-bottom: 3px solid #E1E8EC;
-	}
+  .allyTable table tr {
+    border-bottom: 3px solid #e1e8ec;
+  }
 
-	.allyTable table td {
-		border-bottom: 1px solid #E1E8EC;
-	}
-
+  .allyTable table td {
+    border-bottom: 1px solid #e1e8ec;
+  }
 }
-
 
 /* Tables ends here */
 
-
 figure.borders {
-	background-color: #9FB1BD !important;
-	max-height: 41rem !important;
+  background-color: #9fb1bd !important;
+  max-height: 41rem !important;
 }
 
 figcaption.borders {
-	color: #00131D;
+  color: #00131d;
 }
-
 
 /* Web ring */
 .a11y-webring-club {
-	border: 0.1rem #e1e8ec solid;
+  border: 0.1rem #e1e8ec solid;
 }
 
 .infoGTitle {
-	color: #e1e8ec !important;
+  color: #e1e8ec !important;
 }
 
 button:disabled,
 button[disabled] {
-	pointer-events: none !important;
-	color: #758D9A !important;
-	border: 0px !important;
-	background-color: none;
-	background-image: none;
-	background-repeat: repeat;
-	z-index: 1;
+  pointer-events: none !important;
+  color: #758d9a !important;
+  border: 0px !important;
+  background-color: none;
+  background-image: none;
+  background-repeat: repeat;
+  z-index: 1;
 }
 
 lite-youtube {
-	border: 0.3rem solid #E1E8EC !important;
+  border: 0.3rem solid #e1e8ec !important;
 }
 
-lite-youtube>.lty-playbtn {
-	border: none !important;
+lite-youtube > .lty-playbtn {
+  border: none !important;
 }
 
 /* Infographic */
 #infoGraphicBox {
-	border: 1px solid #E1E8EC;
-	-webkit-box-shadow: 0px 0px 90px -50px rgba(225, 232, 236, 1);
-	-moz-box-shadow: 0px 0px 90px -50px rgba(225, 232, 236, 1);
-	box-shadow: 0px 0px 90px -50px rgba(225, 232, 236, 1);
+  border: 1px solid #e1e8ec;
+  -webkit-box-shadow: 0px 0px 90px -50px rgba(225, 232, 236, 1);
+  -moz-box-shadow: 0px 0px 90px -50px rgba(225, 232, 236, 1);
+  box-shadow: 0px 0px 90px -50px rgba(225, 232, 236, 1);
 }
 
-
 .colorBox {
-	border: #E1E8EC 2px solid;
+  border: #e1e8ec 2px solid;
 }
 
 /* Turn on the light */
 #logoSVG {
-	color: #FCBC00
+  color: #fcbc00;
 }
 
 #logoSVG-Off {
-	display: none;
+  display: none;
 }
 
 .transcriptSpeaker {
-	color: #C1D100;
-	font-weight: bold;
+  color: #c1d100;
+  font-weight: bold;
 }
 
 .soundDescription {
-	font-weight: bold;
-	color: #B3DBD2;
+  font-weight: bold;
+  color: #b3dbd2;
 }
-
 
 /* Post source */
 dd.from {
-	color: #E1E8EC;
+  color: #e1e8ec;
 }
-
 
 /* cards */
 .card img {
-	/* border: 2px solid #231F20; */
+  /* border: 2px solid #231F20; */
 }
 
 .plainBlack {
-	background-color: #231F20 !important;
+  background-color: #231f20 !important;
 }
 
 .card {
-	border: 0.1rem solid #E1E8EC;
-	background-color: #00131D;
+  border: 0.1rem solid #e1e8ec;
+  background-color: #00131d;
 }
 
 .linkify:hover {
-	box-shadow: 0 0 0 0.4rem #C1D100;
-	border: 0.1rem solid #E1E8EC;
-	outline: #00131D double 0.5rem;
+  box-shadow: 0 0 0 0.4rem #c1d100;
+  border: 0.1rem solid #e1e8ec;
+  outline: #00131d double 0.5rem;
 }
 
 .cards .isfocused {
-	box-shadow: 0 0 0 0.4rem #C1D100;
-	border: 2px solid #231F20;
+  box-shadow: 0 0 0 0.4rem #c1d100;
+  border: 2px solid #231f20;
 }
 
 .card .cta {
-	color: #FCBC00;
+  color: #fcbc00;
 }
 
 #Example {
-	border: 0.2rem solid #E1E8EC !important;
+  border: 0.2rem solid #e1e8ec !important;
 }
 
-
 .presentations {
-	border: 0.1rem solid #E1E8EC;
-	background: none;
+  border: 0.1rem solid #e1e8ec;
+  background: none;
 }
 
 @media only screen and (max-width: 600px) {
-	.presentations {
-		border: 0px solid #E1E8EC !important;
-	}
+  .presentations {
+    border: 0px solid #e1e8ec !important;
+  }
 }
 
 main a:focus,
 aside a:focus,
 footer a:focus {
-	outline: 0.3rem solid #C1D100;
-	color: #74C9E5;
+  outline: 0.3rem solid #c1d100;
+  color: #74c9e5;
 }
 
 div#titleLink,
 div#logo {
-	border: 0.2rem solid #E1E8EC !important;
+  border: 0.2rem solid #e1e8ec !important;
 }
-
 
 /* Logo things */
 a#home {
-	color: #E1E8EC !important;
+  color: #e1e8ec !important;
 }
 
 a#home:hover,
 a#home:focus {
-	color: #FCBC00 !important;
+  color: #fcbc00 !important;
 }
 
 a#home:focus {
-	outline: none;
-	border-bottom: 0.3rem #E1E8EC dotted;
+  outline: none;
+  border-bottom: 0.3rem #e1e8ec dotted;
 }
-
 
 /* Logo things ends */
 section.related {
-	border-bottom: 0.1rem solid #E1E8EC;
+  border-bottom: 0.1rem solid #e1e8ec;
 }
 
 section.related:last-child {
-	border-bottom: 0rem solid #E1E8EC;
+  border-bottom: 0rem solid #e1e8ec;
 }
 
 a,
 a:visited {
-	color: #FCBC00;
+  color: #fcbc00;
 }
 
 a:hover {
-	color: #74C9E5;
+  color: #74c9e5;
 }
 
 figcaption a:hover,
 figcaption a:active {
-	color: #00131d !important;
+  color: #00131d !important;
 }
 
 #myBtn:hover,
 #myBtn:focus,
 #myBtn2:hover,
 #myBtn2:focus {
-	box-shadow: 0 0 0 0.3rem #FCBC00;
+  box-shadow: 0 0 0 0.3rem #fcbc00;
 }
-
 
 /* skip link */
 .skip-link {
-	color: #E1E8EC;
-	background-color: #161415;
-	border: 1px solid #00131D;
-	-webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-	-moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
-	box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+  color: #e1e8ec;
+  background-color: #161415;
+  border: 1px solid #00131d;
+  -webkit-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+  -moz-box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
+  box-shadow: 10px 10px 28px 0px rgba(0, 0, 0, 0.16);
 }
 
 .skip-link:focus {
-	border: #FCBC00 solid .3rem;
+  border: #fcbc00 solid 0.3rem;
 }
-
 
 /* Details and Summary styling */
 summary {
-	outline: 0em solid #E1E8EC;
-	background: #231F20;
-	color: #E1E8EC;
-	border: 0.2rem solid #231F20 !important;
+  outline: 0em solid #e1e8ec;
+  background: #231f20;
+  color: #e1e8ec;
+  border: 0.2rem solid #231f20 !important;
 }
 
 summary:visited {
-	outline: 0.2rem solid #E1E8EC;
-	background: #231F20;
-	color: #E1E8EC;
+  outline: 0.2rem solid #e1e8ec;
+  background: #231f20;
+  color: #e1e8ec;
 }
 
 details {
-	outline: 0.2rem solid #E1E8EC;
+  outline: 0.2rem solid #e1e8ec;
 }
 
 summary:hover {
-	/* background-color: #E1E8EC; */
-	color: #E1E8EC;
-	box-shadow: 0 0 0 0.4rem #C1D100 !important;
-	outline: 0.2rem solid transparent !important;
-	border: 0.2rem solid #00131D;
+  /* background-color: #E1E8EC; */
+  color: #e1e8ec;
+  box-shadow: 0 0 0 0.4rem #c1d100 !important;
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid #00131d;
 }
 
-
 details:hover {
-	outline: 0.2rem solid #C1D100;
+  outline: 0.2rem solid #c1d100;
 }
 
 summary:focus {
-	color: #E1E8EC;
-	box-shadow: 0 0 0 0.0rem #C1D100 !important;
-	outline: 0.3rem dotted #E1E8EC !important;
-	outline-offset: .5rem !important;
-	border: 0.2rem solid #00131D;
+  color: #e1e8ec;
+  box-shadow: 0 0 0 0rem #c1d100 !important;
+  outline: 0.3rem dotted #e1e8ec !important;
+  outline-offset: 0.5rem !important;
+  border: 0.2rem solid #00131d;
 }
 
 summary:focus:not(:focus-visible) {
-	background-color: #231f20;
-	color: #E1E8EC;
-	outline: 0rem dotted #E1E8EC !important;
-	outline-offset: 0rem !important;
-	border: 0rem solid #00131D;
+  background-color: #231f20;
+  color: #e1e8ec;
+  outline: 0rem dotted #e1e8ec !important;
+  outline-offset: 0rem !important;
+  border: 0rem solid #00131d;
 }
 
-
 summary:active {
-	border: 0px solid #E1E8EC !important;
+  border: 0px solid #e1e8ec !important;
 }
 
 summary {
-	border: 0px solid #E1E8EC;
+  border: 0px solid #e1e8ec;
 }
 
 button {
-	color: #E1E8EC;
-	background: #231F20;
-	border: 0.2rem solid #E1E8EC !important;
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
 }
 
 button:hover,
 button:focus {
-	background-color: #E1E8EC;
-	color: #00131D;
-	box-shadow: 0 0 0 0.3rem #C1D100 !important;
-	outline: 0.0rem solid #161415 !important;
-	border: 0.2rem solid #231F20 !important;
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
+  border: 0.2rem solid #231f20 !important;
 }
 
 button.regButton:focus:not(:focus-visible) {
-	color: #E1E8EC;
-	background: #231F20;
-	border: 0.2rem solid #E1E8EC !important;
-	box-shadow: 0 0 0 0rem #C1D100 !important;
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
+  box-shadow: 0 0 0 0rem #c1d100 !important;
 }
 
 body {
-	background: #161415 !important;
-	color: #E1E8EC;
+  background: #161415 !important;
+  color: #e1e8ec;
 }
 
 .page-wrap {
-	background: #231F20;
+  background: #231f20;
 }
 
 .page-header {
-	background-image: url('bg2.png') !important;
-	color: #E1E8EC;
-	background-color: #231F20;
+  background-image: url("bg2.png") !important;
+  color: #e1e8ec;
+  background-color: #231f20;
 }
 
 .page-sidebar {
-	background: #231F20;
+  background: #231f20;
 }
 
 .page-nav {
-	background: #231F20;
+  background: #231f20;
 }
 
 .page-main {
-	background: #231F20;
+  background: #231f20;
 }
 
 .page-footer {
-	background: #231F20;
-	border-top: 0.2rem #E1E8EC solid;
+  background: #231f20;
+  border-top: 0.2rem #e1e8ec solid;
 }
 
 .topnav {
-	background-color: #231F20;
+  background-color: #231f20;
 }
 
 .topnav a {
-	color: #E1E8EC;
-	background: #231F20;
-	border: 0.2rem solid #E1E8EC !important;
-	margin: 0.2rem;
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
+  margin: 0.2rem;
 }
 
 button#menu.icon,
@@ -496,136 +475,131 @@ button#menu.icon:active,
 button#menu.icon:hover,
 button#menu.icon:focus,
 .topnav button.active {
-	outline: 1.5rem solid #231F20 !important;
+  outline: 1.5rem solid #231f20 !important;
 }
 
 .topnav button {
-	color: #E1E8EC;
-	border: 0.rem solid #231F20 !important;
-	background-color: #231F20;
-	margin: 0.2rem 0.5rem 0.2rem 0.2rem;
+  color: #e1e8ec;
+  border: 0rem solid #231f20 !important;
+  background-color: #231f20;
+  margin: 0.2rem 0.5rem 0.2rem 0.2rem;
 }
 
 button#menu.icon:hover {
-	background-color: #E1E8EC;
-	color: #231F20;
-	border: 0.2rem solid #231F20 !important;
-	outline: 0.2rem solid #C1D100 !important;
-	box-shadow: 0 0 0 1.5rem #231F20 !important;
+  background-color: #e1e8ec;
+  color: #231f20;
+  border: 0.2rem solid #231f20 !important;
+  outline: 0.2rem solid #c1d100 !important;
+  box-shadow: 0 0 0 1.5rem #231f20 !important;
 }
 
 button#menu.icon:focus {
-	background-color: #E1E8EC;
-	color: #231F20;
-	border: 0.2rem solid #231F20 !important;
-	outline: 0.2rem solid #C1D100 !important;
-	box-shadow: 0 0 0 1.5rem #231F20 !important;
+  background-color: #e1e8ec;
+  color: #231f20;
+  border: 0.2rem solid #231f20 !important;
+  outline: 0.2rem solid #c1d100 !important;
+  box-shadow: 0 0 0 1.5rem #231f20 !important;
 }
 
 button#menu.icon:focus:not(:focus-visible) {
-	background: #FCBC00;
-	color: #231F20;
-	border: 0.2rem solid #231F20 !important;
-	outline: 0rem solid #C1D100 !important;
-	box-shadow: 0 0 0 1.5rem #231F20 !important;
+  background: #fcbc00;
+  color: #231f20;
+  border: 0.2rem solid #231f20 !important;
+  outline: 0rem solid #c1d100 !important;
+  box-shadow: 0 0 0 1.5rem #231f20 !important;
 }
 
-
 .topnav button.active {
-	background-color: #FCBC00;
-	color: #231F20;
-	border: 0.2rem solid #231F20;
+  background-color: #fcbc00;
+  color: #231f20;
+  border: 0.2rem solid #231f20;
 }
 
 .topnav a:hover,
 .topnav a:focus,
 .topnav a.active:focus,
 .topnav a.active:hover {
-	background-color: #E1E8EC;
-	color: #00131D;
-	box-shadow: 0 0 0 4pt #C1D100 !important;
-	outline: 0.2rem solid transparent !important;
-	border: 0.2rem solid #231F20 !important;
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 4pt #c1d100 !important;
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid #231f20 !important;
 }
 
 .topnav a.icon {
-	background: #E1E8EC;
+  background: #e1e8ec;
 }
 
 .topnav a.active {
-	background-color: #FCBC00;
-	color: #231F20;
-	border: 0.2rem solid #231F20 !important;
-	outline: 0rem solid #E1E8EC;
-	box-shadow: 0 0 0 0.2rem #E1E8EC;
+  background-color: #fcbc00;
+  color: #231f20;
+  border: 0.2rem solid #231f20 !important;
+  outline: 0rem solid #e1e8ec;
+  box-shadow: 0 0 0 0.2rem #e1e8ec;
 }
 
 .topnav button:hover,
 .topnav button:focus,
 .topnav button.active:focus,
 .topnav button.active:hover {
-	background-color: #E1E8EC;
-	color: #00131D;
-	box-shadow: 0 0 0 8pt #231F20 !important;
-	outline: 0.2rem solid #C1D100 !important;
-	border: 0.2rem solid #231F20 !important;
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 8pt #231f20 !important;
+  outline: 0.2rem solid #c1d100 !important;
+  border: 0.2rem solid #231f20 !important;
 }
 
 .topnav button.icon {
-	background: #FCBC00;
-	border: 0.2rem solid #FCBC00 !important;
+  background: #fcbc00;
+  border: 0.2rem solid #fcbc00 !important;
 }
 
 .topnav button.active {
-	background-color: #FCBC00;
-	color: #00131D;
-	border: 0.2rem solid #231F20 !important;
-	outline: 0.2rem solid #E1E8EC;
+  background-color: #fcbc00;
+  color: #00131d;
+  border: 0.2rem solid #231f20 !important;
+  outline: 0.2rem solid #e1e8ec;
 }
 
 img.articleImage,
 img.articleImageLeft,
 img.articleImage2,
 a.bookmarklet {
-	border: 2px solid #E1E8EC;
+  border: 2px solid #e1e8ec;
 }
 
 input:focus {
-	outline: 3px solid #C1D100;
+  outline: 3px solid #c1d100;
 }
-
 
 /*position new box*/
-.wrapper input+label::before {
-	background: #E1E8EC;
+.wrapper input + label::before {
+  background: #e1e8ec;
 }
-
 
 /*focus styles*/
-.wrapper input:focus+label::before {
-	box-shadow: 0 0 0 3px #C1D100;
+.wrapper input:focus + label::before {
+  box-shadow: 0 0 0 3px #c1d100;
 }
-
 
 /*focus styles*/
-.wrapper2 input:focus+label::before {
-	box-shadow: 0 0 0 3px #C1D100;
+.wrapper2 input:focus + label::before {
+  box-shadow: 0 0 0 3px #c1d100;
 }
-
 
 Remove focus from mouse,
 replace with box shadow a:focus:not(:focus-visible),
 main a:focus:not(:focus-visible),
 aside a:focus:not(:focus-visible),
 footer a:focus:not(:focus-visible) {
-	outline: 2px transparent solid !important;
-	border: 0px solid #ffffff !important;
-	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12) !important;
+  outline: 2px transparent solid !important;
+  border: 0px solid #ffffff !important;
+  box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, 0.12) !important;
 }
 
 figcaption a:focus:not(:focus-visible) {
-	outline: 2px transparent solid !important;
-	border: 0px solid #ffffff !important;
-	box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, .12) !important;
-	color: #002e3b !important;
+  outline: 2px transparent solid !important;
+  border: 0px solid #ffffff !important;
+  box-shadow: -1px 1px 30px 9px rgba(255, 255, 255, 0.12) !important;
+  color: #002e3b !important;
 }
