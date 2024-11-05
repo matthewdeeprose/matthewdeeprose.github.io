@@ -1,5 +1,19 @@
 /*Light mode */
 
+
+/* Versatility section */
+.versatility-score {
+    color: #495961;  
+}
+.text-options, .graphic-options {
+    color: #002E3B;
+}
+.combinations-panel {
+    background: #E1E8EC;
+}
+
+/* Versatility section ends */
+
 .sample-format pre {
 
   background: #fffff4;
