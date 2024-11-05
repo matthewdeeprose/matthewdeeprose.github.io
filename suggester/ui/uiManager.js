@@ -1,5 +1,5 @@
 /**
- * @fileoverview UI Manager for Color Contrast Tool 30/11/24 15:29
+ * @fileoverview UI Manager for Color Contrast Tool 5/11/24
  *
  * This class manages the user interface updates and accessibility features for
  * the color contrast checking tool. It ensures:
