@@ -483,6 +483,15 @@ export class UIManager {
           const isExpanded = button.getAttribute("aria-expanded") === "true";
           button.setAttribute("aria-expanded", !isExpanded);
           targetList.hidden = isExpanded;
+
+          // New code: Handle grid layout for combination panels
+          if (button.classList.contains("show-combinations")) {
+            const colorSwatchesList = button.closest(".color-swatches");
+            if (colorSwatchesList) {
+              colorSwatchesList.classList.toggle("expanded-view", !isExpanded);
+            }
+          }
+
           if (button.classList.contains("toggle-backgrounds")) {
             button.textContent = button.textContent.replace(
               isExpanded ? "Hide" : "Show",
