@@ -173,14 +173,14 @@ export class UIManager {
 
     // Add descriptive heading
     const heading = document.createElement("h2");
-    heading.textContent = "Color Selection";
+    heading.textContent = "Colour Selection";
     heading.className = "color-management-heading";
     container.appendChild(heading);
 
     // Create fieldset for better grouping
     const fieldset = document.createElement("fieldset");
     const legend = document.createElement("legend");
-    legend.textContent = "Available Colors";
+    legend.textContent = "Available Colours";
     fieldset.appendChild(legend);
 
     // Create select all checkbox with enhanced accessibility
@@ -195,7 +195,7 @@ export class UIManager {
 
     const selectAllLabel = document.createElement("label");
     selectAllLabel.htmlFor = "selectAllColors";
-    selectAllLabel.textContent = "Select all colors";
+    selectAllLabel.textContent = "Select all colours";
 
     // Create color list using ul/li for semantic structure
     const colorList = document.createElement("ul");
