@@ -303,7 +303,7 @@ export class UIManager {
         <ul role="list">
             <li>Total colours loaded: ${stats.totalColors}</li>
             <li>Valid background colours: ${stats.validBackgrounds}</li>
-            <li>Invalid background colours: ${
+            <li>Background colours we cannot use: ${
               stats.totalColors - stats.validBackgrounds
             }</li>
             <li>Possible combinations: ${stats.totalCombinations.toLocaleString()}</li>
@@ -329,7 +329,7 @@ export class UIManager {
               textOptions: colorSet.textColors.length,
               graphicOptions: colorSet.graphicColors.length,
               versatilityScore,
-              isHighlyVersatile: versatilityScore >= 0.55,
+              isHighlyVersatile: versatilityScore >= 0.35,
             };
           })
           .sort((a, b) => b.versatilityScore - a.versatilityScore);
@@ -371,11 +371,28 @@ export class UIManager {
             : ""
         }
     </div>
-    <div class="color-versatility">
-        <span class="text-options">Compatible with ${
-          data.textOptions
-        } text colour${data.textOptions !== 1 ? "s" : ""}.</span>
-        <span class="graphic-options">Compatible with ${
+<div class="color-versatility">
+    <span class="text-options">
+       Sufficient contrast with ${data.textOptions} text colour${
+                                      data.textOptions !== 1 ? "s" : ""
+                                    }: 
+        <span class="contrast-breakdown">
+            ${(() => {
+              const aaaCount = data.colorSet.textColors.filter(
+                (color) => chroma.contrast(data.hex, color.colourHex) >= 7
+              ).length;
+              const aaCount = data.colorSet.textColors.filter((color) => {
+                const contrast = chroma.contrast(data.hex, color.colourHex);
+                return contrast >= 4.5 && contrast < 7;
+              }).length;
+              return `
+                    <span class="aaa-count" title="Enhanced contrast (7:1+)">${aaaCount} at AAA level</span> and 
+                    <span class="aa-count" title="Standard contrast (4.5:1 to 6.9:1)">${aaCount} AA level.</span>
+                `;
+            })()}
+        </span>
+    </span>
+        <span class="graphic-options">Sufficient contrast with ${
           data.graphicOptions
         } graphic colour${data.graphicOptions !== 1 ? "s" : ""}.</span>
                                                 <button class="show-combinations" aria-expanded="false" 
@@ -384,28 +401,27 @@ export class UIManager {
                                                         )}">
                                                     Show compatible colours
                                                 </button>
-                                                <div id="combinations-${data.hex.substring(
-                                                  1
-                                                )}" 
-                                                     class="combinations-panel" hidden>
-                                                    <h5>Compatible Colors</h5>
-                                                    <div class="compatible-colors">
-                                                        <div class="text-colors">
-                                                            <h6>Text Colours (4.5:1+ contrast)</h6>
-                                                            ${this.renderCompatibleColors(
-                                                              data.colorSet
-                                                                .textColors
-                                                            )}
-                                                        </div>
-                                                        <div class="graphic-colors">
-                                                            <h6>Graphic Colours (3:1+ contrast)</h6>
-                                                            ${this.renderCompatibleColors(
-                                                              data.colorSet
-                                                                .graphicColors
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
+<div id="combinations-${data.hex.substring(1)}" 
+     class="combinations-panel" hidden>
+    <h5>Compatible Colours</h5>
+    <div class="compatible-colors">
+        <div class="text-colors">
+            ${this.renderCompatibleColors(
+              data.colorSet.textColors,
+              data.hex,
+              "text"
+            )}
+        </div>
+        <div class="graphic-colors">
+            <h5>Graphic Colours</h5>
+            ${this.renderCompatibleColors(
+              data.colorSet.graphicColors,
+              data.hex,
+              "graphic"
+            )}
+        </div>
+    </div>
+</div>
                                             </div>
                                         </span>
                                     </li>
@@ -423,7 +439,7 @@ export class UIManager {
                             })
                         </button>
                         <div id="invalidBackgroundsList" class="backgrounds-list" hidden>
-                            <h4>Invalid Background Colours</h4>
+                            <h4>Background colours we cannot use</h4>
                             <ul class="color-swatches" role="list">
                                 ${invalidBackgrounds
                                   .map(
@@ -435,7 +451,7 @@ export class UIManager {
                                         <span class="color-info">
                                             <span class="color-name">${color.name}</span>
                                             <span class="color-value">${color.hex}</span>
-                                            <span class="color-reason" role="note">${color.reason}</span>
+                                            <span class="color-reason" role="note">${color.reason}.</span>
                                         </span>
                                     </li>
                                 `
@@ -476,7 +492,7 @@ export class UIManager {
         });
       }
     });
-  }
+  } // displayUploadStats ends
 
   /**
    * Displays error messages accessibly
@@ -788,31 +804,159 @@ export class UIManager {
    * @param {Object} colorSet - The set of valid combinations for a background color
    * @returns {number} Score between 0 and 1
    */
+  /**
+   * Calculates a versatility score for a color set
+   * @param {Object} colorSet - The set of valid combinations for a background color
+   * @returns {number} Score between 0 and 1
+   */
   calculateVersatilityScore(colorSet) {
     const totalColors = this.colorStorage.colors.length;
-    const textScore = colorSet.textColors.length / totalColors;
+
+    // Calculate AAA text score (highest weight)
+    const aaaTextColors = colorSet.textColors.filter(
+      (color) =>
+        chroma.contrast(colorSet.background.colourHex, color.colourHex) >= 7
+    );
+    const aaaScore = aaaTextColors.length / totalColors;
+
+    // Calculate AA text score (medium weight)
+    const aaTextColors = colorSet.textColors.filter((color) => {
+      const contrast = chroma.contrast(
+        colorSet.background.colourHex,
+        color.colourHex
+      );
+      return contrast >= 4.5 && contrast < 7;
+    });
+    const aaScore = aaTextColors.length / totalColors;
+
+    // Calculate graphic score (lowest weight)
     const graphicScore = colorSet.graphicColors.length / totalColors;
-    // Weight text compatibility slightly higher than graphic compatibility
-    return textScore * 0.6 + graphicScore * 0.4;
+
+    // Weight the scores: 50% AAA, 30% AA, 20% graphics
+    return aaaScore * 0.4 + aaScore * 0.35 + graphicScore * 0.25;
   }
 
   /**
-   * Renders a list of compatible colors
+   * Renders a list of compatible colors with contrast ratio information
    * @param {Array} colors - Array of compatible colors
+   * @param {string} backgroundColor - Background color to check contrast against
+   * @param {string} type - Type of colors ('text' or 'graphic')
    * @returns {string} HTML string of color swatches
    */
-  renderCompatibleColors(colors) {
-    return `<ul class="compatible-color-list" role="list">${colors
-      .map(
-        (color) => `
-						<li>
-							<span class="color-swatch mini Trichromacy" 
-								  style="background-color: ${color.colourHex};"
-								  role="presentation"></span>
-							<span class="color-name">${color.name}</span>
-						</li>
-					`
-      )
-      .join("")}</ul>`;
+  renderCompatibleColors(colors, backgroundColor, type) {
+    console.log("Rendering compatible colors:", {
+      colors,
+      backgroundColor,
+      type,
+    });
+
+    if (type === "text") {
+      // Split colors into AAA and AA groups
+      const aaaColors = colors.filter(
+        (color) => chroma.contrast(backgroundColor, color.colourHex) >= 7
+      );
+      const aaColors = colors.filter((color) => {
+        const contrast = chroma.contrast(backgroundColor, color.colourHex);
+        return contrast >= 4.5 && contrast < 7;
+      });
+
+      return `
+            ${
+              aaaColors.length > 0
+                ? `
+                <div class="contrast-group aaa-group">
+                    <h6>Enhanced Contrast (7:1+)</h6>
+                    <p class="contrast-description">These colours meet WCAG AAA requirements for enhanced contrast</p>
+                    <ul class="compatible-color-list" role="list">
+                        ${aaaColors
+                          .map(
+                            (color) => `
+                            <li>
+                                <span class="color-swatch mini Trichromacy" 
+                                      style="background-color: ${
+                                        color.colourHex
+                                      };"
+                                      role="presentation"></span>
+                                <span class="color-details">
+                                    <span class="color-name">${
+                                      color.name
+                                    }</span>
+                                    <span class="contrast-ratio">(${chroma
+                                      .contrast(
+                                        backgroundColor,
+                                        color.colourHex
+                                      )
+                                      .toFixed(1)}:1)</span>
+                                </span>
+                            </li>
+                        `
+                          )
+                          .join("")}
+                    </ul>
+                </div>
+            `
+                : ""
+            }
+            ${
+              aaColors.length > 0
+                ? `
+                <div class="contrast-group aa-group">
+                    <h6>Standard Contrast (4.5:1 to 6.9:1)</h6>
+                    <p class="contrast-description">These colours meet WCAG AA requirements for minimum contrast.</p>
+                    <ul class="compatible-color-list" role="list">
+                        ${aaColors
+                          .map(
+                            (color) => `
+                            <li>
+                                <span class="color-swatch mini Trichromacy" 
+                                      style="background-color: ${
+                                        color.colourHex
+                                      };"
+                                      role="presentation"></span>
+                                <span class="color-details">
+                                    <span class="color-name">${
+                                      color.name
+                                    }</span>
+                                    <span class="contrast-ratio">(${chroma
+                                      .contrast(
+                                        backgroundColor,
+                                        color.colourHex
+                                      )
+                                      .toFixed(1)}:1)</span>
+                                </span>
+                            </li>
+                        `
+                          )
+                          .join("")}
+                    </ul>
+                </div>
+            `
+                : ""
+            }
+        `;
+    } else {
+      // For graphic colors, show all with their contrast ratios
+      return `
+            <ul class="compatible-color-list" role="list">
+                ${colors
+                  .map(
+                    (color) => `
+                    <li>
+                        <span class="color-swatch mini Trichromacy" 
+                              style="background-color: ${color.colourHex};"
+                              role="presentation"></span>
+                        <span class="color-details">
+                            <span class="color-name">${color.name}</span>
+                            <span class="contrast-ratio">(${chroma
+                              .contrast(backgroundColor, color.colourHex)
+                              .toFixed(1)}:1)</span>
+                        </span>
+                    </li>
+                `
+                  )
+                  .join("")}
+            </ul>
+        `;
+    }
   }
 } // End of UIManager class

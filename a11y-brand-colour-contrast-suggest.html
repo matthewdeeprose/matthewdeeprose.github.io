@@ -385,9 +385,25 @@
         }
       }
 
-      .color-swatch-item.highly-versatile {
+/* Color swatch styles */
+.color-swatch-item.highly-versatile {
     padding-left: 8px;
     border: 5px solid #D5007F;
+}
+
+.color-swatch.mini {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+/* Versatility section */
+.color-versatility {
+    margin-top: 8px;
+    font-size: 0.9em;
 }
 
 .versatility-info {
@@ -399,20 +415,15 @@
 
 .versatility-score {
     font-weight: 500;
-   }
-
-
-
-.color-versatility {
-    margin-top: 8px;
-    font-size: 0.9em;
 }
 
+/* Display options */
 .text-options, .graphic-options {
     display: block;
     margin: 2px 0;
 }
 
+/* Combinations section */
 .show-combinations {
     padding: 4px 8px;
     margin-top: 4px;
@@ -430,15 +441,35 @@
 .compatible-color-list {
     list-style: none;
     padding: 0;
-    margin: 4px 0;
+    margin: 8px 0;
 }
 
-.color-swatch.mini {
-    width: 16px;
-    height: 16px;
-    display: inline-block;
-    margin-right: 4px;
-    vertical-align: middle;
+.compatible-color-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+/* Contrast section */
+.contrast-group {
+    margin-bottom: 20px;
+}
+
+.contrast-description {
+    font-size: 0.9em;
+    margin: 4px 0 8px 0;
+}
+
+.contrast-ratio {
+    font-size: 0.9em;
+    margin-left: 4px;
+}
+
+.color-details {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
 }
 
     </style>
