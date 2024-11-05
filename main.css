@@ -22,6 +22,9 @@
 }
 
 /* Sr only ends */
+input[type=checkbox][disabled]{
+	cursor: not-allowed;
+}
 
 /*side bar font */
 
