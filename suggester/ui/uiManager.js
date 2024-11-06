@@ -321,10 +321,30 @@ export class UIManager {
         const versatilityData = validBackgrounds
           .map((color) => {
             const colorSet = this.colorStorage.validColorSets.get(color.hex);
-            const versatilityScore = this.calculateVersatilityScore(colorSet);
+            const rawScore = this.calculateVersatilityScore(colorSet);
+            // Round to 4 decimal places for comparison
+            const versatilityScore = Number(rawScore.toFixed(4));
+
+            // Debug logging
+            console.group(
+              `Versatility calculation for ${color.name} (${color.hex})`
+            );
+            console.log("Raw versatility score:", rawScore);
+            console.log("Rounded versatility score:", versatilityScore);
+            console.log(
+              "Score as percentage:",
+              Math.round(versatilityScore * 100)
+            );
+            console.log("Is highly versatile?", versatilityScore >= 0.35);
+            console.log(
+              "Comparison result:",
+              `${versatilityScore} >= 0.35 = ${versatilityScore >= 0.35}`
+            );
+            console.groupEnd();
+
             return {
               ...color,
-              colorSet, // Add the colorSet to our versatilityData
+              colorSet,
               textOptions: colorSet.textColors.length,
               graphicOptions: colorSet.graphicColors.length,
               versatilityScore,
