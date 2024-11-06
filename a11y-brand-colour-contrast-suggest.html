@@ -399,7 +399,6 @@
 
 /* Versatility section */
 .color-versatility {
-    margin-top: 8px;
     font-size: 0.9em;
 }
 
@@ -435,11 +434,7 @@
     border: 1px solid currentcolor;
 }
 
-.compatible-color-list {
-    list-style: none;
-    padding: 0;
-    margin: 8px 0;
-}
+
 
 .compatible-color-list li {
     display: flex;
@@ -462,11 +457,83 @@
     font-size: 0.9em;
     margin-left: 4px;
 }
+/* Compatibility lists styling */
+.text-compatibility,
+.graphics-compatibility {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+
+.contrast-level {
+    display: inline;
+}
+
+.contrast-level:not(:last-child)::after {
+    content: " and ";
+}
+
+.compatible-color-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5em 0 0.5em 1em;
+}
+
+.compatible-color-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0.25em 0;
+}
+
+
 
 .color-details {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
+    display: flex;
+    gap: 0.5em;
+}
+
+.contrast-ratio {
+    font-size: 0.9em;
+}
+
+.combinations-panel h5 {
+    margin: 1em 0 0.5em;
+    font-size: 1.1em;
+}
+
+.combinations-panel h6 {
+    margin: 1em 0 0.5em;
+    font-size: 0.9em;
+}
+
+.aaa-count, 
+.aa-count {
+    font-weight: 500;
+}
+
+.color-compatibility-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.contrast-breakdown {
+    list-style: circle;
+    padding-left: 1.5em;
+    margin: 0.25em 0;
+}
+
+
+/* Style for the counts */
+.aaa-count,
+.aa-count {
+    font-weight: 500;
+}
+
+.graphic-options {
+    margin-top: 0.5em;
 }
 
     </style>
