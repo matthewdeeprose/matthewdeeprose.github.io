@@ -348,7 +348,7 @@ export class UIManager {
               textOptions: colorSet.textColors.length,
               graphicOptions: colorSet.graphicColors.length,
               versatilityScore,
-              isHighlyVersatile: versatilityScore >= 0.35,
+              isHighlyVersatile: versatilityScore >= 0.345,
             };
           })
           .sort((a, b) => b.versatilityScore - a.versatilityScore);
@@ -515,6 +515,14 @@ ${(() => {
           const isExpanded = button.getAttribute("aria-expanded") === "true";
           button.setAttribute("aria-expanded", !isExpanded);
           targetList.hidden = isExpanded;
+
+          // Add this part to also toggle the explanation
+          const explanation = targetList.querySelector(
+            ".versatility-explanation"
+          );
+          if (explanation) {
+            explanation.style.display = isExpanded ? "none" : "block";
+          }
 
           // Handle grid layout for combination panels
           if (button.classList.contains("show-combinations")) {

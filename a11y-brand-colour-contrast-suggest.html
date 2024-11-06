@@ -540,6 +540,51 @@
         max-width: clamp(320px, 90%, 1000px);
        }
 
+       .versatility-explanation {
+    display: none;
+    background-color: var(--surface-2);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+}
+
+.versatility-explanation h3 {
+    margin-top: 0;
+    color: var(--text-1);
+}
+
+.versatility-explanation h4 {
+    color: var(--text-1);
+    margin: 1.5rem 0 0.75rem 0;
+}
+
+.score-breakdown dl {
+    margin: 0;
+}
+
+.score-breakdown dt {
+    font-weight: bold;
+    color: var(--text-1);
+    margin-top: 1rem;
+}
+
+.score-breakdown dd {
+    margin-left: 1.5rem;
+    color: var(--text-2);
+}
+
+.calculation-example ul {
+    list-style: none;
+    padding-left: 1.5rem;
+}
+
+.calculation-example li {
+    margin: 0.5rem 0;
+    color: var(--text-2);
+}
+
+
+
     </style>
     <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
       <!-- Lock Icon -->
@@ -676,6 +721,45 @@ Black,#000000</pre>
             </summary>
             <div id="uploadStats" class="stats-container" aria-live="polite">
               <!-- Statistics will be displayed here -->
+            </div>
+            <div class="versatility-explanation" aria-labelledby="versatility-heading">
+              <h3 id="versatility-heading">Understanding Versatility Scores</h3>
+              
+              <p>The versatility score measures how well a background color works with other colors in the palette. A higher score means the color is more versatile for different design needs. The score is calculated by combining three factors:</p>
+              
+              <div class="score-breakdown">
+                <h4>Score Components</h4>
+                <dl>
+                  <dt>Enhanced Text Contrast (40% of score)</dt>
+                  <dd>The percentage of colors that achieve AAA-level contrast (7:1 or higher) when used as text on this background. These combinations provide excellent readability for all users.</dd>
+                  
+                  <dt>Standard Text Contrast (35% of score)</dt>
+                  <dd>The percentage of colors that achieve AA-level contrast (4.5:1 to 6.9:1) when used as text. These combinations meet basic accessibility requirements.</dd>
+                  
+                  <dt>Graphic Element Contrast (25% of score)</dt>
+                  <dd>The percentage of colors that can be used for graphics or UI elements (achieving at least 3:1 contrast) on this background.</dd>
+                </dl>
+              </div>
+            
+              <div class="score-interpretation">
+                <h4>Understanding the Results</h4>
+                <ul>
+                  <dt>⭐ Highly Versatile</dt>
+                  <dd>Colors with a score of 34.5% or higher are marked as highly versatile. These colors work well with many other colors in the palette while maintaining accessibility.</dd>
+                </ul>
+              </div>
+            
+              <div class="calculation-example">
+                <h4>Example Calculation</h4>
+                <p>For a background color in a palette of 20 colors:</p>
+                <ul>
+                  <li>If it has AAA contrast with 8 colors: 8/20 × 0.40 = 16%</li>
+                  <li>If it has AA contrast with 6 colors: 6/20 × 0.35 = 10.5%</li>
+                  <li>If it works with 12 colors for graphics: 12/20 × 0.25 = 15%</li>
+                  <li>Total versatility score: 16% + 10.5% + 15% = 41.5%</li>
+                </ul>
+                <p>This background color would be marked as highly versatile since 41.5% > 34.5%.</p>
+              </div>
             </div>
             </details>
             <details>
