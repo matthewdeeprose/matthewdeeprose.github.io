@@ -37,6 +37,10 @@ input[type="checkbox"]:focus-visible {
   outline-offset: 4px;
 }
 
+::placeholder {
+  color: #495961;
+}
+
 .color-reason {
   color: #495961;
 }

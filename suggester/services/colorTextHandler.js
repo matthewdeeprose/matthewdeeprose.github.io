@@ -229,10 +229,29 @@ class ColorTextHandler {
    */
   insertSampleColors() {
     const sampleColors =
-      "White, #FFFFFF\n" +
-      "Black, #000000\n" +
-      "Sky Blue: #87CEEB\n" +
-      "#FF0000";
+      "Pure Black, #000000\n" +
+      "Silver Gray, #CCCCCC\n" +
+      "Snow White, #F8F9FA\n" +
+      "Charcoal Black, #212529\n" +
+      "Royal Purple, #4A148C\n" +
+      "Bright Orange, #FF9800\n" +
+      "Dim Gray, #424242\n" +
+      "Navy Blue, #0D47A1\n" +
+      "Sunset Orange, #F57C00\n" +
+      "Medium Gray, #9E9E9E\n" +
+      "Lush Green, #4CAF50\n" +
+      "Deep Purple, #7B1FA2\n" +
+      "Bright Red, #F44336\n" +
+      "Burnished Orange, #E65100\n" +
+      "Sky Blue, #2196F3\n" +
+      "Crimson Red, #D32F2F\n" +
+      "Maroon Red, #B71C1C\n" +
+      "Forest Green, #1B5E20\n" +
+      "Emerland Green, #388E3C\n" +
+      "Ocean Blue, #1976D2\n" +
+      "Vibrant Purple, #9C27B0\n" +
+      "Stone Gray, #757575\n" +
+      "Graphite Gray, #616161";
 
     if (this.textarea) {
       this.textarea.value = sampleColors;

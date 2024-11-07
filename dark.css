@@ -20,6 +20,19 @@
 
 /* Suggester */
 
+textarea {
+  background: #00131d;
+  color: #fffff4;
+}
+
+::placeholder {
+  color: #9fb1bd;
+}
+
+button.sample-button {
+  outline: 2px solid black;
+}
+
 .sample-format pre {
   background: #00131d;
   color: #fffff4;
