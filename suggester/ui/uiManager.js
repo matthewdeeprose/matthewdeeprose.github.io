@@ -516,14 +516,6 @@ ${(() => {
           button.setAttribute("aria-expanded", !isExpanded);
           targetList.hidden = isExpanded;
 
-          // Add this part to also toggle the explanation
-          const explanation = targetList.querySelector(
-            ".versatility-explanation"
-          );
-          if (explanation) {
-            explanation.style.display = isExpanded ? "none" : "block";
-          }
-
           // Handle grid layout for combination panels
           if (button.classList.contains("show-combinations")) {
             const colorSwatchesList = button.closest(".color-swatches");
@@ -542,6 +534,33 @@ ${(() => {
             );
           }
         });
+      }
+      const toggleButton = document.querySelector(".toggle-backgrounds");
+      const explanation = document.querySelector(".versatility-explanation");
+
+      if (toggleButton && explanation) {
+        // Initial state
+        explanation.style.display =
+          toggleButton.getAttribute("aria-expanded") === "true"
+            ? "block"
+            : "none";
+
+        // Watch for changes
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (
+              mutation.type === "attributes" &&
+              mutation.attributeName === "aria-expanded"
+            ) {
+              explanation.style.display =
+                toggleButton.getAttribute("aria-expanded") === "true"
+                  ? "block"
+                  : "none";
+            }
+          });
+        });
+
+        observer.observe(toggleButton, { attributes: true });
       }
     });
   } // displayUploadStats ends

@@ -536,13 +536,12 @@
     margin-top: 0.5em;
 }
 
-.infoDetails {
+.infoDetails, .versatility-explanation {
         max-width: clamp(320px, 90%, 1000px);
        }
 
        .versatility-explanation {
     display: none;
-    background-color: var(--surface-2);
     padding: 1.5rem;
     border-radius: 0.5rem;
     margin: 1rem 0;
@@ -574,7 +573,6 @@
 }
 
 .calculation-example ul {
-    list-style: none;
     padding-left: 1.5rem;
 }
 
@@ -582,6 +580,45 @@
     margin: 0.5rem 0;
     color: var(--text-2);
 }
+.text-input-container {
+  margin: 1rem ;
+}
+
+.color-input {
+  width: 100%;
+  font-family: monospace;
+  margin-bottom: 0.5rem;
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+}
+
+.format-info {
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+.format-info code {
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.error-message {
+  margin: 0.5rem 0;
+  min-height: 1.5em;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+
+
+
+
 
 
 
@@ -710,6 +747,46 @@ Black,#000000</pre>
                   </div>
                 </div>
               </div>
+              <div class="upload-option">
+                <h3>Enter Colours as Text</h3>
+                <div class="text-input-container">
+                  <label for="colorTextInput" class="sr-only">Enter colours, one per line</label>
+                  <textarea 
+                    id="colorTextInput"
+                    rows="6"
+                    class="color-input"
+                    aria-describedby="formatHelp colorInputError"
+                    placeholder="Enter colours, one per line&#10;Example:&#10;White, #FFFFFF&#10;Black, #000000"
+                  ></textarea>
+                  
+                  <div id="formatHelp" class="sample-format">
+
+                      <div class="format-info">
+                        <p>Enter one colour per line using any of these formats:</p>
+                        <ul>
+                          <li>Name and hex code with comma: <code>White, #FFFFFF</code></li>
+                          <li>Name and hex code with colon: <code>White: #FFFFFF</code></li>
+                          <li>Hex code only: <code>#FFFFFF</code></li>
+                        </ul>
+                        <button type="button" class="sample-button" aria-label="Insert example colours">
+                          Try sample colours
+                        </button>
+                      </div>
+                                     </div>
+              
+                  <div id="colorInputError" class="error-message" role="alert" aria-live="polite"></div>
+              
+                  <div class="button-group">
+                    <button type="button" class="submit-button" aria-label="Add these colours">
+                      Add Colours
+                    </button>
+                    <button type="button" class="clear-button" aria-label="Clear input">
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
               <div id="uploadError" class="error-container" role="alert">
                 <!-- Error messages will be displayed here -->
               </div>
@@ -743,10 +820,10 @@ Black,#000000</pre>
             
               <div class="score-interpretation">
                 <h4>Understanding the Results</h4>
-                <ul>
-                  <dt>⭐ Highly Versatile</dt>
+                <dl>
+                  <dt>Highly Versatile ⭐</dt>
                   <dd>Colors with a score of 34.5% or higher are marked as highly versatile. These colors work well with many other colors in the palette while maintaining accessibility.</dd>
-                </ul>
+                </dl>
               </div>
             
               <div class="calculation-example">
