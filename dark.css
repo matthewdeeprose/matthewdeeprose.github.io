@@ -425,7 +425,7 @@ button {
 }
 
 button:hover,
-button:focus {
+button:focus-visible {
   background-color: #e1e8ec;
   color: #00131d;
   box-shadow: 0 0 0 0.3rem #c1d100 !important;
@@ -552,7 +552,7 @@ button#menu.icon:focus:not(:focus-visible) {
 }
 
 .topnav button:hover,
-.topnav button:focus,
+.topnav button:focus-visible,
 .topnav button.active:focus,
 .topnav button.active:hover {
   background-color: #e1e8ec;

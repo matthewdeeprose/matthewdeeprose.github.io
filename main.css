@@ -1406,7 +1406,7 @@ button {
 }
 
 button:hover,
-button:focus {
+button:focus-visible  {
   transition: 0.3s linear !important;
   cursor: pointer;
   outline: none !important;
@@ -1760,7 +1760,7 @@ form {
     transition: all 0s ease-in-out !important;
   }
   button:hover,
-  button:focus {
+  button:focus-visible  {
     transition: 0s linear !important;
   }
 
