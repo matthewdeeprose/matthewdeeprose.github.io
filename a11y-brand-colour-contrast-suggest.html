@@ -295,7 +295,7 @@
           </details>
           <details id="customisationDetails">
             <summary>
-              <h2>Upload your own colours</h2>
+              <h2 id="upload">Upload your own colours</h2>
             </summary>
             <div id="uploadNotification" class="upload-notification" role="status" aria-live="polite">
               <div class="upload-notification-content">
@@ -445,7 +445,13 @@ Black,#000000</pre>
             <span id="pageMessage" aria-live="assertive" role="alert"></span>
             <button onclick="clearMessage();" class="clearMessageButton">Clear message</button>
           </div>
-          <p>Use the Randomise button to get started!</p>
+          <div id="introText">
+          <p>Default palette is the University of Southampton brand, <a href="#upload" onclick="openDetailsSection('customisationDetails')">upload your own brand</a>.</p>
+            <p>Use the Randomise button to get started!</p>
+
+
+            
+        </div>
           <div class="resourseList2">
             <div class="grid-child">
               <button id="randomizeBtn" class="actionButton regButton" type="button">Randomise</button>
@@ -844,5 +850,41 @@ Black,#000000</pre>
         notification.textContent = message;
       }
     </script>
+        <script>
+          // Function to open details element
+          function openDetailsSection(detailsId) {
+              // Wait for the browser to complete the scroll
+              setTimeout(() => {
+                  const detailsElement = document.getElementById(detailsId);
+                  if (detailsElement) {
+                      detailsElement.open = true;
+                  }
+              }, 100);
+          }
+  
+          // Function to handle hash navigation
+          function handleHashNavigation() {
+              if (window.location.hash) {
+                  const targetId = window.location.hash.split('#')[1];
+                  const targetElement = document.getElementById(targetId);
+                  if (targetElement) {
+                      // Find the closest parent details element
+                      const parentDetails = targetElement.closest('details');
+                      if (parentDetails) {
+                          parentDetails.open = true;
+                      }
+                  }
+              }
+          }
+  
+          // Wait for DOM to be fully loaded
+          document.addEventListener('DOMContentLoaded', handleHashNavigation);
+  
+          // Also handle load event in case resources affect layout
+          window.addEventListener('load', handleHashNavigation);
+  
+          // Handle dynamic hash changes
+          window.addEventListener('hashchange', handleHashNavigation);
+      </script>
   </body>
 </html>

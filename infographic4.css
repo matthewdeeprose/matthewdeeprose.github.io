@@ -1,3 +1,5 @@
+div#introText {margin-top: 2em;}
+
 .upload-container {
   margin: 20px auto;
   padding: 20px;
@@ -55,7 +57,7 @@
 input[type="file"] {
   margin: 10px 0;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #758D9A;
   border-radius: 4px;
 }
 
