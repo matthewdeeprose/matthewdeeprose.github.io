@@ -229,7 +229,7 @@ class ColorTextHandler {
    */
   insertSampleColors() {
     const sampleColors =
-      "Pure Black, #000000\n" +
+      "Midnight Coal, #151414\n" +
       "Silver Gray, #CCCCCC\n" +
       "Snow White, #F8F9FA\n" +
       "Charcoal Black, #212529\n" +
