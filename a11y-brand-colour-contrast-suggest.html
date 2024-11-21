@@ -35,6 +35,7 @@
     <meta name="twitter:image:alt" content="" />
     <meta name="twitter:card" content="summary_large_image" />
     <script type="module" src="suggester/app.js"></script>
+    <script src="https://colorjs.io/dist/color.global.js"></script>
     <script>
       // Swap between colour blind emulations
       function showProta() {
@@ -342,6 +343,20 @@ Black,#000000</pre>
               </div>
               <div class="upload-option">
                 <h3>Enter Colours as Text. Select "Add Colours" when ready.</h3>
+                <div id="formatHelp" class="sample-format">
+
+                  <div class="format-info">
+                    <p>Enter one colour per line using any of these formats:</p>
+                    <ul>
+                      <li>Name and hex code with comma: <code>White, #FFFFFF</code></li>
+                      <li>Name and hex code with colon: <code>White: #FFFFFF</code></li>
+                      <li>Hex code only: <code>#FFFFFF</code></li>
+                    </ul>
+                    <button type="button" class="sample-button" aria-label="Insert example colours">
+                      Try adding example colours
+                    </button>
+                  </div>
+                                 </div>
                 <div class="text-input-container">
                   <label for="colorTextInput">Enter colours, one per line</label>
                   <textarea 
@@ -364,20 +379,7 @@ Black,#000000</pre>
                   <div id="uploadError" class="error-container" role="alert">
                     <!-- Error messages will be displayed here -->
                   </div>
-                  <div id="formatHelp" class="sample-format">
 
-                      <div class="format-info">
-                        <p>Enter one colour per line using any of these formats:</p>
-                        <ul>
-                          <li>Name and hex code with comma: <code>White, #FFFFFF</code></li>
-                          <li>Name and hex code with colon: <code>White: #FFFFFF</code></li>
-                          <li>Hex code only: <code>#FFFFFF</code></li>
-                        </ul>
-                        <button type="button" class="sample-button" aria-label="Insert example colours">
-                          Try adding example colours
-                        </button>
-                      </div>
-                                     </div>
               
                   
               
