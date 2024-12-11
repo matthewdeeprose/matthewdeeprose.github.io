@@ -1,5 +1,13 @@
 {
   "projects": [
+      {
+      "title": "Brand Colour Combination Suggester",
+      "link": "a11y-brand-colour-contrast-suggest.html",
+      "imageSrc": "suggester.png",
+      "imageAlt": "A randomomise button, next to a selection of colours selected for an infographic",
+      "description": "Upload your brand colours and find combinations that meet accessibility guidelines for contrast.",
+	     "isHighlighted": true
+    },
     {
       "title": "SVG Palette Adjuster for CVD",
       "link": "svgCVD.html",
@@ -41,12 +49,12 @@
 	     "isHighlighted": true
     },
     {
-      "title": "Brand Colour Combination Suggester",
+      "title": "UoS Brand Colour Combination Suggester",
       "link": "infographic-colour-generator.html",
       "imageSrc": "suggester.png",
       "imageAlt": "A randomomise button, next to a selection of colours selected for an infographic",
-      "description": "Discover \"on brand\" colour combinations that meet accessibility guidelines.",
-	     "isHighlighted": true
+      "description": "Discover \"on brand\" colour combinations for University of Southampton.",
+	     "isHighlighted": false
     },
     {
       "title": "Brand Palette Colour Contrast Matrix",
