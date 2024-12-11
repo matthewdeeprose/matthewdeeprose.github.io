@@ -1,5 +1,12 @@
 {
   "updates": [
+        {
+      "title": "Brand Colour Combination Suggester",
+      "link": "a11y-brand-colour-contrast-suggest.html",
+      "imageSrc": "suggester.png",
+      "imageAlt": "A randomomise button, next to a selection of colours selected for an infographic",
+      "description": "Upload your brand colours and find combinations that meet accessibility guidelines for contrast.",
+    },
     {
       "title": "AI and digital accessibility",
       "link": "genAI_a11y_efficiency.html",
