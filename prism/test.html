@@ -13,6 +13,50 @@
 <body>
 	
 	<script src="prism.js"></script>
+			<div class="codeWrapper">
+	<pre><code class="language-html">
+&lt;!-- Fieldset groups related radio inputs and legend provides group description -->
+&lt;fieldset class="gender-fieldset">
+    &lt;legend class="gender-legend">
+        Gender
+        &lt;!-- Required text visible to all users -->
+        &lt;span class="required-indicator">(Required)&lt;/span>
+    &lt;/legend>
+    
+    &lt;div class="radio-group">
+        &lt;!-- Single name attribute groups radio buttons -->
+        &lt;div class="radio-option">
+            &lt;input type="radio" 
+                   id="gender-male" 
+                   name="gender" 
+                   value="male" 
+                   required>
+            &lt;label for="gender-male">Male&lt;/label>
+        &lt;/div>
+
+        &lt;div class="radio-option">
+            &lt;input type="radio" 
+                   id="gender-female" 
+                   name="gender" 
+                   value="female" 
+                   required>
+            &lt;label for="gender-female">Female&lt;/label>
+        &lt;/div>
+
+        &lt;div class="radio-option">
+            &lt;input type="radio" 
+                   id="gender-other" 
+                   name="gender" 
+                   value="other" 
+                   required>
+            &lt;label for="gender-other">Other&lt;/label>
+        &lt;/div>
+    &lt;/div>
+&lt;/fieldset>
+</code></pre>
+</div>
+	
+	
 		<div class="codeWrapper">
 	<pre><code class="language-css">
 	
