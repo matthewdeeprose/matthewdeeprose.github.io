@@ -80,7 +80,7 @@
     <meta name="twitter:image:alt" content="" />
     <meta name="twitter:card" content="summary_large_image" />
     <script type="module" src="suggester/app.js"></script>
-       <script>
+    <script>
       // Swap between colour blind emulations
       function showProta() {
         console.log("\n");
@@ -466,18 +466,21 @@
             <summary>
               <h2>Introduction</h2>
             </summary>
-            <p id="explainSuggester">
-              When we use a corporate brand, the requirement to ensure we make
-              accessible choices may leave us reliant on a small set of colours.
-              With each use of the Randomise button, a background colour, text
-              colour, and three graphic colours will appear at random from the
-              <a
-                href="https://sotonac.sharepoint.com/teams/Brand/SitePages/Visual-Identity/ColourPalette.aspx"
-                >UoS brand</a
-              >. This may help you to choose a new accessible and on-brand
-              colour combination for your next document, presentation, or
-              infographic.
-            </p>
+            <div class="infoDetails">
+              <p id="explainSuggester">
+                When we use a corporate brand, the requirement to ensure we make
+                accessible choices may leave us reliant on a small set of
+                colours. With each use of the Randomise button, a background
+                colour, text colour, and three graphic colours will appear at
+                random from the
+                <a
+                  href="https://sotonac.sharepoint.com/teams/Brand/SitePages/Visual-Identity/ColourPalette.aspx"
+                  >UoS brand</a
+                >. This may help you to choose a new accessible and on-brand
+                colour combination for your next document, presentation, or
+                infographic.
+              </p>
+            </div>
           </details>
           <details id="customisationDetails">
             <summary>
@@ -845,6 +848,14 @@ HEX
                     aria-hidden="true"
                   ></span>
                   <br />
+                  <span class="details">APCA Rating: </span
+                  ><span
+                    id="tcontrastAPCA"
+                    class="details result"
+                    aria-hidden="true"
+                  ></span>
+                  <span id="tcontrastAPCALevel" class="details result"></span>
+                  <br />
                   <span class="arrayDetails"
                     >Text contrast array used:
                     <span class="details" id="tcontrastArray"></span>
@@ -865,6 +876,14 @@ HEX
                   <span id="g1contrast" class="details result"></span>
                   <br />WCAG Rating:
                   <span class="details result" id="g1contrastWCAG"></span>
+                  <br />
+                  <span class="details">APCA Rating: </span
+                  ><span
+                    id="g1contrastAPCA"
+                    class="details result"
+                    aria-hidden="true"
+                  ></span>
+                  <span id="g1contrastAPCALevel" class="details result"></span>
                 </p>
                 <p class="details">
                   Graphic 2 <span>&#9825;</span> colour:
@@ -882,6 +901,14 @@ HEX
                   <span class="details result" id="g2contrast"></span>
                   <br />WCAG Rating:
                   <span class="details result" id="g2contrastWCAG"></span>
+                  <br />
+                  <span class="details">APCA Rating: </span
+                  ><span
+                    id="g2contrastAPCA"
+                    class="details result"
+                    aria-hidden="true"
+                  ></span>
+                  <span id="g2contrastAPCALevel" class="details result"></span>
                 </p>
                 <p class="details">
                   Graphic 3 <span>&#10026;</span> colour:
@@ -902,6 +929,14 @@ HEX
                     class="details result"
                     aria-hidden="true"
                   ></span>
+                  <br />
+                  <span class="details">APCA Rating: </span
+                  ><span
+                    id="g3contrastAPCA"
+                    class="details result"
+                    aria-hidden="true"
+                  ></span>
+                  <span id="g3contrastAPCALevel" class="details result"></span>
                 </p>
               </section>
             </div>
@@ -910,103 +945,318 @@ HEX
             <h2>Results</h2>
             <span id="srResults" aria-live="polite"></span>
           </section>
-          <section class="infoDetails">
-            <h2>What does "WCAG Rating" mean?</h2>
-            <p>
-              WCAG means the Web Content Accessibility Guidelines. The rating
-              refers to a number of WCAG success criteria outlined below and for
-              what purpose the level of contrast is suitable.
-            </p>
-            <dl>
-              <dt class="infoExplain">G: Contrast ratio is at least 3:1</dt>
-              <dd class="infoExplain">
+          <section class="">
+            <details>
+              <summary>
+                <h2>What does "WCAG Rating" mean?</h2>
+              </summary>
+              <div class="infoDetails">
+                <p>
+                  WCAG means the Web Content Accessibility Guidelines. The
+                  rating refers to a number of WCAG success criteria outlined
+                  below and for what purpose the level of contrast is suitable.
+                </p>
+                <dl>
+                  <dt class="infoExplain">G: Contrast ratio is at least 3:1</dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Use for graphics / icons, but not text.
+                      </li>
+                      <li>
+                        Suitable for User Interface Components and Graphical
+                        Objects where no text is used (<a
+                          href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html"
+                          >WCAG 2.1 Success Criterion 1.4.11 Non-text
+                          Contrast</a
+                        >).
+                      </li>
+                      <li>
+                        Suitable for large-scale text (at least 18 point if not
+                        bold and at least 14 point if bold) and images of
+                        large-scale text (<a
+                          href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html"
+                          >WCAG 2.1 Success Criterion 1.4.3 Contrast
+                          (Minimum)</a
+                        >).
+                      </li>
+                    </ul>
+                  </dd>
+                  <dt class="infoExplain">
+                    AA: Contrast ratio is at least 4.5:1
+                  </dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Use for text, graphics or icons.
+                      </li>
+                      <li>
+                        Suitable for the visual representation of text and
+                        images of text to minimum level (<a
+                          href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html"
+                          >WCAG 2.1 Success Criterion 1.4.3 Contrast
+                          (Minimum)</a
+                        >).
+                      </li>
+                      <li>
+                        Suitable for large-scale text (at least 18 point if not
+                        bold and at least 14 point if bold) and images of
+                        large-scale text (<a
+                          href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced"
+                          >WCAG 2.1 Success Criterion 1.4.6 Contrast
+                          (Enhanced)</a
+                        >).
+                      </li>
+                      <li>
+                        Suitable for User Interface Components and Graphical
+                        Objects where no text is used (<a
+                          href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html"
+                          >WCAG 2.1 Success Criterion 1.4.11 Non-text
+                          Contrast)</a
+                        >.
+                      </li>
+                    </ul>
+                  </dd>
+                  <dt class="infoExplain">
+                    AAA: Contrast ratio is at least 7:1
+                  </dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Use for text, graphics or icons. This meets the enhanced
+                        AAA level.
+                      </li>
+                      <li>
+                        Suitable for the visual representation of text and
+                        images of text at enhanced level (<a
+                          href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced"
+                          >WCAG 2.1 Success Criterion 1.4.6 Contrast
+                          (Enhanced)</a
+                        >).
+                      </li>
+                      <li>
+                        Suitable for User Interface Components and Graphical
+                        Objects where no text is used (<a
+                          href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html"
+                          >WCAG 2.1 Success Criterion 1.4.11 Non-text
+                          Contrast</a
+                        >).
+                      </li>
+                    </ul>
+                  </dd>
+                </dl>
+              </div>
+            </details>
+          </section>
+          <section class="">
+            <details>
+              <summary>
+                <h2>What does "APCA Rating" mean?</h2>
+              </summary>
+              <div class="infoDetails">
+                <p>
+                  APCA (Advanced Perceptual Contrast Algorithm) provides a
+                  sophisticated assessment of contrast that considers font size,
+                  weight, and perceptual factors. There are two conformance
+                  levels: Bronze (basic) and Silver (precise).
+                </p>
+
+                <h3>APCA and Traditional Contrast Ratios</h3>
+                <p>
+                  While APCA uses a different scale than traditional contrast
+                  ratios, these approximate comparisons can help understand the
+                  levels:
+                </p>
+                <ul>
+                  <li>APCA Lc 90 is similar to ISO 10:1 contrast ratio</li>
+                  <li>APCA Lc 75 is similar to WCAG 7:1 contrast ratio</li>
+                  <li>APCA Lc 60 is similar to WCAG 4.5:1 contrast ratio</li>
+                  <li>APCA Lc 45 is similar to WCAG 3:1 contrast ratio</li>
+                </ul>
+
+                <h3>Silver Level Conformance Guidelines</h3>
+                <p>
+                  For the most accurate accessibility, APCA recommends using the
+                  Silver level guidelines, which provide specific contrast
+                  requirements based on font size and weight combinations.
+                </p>
+
+                <dl>
+                  <dt class="infoExplain">
+                    Key Points for Silver Conformance:
+                  </dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>Font size is measured in CSS pixels (px)</li>
+                      <li>
+                        Reference fonts include Helvetica, Arial, Verdana,
+                        Montserrat, Roboto, and Calibri
+                      </li>
+                      <li>
+                        Serif fonts (like Times, Georgia) should use the next
+                        higher contrast level
+                      </li>
+                      <li>
+                        Negative APCA values (light text on dark) use the
+                        absolute value
+                      </li>
+                    </ul>
+                  </dd>
+
+                  <dt class="infoExplain">
+                    Preferred (Lc 90): Highest Contrast Level
+                  </dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Required for small text and critical reading. Similar to
+                        ISO 10:1.
+                      </li>
+                      <li>
+                        Required for text smaller than 16px at normal weight
+                        (400)
+                      </li>
+                      <li>Required for text at 14px regardless of weight</li>
+                      <li>Essential for body text in small sizes</li>
+                      <li>Comparable to ISO 10:1 contrast ratio standard</li>
+                    </ul>
+                  </dd>
+
+                  <dt class="infoExplain">High (Lc 75): Standard Body Text</dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Good for most body text with proper size/weight. Similar
+                        to WCAG AAA (7:1).
+                      </li>
+                      <li>Minimum for 16px text at normal weight (400)</li>
+                      <li>Can be used with 18px text at weight 300</li>
+                      <li>Similar to WCAG 7:1 contrast ratio (AAA level)</li>
+                      <li>
+                        For body text blocks, add Lc 15 to the minimum
+                        requirement
+                      </li>
+                    </ul>
+                  </dd>
+
+                  <dt class="infoExplain">Standard (Lc 60): General Content</dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Suitable for larger text and headings. Similar to WCAG
+                        AA (4.5:1).
+                      </li>
+                      <li>Minimum for 24px text at normal weight (400)</li>
+                      <li>Can be used with 21px text at weight 500</li>
+                      <li>Similar to WCAG 4.5:1 contrast ratio (AA level)</li>
+                      <li>Appropriate for most headings and larger content</li>
+                    </ul>
+                  </dd>
+
+                  <dt class="infoExplain">Minimum (Lc 45): Large Text</dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Minimum for large text and UI elements. Similar to WCAG
+                        graphics requirement (3:1).
+                      </li>
+                      <li>Suitable for text 32px and larger</li>
+                      <li>Similar to WCAG 3:1 contrast ratio</li>
+                      <li>Acceptable for large UI elements and headlines</li>
+                      <li>Equivalent to WCAG minimum for graphical elements</li>
+                    </ul>
+                  </dd>
+
+                  <dt class="infoExplain">Low (Lc 30): Absolute Minimum</dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Minimum threshold for any text.
+                      </li>
+                      <li>Absolute minimum for any readable text</li>
+                      <li>Limited to very large text sizes (48px+)</li>
+                      <li>Should not be used for essential information</li>
+                    </ul>
+                  </dd>
+
+                  <dt class="infoExplain">Insufficient (Below Lc 30)</dt>
+                  <dd class="infoExplain">
+                    <ul>
+                      <li>
+                        <a
+                          href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
+                          >Tl;dr:</a
+                        >
+                        Not suitable for text; decorative only.
+                      </li>
+                      <li>Not permitted for any text content</li>
+                      <li>Only acceptable for decorative elements</li>
+                      <li>Should be avoided for any meaningful content</li>
+                    </ul>
+                  </dd>
+                </dl>
+
+                <h3>Important Notes</h3>
                 <ul>
                   <li>
-                    <a
-                      href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
-                      >Tl;dr:</a
-                    >
-                    Use for graphics / icons, but not text.
+                    Decorative and thin fonts should be avoided for body text
                   </li>
                   <li>
-                    Suitable for User Interface Components and Graphical Objects
-                    where no text is used (<a
-                      href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html"
-                      >WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a
-                    >).
+                    Compare unusual fonts to standard fonts like Helvetica for
+                    proper sizing
                   </li>
                   <li>
-                    Suitable for large-scale text (at least 18 point if not bold
-                    and at least 14 point if bold) and images of large-scale
-                    text (<a
-                      href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html"
-                      >WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a
-                    >).
+                    Avoid using "-webkit-font-smoothing: antialiasing" as it can
+                    reduce contrast
+                  </li>
+                  <li>
+                    For body text blocks, add Lc 15 to the minimum contrast
+                    requirement
+                  </li>
+                  <li>
+                    Font weights below 300 should generally be avoided for
+                    readable text
                   </li>
                 </ul>
-              </dd>
-              <dt class="infoExplain">AA: Contrast ratio is at least 4.5:1</dt>
-              <dd class="infoExplain">
-                <ul>
-                  <li>
-                    <a
-                      href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
-                      >Tl;dr:</a
-                    >
-                    Use for text, graphics or icons.
-                  </li>
-                  <li>
-                    Suitable for the visual representation of text and images of
-                    text to minimum level (<a
-                      href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html"
-                      >WCAG 2.1 Success Criterion 1.4.3 Contrast (Minimum)</a
-                    >).
-                  </li>
-                  <li>
-                    Suitable for large-scale text (at least 18 point if not bold
-                    and at least 14 point if bold) and images of large-scale
-                    text (<a
-                      href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced"
-                      >WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a
-                    >).
-                  </li>
-                  <li>
-                    Suitable for User Interface Components and Graphical Objects
-                    where no text is used (<a
-                      href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html"
-                      >WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast)</a
-                    >.
-                  </li>
-                </ul>
-              </dd>
-              <dt class="infoExplain">AAA: Contrast ratio is at least 7:1</dt>
-              <dd class="infoExplain">
-                <ul>
-                  <li>
-                    <a
-                      href="https://www.howtogeek.com/435266/what-does-tldr-mean-and-how-do-you-use-it/"
-                      >Tl;dr:</a
-                    >
-                    Use for text, graphics or icons. This meets the enhanced AAA
-                    level.
-                  </li>
-                  <li>
-                    Suitable for the visual representation of text and images of
-                    text at enhanced level (<a
-                      href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced"
-                      >WCAG 2.1 Success Criterion 1.4.6 Contrast (Enhanced)</a
-                    >).
-                  </li>
-                  <li>
-                    Suitable for User Interface Components and Graphical Objects
-                    where no text is used (<a
-                      href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html"
-                      >WCAG 2.1 Success Criterion 1.4.11 Non-text Contrast</a
-                    >).
-                  </li>
-                </ul>
-              </dd>
-            </dl>
+                <p>
+                  <strong>Note:</strong> APCA values can be positive or
+                  negative, but the absolute value determines the contrast
+                  level.
+                </p>
+              </div>
+            </details>
           </section>
           <script src="scripts/chroma.min.js"></script>
         </article>

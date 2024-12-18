@@ -21,6 +21,7 @@ import { ColorStorage } from "./services/colorStorage.js";
 import { FileHandler } from "./services/fileHandler.js";
 import { ColorTextHandler } from "./services/colorTextHandler.js";
 import { UIManager } from "./ui/uiManager.js";
+import { ContrastChecker } from "./services/contrastChecker.js";
 
 export class ColorChecker {
   /**
@@ -34,6 +35,7 @@ export class ColorChecker {
     this.storage = new ColorStorage();
     this.uiManager = null;
     this.initialized = false;
+    this.contrastChecker = new ContrastChecker();
     console.log("ColorChecker instance created");
   }
 
@@ -42,6 +44,8 @@ export class ColorChecker {
    * @returns {Object} Object containing all required DOM elements
    * @throws {Error} If any required elements are missing
    */
+  // Inside colorChecker.js, update the getDomElements method:
+
   getDomElements() {
     try {
       const elements = {
@@ -71,13 +75,22 @@ export class ColorChecker {
           "tcontrastWCAG",
           "Text WCAG rating display"
         ),
+        // Add new APCA elements for text
+        tcontrastAPCA: this.getRequiredElement(
+          "tcontrastAPCA",
+          "Text APCA contrast display"
+        ),
+        tcontrastAPCALevel: this.getRequiredElement(
+          "tcontrastAPCALevel",
+          "Text APCA level display"
+        ),
 
         // Graphic color elements
         icon1: this.getRequiredElement("icon1", "Graphic 1 icon"),
         icon2: this.getRequiredElement("icon2", "Graphic 2 icon"),
         icon3: this.getRequiredElement("icon3", "Graphic 3 icon"),
 
-        // Graphic color boxes and info
+        // Graphic 1 elements
         g1colourSpan1: this.getRequiredElement(
           "g1colourSpan1",
           "Graphic 1 color code"
@@ -91,11 +104,20 @@ export class ColorChecker {
           "g1contrastWCAG",
           "Graphic 1 WCAG rating"
         ),
+        g1contrastAPCA: this.getRequiredElement(
+          "g1contrastAPCA",
+          "Graphic 1 APCA contrast"
+        ),
+        g1contrastAPCALevel: this.getRequiredElement(
+          "g1contrastAPCALevel",
+          "Graphic 1 APCA level"
+        ),
         gfx1ColorName: this.getRequiredElement(
           "gfx1ColorName",
           "Graphic 1 color name"
         ),
 
+        // Graphic 2 elements
         g2colourSpan1: this.getRequiredElement(
           "g2colourSpan1",
           "Graphic 2 color code"
@@ -109,11 +131,20 @@ export class ColorChecker {
           "g2contrastWCAG",
           "Graphic 2 WCAG rating"
         ),
+        g2contrastAPCA: this.getRequiredElement(
+          "g2contrastAPCA",
+          "Graphic 2 APCA contrast"
+        ),
+        g2contrastAPCALevel: this.getRequiredElement(
+          "g2contrastAPCALevel",
+          "Graphic 2 APCA level"
+        ),
         gfx2ColorName: this.getRequiredElement(
           "gfx2ColorName",
           "Graphic 2 color name"
         ),
 
+        // Graphic 3 elements
         g3colourSpan1: this.getRequiredElement(
           "g3colourSpan1",
           "Graphic 3 color code"
@@ -127,6 +158,14 @@ export class ColorChecker {
           "g3contrastWCAG",
           "Graphic 3 WCAG rating"
         ),
+        g3contrastAPCA: this.getRequiredElement(
+          "g3contrastAPCA",
+          "Graphic 3 APCA contrast"
+        ),
+        g3contrastAPCALevel: this.getRequiredElement(
+          "g3contrastAPCALevel",
+          "Graphic 3 APCA level"
+        ),
         gfx3ColorName: this.getRequiredElement(
           "gfx3ColorName",
           "Graphic 3 color name"
@@ -138,11 +177,13 @@ export class ColorChecker {
           "Info graphic box"
         ),
         infoTexT: this.getRequiredElement("infoTexT", "Info text display"),
+
         // Counter display element
         counterDisplay: this.getRequiredElement(
           "counterDisplay",
           "Randomize counter display"
         ),
+
         // Screen reader and accessibility elements
         srResults: this.getRequiredElement(
           "srResults",

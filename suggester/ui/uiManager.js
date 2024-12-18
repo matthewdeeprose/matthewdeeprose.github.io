@@ -15,6 +15,7 @@
  */
 // Add this import at the top of uiManager.js
 import { TemplateBuilder } from "../templates/templateBuilder.js";
+import { ContrastChecker } from "../services/contrastChecker.js";
 
 export class UIManager {
   /**
@@ -108,24 +109,44 @@ export class UIManager {
   }
 
   /**
+   * Format APCA contrast value with Lc prefix
+   * @param {number} contrast - The APCA contrast value
+   * @returns {string} Formatted APCA value with Lc prefix
+   */
+  formatAPCAValue(contrast) {
+    // Keep the negative if present, format to 1 decimal place
+    return `Lc ${contrast.toFixed(1)}`;
+  }
+
+  /**
    * Updates text color-related elements and contrast information
    * @param {string} backgroundColor - Hex code for background color
    * @param {string} textColor - Hex code for text color
    */
   updateTextColor(backgroundColor, textColor) {
     const { elements } = this;
-    const textContrastRatio = chroma
-      .contrast(textColor, backgroundColor)
-      .toFixed(2);
+    const contrastChecker = new ContrastChecker();
+    const contrast = contrastChecker.calculateContrast(
+      textColor,
+      backgroundColor
+    );
 
     // Update text color display
     elements.tcolor.textContent = textColor;
-    elements.tColorName.textContent = `(${this.getColorName(textColor)})`;
+    elements.tColorName.textContent = `(${this.colorStorage.getColorName(
+      textColor
+    )})`;
     elements.tColorColor.style.backgroundColor = textColor;
 
-    // Update contrast information
-    elements.tcontrast.textContent = `${textContrastRatio}:1`;
-    elements.tcontrastWCAG.textContent = this.getWcagRating(textContrastRatio);
+    // Update WCAG contrast information
+    elements.tcontrast.textContent = `${contrast.wcag.ratio.toFixed(2)}:1`;
+    elements.tcontrastWCAG.textContent = contrast.wcag.rating;
+
+    // Update APCA contrast information with Lc prefix
+    elements.tcontrastAPCA.textContent = this.formatAPCAValue(
+      contrast.apca.contrast
+    );
+    elements.tcontrastAPCALevel.textContent = contrast.apca.compliance.level;
 
     // Apply text color to sample text
     elements.infoTexT.style.color = textColor;
@@ -137,9 +158,14 @@ export class UIManager {
    * @param {Array<string>} graphicColors - Array of hex codes for graphic colors
    */
   updateGraphicColors(backgroundColor, graphicColors) {
+    const contrastChecker = new ContrastChecker();
+
     graphicColors.forEach((color, index) => {
       const num = index + 1;
-      const contrastRatio = chroma.contrast(color, backgroundColor).toFixed(2);
+      const contrast = contrastChecker.calculateContrast(
+        color,
+        backgroundColor
+      );
 
       // Update color samples
       this.elements[`icon${num}`].style.color = color;
@@ -147,22 +173,26 @@ export class UIManager {
 
       // Update color information
       this.elements[`g${num}colourSpan1`].textContent = color;
-      this.elements[`g${num}contrast`].textContent = `${contrastRatio}:1`;
-      this.elements[`g${num}contrastWCAG`].textContent =
-        this.getWcagRating(contrastRatio);
-      this.elements[`gfx${num}ColorName`].textContent = `(${this.getColorName(
-        color
-      )})`;
+
+      // Update WCAG contrast
+      this.elements[
+        `g${num}contrast`
+      ].textContent = `${contrast.wcag.ratio.toFixed(2)}:1`;
+      this.elements[`g${num}contrastWCAG`].textContent = contrast.wcag.rating;
+
+      // Update APCA contrast with Lc prefix
+      this.elements[`g${num}contrastAPCA`].textContent = this.formatAPCAValue(
+        contrast.apca.contrast
+      );
+      this.elements[`g${num}contrastAPCALevel`].textContent =
+        contrast.apca.compliance.level;
+
+      this.elements[
+        `gfx${num}ColorName`
+      ].textContent = `(${this.colorStorage.getColorName(color)})`;
     });
   }
 
-  /**
-   * Create and update the color management UI with improved accessibility
-   * @param {Array} colors - Array of color objects
-   * @param {Set} activeColors - Set of currently active color hexes
-   * @param {Function} onColorToggle - Callback for when a color is toggled
-   * @param {Function} onToggleAll - Callback for when select all/none is toggled
-   */
   /**
    * Create and update the color management UI with improved accessibility
    * @param {Array} colors Array of color objects
@@ -401,30 +431,42 @@ export class UIManager {
       return;
     }
 
-    const textContrastRatio = chroma
-      .contrast(textColor, backgroundColor)
-      .toFixed(2);
-    const textWCAG = this.getWcagRating(textContrastRatio);
+    const contrastChecker = new ContrastChecker();
+    const textContrast = contrastChecker.calculateContrast(
+      textColor,
+      backgroundColor
+    );
 
     let srText = `New color combination selected. `;
     srText += `Background color is ${this.getColorName(
       backgroundColor
     )} (${backgroundColor}). `;
     srText += `Text color is ${this.getColorName(textColor)} (${textColor}) `;
-    srText += `with contrast ratio ${textContrastRatio}:1, WCAG level ${textWCAG}. `;
+    srText += `with WCAG contrast ${textContrast.wcag.ratio.toFixed(1)}:1 (${
+      textContrast.wcag.rating
+    }) `;
+    srText += `and APCA contrast ${this.formatAPCAValue(
+      textContrast.apca.contrast
+    )} (${textContrast.apca.compliance.level}). `;
 
     graphicColors.forEach((color, index) => {
-      const contrastRatio = chroma.contrast(color, backgroundColor).toFixed(2);
-      const wcagRating = this.getWcagRating(contrastRatio);
+      const contrast = contrastChecker.calculateContrast(
+        color,
+        backgroundColor
+      );
       srText += `Graphic element ${index + 1} uses ${this.getColorName(
         color
       )} (${color}) `;
-      srText += `with contrast ratio ${contrastRatio}:1, WCAG level ${wcagRating}. `;
+      srText += `with WCAG contrast ${contrast.wcag.ratio.toFixed(1)}:1 (${
+        contrast.wcag.rating
+      }) `;
+      srText += `and APCA contrast ${this.formatAPCAValue(
+        contrast.apca.contrast
+      )} (${contrast.apca.compliance.level}). `;
     });
 
     this.elements.srResults.textContent = srText.trim();
   }
-
   /**
    * Determine WCAG compliance level based on contrast ratio
    * @param {number} contrastRatio - The calculated contrast ratio
