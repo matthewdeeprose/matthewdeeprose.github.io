@@ -191,7 +191,7 @@
       "slidesText": "Accessible Learning using Blackboard Ally"
     }
   ],
-  "2024": [
+"2024": [
     {
       "date": "19-Dec",
       "sessionTitle": "International Ally User Group: Review of 2024 and Ally Christmas Quiz",
@@ -401,6 +401,18 @@
       "recordingText": "January 2024 Recording Link",
       "slidesLink": "https://blackboard.soton.ac.uk/bbcswebdav/xid-27121831_1",
       "slidesText": "Slides: Inclusive Design for Academic Content: Sharing the learning journey in achieving accessibility"
+    }
+  ],
+  "2025": [
+    {
+      "date": "23-Jan",
+      "sessionTitle": "Creating a culture of accessibility.",
+      "institution": "University of Phoenix",
+      "presenters": "Kelly Hermann",
+      "recordingLink": "",
+      "recordingText": "TBC",
+      "slidesLink": "",
+      "slidesText": "TBC"
     }
   ]
 }
