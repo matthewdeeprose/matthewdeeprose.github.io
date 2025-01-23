@@ -404,16 +404,6 @@
     }
   ],
   "2025": [
-    {
-      "date": "23-Jan",
-      "sessionTitle": "Creating a culture of accessibility.",
-      "institution": "University of Phoenix",
-      "presenters": "Kelly Hermann",
-      "recordingLink": "",
-      "recordingText": "TBC",
-      "slidesLink": "https://blackboard.soton.ac.uk/bbcswebdav/xid-31376244_1",
-      "slidesText": "Slides: Creating a culture of accessibility."
-    },
 	{
       "date": "27-Feb",
       "sessionTitle": "Advancing Accessibility in Higher Education: A Collaborative Approach.",
@@ -433,6 +423,16 @@
       "recordingText": "TBC",
       "slidesLink": "",
       "slidesText": "TBC"
+    },
+	    {
+      "date": "23-Jan",
+      "sessionTitle": "Creating a culture of accessibility.",
+      "institution": "University of Phoenix",
+      "presenters": "Kelly Hermann",
+      "recordingLink": "",
+      "recordingText": "TBC",
+      "slidesLink": "https://blackboard.soton.ac.uk/bbcswebdav/xid-31376244_1",
+      "slidesText": "Slides: Creating a culture of accessibility."
     }
   ]
 }
