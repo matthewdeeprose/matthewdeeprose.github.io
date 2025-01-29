@@ -1,5 +1,11 @@
 /*Light mode */
 
+/* Image CVD */
+        .upload-container.drag-over {
+            background-color: #758D9A;
+        }
+		
+
 /* Versatility section */
 .versatility-score {
   color: #495961;
