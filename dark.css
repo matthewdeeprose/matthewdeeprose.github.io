@@ -3,6 +3,7 @@
 /* Image CVD */
         .upload-container.drag-over {
             background-color: #495961 !important;
+            border: 0px dashed currentcolor;
         }
 
 /* Progress Bar Theme Colors */

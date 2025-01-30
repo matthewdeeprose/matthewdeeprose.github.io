@@ -3,6 +3,7 @@
 /* Image CVD */
         .upload-container.drag-over {
             background-color: #758D9A;
+			            border: 0px dashed currentcolor;
         }
 		
 
