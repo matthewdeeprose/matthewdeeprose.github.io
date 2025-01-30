@@ -35,110 +35,115 @@
       <meta name="twitter:image:alt" content=""/>
       <meta name="twitter:card" content="summary_large_image"/>
 	      <style>
-      .page-wrap > * {
-        grid-column: 1/-1 !important;
-        grid-row: auto !important;
-      }
-	  
-	          .size-control {
-            margin: 20px 0;
-            display: none;
-        }
+ .page-wrap > * {
+  grid-column: 1/-1 !important;
+  grid-row: auto !important;
+}
 
-        .size-control input[type="range"] {
-            width: 100%;
-            margin: 10px 0;
-        }
+.size-control {
+  margin: 20px 0;
+  display: none;
+}
 
-        .size-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.875rem;
-        }
+.size-control input[type="range"] {
+  width: 100%;
+  margin: 10px 0;
+}
 
-        .image-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--container-width, 400px)), 1fr));
-            gap: 2rem;
-            margin-top: 20px;
-            max-width: 100%;
-            padding: 0 1rem;
-        }
+.size-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
 
-        .image-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--container-width, 400px)), 1fr)
+  );
+  gap: 2rem;
+  margin-top: 20px;
+  max-width: 100%;
+  padding: 0 1rem;
+}
 
-        .image-container h2 {
-            margin-bottom: 10px;
-            font-size: 1.2rem;
-        }
+.image-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
-        .image-wrapper {
-            position: relative;
-            width: 250px; /* Initial width */
-            margin: 0 auto;
-            max-width: calc(100% - 2rem); /* Ensure container doesn't overflow its grid cell */
-        }
+.image-container h2 {
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
 
-        .image-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
+.image-wrapper {
+  position: relative;
+  width: 250px; /* Initial width */
+  margin: 0 auto;
+  max-width: calc(
+    100% - 2rem
+  ); /* Ensure container doesn't overflow its grid cell */
+}
 
-        @media (max-width: 1200px) {
-            .image-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .image-wrapper {
-                width: min(100%, 800px) !important;
-            }
-        }
-		
-		        .upload-container {
-            border: 2px dashed currentcolor;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-		.size-value {
-    text-align: center;
-    margin: 0.5rem 0;
-    font-weight: 600;
+.image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 
+@media (max-width: 1200px) {
+  .image-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .image-wrapper {
+    width: min(100%, 800px) !important;
+  }
+}
+
+.upload-container {
+  border: 2px dashed currentcolor;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  border-radius: 4px;
+}
+.size-value {
+  text-align: center;
+  margin: 0.5rem 0;
+  font-weight: 600;
 }
 /* wider border just for this page */
 @media (min-width: 60rem) {
-	.page-wrap {
-		margin: 0 5% 0 5%;
-	}
+  .page-wrap {
+    margin: 0 5% 0 5%;
+  }
 }
 
-        /* Hide file input visually while keeping it accessible */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-        }
-		
-		        .error-message {
-            color: #d32f2f;
-            background-color: #ffebee;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-            display: none;
-        }
+/* Hide file input visually while keeping it accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.error-message {
+  color: #d32f2f;
+  background-color: #ffebee;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+  display: none;
+}
+
 	  
 	  /* Filters */
 
@@ -270,7 +275,7 @@
             aria-label="Upload image"
         >
         <button class="upload-button" onclick="document.getElementById('fileInput').click()">
-            Choose Image
+            Choose image
         </button>
         <p class="upload-text">or drag and drop here</p>
         <p class="upload-text">Supported formats: PNG, JPEG, WebP</p>
@@ -279,7 +284,7 @@
     <div class="error-message" role="alert" id="errorMessage"></div>
 
     <div class="size-control" id="sizeControl">
-        <label for="sizeSlider">Adjust image</label>
+        <label for="sizeSlider">Adjust image size</label>
 		        <div class="size-value" id="sizeValue" role="status" aria-live="polite">
             Current width: 250 pixels
         </div>
@@ -471,141 +476,144 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script>
          document.addEventListener('DOMContentLoaded', function() {
-            const fileInput = document.getElementById('fileInput');
-            const uploadContainer = document.getElementById('uploadContainer');
-            const errorMessage = document.getElementById('errorMessage');
-            const sizeControl = document.getElementById('sizeControl');
-            const sizeSlider = document.getElementById('sizeSlider');
-            const imageWrappers = document.querySelectorAll('.image-wrapper');
-            
-            let currentImage = null;
-            let aspectRatio = 1;
+             const fileInput = document.getElementById('fileInput');
+             const uploadContainer = document.getElementById('uploadContainer');
+             const errorMessage = document.getElementById('errorMessage');
+             const sizeControl = document.getElementById('sizeControl');
+             const sizeSlider = document.getElementById('sizeSlider');
+             const imageWrappers = document.querySelectorAll('.image-wrapper');
 
-            // File upload handling
-            fileInput.addEventListener('change', handleFileSelect);
-            
-            // Drag and drop handling
-            uploadContainer.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                uploadContainer.classList.add('drag-over');
-            });
+             let currentImage = null;
+             let aspectRatio = 1;
 
-            uploadContainer.addEventListener('dragleave', function() {
-                uploadContainer.classList.remove('drag-over');
-            });
+             // File upload handling
+             fileInput.addEventListener('change', handleFileSelect);
 
-            uploadContainer.addEventListener('drop', function(e) {
-                e.preventDefault();
-                uploadContainer.classList.remove('drag-over');
-                
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    fileInput.files = files;
-                    handleFileSelect({ target: fileInput });
-                }
-            });
+             // Drag and drop handling
+             uploadContainer.addEventListener('dragover', function(e) {
+                 e.preventDefault();
+                 uploadContainer.classList.add('drag-over');
+             });
 
-            // Size slider handling
-            sizeSlider.addEventListener('input', function(e) {
-                const newSize = e.target.value;
-                const sizeText = `${newSize} pixels`;
-                
-                // Update the visual display
-                document.getElementById('sizeValue').textContent = `Current width: ${sizeText}`;
-                
-                // Update ARIA attributes
-                this.setAttribute('aria-valuenow', newSize);
-                this.setAttribute('aria-valuetext', sizeText);
-                
-                updateImageSize(newSize);
-            });
+             uploadContainer.addEventListener('dragleave', function() {
+                 uploadContainer.classList.remove('drag-over');
+             });
 
-function handleFileSelect(e) {
-    const file = e.target.files[0];
-    const imageGrid = document.getElementById('imageGrid');
-    
-    // Hide the grid initially (you might want to add this line when initializing your JavaScript)
-    imageGrid.style.display = 'none';
-    
-    if (!file) return;
-    
-    const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-        showError('Please upload a PNG, JPEG, or WebP image.');
-        return;
-    }
+             uploadContainer.addEventListener('drop', function(e) {
+                 e.preventDefault();
+                 uploadContainer.classList.remove('drag-over');
 
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        const img = new Image();
-        
-        img.onload = function() {
-            aspectRatio = img.width / img.height;
-            currentImage = e.target.result;
-            
-            // Update all image containers
-            imageWrappers.forEach(wrapper => {
-                const imgElement = document.createElement('img');
-                imgElement.src = currentImage;
-                imgElement.alt = `${wrapper.className.split(' ')[1]} color vision simulation`;
-                
-                // Clear existing content
-                wrapper.innerHTML = '';
-                wrapper.appendChild(imgElement);
-            });
+                 const files = e.dataTransfer.files;
+                 if (files.length > 0) {
+                     fileInput.files = files;
+                     handleFileSelect({
+                         target: fileInput
+                     });
+                 }
+             });
 
-            // Show size control and update initial size
-            sizeControl.style.display = 'block';
-            updateImageSize(sizeSlider.value);
-            hideError();
-            
-            // Show the image grid now that we have an image
-            imageGrid.style.display = 'grid';
-        };
+             // Size slider handling
+             sizeSlider.addEventListener('input', function(e) {
+                 const newSize = e.target.value;
+                 const sizeText = `${newSize} pixels`;
 
-        img.onerror = function() {
-            showError('Failed to load image. Please try another file.');
-        };
+                 // Update the visual display
+                 document.getElementById('sizeValue').textContent = `Current width: ${sizeText}`;
 
-        img.src = e.target.result;
-    };
+                 // Update ARIA attributes
+                 this.setAttribute('aria-valuenow', newSize);
+                 this.setAttribute('aria-valuetext', sizeText);
 
-    reader.onerror = function() {
-        showError('Failed to read file. Please try again.');
-    };
+                 updateImageSize(newSize);
+             });
 
-    reader.readAsDataURL(file);
-}
-            function updateImageSize(size) {
-                const height = size / aspectRatio;
-                
-                // Update CSS variable for grid layout
-                document.documentElement.style.setProperty('--container-width', size + 'px');
-                
-                imageWrappers.forEach(wrapper => {
-                    wrapper.style.width = `${size}px`;
-                    wrapper.style.height = `${height}px`;
-                });
-            }
+             function handleFileSelect(e) {
+                 const file = e.target.files[0];
+                 const imageGrid = document.getElementById('imageGrid');
 
-            function showError(message) {
-                errorMessage.textContent = message;
-                errorMessage.style.display = 'block';
-            }
+                 // Hide the grid initially (you might want to add this line when initializing your JavaScript)
+                 imageGrid.style.display = 'none';
 
-            function hideError() {
-                errorMessage.style.display = 'none';
-            }
+                 if (!file) return;
 
-            // Keyboard accessibility for drag-drop area
-            uploadContainer.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    fileInput.click();
-                }
-            });
-        });
+                 const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+                 if (!validTypes.includes(file.type)) {
+                     showError('Please upload a PNG, JPEG, or WebP image.');
+                     return;
+                 }
+
+                 const reader = new FileReader();
+
+                 reader.onload = function(e) {
+                     const img = new Image();
+
+                     img.onload = function() {
+                         aspectRatio = img.width / img.height;
+                         currentImage = e.target.result;
+
+                         // Update all image containers
+                         imageWrappers.forEach(wrapper => {
+                             const imgElement = document.createElement('img');
+                             imgElement.src = currentImage;
+                             imgElement.alt = `${wrapper.className.split(' ')[1]} color vision simulation`;
+
+                             // Clear existing content
+                             wrapper.innerHTML = '';
+                             wrapper.appendChild(imgElement);
+                         });
+
+                         // Show size control and update initial size
+                         sizeControl.style.display = 'block';
+                         updateImageSize(sizeSlider.value);
+                         hideError();
+
+                         // Show the image grid now that we have an image
+                         imageGrid.style.display = 'grid';
+                     };
+
+                     img.onerror = function() {
+                         showError('Failed to load image. Please try another file.');
+                     };
+
+                     img.src = e.target.result;
+                 };
+
+                 reader.onerror = function() {
+                     showError('Failed to read file. Please try again.');
+                 };
+
+                 reader.readAsDataURL(file);
+             }
+
+             function updateImageSize(size) {
+                 const height = size / aspectRatio;
+
+                 // Update CSS variable for grid layout
+                 document.documentElement.style.setProperty('--container-width', size + 'px');
+
+                 imageWrappers.forEach(wrapper => {
+                     wrapper.style.width = `${size}px`;
+                     wrapper.style.height = `${height}px`;
+                 });
+             }
+
+             function showError(message) {
+                 errorMessage.textContent = message;
+                 errorMessage.style.display = 'block';
+             }
+
+             function hideError() {
+                 errorMessage.style.display = 'none';
+             }
+
+             // Keyboard accessibility for drag-drop area
+             uploadContainer.addEventListener('keydown', function(e) {
+                 if (e.key === 'Enter' || e.key === ' ') {
+                     e.preventDefault();
+                     fileInput.click();
+                 }
+             });
+         });
     </script>
       <script>
          function menuAction() {
