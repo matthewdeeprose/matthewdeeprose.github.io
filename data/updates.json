@@ -1,5 +1,12 @@
 {
   "updates": [
+          {
+      "title": "Colour vision deficiency Image Tester",
+      "link": "imageCVD",
+      "imageSrc": "cvdImage169.png",
+      "imageAlt": "A randomomise button, next to a selection of colours selected for an infographic",
+      "description": "Test images with CVD simulation",
+    },
         {
       "title": "Brand Colour Combination Suggester",
       "link": "a11y-brand-colour-contrast-suggest.html",
