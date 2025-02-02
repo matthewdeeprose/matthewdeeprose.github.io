@@ -475,145 +475,211 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-         document.addEventListener('DOMContentLoaded', function() {
-             const fileInput = document.getElementById('fileInput');
-             const uploadContainer = document.getElementById('uploadContainer');
-             const errorMessage = document.getElementById('errorMessage');
-             const sizeControl = document.getElementById('sizeControl');
-             const sizeSlider = document.getElementById('sizeSlider');
-             const imageWrappers = document.querySelectorAll('.image-wrapper');
+/**
+ * @fileoverview This script handles image upload functionality with drag-and-drop support
+ * and displays the uploaded image with different simulations. It includes features for
+ * resizing the displayed images and handling various error states.
+ * 
+ * @requires DOM The script requires a fully loaded DOM with specific elements:
+ * - fileInput: Input element for file selection
+ * - uploadContainer: Container for drag and drop functionality
+ * - errorMessage: Element to display error messages
+ * - sizeControl: Container for size adjustment controls
+ * - sizeSlider: Range input for adjusting image size
+ * - imageWrappers: Collection of elements that will contain the images
+ */
 
-             let currentImage = null;
-             let aspectRatio = 1;
+document.addEventListener('DOMContentLoaded', function() {
+    /**
+     * @description Initialize all required DOM elements
+     * @type {HTMLElement} fileInput - File input element for image upload
+     * @type {HTMLElement} uploadContainer - Container element for drag and drop
+     * @type {HTMLElement} errorMessage - Element to display error messages
+     * @type {HTMLElement} sizeControl - Container for size adjustment controls
+     * @type {HTMLElement} sizeSlider - Range input for size adjustment
+     * @type {NodeList} imageWrappers - Collection of image container elements
+     */
+    const fileInput = document.getElementById('fileInput');
+    const uploadContainer = document.getElementById('uploadContainer');
+    const errorMessage = document.getElementById('errorMessage');
+    const sizeControl = document.getElementById('sizeControl');
+    const sizeSlider = document.getElementById('sizeSlider');
+    const imageWrappers = document.querySelectorAll('.image-wrapper');
 
-             // File upload handling
-             fileInput.addEventListener('change', handleFileSelect);
+    /**
+     * @type {string|null} currentImage - Stores the current image data URL
+     * @type {number} aspectRatio - Stores the aspect ratio of the uploaded image
+     */
+    let currentImage = null;
+    let aspectRatio = 1;
 
-             // Drag and drop handling
-             uploadContainer.addEventListener('dragover', function(e) {
-                 e.preventDefault();
-                 uploadContainer.classList.add('drag-over');
-             });
+    // Event Listeners Setup
+    fileInput.addEventListener('change', handleFileSelect);
 
-             uploadContainer.addEventListener('dragleave', function() {
-                 uploadContainer.classList.remove('drag-over');
-             });
+    /**
+     * @description Handles dragover event by preventing default behavior and adding visual feedback
+     * @param {DragEvent} e - The dragover event object
+     */
+    uploadContainer.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadContainer.classList.add('drag-over');
+    });
 
-             uploadContainer.addEventListener('drop', function(e) {
-                 e.preventDefault();
-                 uploadContainer.classList.remove('drag-over');
+    /**
+     * @description Removes visual feedback when drag leaves the upload area
+     */
+    uploadContainer.addEventListener('dragleave', function() {
+        uploadContainer.classList.remove('drag-over');
+    });
 
-                 const files = e.dataTransfer.files;
-                 if (files.length > 0) {
-                     fileInput.files = files;
-                     handleFileSelect({
-                         target: fileInput
-                     });
-                 }
-             });
+    /**
+     * @description Handles file drop events by processing the dropped files
+     * @param {DragEvent} e - The drop event object
+     */
+    uploadContainer.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadContainer.classList.remove('drag-over');
 
-             // Size slider handling
-             sizeSlider.addEventListener('input', function(e) {
-                 const newSize = e.target.value;
-                 const sizeText = `${newSize} pixels`;
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect({
+                target: fileInput
+            });
+        }
+    });
 
-                 // Update the visual display
-                 document.getElementById('sizeValue').textContent = `Current width: ${sizeText}`;
+    /**
+     * @description Handles size slider changes and updates the display
+     * @param {Event} e - The input event from the slider
+     */
+    sizeSlider.addEventListener('input', function(e) {
+        const newSize = e.target.value;
+        const sizeText = `${newSize} pixels`;
 
-                 // Update ARIA attributes
-                 this.setAttribute('aria-valuenow', newSize);
-                 this.setAttribute('aria-valuetext', sizeText);
+        document.getElementById('sizeValue').textContent = `Current width: ${sizeText}`;
 
-                 updateImageSize(newSize);
-             });
+        // Update accessibility attributes
+        this.setAttribute('aria-valuenow', newSize);
+        this.setAttribute('aria-valuetext', sizeText);
 
-             function handleFileSelect(e) {
-                 const file = e.target.files[0];
-                 const imageGrid = document.getElementById('imageGrid');
+        updateImageSize(newSize);
+    });
 
-                 // Hide the grid initially (you might want to add this line when initializing your JavaScript)
-                 imageGrid.style.display = 'none';
+    /**
+     * @description Processes the selected file and displays it if valid
+     * @param {Event} e - The file selection event
+     */
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        const imageGrid = document.getElementById('imageGrid');
+        imageGrid.style.display = 'none';
 
-                 if (!file) return;
+        if (!file) return;
 
-                 const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
-                 if (!validTypes.includes(file.type)) {
-                     showError('Please upload a PNG, JPEG, or WebP image.');
-                     return;
-                 }
+        /**
+         * @type {Array<string>} validTypes - List of accepted image file types
+         */
+        const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            showError('Please upload a PNG, JPEG, or WebP image.');
+            return;
+        }
 
-                 const reader = new FileReader();
+        const reader = new FileReader();
 
-                 reader.onload = function(e) {
-                     const img = new Image();
+        /**
+         * @description Handles successful file read and image loading
+         * @param {ProgressEvent} e - The file reader load event
+         */
+        reader.onload = function(e) {
+            const img = new Image();
 
-                     img.onload = function() {
-                         aspectRatio = img.width / img.height;
-                         currentImage = e.target.result;
+            /**
+             * @description Sets up the image display once the image is loaded
+             */
+            img.onload = function() {
+                aspectRatio = img.width / img.height;
+                currentImage = e.target.result;
 
-                         // Update all image containers
-                         imageWrappers.forEach(wrapper => {
-                             const imgElement = document.createElement('img');
-                             imgElement.src = currentImage;
-                             imgElement.alt = `${wrapper.className.split(' ')[1]} color vision simulation`;
+                // Update all image containers with the new image
+                imageWrappers.forEach(wrapper => {
+                    const imgElement = document.createElement('img');
+                    imgElement.src = currentImage;
+                    imgElement.alt = `${wrapper.className.split(' ')[1]} color vision simulation`;
 
-                             // Clear existing content
-                             wrapper.innerHTML = '';
-                             wrapper.appendChild(imgElement);
-                         });
+                    wrapper.innerHTML = '';
+                    wrapper.appendChild(imgElement);
+                });
 
-                         // Show size control and update initial size
-                         sizeControl.style.display = 'block';
-                         updateImageSize(sizeSlider.value);
-                         hideError();
+                sizeControl.style.display = 'block';
+                updateImageSize(sizeSlider.value);
+                hideError();
+                imageGrid.style.display = 'grid';
+            };
 
-                         // Show the image grid now that we have an image
-                         imageGrid.style.display = 'grid';
-                     };
+            /**
+             * @description Handles image loading errors
+             */
+            img.onerror = function() {
+                showError('Failed to load image. Please try another file.');
+            };
 
-                     img.onerror = function() {
-                         showError('Failed to load image. Please try another file.');
-                     };
+            img.src = e.target.result;
+        };
 
-                     img.src = e.target.result;
-                 };
+        /**
+         * @description Handles file reading errors
+         */
+        reader.onerror = function() {
+            showError('Failed to read file. Please try again.');
+        };
 
-                 reader.onerror = function() {
-                     showError('Failed to read file. Please try again.');
-                 };
+        reader.readAsDataURL(file);
+    }
 
-                 reader.readAsDataURL(file);
-             }
+    /**
+     * @description Updates the size of all displayed images
+     * @param {number} size - The new width in pixels
+     */
+    function updateImageSize(size) {
+        const height = size / aspectRatio;
 
-             function updateImageSize(size) {
-                 const height = size / aspectRatio;
+        document.documentElement.style.setProperty('--container-width', size + 'px');
 
-                 // Update CSS variable for grid layout
-                 document.documentElement.style.setProperty('--container-width', size + 'px');
+        imageWrappers.forEach(wrapper => {
+            wrapper.style.width = `${size}px`;
+            wrapper.style.height = `${height}px`;
+        });
+    }
 
-                 imageWrappers.forEach(wrapper => {
-                     wrapper.style.width = `${size}px`;
-                     wrapper.style.height = `${height}px`;
-                 });
-             }
+    /**
+     * @description Displays an error message to the user
+     * @param {string} message - The error message to display
+     */
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+    }
 
-             function showError(message) {
-                 errorMessage.textContent = message;
-                 errorMessage.style.display = 'block';
-             }
+    /**
+     * @description Hides the error message display
+     */
+    function hideError() {
+        errorMessage.style.display = 'none';
+    }
 
-             function hideError() {
-                 errorMessage.style.display = 'none';
-             }
-
-             // Keyboard accessibility for drag-drop area
-             uploadContainer.addEventListener('keydown', function(e) {
-                 if (e.key === 'Enter' || e.key === ' ') {
-                     e.preventDefault();
-                     fileInput.click();
-                 }
-             });
-         });
+    /**
+     * @description Enables keyboard accessibility for the upload container
+     * @param {KeyboardEvent} e - The keyboard event
+     */
+    uploadContainer.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInput.click();
+        }
+    });
+});
     </script>
       <script>
          function menuAction() {
