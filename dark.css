@@ -1,7 +1,8 @@
 /* Dark mode */
 
 .code-input:focus,
-.code-output:focus {
+.code-output:focus,
+.embed-output:focus,#highlighted-output:focus {
     outline: transparent 2px solid;
     border-color: #231F20;
     box-shadow: 0 0 0 3px rgb(252, 188, 0);

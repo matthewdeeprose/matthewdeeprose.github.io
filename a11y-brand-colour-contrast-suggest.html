@@ -81,182 +81,125 @@
     <meta name="twitter:card" content="summary_large_image" />
     <script type="module" src="suggester/app.js"></script>
     <script>
-      // Swap between colour blind emulations
-      function showProta() {
-        console.log("\n");
-        console.log("Simulating protanopia");
-        console.log("\n");
-        // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
-        let a = document.getElementsByClassName("Trichromacy");
-        [...a].forEach((x) => (x.className += " protanopia"));
-        [...a].forEach((x) => x.classList.remove("Trichromacy"));
-        let b = document.getElementsByClassName("deuteranopia");
-        [...b].forEach((x) => (x.className += " protanopia"));
-        [...b].forEach((x) => x.classList.remove("deuteranopia"));
-        let c = document.getElementsByClassName("tritanopia");
-        [...c].forEach((x) => (x.className += " protanopia"));
-        [...c].forEach((x) => x.classList.remove("tritanopia"));
-        // Hide irrelevant buttons
-        //$("#showProta").css({
-        //    "display": "none"
-        //});
-        // make prota button disabled and set aria to disabled
-        document.getElementById("showProta").disabled = true;
-        document
-          .getElementById("showProta")
-          .setAttribute("aria-disabled", "true");
-        // Show Trichromacy button
-        $("#showTrich").show(); //<--keep
-        // Set trich to enabled both button and aria
-        document.getElementById("showTrich").disabled = false;
-        document
-          .getElementById("showTrich")
-          .setAttribute("aria-disabled", "false");
-        // Set showDeute to enabled both button and aria
-        document.getElementById("showDeute").disabled = false;
-        document
-          .getElementById("showDeute")
-          .setAttribute("aria-disabled", "false");
-        // Set showTrita to enabled both button and aria
-        document.getElementById("showTrita").disabled = false;
-        document
-          .getElementById("showTrita")
-          .setAttribute("aria-disabled", "false");
-        // Display helpful message
-        $("#buttonHelp").show();
-        $("#buttonHelp").text(
-          "Palette colours now simulate how they may be perceived by someone with protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cone cells. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out."
-        );
-      }
+ // Helper function to manage button states
+function updateButtonStates(activeButtonId) {
+    // Get all simulation buttons
+    const buttonIds = ['showProta', 'showDeute', 'showTrita', 'showTrich'];
+    
+    // Update each button's state
+    buttonIds.forEach(id => {
+        const button = document.getElementById(id);
+        if (button) {
+            const shouldBeDisabled = (id === activeButtonId);
+            button.disabled = shouldBeDisabled;
+            button.setAttribute('aria-disabled', shouldBeDisabled.toString());
+        }
+    });
+}
 
-      function showDeute() {
-        console.log("\n");
-        console.log("Simulating deuteranopia");
-        console.log("\n");
-        // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
-        let a = document.getElementsByClassName("Trichromacy");
-        [...a].forEach((x) => (x.className += " deuteranopia"));
-        [...a].forEach((x) => x.classList.remove("Trichromacy"));
-        let b = document.getElementsByClassName("protanopia");
-        [...b].forEach((x) => (x.className += " deuteranopia"));
-        [...b].forEach((x) => x.classList.remove("protanopia"));
-        let c = document.getElementsByClassName("tritanopia");
-        [...c].forEach((x) => (x.className += " deuteranopia"));
-        [...c].forEach((x) => x.classList.remove("tritanopia"));
-        // make Deute button disabled and set aria to disabled
-        document.getElementById("showDeute").disabled = true;
-        document
-          .getElementById("showDeute")
-          .setAttribute("aria-disabled", "true");
-        // Show Trichromacy button
-        $("#showTrich").show(); //<--keep
-        // Set showTrich to enabled both button and aria
-        document.getElementById("showTrich").disabled = false;
-        document
-          .getElementById("showTrich")
-          .setAttribute("aria-disabled", "false");
-        // Set showProta to enabled both button and aria
-        document.getElementById("showProta").disabled = false;
-        document
-          .getElementById("showProta")
-          .setAttribute("aria-disabled", "false");
-        // Set showTrita to enabled both button and aria
-        document.getElementById("showTrita").disabled = false;
-        document
-          .getElementById("showTrita")
-          .setAttribute("aria-disabled", "false");
-        // Display helpful message
-        $("#buttonHelp").show();
-        $("#buttonHelp").text(
-          "Palette colours now simulate how they may be perceived by someone with deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cone cells. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out."
-        );
-      }
+function showProta() {
+    console.log("\n");
+    console.log("Simulating protanopia");
+    console.log("\n");
+    
+    // Existing class transformation code
+    let a = document.getElementsByClassName("Trichromacy");
+    [...a].forEach((x) => (x.className += " protanopia"));
+    [...a].forEach((x) => x.classList.remove("Trichromacy"));
+    let b = document.getElementsByClassName("deuteranopia");
+    [...b].forEach((x) => (x.className += " protanopia"));
+    [...b].forEach((x) => x.classList.remove("deuteranopia"));
+    let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach((x) => (x.className += " protanopia"));
+    [...c].forEach((x) => x.classList.remove("tritanopia"));
+    
+    // Update button states
+    updateButtonStates('showProta');
+    
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text(
+        "Palette colours now simulate how they may be perceived by someone with protonopia. Protanopia means lacking the red cones for long-wavelength sensitive retinal cone cells. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out."
+    );
+}
 
-      function showTrita() {
-        console.log("\n");
-        console.log("Simulating tritanopia");
-        console.log("\n");
-        // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
-        let a = document.getElementsByClassName("protanopia");
-        [...a].forEach((x) => (x.className += " tritanopia"));
-        [...a].forEach((x) => x.classList.remove("protanopia"));
-        let b = document.getElementsByClassName("deuteranopia");
-        [...b].forEach((x) => (x.className += " tritanopia"));
-        [...b].forEach((x) => x.classList.remove("deuteranopia"));
-        let c = document.getElementsByClassName("Trichromacy");
-        [...c].forEach((x) => (x.className += " tritanopia"));
-        [...c].forEach((x) => x.classList.remove("Trichromacy"));
-        // make showTrita button disabled and set aria to disabled
-        document.getElementById("showTrita").disabled = true;
-        document
-          .getElementById("showTrita")
-          .setAttribute("aria-disabled", "true");
-        // Show Trichromacy button
-        $("#showTrich").show(); //<--keep
-        // Set trich to enabled both button and aria
-        document.getElementById("showTrich").disabled = false;
-        document
-          .getElementById("showTrich")
-          .setAttribute("aria-disabled", "false");
-        // Set showDeute to enabled both button and aria
-        document.getElementById("showDeute").disabled = false;
-        document
-          .getElementById("showDeute")
-          .setAttribute("aria-disabled", "false");
-        // Set showTrita to enabled both button and aria
-        document.getElementById("showProta").disabled = false;
-        document
-          .getElementById("showProta")
-          .setAttribute("aria-disabled", "false");
-        // Display helpful message
-        $("#buttonHelp").show();
-        $("#buttonHelp").text(
-          "Palette colours now simulate how they may be perceived by someone with tritanopia. Tritanopia means lacking the blue cones for short-wavelength sensitive retinal cone cells. Those affected may be unable to tell the difference between blue and green, purple and red, and yellow and pink. It also makes colors look less bright."
-        );
-      }
+function showDeute() {
+    console.log("\n");
+    console.log("Simulating deuteranopia");
+    console.log("\n");
+    
+    // Existing class transformation code
+    let a = document.getElementsByClassName("Trichromacy");
+    [...a].forEach((x) => (x.className += " deuteranopia"));
+    [...a].forEach((x) => x.classList.remove("Trichromacy"));
+    let b = document.getElementsByClassName("protanopia");
+    [...b].forEach((x) => (x.className += " deuteranopia"));
+    [...b].forEach((x) => x.classList.remove("protanopia"));
+    let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach((x) => (x.className += " deuteranopia"));
+    [...c].forEach((x) => x.classList.remove("tritanopia"));
+    
+    // Update button states
+    updateButtonStates('showDeute');
+    
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text(
+        "Palette colours now simulate how they may be perceived by someone with deuteranopia. Deuteranopia means lacking the green cones for medium-wavelength sensitive retinal cone cells. Those affected may be unable to tell the difference between red and green. Blue and yellow shades are more likely to stand out."
+    );
+}
 
-      function showTrich() {
-        console.log("\n");
-        console.log("trichromatic vision");
-        console.log("\n");
-        // class transformation routine from https://www.codingexercises.com/replace-all-instances-of-css-class-in-vanilla-js
-        let a = document.getElementsByClassName("deuteranopia");
-        [...a].forEach((x) => (x.className += " Trichromacy"));
-        [...a].forEach((x) => x.classList.remove("deuteranopia"));
-        let b = document.getElementsByClassName("protanopia");
-        [...b].forEach((x) => (x.className += " Trichromacy"));
-        [...b].forEach((x) => x.classList.remove("protanopia"));
-        let c = document.getElementsByClassName("tritanopia");
-        [...c].forEach((x) => (x.className += " Trichromacy"));
-        [...c].forEach((x) => x.classList.remove("tritanopia"));
-        $("#showProta").show();
-        $("#showDeute").show();
-        $("#showTrita").show();
-        // Set trich to enabled both button and aria
-        document.getElementById("showTrich").disabled = true;
-        document
-          .getElementById("showTrich")
-          .setAttribute("aria-disabled", "true");
-        document.getElementById("showProta").disabled = false;
-        document
-          .getElementById("showProta")
-          .setAttribute("aria-disabled", "false");
-        // Set showDeute to enabled both button and aria
-        document.getElementById("showDeute").disabled = false;
-        document
-          .getElementById("showDeute")
-          .setAttribute("aria-disabled", "false");
-        // Set showTrita to enabled both button and aria
-        document.getElementById("showTrita").disabled = false;
-        document
-          .getElementById("showTrita")
-          .setAttribute("aria-disabled", "false");
-        // Display helpful message
-        $("#buttonHelp").show();
-        $("#buttonHelp").text(
-          "Palette colours now simulate how they may be perceived by someone with trichromatic vision. Trichromatic vision is what we consider to be the standard ability to see colours."
-        );
-      }
+function showTrita() {
+    console.log("\n");
+    console.log("Simulating tritanopia");
+    console.log("\n");
+    
+    // Existing class transformation code
+    let a = document.getElementsByClassName("protanopia");
+    [...a].forEach((x) => (x.className += " tritanopia"));
+    [...a].forEach((x) => x.classList.remove("protanopia"));
+    let b = document.getElementsByClassName("deuteranopia");
+    [...b].forEach((x) => (x.className += " tritanopia"));
+    [...b].forEach((x) => x.classList.remove("deuteranopia"));
+    let c = document.getElementsByClassName("Trichromacy");
+    [...c].forEach((x) => (x.className += " tritanopia"));
+    [...c].forEach((x) => x.classList.remove("Trichromacy"));
+    
+    // Update button states
+    updateButtonStates('showTrita');
+    
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text(
+        "Palette colours now simulate how they may be perceived by someone with tritanopia. Tritanopia means lacking the blue cones for short-wavelength sensitive retinal cone cells. Those affected may be unable to tell the difference between blue and green, purple and red, and yellow and pink. It also makes colors look less bright."
+    );
+}
+
+function showTrich() {
+    console.log("\n");
+    console.log("trichromatic vision");
+    console.log("\n");
+    
+    // Existing class transformation code
+    let a = document.getElementsByClassName("deuteranopia");
+    [...a].forEach((x) => (x.className += " Trichromacy"));
+    [...a].forEach((x) => x.classList.remove("deuteranopia"));
+    let b = document.getElementsByClassName("protanopia");
+    [...b].forEach((x) => (x.className += " Trichromacy"));
+    [...b].forEach((x) => x.classList.remove("protanopia"));
+    let c = document.getElementsByClassName("tritanopia");
+    [...c].forEach((x) => (x.className += " Trichromacy"));
+    [...c].forEach((x) => x.classList.remove("tritanopia"));
+    
+    // Update button states
+    updateButtonStates('showTrich');
+    
+    // Display helpful message
+    $("#buttonHelp").show();
+    $("#buttonHelp").text(
+        "Palette colours now simulate how they may be perceived by someone with trichromatic vision. Trichromatic vision is what we consider to be the standard ability to see colours."
+    );
+}
     </script>
     <style>
       .page-wrap > * {

@@ -2,7 +2,8 @@
 
 
 .code-input:focus,
-.code-output:focus {
+.code-output:focus,
+.embed-output:focus, #highlighted-output:focus {
     outline: transparent 2px solid;
     border-color: #fffff4;
     box-shadow: 0 0 0 3px rgb(0, 80, 81);
