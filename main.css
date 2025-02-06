@@ -1120,6 +1120,12 @@ aside li {
   /* border-radius: .6em; */
 }
 
+.cards > li {
+ display: flex;
+ flex: 1 1 300px;
+}
+
+
 .cards > * {
   flex: 0 1 17em;
   flex-grow: 1;
