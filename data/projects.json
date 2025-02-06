@@ -1,10 +1,18 @@
 {
   "projects": [
-        {
+                {
+      "title": "Responsive Vimeo Embed Code Generator",
+      "link": "responsiveVimeoEmbed",
+      "imageSrc": "vimeo169.png",
+      "imageAlt": "",
+      "description": "Make vimeo embed codes fit video to browser viewport.",
+	     "isHighlighted": true
+    },
+		{
       "title": "Colour vision deficiency Image Tester",
       "link": "imageCVD",
       "imageSrc": "cvdImage169.png",
-      "imageAlt": "A randomomise button, next to a selection of colours selected for an infographic",
+      "imageAlt": "",
       "description": "Test images with CVD simulation",
 	     "isHighlighted": true
     },
