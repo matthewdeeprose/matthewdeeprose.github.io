@@ -1,5 +1,14 @@
 /*Light mode */
 
+
+.code-input:focus,
+.code-output:focus {
+    outline: transparent 2px solid;
+    border-color: #fffff4;
+    box-shadow: 0 0 0 3px rgb(0, 80, 81);
+}
+
+
 /* Image CVD */
         .upload-container.drag-over {
             background-color: #758D9A;
