@@ -68,7 +68,6 @@ code[class*="language-"] {
 }
 
 .preview-placeholder {
-    color: #666;
     text-align: center;
     padding: 2rem;
 }
@@ -149,7 +148,7 @@ code[class*="language-"] {
                <h1 id="top">Responsive Vimeo Embed Code Generator</h1>
     <section class="input-section" aria-labelledby="input-heading">
         <h2 id="input-heading">Original Embed Code</h2>
-        <p id="input-instructions">Paste your Vimeo embed code below. The transformer will create a responsive version to paste into Blackboard as an HTML extract. This will make the video embedded in Blackboard resize dynamically to suit the width of the display.</p>
+        <p id="input-instructions">Paste your Vimeo embed code below. The transformer will create a cleaner, more efficient version.</p>
         
         <div class="input-container">
             <label for="embed-input" class="visually-hidden">Original Vimeo embed code</label>
@@ -163,33 +162,29 @@ code[class*="language-"] {
         
         <button 
             id="transform-button"
+            class="primary-button"
             aria-controls="output-code result-preview">
             Transform Embed Code
         </button>
     </section>
 
-    <section class="output-section" aria-labelledby="output-heading">
+    <section class="output-section hidden" aria-labelledby="output-heading">
         <h2 id="output-heading">Transformed Code</h2>
         
         <div class="output-container">
-            <label for="embed-output" class="visually-hidden">Transformed Vimeo embed code</label>
-            <!-- Hidden textarea for copying -->
-            <textarea 
-                id="embed-output"
-                class="visually-hidden"
-                aria-hidden="true"></textarea>
             <!-- Visible pre/code block for Prism highlighting -->
-            <pre class="language-html"><code id="highlighted-output" class="language-html" aria-live="polite"></code></pre>
+            <pre class="language-html" tabindex="-1"><code id="highlighted-output" class="language-html" aria-live="polite" tabindex="-1"></code></pre>
             
             <button 
                 id="copy-button"
+                class="secondary-button"
                 aria-label="Copy transformed code to clipboard">
                 Copy Code
             </button>
         </div>
     </section>
 
-    <section class="preview-section" aria-labelledby="preview-heading">
+    <section class="preview-section hidden" aria-labelledby="preview-heading">
         <h2 id="preview-heading">Preview</h2>
         <div id="result-preview" class="preview-container" aria-live="polite">
             <p class="preview-placeholder">Transform an embed code to see the preview</p>
@@ -265,11 +260,19 @@ code[class*="language-"] {
       </div>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Get DOM elements
     const embedInput = document.getElementById('embed-input');
-    const embedOutput = document.getElementById('embed-output');
     const transformButton = document.getElementById('transform-button');
     const copyButton = document.getElementById('copy-button');
     const previewContainer = document.getElementById('result-preview');
+    const outputSection = document.querySelector('.output-section');
+    const previewSection = document.querySelector('.preview-section');
+
+    // Initialize copy button state
+    if (copyButton) {
+        copyButton.disabled = true;
+        copyButton.setAttribute('aria-disabled', 'true');
+    }
 
     // Escape HTML for display
     function escapeHtml(html) {
@@ -309,79 +312,94 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update the preview
     function updatePreview(embedCode) {
-        previewContainer.innerHTML = embedCode;
-        
-        // Load the Vimeo Player API if needed
-        if (!window.Vimeo) {
-            const script = document.createElement('script');
-            script.src = 'https://player.vimeo.com/api/player.js';
-            document.body.appendChild(script);
+        if (previewContainer) {
+            previewContainer.innerHTML = embedCode;
+            
+            // Load the Vimeo Player API if needed
+            if (!window.Vimeo) {
+                const script = document.createElement('script');
+                script.src = 'https://player.vimeo.com/api/player.js';
+                document.body.appendChild(script);
+            }
         }
     }
 
     // Transform button click handler
-    transformButton.addEventListener('click', () => {
-        const originalCode = embedInput.value.trim();
-        
-        if (!originalCode) {
-            alert('Please enter a Vimeo embed code');
-            embedInput.focus();
-            return;
-        }
-
-        try {
-            const transformedCode = transformEmbedCode(originalCode);
+    if (transformButton) {
+        transformButton.addEventListener('click', () => {
+            const originalCode = embedInput.value.trim();
             
-            // Store original code in hidden textarea for copying
-            embedOutput.value = transformedCode;
-            
-            // Display escaped version with Prism highlighting
-            const highlightedOutput = document.getElementById('highlighted-output');
-            highlightedOutput.textContent = transformedCode;
-            
-            // Apply Prism highlighting
-            if (window.Prism) {
-                Prism.highlightElement(highlightedOutput);
+            if (!originalCode) {
+                alert('Please enter a Vimeo embed code');
+                embedInput.focus();
+                return;
             }
-            
-            updatePreview(transformedCode);
-            
-            // Announce success to screen readers
-            embedOutput.setAttribute('aria-label', 'Successfully transformed embed code');
-        } catch (error) {
-            alert(error.message);
-            embedInput.focus();
-        }
-    });
+
+            try {
+                const transformedCode = transformEmbedCode(originalCode);
+                
+                // Display escaped version with Prism highlighting
+                const highlightedOutput = document.getElementById('highlighted-output');
+                if (highlightedOutput) {
+                    highlightedOutput.textContent = transformedCode;
+                    
+                    // Apply Prism highlighting
+                    if (window.Prism) {
+                        Prism.highlightElement(highlightedOutput);
+                    }
+                }
+                
+                // Enable copy button and show sections
+                if (copyButton) {
+                    copyButton.disabled = false;
+                    copyButton.setAttribute('aria-disabled', 'false');
+                }
+                if (outputSection) outputSection.classList.remove('hidden');
+                if (previewSection) previewSection.classList.remove('hidden');
+                
+                updatePreview(transformedCode);
+            } catch (error) {
+                alert(error.message);
+                embedInput.focus();
+            }
+        });
+    }
 
     // Copy button click handler
-    copyButton.addEventListener('click', async () => {
-        const code = embedOutput.value;
-        
-        if (!code) {
-            alert('No code to copy');
-            return;
-        }
-
-        try {
-            await navigator.clipboard.writeText(code);
-            copyButton.textContent = 'Copied!';
+    if (copyButton) {
+        copyButton.addEventListener('click', async () => {
+            const highlightedOutput = document.getElementById('highlighted-output');
+            const code = highlightedOutput ? highlightedOutput.textContent : '';
             
-            // Reset button text after 2 seconds
-            setTimeout(() => {
-                copyButton.textContent = 'Copy Code';
-            }, 2000);
-        } catch (error) {
-            alert('Failed to copy code to clipboard');
-        }
-    });
+            if (!code) {
+                alert('No code to copy');
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(code);
+                copyButton.textContent = 'Copied!';
+                copyButton.setAttribute('aria-label', 'Code copied to clipboard');
+                
+                // Reset button text and aria-label after 2 seconds
+                setTimeout(() => {
+                    copyButton.textContent = 'Copy Code';
+                    copyButton.setAttribute('aria-label', 'Copy transformed code to clipboard');
+                }, 2000);
+            } catch (error) {
+                alert('Failed to copy code to clipboard');
+            }
+        });
+    }
 
     // Keyboard support
-    embedInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.ctrlKey) {
-            transformButton.click();
-        }
-    });
+    if (embedInput) {
+        embedInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                transformButton.click();
+            }
+        });
+    }
 });
 </script>
     <script src="https://matthewdeeprose.github.io/prism/prism.js"></script>
