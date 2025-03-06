@@ -199,7 +199,7 @@ color: #002E3B;}
 									   <summary>
 			  <h2>Introduction</h2>
 			              </summary>
-<p>The following colour schemes are taken from the document, <a href="https://www.nceas.ucsb.edu/sites/default/files/2022-06/Colorblind%20Safe%20Color%20Schemes.pdf">"Colorblind Safe Color Schemes", produced by Alexandra Phillips at the NCEAS Science Communication Resource Corner, with the exception of the HarryHelsing Palette which was posted in on Reddit: <a href="https://www.reddit.com/r/ColorBlind/comments/1eo1aaq/thoughts_on_this_five_colour_palette_for_a_video/">thoughts on this five colour palette for a video game?</a>. I created a <a href="https://matthewdeeprose.github.io/cvdp.json">JSON dataset</a> for these colour schemes, which is used to generate the tables below.</p><p>Colour vision deficiency simulation is provided using the <a href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a> by Nicolas Burrus.</p>
+<p>The following colour schemes are taken from the document, <a href="https://www.nceas.ucsb.edu/sites/default/files/2022-06/Colorblind%20Safe%20Color%20Schemes.pdf">"Colorblind Safe Color Schemes", produced by Alexandra Phillips at the NCEAS Science Communication Resource Corner,</a> with the exception of the HarryHelsing Palette which was posted in on Reddit: <a href="https://www.reddit.com/r/ColorBlind/comments/1eo1aaq/thoughts_on_this_five_colour_palette_for_a_video/">thoughts on this five colour palette for a video game?</a>. I created a <a href="https://matthewdeeprose.github.io/cvdp.json">JSON dataset</a> for these colour schemes, which is used to generate the tables below.</p><p>Colour vision deficiency simulation is provided using the <a href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a> by Nicolas Burrus.</p>
 
 <h3>Want to create your own colour vision deficiency friendly palette?</h3>
 <p>You can use the dropdown below to create your own palette. Adobe has built a tool for creating <a href="https://color.adobe.com/create/color-accessibility">colour vision deficiency friendly palettes that may help you</a>. If you make one that you would like to add to the standard selection below, let me know.</p>
@@ -265,7 +265,7 @@ color: #002E3B;}
 			        <table id="userColorTable">
             <thead>
                 <tr>
-                    <th>Trichromacy</th>
+                    <th>Original (Trichromacy)</th>
                     <th>Protanopia</th>
                     <th>Deuteranopia</th>
                     <th>Tritanopia</th>
@@ -672,7 +672,7 @@ document.addEventListener('DOMContentLoaded', function() {
             headerRow.setAttribute('role', 'row');
 
             // Define and create table headers
-            const headers = ['Colour', 'Trichromacy', 'Protanopia', 'Deuteranopia', 'Tritanopia', 'Delete'];
+            const headers = ['Colour', 'Original (Trichromacy)', 'Protanopia', 'Deuteranopia', 'Tritanopia', 'Delete'];
             headers.forEach(header => {
                 const th = document.createElement('th');
                 th.setAttribute('scope', 'col');
@@ -1050,7 +1050,7 @@ async function createTables() {
                 const headerRow = document.createElement('tr');
                 headerRow.setAttribute('role', 'row');
 
-                const headers = ['Colour', 'Trichromacy', 'Protanopia', 'Deuteranopia', 'Tritanopia'];
+                const headers = ['Colour', 'Original (Trichromacy)', 'Protanopia', 'Deuteranopia', 'Tritanopia'];
                 headers.forEach(headerText => {
                     const th = document.createElement('th');
                     th.setAttribute('scope', 'col');
