@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="ally-dark.css" rel="stylesheet" />
+	<style>
+	
+         pre,code {
+            white-space: pre-wrap !important;
+            word-wrap: break-word;
+         }
+	</style>
+</head>
+<body>
+	
+	<script src="prism.js"></script>
+		<div class="codeWrapper">
+
+      <pre><code class="language-bash">
+#!/bin/bash
+
+# This is a simple bash script
+
+# Variables
+NAME="World"
+CURRENT_DATE=$(date)
+
+# Function to greet
+greet() {
+    echo "Hello, $1!"
+}
+
+# Main script
+echo "Starting the script..."
+greet "$NAME"
+
+# Display current date
+echo "Today is: $CURRENT_DATE"
+
+# Simple arithmetic
+num1=10
+num2=5
+result=$((num1 + num2))
+echo "The sum of $num1 and $num2 is: $result"
+
+# Exit with success status
+exit 0
+      
+      </code></pre>
+
+      </div>
+      
+
+	
+</body>
+</html>
