@@ -5,17 +5,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     tabsWrappers.forEach(wrapper => {
       // Set appropriate ARIA roles and properties
-      wrapper.querySelector('.tabs-tabs-header').setAttribute('role', 'tablist');
+      const header = wrapper.querySelector('.tabs-tabs-header');
+      if (header) {
+        header.setAttribute('role', 'tablist');
+      }
+      
+      // Get wrapper ID if available
+      const wrapperId = wrapper.getAttribute('data-id');
       
       const tabButtons = wrapper.querySelectorAll('.tabs-tab-button');
       const tabContents = wrapper.querySelectorAll('.tabs-tab-content');
       
       // Generate unique IDs for this tab set if needed
-      const tabsetId = `tabset-${Math.random().toString(36).substr(2, 9)}`;
+      const tabsetId = wrapperId || `tabset-${Math.random().toString(36).substr(2, 9)}`;
       
       tabButtons.forEach((button, index) => {
         const tabId = `${tabsetId}-tab-${index}`;
         const panelId = `${tabsetId}-panel-${index}`;
+        
+        // Get button's data-id if available
+        const buttonId = button.getAttribute('data-id');
         
         // Set ARIA attributes for buttons
         button.setAttribute('role', 'tab');
@@ -63,24 +72,74 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Click event for switching tabs
         button.addEventListener('click', function() {
-          // Deactivate all tabs
+          const tabIndex = this.getAttribute('data-tab');
+          
+          // Deactivate all tabs in this container
           tabButtons.forEach(btn => {
             btn.classList.remove('active');
             btn.setAttribute('aria-selected', 'false');
             btn.setAttribute('tabindex', '-1');
+            btn.removeAttribute('data-active');
           });
           
           tabContents.forEach(content => {
             content.classList.remove('active');
+            content.removeAttribute('data-active');
           });
           
           // Activate this tab
           button.classList.add('active');
           button.setAttribute('aria-selected', 'true');
           button.setAttribute('tabindex', '0');
+          button.setAttribute('data-active', '');
           
-          if (content) {
-            content.classList.add('active');
+          const tabContent = tabContents[index];
+          if (tabContent) {
+            tabContent.classList.add('active');
+            tabContent.setAttribute('data-active', '');
+          }
+          
+          // If this tab has an ID, switch all tabs with the same ID
+          if (buttonId) {
+            // Find all tab buttons with the same ID
+            document.querySelectorAll(`.tabs-tab-button[data-id="${buttonId}"]`).forEach(otherButton => {
+              // Skip the current button
+              if (otherButton === button) return;
+              
+              // Get the tab container and index
+              const otherWrapper = otherButton.closest('.tabs-tabs-wrapper');
+              if (!otherWrapper) return;
+              
+              const otherIndex = otherButton.getAttribute('data-tab');
+              
+              // Deactivate all tabs in the other container
+              const otherButtons = otherWrapper.querySelectorAll('.tabs-tab-button');
+              otherButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'false');
+                btn.setAttribute('tabindex', '-1');
+                btn.removeAttribute('data-active');
+              });
+              
+              // Deactivate all contents in the other container
+              const otherContents = otherWrapper.querySelectorAll('.tabs-tab-content');
+              otherContents.forEach(content => {
+                content.classList.remove('active');
+                content.removeAttribute('data-active');
+              });
+              
+              // Activate the corresponding tab and content
+              otherButton.classList.add('active');
+              otherButton.setAttribute('aria-selected', 'true');
+              otherButton.setAttribute('tabindex', '0');
+              otherButton.setAttribute('data-active', '');
+              
+              const otherContent = otherWrapper.querySelector(`.tabs-tab-content[data-index="${otherIndex}"]`);
+              if (otherContent) {
+                otherContent.classList.add('active');
+                otherContent.setAttribute('data-active', '');
+              }
+            });
           }
         });
       });
