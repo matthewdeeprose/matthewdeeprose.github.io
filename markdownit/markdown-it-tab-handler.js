@@ -1,33 +1,88 @@
 document.addEventListener('DOMContentLoaded', function() {
   // Function to handle tab switching
   function setupTabListeners() {
-    const tabButtons = document.querySelectorAll('.tabs-tab-button');
+    const tabsWrappers = document.querySelectorAll('.tabs-tabs-wrapper');
     
-    tabButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        const tabIndex = this.getAttribute('data-tab');
-        const tabsWrapper = this.closest('.tabs-tabs-wrapper');
+    tabsWrappers.forEach(wrapper => {
+      // Set appropriate ARIA roles and properties
+      wrapper.querySelector('.tabs-tabs-header').setAttribute('role', 'tablist');
+      
+      const tabButtons = wrapper.querySelectorAll('.tabs-tab-button');
+      const tabContents = wrapper.querySelectorAll('.tabs-tab-content');
+      
+      // Generate unique IDs for this tab set if needed
+      const tabsetId = `tabset-${Math.random().toString(36).substr(2, 9)}`;
+      
+      tabButtons.forEach((button, index) => {
+        const tabId = `${tabsetId}-tab-${index}`;
+        const panelId = `${tabsetId}-panel-${index}`;
         
-        // Deactivate all tabs and buttons
-        tabsWrapper.querySelectorAll('.tabs-tab-button').forEach(btn => {
-          btn.classList.remove('active');
-          btn.removeAttribute('data-active');
-        });
+        // Set ARIA attributes for buttons
+        button.setAttribute('role', 'tab');
+        button.setAttribute('id', tabId);
+        button.setAttribute('aria-controls', panelId);
+        button.setAttribute('aria-selected', button.classList.contains('active') ? 'true' : 'false');
+        button.setAttribute('tabindex', button.classList.contains('active') ? '0' : '-1');
         
-        tabsWrapper.querySelectorAll('.tabs-tab-content').forEach(content => {
-          content.classList.remove('active');
-          content.removeAttribute('data-active');
-        });
-        
-        // Activate selected tab and button
-        this.classList.add('active');
-        this.setAttribute('data-active', '');
-        
-        const tabContent = tabsWrapper.querySelector(`.tabs-tab-content[data-index="${tabIndex}"]`);
-        if (tabContent) {
-          tabContent.classList.add('active');
-          tabContent.setAttribute('data-active', '');
+        // Set ARIA attributes for content panels
+        const content = tabContents[index];
+        if (content) {
+          content.setAttribute('role', 'tabpanel');
+          content.setAttribute('id', panelId);
+          content.setAttribute('aria-labelledby', tabId);
+          if (!content.classList.contains('active')) {
+            content.setAttribute('tabindex', '-1');
+          }
         }
+        
+        // Add keyboard navigation
+        button.addEventListener('keydown', function(e) {
+          let targetButton = null;
+          
+          switch (e.key) {
+            case 'ArrowLeft':
+              targetButton = button.previousElementSibling || tabButtons[tabButtons.length - 1];
+              break;
+            case 'ArrowRight':
+              targetButton = button.nextElementSibling || tabButtons[0];
+              break;
+            case 'Home':
+              targetButton = tabButtons[0];
+              break;
+            case 'End':
+              targetButton = tabButtons[tabButtons.length - 1];
+              break;
+          }
+          
+          if (targetButton) {
+            e.preventDefault();
+            targetButton.click();
+            targetButton.focus();
+          }
+        });
+        
+        // Click event for switching tabs
+        button.addEventListener('click', function() {
+          // Deactivate all tabs
+          tabButtons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+            btn.setAttribute('tabindex', '-1');
+          });
+          
+          tabContents.forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Activate this tab
+          button.classList.add('active');
+          button.setAttribute('aria-selected', 'true');
+          button.setAttribute('tabindex', '0');
+          
+          if (content) {
+            content.classList.add('active');
+          }
+        });
       });
     });
   }
@@ -37,11 +92,23 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Set up a MutationObserver to handle dynamically added tabs
   const observer = new MutationObserver(mutations => {
+    let shouldSetup = false;
+    
     mutations.forEach(mutation => {
       if (mutation.addedNodes.length) {
-        setupTabListeners();
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === 1 && 
+              (node.classList.contains('tabs-tabs-wrapper') || 
+               node.querySelector('.tabs-tabs-wrapper'))) {
+            shouldSetup = true;
+          }
+        });
       }
     });
+    
+    if (shouldSetup) {
+      setupTabListeners();
+    }
   });
   
   // Observe changes to the output element
