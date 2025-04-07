@@ -1,5 +1,158 @@
 /*Light mode */
 
+/* Contrast finder */
+fieldset {
+  border: 1px solid #495961;
+}
+
+.tab-button {
+  background-color: transparent;
+  color: currentcolor;
+  border-top: 0.2rem solid currentcolor;
+  border-left: 0.2rem solid currentcolor;
+  border-right: 0.2rem solid currentcolor;
+  border-bottom: 0.2rem #fffff4;
+  outline: 0.2rem solid #fffff4;
+}
+
+.tab-button.active {
+  background-color: #fcbc00;
+  border-bottom: 1px solid #f8f9fa;
+  color: currentcolor;
+}
+
+input[type="file"] {
+  border: 1px solid #495961;
+}
+
+.file-preview {
+  border: 1px solid currentcolor;
+  background-color: #e1e8ec;
+}
+
+.preview-colour {
+  border: 1px solid currentcolor;
+  outline: 1px solid #e1e8ec;
+}
+
+.colour-count {
+  color: currentcolor;
+  background-color: #e9ecef;
+  border: 1px dashed currentcolor;
+}
+
+#error-message {
+  color: #da3a34;
+}
+
+.group-swatch {
+  border: 1px solid currentcolor;
+}
+
+.toc {
+  border: 1px solid #231f20;
+  background-color: #e1e8ec;
+}
+
+.toc-swatch {
+  border: 1px solid currentcolor;
+}
+
+.preview-swatch {
+  border: 1px solid currentcolor;
+}
+
+.colour-card {
+  border: 1px solid transparent;
+}
+
+.colour-card.selected {
+  border-color: currentcolor;
+}
+
+.colour-swatch {
+  border: 1px solid currentcolor;
+}
+
+.similar-btn {
+  background-color: #495961;
+  color: #e1e8ec;
+  border: 0.2rem solid #495961;
+}
+
+.similar-btn:hover {
+  background-color: #e1e8ec;
+  color: #00131d;
+  border: 0.2rem solid #e1e8ec;
+}
+
+#contrast-details {
+  border: 1px solid currentcolor;
+  background-color: #e1e8ec;
+}
+
+.selected-colour-swatch {
+  border: 1px solid currentcolor;
+}
+
+.details-separator {
+  border-top: 1px solid currentcolor;
+}
+
+.contrast-pair {
+  border: 1px solid currentcolor;
+  background-color: #fffff4;
+}
+
+.sample-swatch {
+  border: 1px solid currentcolor;
+}
+
+.pairExample,
+.text-sample {
+  border: 1px solid #00131d;
+}
+
+.contrast-pass {
+  color: #005051;
+}
+
+.contrast-fail {
+  color: #da3a34;
+}
+
+.form-hint {
+  color: #495961;
+}
+
+.partial-match-banner {
+  border: 1px solid currentcolor;
+}
+
+.contrast-pair.passing-pair {
+  border-left: 4px solid #005051;
+}
+
+.contrast-pair.failing-pair {
+  border-left: 4px solid #da3a34;
+}
+
+.partial-summary {
+  background-color: #9fb1bd;
+  border: 1px solid currentcolor;
+}
+
+.contrast-recommendation {
+  background-color: #9fb1bd;
+  border: 1px solid currentcolor;
+}
+
+.no-match-help {
+  background-color: #9fb1bd;
+}
+
+/* Constrast finder section ends*/
+
 /* Charts */
 
 .chart-container {
@@ -234,10 +387,10 @@ textarea:focus {
 }
 
 /* Image CVD */
-        .upload-container.drag-over {
-            background-color: #758D9A;
-			            border: 0px dashed currentcolor;
-        }
+.upload-container.drag-over {
+  background-color: #758d9a;
+  border: 0px dashed currentcolor;
+}
 
 /* Progress Bar Theme Colors */
 :root {

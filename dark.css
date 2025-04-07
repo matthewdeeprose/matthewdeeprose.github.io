@@ -1,5 +1,158 @@
 /* Dark mode */
 
+/*contrast finder */
+fieldset {
+  border: 1px solid #e1e8ec;
+}
+
+.tab-button {
+  background-color: transparent;
+  color: currentcolor;
+  border-top: 0.2rem solid #231f20;
+  border-left: 0.2rem solid #231f20;
+  border-right: 0.2rem solid #231f20;
+  border-bottom: 0.2rem solid #231f20;
+  outline: 0.2rem solid transparent;
+}
+
+.tab-button.active {
+  background-color: #fcbc00;
+  border-bottom: 1px solid #e1e8ec;
+  color: #231f20;
+}
+
+input[type="file"] {
+  border: 1px solid #e1e8ec;
+}
+
+.file-preview {
+  border: 1px solid currentcolor;
+  background-color: #00131d;
+}
+
+.preview-colour {
+  border: 1px solid currentcolor;
+  outline: 1px solid #e1e8ec;
+}
+
+.colour-count {
+  color: currentcolor;
+  background-color: #e9ecef;
+  border: 1px dashed currentcolor;
+}
+
+#error-message {
+  color: #fad1d1;
+}
+
+.group-swatch {
+  border: 1px solid currentcolor;
+}
+
+.toc {
+  border: 1px solid #e1e8ec;
+  background-color: #00131d;
+}
+
+.toc-swatch {
+  border: 1px solid #e1e8ec;
+}
+
+.preview-swatch {
+  border: 1px solid currentcolor;
+}
+
+.colour-card {
+  border: 1px solid #e1e8ec;
+}
+
+.colour-card.selected {
+  border-color: currentcolor;
+}
+
+.colour-swatch {
+  border-bottom: 1px solid currentcolor;
+}
+
+.similar-btn {
+  background-color: #495961;
+  color: #e1e8ec;
+  border: 0.2rem solid #495961;
+}
+
+.similar-btn:hover {
+  background-color: #e1e8ec;
+  color: #00131d;
+  border: 0.2rem solid #e1e8ec;
+}
+
+#contrast-details {
+  border: 1px solid currentcolor;
+  background-color: #00131d;
+}
+
+.selected-colour-swatch {
+  border: 1px solid currentcolor;
+}
+
+.details-separator {
+  border-top: 1px solid currentcolor;
+}
+
+.contrast-pair {
+  border: 1px solid currentcolor;
+  background-color: #231f20;
+}
+
+.sample-swatch {
+  border: 1px solid currentcolor;
+}
+
+.pairExample,
+.text-sample {
+  border: 1px solid #e1e8ec;
+}
+
+.contrast-pass {
+  color: #c1d100;
+}
+
+.contrast-fail {
+  color: #fad1d1;
+}
+
+.form-hint {
+  color: #e1e8ec;
+}
+
+.partial-match-banner {
+  border: 1px solid currentcolor;
+}
+
+.contrast-pair.passing-pair {
+  border-left: 4px solid #c1d100;
+}
+
+.contrast-pair.failing-pair {
+  border-left: 4px solid #fad1d1;
+}
+
+.partial-summary {
+  background-color: #495961;
+  border: 1px solid currentcolor;
+}
+
+.contrast-recommendation {
+  background-color: #495961;
+  border: 1px solid currentcolor;
+}
+
+.no-match-help {
+  background-color: #495961;
+}
+
+/* Contrast finder ends */
+
 /* Mermaid controls colours */
 
 .mermaid {
@@ -13,11 +166,9 @@
   border: 1px solid #9fb1bd;
 }
 
-
-
 .mermaid-view-controls {
   background: #00131d;
-border: 1px solid #9fb1bd;
+  border: 1px solid #9fb1bd;
 }
 
 .mermaid-size-slider {
@@ -658,7 +809,7 @@ summary {
 button {
   color: #e1e8ec;
   background: #231f20;
-  border: 0.2rem solid #e1e8ec !important;
+  border: 0.2rem solid #e1e8ec;
 }
 
 button:hover,
