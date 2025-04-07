@@ -9,7 +9,7 @@
       "isHighlighted": true
     },
     {
-      "title": "Responsive Vimeo Embeds",
+      "title": "Responsive Vimeo Embed",
       "link": "responsiveVimeoEmbed",
       "imageSrc": "vimeo169.png",
       "imageAlt": "",
@@ -17,11 +17,11 @@
       "isHighlighted": true
     },
     {
-      "title": "Colour vision deficiency Image Tester",
+      "title": "CVD Image Tester",
       "link": "imageCVD",
       "imageSrc": "cvdImage169.png",
       "imageAlt": "",
-      "description": "Test images with CVD simulation",
+      "description": "Test images with Colour Vision Deficiency simulation",
       "isHighlighted": true
     },
     {
@@ -37,11 +37,11 @@
       "link": "svgCVD.html",
       "imageSrc": "svgCVD-16-9.png",
       "imageAlt": "",
-      "description": "Adjust SVG images using colour vision deficiency \"friendly\" palettes.",
+      "description": "Adjust SVG images using Colour Vision Deficiency \"friendly\" palettes.",
       "isHighlighted": false
     },
     {
-      "title": "Colour vision deficiency friendly palettes",
+      "title": "CVD friendly palettes",
       "link": "CVDP.html",
       "imageSrc": "cvdp-169.png",
       "imageAlt": "",
