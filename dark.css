@@ -1,37 +1,238 @@
 /* Dark mode */
 
+/* Mermaid controls colours */
+
+.mermaid {
+  background-color: #151314;
+  border-left: 1px solid #9fb1bd;
+  border-right: 1px solid #9fb1bd;
+}
+
+.mermaid-controls {
+  background-color: #00131d;
+  border: 1px solid #9fb1bd;
+}
+
+
+
+.mermaid-view-controls {
+  background: #00131d;
+border: 1px solid #9fb1bd;
+}
+
+.mermaid-size-slider {
+  background: #b3dbd2;
+}
+
+.mermaid-size-slider::-webkit-slider-thumb {
+  background: #00131d;
+  border: 2px solid #fffff4;
+}
+
+.mermaid-size-slider::-moz-range-thumb {
+  background: #00131d;
+  border: 2px solid #fffff4;
+}
+
+.mermaid-size-slider:focus {
+  outline: 2px solid #c1d100;
+}
+
+/* Visual indicator for linked sliders */
+.sliders-linked::after {
+  background-color: none;
+}
+
+/* Visual indicator for linked slider thumbs */
+.slider-linked::-webkit-slider-thumb {
+  background: #fffff4;
+  border: 2px solid #00131d;
+}
+
+.slider-linked::-moz-range-thumb {
+  background: #fffff4;
+  border: 2px solid #00131d;
+}
+
+/* Mermaid controls colours ends */
+
+/* Emoji */
+span[role="img"]:hover {
+  background-color: #231f20;
+  border: 1px solid #e1e8ec;
+}
+
+/* streaming */
+.streaming-content::after {
+  background-color: #e1e8ec;
+}
+
+/* sortable tables */
+.sortable-table thead th {
+  background-color: #9fb1bd;
+  color: #00131d;
+}
+.sortable-table th,
+.sortable-table td {
+  border: 1px solid #e1e8ec;
+}
+.sortable-table tr:nth-child(even) {
+  background-color: #231f20;
+}
+
+.sortable-table tbody tr:hover {
+  background-color: #b3dbd2;
+  color: #00131d;
+  border: 1px solid #00131d !important;
+}
+
+.sortable-table tbody tr,
+.sortable-table thead {
+  border: 1px solid #e1e8ec !important;
+}
+
+@media (max-width: 956px) {
+  .sortable-table tr:nth-child(even) {
+    background-color: #231f20;
+  }
+  .sortable-table tbody tr:hover {
+    background-color: #002e3b;
+    color: #e1e8ec;
+    border: 1px solid #00131d !important;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 956px) {
+  /* Bottom borders for better visual separation in dark mode */
+  .sortable-table th,
+  .sortable-table td {
+    border-bottom: 1px dotted #e1e8ec !important;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Bottom borders for better visual separation in dark mode */
+  .sortable-table th,
+  .sortable-table td:not(:last-child) {
+    border-bottom: 1px dotted #e1e8ec !important;
+  }
+}
+
+del {
+  text-decoration: line-through;
+  color: #9fb1bd;
+}
+
+/* debug*/
+.response-debug-container {
+  background: #00131d;
+  border: 1px solid #fffdf9;
+  box-shadow: 0 2px 10px rgba(193, 209, 0, 0);
+}
+
+.debug-panel {
+  border: 1px solid #231f20;
+}
+
+.panel-header {
+  border-bottom: 1px solid #fffdf9;
+}
+
+.formatted-panel {
+  background: #00131d;
+}
+
+.semantic-panel pre,
+.raw-panel pre {
+  background: #495961;
+}
+
+/* Timing */
+.timing-status {
+  background-color: #00131d;
+  border: 1px solid #e1e8ec;
+}
+
+.timing-status.running {
+  border: 1px dotted #fcbc00;
+}
+
+.timing-status.complete {
+  border: 1px solid #c1d100;
+}
+
+.results-content {
+  background-color: #00131d;
+}
+
+.results-content pre {
+  background-color: #231f20;
+}
+
+/* Dependency list*/
+.module-list li {
+  background-color: #00131d;
+}
+
+/* statusbox */
+
+.status-messages:focus-visible {
+  outline: 3px solid #c1d100;
+  outline-offset: 2px;
+}
+
+/* System Prompt */
+:root {
+  --warning-color: #ff6b6b;
+  --warning-bg: #351b1b;
+}
+/* System Prompt Ends */
+
+/* Vimeo */
 .code-input:focus,
 .code-output:focus,
-.embed-output:focus,#highlighted-output:focus {
-    outline: transparent 2px solid;
-    border-color: #231F20;
-    box-shadow: 0 0 0 3px rgb(252, 188, 0);
+.embed-output:focus,
+#highlighted-output:focus,
+textarea:focus {
+  outline: transparent 2px solid;
+  border-color: #231f20;
+  box-shadow: 0 0 0 3px rgb(193, 209, 0);
+}
+
+.progress-fill {
+  background: #fcbc00;
+}
+
+.progress-fill.success {
+  background-color: #c1d100;
+}
+
+.progress-bar {
+  border: 1px solid #fffff4;
 }
 
 /* Image CVD */
-        .upload-container.drag-over {
-            background-color: #495961 !important;
-            border: 0px dashed currentcolor;
-        }
+.upload-container.drag-over {
+  background-color: #495961 !important;
+}
 
 /* Progress Bar Theme Colors */
 :root {
   --accent-color: #fcbc00;
-  --progress-bg: #231F20;
+  --progress-bg: #231f20;
 }
 
-
 input::placeholder {
-  color:#e1e8ec;
+  color: #e1e8ec;
 }
 
 input:hover::placeholder {
-  color: #231F20;
+  color: #231f20;
 }
 
 /* Placeholder color on focus */
 input:focus::placeholder {
-  color: #231F20;
+  color: #231f20;
 }
 /* Versatility section */
 
@@ -50,8 +251,8 @@ input:focus::placeholder {
 }
 legend {
   background-color: #fffff4;
-  color:#231F20;
-border: 2px solid #231F20;
+  color: #231f20;
+  border: 2px solid #231f20;
 }
 
 /* Versatility section ends */
@@ -102,7 +303,7 @@ input[type="text"]:hover,
 input[type="text"]:focus {
   box-shadow: 0 0 0 0.3rem #231f20 !important;
   outline: 0.2rem solid #c1d100 !important;
-    background-color: #e1e8ec;
+  background-color: #e1e8ec;
   color: #231f20;
 }
 
@@ -149,7 +350,7 @@ select:hover {
 /* Palette tables ends */
 
 body {
-  accent-color: #fcbc00;
+  accent-color: #c1d100;
 }
 
 article.standard h1,
@@ -290,8 +491,6 @@ dd.from {
   color: #e1e8ec;
 }
 
-
-
 .plainBlack {
   background-color: #231f20 !important;
 }
@@ -407,7 +606,7 @@ summary {
   outline: 0em solid #e1e8ec;
   background: #231f20;
   color: #e1e8ec;
- /* border: 0.2rem solid #231f20 !important; */
+  /* border: 0.2rem solid #231f20 !important; */
 }
 
 summary:visited {
@@ -655,7 +854,6 @@ figcaption a:focus:not(:focus-visible) {
   color: #002e3b !important;
 }
 
-
 /*
  * a11y theme for JavaScript, CSS, and HTML
  * Based on the okaidia theme: https://github.com/PrismJS/prism/blob/gh-pages/themes/prism-okaidia.css
@@ -665,11 +863,12 @@ figcaption a:focus:not(:focus-visible) {
 /*
  * MARK: Setup
  */
- @layer vendor-prism {
+@layer vendor-prism {
   @media (forced-colors: none), (forced-colors: active) {
     :root {
       --prism-a11y-border-radius: 0.3em;
-      --prism-a11y-font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+      --prism-a11y-font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono",
+        monospace;
       --prism-a11y-line-height: 1.5;
       --prism-a11y-code-block-margin: 0.5em 0;
       --prism-a11y-code-block-padding: 1em;
@@ -681,7 +880,7 @@ figcaption a:focus:not(:focus-visible) {
 
   @media (forced-colors: none), (forced-colors: active) {
     :root {
-      --prism-a11y-color-background: hsla(0, 0%, 17%, 1);
+      --prism-a11y-color-background: hsla(345, 6%, 13%, 1);
       --prism-a11y-color-text-no-token: hsla(60, 30%, 96%, 1);
       --prism-a11y-color-text-comment: hsla(54, 32%, 75%, 1);
       --prism-a11y-color-text-blue: hsla(180, 100%, 44%, 1);
@@ -695,15 +894,11 @@ figcaption a:focus:not(:focus-visible) {
     }
   }
 
-
   @media (forced-colors: none), (forced-colors: active) {
     /*
      * MARK: Theme
      */
-    :where(
-      code[class*="language-"],
-      pre[class*="language-"]
-    ) {
+    :where(code[class*="language-"], pre[class*="language-"]) {
       color: var(--prism-a11y-color-text-no-token);
       background: var(--prism-a11y-color-background);
       font-family: var(--prism-a11y-font-family);
@@ -732,10 +927,7 @@ figcaption a:focus:not(:focus-visible) {
       border-radius: var(--prism-a11y-border-radius);
     }
 
-    :where(
-      :not(pre) > code[class*="language-"],
-      pre[class*="language-"]
-    ) {
+    :where(:not(pre) > code[class*="language-"], pre[class*="language-"]) {
       background: var(--prism-a11y-color-background);
     }
 
@@ -746,12 +938,7 @@ figcaption a:focus:not(:focus-visible) {
       white-space: normal;
     }
 
-    :where(
-      .token.comment,
-      .token.prolog,
-      .token.doctype,
-      .token.cdata
-    ) {
+    :where(.token.comment, .token.prolog, .token.doctype, .token.cdata) {
       color: var(--prism-a11y-color-text-comment);
     }
 
@@ -760,60 +947,53 @@ figcaption a:focus:not(:focus-visible) {
     }
 
     :where(
-      .token.property,
-      .token.tag,
-      .token.constant,
-      .token.symbol,
-      .token.deleted
-    ) {
+        .token.property,
+        .token.tag,
+        .token.constant,
+        .token.symbol,
+        .token.deleted
+      ) {
       color: var(--prism-a11y-color-text-red);
     }
 
     :where(
-      .token.operator,
-      .token.entity,
-      .token.url,
-      .language-css .token.string,
-      .style .token.string,
-      .token.variable,
-      .token.keyword
-    ) {
+        .token.operator,
+        .token.entity,
+        .token.url,
+        .language-css .token.string,
+        .style .token.string,
+        .token.variable,
+        .token.keyword
+      ) {
       color: var(--prism-a11y-color-text-blue);
     }
 
     :where(
-      .token.selector,
-      .token.attr-name,
-      .token.string,
-      .token.char,
-      .token.builtin,
-      .token.inserted
-    ) {
+        .token.selector,
+        .token.attr-name,
+        .token.string,
+        .token.char,
+        .token.builtin,
+        .token.inserted
+      ) {
       color: var(--prism-a11y-color-text-green);
     }
 
     :where(
-      .token.atrule,
-      .token.attr-value,
-      .token.function,
-      .token.regex,
-      .token.important
-    ) {
+        .token.atrule,
+        .token.attr-value,
+        .token.function,
+        .token.regex,
+        .token.important
+      ) {
       color: var(--prism-a11y-color-text-yellow);
     }
 
-    :where(
-      .token.boolean,
-      .token.number,
-      .token.keyword
-    ) {
+    :where(.token.boolean, .token.number, .token.keyword) {
       color: var(--prism-a11y-color-text-purple);
     }
 
-    :where(
-      .token.important,
-      .token.bold
-    ) {
+    :where(.token.important, .token.bold) {
       font-weight: bold;
     }
 
@@ -825,27 +1005,28 @@ figcaption a:focus:not(:focus-visible) {
       cursor: help;
     }
 
-
     /*
      * MARK: Plugin support
      */
     /* Line highlight */
     .line-highlight {
       background: var(--prism-a11y-plugin-color-background);
-      border-top: var(--prism-a11y-width-border) solid var(--prism-a11y-plugin-color-border);
-      border-bottom: var(--prism-a11y-width-border) solid var(--prism-a11y-plugin-color-border);
+      border-top: var(--prism-a11y-width-border) solid
+        var(--prism-a11y-plugin-color-border);
+      border-bottom: var(--prism-a11y-width-border) solid
+        var(--prism-a11y-plugin-color-border);
     }
 
     /* Line numbers */
     .line-numbers .line-numbers-rows {
-      border-right: var(--prism-a11y-width-border) solid var(--prism-a11y-color-text-no-token);
+      border-right: var(--prism-a11y-width-border) solid
+        var(--prism-a11y-color-text-no-token);
     }
 
     .line-numbers-rows > span:before {
       color: var(--prism-a11y-color-text-comment);
     }
   }
-
 
   /*
    * MARK: Forced color mode support
@@ -865,13 +1046,11 @@ figcaption a:focus:not(:focus-visible) {
       --prism-a11y-plugin-color-background: Canvas;
     }
 
-    :where(
-      .token.boolean,
-      .token.number,
-      .token.keyword
-    ) {
+    :where(.token.boolean, .token.number, .token.keyword) {
       font-weight: bold;
     }
   }
 }
-pre.language-json {border: 1px solid currentColor}
+pre.language-json {
+  border: 1px solid currentColor;
+}
