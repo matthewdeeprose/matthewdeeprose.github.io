@@ -1269,18 +1269,10 @@ document.addEventListener("DOMContentLoaded", function () {
       const inputSwatch = document.createElement("div");
       inputSwatch.className = "sample-swatch";
       inputSwatch.style.backgroundColor = colour;
-      inputSwatch.setAttribute(
-        "aria-label",
-        `Input colour ${index + 1}: ${colour}`
-      );
 
       const selectedSwatchCopy = document.createElement("div");
       selectedSwatchCopy.className = "sample-swatch";
       selectedSwatchCopy.style.backgroundColor = selectedColour;
-      selectedSwatchCopy.setAttribute(
-        "aria-label",
-        `Selected colour: ${selectedColour}`
-      );
 
       swatchesDiv.appendChild(inputSwatch);
       swatchesDiv.appendChild(selectedSwatchCopy);
