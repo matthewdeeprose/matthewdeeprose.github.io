@@ -1288,12 +1288,13 @@ document.addEventListener("DOMContentLoaded", function () {
       const infoDiv = document.createElement("div");
       infoDiv.className = "contrast-info";
 
-      const inputColourLabel = document.createElement("div");
+      const inputColourLabel = document.createElement("h4");
       inputColourLabel.className = "input-colour-label";
       inputColourLabel.innerHTML = `Input colour ${
         index + 1
-      }:<strong> ${colour}</strong>`;
+      }: <span class="colour-value">${colour}</span>`;
 
+      // This line was missing - add the ratio text
       const ratioText = document.createElement("div");
       ratioText.innerHTML = `Contrast ratio: <strong>${contrastRatio.toFixed(
         2
@@ -1318,57 +1319,57 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Create SVG examples - using selectedColour as background and input colour as foreground
         svgExamples.innerHTML = `
-    <p>UI Component Examples (3:1 contrast):</p>
-    <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem;">
-        <!-- Document/File Icon Example -->
-        <div style="text-align: center;">
-            <div class="pairExample" style="background-color: ${selectedColour}; padding: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <svg width="100" height="60" aria-label="Document icon example" viewBox="0 0 24 24">
-                    <path d="M14 2H6C4.89 2 4 2.89 4 4V20C4 21.11 4.89 22 6 22H18C19.11 22 20 21.11 20 20V8L14 2Z" 
-                        fill="none" stroke="${colour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M14 2V8H20" 
-                        fill="none" stroke="${colour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M9 13H15" 
-                        fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M9 17H15" 
-                        fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+        <p>UI Component Examples (3:1 contrast):</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem;">
+            <!-- Document/File Icon Example -->
+            <div style="text-align: center;">
+                <div class="pairExample" style="background-color: ${selectedColour}; padding: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <svg width="100" height="60" aria-label="Document icon example" viewBox="0 0 24 24">
+                        <path d="M14 2H6C4.89 2 4 2.89 4 4V20C4 21.11 4.89 22 6 22H18C19.11 22 20 21.11 20 20V8L14 2Z" 
+                            fill="none" stroke="${colour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M14 2V8H20" 
+                            fill="none" stroke="${colour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9 13H15" 
+                            fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M9 17H15" 
+                            fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <p style="font-size: 0.8rem; margin-top: 0.3rem;">Document Icon</p>
             </div>
-            <p style="font-size: 0.8rem; margin-top: 0.3rem;">Document Icon</p>
-        </div>
-        
-        <!-- Settings/Gear Icon Example -->
-        <div style="text-align: center;">
-            <div class="pairExample" style="background-color: ${selectedColour}; padding: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <svg width="100" height="60" aria-label="Settings icon example" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="3" 
-                        fill="none" stroke="${colour}" stroke-width="1.5"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" 
-                        fill="none" stroke="${colour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+            
+            <!-- Settings/Gear Icon Example -->
+            <div style="text-align: center;">
+                <div class="pairExample" style="background-color: ${selectedColour}; padding: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <svg width="100" height="60" aria-label="Settings icon example" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3" 
+                            fill="none" stroke="${colour}" stroke-width="1.5"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" 
+                            fill="none" stroke="${colour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <p style="font-size: 0.8rem; margin-top: 0.3rem;">Settings Icon</p>
             </div>
-            <p style="font-size: 0.8rem; margin-top: 0.3rem;">Settings Icon</p>
-        </div>
-        
-        <!-- Search/Magnifying Glass Icon Example -->
-        <div style="text-align: center;">
-            <div class="pairExample" style="background-color: ${selectedColour}; padding: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <svg width="100" height="60" aria-label="Search icon example" viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="8" 
-                        fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M21 21L16.65 16.65" 
-                        fill="none" stroke="${colour}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+            
+            <!-- Search/Magnifying Glass Icon Example -->
+            <div style="text-align: center;">
+                <div class="pairExample" style="background-color: ${selectedColour}; padding: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <svg width="100" height="60" aria-label="Search icon example" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8" 
+                            fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M21 21L16.65 16.65" 
+                            fill="none" stroke="${colour}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <p style="font-size: 0.8rem; margin-top: 0.3rem;">Search Icon</p>
             </div>
-            <p style="font-size: 0.8rem; margin-top: 0.3rem;">Search Icon</p>
         </div>
-    </div>
-    <p style="margin-top: 0.5rem; font-size: 0.9rem;">
-        Note: 3:1 minimum contrast is suitable for graphical objects and UI components 
-        without text, but not sufficient for text content. Each example demonstrates 
-        the contrast between your input colour and the selected background colour.
-    </p>
-`;
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+            Note: 3:1 minimum contrast is suitable for graphical objects and UI components 
+            without text, but not sufficient for text content. Each example demonstrates 
+            the contrast between your input colour and the selected background colour.
+        </p>
+    `;
 
         infoDiv.appendChild(svgExamples);
       } else {
@@ -1843,177 +1844,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return card;
   }
 
-  // Show contrast details for partial matches
-  function showPartialContrastDetails(
-    selectedColour,
-    allInputColours,
-    passingColours,
-    failingColours
-  ) {
-    // Make sure contrast details section is visible
-    contrastDetails.classList.remove("hidden");
-    contrastPairs.innerHTML = "";
-
-    // Create a heading showing the selected colour
-    const selectedHeading = document.createElement("div");
-    selectedHeading.className = "selected-colour-heading";
-    selectedHeading.innerHTML = `<h3>Selected Colour: ${selectedColour.toUpperCase()}</h3>`;
-
-    // Create a swatch for the selected colour
-    const selectedSwatch = document.createElement("div");
-    selectedSwatch.className = "selected-colour-swatch";
-    selectedSwatch.style.backgroundColor = selectedColour;
-
-    selectedHeading.appendChild(selectedSwatch);
-    contrastPairs.appendChild(selectedHeading);
-
-    // Add partial match summary
-    const partialSummary = document.createElement("div");
-    partialSummary.className = "partial-summary";
-    partialSummary.innerHTML = `
-    <p>This colour has sufficient contrast with <strong> ${passingColours.length} out of ${allInputColours.length} </strong> input colours.</p>
-  `;
-    contrastPairs.appendChild(partialSummary);
-
-    // Add a separator
-    const separator = document.createElement("hr");
-    separator.className = "details-separator";
-    contrastPairs.appendChild(separator);
-
-    // Add a heading for the contrast pairs
-    const pairsHeading = document.createElement("h3");
-    pairsHeading.textContent = "Contrast Details With Your Colours:";
-    pairsHeading.className = "pairs-heading";
-    contrastPairs.appendChild(pairsHeading);
-
-    // Calculate and display contrast for each input colour
-    allInputColours.forEach((colour, index) => {
-      const contrastRatio = getContrast(selectedColour, colour);
-      const targetContrast = currentTargetContrast;
-      const isPassing = contrastRatio >= targetContrast;
-
-      const pairDiv = document.createElement("div");
-      pairDiv.className = "contrast-pair";
-      // Add a visual indication if it's passing or failing
-      if (isPassing) {
-        pairDiv.classList.add("passing-pair");
-      } else {
-        pairDiv.classList.add("failing-pair");
-      }
-
-      const swatchesDiv = document.createElement("div");
-      swatchesDiv.className = "contrast-swatches";
-
-      const inputSwatch = document.createElement("div");
-      inputSwatch.className = "sample-swatch";
-      inputSwatch.style.backgroundColor = colour;
-      inputSwatch.setAttribute(
-        "aria-label",
-        `Input colour ${index + 1}: ${colour}`
-      );
-
-      const selectedSwatchCopy = document.createElement("div");
-      selectedSwatchCopy.className = "sample-swatch";
-      selectedSwatchCopy.style.backgroundColor = selectedColour;
-      selectedSwatchCopy.setAttribute(
-        "aria-label",
-        `Selected colour: ${selectedColour}`
-      );
-
-      swatchesDiv.appendChild(inputSwatch);
-      swatchesDiv.appendChild(selectedSwatchCopy);
-
-      const infoDiv = document.createElement("div");
-      infoDiv.className = "contrast-info";
-
-      const inputColourLabel = document.createElement("div");
-      inputColourLabel.className = "input-colour-label";
-      inputColourLabel.innerHTML = `Input colour ${
-        index + 1
-      }:<strong>${colour}</strong> `;
-
-      const ratioText = document.createElement("div");
-      ratioText.innerHTML = `Contrast ratio: <strong>${contrastRatio.toFixed(
-        2
-      )}:1</strong>`;
-
-      const passClass =
-        contrastRatio >= targetContrast ? "contrast-pass" : "contrast-fail";
-      const passText = document.createElement("div");
-      passText.className = passClass;
-      passText.textContent =
-        contrastRatio >= targetContrast ? "✓ PASS" : "✗ FAIL";
-
-      infoDiv.appendChild(inputColourLabel);
-      infoDiv.appendChild(ratioText);
-      infoDiv.appendChild(passText);
-
-      // Add UI components or text examples based on contrast target
-      if (targetContrast === 3) {
-        // UI component examples for 3:1 contrast
-        const svgExamples = document.createElement("div");
-        svgExamples.style.marginTop = "1rem";
-        svgExamples.innerHTML = `
-        <p>UI Component Examples (3:1 contrast):</p>
-        <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem;">
-            <!-- Document/File Icon Example -->
-            <div style="text-align: center;">
-                <div class="pairExample" style="background-color: ${selectedColour}; padding: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <svg width="100" height="60" aria-label="Document icon example" viewBox="0 0 24 24">
-                        <path d="M14 2H6C4.89 2 4 2.89 4 4V20C4 21.11 4.89 22 6 22H18C19.11 22 20 21.11 20 20V8L14 2Z" 
-                            fill="none" stroke="${colour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M14 2V8H20" 
-                            fill="none" stroke="${colour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M9 13H15" 
-                            fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M9 17H15" 
-                            fill="none" stroke="${colour}" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </div>
-                <p style="font-size: 0.8rem; margin-top: 0.3rem;">Document Icon</p>
-            </div>
-        </div>
-      `;
-
-        infoDiv.appendChild(svgExamples);
-      } else {
-        // Text examples for 4.5:1 and 7:1 contrast
-        const textSample = document.createElement("div");
-        textSample.className = "text-sample";
-        textSample.style.color = selectedColour;
-        textSample.style.backgroundColor = colour;
-        textSample.textContent = "Text on background colour";
-
-        const bgSample = document.createElement("div");
-        bgSample.className = "text-sample";
-        bgSample.style.color = colour;
-        bgSample.style.backgroundColor = selectedColour;
-        bgSample.textContent = "Background on text colour";
-
-        infoDiv.appendChild(textSample);
-        infoDiv.appendChild(bgSample);
-      }
-
-      // Add recommendation for failing pairs
-      if (!isPassing) {
-        const recommendation = document.createElement("div");
-        recommendation.className = "contrast-recommendation";
-        recommendation.innerHTML = `
-        <p><strong>Recommendation:</strong> Use a different colour combination for elements using these colours.</p>
-      `;
-        infoDiv.appendChild(recommendation);
-      }
-
-      pairDiv.appendChild(swatchesDiv);
-      pairDiv.appendChild(infoDiv);
-
-      contrastPairs.appendChild(pairDiv);
-    });
-
-    // Scroll to the contrast details section
-    contrastDetails.scrollIntoView({ behavior: "smooth" });
-  }
-
   // New function to display partial matches
   function displayPartialMatches(partialMatches, allInputColours, matchSize) {
     // Update heading to indicate partial matches
@@ -2454,7 +2284,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Create a heading showing the selected colour
     const selectedHeading = document.createElement("div");
     selectedHeading.className = "selected-colour-heading";
-    selectedHeading.innerHTML = `<h3>Selected Colour: ${selectedColour}</span></h3>`;
+    selectedHeading.innerHTML = `<h3>Selected Colour: ${selectedColour.toUpperCase()}</h3>`;
 
     // Create a swatch for the selected colour
     const selectedSwatch = document.createElement("div");
@@ -2504,10 +2334,18 @@ document.addEventListener("DOMContentLoaded", function () {
       const inputSwatch = document.createElement("div");
       inputSwatch.className = "sample-swatch";
       inputSwatch.style.backgroundColor = colour;
+      inputSwatch.setAttribute(
+        "aria-label",
+        `Input colour ${index + 1}: ${colour}`
+      );
 
       const selectedSwatchCopy = document.createElement("div");
       selectedSwatchCopy.className = "sample-swatch";
       selectedSwatchCopy.style.backgroundColor = selectedColour;
+      selectedSwatchCopy.setAttribute(
+        "aria-label",
+        `Selected colour: ${selectedColour}`
+      );
 
       swatchesDiv.appendChild(inputSwatch);
       swatchesDiv.appendChild(selectedSwatchCopy);
@@ -2515,12 +2353,14 @@ document.addEventListener("DOMContentLoaded", function () {
       const infoDiv = document.createElement("div");
       infoDiv.className = "contrast-info";
 
-      const inputColourLabel = document.createElement("div");
+      // Changed from div to h4 for better screen reader navigation
+      const inputColourLabel = document.createElement("h4");
       inputColourLabel.className = "input-colour-label";
       inputColourLabel.innerHTML = `Input colour ${
         index + 1
-      }:<strong> ${colour}</strong>`;
+      }: <span class="colour-value">${colour}</span>`;
 
+      // Make sure to define ratioText immediately after
       const ratioText = document.createElement("div");
       ratioText.innerHTML = `Contrast ratio: <strong>${contrastRatio.toFixed(
         2
