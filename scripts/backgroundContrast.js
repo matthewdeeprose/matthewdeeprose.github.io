@@ -1532,7 +1532,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // New function to display partial matches
+  // Consolidated displayPartialMatches function
   function displayPartialMatches(partialMatches, allInputColours, matchSize) {
     // Update heading to indicate partial matches
     resultHeading.textContent = `Partial Matches (${partialMatches.length} found)`;
@@ -1548,7 +1548,7 @@ document.addEventListener("DOMContentLoaded", function () {
   `;
     colourGroups.appendChild(explanationBanner);
 
-    // Group matches by colour category as with full matches
+    // Group matches by colour category
     const groupedMatches = groupMatchingColours(partialMatches);
 
     // Create table of contents
@@ -1634,8 +1634,8 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let i = 0; i < Math.min(3, group.length); i++) {
           const previewSwatch = document.createElement("div");
           previewSwatch.className = "preview-swatch";
-          previewSwatch.setAttribute("role", "img");
           previewSwatch.style.backgroundColor = group[i].colour;
+          previewSwatch.setAttribute("role", "img");
           previewSwatch.setAttribute(
             "aria-label",
             `Preview of colour ${group[i].colour}`
@@ -1679,7 +1679,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
           // Add all colours in this group
           group.forEach((match) => {
-            const card = createColourCard(match, inputColours);
+            const card = createPartialMatchCard(match, allInputColours);
             groupGrid.appendChild(card);
           });
 
@@ -1834,189 +1834,6 @@ document.addEventListener("DOMContentLoaded", function () {
     card.appendChild(info);
 
     return card;
-  }
-
-  // New function to display partial matches
-  function displayPartialMatches(partialMatches, allInputColours, matchSize) {
-    // Update heading to indicate partial matches
-    resultHeading.textContent = `Partial Matches (${partialMatches.length} found)`;
-
-    // Create explanation banner
-    const explanationBanner = document.createElement("div");
-    explanationBanner.className = "partial-match-banner";
-    explanationBanner.innerHTML = `
-    <p><strong>Note:</strong> We couldn't find any colours that achieve the ${currentTargetContrast}:1 contrast 
-    target for all of your input colours.</p>
-    <p>Here are colours that have sufficient contrast with <strong> ${matchSize} out of ${allInputColours.length} 
-    </strong> of your input colours.</p>
-  `;
-    colourGroups.appendChild(explanationBanner);
-
-    // Group matches by colour category as with full matches
-    const groupedMatches = groupMatchingColours(partialMatches);
-
-    // Create table of contents
-    const toc = document.createElement("div");
-    toc.className = "toc";
-
-    const tocTitle = document.createElement("div");
-    tocTitle.className = "toc-title";
-    tocTitle.textContent = "Jump to colour group:";
-    toc.appendChild(tocTitle);
-
-    const tocList = document.createElement("div");
-    tocList.className = "toc-list";
-
-    // Keep track of active groups
-    const activeGroups = [];
-    Object.keys(groupedMatches).forEach((groupKey) => {
-      if (groupedMatches[groupKey].length > 0) {
-        activeGroups.push(groupKey);
-      }
-    });
-
-    // Create TOC items for active groups
-    activeGroups.forEach((groupKey) => {
-      const group = groupedMatches[groupKey];
-
-      const tocItem = document.createElement("a");
-      tocItem.className = "toc-item";
-      tocItem.href = `#colour-group-${groupKey}`;
-
-      const tocSwatch = document.createElement("span");
-      tocSwatch.className = "toc-swatch";
-      tocSwatch.style.backgroundColor =
-        colourCategoryDefinitions[groupKey].sampleColor;
-
-      tocItem.appendChild(tocSwatch);
-      tocItem.appendChild(
-        document.createTextNode(
-          `${colourCategoryDefinitions[groupKey].name} (${group.length})`
-        )
-      );
-
-      tocList.appendChild(tocItem);
-    });
-
-    toc.appendChild(tocList);
-    colourGroups.appendChild(toc);
-
-    // Create a section for each group
-    activeGroups.forEach((groupKey) => {
-      // Sort the group by minContrast (lowest to highest)
-      const unsortedGroup = groupedMatches[groupKey];
-      const group = [...unsortedGroup].sort(
-        (a, b) => a.minContrast - b.minContrast
-      );
-
-      const groupContainer = document.createElement("div");
-      groupContainer.className = "colour-group";
-      groupContainer.id = `colour-group-${groupKey}`;
-
-      // Create group heading with sample swatch
-      const groupHeadingDiv = document.createElement("div");
-      groupHeadingDiv.className = "group-heading";
-
-      const groupSwatch = document.createElement("div");
-      groupSwatch.className = "group-swatch";
-      groupSwatch.style.backgroundColor =
-        colourCategoryDefinitions[groupKey].sampleColor;
-
-      const groupHeading = document.createElement("h3");
-      groupHeading.textContent = `${colourCategoryDefinitions[groupKey].name} (${group.length})`;
-
-      groupHeadingDiv.appendChild(groupSwatch);
-      groupHeadingDiv.appendChild(groupHeading);
-      groupContainer.appendChild(groupHeadingDiv);
-
-      // Show a preview row of 3 colours
-      if (group.length >= 3) {
-        const previewRow = document.createElement("div");
-        previewRow.className = "colour-preview-row";
-
-        // Show first 3 colours as a preview
-        for (let i = 0; i < Math.min(3, group.length); i++) {
-          const previewSwatch = document.createElement("div");
-          previewSwatch.className = "preview-swatch";
-          previewSwatch.style.backgroundColor = group[i].colour;
-          previewSwatch.setAttribute("role", "img"); // Add this line to set the role to img
-          previewSwatch.setAttribute(
-            "aria-label",
-            `Preview of colour ${group[i].colour}`
-          );
-          previewRow.appendChild(previewSwatch);
-        }
-
-        groupContainer.appendChild(previewRow);
-      }
-
-      // Create a grid wrapper div for this group's colours
-      const groupGridWrapper = document.createElement("div");
-      groupGridWrapper.className = "group-grid-wrapper";
-
-      // Create a grid for this group's colours
-      const groupGrid = document.createElement("div");
-      groupGrid.className = "matching-colours";
-
-      // Show top 6 colours per group initially
-      const initialDisplay = group.slice(0, 6);
-      initialDisplay.forEach((match) => {
-        // Create a modified colour card that shows which colours pass/fail
-        const card = createPartialMatchCard(match, allInputColours);
-        groupGrid.appendChild(card);
-      });
-
-      groupGridWrapper.appendChild(groupGrid);
-      groupContainer.appendChild(groupGridWrapper);
-
-      // Add "show more" button if there are more than 6 colours
-      if (group.length > 6) {
-        const showMoreBtn = document.createElement("button");
-        showMoreBtn.textContent = `Show all ${
-          group.length
-        } ${colourCategoryDefinitions[groupKey].name.toLowerCase()}`;
-        showMoreBtn.style.marginTop = "1rem";
-
-        showMoreBtn.addEventListener("click", function () {
-          // Remove the initial 6 colours
-          groupGrid.innerHTML = "";
-
-          // Add all colours in this group
-          group.forEach((match) => {
-            const card = createPartialMatchCard(match, allInputColours);
-            groupGrid.appendChild(card);
-          });
-
-          // Remove the show more button
-          this.remove();
-        });
-
-        groupContainer.appendChild(showMoreBtn);
-      }
-
-      colourGroups.appendChild(groupContainer);
-    });
-
-    // Add click behavior for TOC items
-    document.querySelectorAll(".toc-item").forEach((item) => {
-      item.addEventListener("click", function (e) {
-        e.preventDefault();
-
-        // Remove active class from all items
-        document.querySelectorAll(".toc-item").forEach((i) => {
-          i.classList.remove("active");
-        });
-
-        // Add active class to clicked item
-        this.classList.add("active");
-
-        // Scroll to the target group
-        const targetId = this.getAttribute("href").substring(1);
-        document.getElementById(targetId).scrollIntoView({
-          behavior: "smooth",
-        });
-      });
-    });
   }
 
   /**
