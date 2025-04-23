@@ -37,8 +37,18 @@
       <meta name="twitter:card" content="summary_large_image"/>
 	  	      <style>
          .page-wrap > * {
-         grid-column: 1/-1 !important;
-         grid-row: auto !important;
+             grid-column: 1/-1 !important;
+             grid-row: auto !important;
+         }
+
+         .demoImage {
+             max-width: 70%;
+         }
+
+         @media (max-width: 768px) {
+             .demoImage {
+                 max-width: 100%;
+             }
          }
       </style>
    </head>
@@ -111,8 +121,8 @@
          <main class="page-main" id="main">
             <article class="standard">
                <h1 id="top">FocusLens: Accessibility Focus Inspection Tool</h1>
-			   			   		   <details>
-			               <summary class="Contents">
+			   			   		   <details id="index">
+			               <summary class="">
               <h2 id="Contents">Contents</h2>
             </summary></details>
 			   <h2>What is FocusLens?</h2>
