@@ -1,5 +1,13 @@
 {
   "projects": [
+      {
+      "title": "FocusLens",
+      "link": "focusLens",
+      "imageSrc": "focuslens169.png",
+      "imageAlt": "",
+      "description": "Accessibility Focus Inspection Tool",
+      "isHighlighted": true
+    },
     {
       "title": "Contrast Companion",
       "link": "contrastCompanion",
