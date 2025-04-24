@@ -192,7 +192,7 @@ aside {
 			</details>
 			       <div class="container">
 		<div class="svgCVDcontrols">
-        <input type="file" id="fileInput" accept=".svg" aria-label="Load SVG file">
+   		<input type="file" id="fileInput" accept=".svg" aria-label="Load SVG file">
         <button id="uploadBtn" class="SVGCVDButton">Load SVG</button>
         <button id="resetBtn" class="SVGCVDButton" disabled>Reset Colours</button>
         <button id="saveBtn" class="SVGCVDButton" disabled>Save SVG</button>
@@ -228,9 +228,13 @@ aside {
         <div id="paletteSelection">
             <label for="paletteSelect">Select a "colour vision deficiency friendly" palette:</label>
             <select id="paletteSelect"></select>
-
+            <br>
+            
         <div id="colorSwapInterface"></div>
-		</div>
+        <input type="file" id="paletteInput" accept=".json" aria-label="Optional: load palette">
+        <button id="uploadPaletteBtn" class="SVGCVDButton">Load Alternative Palette</button><span id="paletteHelp">Use the <a href="CVDP">palette creator tool</a> to create your own custom palette</span>	
+    </div>
+        
     </div>
             </article>
 			      <div id="panel">
@@ -398,7 +402,7 @@ function clearMessage() {
  * Handles the file upload process when a user selects an SVG file.
  * @param {Event} event - The file input change event.
  */
-function handleFileUpload(event) {
+ function handleFileUpload(event) {
     const file = event.target.files[0];
     if (file && file.type === 'image/svg+xml') {
         const reader = new FileReader();
@@ -406,7 +410,28 @@ function handleFileUpload(event) {
             originalSvg = e.target.result;
             displaySvg(originalSvg);
             identifyColors();
+            
+            // Save the current custom palettes before loading default palettes
+            const customPaletteOptions = Array.from(paletteSelect.options)
+                .filter(option => option.value.startsWith('custom_'));
+            
+            // Load default palettes
             loadPalettes();
+            
+            // Restore custom palettes
+            if (Object.keys(customPalettes).length > 0) {
+                // Re-add custom palette options to the dropdown
+                for (const [name, colors] of Object.entries(customPalettes)) {
+                    const option = document.createElement('option');
+                    option.value = `custom_${name}`;
+                    option.textContent = `${name} (Custom - ${colors.length} colours)`;
+                    paletteSelect.appendChild(option);
+                }
+                
+                // Notify user that custom palettes were preserved
+                console.log('Preserved custom palettes:', Object.keys(customPalettes));
+            }
+            
             resetBtn.disabled = false;
             saveBtn.disabled = false;
         };
@@ -415,6 +440,7 @@ function handleFileUpload(event) {
         alert('Please upload a valid SVG file.');
     }
 }
+
 
 /**
  * Displays the SVG content in all designated containers.
@@ -495,12 +521,16 @@ function displayColorInfo() {
 /**
  * Loads color palettes from an external JSON file and populates the palette select dropdown.
  */
-function loadPalettes() {
+ function loadPalettes() {
+    // Clear existing default palettes but keep custom ones
+    const options = Array.from(paletteSelect.options);
+    paletteSelect.innerHTML = '<option value="">Select a palette</option>';
+    
+    // Fetch default palettes
     fetch('https://matthewdeeprose.github.io/cvdp.json')
         .then(response => response.json())
         .then(data => {
             const palettes = data.palettes;
-            paletteSelect.innerHTML = '<option value="">Select a palette</option>';
             
             let largestPalette = null;
             let largestPaletteSize = 0;
@@ -516,6 +546,20 @@ function loadPalettes() {
                     largestPaletteSize = colors.length;
                 }
             }
+            
+            // Re-add custom palette options to the dropdown
+            for (const [name, colors] of Object.entries(customPalettes)) {
+                const option = document.createElement('option');
+                option.value = `custom_${name}`;
+                option.textContent = `${name} (Custom - ${colors.length} colours)`;
+                paletteSelect.appendChild(option);
+                
+                // Update largest palette info if needed
+                if (colors.length > largestPaletteSize) {
+                    largestPalette = `custom_${name}`;
+                    largestPaletteSize = colors.length;
+                }
+            }
 
             if (svgColors.length > largestPaletteSize) {
                 paletteSelect.value = largestPalette;
@@ -525,7 +569,20 @@ function loadPalettes() {
             // Trigger palette selection to update the interface
             handlePaletteSelection();
         })
-        .catch(error => console.error('Error loading palettes:', error));
+        .catch(error => {
+            console.error('Error loading palettes:', error);
+            
+            // If we fail to load default palettes, at least show any custom ones
+            if (Object.keys(customPalettes).length > 0) {
+                for (const [name, colors] of Object.entries(customPalettes)) {
+                    const option = document.createElement('option');
+                    option.value = `custom_${name}`;
+                    option.textContent = `${name} (Custom - ${colors.length} colours)`;
+                    paletteSelect.appendChild(option);
+                }
+                handlePaletteSelection();
+            }
+        });
 }
 
 /**
@@ -541,26 +598,53 @@ function displayPaletteMessage(svgColorCount, paletteColorCount) {
 /**
  * Handles the selection of a colour palette and updates the color swap interface.
  */
-function handlePaletteSelection() {
+ function handlePaletteSelection() {
     const selectedPaletteName = paletteSelect.value;
+    
     if (selectedPaletteName) {
-        fetch('https://matthewdeeprose.github.io/cvdp.json')
-            .then(response => response.json())
-            .then(data => {
-                selectedPalette = data.palettes[selectedPaletteName];
+        if (selectedPaletteName.startsWith('custom_')) {
+            // Handle custom palette
+            const customPaletteName = selectedPaletteName.substring(7); // Remove 'custom_' prefix
+            console.log('Selected custom palette:', customPaletteName);
+            
+            // Check if the custom palette exists
+            if (customPalettes && customPalettes[customPaletteName]) {
+                selectedPalette = customPalettes[customPaletteName];
+                console.log('Custom palette colors:', selectedPalette);
                 displayColorSwapInterface();
                 
                 // Clear the message if a palette is manually selected
                 if (svgColors.length <= selectedPalette.length) {
                     document.getElementById('pageMessage').textContent = '';
+                    document.getElementById('myMessage').style.display = 'none';
                 }
-            })
-            .catch(error => console.error('Error loading selected palette:', error));
+            } else {
+                console.error('Custom palette not found:', customPaletteName);
+                displayNotification(`Custom palette "${customPaletteName}" not found. Please upload it again.`, 'error');
+            }
+        } else {
+            // Handle default palette
+            fetch('https://matthewdeeprose.github.io/cvdp.json')
+                .then(response => response.json())
+                .then(data => {
+                    selectedPalette = data.palettes[selectedPaletteName];
+                    displayColorSwapInterface();
+                    
+                    // Clear the message if a palette is manually selected
+                    if (svgColors.length <= selectedPalette.length) {
+                        document.getElementById('pageMessage').textContent = '';
+                        document.getElementById('myMessage').style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error loading selected palette:', error));
+        }
     } else {
         colorSwapInterface.innerHTML = '';
         document.getElementById('pageMessage').textContent = '';
+        document.getElementById('myMessage').style.display = 'none';
     }
 }
+
 
 // Define closeAllDropdowns outside of displayColorSwapInterface
 let closeAllDropdowns;
@@ -568,8 +652,19 @@ let closeAllDropdowns;
 /**
  * Displays the color swap interface with custom dropdown selects for each color.
  */
-function displayColorSwapInterface() {
-    document.querySelector('.color-list').style.display = 'none';
+ function displayColorSwapInterface() {
+    // Check if SVG has been loaded
+    if (!svgColors || svgColors.length === 0) {
+        displayNotification('Please load an SVG file first before selecting a palette.', 'error');
+        return;
+    }
+
+    // Safely hide color-list if it exists
+    const colorList = document.querySelector('.color-list');
+    if (colorList) {
+        colorList.style.display = 'none';
+    }
+
     colorSwapInterface.innerHTML = '<h2 class="svgToolH2">Swap Colors:</h2>';
     const customSelects = [];
 
@@ -689,7 +784,6 @@ function displayColorSwapInterface() {
     // Close dropdowns when clicking outside
     document.addEventListener('click', closeAllDropdowns);
 }
-
 /**
  * Updates the SVG colors based on user selections.
  * @param {string} originalColor - The original color to be replaced.
@@ -831,7 +925,366 @@ function displayNotification(message, type) {
 }
 
 
-    </script>
+
+
+// Custom palette variables
+let customPalettes = {};
+const paletteInput = document.getElementById('paletteInput');
+const uploadPaletteBtn = document.getElementById('uploadPaletteBtn');
+
+// Add event listeners for palette upload
+uploadPaletteBtn.addEventListener('click', () => paletteInput.click());
+paletteInput.addEventListener('change', handlePaletteUpload);
+
+
+
+/**
+ * Handles the custom palette upload process when a user selects a JSON file.
+ * @param {Event} event - The file input change event.
+ */
+ function handlePaletteUpload(event) {
+    const file = event.target.files[0];
+    
+    // Reset the file input value to ensure the change event fires if the same file is selected again
+    paletteInput.value = '';
+    
+    if (!file) {
+        displayNotification('No file selected. Please choose a JSON palette file.', 'error');
+        return;
+    }
+    
+    // More flexible file type checking
+    const isJSON = file.type === 'application/json' || file.name.toLowerCase().endsWith('.json');
+    
+    if (!isJSON) {
+        displayNotification('Please upload a valid JSON file with .json extension.', 'error');
+        return;
+    }
+    
+    // Show loading message
+    displayNotification('Reading palette file...', 'info');
+    
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        try {
+            const jsonContent = e.target.result;
+            console.log('JSON content length:', jsonContent.length);
+            
+            if (jsonContent.trim() === '') {
+                displayNotification('The uploaded file is empty. Please check the file.', 'error');
+                return;
+            }
+            
+            let parsedPalettes;
+            try {
+                parsedPalettes = JSON.parse(jsonContent);
+                console.log('Parsed JSON successfully:', Object.keys(parsedPalettes));
+            } catch (parseError) {
+                console.error('JSON parse error:', parseError);
+                displayNotification(`Invalid JSON format: ${parseError.message}. Please check your file.`, 'error');
+                return;
+            }
+            
+            // Validate the palette format
+            const validationResult = validatePaletteFormat(parsedPalettes);
+            if (validationResult.valid) {
+                // Track new and overwritten palettes
+                const newPalettes = [];
+                const overwrittenPalettes = [];
+                
+                // Update existing custom palettes - handle overwriting
+                for (const [name, colors] of Object.entries(parsedPalettes)) {
+                    if (customPalettes[name]) {
+                        overwrittenPalettes.push(name);
+                    } else {
+                        newPalettes.push(name);
+                    }
+                    
+                    // Update or add to customPalettes
+                    customPalettes[name] = colors;
+                }
+                
+                // Remove existing custom palette options from the dropdown
+                const options = paletteSelect.querySelectorAll('option');
+                for (let i = options.length - 1; i >= 0; i--) {
+                    if (options[i].value.startsWith('custom_')) {
+                        paletteSelect.removeChild(options[i]);
+                    }
+                }
+                
+                // Add all custom palette options to the dropdown
+                for (const [name, colors] of Object.entries(customPalettes)) {
+                    const option = document.createElement('option');
+                    option.value = `custom_${name}`;
+                    option.textContent = `${name} (Custom - ${colors.length} colours)`;
+                    paletteSelect.appendChild(option);
+                }
+                
+                // Select the first new palette if any, otherwise the first overwritten one
+                if (newPalettes.length > 0) {
+                    paletteSelect.value = `custom_${newPalettes[0]}`;
+                } else if (overwrittenPalettes.length > 0) {
+                    paletteSelect.value = `custom_${overwrittenPalettes[0]}`;
+                }
+                
+                // Trigger palette selection to update the interface
+                handlePaletteSelection();
+                
+                // Create success message
+                let successMessage = 'Custom palettes loaded successfully!';
+                if (newPalettes.length > 0) {
+                    successMessage += ` Added ${newPalettes.length} new palette(s): ${newPalettes.join(', ')}`;
+                }
+                if (overwrittenPalettes.length > 0) {
+                    successMessage += ` Updated ${overwrittenPalettes.length} existing palette(s): ${overwrittenPalettes.join(', ')}`;
+                }
+                
+                displayNotification(successMessage, 'success');
+            } else {
+                displayNotification(`Invalid palette format: ${validationResult.message}. Please check the sample format.`, 'error');
+                displaySamplePaletteFormat();
+            }
+        } catch (error) {
+            console.error('Error processing palette file:', error);
+            displayNotification(`Error processing file: ${error.message}. Please check the file format.`, 'error');
+        }
+    };
+    
+    reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        displayNotification('Error reading the file. Please try again.', 'error');
+    };
+    
+    reader.readAsText(file);
+}
+
+/**
+ * Validates the format of the uploaded palette JSON.
+ * @param {Object} palettes - The parsed JSON palette object.
+ * @returns {boolean} - Whether the palette format is valid.
+ */
+ function validatePaletteFormat(palettes) {
+    if (!palettes) {
+        return { valid: false, message: 'No palette data found' };
+    }
+    
+    if (typeof palettes !== 'object' || Array.isArray(palettes)) {
+        return { valid: false, message: 'Palette must be an object with palette names as keys' };
+    }
+    
+    if (Object.keys(palettes).length === 0) {
+        return { valid: false, message: 'No palettes found in the file' };
+    }
+    
+    // Check each palette
+    for (const [name, colors] of Object.entries(palettes)) {
+        // Each palette must be an array
+        if (!Array.isArray(colors)) {
+            return { valid: false, message: `Palette "${name}" must be an array of colors` };
+        }
+        
+        // Palette must have at least one color
+        if (colors.length === 0) {
+            return { valid: false, message: `Palette "${name}" is empty` };
+        }
+        
+        // Each color must be a string
+        for (let i = 0; i < colors.length; i++) {
+            const color = colors[i];
+            if (typeof color !== 'string') {
+                return { valid: false, message: `Color at index ${i} in palette "${name}" must be a string` };
+            }
+            
+            // More flexible color format validation
+            const isHexColor = /^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/i.test(color);
+            const isNamedColor = /^[a-zA-Z]+$/.test(color);
+            const isRgbColor = /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i.test(color);
+            const isRgbaColor = /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d\.]+\s*\)$/i.test(color);
+            
+            if (!isHexColor && !isNamedColor && !isRgbColor && !isRgbaColor) {
+                return { 
+                    valid: false, 
+                    message: `Invalid color format "${color}" at index ${i} in palette "${name}". ` +
+                             `Use hex (#RRGGBB), named (blue), or rgb(r,g,b) formats`
+                };
+            }
+        }
+    }
+    
+    return { valid: true, message: 'Palette format is valid' };
+}
+
+/**
+ * Updates the palette dropdown to include both default and custom palettes.
+ */
+ function updatePaletteDropdown() {
+    // Keep the current selection if any
+    const currentSelection = paletteSelect.value;
+    
+    // Clear the dropdown
+    paletteSelect.innerHTML = '<option value="">Select a palette</option>';
+    
+    // Load the default palettes first
+    loadPalettes();
+    
+    // Then add the custom palettes
+    for (const [name, colors] of Object.entries(customPalettes)) {
+        const option = document.createElement('option');
+        option.value = `custom_${name}`;
+        option.textContent = `${name} (Custom - ${colors.length} colours)`;
+        paletteSelect.appendChild(option);
+    }
+    
+    // Try to restore the previous selection
+    if (currentSelection) {
+        paletteSelect.value = currentSelection;
+        if (paletteSelect.value !== currentSelection) {
+            handlePaletteSelection(); // If the selection changed, update the interface
+        }
+    }
+}
+/**
+ * Displays a notification to the user.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification ('success', 'error', or 'info').
+ */
+ function displayNotification(message, type) {
+    const messageContainer = document.getElementById('myMessage');
+    const notification = document.getElementById('pageMessage');
+    const iconContainer = document.getElementById('myMessageIcon');
+    
+    messageContainer.style.display = 'block';
+    notification.textContent = message;
+    
+    // Optionally add styling based on message type
+    if (type === 'error') {
+        iconContainer.innerHTML = '⚠️'; // Warning icon
+    } else if (type === 'success') {
+        iconContainer.innerHTML = '✓'; // Checkmark icon
+    } else if (type === 'info') {
+        iconContainer.innerHTML = 'ℹ️'; // Info icon
+    } else {
+        // Reset styles if no type specified
+        messageContainer.style.backgroundColor = '';
+        notification.style.color = '';
+        iconContainer.innerHTML = '';
+    }
+    
+    console.log(`Notification (${type}):`, message);
+}
+
+/**
+ * Displays sample palette format information to help users.
+ */
+ function displaySamplePaletteFormat() {
+    const samplePalette = {
+        "AccessiblePalette": [
+            "#1a75ff", 
+            "#ff6b1a", 
+            "#00cc99", 
+            "#e6194b"
+        ],
+        "AnotherPalette": [
+            "red", 
+            "green", 
+            "blue", 
+            "purple"
+        ]
+    };
+    
+    const sampleHtml = `
+        <h3>Sample Palette Format</h3>
+        <pre>${JSON.stringify(samplePalette, null, 2)}</pre>
+        <p>Your palette file should be a JSON file with the structure shown above. Each palette is an object with palette names as keys and arrays of colors as values.</p>
+        <button onclick="downloadSamplePalette()" class="SVGCVDButton">Download Sample Palette</button>
+    `;
+    
+    // Create a new div for the sample format info
+    const sampleDiv = document.createElement('div');
+    sampleDiv.id = 'samplePaletteFormat';
+    sampleDiv.innerHTML = sampleHtml;
+    sampleDiv.style.margin = '20px 0';
+    sampleDiv.style.padding = '15px';
+    sampleDiv.style.backgroundColor = '#f5f5f5';
+    sampleDiv.style.borderRadius = '5px';
+    sampleDiv.style.border = '1px solid #ddd';
+    
+    // Add it after the message div
+    const workingContainer = document.getElementById('workingContainer');
+    
+    // Remove any existing sample div first
+    const existingSample = document.getElementById('samplePaletteFormat');
+    if (existingSample) {
+        workingContainer.removeChild(existingSample);
+    }
+    
+    workingContainer.appendChild(sampleDiv);
+}
+
+/**
+ * Downloads a sample palette file.
+ */
+ function downloadSamplePalette() {
+    const samplePalette = {
+        "AccessiblePalette": [
+            "#1a75ff", 
+            "#ff6b1a", 
+            "#00cc99", 
+            "#e6194b"
+        ],
+        "EarthTones": [
+            "#8B4513", 
+            "#A0522D", 
+            "#CD853F", 
+            "#D2B48C"
+        ]
+    };
+    
+    const content = JSON.stringify(samplePalette, null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'sample_palette.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+
+window.downloadSamplePalette = function() {
+    const samplePalette = {
+        "AccessiblePalette": [
+            "#1a75ff", 
+            "#ff6b1a", 
+            "#00cc99", 
+            "#e6194b"
+        ],
+        "EarthTones": [
+            "#8B4513", 
+            "#A0522D", 
+            "#CD853F", 
+            "#D2B48C"
+        ]
+    };
+    
+    const content = JSON.stringify(samplePalette, null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'sample_palette.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+</script>
 
       <script>
          function menuAction() {
