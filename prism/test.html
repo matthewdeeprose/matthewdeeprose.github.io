@@ -13,93 +13,23 @@
 <body>
 	
 	<script src="prism.js"></script>
-			<div class="codeWrapper">
-	<pre><code class="language-html">
-&lt;div class="row">
-  &lt;!--!-->
-  &lt;label class="col">Gender&lt;/label>
-  &lt;div class="col">
-    &lt;!--!-->
-    &lt;div class="">
-      &lt;input type="radio" id="GenderMale" name="GenderMale" aria-label="GenderMale" value="Male" role="radio" aria-invalid="false">
-      &lt;label for="GenderMale">Male &lt;span>*&lt;/span>
-      &lt;/label>
-    &lt;/div>
-  &lt;/div>
-  &lt;!--!-->
-  &lt;div class="col">
-    &lt;!--!-->
-    &lt;div class="">
-      &lt;input type="radio" id="GenderFemale" name="GenderFemale" aria-label="GenderFemale" value="Female" role="radio" aria-invalid="false">
-      &lt;label for="GenderFemale">Female &lt;span>*&lt;/span>
-      &lt;/label>
-    &lt;/div>
-  &lt;/div>
-  &lt;!--!-->
-  &lt;div class="col">
-    &lt;!--!-->
-    &lt;div class="">
-      &lt;input type="radio" id="GenderOther" name="GenderOther" aria-label="GenderOther" value="Other" role="radio" aria-invalid="false">
-      &lt;label for="GenderOther">Other &lt;span>*&lt;/span>
-      &lt;/label>
-    &lt;/div>
-  &lt;/div>
-&lt;/div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-&lt;!-- Fieldset groups related radio inputs and legend provides group description -->
-&lt;fieldset class="gender-fieldset">
-    &lt;legend class="gender-legend">
-        Gender
-        &lt;!-- Required text visible to all users -->
-        &lt;span class="required-indicator">(Required)&lt;/span>
-    &lt;/legend>
-    
-    &lt;div class="radio-group">
-        &lt;!-- Single name attribute groups radio buttons -->
-        &lt;div class="radio-option">
-            &lt;input type="radio" 
-                   id="gender-male" 
-                   name="gender" 
-                   value="male" 
-                   required>
-            &lt;label for="gender-male">Male&lt;/label>
-        &lt;/div>
-
-        &lt;div class="radio-option">
-            &lt;input type="radio" 
-                   id="gender-female" 
-                   name="gender" 
-                   value="female" 
-                   required>
-            &lt;label for="gender-female">Female&lt;/label>
-        &lt;/div>
-
-        &lt;div class="radio-option">
-            &lt;input type="radio" 
-                   id="gender-other" 
-                   name="gender" 
-                   value="other" 
-                   required>
-            &lt;label for="gender-other">Other&lt;/label>
-        &lt;/div>
-    &lt;/div>
-&lt;/fieldset>
-</code></pre>
-</div>
+              <div class="codeWrapper">
+                <pre><code class="language-markdown">
+```chart
+{
+  "type": "line",
+  "data": {
+    "labels": ["January", "February", "March", "April", "May", "June", "July"],
+    "datasets": [{
+      "label": "Monthly Sales",
+      "data": [65, 59, 80, 81, 56, 55, 40],
+      "fill": false,
+      "tension": 0.1
+    }]
+  }
+}
+```
+            </code></pre></div>
 	
 	
 		<div class="codeWrapper">
