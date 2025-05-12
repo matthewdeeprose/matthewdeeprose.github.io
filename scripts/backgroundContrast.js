@@ -24,6 +24,64 @@ document.addEventListener("DOMContentLoaded", function () {
   const filePreview = document.getElementById("file-preview");
   const previewColours = document.getElementById("preview-colours");
 
+  // Parse URL parameters for colour prepopulation
+  function getUrlParams() {
+    const params = {};
+    const queryString = window.location.search.substring(1);
+    const pairs = queryString.split("&");
+
+    for (let i = 0; i < pairs.length; i++) {
+      if (!pairs[i]) continue;
+      const pair = pairs[i].split("=");
+      if (pair.length >= 1) {
+        params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || "");
+      }
+    }
+
+    return params;
+  }
+
+  // Extract and validate hex colours from URL parameter
+  function extractHexColours(colourParam) {
+    if (!colourParam) return [];
+
+    // Split by commas, spaces, or plus signs (which might be used instead of spaces in URLs)
+    let colours = colourParam.split(/[,\s+]+/);
+
+    // Validate and normalize each colour
+    return colours
+      .map((colour) => {
+        colour = colour.trim();
+        // Add # if missing for 6-character hex codes
+        if (/^[0-9A-Fa-f]{6}$/.test(colour)) {
+          return "#" + colour.toUpperCase();
+        }
+        // Accept if it's already a valid hex colour with #
+        else if (/^#[0-9A-Fa-f]{6}$/.test(colour)) {
+          return colour.toUpperCase();
+        }
+        return null;
+      })
+      .filter((colour) => colour !== null);
+  }
+
+  // Check for URL parameters and populate input if found
+  const params = getUrlParams();
+  const colourParam = params.colours || params.colors; // Accept both British and American spelling
+  if (colourParam) {
+    const colours = extractHexColours(colourParam);
+    if (colours && colours.length > 0) {
+      colourInput.value = colours.join("\n");
+
+      // Make sure the manual input tab is active
+      tabButtons.forEach((btn) => {
+        if (btn.getAttribute("data-tab") === "manual-input") {
+          btn.click();
+        }
+      });
+    }
+  }
+
   // Original colours (will be used when generating similar colours)
   let originalMatchingColours = [];
   // Current input colours (will be used for contrast checking)

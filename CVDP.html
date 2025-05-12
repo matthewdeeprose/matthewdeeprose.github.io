@@ -74,6 +74,20 @@
     </style>
 	
     <style>
+.contrast-companion-link {
+    margin: 20px 0;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.contrast-link {
+    display: inline-block;
+    padding: 8px 16px;
+        border-radius: 4px;
+    font-weight: bold;
+}
+
         .color-input, .palette-controls, .button-container {
             display: flex;
             gap: 10px;
@@ -321,11 +335,11 @@ color: #002E3B;}
          </main>
          <aside class="page-sidebar related">
             <section class="related">
-			<h2>Related</h2>
+
 			</section>
 
                <section class="related">
-                <h3>Related tools</h3>
+                <h2>Related tools</h2>
                 <ul class="relUL">
                     <li><a href="svgCVD">SVG Palette Adjuster for Colour Vision Deficiency</a></li>
                     <li><a href="imageCVD">Colour Vision Deficiency Image Tester</a></li>
@@ -425,21 +439,21 @@ color: #002E3B;}
         <feBlend in="ProjectionOnPlane1" in2="ProjectionOnPlane2" mode="normal"/>
     </filter>
 </svg>
-    <script>
+<script>
 /**
- * Accessible Color Palette Manager
- * This script manages color palettes with accessibility features for different types of color vision.
- * It allows users to create, edit, save, and export color palettes while maintaining WCAG compliance.
+ * Accessible Colour Palette Manager
+ * This script manages colour palettes with accessibility features for different types of colour vision.
+ * It allows users to create, edit, save, and export colour palettes while maintaining WCAG compliance.
  */
 
 // Wait for the DOM to be fully loaded before running the script
 document.addEventListener('DOMContentLoaded', function() {
     // ====== DOM Element References ======
     // Get all the interactive elements we'll need from the page
-    const colorPicker = document.getElementById('colorPicker');        // Color picker input
-    const colorHex = document.getElementById('colorHex');             // Hex color code input
-    const addColorBtn = document.getElementById('addColor');          // Button to add colors
-    const userColorTable = document.getElementById('userColorTable');  // Table displaying colors
+    const colorPicker = document.getElementById('colorPicker');        // Colour picker input
+    const colorHex = document.getElementById('colorHex');             // Hex colour code input
+    const addColorBtn = document.getElementById('addColor');          // Button to add colours
+    const userColorTable = document.getElementById('userColorTable');  // Table displaying colours
     const paletteSelect = document.getElementById('paletteSelect');   // Dropdown for palette selection
     const paletteName = document.getElementById('paletteName');       // Input for palette name
     
@@ -484,8 +498,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ====== Color Input Synchronization ======
-    // Keep the color picker and hex input synchronized
+    // ====== Colour Input Synchronization ======
+    // Keep the colour picker and hex input synchronized
     colorPicker.addEventListener('input', function() {
         colorHex.value = this.value;
     });
@@ -495,8 +509,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     /**
-     * Checks if a color code is a valid hex color
-     * @param {string} color - The color code to validate
+     * Checks if a colour code is a valid hex colour
+     * @param {string} color - The colour code to validate
      * @returns {boolean} - True if valid, false if invalid
      */
     function isValidHexColor(color) {
@@ -504,7 +518,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Adds a new color to the current palette after validation
+     * Adds a new colour to the current palette after validation
      */
     function addColorToPalette() {
         if (currentPalette) {
@@ -515,13 +529,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 colorValue = '#' + colorValue;
             }
             
-            // Only add valid hex colors
+            // Only add valid hex colours
             if (isValidHexColor(colorValue)) {
                 addColor(colorValue);
                 let addedColorCode = colorValue.toUpperCase();
                 displayNotification(addedColorCode + ' added to palette.');
+                updateContrastCompanionLink(); // Update contrast companion link when adding a colour
             } else {
-                displayNotification('Error: Invalid hex color code. Please use the format #RRGGBB.');
+                displayNotification('Error: Invalid hex colour code. Please use the format #RRGGBB.');
             }
         } else {
             displayNotification('Please create or select a palette first.');
@@ -529,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ====== Event Listeners ======
-    // Add color when button is clicked or Enter is pressed
+    // Add colour when button is clicked or Enter is pressed
     addColorBtn.addEventListener('click', addColorToPalette);
     colorHex.addEventListener('keyup', function(event) {
         if (event.key === 'Enter') {
@@ -547,6 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderTable();
             updateButtonStates();
             paletteName.value = '';
+            updateContrastCompanionLink(); // Update contrast companion link when creating a new palette
         } else {
             displayNotification('Please enter a unique palette name.');
         }
@@ -561,6 +577,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentPalette = newName;
             updatePaletteSelect();
             paletteName.value = '';
+            updateContrastCompanionLink(); // Update contrast companion link when renaming a palette
         } else {
             displayNotification('Please select a palette and enter a unique new name.');
             document.getElementById('paletteName').focus();
@@ -576,6 +593,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updatePaletteSelect();
                 renderTable();
                 updateButtonStates();
+                updateContrastCompanionLink(); // Update contrast companion link when deleting a palette
             }
         } else {
             displayNotification('Please select a palette to delete.');
@@ -586,6 +604,7 @@ document.addEventListener('DOMContentLoaded', function() {
     paletteSelect.addEventListener('change', function() {
         currentPalette = this.value;
         renderTable();
+        updateContrastCompanionLink(); // Update contrast companion link when switching palettes
     });
 
     /**
@@ -608,6 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updatePaletteSelect();
             renderTable();
             updateButtonStates();
+            updateContrastCompanionLink(); // Update contrast companion link when loading palettes
             displayNotification('Palettes loaded from LocalStorage!');
         } else {
             displayNotification('No saved palettes found in LocalStorage.');
@@ -621,7 +641,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palettes));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "color_palettes.json");
+        downloadAnchorNode.setAttribute("download", "colour_palettes.json");
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
@@ -647,6 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     updatePaletteSelect();
                     renderTable();
                     updateButtonStates();
+                    updateContrastCompanionLink(); // Update contrast companion link when importing palettes
                     displayNotification('Palettes imported successfully!');
                 } catch (error) {
                     displayNotification('Error importing palettes. Please make sure the file is a valid JSON.');
@@ -657,8 +678,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     /**
-     * Adds a color to the current palette
-     * @param {string} hex - The hex color code to add
+     * Adds a colour to the current palette
+     * @param {string} hex - The hex colour code to add
      */
     function addColor(hex) {
         palettes[currentPalette].push(hex);
@@ -666,7 +687,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Renders the color table showing all colors in the current palette
+     * Updates the contrast companion link based on the current palette colours
+     * Shows link when there is more than one colour in the palette
+     */
+function updateContrastCompanionLink() {
+    const linkContainer = document.getElementById('contrastCompanionLinkContainer');
+    const link = document.getElementById('contrastCompanionLink');
+    
+    // Exit early if elements don't exist yet
+    if (!linkContainer || !link) {
+        return;
+    }
+    
+    // Only show the link if there's a current palette with at least two colors
+    if (currentPalette && palettes[currentPalette] && palettes[currentPalette].length >= 2) {
+        // Create a comma-separated list of hex codes without the # symbol
+        const colorsList = palettes[currentPalette]
+            .map(color => color.replace('#', ''))
+            .join(',');
+        
+        // Set the href attribute
+        link.href = `contrastCompanion.html?colours=${colorsList}`;
+        
+        // Show the link container
+        linkContainer.style.display = 'block';
+        
+        // Add ARIA label with count of colors for better accessibility
+        const colorCount = palettes[currentPalette].length;
+        link.setAttribute('aria-label', 
+            `Find a background colour with sufficient contrast to ${colorCount} ${colorCount === 1 ? 'colour' : 'colours'}`);
+    } else {
+        // Hide the link container if there are no colors
+        linkContainer.style.display = 'none';
+    }
+}
+
+    /**
+     * Renders the colour table showing all colours in the current palette
      * Includes accessibility features like ARIA labels and roles
      */
     function renderTable() {
@@ -705,12 +762,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const tbody = document.createElement('tbody');
             tbody.setAttribute('role', 'rowgroup');
 
-            // Create a row for each color in the palette
+            // Create a row for each colour in the palette
             palettes[currentPalette].forEach((color, index) => {
                 const row = document.createElement('tr');
                 row.setAttribute('role', 'row');
 
-                // Add color code as row header
+                // Add colour code as row header
                 const colorHeader = document.createElement('th');
                 colorHeader.setAttribute('scope', 'row');
                 colorHeader.setAttribute('data-label', 'colour');
@@ -718,7 +775,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 colorHeader.textContent = color;
                 row.appendChild(colorHeader);
 
-                // Add cells for different color vision types
+                // Add cells for different colour vision types
                 const cellTypes = ['trichromacy', 'protanopia', 'deuteranopia', 'tritanopia'];
                 cellTypes.forEach(type => {
                     const td = document.createElement('td');
@@ -748,17 +805,21 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             table.appendChild(tbody);
+            
+            // Update the contrast companion link after rendering the table
+            updateContrastCompanionLink();
         }
     }
 
     /**
-     * Removes a color from the current palette
-     * @param {number} index - The index of the color to remove
+     * Removes a colour from the current palette
+     * @param {number} index - The index of the colour to remove
      */
     function removeColor(index) {
         if (currentPalette && palettes[currentPalette]) {
             palettes[currentPalette].splice(index, 1);
             renderTable();
+            updateContrastCompanionLink(); // Update contrast companion link when removing a colour
         }
     }
 
@@ -788,6 +849,26 @@ document.addEventListener('DOMContentLoaded', function() {
         renderTable();
     }
     updateButtonStates();
+    
+    // Add the contrast companion link container after the table
+    const linkContainer = document.createElement('div');
+    linkContainer.id = 'contrastCompanionLinkContainer';
+    linkContainer.className = 'contrast-companion-link';
+    linkContainer.style.display = 'none';
+    
+    const link = document.createElement('a');
+    link.id = 'contrastCompanionLink';
+    link.className = 'contrast-link';
+    link.href = '#';
+    link.textContent = 'Find a background colour with sufficient contrast to these colours';
+    
+    linkContainer.appendChild(link);
+    
+    // Insert the link container after the userColorTable
+    const table = document.getElementById('userColorTable');
+    table.parentNode.insertBefore(linkContainer, table.nextSibling);
+    
+
 });
 
 /**
