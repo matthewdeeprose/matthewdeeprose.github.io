@@ -1,5 +1,128 @@
 /* Dark mode */
 
+/* SVG Tool Updates */
+.color-item.has-contrast-issue {
+  border-left: 3px solid #ffc107;
+  padding-left: 5px;
+  position: relative;
+}
+
+.contrast-fix-suggestion {
+  background-color: #231f20;
+  border-left: 10px solid #ef7d00;
+  color: #e1e8ec;
+}
+
+.alternatives-modal {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.alternatives-modal-content {
+  background-color: #00131d;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  color: #e1e8ec;
+}
+
+.alternatives-modal-header {
+  border-bottom: 1px solid #e1e8ec;
+}
+
+.alternatives-modal-header h3 {
+  margin: 0;
+  color: #e1e8ec;
+}
+
+.alternatives-modal-footer {
+  border-top: 1px solid #e1e8ec;
+}
+
+.close-modal-btn {
+  color: #e1e8ec;
+}
+
+.color-replacements-list {
+  background-color: #00131d;
+  border-left: 5px solid #1e8765;
+}
+
+.alternative-color {
+  color: #00131d;
+}
+
+#backgroundFinderSection,
+#paletteSelection {
+  background-color: #00131d;
+}
+
+.color-group-toc a {
+  background-color: #231f20;
+  border: 1px solid;
+}
+
+.preview-btn {
+  outline: 2px solid #231f20;
+}
+
+.preview-controls {
+  background-color: #231f20;
+  border: 1px solid #c1d100;
+}
+
+.partial-match-info {
+  background-color: #231f20;
+  border-left: 10px solid #ffc107;
+  color: #9fb1bd;
+}
+
+.color-suggestions {
+  background-color: #231f20;
+  border: 1px solid #e1e8ec;
+}
+
+.selected-bg-preview {
+  background-color: #00131d;
+  border: 1px solid #e1e8ec;
+}
+
+.color-card.selected-background {
+  border: 3px solid #231f20 !important;
+  outline: 3px solid #e1e8ec !important;
+}
+
+.contrast-status {
+  color: #ef7d00;
+}
+
+.bg-preview-value {
+  background-color: #e1e8ec;
+  color: #231f20;
+}
+
+.suggestion-card {
+  background-color: #00131d;
+  border: 1px solid #e1e8ec;
+}
+
+.alternative-color {
+  border: 0.2rem dotted #00131d;
+  outline: 0.2rem solid #e1e8ec;
+  box-shadow: 0 0 0 0.4rem #005c8400;
+  background: #e1e8ec;
+}
+
+.alternative-color.selected {
+  border-color: #002e3b !important;
+  background-color: #9fb1bd;
+}
+
+.success-message {
+  background-color: #231f20;
+  color: #c1d100;
+  border: 1px solid #c1d100;
+}
+
+/* SVG Tool Updates End */
+
 /*contrast finder */
 fieldset {
   border: 1px solid #e1e8ec;
@@ -153,10 +276,112 @@ input[type="file"] {
 
 /* Contrast finder ends */
 
+/* Chart controls */
+
+.chart-description {
+  background-color: #00131d;
+}
+
+.chart-short-description-heading,
+h3.chart-details-heading {
+  border-bottom: 2px solid #9fb1bd;
+}
+
+.chart-short-description {
+  border-left: 3px solid #9fb1bd;
+}
+
+.chart-disclaimer {
+  border-top: 1px dashed #9fb1bd;
+}
+
+.chart-section {
+  background-color: #231f20;
+}
+
+.chart-construction-section {
+  border-left: 4px solid #c1d100;
+}
+
+.chart-insights-section {
+  border-left: 4px solid #74c9e5;
+}
+
+.chart-data-points-section {
+  border-left: 4px solid #fcbc00;
+}
+
+.chart-insights-section li strong {
+  color: #c1d100;
+}
+
+.chart-container {
+  border: 1px solid #9fb1bd;
+}
+
+.chart-palette-label {
+  color: #e1e8ec;
+}
+
+.chart-controls {
+  background-color: #00131d;
+  border-top: 1px solid #9fb1bd;
+}
+
+/* Chart controls ends */
+
 /* Mermaid controls colours */
 
+/* Break-specific styles */
+.break-container {
+  background-color: #161415;
+  border-left: 3px solid #fcbc00;
+}
+
+.break-condition-header {
+  color: #fcbc00;
+}
+
+.mermaid-export-controls {
+  border: 1px solid #e1e8ec;
+  background-color: #00131d;
+}
+
+.btn.mermaidZoomControl {
+  color: #b3dbd2 !important;
+}
+
+.btn.mermaidZoomControl:hover,
+.btn.mermaidZoomControl:focus {
+  background-color: #00131d !important;
+}
+
+/* Full screen mode styling */
+.mermaid-container.fullscreen-mode {
+  background: #231f20;
+}
+
+/* Control panel styling */
+.mermaid-pan-zoom-controls {
+  background-color: rgba(40, 44, 52, 0.8);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Button styling */
+.mermaid-pan-zoom-controls .btn {
+  background-color: #231f20;
+  color: #e1e8ec;
+  border-color: #758d9a;
+}
+
+.mermaid-pan-zoom-controls .btn:hover,
+.mermaid-pan-zoom-controls .btn:focus {
+  color: #231f20;
+  background-color: #e1e8ec;
+}
+
 .mermaid {
-  background-color: #151314;
+  background-color: #2e282a;
   border-left: 1px solid #9fb1bd;
   border-right: 1px solid #9fb1bd;
 }
@@ -809,7 +1034,7 @@ summary {
 button {
   color: #e1e8ec;
   background: #231f20;
-  border: 0.2rem solid #e1e8ec;
+  border: 0.2rem solid #e1e8ec !important;
 }
 
 button:hover,

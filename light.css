@@ -1,5 +1,122 @@
 /*Light mode */
 
+/* SVG Tool Updates */
+
+.alternative-color {
+  color: #00131d;
+}
+
+.contrast-fix-suggestion {
+  background-color: #fff3cd;
+  border-left: 10px solid #ffc107;
+  color: #856404;
+}
+
+.alternatives-modal {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.alternatives-modal-content {
+  background-color: #f0f2e8;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  color: #00131d;
+}
+
+.alternatives-modal-header {
+  border-bottom: 1px solid #495961;
+}
+
+.alternatives-modal-header h3 {
+  margin: 0;
+  color: #00131d;
+}
+
+.alternatives-modal-footer {
+  border-top: 1px solid #495961;
+}
+
+.close-modal-btn {
+  color: #00131d;
+}
+
+#backgroundFinderSection {
+  background-color: #f9f9f9;
+}
+
+#paletteSelection {
+  background-color: #f9f9f9;
+}
+
+.color-group-toc a {
+  background-color: #f5f5f5;
+}
+
+.preview-btn {
+  outline: 2px solid #fffff4;
+}
+
+.preview-controls {
+  background-color: #f5f5f5;
+  border: 1px solid #231f20;
+}
+
+.partial-match-info {
+  background-color: #fff3cd;
+  border-left: 10px solid #ffc107;
+  color: #856404;
+}
+
+.color-suggestions {
+  background-color: #f9f9f9;
+}
+
+.selected-bg-preview {
+  background-color: #fff;
+  border: 1px solid #ddd;
+}
+
+.color-card.selected-background {
+  border: 3px solid #f9f9f9;
+  outline: 3px solid #005c84;
+}
+
+.contrast-status {
+  color: #ca0078;
+}
+
+.bg-preview-value {
+  background-color: rgba(255, 255, 255, 0.7);
+}
+
+.suggestion-card {
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.alternative-color {
+  border: 0.2rem dotted #00131d;
+  outline: 0.2rem solid transparent;
+  box-shadow: 0 0 0 0.4rem #005c8400;
+}
+
+.alternative-color.selected {
+  border-color: #8d3970 !important;
+  background-color: rgba(77, 144, 254, 0.1);
+}
+
+/* Style for selected background color card */
+.color-card.selected-background {
+  border: 3px solid #f9f9f9;
+  outline: 3px solid #005c84;
+}
+
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #231f20;
+}
+/* SVG Tool Updates End */
+
 /* Contrast finder */
 fieldset {
   border: 1px solid #495961;
@@ -151,16 +268,108 @@ input[type="file"] {
   background-color: #9fb1bd;
 }
 
-/* Constrast finder section ends*/
+/* Chart controls */
 
-/* Charts */
-
-.chart-container {
-  background: #fffdf9;
+.chart-description {
+  background-color: #9fb1bd;
 }
 
+.chart-short-description {
+  background-color: #e1e8ec;
+  padding: 1rem;
+}
+
+.chart-short-description-heading,
+h3.chart-details-heading {
+  border-bottom: 2px solid #231f20;
+}
+
+.chart-short-description {
+  border-left: 10px solid #231f20;
+}
+
+.chart-disclaimer {
+  border-top: 1px dashed #231f20;
+}
+
+.chart-section {
+  background-color: #e1e8ec;
+}
+
+.chart-construction-section {
+  border-left: 10px solid #8d3970;
+}
+
+.chart-insights-section {
+  border-left: 10px solid #005c84;
+}
+
+.chart-data-points-section {
+  border-left: 10px solid #495961;
+}
+
+.chart-insights-section li strong {
+  color: #002e3b;
+}
+
+.chart-container {
+  border: 1px solid #231f20;
+}
+
+.chart-palette-label {
+  color: #00131d;
+}
+
+.chart-controls {
+  background-color: #9fb1bd;
+  border-top: 1px solid #9fb1bd;
+}
+.chart-view-button {
+  border: 0.2rem solid #fffff4;
+}
+/* Chart controls ends */
+
 /* Mermaid */
+
+/* Break-specific styles */
+.break-container {
+  background-color: #f0f2e8;
+  border-left: 3px solid #d5007f;
+}
+
+.break-condition-header {
+  color: #d5007f;
+}
+
+.mermaid-export-controls {
+  border: 1px solid #231f20;
+  background-color: #e1e8ec;
+}
 /* Mermaid Diagram Controls Styling */
+
+/* Full screen mode styling */
+.mermaid-container.fullscreen-mode {
+  background: #fffff4;
+}
+
+/* Control panel styling */
+.mermaid-pan-zoom-controls {
+  background-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Button styling */
+.mermaid-pan-zoom-controls .btn {
+  border: 2px solid #495961;
+  background-color: white;
+  color: #00131d;
+}
+
+.mermaid-pan-zoom-controls .btn:hover,
+.mermaid-pan-zoom-controls .btn:focus {
+  background-color: #f0f0f0;
+  border: 5px solid #005c84;
+}
 
 .mermaid {
   background-color: #f9fff4;

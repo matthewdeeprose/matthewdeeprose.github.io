@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+   <head>
+      <meta charset="utf-8" />
+      <meta name="description" content="SVG Palette Adjuster for Colour Vision Deficiency">
+      <meta name="keywords" content="accessibility, presentation, blog">
+      <meta name="author" content="Matthew Deeprose">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>SVG Palette Adjuster for Colour Vision Deficiency</title>
+      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+      <link rel="stylesheet" id="svg2CSS" href="svgCVD-2.css" media="all">
+      <meta property="og:title" content="SVG Palette Adjuster for Colour Vision Deficiency - Matthew Deeprose">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/svgCVD-43.png">
+	  <meta property="og:image:width" content="2500" />
+	  <meta property="og:image:height" content="1306" />
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/svgCVD.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="SVG Palette Adjuster for Colour Vision Deficiency - Matthew Deeprose" />
+      <meta name="twitter:description" content=""/>
+      <meta name="twitter:creator" content="@VLEguru"/>
+      <meta name="twitter:site" content="@VLEguru"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/svgCVD-43.png"/>
+      <meta name="twitter:image:alt" content=""/>
+      <meta name="twitter:card" content="summary_large_image"/>
+	  <style>
+/* wider border just for this page */
+@media (min-width: 60rem) {
+	.page-wrap {
+		margin: 0 2% 0 2%;
+	}
+}
+.page-wrap>* {
+	grid-column: 1/-1 !important;
+	grid-row: auto !important;
+}
+
+
+
+@media only screen and (max-width: 500px) {
+
+
+	select#paletteSelect {
+		font-size: 1.1rem;
+		margin: 10px 0px 0px 0px;
+		padding: 5px;
+		margin-left: 0;
+		text-overflow: ellipsis;
+		max-width: 100%;
+	}
+}
+
+/* Filters */
+
+.protanopia {
+	-webkit-filter: url(#protanopia);
+	-moz-filter: url(#protanopia);
+	-ms-filter: url(#protanopia);
+	-o-filter: url(#protanopia);
+	filter: url(#protanopia);
+}
+
+.deuteranopia {
+	-webkit-filter: url(#deuteranopia);
+	-moz-filter: url(#deuteranopia);
+	-ms-filter: url(#deuteranopia);
+	-o-filter: url(#deuteranopia);
+	filter: url(#deuteranopia);
+}
+
+.tritanopia {
+	-webkit-filter: url(#tritanopia);
+	-moz-filter: url(#tritanopia);
+	-ms-filter: url(#tritanopia);
+	-o-filter: url(#tritanopia);
+	filter: url(#tritanopia);
+}
+		
+</style>
+   </head>
+   <body>
+
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Change theme</title>
+                        <desc id="svgDesc">Select to switch to light theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4"/>
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                           <path d="m8.5 1.5v-1"/>
+                           <path d="m13.5 3.5 1-1"/>
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
+                           <path d="m1.5 7.5h-1"/>
+                           <path d="m16.5 7.5h-1"/>
+                        </g>
+                     </svg>
+                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                        <title id="svgTitleX">Change theme</title>
+                        <desc id="svgDescX">Select to switch to dark theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                           <path d="m2.5 13.5h4"/>
+                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                        </g>
+                     </svg>
+                  </button>
+               </div>
+               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+               <div id="titleLink">Matthew Deeprose</div>
+            </div>
+         </header>
+         <div id="main-navigation" class="page-nav">
+            <nav aria-label="Main menu" class="topnav" id="myTopnav">
+               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+                  <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span>
+                  <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+                           <path  d="m16.5,10.5l-13,0"/>
+                        </g>
+                     </svg>
+                  </span>
+               </button>
+               <a id="homeMenu" href="index.html">Home</a>
+               <a href="presentations.html" >Presentations</a>
+               <a href="posts.html">Blog Posts</a>
+               <a href="projects.html" aria-current="page" class="active">Projects</a>
+               <a href="about.html">About</a>
+            </nav>
+         </div>
+         <main class="page-main" id="main">
+            <article class="standard">
+               <h1 id="top">SVG Palette Adjuster for Colour Vision Deficiency</h1>
+						<details>
+			<summary class="Instructions">
+              <h2 id="Contents">Information and Instructions</h2>
+            </summary>
+			<h3>About this tool</h3>
+			<p>This tool is for those who create or use images in SVG format, particularly for use in an educational context. It helps you to determine whether someone with <a href="https://www.nhs.uk/conditions/colour-vision-deficiency/">colour vision deficiency (colour blindness)</a> may miss important details of the image. You can use the tool to swap colours the SVG uses with colours from known "colour vision deficiency friendly colour palettes" and preview the results using colour vision deficiency simulation. You can save the updated SVG for further use.</p>
+			<p><a href="https://en.wikipedia.org/wiki/Color_blindness">Learn more about colour vision deficiency</a>.</p>
+			<h3>How to use this tool</h3>
+			<ol>
+			<li>Load your SVG.</li>
+			<li>Assess whether those with colour vision deficiency would miss important parts of the image by using the colour vision deficiency simulations.</li>
+			<li>If you wish to change the image, select a <a href="CVDP">colour vision deficiency friendly colour palette</a>.</li>
+			<li>Change colours and use the simulation to determine whether no details of the image would be missed by someone with colour vision deficiency.</li>
+			<li>Keep experimenting with different colours and palettes until you are happy with the results.</li>
+			<li>Select Save SVG to save the updated SVG file. This will also create a comma separated file with details of which colours you changed. You may wish to share these with me to help me build a more automated solution in the future.</li>
+			</ol>
+			<h3>Data and privacy</h3>
+			<p>All interactions with this tool take place only on your computer. No data is shared externally.</p>
+			
+			<h3>Credits</h3>
+			<p>This tool uses the following:
+			<ul>
+			<li><a href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a> by Nicolas Burrus.</li>
+			<li><a href="https://svgdotjs.github.io/">svg.js</a> Copyright (c) 2012-2018 Wout Fierens.</li>
+			</ul>
+			
+			
+			</p>
+			</details>
+			       <div class="container">
+		<div class="svgCVDcontrols">
+   		<input type="file" id="fileInput" accept=".svg" aria-label="Load SVG file">
+        <button id="uploadBtn" class="SVGCVDButton">Load SVG</button>
+        <button id="resetBtn" class="SVGCVDButton" disabled>Reset Colours</button>
+        <button id="saveBtn" class="SVGCVDButton" disabled>Save SVG</button>
+        <button id="saveWithBgBtn" class="SVGCVDButton" disabled style="display: none;">Save SVG with Background</button>
+		</div>
+
+        <div class="svg-container">
+            <div class="svg-wrapper">
+                <h2 class="CVDTool">Original (Trichromacy)</h2>
+                <div id="container1" class="trichromacy svg-content-wrapper"></div>
+            </div>
+            <div class="svg-wrapper">
+                <h2 class="CVDTool">Protanopia</h2>
+                <div id="container2" class="protanopia svg-content-wrapper"></div>
+            </div>
+            <div class="svg-wrapper">
+                <h2 class="CVDTool">Deuteranopia</h2>
+                <div id="container3" class="deuteranopia svg-content-wrapper"></div>
+            </div>
+            <div class="svg-wrapper">
+                <h2 class="CVDTool">Tritanopia</h2>
+                <div id="container4" class="tritanopia svg-content-wrapper"></div>
+            </div>
+        </div>
+		
+		
+		<div id="workingContainer">
+		            <div id="myMessage"><div id="myMessageIcon" aria-hidden="true"></div><span id="pageMessage" aria-live="assertive" role="alert"></span>
+			<button onclick="clearMessage();" class="clearMessageButton">Clear message</button>
+			
+			</div>
+        </div>
+        <div id="colorInfo"></div>
+        <div id="paletteSelection">
+            <h2 class="CVDTool">Swap Colours</h2>
+            <label for="paletteSelect">Select a "colour vision deficiency friendly" palette:</label>
+            <select id="paletteSelect"></select>
+            <br>
+            
+        <div id="colorSwapInterface"></div>
+        
+        <input type="file" id="paletteInput" accept=".json" aria-label="Optional: load palette">
+        <button id="uploadPaletteBtn" class="SVGCVDButton">Load Alternative Palette</button><br><span id="paletteHelp">Use the <a href="CVDP">palette creator tool</a> to create your own custom palette</span>	
+    </div>
+        
+    </div>
+    <script src="scripts/chroma.min.js"></script>
+    <script src="scripts/background-contrast-integration.js"></script>
+            </article>
+			      <div id="panel">
+         <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+               <title id="svgTitle2">Top.</title>
+               <desc id="svgDesc2">Move to the top of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m11.5 7.5-3-3-3 3"/>
+                  <path d="m8.5 4.5v8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+         </button>
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+               <title id="svgTitle3">Bottom.</title>
+               <desc id="svgDesc3">Move to the bottom of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m5.5 9.5 3 3 3-3"/>
+                  <path d="m8.5 12.5v-8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+         </button>
+      </div>
+         </main>
+         <aside class="page-sidebar related">
+            <section class="related">
+
+			</section>
+
+               <section class="related">
+                <h2>Related tools</h2>
+                <ul class="relUL">
+                    <li><a href="CVDP">Colour vision deficiency friendly palettes</a></li>
+                    <li><a href="imageCVD">Colour Vision Deficiency Image Tester</a></li>
+                    <li><a href="contrastCompanion">Contrast Companion</a></li>
+                    <li><a href="a11y-brand-colour-contrast-suggest">Brand Accessible Colour Contrast Suggester</a></li>
+                    <li><a href="matrix/matrix.html">Accessibility Matrix for University of Southampton Brand Colour Palette</a></li>
+                 </ul>
+             </section>
+
+         </aside>
+         <footer class="page-footer">
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="AccessibilityFoot">
+               <a href="Accessibility_Statement.html">Accessibility Statement</a>
+            </div>
+            <div id="twitterFoot">
+               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+            </div>
+            <div id="YouTubeChannelFoot">
+               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+            </div>
+            <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
+               <div id="CC">
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/InteractiveResource" property="dct:title" rel="dct:type">svgCVD</span> by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName"><a href="https://www.linkedin.com/in/mattdeeprose/">Matthew Deeprose</a></span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+<p>It uses SVG.js which is Copyright (c) 2012-2018 Wout Fierens and was released under the terms of the <a href="https://github.com/svgdotjs/svg.js/blob/master/LICENSE.txt" rel="noopener noreferrer" target="_blank">MIT License</a>.<br>To simulate CVD it uses <a href="https://daltonlens.org/cvd-simulation-svg-filters/">Accurate SVG filters for color blindness simulation</a> by Nicolas Burrus, released as "free and unencumbered software released into the public domain".</p></div>
+            </div>
+         </p></footer>
+      </div>
+	     <!-------------------------------------------------------------------
+    DaltonLens SVG filters to simulate color vision deficiencies 
+    
+    https://daltonlens.org/opensource-cvd-simulation/ for a
+    discussion of the various methods.     
+
+    The various matrices were generated from DaltonLens-Python.
+
+    It is very important for these filters to get applied in     
+    linearRGB, which is supposed to be the default, but never
+    hurts to specify it explicitly.
+-------------------------------------------------------------------->
+<svg style='height: 0; width: 0; padding: 0; margin: 0; line-height: 0;'>
+    <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
+    <filter id="protanopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" in="SourceGraphic" values="
+            0.10889,0.89111,-0.00000,0,0
+            0.10889,0.89111,0.00000,0,0
+            0.00447,-0.00447,1.00000,0,0
+            0,0,0,1,0"
+        />
+    </filter>
+
+    <!-- Single matrix approximation of Viénot, Brettel & Mollon 1999 -->
+    <filter id="deuteranopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" in="SourceGraphic" values="
+            0.29031,0.70969,-0.00000,0,0
+            0.29031,0.70969,-0.00000,0,0
+            -0.02197,0.02197,1.00000,0,0
+            0,0,0,1,0"
+        />
+    </filter>
+
+    <!-- 
+        Brettel, Viénot & Mollon 1997 algorithms with two projection planes.
+
+        This is the only approach I know that is supposed to be reasonably
+        accurate for tritanopia, the single matrix approaches are NOT accurate.
+    -->
+    <filter id="tritanopia" color-interpolation-filters="linearRGB">
+        <!-- 
+            Projection 1, with a special alpha that encodes the separation plane.
+            If dot(rgb, n) > 0, then use projection 1, otherwise use projection 2.
+            This is encoded in alpha by:
+                - Applying a 1.0 factor on the source alpha so that 0 input alpha remains 0
+                - Subtracting 0.2 so that negative values become < 0.8 and position values >= 0.8
+                - It is important to normalize the factors to keep a good numerical accuracy
+                  and to keep a large alpha threshold since the RGB values are then stored
+                  premultiplied by alpha.
+                - This assumes that negative values get clipped to 0, and positive
+                  values clipped to 1, without overflowing, etc. Which seems to be the case
+                  on all browsers.
+          -->
+        <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane1" values="
+            1.01354, 0.14268, -0.15622, 0, 0
+            -0.01181, 0.87561, 0.13619, 0, 0
+            0.07707, 0.81208, 0.11085, 0, 0
+            7.92482, -5.66475, -2.26007, 1, -0.2"
+        />
+        <!-- 
+            Binarize alpha. 5 values means the last chunk will start at 0.8.
+            All the values below 0.8 will become 0 (correspond to the dot
+            product with the separation plane being negative) and above will become 1
+        -->        
+        <feComponentTransfer in="ProjectionOnPlane1" result="ProjectionOnPlane1">
+            <feFuncA type="discrete" tableValues="0 0 0 0 1"/>
+        </feComponentTransfer>
+
+        <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="
+            0.93337, 0.19999, -0.13336, 0, 0
+            0.05809, 0.82565, 0.11626, 0, 0
+            -0.37923, 1.13825, 0.24098, 0, 0
+            0,0,0,1,0"
+        />
+
+        <!-- Uncomment the debug black matrix to see which pixels go to which plane -->
+        <!-- <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="0,0,0,0,0 0,0,0,0,0 0,0,0,0,0 0,0,0,1,0"/> -->
+
+        <!-- Blend the two projections, picking one or the other depending on alpha. -->
+        <feBlend in="ProjectionOnPlane1" in2="ProjectionOnPlane2" mode="normal"/>
+    </filter>
+</svg>
+<!------------------------------------------------------------------>
+	  <script src="scripts/svg.min.js"></script>
+	      <script>
+// Global variables
+let originalSvg;         // Stores the original SVG content
+let svgColors = [];      // Array to store unique colors found in the SVG
+let selectedPalette = []; // Array to store the selected color palette
+let currentColorSwaps = {}; // Object to store current color swap selections
+let messageTimeout = null; // Timeout for clearing messages
+
+// DOM Elements
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
+const resetBtn = document.getElementById('resetBtn');
+const saveBtn = document.getElementById('saveBtn');
+const colorInfo = document.getElementById('colorInfo');
+const paletteSelect = document.getElementById('paletteSelect');
+const colorSwapInterface = document.getElementById('colorSwapInterface');
+
+// Event Listeners
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', handleFileUpload);
+resetBtn.addEventListener('click', resetColors);
+saveBtn.addEventListener('click', saveSvg);
+paletteSelect.addEventListener('change', handlePaletteSelection);
+
+// Clear message function
+function clearMessage() {
+    console.log('Auto-clearing message...');
+    document.getElementById('pageMessage').textContent = '';
+    document.getElementById('myMessage').style.display = 'none';
+}
+
+/**
+ * Handles the file upload process when a user selects an SVG file.
+ * @param {Event} event - The file input change event.
+ */
+ function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (file && file.type === 'image/svg+xml') {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            originalSvg = e.target.result;
+            displaySvg(originalSvg);
+            identifyColors();
+            
+            // Save the current custom palettes before loading default palettes
+            const customPaletteOptions = Array.from(paletteSelect.options)
+                .filter(option => option.value.startsWith('custom_'));
+            
+            // Load default palettes
+            loadPalettes();
+            
+            // Restore custom palettes
+            if (Object.keys(customPalettes).length > 0) {
+                // Re-add custom palette options to the dropdown
+                for (const [name, colors] of Object.entries(customPalettes)) {
+                    const option = document.createElement('option');
+                    option.value = `custom_${name}`;
+                    option.textContent = `${name} (Custom - ${colors.length} colours)`;
+                    paletteSelect.appendChild(option);
+                }
+                
+                // Notify user that custom palettes were preserved
+                console.log('Preserved custom palettes:', Object.keys(customPalettes));
+            }
+            
+            resetBtn.disabled = false;
+            saveBtn.disabled = false;
+        };
+        reader.readAsText(file);
+    } else {
+        alert('Please upload a valid SVG file.');
+    }
+}
+
+
+/**
+ * Displays the SVG content in all designated containers.
+ * @param {string} svgContent - The SVG content to display.
+ */
+function displaySvg(svgContent) {
+    const containers = ['container1', 'container2', 'container3', 'container4'];
+    containers.forEach(id => {
+        const container = document.getElementById(id);
+        container.innerHTML = svgContent;
+        const svg = container.querySelector('svg');
+        
+        if (svg) {
+            // Remove any existing width and height attributes
+            svg.removeAttribute('width');
+            svg.removeAttribute('height');
+
+            // Add class for styling
+            svg.classList.add('svg-content');
+
+            // Ensure viewBox is set
+            if (!svg.getAttribute('viewBox')) {
+                const bbox = svg.getBBox();
+                svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+            }
+
+            // Set preserveAspectRatio to see the whole SVG
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        } 
+    });
+}
+
+/**
+ * Identifies unique colors in the SVG and stores them in the svgColors array.
+ */
+function identifyColors() {
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(originalSvg, 'image/svg+xml');
+    const elements = svgDoc.querySelectorAll('*');
+    const uniqueColors = new Set();
+
+    elements.forEach(el => {
+        const fill = el.getAttribute('fill');
+        const stroke = el.getAttribute('stroke');
+        if (fill && fill !== 'none') uniqueColors.add(fill);
+        if (stroke && stroke !== 'none') uniqueColors.add(stroke);
+    });
+
+    svgColors = Array.from(uniqueColors);
+    displayColorInfo();
+}
+
+/**
+ * Displays color information and creates a list of unique colors found in the SVG.
+ */
+function displayColorInfo() {
+    const colorCount = svgColors.length;
+    colorInfo.innerHTML = `
+        <p>Number of colours: ${colorCount}</p>
+    `;
+    const ul = document.createElement('ul');
+    ul.className = 'color-list';
+    
+    svgColors.forEach(color => {
+        const li = document.createElement('li');
+        li.className = 'color-item';
+        li.innerHTML = `
+            <div class="color-swatch" style="background-color: ${color};">&nbsp;</div>
+            <span>${color}</span>
+        `;
+        ul.appendChild(li);
+    });
+    
+    colorInfo.appendChild(ul);
+    document.querySelector('div#paletteSelection').style.display = 'block';
+}
+
+/**
+ * Loads color palettes from an external JSON file and populates the palette select dropdown.
+ */
+ function loadPalettes() {
+    // Clear all existing options
+    paletteSelect.innerHTML = '<option value="">Select a palette</option>';
+    
+    // Track palettes we've already added to prevent duplicates
+    const addedPalettes = new Set();
+    
+    // Fetch default palettes
+    fetch('https://matthewdeeprose.github.io/cvdp.json')
+        .then(response => response.json())
+        .then(data => {
+            const palettes = data.palettes;
+            
+            let largestPalette = null;
+            let largestPaletteSize = 0;
+
+            // Add each default palette, checking for duplicates
+            for (const [name, colors] of Object.entries(palettes)) {
+                if (addedPalettes.has(name)) continue;
+                
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = `${name} (${colors.length} colours)`;
+                paletteSelect.appendChild(option);
+                addedPalettes.add(name);
+
+                if (colors.length > largestPaletteSize) {
+                    largestPalette = name;
+                    largestPaletteSize = colors.length;
+                }
+            }
+            
+            // Add custom palette options to the dropdown
+            for (const [name, colors] of Object.entries(customPalettes)) {
+                const customKey = `custom_${name}`;
+                if (addedPalettes.has(customKey)) continue;
+                
+                const option = document.createElement('option');
+                option.value = customKey;
+                option.textContent = `${name} (Custom - ${colors.length} colours)`;
+                paletteSelect.appendChild(option);
+                addedPalettes.add(customKey);
+                
+                // Update largest palette info if needed
+                if (colors.length > largestPaletteSize) {
+                    largestPalette = customKey;
+                    largestPaletteSize = colors.length;
+                }
+            }
+
+            if (svgColors.length > largestPaletteSize) {
+                paletteSelect.value = largestPalette;
+                displayPaletteMessage(svgColors.length, largestPaletteSize);
+            }
+
+            // Trigger palette selection to update the interface
+            handlePaletteSelection();
+        })
+        .catch(error => {
+            console.error('Error loading palettes:', error);
+            
+            // If we fail to load default palettes, at least show any custom ones
+            if (Object.keys(customPalettes).length > 0) {
+                for (const [name, colors] of Object.entries(customPalettes)) {
+                    const customKey = `custom_${name}`;
+                    if (addedPalettes.has(customKey)) continue;
+                    
+                    const option = document.createElement('option');
+                    option.value = customKey;
+                    option.textContent = `${name} (Custom - ${colors.length} colours)`;
+                    paletteSelect.appendChild(option);
+                    addedPalettes.add(customKey);
+                }
+                handlePaletteSelection();
+            }
+        });
+}
+
+/**
+ * Displays a message when the SVG has more colors than the largest available palette.
+ */
+
+
+function displayPaletteMessage(svgColorCount, paletteColorCount) {
+    const message = `Your SVG file contains ${svgColorCount} colours, which exceeds the ${paletteColorCount} colours available in the largest palette. Some colours may not be replaced.`;
+    displayNotification(message, 'error');
+}
+
+/**
+ * Handles the selection of a colour palette and updates the color swap interface.
+ */
+ function handlePaletteSelection() {
+    const selectedPaletteName = paletteSelect.value;
+    
+    if (selectedPaletteName) {
+        if (selectedPaletteName.startsWith('custom_')) {
+            // Handle custom palette
+            const customPaletteName = selectedPaletteName.substring(7); // Remove 'custom_' prefix
+            console.log('Selected custom palette:', customPaletteName);
+            
+            // Check if the custom palette exists
+            if (customPalettes && customPalettes[customPaletteName]) {
+                selectedPalette = customPalettes[customPaletteName];
+                console.log('Custom palette colors:', selectedPalette);
+                displayColorSwapInterface();
+                
+                // Clear the message if a palette is manually selected
+                if (svgColors.length <= selectedPalette.length) {
+                    document.getElementById('pageMessage').textContent = '';
+                    document.getElementById('myMessage').style.display = 'none';
+                }
+            } else {
+                console.error('Custom palette not found:', customPaletteName);
+                displayNotification(`Custom palette "${customPaletteName}" not found. Please upload it again.`, 'error');
+            }
+        } else {
+            // Handle default palette
+            fetch('https://matthewdeeprose.github.io/cvdp.json')
+                .then(response => response.json())
+                .then(data => {
+                    selectedPalette = data.palettes[selectedPaletteName];
+                    displayColorSwapInterface();
+                    
+                    // Clear the message if a palette is manually selected
+                    if (svgColors.length <= selectedPalette.length) {
+                        document.getElementById('pageMessage').textContent = '';
+                        document.getElementById('myMessage').style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error loading selected palette:', error));
+        }
+    } else {
+        colorSwapInterface.innerHTML = '';
+        document.getElementById('pageMessage').textContent = '';
+        document.getElementById('myMessage').style.display = 'none';
+    }
+}
+
+
+// Define closeAllDropdowns outside of displayColorSwapInterface
+let closeAllDropdowns;
+
+/**
+ * Displays the color swap interface with custom dropdown selects for each color.
+ */
+ function displayColorSwapInterface() {
+    // Check if SVG has been loaded
+    if (!svgColors || svgColors.length === 0) {
+        displayNotification('Please load an SVG file first before selecting a palette.', 'error');
+        return;
+    }
+
+    // Safely hide color-list if it exists
+    const colorList = document.querySelector('.color-list');
+    if (colorList) {
+        colorList.style.display = 'none';
+    }
+
+    colorSwapInterface.innerHTML = '<h2 class="svgToolH2">Swap Colors:</h2>';
+    const customSelects = [];
+
+    // Define closeAllDropdowns here so it has access to customSelects
+    closeAllDropdowns = function() {
+        customSelects.forEach(select => {
+            select.querySelector('.options').style.display = 'none';
+            select.querySelector('.select-button').setAttribute('aria-expanded', 'false');
+        });
+    };
+
+    svgColors.forEach((originalColor, index) => {
+        const swapDiv = document.createElement('div');
+        swapDiv.className = 'color-item';
+        swapDiv.innerHTML = `
+            <div class="color-swatch" style="background-color: ${originalColor};">&nbsp;</div>
+            <span class="color-item-span">${originalColor}</span>
+            <div class="custom-select">
+                <button class="select-button" aria-haspopup="listbox" aria-labelledby="color-label-${index}">
+                    <span id="color-label-${index}">Select new colour</span>
+                    <span class="selected-color"></span>
+                </button>
+                <ul class="options" role="listbox" tabindex="-1">
+                    <li role="option" tabindex="0" data-value="">
+                        <span class="color-preview" style="background-color: ${originalColor};"></span>
+                        Keep original
+                    </li>
+                    ${selectedPalette.map(newColor => `
+                        <li role="option" tabindex="0" data-value="${newColor}">
+                            <span class="color-preview" style="background-color: ${newColor};"></span>
+                            ${newColor}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `;
+
+        const customSelect = swapDiv.querySelector('.custom-select');
+        const selectButton = customSelect.querySelector('.select-button');
+        const options = customSelect.querySelector('.options');
+        const selectedColorSpan = selectButton.querySelector('.selected-color');
+
+        // Set initial selected value
+        const initialValue = currentColorSwaps[originalColor] || '';
+        if (initialValue) {
+            selectButton.querySelector('#color-label-' + index).textContent = initialValue;
+            selectedColorSpan.style.backgroundColor = initialValue;
+        }
+
+        // Toggle options visibility
+        selectButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            closeAllDropdowns();
+            options.style.display = options.style.display === 'none' ? 'block' : 'none';
+            selectButton.setAttribute('aria-expanded', options.style.display === 'block');
+            if (options.style.display === 'block') {
+                options.querySelector('li').focus();
+            }
+        });
+
+        // Handle option selection
+        options.addEventListener('click', (event) => {
+            const selectedOption = event.target.closest('li');
+            if (selectedOption) {
+                selectOption(selectedOption);
+            }
+        });
+
+        function selectOption(selectedOption) {
+            const selectedValue = selectedOption.dataset.value;
+            selectButton.querySelector('#color-label-' + index).textContent = selectedValue || 'Keep original';
+            selectedColorSpan.style.backgroundColor = selectedValue;
+            options.style.display = 'none';
+            selectButton.setAttribute('aria-expanded', 'false');
+            updateSvgColors(originalColor, selectedValue);
+            selectButton.focus();
+        }
+
+        // Keyboard navigation
+        customSelect.addEventListener('keydown', (event) => {
+            const focusedOption = options.querySelector('li:focus');
+            switch (event.key) {
+                case 'ArrowUp':
+                case 'ArrowDown':
+                    event.preventDefault();
+                    if (options.style.display === 'none') {
+                        options.style.display = 'block';
+                        selectButton.setAttribute('aria-expanded', 'true');
+                        options.querySelector('li').focus();
+                    } else {
+                        const nextOption = event.key === 'ArrowDown' ? 
+                            (focusedOption.nextElementSibling || options.firstElementChild) :
+                            (focusedOption.previousElementSibling || options.lastElementChild);
+                        nextOption.focus();
+                    }
+                    break;
+                case 'Enter':
+                case ' ':
+                    event.preventDefault();
+                    if (focusedOption) {
+                        selectOption(focusedOption);
+                    } else {
+                        selectButton.click();
+                    }
+                    break;
+                case 'Escape':
+                    closeAllDropdowns();
+                    selectButton.focus();
+                    break;
+            }
+        });
+
+        colorSwapInterface.appendChild(swapDiv);
+        customSelects.push(customSelect);
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', closeAllDropdowns);
+}
+/**
+ * Updates the SVG colors based on user selections.
+ * @param {string} originalColor - The original color to be replaced.
+ * @param {string} newColor - The new color to replace the original color.
+ */
+ function updateSvgColors(originalColor, newColor) {
+    if (newColor) {
+        currentColorSwaps[originalColor] = newColor;
+    } else {
+        delete currentColorSwaps[originalColor];
+    }
+    
+    // Perform standard SVG update
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(originalSvg, "image/svg+xml");
+    const elements = svgDoc.querySelectorAll("*");
+    
+    elements.forEach(el => {
+        const fillColor = el.getAttribute("fill");
+        const strokeColor = el.getAttribute("stroke");
+        
+        if (fillColor && currentColorSwaps[fillColor]) {
+            el.setAttribute("fill", currentColorSwaps[fillColor]);
+        }
+        if (strokeColor && currentColorSwaps[strokeColor]) {
+            el.setAttribute("stroke", currentColorSwaps[strokeColor]);
+        }
+    });
+    
+    const serializer = new XMLSerializer();
+    const updatedSvg = serializer.serializeToString(svgDoc);
+    displaySvg(updatedSvg);
+    
+    // NEW FUNCTIONALITY: Check contrast with background if one is set
+    if (currentBackgroundColor) {
+        validateBackgroundContrast(newColor);
+    }
+}
+
+// New function to validate contrast with background
+function validateBackgroundContrast(changedColor) {
+    if (!changedColor || !currentBackgroundColor) return;
+    
+    const contrastRatio = getContrast(changedColor, currentBackgroundColor);
+    const targetContrast = 3; // WCAG AA for UI components
+    
+    if (contrastRatio < targetContrast) {
+        // Alert the user about the contrast issue
+        displayNotification(
+            `Warning: The colour ${changedColor} has insufficient contrast (${contrastRatio.toFixed(2)}:1) with the current background colour ${currentBackgroundColor}. Consider selecting a different colour or finding a new background.`, 
+            'warning'
+        );
+        
+        // Add a suggestion button to find a new background
+        addContrastFixSuggestion(changedColor);
+    }
+}
+
+// New function to add a suggestion to fix contrast issues
+function addContrastFixSuggestion(problematicColor) {
+    // Check if suggestion already exists
+    if (document.getElementById('contrastFixSuggestion')) {
+        return;
+    }
+    
+    const suggestionBox = document.createElement('div');
+    suggestionBox.id = 'contrastFixSuggestion';
+    suggestionBox.className = 'contrast-fix-suggestion';
+    suggestionBox.innerHTML = `
+        <p>The selected colour doesn't have sufficient contrast with the background. Would you like to:</p>
+        <button id="findNewBackgroundBtn" class="SVGCVDButton">Find a new background colour</button>
+        <button id="suggestBetterColorBtn" class="SVGCVDButton">Suggest better colour alternatives</button>
+        <button id="dismissWarningBtn" class="SVGCVDButton">Dismiss</button>
+    `;
+    
+    // Add event listeners for the buttons
+    suggestionBox.querySelector('#findNewBackgroundBtn').addEventListener('click', findContrastingBackgrounds);
+    suggestionBox.querySelector('#suggestBetterColorBtn').addEventListener('click', () => {
+        suggestAccessibleAlternativesForSingle(problematicColor, currentBackgroundColor);
+    });
+    suggestionBox.querySelector('#dismissWarningBtn').addEventListener('click', () => {
+        suggestionBox.remove();
+    });
+    
+    // Add the suggestion box after the colour swap interface
+    const colorSwapInterface = document.getElementById('colorSwapInterface');
+    colorSwapInterface.parentNode.insertBefore(suggestionBox, colorSwapInterface.nextSibling);
+}
+
+// New helper function to suggest alternatives for a single colour
+function suggestAccessibleAlternativesForSingle(originalColor, backgroundColor) {
+    // Similar to existing suggestAccessibleAlternatives but for a single colour
+    generateAccessibleAlternatives(originalColor, backgroundColor, 3, (alternatives) => {
+        // Display alternatives in a modal or panel
+        displaySingleColorAlternatives(originalColor, alternatives, backgroundColor);
+    });
+}
+
+/**
+ * Resets the SVG to its original colors and clears all color swap selections.
+ */
+ function resetColors() {
+    // Original reset functionality
+    displaySvg(originalSvg);
+    paletteSelect.value = '';
+    colorSwapInterface.innerHTML = '';
+    document.getElementById('pageMessage').textContent = '';
+    document.getElementById('myMessage').style.display = 'none';
+    
+    // Clear the currentColorSwaps object
+    currentColorSwaps = {};
+    
+    // Reset background-related elements
+    clearBackgroundPreview();
+    
+    // Reset background preview toggle if it exists
+    const previewBackgroundToggle = document.getElementById('previewBackgroundToggle');
+    if (previewBackgroundToggle) {
+        previewBackgroundToggle.checked = false;
+    }
+    
+    // Hide background preview controls
+    const backgroundPreviewControls = document.getElementById('backgroundPreviewControls');
+    if (backgroundPreviewControls) {
+        backgroundPreviewControls.style.display = 'none';
+    }
+    
+    // Reset currentBackgroundColor
+    currentBackgroundColor = null;
+    
+    // Clear background results container
+    const backgroundResults = document.getElementById('backgroundResults');
+    if (backgroundResults) {
+        backgroundResults.innerHTML = '';
+    }
+    
+    // Hide "Save SVG with Background" button
+    const saveWithBgBtn = document.getElementById('saveWithBgBtn');
+    if (saveWithBgBtn) {
+        saveWithBgBtn.style.display = 'none';
+        saveWithBgBtn.disabled = true;
+    }
+    
+    // Reset the color swap interface
+    if (selectedPalette.length > 0) {
+        displayColorSwapInterface();
+    }
+    
+    // Announce to screen readers that the SVG has been reset
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('class', 'sr-only');
+    announcement.textContent = 'SVG has been reset to original colours and all background options have been cleared';
+    document.body.appendChild(announcement);
+    
+    // Remove the announcement after it's been read
+    setTimeout(() => {
+        document.body.removeChild(announcement);
+    }, 3000);
+}
+
+/**
+ * Saves the updated SVG file with the applied color changes.
+ */
+/**
+ * Saves the updated SVG file with the applied color changes and a CSV file with color swap data.
+ * Includes error handling for various potential issues.
+ */
+function saveSvg() {
+    try {
+        // Get the original filename from the file input
+        const originalFilename = fileInput.files[0] ? fileInput.files[0].name : 'unnamed_svg';
+        const baseFilename = originalFilename.replace(/\.[^/.]+$/, ""); // Remove file extension
+
+        // Sanitize the filename
+        const sanitizedFilename = sanitizeFilename(baseFilename);
+
+        // Save updated SVG
+        const svgContent = document.getElementById('container1').innerHTML;
+        if (!svgContent) {
+            throw new Error("No SVG content found to save.");
+        }
+
+        const svgBlob = new Blob([svgContent], {type: 'image/svg+xml'});
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const svgLink = document.createElement('a');
+        svgLink.href = svgUrl;
+        svgLink.download = `${sanitizedFilename}_updated.svg`;
+
+        // Prepare CSV content
+        let csvContent = 'Original Color,Updated Color\n';
+        if (Object.keys(currentColorSwaps).length === 0) {
+            throw new Error("No color swaps have been made.");
+        }
+        for (const [originalColor, newColor] of Object.entries(currentColorSwaps)) {
+            const originalHex = originalColor.toUpperCase();
+            const newHex = newColor.toUpperCase();
+            csvContent += `${originalHex},${newHex}\n`;
+        }
+
+        // Save CSV with descriptive filename
+        const csvBlob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+        const csvUrl = URL.createObjectURL(csvBlob);
+        const csvLink = document.createElement('a');
+        csvLink.href = csvUrl;
+        csvLink.download = `${sanitizedFilename}__colour_swap_data.csv`;
+
+        // Append links to body, trigger clicks, and clean up
+        document.body.appendChild(svgLink);
+        document.body.appendChild(csvLink);
+        
+        svgLink.click();
+        csvLink.click();
+        
+        document.body.removeChild(svgLink);
+        document.body.removeChild(csvLink);
+        
+        URL.revokeObjectURL(svgUrl);
+        URL.revokeObjectURL(csvUrl);
+
+        // Inform the user about the saved files
+        displayNotification(`The updated SVG (${svgLink.download}) and color swap data CSV (${csvLink.download}) have been saved. Please check your downloads.`, 'success');
+    } catch (error) {
+        console.error('Error saving files:', error);
+        displayNotification(`An error occurred while saving the files: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Sanitizes a filename by removing or replacing invalid characters.
+ * @param {string} filename - The filename to sanitize.
+ * @return {string} The sanitized filename.
+ */
+function sanitizeFilename(filename) {
+    // Remove or replace characters that are typically not allowed in filenames
+    return filename.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+}
+
+/**
+ * Displays a notification to the user.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification ('success' or 'error').
+ */
+ function displayNotification(message, type) {
+    console.log('Setting notification:', message, type);
+    
+    // Clear any existing timeout to prevent multiple timers
+    if (messageTimeout) {
+        console.log('Clearing previous timeout');
+        clearTimeout(messageTimeout);
+        messageTimeout = null;
+    }
+    // Replace hex colors in the message with uppercase versions
+    const formattedMessage = message.replace(/#([0-9a-f]{3,6})/gi, match => match.toUpperCase());
+    
+    const messageContainer = document.getElementById('myMessage');
+    const notification = document.getElementById('pageMessage');
+    const iconContainer = document.getElementById('myMessageIcon');
+    
+    messageContainer.style.display = 'block';
+    notification.textContent = formattedMessage;
+    
+    // Optionally add styling based on message type
+    if (type === 'error') {
+        iconContainer.innerHTML = '⚠️'; // Warning icon
+    } else if (type === 'success') {
+        iconContainer.innerHTML = '✓'; // Checkmark icon
+    } else if (type === 'info') {
+        iconContainer.innerHTML = 'ℹ️'; // Info icon
+    } else {
+        // Reset styles if no type specified
+        messageContainer.style.backgroundColor = '';
+        notification.style.color = '';
+        iconContainer.innerHTML = '';
+    }
+    
+    console.log(`Notification (${type}):`, message);
+    
+    // Set timeout to automatically clear the message after 20 seconds
+    // Using a named function instead of just clearMessage for better tracking
+    messageTimeout = setTimeout(function() {
+        console.log('Timeout triggered after 20 seconds');
+        clearMessage();
+        messageTimeout = null;
+    }, 20000);
+    
+    console.log('Timeout set:', messageTimeout);
+}
+
+
+
+
+// Custom palette variables
+let customPalettes = {};
+const paletteInput = document.getElementById('paletteInput');
+const uploadPaletteBtn = document.getElementById('uploadPaletteBtn');
+
+// Add event listeners for palette upload
+uploadPaletteBtn.addEventListener('click', () => paletteInput.click());
+paletteInput.addEventListener('change', handlePaletteUpload);
+
+
+
+/**
+ * Handles the custom palette upload process when a user selects a JSON file.
+ * @param {Event} event - The file input change event.
+ */
+ function handlePaletteUpload(event) {
+    const file = event.target.files[0];
+    
+    // Reset the file input value to ensure the change event fires if the same file is selected again
+    paletteInput.value = '';
+    
+    if (!file) {
+        displayNotification('No file selected. Please choose a JSON palette file.', 'error');
+        return;
+    }
+    
+    // More flexible file type checking
+    const isJSON = file.type === 'application/json' || file.name.toLowerCase().endsWith('.json');
+    
+    if (!isJSON) {
+        displayNotification('Please upload a valid JSON file with .json extension.', 'error');
+        return;
+    }
+    
+    // Show loading message
+    displayNotification('Reading palette file...', 'info');
+    
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        try {
+            const jsonContent = e.target.result;
+            console.log('JSON content length:', jsonContent.length);
+            
+            if (jsonContent.trim() === '') {
+                displayNotification('The uploaded file is empty. Please check the file.', 'error');
+                return;
+            }
+            
+            let parsedPalettes;
+            try {
+                parsedPalettes = JSON.parse(jsonContent);
+                console.log('Parsed JSON successfully:', Object.keys(parsedPalettes));
+            } catch (parseError) {
+                console.error('JSON parse error:', parseError);
+                displayNotification(`Invalid JSON format: ${parseError.message}. Please check your file.`, 'error');
+                return;
+            }
+            
+            // Validate the palette format
+            const validationResult = validatePaletteFormat(parsedPalettes);
+            if (validationResult.valid) {
+                // Track new and overwritten palettes
+                const newPalettes = [];
+                const overwrittenPalettes = [];
+                
+                // Update existing custom palettes - handle overwriting
+                for (const [name, colors] of Object.entries(parsedPalettes)) {
+                    if (customPalettes[name]) {
+                        overwrittenPalettes.push(name);
+                    } else {
+                        newPalettes.push(name);
+                    }
+                    
+                    // Update or add to customPalettes
+                    customPalettes[name] = colors;
+                }
+                
+                // Remove existing custom palette options from the dropdown
+                const options = paletteSelect.querySelectorAll('option');
+                for (let i = options.length - 1; i >= 0; i--) {
+                    if (options[i].value.startsWith('custom_')) {
+                        paletteSelect.removeChild(options[i]);
+                    }
+                }
+                
+                // Add all custom palette options to the dropdown
+                for (const [name, colors] of Object.entries(customPalettes)) {
+                    const option = document.createElement('option');
+                    option.value = `custom_${name}`;
+                    option.textContent = `${name} (Custom - ${colors.length} colours)`;
+                    paletteSelect.appendChild(option);
+                }
+                
+                // Select the first new palette if any, otherwise the first overwritten one
+                if (newPalettes.length > 0) {
+                    paletteSelect.value = `custom_${newPalettes[0]}`;
+                } else if (overwrittenPalettes.length > 0) {
+                    paletteSelect.value = `custom_${overwrittenPalettes[0]}`;
+                }
+                
+                // Trigger palette selection to update the interface
+                handlePaletteSelection();
+                
+                // Create success message
+                let successMessage = 'Custom palettes loaded successfully!';
+                if (newPalettes.length > 0) {
+                    successMessage += ` Added ${newPalettes.length} new palette(s): ${newPalettes.join(', ')}`;
+                }
+                if (overwrittenPalettes.length > 0) {
+                    successMessage += ` Updated ${overwrittenPalettes.length} existing palette(s): ${overwrittenPalettes.join(', ')}`;
+                }
+                
+                displayNotification(successMessage, 'success');
+            } else {
+                displayNotification(`Invalid palette format: ${validationResult.message}. Please check the sample format.`, 'error');
+                displaySamplePaletteFormat();
+            }
+        } catch (error) {
+            console.error('Error processing palette file:', error);
+            displayNotification(`Error processing file: ${error.message}. Please check the file format.`, 'error');
+        }
+    };
+    
+    reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        displayNotification('Error reading the file. Please try again.', 'error');
+    };
+    
+    reader.readAsText(file);
+}
+
+/**
+ * Validates the format of the uploaded palette JSON.
+ * @param {Object} palettes - The parsed JSON palette object.
+ * @returns {boolean} - Whether the palette format is valid.
+ */
+ function validatePaletteFormat(palettes) {
+    if (!palettes) {
+        return { valid: false, message: 'No palette data found' };
+    }
+    
+    if (typeof palettes !== 'object' || Array.isArray(palettes)) {
+        return { valid: false, message: 'Palette must be an object with palette names as keys' };
+    }
+    
+    if (Object.keys(palettes).length === 0) {
+        return { valid: false, message: 'No palettes found in the file' };
+    }
+    
+    // Check each palette
+    for (const [name, colors] of Object.entries(palettes)) {
+        // Each palette must be an array
+        if (!Array.isArray(colors)) {
+            return { valid: false, message: `Palette "${name}" must be an array of colors` };
+        }
+        
+        // Palette must have at least one color
+        if (colors.length === 0) {
+            return { valid: false, message: `Palette "${name}" is empty` };
+        }
+        
+        // Each color must be a string
+        for (let i = 0; i < colors.length; i++) {
+            const color = colors[i];
+            if (typeof color !== 'string') {
+                return { valid: false, message: `Color at index ${i} in palette "${name}" must be a string` };
+            }
+            
+            // More flexible color format validation
+            const isHexColor = /^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/i.test(color);
+            const isNamedColor = /^[a-zA-Z]+$/.test(color);
+            const isRgbColor = /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i.test(color);
+            const isRgbaColor = /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d\.]+\s*\)$/i.test(color);
+            
+            if (!isHexColor && !isNamedColor && !isRgbColor && !isRgbaColor) {
+                return { 
+                    valid: false, 
+                    message: `Invalid color format "${color}" at index ${i} in palette "${name}". ` +
+                             `Use hex (#RRGGBB), named (blue), or rgb(r,g,b) formats`
+                };
+            }
+        }
+    }
+    
+    return { valid: true, message: 'Palette format is valid' };
+}
+
+/**
+ * Updates the palette dropdown to include both default and custom palettes.
+ */
+ function updatePaletteDropdown() {
+    // Keep the current selection if any
+    const currentSelection = paletteSelect.value;
+    
+    // Clear the dropdown
+    paletteSelect.innerHTML = '<option value="">Select a palette</option>';
+    
+    // Load the default palettes first
+    loadPalettes();
+    
+    // Then add the custom palettes
+    for (const [name, colors] of Object.entries(customPalettes)) {
+        const option = document.createElement('option');
+        option.value = `custom_${name}`;
+        option.textContent = `${name} (Custom - ${colors.length} colours)`;
+        paletteSelect.appendChild(option);
+    }
+    
+    // Try to restore the previous selection
+    if (currentSelection) {
+        paletteSelect.value = currentSelection;
+        if (paletteSelect.value !== currentSelection) {
+            handlePaletteSelection(); // If the selection changed, update the interface
+        }
+    }
+}
+
+/**
+ * Displays sample palette format information to help users.
+ */
+ function displaySamplePaletteFormat() {
+    const samplePalette = {
+        "AccessiblePalette": [
+            "#1a75ff", 
+            "#ff6b1a", 
+            "#00cc99", 
+            "#e6194b"
+        ],
+        "AnotherPalette": [
+            "red", 
+            "green", 
+            "blue", 
+            "purple"
+        ]
+    };
+    
+    const sampleHtml = `
+        <h3>Sample Palette Format</h3>
+        <pre>${JSON.stringify(samplePalette, null, 2)}</pre>
+        <p>Your palette file should be a JSON file with the structure shown above. Each palette is an object with palette names as keys and arrays of colors as values.</p>
+        <button onclick="downloadSamplePalette()" class="SVGCVDButton">Download Sample Palette</button>
+    `;
+    
+    // Create a new div for the sample format info
+    const sampleDiv = document.createElement('div');
+    sampleDiv.id = 'samplePaletteFormat';
+    sampleDiv.innerHTML = sampleHtml;
+    sampleDiv.style.margin = '20px 0';
+    sampleDiv.style.padding = '15px';
+    sampleDiv.style.backgroundColor = '#f5f5f5';
+    sampleDiv.style.borderRadius = '5px';
+    sampleDiv.style.border = '1px solid #ddd';
+    
+    // Add it after the message div
+    const workingContainer = document.getElementById('workingContainer');
+    
+    // Remove any existing sample div first
+    const existingSample = document.getElementById('samplePaletteFormat');
+    if (existingSample) {
+        workingContainer.removeChild(existingSample);
+    }
+    
+    workingContainer.appendChild(sampleDiv);
+}
+
+/**
+ * Downloads a sample palette file.
+ */
+ function downloadSamplePalette() {
+    const samplePalette = {
+        "AccessiblePalette": [
+            "#1a75ff", 
+            "#ff6b1a", 
+            "#00cc99", 
+            "#e6194b"
+        ],
+        "EarthTones": [
+            "#8B4513", 
+            "#A0522D", 
+            "#CD853F", 
+            "#D2B48C"
+        ]
+    };
+    
+    const content = JSON.stringify(samplePalette, null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'sample_palette.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+
+window.downloadSamplePalette = function() {
+    const samplePalette = {
+        "AccessiblePalette": [
+            "#1a75ff", 
+            "#ff6b1a", 
+            "#00cc99", 
+            "#e6194b"
+        ],
+        "EarthTones": [
+            "#8B4513", 
+            "#A0522D", 
+            "#CD853F", 
+            "#D2B48C"
+        ]
+    };
+    
+    const content = JSON.stringify(samplePalette, null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'sample_palette.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+</script>
+
+      <script>
+         function menuAction() {
+             let menuSwitch = document.getElementById("myTopnav");
+             if (menuSwitch.className === "topnav") {
+                 menuSwitch.className += " responsive";
+                 
+             } else {
+                 menuSwitch.className = "topnav";
+             }
+             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+             if (menuAriaAttrib === "true") {
+                 menuAriaAttrib = "false"
+             } else {
+                 menuAriaAttrib = "true"
+             }
+             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");
+         
+         
+         window.onscroll = function() {
+             scrollFunction()
+         };
+         
+         function scrollFunction() {
+             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+                 mybutton.style.display = "block";
+         		mybutton2.style.display = "block";
+             } else {
+                 mybutton.style.display = "none";
+         		mybutton2.style.display = "none";
+             }
+         }
+         
+         
+         
+         function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
+         }
+         
+         function bottomFunction() {
+         window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
+         }
+      </script>
+      <script>
+         let themePref = localStorage.getItem("theme");
+         console.log("Has a theme preference been saved?", themePref);        
+         
+         
+         function setLight() {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById("modeToggle");
+             const d = matchMedia('(prefers-color-scheme: dark)');
+             let dt;
+             if (d.matches) {
+                 dt = 'dark';
+                 console.log("Prefers dark theme in OS");
+             } else {
+                 dt = 'light'
+                 console.log("Prefers light theme in OS");
+             }
+             if (dt == 'dark' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'light' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'dark' && !themePref) {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else {
+                 theButton.setAttribute("aria-pressed", "false");
+             }
+         }
+         setLight();
+         
+         function toggle(btnID) {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById(btnID);
+             if (theButton.getAttribute("aria-pressed") == "true") {
+                 theButton.setAttribute("aria-pressed", "false");
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 console.log("Turned on light mode");
+                 localStorage.setItem("theme", "Light");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "false");
+             } else {
+                 theButton.setAttribute("aria-pressed", "true");
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 console.log("Turned on dark mode");
+                 localStorage.setItem("theme", "Dark");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference set to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "true");
+             }
+         }
+         
+         function applyThemePreference() {
+             if (themePref == 'Dark') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 theButton.setAttribute("aria-pressed", "true");
+                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
+             } else if (themePref == 'Light') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 theButton.setAttribute("aria-pressed", "false");
+                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
+             }
+         }
+         applyThemePreference();                
+      </script>
+	    <script src="scripts/jquery-3.7.1.min.js"></script>
+    <script src="scripts/details.js"></script>
+    <script>
+      window.console || (window.console = {
+        'log': alert
+      });
+      $(function() {
+        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
+        $('details').details();
+        $('details').on({
+          'open.details': function() {
+            console.log('opened')
+          },
+          'close.details': function() {
+            console.log('closed')
+          }
+        })
+      });
+    </script>
+	    <script>
+      // Expand details / summary when printing
+      // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
+      window.matchMedia("print").addEventListener("change", evt => {
+        if (evt.matches) {
+          elms = document.body.querySelectorAll("details:not([open])");
+          for (e of elms) {
+            e.setAttribute("open", "");
+            e.dataset.wasclosed = "";
+          }
+        } else {
+          elms = document.body.querySelectorAll("details[data-wasclosed]");
+          for (e of elms) {
+            e.removeAttribute("open");
+            delete e.dataset.wasclosed;
+          }
+        }
+      })
+    </script>
+   </body>
+</html>

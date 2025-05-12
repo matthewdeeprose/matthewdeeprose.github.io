@@ -1,0 +1,552 @@
+.button-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid #fffff4;
+  outline: 1px solid #00131d;
+  vertical-align: middle;
+  margin: 0 4px;
+  position: relative;
+  top: -1px; /* Small adjustment to perfectly center with text */
+}
+
+.color-card {
+  border: 1px solid #231f20 !important;
+  outline: 1px solid #e1e8ec !important;
+}
+
+.bg-preview-swatch {
+  border: 1px solid #231f20 !important;
+  outline: 1px solid #e1e8ec !important;
+}
+
+.contrast-fix-suggestion {
+  margin: 15px 0;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.contrast-fix-suggestion p {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.contrast-fix-suggestion button {
+  margin-right: 10px;
+  margin-bottom: 5px;
+}
+
+.alternatives-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.alternatives-modal-content {
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.alternatives-modal-header {
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.alternatives-modal-body {
+  padding: 15px;
+  overflow-y: auto;
+  /* Only this section scrolls */
+  flex-grow: 1;
+}
+
+.alternatives-modal-footer {
+  padding: 15px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.close-modal-btn {
+  background: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Media query for mobile */
+@media (max-width: 600px) {
+  .alternatives-modal-content {
+    width: 100%;
+    max-height: 85vh;
+  }
+
+  .alternatives-modal {
+    padding: 10px;
+  }
+}
+
+.color-replacements-list {
+  margin: 15px 0;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.replacements-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+}
+
+.replacement-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.replacement-label {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.replacement-value {
+  margin-right: 10px;
+}
+
+.replacement-arrow {
+  margin: 0 10px;
+  font-weight: bold;
+}
+
+@media (max-width: 600px) {
+  .replacement-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .replacement-arrow {
+    transform: rotate(90deg);
+    margin: 5px 0;
+  }
+}
+
+.apply-all-btn {
+  margin-right: 10px;
+}
+
+/* Make the apply button easier to read with swatches */
+.apply-single-btn {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  line-height: 1.5;
+  padding: 8px 12px;
+}
+
+/* Close button styling for partial-match-info */
+.partial-match-info {
+  position: relative;
+  padding-right: 40px; /* Make room for the close button */
+}
+
+.close-info-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* Background Finder Styles */
+
+#backgroundFinderSection {
+  padding: 15px;
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+}
+
+#backgroundFinderSection h2 {
+  margin-top: 0;
+}
+
+#paletteSelection {
+  padding: 15px;
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+}
+
+.radio-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 10px 0;
+}
+
+#backgroundResults {
+  margin-top: 20px;
+}
+
+.color-group-toc {
+  margin-bottom: 20px;
+}
+
+.color-group-toc ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.color-group-toc a {
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.color-group {
+  margin-bottom: 30px;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.color-card {
+  border-radius: 4px;
+  overflow: hidden;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 120px;
+}
+
+.color-value {
+  font-weight: bold;
+}
+
+.preview-btn {
+  margin-top: auto;
+}
+
+.preview-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 15px 0;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.control-separator {
+  width: 1px;
+  height: 20px;
+  background-color: currentcolor;
+  margin: 0 10px;
+}
+
+#uploadPaletteBtn {
+  margin-left: 0.5rem;
+}
+
+.preview-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  border: 1px solid #fffff4;
+  outline: 1px solid #00131d;
+}
+
+.preview-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+}
+
+.partial-match-info {
+  margin-bottom: 15px;
+  padding: 10px;
+}
+
+/* Color swatch styles */
+.color-result-section {
+  margin-bottom: 8px;
+}
+
+.color-result-label {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid #000000;
+  outline: 1px solid #ffffff;
+  display: inline-block;
+}
+
+/* Color suggestion styles */
+.color-suggestions {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.color-suggestions h3 {
+  margin-top: 0;
+}
+
+.selected-bg-preview {
+  display: flex;
+  align-items: center;
+  margin: 15px 0;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.bg-preview-header {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.bg-preview-swatch {
+  width: 80px;
+  height: 50px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+
+.bg-preview-value {
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* Contrast ratio styles - NEW */
+.contrast-ratio {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* Style for swatch with contrast */
+.swatch-with-ratio {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.suggestion-card {
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.original-color-section,
+.alternatives-section {
+  margin-bottom: 15px;
+}
+
+.color-display {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.large-swatch {
+  width: 60px;
+  height: 60px;
+  margin-right: 15px;
+}
+
+.color-details,
+.alternative-details {
+  font-size: 0.9em;
+}
+
+.contrast-status {
+  font-weight: bold;
+}
+
+#paletteSelection,
+#backgroundFinderSection {
+  font-size: 1rem;
+}
+
+/* Accessibility enhancements */
+.alternatives-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+  list-style: none; /* Remove bullet points */
+  padding: 0;
+}
+
+.alternative-color {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border-radius: 4px;
+  padding: 20px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.alternative-color.selected {
+  border: solid;
+}
+
+.alternative-color .color-swatch {
+  margin-right: 8px;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.apply-single-btn {
+  font-size: 0.9em;
+  padding: 5px 10px;
+}
+
+.loading-indicator {
+  padding: 20px;
+  text-align: center;
+  font-style: italic;
+}
+
+.success-message {
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+/* Side-by-side layout styles */
+.tools-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+@media (min-width: 900px) {
+  .tools-container {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  #backgroundFinderSection,
+  #paletteSelection {
+    width: calc(50% - 10px);
+    margin-top: 0;
+    flex-shrink: 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .alternatives-list {
+    grid-template-columns: 1fr;
+  }
+
+  .color-display {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .large-swatch {
+    margin-bottom: 10px;
+  }
+}
+
+/* Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.problematic-colors-list {
+  margin: 15px 0;
+  padding-left: 25px;
+}
+
+.problem-color-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.problem-color-item .color-swatch {
+  margin-right: 8px;
+  width: 20px;
+  height: 20px;
+}
+
+.apply-single-btn {
+  text-align: left;
+  white-space: normal;
+  line-height: 1.4;
+}
