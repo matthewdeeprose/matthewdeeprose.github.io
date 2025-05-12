@@ -125,7 +125,7 @@ function addBackgroundFinderUI() {
   // Add content to the section - Fixed to 3:1 contrast ratio
   backgroundSection.innerHTML = `
         <h2 class="CVDTool">Find Contrasting Background</h2>
-        <p>Find background colours with at least 3:1 contrast ratio (WCAG AA for UI components)</p>
+        <p>Find background colours with at least a 3:1 contrast ratio to the colours in the SVG.</p>
         <button id="findBackgroundBtn" class="SVGCVDButton">Find Background Colours</button>
         <div id="backgroundResults"></div>
         <div id="backgroundPreviewControls" class="preview-controls" style="display: none;">
