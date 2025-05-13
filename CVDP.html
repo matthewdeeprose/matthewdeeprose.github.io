@@ -875,6 +875,8 @@ function updateContrastCompanionLink() {
     const table = document.getElementById('userColorTable');
     table.parentNode.insertBefore(linkContainer, table.nextSibling);
     
+	// Add this line to update the link visibility based on the current palette
+	updateContrastCompanionLink();
 
 });
 
