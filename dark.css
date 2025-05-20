@@ -466,6 +466,15 @@ h3.chart-details-heading {
 /* Chart controls ends */
 
 /* Mermaid controls colours */
+.mermaid-theme-label {
+  border-radius: 3px;
+  padding: 0.17rem 0.67rem 0.17rem 0.67rem;
+}
+
+.mermaid-theme-label {
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
+}
 
 /* Break-specific styles */
 .break-container {

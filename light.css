@@ -470,6 +470,11 @@ h3.chart-details-heading {
 /* Chart controls ends */
 
 /* Mermaid */
+.mermaid-theme-label {
+  padding: 0.37rem;
+  background: #00131d;
+  color: #fffff4 !important;
+}
 
 /* Break-specific styles */
 .break-container {
