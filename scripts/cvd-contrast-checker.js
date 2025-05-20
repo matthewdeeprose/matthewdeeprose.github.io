@@ -1483,7 +1483,7 @@ function suggestAlternatives(
     // No alternatives found
     container.innerHTML = `
       <div class="no-alternatives">
-        <p>No suitable alternatives found. Try adjusting the target contrast or using the palette optimizer for more comprehensive changes.</p>
+        <p>No suitable alternatives found. Try adjusting the target contrast or using the palette optimiser for more comprehensive changes.</p>
       </div>
     `;
   }
@@ -1980,10 +1980,10 @@ function addOptimizerButtonsDirectly() {
     // Create the button
     const optimizeButton = document.createElement("button");
     optimizeButton.className = "optimize-palette-button";
-    optimizeButton.textContent = "Optimize All Colours";
+    optimizeButton.textContent = "Optimise all Colours";
     optimizeButton.setAttribute(
       "aria-label",
-      "Optimize all colours for contrast"
+      "Optimise all colours for contrast"
     );
 
     // Create a container for proper spacing
