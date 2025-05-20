@@ -133,10 +133,10 @@ function addBackgroundFinderUI() {
             <input type="checkbox" id="previewBackgroundToggle">
             <div id="backgroundPreviewSwatch" class="preview-swatch"></div>
             
-            <span class="control-separator"></span>
-            
+            <span id="panelSeparator" class="control-separator"></span>
+            <span id="showContrastRatiosLabel">
             <label for="showContrastRatios">Show Contrast Ratios:</label>
-            <input type="checkbox" id="showContrastRatios">
+            <input type="checkbox" id="showContrastRatios"></span>
         </div>
     `;
 
@@ -2704,5 +2704,162 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   } else {
     initBackgroundFinder();
+  }
+});
+
+/**
+ * Toggle functionality for the "Find Background Colours" button
+ *
+ * This code adds toggle behavior to the background finder button with proper
+ * accessibility attributes (aria-expanded) and visual state changes.
+ */
+
+// Let's create a direct clean implementation instead of patching functions
+document.addEventListener("DOMContentLoaded", function () {
+  // Set up the toggle functionality once the DOM is fully loaded
+  setupBackgroundToggle();
+});
+
+/**
+ * Set up the background toggle functionality
+ */
+function setupBackgroundToggle() {
+  // Make sure we wait for the button to exist
+  const waitForButton = setInterval(function () {
+    const findBackgroundBtn = document.getElementById("findBackgroundBtn");
+    if (findBackgroundBtn) {
+      clearInterval(waitForButton);
+
+      console.log(
+        "Setting up background toggle for button:",
+        findBackgroundBtn
+      );
+
+      // Remove all existing click event listeners from the button
+      const newButton = findBackgroundBtn.cloneNode(true);
+      findBackgroundBtn.parentNode.replaceChild(newButton, findBackgroundBtn);
+
+      // Set initial state
+      newButton.setAttribute("aria-expanded", "false");
+
+      // Add our toggle event listener
+      newButton.addEventListener("click", function (event) {
+        // Stop event propagation to prevent other handlers from firing
+        event.stopPropagation();
+
+        // Toggle the background options
+        toggleBackgroundOptions();
+      });
+
+      // Also patch the findContrastingBackgrounds function to update button state
+      if (typeof findContrastingBackgrounds === "function") {
+        const originalFindContrastingBackgrounds = findContrastingBackgrounds;
+        window.findContrastingBackgrounds = function () {
+          // Call the original function
+          const result = originalFindContrastingBackgrounds.apply(
+            this,
+            arguments
+          );
+
+          // Update button state
+          const btn = document.getElementById("findBackgroundBtn");
+          if (btn) {
+            btn.setAttribute("aria-expanded", "true");
+            btn.textContent = "Hide Background Colour Options";
+          }
+
+          return result;
+        };
+      }
+    }
+  }, 100);
+}
+
+/**
+ * Toggle function for the background options
+ */
+function toggleBackgroundOptions() {
+  const findBackgroundBtn = document.getElementById("findBackgroundBtn");
+  if (!findBackgroundBtn) return;
+
+  const isExpanded = findBackgroundBtn.getAttribute("aria-expanded") === "true";
+
+  console.log(
+    "Toggle background options, current state:",
+    isExpanded ? "expanded" : "collapsed"
+  );
+
+  if (isExpanded) {
+    // Currently expanded, so collapse
+    hideBackgroundOptions();
+    findBackgroundBtn.setAttribute("aria-expanded", "false");
+    findBackgroundBtn.textContent = "Find Background Colours";
+    // Announce to screen readers
+    announceToScreenReaders("Background colour options hidden");
+  } else {
+    // Currently collapsed, so expand
+    findContrastingBackgrounds(); // This function finds and shows the options
+    findBackgroundBtn.setAttribute("aria-expanded", "true");
+    findBackgroundBtn.textContent = "Hide Background Colour Options";
+    // Announce to screen readers
+    announceToScreenReaders("Background colour options shown");
+  }
+}
+
+/**
+ * Hide the background options and controls
+ */
+function hideBackgroundOptions() {
+  console.log("Hiding background options");
+
+  const backgroundResults = document.getElementById("backgroundResults");
+  const backgroundPreviewControls = document.getElementById(
+    "backgroundPreviewControls"
+  );
+
+  if (backgroundResults) {
+    console.log("Clearing background results");
+    backgroundResults.innerHTML = ""; // Clear the results
+  }
+
+  if (backgroundPreviewControls) {
+    console.log("Hiding preview controls");
+    backgroundPreviewControls.style.display = "none"; // Hide the preview controls
+  }
+
+  // If there's a current background color being previewed, clear it
+  if (typeof clearBackgroundPreview === "function") {
+    console.log("Clearing background preview");
+    clearBackgroundPreview();
+  }
+}
+
+/**
+ * Helper function to make announcements to screen readers
+ */
+function announceToScreenReaders(message) {
+  const announcement = document.createElement("div");
+  announcement.setAttribute("aria-live", "polite");
+  announcement.classList.add("sr-only");
+  announcement.textContent = message;
+  document.body.appendChild(announcement);
+
+  // Remove after it's been read (usually a few seconds is enough)
+  setTimeout(() => {
+    if (document.body.contains(announcement)) {
+      document.body.removeChild(announcement);
+    }
+  }, 3000);
+}
+
+// Add event delegation for handling "findNewBackgroundBtn" clicks
+document.addEventListener("click", function (event) {
+  if (event.target && event.target.id === "findNewBackgroundBtn") {
+    // Make sure the main button state is updated
+    const findBackgroundBtn = document.getElementById("findBackgroundBtn");
+    if (findBackgroundBtn) {
+      findBackgroundBtn.setAttribute("aria-expanded", "true");
+      findBackgroundBtn.textContent = "Hide Background Colour Options";
+    }
   }
 });

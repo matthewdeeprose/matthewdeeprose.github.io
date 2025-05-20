@@ -11,7 +11,6 @@
       <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
       <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
       <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-            <link rel="stylesheet" id="cvdp" href="cvdp.css" media="all">
       <meta property="og:title" content="Colour vision deficiency friendly palettes - Matthew Deeprose">
       <meta property="og:description" content="The following colour scheme are taken from the document, 'Colorblind Safe Color Schemes', produced by Alexandra Phillips at the NCEAS Science Communication Resource Corner, with the exception of the HarryHelsing Palette which was posted in on Reddit: 'thoughts on this five colour palette for a video game'?.">
       <meta property="og:image" content="https://matthewdeeprose.github.io/cvdp-43.png">
@@ -37,25 +36,11 @@
       <meta name="twitter:card" content="summary_large_image"/>
 	      <style>
 
-@media (min-width: 60rem) {
-	.page-wrap {
-		margin: 0 7% 0 7%;
-	}
-}
+
       *.page-wrap>* {
         grid-column: 1/-1 !important;
         grid-row: auto !important;
       } 
-
-      #localStorageButtons, #externalStorageButtons {
-        float: left;
-}
-
-.button-container fieldset::after {
-  content: "";
-  display: table;
-  clear: both;
-}
 	  
 	  /* Filters */
 
@@ -325,7 +310,6 @@ color: #002E3B;}
 			   
 			   
 			       <script src="scripts/chroma.min.js"></script>
-                   <script src="scripts/cvd-contrast-checker.js"></script>
             </article>
 			      <div id="panel">
          <button class="panelButton" onclick="topFunction()" id="myBtn">
@@ -499,58 +483,27 @@ document.addEventListener('DOMContentLoaded', function() {
      * Updates the enabled/disabled state of buttons based on whether we have any palettes
      * This ensures users can't perform actions when there are no palettes to work with
      */
-     function updateButtonStates() {
-    const hasPalettes = Object.keys(palettes).length > 0;
-    
-    // List of elements that should be disabled when there are no palettes
-    const elements = [
-        renamePaletteBtn,
-        deletePaletteBtn,
-        paletteSelect,
-        addColorBtn,
-        colorPicker,
-        colorHex,
-        exportPalettesBtn,
-        savePalettesBtn
-    ];
+    function updateButtonStates() {
+        const hasPalettes = Object.keys(palettes).length > 0;
+        
+        // List of elements that should be disabled when there are no palettes
+        const elements = [
+            renamePaletteBtn,
+            deletePaletteBtn,
+            paletteSelect,
+            addColorBtn,
+            colorPicker,
+            colorHex,
+            exportPalettesBtn,
+            savePalettesBtn
+        ];
 
-    // Update each element's disabled state and ARIA attributes for accessibility
-    elements.forEach(element => {
-        if (element) { // Check if element exists before trying to set properties
+        // Update each element's disabled state and ARIA attributes for accessibility
+        elements.forEach(element => {
             element.disabled = !hasPalettes;
             element.setAttribute('aria-disabled', (!hasPalettes).toString());
-        }
-    });
-    
-    // Also update all background checkboxes
-    document.querySelectorAll('.enable-background-checkbox').forEach(checkbox => {
-        checkbox.disabled = !hasPalettes;
-        checkbox.setAttribute('aria-disabled', (!hasPalettes).toString());
-        
-        // If no palettes exist, ensure checkbox is unchecked and related elements are hidden
-        if (!hasPalettes && checkbox.checked) {
-            checkbox.checked = false;
-            
-            // Find the related elements
-            const section = checkbox.closest('.background-selector').getAttribute('data-section');
-            const backgroundSelector = document.querySelector(`.background-selector[data-section="${section}"]`);
-            
-            if (backgroundSelector) {
-                // Hide related elements
-                const elementsToHide = backgroundSelector.querySelectorAll(
-                    '.background-picker, .display-mode-selector, .contrast-target-container'
-                );
-                
-                elementsToHide.forEach(element => {
-                    element.style.display = 'none';
-                });
-            }
-        }
-    });
-    
-    // Make the state globally available for other components
-    window.hasPalettes = hasPalettes;
-}
+        });
+    }
 
     // ====== Colour Input Synchronization ======
     // Keep the colour picker and hex input synchronized
@@ -574,54 +527,28 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Adds a new colour to the current palette after validation
      */
-     function addColorToPalette() {
-    if (currentPalette) {
-        let colorValue = colorHex.value.trim();
-        
-        // Add # if it's missing from the hex code
-        if (colorValue.charAt(0) !== '#') {
-            colorValue = '#' + colorValue;
-        }
-        
-        // Only add valid hex colours
-        if (isValidHexColor(colorValue)) {
-            // Store the current contrast column state before rebuilding the table
-            const hasContrastColumn = document.querySelector('#userColorTable th[data-column="contrast"]') !== null;
-            const targetContrastValue = getSelectedContrastTarget('custom');
-            const backgroundCheckboxChecked = document.getElementById('enable-bg-custom')?.checked || false;
-            const backgroundColour = document.querySelector('.background-colour-picker')?.value || '#FFFFFF';
+    function addColorToPalette() {
+        if (currentPalette) {
+            let colorValue = colorHex.value.trim();
             
-            // Add the color to the palette
-            addColor(colorValue);
-            let addedColorCode = colorValue.toUpperCase();
-            displayNotification(addedColorCode + ' added to palette.');
-            updateContrastCompanionLink();
+            // Add # if it's missing from the hex code
+            if (colorValue.charAt(0) !== '#') {
+                colorValue = '#' + colorValue;
+            }
             
-            // Re-initialize the contrast column if it was previously shown
-            if (hasContrastColumn && backgroundCheckboxChecked) {
-                // Small delay to ensure the table has been fully rendered
-                setTimeout(() => {
-                    initContrastColumns();
-                    updateContrastDisplay('custom', backgroundColour, targetContrastValue);
-                }, 50);
+            // Only add valid hex colours
+            if (isValidHexColor(colorValue)) {
+                addColor(colorValue);
+                let addedColorCode = colorValue.toUpperCase();
+                displayNotification(addedColorCode + ' added to palette.');
+                updateContrastCompanionLink(); // Update contrast companion link when adding a colour
+            } else {
+                displayNotification('Error: Invalid hex colour code. Please use the format #RRGGBB.');
             }
         } else {
-            displayNotification('Error: Invalid hex colour code. Please use the format #RRGGBB.');
+            displayNotification('Please create or select a palette first.');
         }
-    } else {
-        displayNotification('Please create or select a palette first.');
     }
-}
-
-/**
- * Helper function to get the currently selected contrast target value
- * @param {string} section - The ID of the section (e.g., 'custom')
- * @returns {number} - The selected contrast target value (3, 4.5, or 7)
- */
- function getSelectedContrastTarget(section) {
-    const checkedRadio = document.querySelector(`.background-selector[data-section="${section}"] .contrast-target-radio:checked`);
-    return checkedRadio ? parseFloat(checkedRadio.value) : 3; // Default to 3:1 if none selected
-}
 
     // ====== Event Listeners ======
     // Add colour when button is clicked or Enter is pressed
@@ -687,332 +614,75 @@ document.addEventListener('DOMContentLoaded', function() {
         updateContrastCompanionLink(); // Update contrast companion link when switching palettes
     });
 
-
-/**
- * Save palettes to localStorage with background colour information
- * Modified to store background colour when enabled
- */
- savePalettesBtn.addEventListener('click', function() {
-    // Create a formatted version of palettes with background information
-    const formattedPalettes = formatPalettesForStorage(palettes);
-    
-    // Save to localStorage
-    try {
-        localStorage.setItem('colorPalettes', JSON.stringify(formattedPalettes));
+    /**
+     * Saves all palettes to the browser's localStorage
+     * This allows palettes to persist between page reloads
+     */
+    savePalettesBtn.addEventListener('click', function() {
+        localStorage.setItem('colorPalettes', JSON.stringify(palettes));
         displayNotification('All palettes saved to LocalStorage!');
-    } catch(error) {
-        console.error("Error saving to localStorage:", error);
-        displayNotification('Error saving palettes to localStorage.', 'error');
-    }
-});
+    });
 
-
-/**
- * Load palettes from localStorage with background information
- * Modified to handle both old and new format
- */
- loadPalettesBtn.addEventListener('click', function() {
-    const savedPalettes = localStorage.getItem('colorPalettes');
-    if (savedPalettes) {
-        const savedData = JSON.parse(savedPalettes);
-        
-        // Load palettes using helper function
-        loadFormattedPalettes(savedData);
-        displayNotification('Palettes loaded from LocalStorage!');
-    } else {
-        displayNotification('No saved palettes found in LocalStorage.');
-    }
-});
-
-/**
- * Export palettes to a JSON file with background colour information
- * Modified to store background colour when enabled
- */
- exportPalettesBtn.addEventListener('click', function() {
-    // Create a formatted version of palettes with background information
-    const formattedPalettes = formatPalettesForStorage(palettes);
-    
-    // Create the download link
-    const dataStr = "data:text/json;charset=utf-8," + 
-        encodeURIComponent(JSON.stringify(formattedPalettes));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "colour_palettes.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-});
-
-
-/**
- * Format palettes for storage, adding background information where enabled
- * @param {Object} palettesObj - The palette object to format
- * @returns {Object} - Formatted palette object with background information where applicable
- */
- function formatPalettesForStorage(palettesObj) {
-    let formattedPalettes = {};
-    
-    for (const name in palettesObj) {
-        // For custom palette section, always use 'custom' as sectionId
-        // For built-in palettes, convert name to section ID
-        let sectionId;
-        
-        // Handle the custom palette (always has section ID 'custom')
-        if (name === currentPalette) {
-            sectionId = 'custom';
+    /**
+     * Loads palettes from localStorage when the load button is clicked
+     */
+    loadPalettesBtn.addEventListener('click', function() {
+        const savedPalettes = localStorage.getItem('colorPalettes');
+        if (savedPalettes) {
+            palettes = JSON.parse(savedPalettes);
+            currentPalette = Object.keys(palettes)[0] || '';
+            updatePaletteSelect();
+            renderTable();
+            updateButtonStates();
+            updateContrastCompanionLink(); // Update contrast companion link when loading palettes
+            displayNotification('Palettes loaded from LocalStorage!');
         } else {
-            // For other palettes, convert name to a valid section ID
-            sectionId = name.replace(/\s+/g, '');
+            displayNotification('No saved palettes found in LocalStorage.');
         }
-        
-        // Check if background is enabled for this palette
-        const backgroundCheckbox = document.getElementById(`enable-bg-${sectionId}`);
-        
-        if (backgroundCheckbox && backgroundCheckbox.checked) {
-            // Get background colour
-            const backgroundPicker = document.querySelector(
-                `.background-selector[data-section="${sectionId}"] .background-colour-picker`
-            );
-            
-            // Get target contrast value
-            const targetRadio = document.querySelector(
-                `.background-selector[data-section="${sectionId}"] .contrast-target-radio:checked`
-            );
-            
-            if (backgroundPicker) {
-                formattedPalettes[name] = {
-                    colours: palettesObj[name],
-                    background: backgroundPicker.value,
-                    targetContrast: targetRadio ? targetRadio.value : "3"
-                };
-                continue;
-            }
-        }
-        
-        // If no background is enabled or it couldn't be found, store as array
-        formattedPalettes[name] = palettesObj[name];
-    }
-    
-    return formattedPalettes;
-}
+    });
+
+    /**
+     * Exports all palettes to a JSON file that users can download
+     */
+    exportPalettesBtn.addEventListener('click', function() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palettes));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "colour_palettes.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    });
 
     // Import palettes from JSON file
     importPalettesBtn.addEventListener('click', function() {
         fileInput.click();
     });
 
-/**
- * Import palettes from a JSON file with background information
- * Modified to handle both old and new format
- */
- fileInput.addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const importedData = JSON.parse(e.target.result);
-                
-                // Load palettes using helper function
-                loadFormattedPalettes(importedData);
-                displayNotification('Palettes imported successfully!');
-            } catch (error) {
-                displayNotification('Error importing palettes. Please make sure the file is a valid JSON.', 'error');
-            }
-        };
-        reader.readAsText(file);
-    }
-});
-
-function loadFormattedPalettes(data) {
-    console.log('Loading formatted palettes:', data);
-    
-    // Clear existing palettes
-    palettes = {};
-    
-    // Process each palette
-    for (const name in data) {
-        if (Array.isArray(data[name])) {
-            // Old format: array of colours
-            palettes[name] = data[name];
-            console.log(`Loaded palette "${name}" in array format`);
-        } else if (data[name] && data[name].colours) {
-            // New format: object with colours and background
-            palettes[name] = data[name].colours;
-            console.log(`Loaded palette "${name}" with background settings`);
-            
-            // Store the background settings to apply later
-            if (!window.pendingBackgroundSettings) {
-                window.pendingBackgroundSettings = [];
-            }
-            
-            window.pendingBackgroundSettings.push({
-                name: name,
-                background: data[name].background,
-                targetContrast: data[name].targetContrast
-            });
-        } else {
-            console.warn(`Skipping invalid palette format for "${name}"`, data[name]);
-        }
-    }
-    
-    // Update UI
-    currentPalette = Object.keys(palettes)[0] || '';
-    updatePaletteSelect();
-    renderTable();
-    updateButtonStates();
-    updateContrastCompanionLink();
-    
-    // Apply background settings after a delay to ensure UI is ready
-    setTimeout(applyPendingBackgroundSettings, 500);
-}
-
-/**
- * Apply any pending background settings after UI is ready
- */
- function applyPendingBackgroundSettings() {
-    console.log('Applying pending background settings');
-    
-    if (!window.pendingBackgroundSettings || window.pendingBackgroundSettings.length === 0) {
-        console.log('No pending background settings to apply');
-        return;
-    }
-    
-    window.pendingBackgroundSettings.forEach(setting => {
-        console.log(`Applying background for "${setting.name}":`, setting);
-        
-        // Convert palette name to section ID
-        let sectionId;
-        if (setting.name === currentPalette) {
-            sectionId = 'custom';
-        } else {
-            sectionId = setting.name.replace(/\s+/g, '');
-        }
-        
-        // Get the background checkbox
-        const backgroundCheckbox = document.getElementById(`enable-bg-${sectionId}`);
-        if (!backgroundCheckbox) {
-            console.warn(`Could not find background checkbox for section "${sectionId}"`);
-            return;
-        }
-        
-        // Get the background picker
-        const backgroundPicker = document.querySelector(
-            `.background-selector[data-section="${sectionId}"] .background-colour-picker`
-        );
-        
-        // Get the hex input
-        const hexInput = document.querySelector(
-            `.background-selector[data-section="${sectionId}"] .background-hex-input`
-        );
-        
-        // Get the target contrast radio
-        const targetRadios = document.querySelectorAll(
-            `.background-selector[data-section="${sectionId}"] .contrast-target-radio`
-        );
-        
-        // Apply settings
-        if (backgroundPicker) {
-            console.log(`Setting background color to ${setting.background}`);
-            
-            // Check the checkbox first
-            backgroundCheckbox.checked = true;
-            
-            // Set background colour
-            backgroundPicker.value = setting.background;
-            
-            // Update hex input if it exists
-            if (hexInput) {
-                hexInput.value = setting.background;
-            }
-            
-            // Set contrast target
-            if (setting.targetContrast && targetRadios.length > 0) {
-                console.log(`Setting target contrast to ${setting.targetContrast}`);
-                
-                let targetFound = false;
-                targetRadios.forEach(radio => {
-                    if (radio.value === setting.targetContrast) {
-                        radio.checked = true;
-                        targetFound = true;
-                    }
-                });
-                
-                if (!targetFound && targetRadios.length > 0) {
-                    // Default to first radio if target not found
-                    targetRadios[0].checked = true;
+    /**
+     * Handles the file import process when a file is selected
+     */
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedPalettes = JSON.parse(e.target.result);
+                    palettes = { ...palettes, ...importedPalettes };
+                    currentPalette = Object.keys(palettes)[0] || '';
+                    updatePaletteSelect();
+                    renderTable();
+                    updateButtonStates();
+                    updateContrastCompanionLink(); // Update contrast companion link when importing palettes
+                    displayNotification('Palettes imported successfully!');
+                } catch (error) {
+                    displayNotification('Error importing palettes. Please make sure the file is a valid JSON.');
                 }
-            }
-            
-            // Trigger change event to update the display
-            backgroundCheckbox.dispatchEvent(new Event('change'));
-            console.log(`Successfully applied background settings for "${setting.name}"`);
-        } else {
-            console.warn(`Could not find background picker for section "${sectionId}"`);
+            };
+            reader.readAsText(file);
         }
     });
-    
-    // Clear pending settings
-    window.pendingBackgroundSettings = [];
-}
-
-
-/**
- * Apply background settings loaded from storage
- * @param {string} paletteName - The name of the palette
- * @param {Object} paletteData - The palette data with background information
- */
- function applyBackgroundSettings(paletteName, paletteData) {
-    if (!paletteData.background) return;
-    
-    // Convert palette name to section ID
-    const sectionId = paletteName === 'custom' ? 'custom' : paletteName.replace(/\s+/g, '');
-    
-    // Get the background checkbox
-    const backgroundCheckbox = document.getElementById(`enable-bg-${sectionId}`);
-    if (!backgroundCheckbox) return;
-    
-    // Get the background colour picker
-    const backgroundPicker = document.querySelector(
-        `.background-selector[data-section="${sectionId}"] .background-colour-picker`
-    );
-    
-    // Get the hex input field
-    const hexInput = document.querySelector(
-        `.background-selector[data-section="${sectionId}"] .background-hex-input`
-    );
-    
-    // Get the target contrast radio buttons
-    const targetRadios = document.querySelectorAll(
-        `.background-selector[data-section="${sectionId}"] .contrast-target-radio`
-    );
-    
-    // Apply settings
-    if (backgroundCheckbox && backgroundPicker) {
-        // Enable the background
-        backgroundCheckbox.checked = true;
-        
-        // Set the background colour
-        backgroundPicker.value = paletteData.background;
-        
-        // Update hex input if it exists
-        if (hexInput) {
-            hexInput.value = paletteData.background;
-        }
-        
-        // Set target contrast if specified
-        if (paletteData.targetContrast && targetRadios.length > 0) {
-            targetRadios.forEach(radio => {
-                if (radio.value === paletteData.targetContrast) {
-                    radio.checked = true;
-                }
-            });
-        }
-        
-        // Trigger change event to update the display
-        backgroundCheckbox.dispatchEvent(new Event('change'));
-    }
-}
 
     /**
      * Adds a colour to the current palette
@@ -1063,136 +733,102 @@ function updateContrastCompanionLink() {
      * Renders the colour table showing all colours in the current palette
      * Includes accessibility features like ARIA labels and roles
      */
-     function renderTable() {
-    // Store contrast column state before rebuilding
-    const table = document.getElementById('userColorTable');
-    const hadContrastColumn = table && table.querySelector('th[data-column="contrast"]') !== null;
-    const backgroundCheckboxChecked = document.getElementById('enable-bg-custom')?.checked || false;
-    
-    // Clear existing content
-    if (table) {
-        table.innerHTML = '';
-    }
+    function renderTable() {
+        const table = document.getElementById('userColorTable');
+        table.innerHTML = ''; // Clear existing content
 
-    if (currentPalette && palettes[currentPalette]) {
-        // Add hidden caption for screen readers
-        const caption = document.createElement('caption');
-        caption.textContent = currentPalette;
-        caption.className = 'hidden';
-        table.appendChild(caption);
-        table.classList.add('userTable');
+        if (currentPalette && palettes[currentPalette]) {
+            // Add hidden caption for screen readers
+            const caption = document.createElement('caption');
+            caption.textContent = currentPalette;
+            caption.className = 'hidden';
+            table.appendChild(caption);
+            table.classList.add('userTable');
 
-        // Create table header with accessibility attributes
-        const thead = document.createElement('thead');
-        thead.setAttribute('role', 'rowgroup');
-        const headerRow = document.createElement('tr');
-        headerRow.setAttribute('role', 'row');
+            // Create table header with accessibility attributes
+            const thead = document.createElement('thead');
+            thead.setAttribute('role', 'rowgroup');
+            const headerRow = document.createElement('tr');
+            headerRow.setAttribute('role', 'row');
 
-        // Define and create table headers
-        const headers = ['Colour', 'Original (Trichromacy)', 'Protanopia', 'Deuteranopia', 'Tritanopia', 'Delete'];
-        headers.forEach(header => {
-            const th = document.createElement('th');
-            th.setAttribute('scope', 'col');
-            th.setAttribute('role', 'columnheader');
-            th.textContent = header;
-            th.setAttribute("id", header);
-            headerRow.appendChild(th);
-        });
-
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Create table body
-        const tbody = document.createElement('tbody');
-        tbody.setAttribute('role', 'rowgroup');
-
-        // Create a row for each colour in the palette
-        palettes[currentPalette].forEach((color, index) => {
-            const row = document.createElement('tr');
-            row.setAttribute('role', 'row');
-
-            // Add colour code as row header
-            const colorHeader = document.createElement('th');
-            colorHeader.setAttribute('scope', 'row');
-            colorHeader.setAttribute('data-label', 'colour');
-            colorHeader.setAttribute('role', 'rowheader');
-            colorHeader.textContent = color;
-            row.appendChild(colorHeader);
-
-            // Add cells for different colour vision types
-            const cellTypes = ['trichromacy', 'protanopia', 'deuteranopia', 'tritanopia'];
-            cellTypes.forEach(type => {
-                const td = document.createElement('td');
-                td.className = type;
-                td.setAttribute('data-label', type);
-                td.setAttribute('role', 'cell');
-                td.style.backgroundColor = color;
-                td.style.color = color;
-                row.appendChild(td);
-                td.textContent += 'Example';
-                td.classList.add("paletteExampleCell");
+            // Define and create table headers
+            const headers = ['Colour', 'Original (Trichromacy)', 'Protanopia', 'Deuteranopia', 'Tritanopia', 'Delete'];
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.setAttribute('scope', 'col');
+                th.setAttribute('role', 'columnheader');
+                th.textContent = header;
+                th.setAttribute("id", header);
+                headerRow.appendChild(th);
             });
 
-            // Add delete button cell
-            const actionsCell = document.createElement('td');
-            actionsCell.setAttribute('data-label', 'delete');
-            actionsCell.setAttribute('role', 'cell');
-            const removeButton = document.createElement('button');
-            removeButton.innerHTML = `<span aria-hidden="true">\u232B</span>`; // Backspace symbol
-            removeButton.setAttribute('aria-label', `Remove colour ${color}`);            
-            removeButton.classList.add("colourDeleteButton");
-            removeButton.onclick = () => removeColor(index);
-            actionsCell.appendChild(removeButton);
-            actionsCell.classList.add("actionClass");
-            row.appendChild(actionsCell);
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
 
-            tbody.appendChild(row);
-        });
+            // Create table body
+            const tbody = document.createElement('tbody');
+            tbody.setAttribute('role', 'rowgroup');
 
-        table.appendChild(tbody);
-        
-        // Re-initialize contrast column if it was previously shown
-        if (hadContrastColumn && backgroundCheckboxChecked) {
-            setTimeout(() => {
-                initContrastColumns();
-                const backgroundColour = document.querySelector('.background-colour-picker')?.value || '#FFFFFF';
-                const targetContrast = getSelectedContrastTarget('custom');
-                updateContrastDisplay('custom', backgroundColour, targetContrast);
-            }, 50);
+            // Create a row for each colour in the palette
+            palettes[currentPalette].forEach((color, index) => {
+                const row = document.createElement('tr');
+                row.setAttribute('role', 'row');
+
+                // Add colour code as row header
+                const colorHeader = document.createElement('th');
+                colorHeader.setAttribute('scope', 'row');
+                colorHeader.setAttribute('data-label', 'colour');
+                colorHeader.setAttribute('role', 'rowheader');
+                colorHeader.textContent = color;
+                row.appendChild(colorHeader);
+
+                // Add cells for different colour vision types
+                const cellTypes = ['trichromacy', 'protanopia', 'deuteranopia', 'tritanopia'];
+                cellTypes.forEach(type => {
+                    const td = document.createElement('td');
+                    td.className = type;
+                    td.setAttribute('data-label', type);
+                    td.setAttribute('role', 'cell');
+                    td.style.backgroundColor = color;
+                    td.style.color = color;
+                    row.appendChild(td);
+                    td.textContent += 'Example';
+                    td.classList.add("paletteExampleCell");
+                });
+
+                // Add delete button cell
+                const actionsCell = document.createElement('td');
+                actionsCell.setAttribute('data-label', 'actions');
+                actionsCell.setAttribute('role', 'cell');
+                const removeButton = document.createElement('button');
+                removeButton.innerHTML = `<span aria-hidden="true">\u232B</span>`; // Backspace symbol
+                removeButton.setAttribute('aria-label', `Remove colour ${color}`);
+                removeButton.onclick = () => removeColor(index);
+                actionsCell.appendChild(removeButton);
+                actionsCell.classList.add("actionClass");
+                row.appendChild(actionsCell);
+
+                tbody.appendChild(row);
+            });
+
+            table.appendChild(tbody);
+            
+            // Update the contrast companion link after rendering the table
+            updateContrastCompanionLink();
         }
-        
-        // Update the contrast companion link after rendering the table
-        updateContrastCompanionLink();
     }
-}
 
     /**
      * Removes a colour from the current palette
      * @param {number} index - The index of the colour to remove
      */
-     function removeColor(index) {
-    if (currentPalette && palettes[currentPalette]) {
-        // Store contrast column state before rebuilding
-        const table = document.getElementById('userColorTable');
-        const hadContrastColumn = table && table.querySelector('th[data-column="contrast"]') !== null;
-        const backgroundCheckboxChecked = document.getElementById('enable-bg-custom')?.checked || false;
-        
-        palettes[currentPalette].splice(index, 1);
-        renderTable();
-        
-        // Re-initialize contrast column if it was previously shown
-        if (hadContrastColumn && backgroundCheckboxChecked) {
-            setTimeout(() => {
-                initContrastColumns();
-                const backgroundColour = document.querySelector('.background-colour-picker')?.value || '#FFFFFF';
-                const targetContrast = getSelectedContrastTarget('custom');
-                updateContrastDisplay('custom', backgroundColour, targetContrast);
-            }, 50);
+    function removeColor(index) {
+        if (currentPalette && palettes[currentPalette]) {
+            palettes[currentPalette].splice(index, 1);
+            renderTable();
+            updateContrastCompanionLink(); // Update contrast companion link when removing a colour
         }
-        
-        updateContrastCompanionLink();
     }
-} 
 
     /**
      * Updates the palette selection dropdown with current palette names
@@ -1211,34 +847,15 @@ function updateContrastCompanionLink() {
     // Make removeColor function available globally
     window.removeColor = removeColor;
 
-// Initial load of saved palettes from localStorage
-const savedPalettes = localStorage.getItem('colorPalettes');
-if (savedPalettes) {
-    try {
-        // Parse the saved data
-        const savedData = JSON.parse(savedPalettes);
-        
-        // Use the loadFormattedPalettes helper to process the data
-        loadFormattedPalettes(savedData);
-        
-        console.log('Loaded palettes from localStorage on page initialization');
-    } catch (error) {
-        console.error('Error loading palettes from localStorage:', error);
-        
-        // Fallback to simple loading if enhanced format causes issues
-        try {
-            palettes = JSON.parse(savedPalettes);
-            currentPalette = Object.keys(palettes)[0] || '';
-            updatePaletteSelect();
-            renderTable();
-            console.log('Used fallback method to load palettes');
-        } catch (fallbackError) {
-            console.error('Fallback loading also failed:', fallbackError);
-        }
+    // Initial load of saved palettes from localStorage
+    const savedPalettes = localStorage.getItem('colorPalettes');
+    if (savedPalettes) {
+        palettes = JSON.parse(savedPalettes);
+        currentPalette = Object.keys(palettes)[0] || '';
+        updatePaletteSelect();
+        renderTable();
     }
-}
-
-updateButtonStates();
+    updateButtonStates();
     
     // Add the contrast companion link container after the table
     const linkContainer = document.createElement('div');
@@ -1271,58 +888,15 @@ function clearMessage() {
     document.getElementById('myMessage').style.display = 'none';
 }
 
-// Global variable to track the message timeout
-let messageTimeout;
-
 /**
  * Displays a notification message to the user
  * @param {string} message - The message to display
- * @param {string} type - The type of notification ('success', 'error', or 'info')
+ * @param {string} type - The type of notification ('success' or 'error')
  */
 function displayNotification(message, type) {
-    console.log('Setting notification:', message, type);
-    
-    // Clear any existing timeout to prevent multiple timers
-    if (messageTimeout) {
-        console.log('Clearing previous timeout');
-        clearTimeout(messageTimeout);
-        messageTimeout = null;
-    }
-    
-    // Replace hex colours in the message with uppercase versions
-    const formattedMessage = message.replace(/#([0-9a-f]{3,6})/gi, match => match.toUpperCase());
-    
-    const messageContainer = document.getElementById('myMessage');
+    document.getElementById('myMessage').style.display = 'block';
     const notification = document.getElementById('pageMessage');
-    const iconContainer = document.getElementById('myMessageIcon');
-    
-    messageContainer.style.display = 'block';
-    notification.textContent = formattedMessage;
-    
-    // Add styling based on message type
-    if (type === 'error') {
-        iconContainer.innerHTML = '⚠️'; // Warning icon
-    } else if (type === 'success') {
-        iconContainer.innerHTML = '✓'; // Checkmark icon
-    } else if (type === 'info') {
-        iconContainer.innerHTML = 'ℹ️'; // Info icon
-    } else {
-        // Reset styles if no type specified
-        messageContainer.style.backgroundColor = '';
-        notification.style.color = '';
-        iconContainer.innerHTML = '';
-    }
-    
-    console.log(`Notification (${type}):`, message);
-    
-    // Set timeout to automatically clear the message after 20 seconds
-    messageTimeout = setTimeout(function() {
-        console.log('Timeout triggered after 20 seconds');
-        clearMessage();
-        messageTimeout = null;
-    }, 20000);
-    
-    console.log('Timeout set:', messageTimeout);
+    notification.textContent = message;
 }
     </script>
       <script>

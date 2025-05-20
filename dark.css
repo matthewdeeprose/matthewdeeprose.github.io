@@ -1,5 +1,137 @@
 /* Dark mode */
 
+/* CDVP-2 */
+.optimization-modal {
+  background: #00131d;
+  color: currentcolor;
+}
+
+/* Colour-related styles - separated and placed at the top */
+.actionClass {
+  border: 1px currentColor solid;
+}
+
+.optimization-modal {
+  border: 2px solid #e1e8ec;
+}
+
+.optimization-modal {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.optimization-modal::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.optimization-modal-header {
+  border-bottom: 1px solid #e1e8ec;
+}
+
+.optimization-summary {
+  background-color: #231f20;
+  border: 1px solid currentcolor;
+}
+
+.optimization-results-table th,
+.optimization-results-table td {
+  border: 1px solid currentcolor;
+}
+
+.optimization-results-table th {
+  background-color: #e1e8ec;
+}
+
+.colour-preview {
+  border: 1px solid #231f20 !important;
+  outline: 1px solid #e1e8ec !important;
+}
+
+.contrast-fail {
+  color: #d5007f;
+}
+
+.optimization-modal-footer {
+  border-top: 1px solid #e1e8ec;
+}
+
+.enable-background {
+  border-top: 1px solid #ccc;
+}
+
+.display-mode-selector {
+  border-top: 1px solid #ccc;
+}
+
+.target-pass {
+  background-color: #4bb694;
+}
+
+.target-pass {
+  color: #00131d;
+}
+
+.target-fail {
+  background-color: #d5007f;
+}
+
+.target-fail {
+  color: #fffff4;
+}
+
+.contrast-aaa {
+  background-color: #c1d100;
+}
+
+.contrast-aaa {
+  color: #00131d;
+}
+
+.contrast-aa {
+  background-color: #74c9e5;
+}
+
+.contrast-aa {
+  color: #231f20;
+}
+
+.contrast-large {
+  background-color: #ef7d00;
+}
+
+.contrast-large {
+  color: #00131d;
+}
+
+.contrast-fail-cvd {
+  background-color: #d5007f;
+}
+
+.contrast-fail-cvd {
+  color: #fffff4;
+}
+
+.alternatives-container {
+  border: 1px solid #ccc;
+}
+
+.alternatives-container {
+  background-color: #231f20;
+}
+
+.alternative-item {
+  border: 1px solid currentColor;
+}
+
+.invalid-input {
+  border: 2px solid #f44336;
+}
+
+.invalid-input {
+  background-color: #ffebee;
+}
+
+/* CDVP-2 ends */
+
 /* SVG Tool Updates */
 .contrast-companion-link {
   background-color: #e1e8ec;
@@ -71,11 +203,6 @@
   outline: 2px solid #231f20;
 }
 
-.preview-controls {
-  background-color: #231f20;
-  border: 1px solid #c1d100;
-}
-
 .partial-match-info {
   background-color: #231f20;
   border-left: 10px solid #ffc107;
@@ -98,7 +225,7 @@
 }
 
 .contrast-status {
-  color: #ef7d00;
+  /* color: #231f20;*/
 }
 
 .bg-preview-value {

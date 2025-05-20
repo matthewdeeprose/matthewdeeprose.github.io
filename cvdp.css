@@ -1,0 +1,749 @@
+/* Animation media query for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .invalid-input {
+    animation: none;
+  }
+}
+
+/* Modal dialog styles */
+.optimization-modal {
+  max-height: 90vh;
+  overflow: hidden;
+  max-width: 90%;
+  width: 800px;
+  padding: 0;
+  border-radius: 5px;
+}
+
+.optimization-modal-body {
+  overflow-y: auto;
+  max-height: calc(90vh - 140px);
+  /* Adjust based on header/footer heights */
+}
+
+.optimization-modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.optimization-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.optimization-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.close-modal-button {
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  line-height: 0.5;
+  border-radius: 4px;
+}
+
+.optimization-modal-body {
+  padding: 1rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.optimization-summary {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.optimization-results-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.optimization-results-table th,
+.optimization-results-table td {
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.colour-preview {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  border-radius: 4px;
+}
+
+.contrast-pass {
+  font-weight: bold;
+}
+
+.contrast-fail {
+  font-weight: bold;
+}
+
+.apply-button {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+select#optimization-priority {
+  font-size: 1rem;
+}
+
+.optimization-modal-footer {
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.optimization-settings {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.optimization-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cancel-optimization-button {
+  font-size: 0.8rem;
+}
+
+.apply-all-button,
+.reoptimize-button,
+.colourDeleteButton {
+  font-size: 0.8rem;
+  padding: 6px;
+  text-align: center;
+  margin: 0.1rem;
+}
+
+/* Button container styles */
+.optimize-button-container {
+  margin: 0.5rem 0;
+  display: block;
+}
+
+/* Background selector styles */
+.background-selector {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.background-options {
+  padding: 0.5rem 0;
+  margin-top: 0.5rem;
+}
+
+/* New class for the label-checkbox pair */
+.checkbox-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Make label and checkbox alignment more natural */
+.checkbox-pair label {
+  order: 1;
+  margin-right: 0.5rem;
+}
+
+.checkbox-pair input[type="checkbox"] {
+  order: 0;
+  margin: 0;
+  /* Remove default margins */
+}
+
+.enable-background {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+/* Add a new class for the label-checkbox container */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Adjust label styling for better alignment */
+.enable-background label {
+  margin-right: 0.5rem;
+}
+
+.contrast-target-container {
+  margin-top: 0.5rem;
+}
+
+.contrast-target-label {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.contrast-target-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.contrast-target-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.background-picker {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.display-mode-selector {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+}
+
+.display-mode-label {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.display-mode-options {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.display-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Contrast indicator styles */
+.contrast-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.contrast-ratio {
+  font-weight: bold;
+}
+
+.contrast-status {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.target-indicator {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.suggest-alternative-button {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Alternatives container */
+.alternatives-container {
+  margin-top: 0.5rem;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.alternatives-header {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.alternative-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.alternative-color {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 4px;
+}
+
+.alternative-info {
+  flex-grow: 1;
+}
+
+.select-alternative-button,
+.close-alternatives-button {
+  font-size: 0.8rem;
+}
+
+.close-alternatives-button {
+  margin-top: 0.5rem;
+}
+
+/* Example display styles */
+.example-display {
+  padding: 0.5rem;
+  text-align: center;
+}
+
+/* Invalid input feedback */
+.invalid-input {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+/* Background section in color-input */
+.color-input fieldset .background-selector {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+/* Color input controls - adjust for better layout */
+.color-input {
+  flex-wrap: wrap;
+}
+
+.userTable td.actionClass,
+.userTable th#Delete {
+  width: 4rem;
+  white-space: nowrap;
+}
+
+/* Enhanced responsive styles for the optimization modal */
+/* Base modal improvements */
+.optimization-modal {
+  max-width: min(90%, 800px);
+  width: auto;
+  max-height: min(90vh, 650px);
+  margin: auto;
+}
+
+.optimization-modal-body {
+  padding: 0.75rem;
+}
+
+/* Table container to allow horizontal scrolling when needed */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+#cancel-optimization-button {
+  display: none;
+}
+
+@media screen and (max-width: 56rem) {
+  /* Improve modal sizing for small screens */
+  .optimization-modal {
+    max-width: 95%;
+    max-height: 95vh;
+    width: 100%;
+    margin: 1rem auto;
+  }
+
+  .optimization-modal-header {
+    padding: 0.75rem;
+  }
+
+  .optimization-modal-footer {
+    padding: 0.75rem;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .optimization-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .optimization-settings {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  #optimization-priority {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .optimization-results-table {
+    width: 100%;
+    border: 0;
+  }
+
+  /* Hide table headers for responsive view */
+  .optimization-results-table thead {
+    border: none;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+  }
+
+  /* Make rows behave like cards */
+  .optimization-results-table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #758d9a;
+    border-radius: 4px;
+  }
+
+  /* Adjust cells to be block-level */
+  .optimization-results-table td {
+    display: block;
+    border: 0;
+    border-bottom: 1px solid #e1e8ec;
+    text-align: right;
+    padding: 0.5rem;
+    min-height: 2.5rem;
+    position: relative;
+  }
+
+  .optimization-results-table td:last-child {
+    border-bottom: 0;
+  }
+
+  /* Add labels for each cell */
+  .optimization-results-table td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: bold;
+    color: #231f20;
+    padding-right: 0.5rem;
+  }
+
+  /* Improve colour preview display */
+  .colour-preview {
+    height: 1rem;
+    width: 1rem;
+    margin-right: 0.25rem;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  /* Ensure buttons fit well */
+  .apply-button,
+  .reoptimize-button,
+  .cancel-optimization-button,
+  .apply-all-button {
+    padding: 0.5rem;
+    width: auto;
+    font-size: 0.9rem;
+  }
+
+  /* Fix summary display */
+  .optimization-summary {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .optimization-summary ul {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+  }
+}
+
+/* Extra small screens */
+@media screen and (max-width: 30rem) {
+  .optimization-settings,
+  .optimization-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .optimization-actions button,
+  .optimization-settings button {
+    width: 100%;
+    margin: 0.25rem 0;
+  }
+
+  .optimization-summary {
+    font-size: 0.85rem;
+  }
+
+  .optimization-summary ul {
+    padding-left: 1.25rem;
+  }
+}
+/* 
+* High Zoom Accessibility Enhancement for Optimization Modal
+* 
+* This CSS addresses WCAG 2.1 Success Criterion 1.4.10 (Reflow)
+* by improving how the modal behaves at high zoom levels (200%+).
+* It makes the entire modal scrollable rather than having fixed header/footer
+* elements that might obscure content when zoomed in.
+*/
+/* Media query targeting high zoom levels or narrow viewports */
+@media screen and (max-width: 1200px), (min-resolution: 1.5dppx) {
+  /* Change the modal's scroll behavior when zoomed */
+  .optimization-modal {
+    overflow-y: auto;
+    /* Make the entire modal scrollable */
+    overflow-x: hidden;
+    /* Prevent horizontal scrolling */
+  }
+
+  .optimization-modal-content {
+    max-height: none;
+    /* Remove height constraint */
+    height: auto;
+    /* Let content determine the height */
+  }
+
+  .optimization-modal-body {
+    overflow-y: visible;
+    /* Content doesn't need to scroll independently */
+    max-height: none;
+    /* Remove the calculated height constraint */
+  }
+
+  /* Ensure header and footer are in the normal document flow */
+  .optimization-modal-header,
+  .optimization-modal-footer {
+    position: static;
+    /* Prevent any fixed/sticky positioning */
+    width: 100%;
+    /* Ensure full width */
+  }
+}
+
+/* Additional media query for extremely high zoom levels */
+@media screen and (max-width: 800px) {
+  /* Further optimizations for very high zoom levels */
+  .optimization-modal {
+    max-height: 98vh;
+    /* Allow modal to use almost entire viewport height */
+    max-width: 98%;
+    /* Allow more width as well */
+    margin: 1vh auto;
+    /* Center with minimal margins */
+  }
+
+  /* Reduce padding to maximize content space */
+  .optimization-modal-header,
+  .optimization-modal-footer {
+    padding: 0.5rem;
+  }
+}
+
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: var(--scroll-position, 0px);
+}
+
+/* Enhanced colour comparison */
+.colour-comparison {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.comparison-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.comparison-label {
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.colour-code {
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  font-family: monospace;
+}
+
+.comparison-arrow {
+  font-size: 1.5rem;
+  color: #758d9a;
+}
+
+/* Text sample comparison */
+.comparison-example {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.example-item {
+  flex: 1;
+  min-width: 120px;
+}
+
+.example-label {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.text-sample {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  text-align: center;
+  font-weight: bold;
+}
+.comparison-example {
+  display: none;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 30rem) {
+  .colour-comparison {
+    flex-wrap: wrap;
+  }
+
+  .comparison-item {
+    flex-basis: 40%;
+  }
+
+  .comparison-arrow {
+    transform: rotate(90deg);
+    margin: 0.5rem 0;
+  }
+
+  .example-item {
+    flex-basis: 100%;
+  }
+}
+
+@media screen and (max-width: 56rem) {
+  .userTable {
+    border: 0 !important;
+  }
+
+  .userTable thead {
+    border: none;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+  }
+
+  .userTable td.actionClass,
+  .userTable th#Delete {
+    width: auto !important;
+  }
+
+  .contrast-cell {
+    border: 1px solid currentColor;
+  }
+
+  .contrast-indicator {
+    display: block !important;
+  }
+
+  .contrast-ratio,
+  .contrast-status,
+  .target-indicator {
+    margin-right: 5px;
+  }
+
+  .example-display {
+    padding: 0px !important;
+    text-align: right !important;
+  }
+
+  .userTable tr {
+    /* border-bottom: 3px solid #ddd; */
+    display: block;
+    margin-bottom: 0.625em;
+  }
+
+  .userTable td {
+    /* border-bottom: 1px solid #ddd; */
+    display: block;
+    font-size: 0.8em;
+    text-align: right;
+  }
+
+  .userTable td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: bold;
+    background-color: #231f20;
+    color: #fffdf9;
+    text-transform: capitalize;
+    padding: 0.01rem;
+  }
+
+  .userTable td:last-child {
+    border-bottom: 0;
+  }
+  .userTable th::before {
+    content: "Colour code ";
+  }
+}
+.contrast-status {
+  display: none;
+}

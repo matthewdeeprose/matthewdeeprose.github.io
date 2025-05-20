@@ -11,7 +11,6 @@
       <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
       <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
       <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-      <link rel="stylesheet" id="svg2CSS" href="svgCVD-2.css" media="all">
       <meta property="og:title" content="SVG Palette Adjuster for Colour Vision Deficiency - Matthew Deeprose">
       <meta property="og:description" content="">
       <meta property="og:image" content="https://matthewdeeprose.github.io/svgCVD-43.png">
@@ -39,7 +38,7 @@
 /* wider border just for this page */
 @media (min-width: 60rem) {
 	.page-wrap {
-		margin: 0 2% 0 2%;
+		margin: 0 5% 0 5%;
 	}
 }
 .page-wrap>* {
@@ -195,7 +194,6 @@
         <button id="uploadBtn" class="SVGCVDButton">Load SVG</button>
         <button id="resetBtn" class="SVGCVDButton" disabled>Reset Colours</button>
         <button id="saveBtn" class="SVGCVDButton" disabled>Save SVG</button>
-        <button id="saveWithBgBtn" class="SVGCVDButton" disabled style="display: none;">Save SVG with Background</button>
 		</div>
 
         <div class="svg-container">
@@ -219,27 +217,23 @@
 		
 		
 		<div id="workingContainer">
-		            <div id="myMessage"><div id="myMessageIcon" aria-hidden="true"></div><span id="pageMessage" aria-live="assertive" role="alert"></span>
+		            <div id="myMessage"><div id="myMessageIcon"></div><span id="pageMessage" aria-live="assertive" role="alert"></span>
 			<button onclick="clearMessage();" class="clearMessageButton">Clear message</button>
 			
 			</div>
         </div>
         <div id="colorInfo"></div>
         <div id="paletteSelection">
-            <h2 class="CVDTool">Swap Colours</h2>
             <label for="paletteSelect">Select a "colour vision deficiency friendly" palette:</label>
             <select id="paletteSelect"></select>
             <br>
             
         <div id="colorSwapInterface"></div>
-        
         <input type="file" id="paletteInput" accept=".json" aria-label="Optional: load palette">
-        <button id="uploadPaletteBtn" class="SVGCVDButton">Load Alternative Palette</button><br><span id="paletteHelp">Use the <a href="CVDP">palette creator tool</a> to create your own custom palette</span>	
+        <button id="uploadPaletteBtn" class="SVGCVDButton">Load Alternative Palette</button><span id="paletteHelp">Use the <a href="CVDP">palette creator tool</a> to create your own custom palette</span>	
     </div>
         
     </div>
-    <script src="scripts/chroma.min.js"></script>
-    <script src="scripts/background-contrast-integration.js"></script>
             </article>
 			      <div id="panel">
          <button class="panelButton" onclick="topFunction()" id="myBtn">
@@ -272,11 +266,11 @@
          </main>
          <aside class="page-sidebar related">
             <section class="related">
-
+			<h2>Related</h2>
 			</section>
 
                <section class="related">
-                <h2>Related tools</h2>
+                <h3>Related tools</h3>
                 <ul class="relUL">
                     <li><a href="CVDP">Colour vision deficiency friendly palettes</a></li>
                     <li><a href="imageCVD">Colour Vision Deficiency Image Tester</a></li>
@@ -396,7 +390,6 @@ let originalSvg;         // Stores the original SVG content
 let svgColors = [];      // Array to store unique colors found in the SVG
 let selectedPalette = []; // Array to store the selected color palette
 let currentColorSwaps = {}; // Object to store current color swap selections
-let messageTimeout = null; // Timeout for clearing messages
 
 // DOM Elements
 const fileInput = document.getElementById('fileInput');
@@ -416,9 +409,8 @@ paletteSelect.addEventListener('change', handlePaletteSelection);
 
 // Clear message function
 function clearMessage() {
-    console.log('Auto-clearing message...');
-    document.getElementById('pageMessage').textContent = '';
-    document.getElementById('myMessage').style.display = 'none';
+	document.getElementById('pageMessage').textContent = '';
+	document.getElementById('myMessage').style.display = 'none';
 }
 
 /**
@@ -545,11 +537,9 @@ function displayColorInfo() {
  * Loads color palettes from an external JSON file and populates the palette select dropdown.
  */
  function loadPalettes() {
-    // Clear all existing options
+    // Clear existing default palettes but keep custom ones
+    const options = Array.from(paletteSelect.options);
     paletteSelect.innerHTML = '<option value="">Select a palette</option>';
-    
-    // Track palettes we've already added to prevent duplicates
-    const addedPalettes = new Set();
     
     // Fetch default palettes
     fetch('https://matthewdeeprose.github.io/cvdp.json')
@@ -560,15 +550,11 @@ function displayColorInfo() {
             let largestPalette = null;
             let largestPaletteSize = 0;
 
-            // Add each default palette, checking for duplicates
             for (const [name, colors] of Object.entries(palettes)) {
-                if (addedPalettes.has(name)) continue;
-                
                 const option = document.createElement('option');
                 option.value = name;
                 option.textContent = `${name} (${colors.length} colours)`;
                 paletteSelect.appendChild(option);
-                addedPalettes.add(name);
 
                 if (colors.length > largestPaletteSize) {
                     largestPalette = name;
@@ -576,20 +562,16 @@ function displayColorInfo() {
                 }
             }
             
-            // Add custom palette options to the dropdown
+            // Re-add custom palette options to the dropdown
             for (const [name, colors] of Object.entries(customPalettes)) {
-                const customKey = `custom_${name}`;
-                if (addedPalettes.has(customKey)) continue;
-                
                 const option = document.createElement('option');
-                option.value = customKey;
+                option.value = `custom_${name}`;
                 option.textContent = `${name} (Custom - ${colors.length} colours)`;
                 paletteSelect.appendChild(option);
-                addedPalettes.add(customKey);
                 
                 // Update largest palette info if needed
                 if (colors.length > largestPaletteSize) {
-                    largestPalette = customKey;
+                    largestPalette = `custom_${name}`;
                     largestPaletteSize = colors.length;
                 }
             }
@@ -608,14 +590,10 @@ function displayColorInfo() {
             // If we fail to load default palettes, at least show any custom ones
             if (Object.keys(customPalettes).length > 0) {
                 for (const [name, colors] of Object.entries(customPalettes)) {
-                    const customKey = `custom_${name}`;
-                    if (addedPalettes.has(customKey)) continue;
-                    
                     const option = document.createElement('option');
-                    option.value = customKey;
+                    option.value = `custom_${name}`;
                     option.textContent = `${name} (Custom - ${colors.length} colours)`;
                     paletteSelect.appendChild(option);
-                    addedPalettes.add(customKey);
                 }
                 handlePaletteSelection();
             }
@@ -826,160 +804,50 @@ let closeAllDropdowns;
  * @param {string} originalColor - The original color to be replaced.
  * @param {string} newColor - The new color to replace the original color.
  */
- function updateSvgColors(originalColor, newColor) {
+function updateSvgColors(originalColor, newColor) {
     if (newColor) {
         currentColorSwaps[originalColor] = newColor;
     } else {
         delete currentColorSwaps[originalColor];
     }
     
-    // Perform standard SVG update
     const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(originalSvg, "image/svg+xml");
-    const elements = svgDoc.querySelectorAll("*");
+    const svgDoc = parser.parseFromString(originalSvg, 'image/svg+xml');
+    const elements = svgDoc.querySelectorAll('*');
     
     elements.forEach(el => {
-        const fillColor = el.getAttribute("fill");
-        const strokeColor = el.getAttribute("stroke");
+        const fillColor = el.getAttribute('fill');
+        const strokeColor = el.getAttribute('stroke');
         
         if (fillColor && currentColorSwaps[fillColor]) {
-            el.setAttribute("fill", currentColorSwaps[fillColor]);
+            el.setAttribute('fill', currentColorSwaps[fillColor]);
         }
         if (strokeColor && currentColorSwaps[strokeColor]) {
-            el.setAttribute("stroke", currentColorSwaps[strokeColor]);
+            el.setAttribute('stroke', currentColorSwaps[strokeColor]);
         }
     });
     
     const serializer = new XMLSerializer();
     const updatedSvg = serializer.serializeToString(svgDoc);
     displaySvg(updatedSvg);
-    
-    // NEW FUNCTIONALITY: Check contrast with background if one is set
-    if (currentBackgroundColor) {
-        validateBackgroundContrast(newColor);
-    }
-}
-
-// New function to validate contrast with background
-function validateBackgroundContrast(changedColor) {
-    if (!changedColor || !currentBackgroundColor) return;
-    
-    const contrastRatio = getContrast(changedColor, currentBackgroundColor);
-    const targetContrast = 3; // WCAG AA for UI components
-    
-    if (contrastRatio < targetContrast) {
-        // Alert the user about the contrast issue
-        displayNotification(
-            `Warning: The colour ${changedColor} has insufficient contrast (${contrastRatio.toFixed(2)}:1) with the current background colour ${currentBackgroundColor}. Consider selecting a different colour or finding a new background.`, 
-            'warning'
-        );
-        
-        // Add a suggestion button to find a new background
-        addContrastFixSuggestion(changedColor);
-    }
-}
-
-// New function to add a suggestion to fix contrast issues
-function addContrastFixSuggestion(problematicColor) {
-    // Check if suggestion already exists
-    if (document.getElementById('contrastFixSuggestion')) {
-        return;
-    }
-    
-    const suggestionBox = document.createElement('div');
-    suggestionBox.id = 'contrastFixSuggestion';
-    suggestionBox.className = 'contrast-fix-suggestion';
-    suggestionBox.innerHTML = `
-        <p>The selected colour doesn't have sufficient contrast with the background. Would you like to:</p>
-        <button id="findNewBackgroundBtn" class="SVGCVDButton">Find a new background colour</button>
-        <button id="suggestBetterColorBtn" class="SVGCVDButton">Suggest better colour alternatives</button>
-        <button id="dismissWarningBtn" class="SVGCVDButton">Dismiss</button>
-    `;
-    
-    // Add event listeners for the buttons
-    suggestionBox.querySelector('#findNewBackgroundBtn').addEventListener('click', findContrastingBackgrounds);
-    suggestionBox.querySelector('#suggestBetterColorBtn').addEventListener('click', () => {
-        suggestAccessibleAlternativesForSingle(problematicColor, currentBackgroundColor);
-    });
-    suggestionBox.querySelector('#dismissWarningBtn').addEventListener('click', () => {
-        suggestionBox.remove();
-    });
-    
-    // Add the suggestion box after the colour swap interface
-    const colorSwapInterface = document.getElementById('colorSwapInterface');
-    colorSwapInterface.parentNode.insertBefore(suggestionBox, colorSwapInterface.nextSibling);
-}
-
-// New helper function to suggest alternatives for a single colour
-function suggestAccessibleAlternativesForSingle(originalColor, backgroundColor) {
-    // Similar to existing suggestAccessibleAlternatives but for a single colour
-    generateAccessibleAlternatives(originalColor, backgroundColor, 3, (alternatives) => {
-        // Display alternatives in a modal or panel
-        displaySingleColorAlternatives(originalColor, alternatives, backgroundColor);
-    });
 }
 
 /**
  * Resets the SVG to its original colors and clears all color swap selections.
  */
- function resetColors() {
-    // Original reset functionality
+function resetColors() {
     displaySvg(originalSvg);
     paletteSelect.value = '';
     colorSwapInterface.innerHTML = '';
     document.getElementById('pageMessage').textContent = '';
-    document.getElementById('myMessage').style.display = 'none';
     
     // Clear the currentColorSwaps object
     currentColorSwaps = {};
-    
-    // Reset background-related elements
-    clearBackgroundPreview();
-    
-    // Reset background preview toggle if it exists
-    const previewBackgroundToggle = document.getElementById('previewBackgroundToggle');
-    if (previewBackgroundToggle) {
-        previewBackgroundToggle.checked = false;
-    }
-    
-    // Hide background preview controls
-    const backgroundPreviewControls = document.getElementById('backgroundPreviewControls');
-    if (backgroundPreviewControls) {
-        backgroundPreviewControls.style.display = 'none';
-    }
-    
-    // Reset currentBackgroundColor
-    currentBackgroundColor = null;
-    
-    // Clear background results container
-    const backgroundResults = document.getElementById('backgroundResults');
-    if (backgroundResults) {
-        backgroundResults.innerHTML = '';
-    }
-    
-    // Hide "Save SVG with Background" button
-    const saveWithBgBtn = document.getElementById('saveWithBgBtn');
-    if (saveWithBgBtn) {
-        saveWithBgBtn.style.display = 'none';
-        saveWithBgBtn.disabled = true;
-    }
     
     // Reset the color swap interface
     if (selectedPalette.length > 0) {
         displayColorSwapInterface();
     }
-    
-    // Announce to screen readers that the SVG has been reset
-    const announcement = document.createElement('div');
-    announcement.setAttribute('aria-live', 'polite');
-    announcement.setAttribute('class', 'sr-only');
-    announcement.textContent = 'SVG has been reset to original colours and all background options have been cleared';
-    document.body.appendChild(announcement);
-    
-    // Remove the announcement after it's been read
-    setTimeout(() => {
-        document.body.removeChild(announcement);
-    }, 3000);
 }
 
 /**
@@ -1064,50 +932,11 @@ function sanitizeFilename(filename) {
  * @param {string} message - The message to display.
  * @param {string} type - The type of notification ('success' or 'error').
  */
- function displayNotification(message, type) {
-    console.log('Setting notification:', message, type);
-    
-    // Clear any existing timeout to prevent multiple timers
-    if (messageTimeout) {
-        console.log('Clearing previous timeout');
-        clearTimeout(messageTimeout);
-        messageTimeout = null;
-    }
-    // Replace hex colors in the message with uppercase versions
-    const formattedMessage = message.replace(/#([0-9a-f]{3,6})/gi, match => match.toUpperCase());
-    
-    const messageContainer = document.getElementById('myMessage');
+function displayNotification(message, type) {
+	document.getElementById('myMessage').style.display = 'block';
     const notification = document.getElementById('pageMessage');
-    const iconContainer = document.getElementById('myMessageIcon');
-    
-    messageContainer.style.display = 'block';
-    notification.textContent = formattedMessage;
-    
-    // Optionally add styling based on message type
-    if (type === 'error') {
-        iconContainer.innerHTML = '⚠️'; // Warning icon
-    } else if (type === 'success') {
-        iconContainer.innerHTML = '✓'; // Checkmark icon
-    } else if (type === 'info') {
-        iconContainer.innerHTML = 'ℹ️'; // Info icon
-    } else {
-        // Reset styles if no type specified
-        messageContainer.style.backgroundColor = '';
-        notification.style.color = '';
-        iconContainer.innerHTML = '';
-    }
-    
-    console.log(`Notification (${type}):`, message);
-    
-    // Set timeout to automatically clear the message after 20 seconds
-    // Using a named function instead of just clearMessage for better tracking
-    messageTimeout = setTimeout(function() {
-        console.log('Timeout triggered after 20 seconds');
-        clearMessage();
-        messageTimeout = null;
-    }, 20000);
-    
-    console.log('Timeout set:', messageTimeout);
+    notification.textContent = message;
+
 }
 
 
@@ -1329,6 +1158,35 @@ paletteInput.addEventListener('change', handlePaletteUpload);
             handlePaletteSelection(); // If the selection changed, update the interface
         }
     }
+}
+/**
+ * Displays a notification to the user.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification ('success', 'error', or 'info').
+ */
+ function displayNotification(message, type) {
+    const messageContainer = document.getElementById('myMessage');
+    const notification = document.getElementById('pageMessage');
+    const iconContainer = document.getElementById('myMessageIcon');
+    
+    messageContainer.style.display = 'block';
+    notification.textContent = message;
+    
+    // Optionally add styling based on message type
+    if (type === 'error') {
+        iconContainer.innerHTML = '⚠️'; // Warning icon
+    } else if (type === 'success') {
+        iconContainer.innerHTML = '✓'; // Checkmark icon
+    } else if (type === 'info') {
+        iconContainer.innerHTML = 'ℹ️'; // Info icon
+    } else {
+        // Reset styles if no type specified
+        messageContainer.style.backgroundColor = '';
+        notification.style.color = '';
+        iconContainer.innerHTML = '';
+    }
+    
+    console.log(`Notification (${type}):`, message);
 }
 
 /**

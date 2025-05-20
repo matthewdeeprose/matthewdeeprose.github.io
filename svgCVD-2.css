@@ -485,7 +485,7 @@
   margin-top: 20px;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 880px) {
   .tools-container {
     flex-direction: row;
     align-items: flex-start;
@@ -497,6 +497,10 @@
     margin-top: 0;
     flex-shrink: 0;
   }
+}
+
+.select-button {
+  font-size: 1rem;
 }
 
 /* Responsive adjustments */
