@@ -1,5 +1,124 @@
 /* Dark mode */
 
+/* Sortable buttons */
+/**
+* Enhanced Sortable Table CSS
+* 
+* Styles for accessible, responsive sortable tables with proper WCAG 2.2 AA compliance.
+* Uses mdSortableTable- prefix to avoid conflicts with existing styles.
+*/
+/* ===== COLOURS & THEMING ===== */
+/* Container Structure */
+.mdSortableTable-table-container {
+  background: #002e3b;
+  box-shadow: 0 4px 12px rgba(0, 19, 29, 0.15);
+  border: 1px solid #e1e8ec;
+}
+/* Top scrollbar */
+.mdSortableTable-top-scroll {
+  border: 0px solid #005051;
+}
+.mdSortableTable-top-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border: 1px solid #231f20;
+}
+.mdSortableTable-top-scroll::-webkit-scrollbar-thumb {
+  background: #fcbc00;
+  border-right: 1px solid #231f20;
+  border-left: 1px solid #231f20;
+}
+.mdSortableTable-top-scroll::-webkit-scrollbar-thumb:hover,
+.mdSortableTable-top-scroll::-webkit-scrollbar-thumb:focus {
+  background: #ef7d00;
+}
+
+/* Table Structure */
+.mdSortableTable-data-table {
+  border: 0px solid black;
+}
+.mdSortableTable-data-table caption {
+  background: #005051;
+  border-bottom: 2px solid #002e3b;
+  color: #fffff4;
+}
+/* Table Header Styles */
+.mdSortableTable-data-table thead {
+  background: #495961;
+}
+.mdSortableTable-data-table th {
+  background: #495961;
+  color: #fffff4;
+  border-right: 1px solid #fffff4;
+}
+/* Sort Button Styles */
+.mdSortableTable-sort-button:hover,
+.mdSortableTable-sort-button:focus-visible {
+  outline: 2px solid #fffff4 !important;
+  border: 0.2rem solid #495961 !important;
+  box-shadow: 0 0 0 0rem #005c84 !important;
+  color: #fffff4;
+  background: none;
+}
+
+.mdSortableTable-sort-button {
+  border: 0.2rem solid #495961 !important;
+}
+
+/* Table Body Styles */
+.mdSortableTable-data-table td {
+  border-top: 1px solid #9fb1bd;
+  background: #00131d;
+  color: #e1e8ec;
+}
+.mdSortableTable-data-table tbody tr td {
+  background-color: #002e3b;
+}
+.mdSortableTable-data-table tbody tr:nth-child(odd) td {
+  background-color: #00131d;
+}
+.mdSortableTable-data-table tbody tr:hover {
+  background-color: #231f20;
+  outline: 2px solid #fcbc00;
+}
+.mdSortableTable-data-table tbody tr:focus-within {
+  background-color: #231f20;
+  outline: 2px solid #fcbc00;
+}
+.mdSortableTable-data-table tbody tr:focus-within td {
+  background-color: #231f20;
+}
+/* Responsive Design - Mobile colours */
+@media (max-width: 900px) {
+  .mdSortableTable-table-container {
+    box-shadow: 0 4px 12px rgba(0, 19, 29, 0);
+    border: 0px solid #005051;
+    background: #231f20;
+  }
+  .mdSortableTable-data-table caption {
+    background: #495961;
+    color: #fffff4;
+  }
+  .mdSortableTable-data-table tr {
+    border: 1px solid #e1e8ec;
+    background: #fffff4;
+    box-shadow: 0 2px 6px rgba(0, 19, 29, 0.1);
+  }
+  .mdSortableTable-data-table td {
+    border-bottom: 1px solid rgba(0, 80, 81, 0.3);
+    background: #fffff4;
+    color: #e1e8ec;
+  }
+  .mdSortableTable-data-table td::before {
+    color: #e1e8ec;
+  }
+  /* Remove alternating row colours on mobile */
+  .mdSortableTable-data-table tbody tr,
+  .mdSortableTable-data-table tbody tr:nth-child(odd),
+  .mdSortableTable-data-table tbody tr:nth-child(even) {
+    background: #231f20;
+  }
+}
+
 /* CDVP-2 */
 .optimization-modal {
   background: #00131d;
@@ -466,12 +585,14 @@ h3.chart-details-heading {
 /* Chart controls ends */
 
 /* Mermaid controls colours */
-.mermaid-theme-label {
+.mermaid-theme-label,
+.mermaid-orientation-label {
   border-radius: 3px;
   padding: 0.17rem 0.67rem 0.17rem 0.67rem;
 }
 
-.mermaid-theme-label {
+.mermaid-theme-label,
+.mermaid-orientation-label {
   background: #231f20;
   border: 0.2rem solid #e1e8ec !important;
 }
@@ -597,7 +718,7 @@ span[role="img"]:hover {
   border: 1px solid #e1e8ec;
 }
 .sortable-table tr:nth-child(even) {
-  background-color: #231f20;
+  background-color: #00131d;
 }
 
 .sortable-table tbody tr:hover {

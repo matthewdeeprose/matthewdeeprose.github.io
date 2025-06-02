@@ -1,5 +1,169 @@
 /*Light mode */
 
+/* Sortable tables */
+/* ===== COLOURS & THEMING ===== */
+
+/* Container Structure */
+.mdSortableTable-table-container {
+  background: #fffff4;
+  box-shadow: 0 4px 12px rgba(0, 19, 29, 0.15);
+  border: 1px solid #005051;
+}
+
+/* Top scrollbar */
+.mdSortableTable-top-scroll {
+  border: 0px solid #005051;
+}
+
+.mdSortableTable-top-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border: 1px solid #231f20;
+}
+
+.mdSortableTable-top-scroll::-webkit-scrollbar-thumb {
+  background: #495961;
+}
+
+.mdSortableTable-top-scroll::-webkit-scrollbar-thumb:hover {
+  background: #002e3b;
+}
+
+/* Table Structure */
+.mdSortableTable-data-table {
+  border: 0px solid black;
+}
+
+.mdSortableTable-data-table caption {
+  background: #005051;
+  border-bottom: 2px solid #002e3b;
+  color: #fffff4;
+}
+
+/* Table Header Styles */
+.mdSortableTable-data-table thead {
+  background: #495961;
+}
+
+.mdSortableTable-data-table th {
+  background: #495961;
+  color: #fffff4;
+  border-right: 1px solid #fffff4;
+}
+
+/* Sort Button Styles */
+.mdSortableTable-sort-button:hover,
+.mdSortableTable-sort-button:focus-visible {
+  outline: 2px solid #fffff4 !important;
+  border: 0rem solid #00131d !important;
+  box-shadow: 0 0 0 0rem #005c84;
+  color: #00131d;
+}
+
+.mdSortableTable-sort-button:focus-visible {
+  background-color: rgba(255, 255, 244, 0.25);
+}
+
+/* Table Body Styles */
+.mdSortableTable-data-table td {
+  border-top: 1px solid #005051;
+  background: #fffff4;
+  color: #00131d;
+}
+
+.mdSortableTable-data-table tbody tr:nth-child(odd) td {
+  background-color: rgba(0, 80, 81, 0.04);
+}
+
+.mdSortableTable-data-table tbody tr:hover {
+  background-color: rgba(0, 92, 132, 0.08);
+}
+
+.mdSortableTable-data-table tbody tr:hover td {
+  background-color: rgba(0, 92, 132, 0.08);
+}
+
+.mdSortableTable-data-table tbody tr:nth-child(odd):hover td {
+  background-color: rgba(0, 92, 132, 0.12);
+}
+
+.mdSortableTable-data-table tbody tr:focus-within {
+  background-color: rgba(0, 92, 132, 0.15);
+  outline: 2px solid #005c84;
+}
+
+.mdSortableTable-data-table tbody tr:focus-within td {
+  background-color: rgba(0, 92, 132, 0.15);
+}
+
+.mdSortableTable-data-table tbody tr:nth-child(odd):focus-within td {
+  background-color: rgba(0, 92, 132, 0.18);
+}
+
+/* Responsive Design - Mobile colours */
+@media (max-width: 900px) {
+  .mdSortableTable-table-container {
+    box-shadow: 0 4px 12px rgba(0, 19, 29, 0);
+    border: 0px solid #005051;
+  }
+
+  .mdSortableTable-data-table caption {
+    background: #495961;
+    color: #fffff4;
+  }
+
+  .mdSortableTable-data-table tr {
+    border: 1px solid #005051;
+    background: #fffff4;
+    box-shadow: 0 2px 6px rgba(0, 19, 29, 0.1);
+  }
+
+  .mdSortableTable-data-table td {
+    border-bottom: 1px solid rgba(0, 80, 81, 0.3);
+    background: #fffff4;
+    color: #00131d;
+  }
+
+  .mdSortableTable-data-table td::before {
+    color: #002e3b;
+  }
+
+  /* Remove alternating row colours on mobile */
+  .mdSortableTable-data-table tbody tr,
+  .mdSortableTable-data-table tbody tr:nth-child(odd),
+  .mdSortableTable-data-table tbody tr:nth-child(even) {
+    background: #fffff4;
+  }
+}
+
+/* Accessibility Enhancements */
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .mdSortableTable-data-table th {
+    background: #00131d;
+    color: #fffff4;
+    border-right: 2px solid #fffff4;
+  }
+
+  .mdSortableTable-data-table td {
+    border-top: 2px solid #00131d;
+    color: #00131d;
+  }
+
+  .mdSortableTable-sort-button:focus-visible {
+    outline: 3px solid #fffff4;
+  }
+
+  .mdSortableTable-table-container {
+    border: 2px solid #00131d;
+  }
+}
+
+/* Focus Management */
+.mdSortableTable-data-table tr:focus {
+  outline: 2px solid #005c84;
+}
+
 /* CDVP-2 */
 .optimization-modal {
   background: #f0f2e8;
@@ -470,7 +634,8 @@ h3.chart-details-heading {
 /* Chart controls ends */
 
 /* Mermaid */
-.mermaid-theme-label {
+.mermaid-theme-label,
+.mermaid-orientation-label {
   padding: 0.37rem;
   background: #00131d;
   color: #fffff4 !important;

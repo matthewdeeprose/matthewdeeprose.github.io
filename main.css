@@ -1606,7 +1606,8 @@ button.SVGCVDButton {
   object-position: center;
 }
 
-#fileInput, #paletteInput {
+#fileInput,
+#paletteInput {
   display: none;
 }
 
@@ -2050,7 +2051,7 @@ table {
   width: 100%;
   table-layout: fixed;
   text-wrap: balance;
-  font-size: 90%;
+  font-size: 85%;
 }
 
 .allyTable thead th {
@@ -3140,7 +3141,6 @@ a:hover {
 *::after {
   box-sizing: inherit;
 }
-
 
 /*style wrapper to give some space*/
 .wrapper {
