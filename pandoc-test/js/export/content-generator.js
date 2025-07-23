@@ -419,7 +419,7 @@ const ContentGenerator = (function () {
 
         p {
             margin-bottom: 1.25rem;
-            text-align: justify;
+
             hyphens: auto;
             color: var(--body-text);
             transition: color 0.3s ease;
