@@ -281,7 +281,7 @@ const ContentGenerator = (function () {
             background: var(--sidebar-bg);
             border-top: 2px solid var(--border-color);
             padding: 1.5rem 2rem;
-            text-align: center;
+            text-align: left;
             color: var(--text-secondary);
             font-size: 0.875rem;
             /* FIXED: Remove min-height that was causing issues */
