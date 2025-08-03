@@ -75,7 +75,6 @@
         id="theme-toggle"
         class="theme-toggle"
         aria-label="Switch to dark mode"
-        title="Switch colour theme"
       >
         <span class="theme-toggle-icon" aria-hidden="true">🌙</span>
         <span class="theme-toggle-text">Dark</span>
@@ -105,7 +104,6 @@
               id="exportButton"
               class="export-btn"
               aria-label="Download mathematical document as accessible HTML file"
-              title="Download Document (Ctrl+S)"
               disabled
             >
               <div class="export-btn-icon">
@@ -154,7 +152,6 @@
             id="random-example-btn"
             class="random-example-btn"
             aria-label="Load random example"
-            title="Pick and load a random example"
           >
             <span aria-hidden="true">🎲</span> Random
           </button>
@@ -522,8 +519,76 @@
     <!-- Layout debugging -->
 
     <!-- Testing Framework -->
-    <script src="js/export/test-commands.js"></script>
+    <!-- <script src="js/export/test-commands.js"></script> -->
+
+    <script src="js/testing/test-utilities.js"></script>
+    <script src="./js/testing/individual/test-app-config.js"></script>
+    <script src="./js/testing/individual/test-mathjax-manager.js"></script>
+    <script src="./js/testing/individual/test-latex-processor.js"></script>
+    <script src="./js/testing/individual/test-content-generator.js"></script>
+    <script src="./js/testing/individual/test-template-system.js"></script>
+    <script src="./js/testing/integration/test-export-pipeline.js"></script>
+    <script src="./js/testing/integration/test-modular-integration.js"></script>
+    <script src="./js/testing/integration/test-accessibility-integration.js"></script>
+    <script src="./js/testing/integration/test-performance.js"></script>
+    <script src="./js/testing/individual/test-export-manager.js"></script>
+    <script src="./js/testing/individual/test-example-system.js"></script>
+    <script src="./js/testing/individual/test-status-manager.js"></script>
+    <script src="./js/testing/individual/test-conversion-engine.js"></script>
+    <script src="./js/testing/individual/test-event-manager.js"></script>
+    <script src="./js/testing/individual/test-app-state-manager.js"></script>
+    <script src="./js/testing/individual/test-layout-debugger.js"></script>
+    <script src="./js/testing/test-framework.js"></script>
+    <script src="./js/testing/test-registry.js"></script>
+    <script src="./js/testing/comprehensive/test-runner.js"></script>
+    <!-- JS Migration testing -->
+    <script src="./js/testing/migration/test-initialization-js-migration.js"></script>
+    <script src="./js/testing/migration/test-mathjax-controls-js-migration.js"></script>
+    <script src="./js/testing/migration/test-reading-tools-setup-js-migration.js"></script>
+    <script src="./js/testing/migration/test-theme-management-js-migration.js"></script>
+    <script src="./js/testing/migration/test-form-initialization-js-migration.js"></script>
+    <script src="./js/testing/migration/test-focus-tracking-js-migration.js"></script>
+    <script src="./js/testing/migration/test-reading-accessibility-manager-class-js-migration.js"></script>
+    <script src="./js/testing/migration/test-enhanced-javascript-orchestrator-optimization.js"></script>
+    <script src="./js/testing/migration/test-accessibility-configuration.js"></script>
+
+    <!-- JS Migration testing ends -->
+
+    <!-- Temporary Foundation Test -->
+    <script>
+      // Quick validation that TestUtilities is working
+      if (typeof TestUtilities !== "undefined") {
+        console.log("✅ TestUtilities loaded successfully");
+
+        // Test the core runTestSuite function
+        const sampleTests = {
+          basicTest: () => true,
+          mathTest: () => 2 + 2 === 4,
+          stringTest: () => "hello".toUpperCase() === "HELLO",
+        };
+
+        const result = TestUtilities.runTestSuite(
+          "Foundation Test",
+          sampleTests
+        );
+        console.log("Foundation test result:", result);
+
+        // Test performance measurement
+        const perfResult = TestUtilities.measurePerformance(() => {
+          Math.sqrt(Math.random() * 1000);
+        }, 100);
+        console.log("Performance test result:", perfResult);
+
+        // Make foundation test available globally for console testing
+        window.testFoundation = () =>
+          TestUtilities.runTestSuite("Foundation Test", sampleTests);
+      } else {
+        console.error("❌ TestUtilities failed to load");
+      }
+    </script>
+
     <!-- Testing framework -->
+
     <!-- Investigation Controls Event Handlers -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
@@ -736,21 +801,11 @@
     <!-- Application Initialization Message -->
     <script>
       console.log("=== ENHANCED PANDOC-WASM MATHEMATICAL PLAYGROUND ===");
-      console.log("🚀 Modular Architecture Loaded");
-      console.log(
-        "✨ Features: LaTeX Conversion, MathJax Rendering, Accessibility Controls"
-      );
-      console.log("📱 WCAG 2.2 AA Compliant with Screen Reader Support");
-      console.log("⚡ Offline-Capable Export with Working Context Menus");
-      console.log("");
-      console.log("💡 Development Commands:");
-      console.log("- testAll() - Run comprehensive test suite");
       console.log("- LayoutDebugger.enable() - Enable layout debugging");
       console.log(
         "- window.AppStateManager.getApplicationStatus() - Check app status"
       );
       console.log("");
-      console.log("📖 Ready for mathematical document creation!");
       console.log("====================================================");
     </script>
   </body>

@@ -179,20 +179,32 @@ const LaTeXProcessor = (function () {
   // ===========================================================================================
 
   /**
-   * Enhanced MathJax configuration with screen reader accessibility support
-   * Replaces the static version with support for runtime configuration changes
+   * Enhanced MathJax configuration with comprehensive tabindex debugging
+   * Phase 3.1: Clean implementation with proper syntax and debugging
    */
   function generateMathJaxConfig(accessibilityLevel = 2, dynamicOptions = {}) {
     logInfo(
-      `Generating simplified MathJax configuration - Level ${accessibilityLevel} with proven working controls only`
+      `Generating simplified MathJax configuration - Level ${accessibilityLevel} with comprehensive debugging`
     );
     logDebug("Dynamic options received:", dynamicOptions);
 
     try {
+      // Extract dynamic options with defaults
+      const zoomTrigger = dynamicOptions.zoomTrigger || "DoubleClick";
+      const zoomScale = dynamicOptions.zoomScale || "200%";
+      const inTabOrder =
+        dynamicOptions.inTabOrder !== undefined
+          ? dynamicOptions.inTabOrder
+          : true;
+      const assistiveMml =
+        dynamicOptions.assistiveMml !== undefined
+          ? dynamicOptions.assistiveMml
+          : true;
+
       const mathJaxConfig = [];
 
       mathJaxConfig.push(
-        "    <!-- Simplified MathJax Configuration with Proven Working Controls -->"
+        "    <!-- Enhanced MathJax Configuration with Phase 3.1 Debugging -->"
       );
       mathJaxConfig.push("    <script>");
       mathJaxConfig.push("        window.MathJax = {");
@@ -211,9 +223,9 @@ const LaTeXProcessor = (function () {
       mathJaxConfig.push("                tags: 'ams'");
       mathJaxConfig.push("            },");
 
-      // ✅ FIXED: Optimal defaults that always work
+      // Core MathJax options
       mathJaxConfig.push("            options: {");
-      mathJaxConfig.push("                enableMenu: true,"); // Always enabled via LaTeX preservation
+      mathJaxConfig.push("                enableMenu: true,");
       mathJaxConfig.push("                ignoreHtmlClass: 'tex2jax_ignore',");
       mathJaxConfig.push(
         "                processHtmlClass: 'tex2jax_process',"
@@ -222,184 +234,319 @@ const LaTeXProcessor = (function () {
       mathJaxConfig.push("                    settings: {");
       mathJaxConfig.push("                        texHints: true,");
       mathJaxConfig.push("                        semantics: false,");
-
-      // ✅ RUNTIME CONFIGURABLE: Working controls only
-      const zoomTrigger = dynamicOptions.zoomTrigger || "Click";
-      const zoomScale = dynamicOptions.zoomScale || "200%";
-      const inTabOrder = dynamicOptions.inTabOrder !== false; // Default true
-      const assistiveMml = dynamicOptions.assistiveMml !== false; // Default true
-
       mathJaxConfig.push(`                        zoom: '${zoomTrigger}',`);
       mathJaxConfig.push(`                        zscale: '${zoomScale}',`);
-      mathJaxConfig.push(`                        inTabOrder: ${inTabOrder},`);
+      mathJaxConfig.push(`                        inTabOrder: false,`);
       mathJaxConfig.push(
         `                        assistiveMml: ${assistiveMml},`
       );
-
-      // ✅ FIXED: Optimal renderer and scale (not runtime configurable)
-      mathJaxConfig.push("                        renderer: 'CHTML',"); // Always optimal
-      mathJaxConfig.push("                        scale: 1.0,"); // Always optimal
-
-      // ✅ FIXED: Explorer enabled by default for accessibility level 2+
-      if (accessibilityLevel >= 2) {
-        mathJaxConfig.push("                        explorer: true,");
-        logInfo("✅ Explorer component enabled (baked in)");
-      } else {
-        mathJaxConfig.push("                        explorer: false,");
-      }
-
-      mathJaxConfig.push("                        collapsible: false"); // Removed (broken)
+      mathJaxConfig.push("                        explorer: true");
       mathJaxConfig.push("                    }");
       mathJaxConfig.push("                }");
       mathJaxConfig.push("            },");
 
-      // ✅ FIXED: Optimal CHTML configuration
-      mathJaxConfig.push("            chtml: {");
-      mathJaxConfig.push("                scale: 1.0,"); // Always optimal
-      mathJaxConfig.push("                minScale: 0.5,");
-      mathJaxConfig.push("                matchFontHeight: false,");
-      mathJaxConfig.push("                displayAlign: 'center',");
-      mathJaxConfig.push("                displayIndent: '0'");
-      mathJaxConfig.push("            },");
-
-      // ✅ SIMPLIFIED: Only working components
+      // Loader configuration
       mathJaxConfig.push("            loader: {");
-      const loadComponents = ["ui/menu"];
-
-      if (accessibilityLevel >= 2) {
-        loadComponents.push("a11y/explorer");
-        logInfo("✅ Explorer component added to loader");
-      }
-      // ❌ REMOVED: semantic-enrich (loading fails)
-
       mathJaxConfig.push(
-        `                load: ${JSON.stringify(loadComponents)}`
+        "                load: ['input/tex', 'output/chtml', 'ui/menu']"
       );
       mathJaxConfig.push("            },");
 
-      // ✅ ENHANCED: Startup with better logging
+      // Startup configuration with enhanced debugging
       mathJaxConfig.push("            startup: {");
-      mathJaxConfig.push("                ready() {");
+      mathJaxConfig.push("                pageReady: () => {");
       mathJaxConfig.push(
-        "                    console.log('=== SIMPLIFIED MATHJAX READY ===');"
+        "                    console.log('🚀 MathJax pageReady - Phase 3.1 Debugging Active');"
       );
       mathJaxConfig.push(
-        "                    console.log('✅ Accessibility Level:', " +
-          accessibilityLevel +
-          ");"
+        "                    return MathJax.startup.defaultPageReady().then(() => {"
       );
       mathJaxConfig.push(
-        "                    console.log('✅ Context Menus: Always enabled');"
-      );
-      mathJaxConfig.push(
-        "                    console.log('✅ Renderer: CHTML (optimal)');"
-      );
-      mathJaxConfig.push(
-        "                    console.log('🎯 Zoom Trigger:', '" +
-          zoomTrigger +
-          "');"
-      );
-      mathJaxConfig.push(
-        "                    console.log('🎯 Zoom Scale:', '" +
-          zoomScale +
-          "');"
-      );
-      mathJaxConfig.push(
-        "                    console.log('🔊 Assistive MathML:', " +
-          assistiveMml +
-          ");"
-      );
-      mathJaxConfig.push(
-        "                    console.log('⌨️ Tab Navigation:', " +
-          inTabOrder +
-          ");"
-      );
-
-      mathJaxConfig.push("                    MathJax.startup.defaultReady();");
-      mathJaxConfig.push("                    ");
-
-      // ✅ ENHANCED: Dynamic MathJax Manager initialisation
-      mathJaxConfig.push("                    setTimeout(() => {");
-      mathJaxConfig.push(
-        "                        if (window.dynamicMathJaxManager) {"
-      );
-      mathJaxConfig.push(
-        "                            window.dynamicMathJaxManager.initialise();"
-      );
-      mathJaxConfig.push(
-        "                            console.log('✅ Simplified Dynamic MathJax Manager initialised');"
-      );
-      mathJaxConfig.push("                        }");
-      mathJaxConfig.push("                    }, 100);");
-
-      mathJaxConfig.push("                    setTimeout(() => {");
-      mathJaxConfig.push(
-        "                        const mathElements = document.querySelectorAll('mjx-container');"
-      );
-      mathJaxConfig.push(
-        "                        console.log('📊 Math elements found:', mathElements.length);"
+        "                        console.log('✅ MathJax defaultPageReady completed');"
       );
       mathJaxConfig.push("                        ");
       mathJaxConfig.push(
-        "                        mathElements.forEach((el, index) => {"
+        "                        // Phase 3.1: Comprehensive Element Analysis"
+      );
+      mathJaxConfig.push("                        setTimeout(() => {");
+      mathJaxConfig.push(
+        "                            console.log('🔍 === PHASE 3.1 COMPREHENSIVE DEBUGGING ===');"
+      );
+      mathJaxConfig.push("                            ");
+      mathJaxConfig.push(
+        "                            const allContainers = document.querySelectorAll('mjx-container');"
       );
       mathJaxConfig.push(
-        "                            if (!el.getAttribute('role')) {"
+        "                            console.log(`📊 Total mjx-container elements found: ${allContainers.length}`);"
+      );
+      mathJaxConfig.push("                            ");
+      mathJaxConfig.push(
+        "                            // Analyze structure before our processing"
+      );
+      mathJaxConfig.push("                            let mainElements = 0;");
+      mathJaxConfig.push(
+        "                            let assistiveElements = 0;"
       );
       mathJaxConfig.push(
-        "                                el.setAttribute('role', 'img');"
+        "                            let elementsWithTabindex = 0;"
+      );
+      mathJaxConfig.push("                            ");
+      mathJaxConfig.push(
+        "                            allContainers.forEach((el, index) => {"
+      );
+      mathJaxConfig.push(
+        "                                const isAssistive = !!el.closest('mjx-assistive-mml');"
+      );
+      mathJaxConfig.push(
+        "                                const hasTabindex = el.hasAttribute('tabindex');"
+      );
+      mathJaxConfig.push(
+        "                                const tabindexValue = el.getAttribute('tabindex');"
+      );
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push("                                if (isAssistive) {");
+      mathJaxConfig.push(
+        "                                    assistiveElements++;"
+      );
+      mathJaxConfig.push("                                } else {");
+      mathJaxConfig.push("                                    mainElements++;");
+      mathJaxConfig.push("                                }");
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push("                                if (hasTabindex) {");
+      mathJaxConfig.push(
+        "                                    elementsWithTabindex++;"
+      );
+      mathJaxConfig.push(
+        "                                    console.log(`⚠️ Element ${index + 1} already has tabindex '${tabindexValue}' - isAssistive: ${isAssistive}`);"
+      );
+      mathJaxConfig.push("                                }");
+      mathJaxConfig.push("                            });");
+      mathJaxConfig.push("                            ");
+      mathJaxConfig.push(
+        "                            console.log(`📊 Main elements (should get tabindex): ${mainElements}`);"
+      );
+      mathJaxConfig.push(
+        "                            console.log(`📊 Assistive elements (should NOT get tabindex): ${assistiveElements}`);"
+      );
+      mathJaxConfig.push(
+        "                            console.log(`📊 Elements with existing tabindex: ${elementsWithTabindex}`);"
+      );
+      mathJaxConfig.push("                            ");
+      mathJaxConfig.push(
+        "                            // Only proceed if we should apply tabindex"
+      );
+      mathJaxConfig.push(`                            if (${inTabOrder}) {`);
+      mathJaxConfig.push(
+        "                                console.log('🎯 Applying tabindex to main elements only...');"
+      );
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push(
+        "                                // Filter for main elements only"
+      );
+      mathJaxConfig.push(
+        "                                const mainMathElements = Array.from(allContainers).filter(element => {"
+      );
+      mathJaxConfig.push(
+        "                                    return !element.closest('mjx-assistive-mml');"
+      );
+      mathJaxConfig.push("                                });");
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push(
+        "                                console.log(`🔧 Processing ${mainMathElements.length} main elements...`);"
+      );
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push(
+        "                                mainMathElements.forEach((el, index) => {"
+      );
+      mathJaxConfig.push(
+        "                                    // Apply ARIA attributes"
+      );
+      mathJaxConfig.push(
+        "                                    if (!el.getAttribute('role')) {"
+      );
+      mathJaxConfig.push(
+        "                                        el.setAttribute('role', 'img');"
+      );
+      mathJaxConfig.push("                                    }");
+      mathJaxConfig.push(
+        "                                    if (!el.getAttribute('aria-label')) {"
+      );
+      mathJaxConfig.push(
+        "                                        el.setAttribute('aria-label', `Mathematical expression ${index + 1}. Right-click for options.`);"
+      );
+      mathJaxConfig.push("                                    }");
+      mathJaxConfig.push("                                    ");
+      mathJaxConfig.push(
+        "                                    // Apply tabindex"
+      );
+      mathJaxConfig.push(
+        "                                    el.setAttribute('tabindex', '0');"
+      );
+      mathJaxConfig.push("                                    ");
+      mathJaxConfig.push(
+        "                                    console.log(`✅ Applied tabindex to main element ${index + 1}`);"
+      );
+      mathJaxConfig.push("                                });");
+      mathJaxConfig.push("                            } else {");
+      mathJaxConfig.push(
+        "                                console.log('🚫 inTabOrder is false - not applying tabindex');"
       );
       mathJaxConfig.push("                            }");
+      mathJaxConfig.push("                            ");
+      mathJaxConfig.push("                            // Final verification");
+      mathJaxConfig.push("                            setTimeout(() => {");
       mathJaxConfig.push(
-        "                            if (!el.getAttribute('aria-label')) {"
+        "                                console.log('🔍 === FINAL VERIFICATION ===');"
+      );
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push(
+        "                                const finalContainers = document.querySelectorAll('mjx-container');"
       );
       mathJaxConfig.push(
-        "                                el.setAttribute('aria-label', 'Mathematical expression ' + (index + 1) + '. Right-click for options.');"
-      );
-      mathJaxConfig.push("                            }");
-
-      // ✅ ENHANCED: Apply tab navigation if enabled
-      mathJaxConfig.push(
-        "                            if (" + inTabOrder + ") {"
+        "                                const mainWithTabindex = Array.from(finalContainers).filter(el => "
       );
       mathJaxConfig.push(
-        "                                el.setAttribute('tabindex', '0');"
+        "                                    !el.closest('mjx-assistive-mml') && el.getAttribute('tabindex') === '0'"
       );
-      mathJaxConfig.push("                            }");
-
-      mathJaxConfig.push("                        });");
+      mathJaxConfig.push("                                ).length;");
+      mathJaxConfig.push(
+        "                                const assistiveWithTabindex = Array.from(finalContainers).filter(el => "
+      );
+      mathJaxConfig.push(
+        "                                    el.closest('mjx-assistive-mml') && el.getAttribute('tabindex') === '0'"
+      );
+      mathJaxConfig.push("                                ).length;");
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push(
+        "                                console.log(`📊 Final results:`);"
+      );
+      mathJaxConfig.push(
+        "                                console.log(`   ✅ Main elements with tabindex: ${mainWithTabindex}`);"
+      );
+      mathJaxConfig.push(
+        "                                console.log(`   ❌ Assistive elements with tabindex: ${assistiveWithTabindex}`);"
+      );
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push(
+        "                                if (assistiveWithTabindex === 0) {"
+      );
+      mathJaxConfig.push(
+        "                                    console.log('🎉 SUCCESS: No duplicate tab navigation - assistive elements properly excluded!');"
+      );
+      mathJaxConfig.push("                                } else {");
+      mathJaxConfig.push(
+        "                                    console.error('🚨 PROBLEM: Assistive elements still have tabindex - duplicate navigation will occur');"
+      );
+      mathJaxConfig.push("                                }");
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push(
+        "                                // Create debugging function for console access"
+      );
+      mathJaxConfig.push(
+        "                                window.debugTabIndex = function() {"
+      );
+      mathJaxConfig.push(
+        "                                    console.log('🔍 === MANUAL DEBUG ANALYSIS ===');"
+      );
+      mathJaxConfig.push(
+        "                                    const containers = document.querySelectorAll('mjx-container');"
+      );
+      mathJaxConfig.push(
+        "                                    console.log(`📊 Total: ${containers.length}`);"
+      );
+      mathJaxConfig.push("                                    ");
+      mathJaxConfig.push(
+        "                                    containers.forEach((el, i) => {"
+      );
+      mathJaxConfig.push(
+        "                                        const isAssistive = !!el.closest('mjx-assistive-mml');"
+      );
+      mathJaxConfig.push(
+        "                                        const hasTab = el.getAttribute('tabindex') === '0';"
+      );
+      mathJaxConfig.push(
+        "                                        console.log(`   ${i+1}: ${isAssistive ? 'ASSISTIVE' : 'MAIN'} - tabindex: ${hasTab ? 'YES' : 'NO'}`);"
+      );
+      mathJaxConfig.push("                                    });");
+      mathJaxConfig.push("                                };");
+      mathJaxConfig.push("                                ");
+      mathJaxConfig.push(
+        "                                // Create focus tracking function"
+      );
+      mathJaxConfig.push(
+        "                                window.trackFocus = function() {"
+      );
+      mathJaxConfig.push(
+        "                                    let focusCount = 0;"
+      );
+      mathJaxConfig.push(
+        "                                    document.addEventListener('focus', (e) => {"
+      );
+      mathJaxConfig.push(
+        "                                        if (e.target.matches('mjx-container')) {"
+      );
+      mathJaxConfig.push(
+        "                                            focusCount++;"
+      );
+      mathJaxConfig.push(
+        "                                            const isAssistive = !!e.target.closest('mjx-assistive-mml');"
+      );
+      mathJaxConfig.push(
+        "                                            console.log(`🎯 Focus #${focusCount}: ${isAssistive ? 'ASSISTIVE' : 'MAIN'} element`);"
+      );
+      mathJaxConfig.push("                                        }");
+      mathJaxConfig.push("                                    }, true);");
+      mathJaxConfig.push(
+        "                                    console.log('👂 Focus tracking enabled - tab through math elements to see results');"
+      );
+      mathJaxConfig.push("                                };");
+      mathJaxConfig.push("                            }, 500);");
+      mathJaxConfig.push("                        }, 1000);");
       mathJaxConfig.push("                        ");
       mathJaxConfig.push(
-        "                        console.log('=== SIMPLIFIED SETUP COMPLETE ===');"
+        "                        // Initialize dynamic manager if available"
       );
-      mathJaxConfig.push("                    }, 1000);");
+      mathJaxConfig.push("                        setTimeout(() => {");
+      mathJaxConfig.push(
+        "                            if (window.dynamicMathJaxManager) {"
+      );
+      mathJaxConfig.push(
+        "                                window.dynamicMathJaxManager.initialise();"
+      );
+      mathJaxConfig.push(
+        "                                console.log('✅ Dynamic MathJax Manager initialised');"
+      );
+      mathJaxConfig.push("                            }");
+      mathJaxConfig.push("                        }, 100);");
+      mathJaxConfig.push("                    });");
       mathJaxConfig.push("                }");
       mathJaxConfig.push("            }");
       mathJaxConfig.push("        };");
       mathJaxConfig.push("    </script>");
+
+      // ✅ CRITICAL FIX: Add the MathJax CDN script tag
       mathJaxConfig.push(
         '    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>'
       );
 
-      const fullConfig = mathJaxConfig.join("\n");
+      // Return the complete configuration
+      const configString = mathJaxConfig.join("\n");
+
       logInfo(
-        "✅ Simplified MathJax configuration generated successfully with proven working controls only"
+        "Enhanced MathJax configuration generated successfully with Phase 3.1 debugging and CDN script"
       );
-      return fullConfig;
+      return configString;
     } catch (error) {
-      logError("Error generating simplified MathJax configuration:", error);
-      // Return minimal working configuration as fallback
-      return (
-        "    <!-- Fallback MathJax Configuration -->\n" +
-        "    <script>\n" +
-        "        window.MathJax = {\n" +
-        "            tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },\n" +
-        "            options: { enableMenu: true },\n" +
-        "            loader: { load: ['ui/menu'] }\n" +
-        "        };\n" +
-        "    </script>\n" +
-        '    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>'
-      );
+      logError("Error generating MathJax configuration:", error);
+      // ✅ CRITICAL: Even in error case, include basic MathJax loading
+      return `<!-- Error generating MathJax configuration -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+            options: { enableMenu: true }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>`;
     }
   }
 

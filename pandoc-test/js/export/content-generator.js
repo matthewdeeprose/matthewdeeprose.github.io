@@ -1023,6 +1023,10 @@ const ContentGenerator = (function () {
    */
   function generateMobileResponsiveCSS() {
     return `
+
+
+
+
         /* ===== ENHANCED MOBILE RESPONSIVE ===== */
         @media (max-width: 900px) {
             /* IMPROVED: Single column layout for better mobile experience */
@@ -1160,6 +1164,34 @@ const ContentGenerator = (function () {
             }
         }
 
+/* ===== READING WIDTH CONTROL CLASSES (MISSING FROM EXPORT) ===== */
+.document-content.width-extra-narrow {
+    max-width: 50ch !important;
+}
+
+.document-content.width-narrow {
+    max-width: 65ch !important;
+}
+
+.document-content.width-wide {
+    max-width: 80ch !important;
+}
+
+.document-content.width-full {
+    max-width: 100% !important;
+}
+
+/* Responsive behavior for reading width classes */
+@media (max-width: 900px) {
+    .document-content.width-extra-narrow,
+    .document-content.width-narrow,
+    .document-content.width-wide,
+    .document-content.width-full {
+        max-width: 100% !important;
+        padding: 1.5rem 1rem;
+    }
+}
+
 /* ===== SCREEN READER ONLY CONTENT (for screen reader accessibility) ===== */
         .sr-only {
             position: absolute;
@@ -1196,7 +1228,171 @@ const ContentGenerator = (function () {
             .form-group input[type="range"]::-moz-range-thumb:hover {
                 transform: none;
             }
-        }`;
+        }
+            
+        /* ===== ASSISTIVE MATHJAX MESSAGE STYLING ===== */
+.assistive-mathml-message {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    transition: all 0.3s ease;
+    border: 1px solid;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Success state (when MathML is disabled) */
+.assistive-mathml-message.success {
+    background: color-mix(in srgb, var(--success-color) 10%, var(--body-bg));
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+/* Warning state (when refresh is required) */
+.assistive-mathml-message.warning {
+    background: color-mix(in srgb, var(--warning-color) 15%, var(--body-bg));
+    border-color: var(--warning-color);
+    color: var(--warning-color);
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .assistive-mathml-message.success {
+    background: color-mix(in srgb, var(--success-color) 15%, var(--body-bg));
+    color: var(--success-color);
+}
+
+[data-theme="dark"] .assistive-mathml-message.warning {
+    background: color-mix(in srgb, var(--warning-color) 20%, var(--body-bg));
+    color: var(--warning-color);
+}
+
+/* Message content layout */
+.message-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.message-icon {
+    font-size: 1rem;
+    line-height: 1;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+.message-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.message-text strong {
+    font-weight: 600;
+    color: inherit;
+}
+
+/* Message buttons container */
+.message-buttons {
+    margin-top: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Message button styling */
+.message-button {
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.message-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.message-button:focus {
+    outline: 2px solid var(--focus-outline);
+    outline-offset: 2px;
+}
+
+.message-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Primary button (main action) */
+.message-button.primary {
+    background: var(--success-color);
+    color: var(--body-bg);
+}
+
+.message-button.primary:hover {
+    background: color-mix(in srgb, var(--success-color) 85%, black);
+}
+
+/* Warning primary button */
+.assistive-mathml-message.warning .message-button.primary {
+    background: var(--warning-color);
+    color: var(--body-bg);
+}
+
+.assistive-mathml-message.warning .message-button.primary:hover {
+    background: color-mix(in srgb, var(--warning-color) 85%, black);
+}
+
+/* Secondary button (cancel/dismiss) */
+.message-button.secondary {
+    background: var(--text-secondary);
+    color: var(--body-bg);
+}
+
+.message-button.secondary:hover {
+    background: color-mix(in srgb, var(--text-secondary) 80%, black);
+}
+
+/* Dark mode button adjustments */
+[data-theme="dark"] .message-button.primary {
+    background: var(--success-color);
+    color: var(--body-bg);
+}
+
+[data-theme="dark"] .assistive-mathml-message.warning .message-button.primary {
+    background: var(--warning-color);
+    color: var(--body-bg);
+}
+
+[data-theme="dark"] .message-button.secondary {
+    background: var(--text-secondary);
+    color: var(--body-bg);
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+    .assistive-mathml-message {
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    .message-buttons {
+        flex-direction: column;
+    }
+    
+    .message-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+        
+        
+        `;
   }
 
   /**

@@ -1,0 +1,93 @@
+<div class="tool-group reading-tools-section">
+  <h4>📖 Reading Tools</h4>
+
+  <!-- Font Family Control -->
+  <div class="form-group">
+    <label for="font-family">Font:</label>
+    <select id="font-family" aria-describedby="font-help">
+      {{#each fontOptions}} {{> fontOption}} {{/each}}
+    </select>
+    <div id="font-help" class="sr-only">
+      Choose a font that is comfortable for reading
+    </div>
+  </div>
+
+  <!-- Font Size Control -->
+  <div class="form-group slider-group">
+    <label for="font-size">Font size:</label>
+    <div class="slider-container">
+      <input
+        type="range"
+        id="font-size"
+        min="0.8"
+        max="2.0"
+        step="0.1"
+        value="{{fontSize}}"
+        aria-describedby="font-size-help"
+        aria-valuetext="{{formatPercent fontSize}}"
+      />
+      <span class="range-value" id="font-size-value" aria-live="polite"
+        >{{formatPercent fontSize}}</span
+      >
+    </div>
+    <div id="font-size-help" class="sr-only">
+      Adjust font size from 80% to 200%
+    </div>
+  </div>
+
+  <!-- Reading Width Control -->
+  <div class="form-group">
+    <label for="reading-width">Reading width:</label>
+    <select id="reading-width" aria-describedby="width-help">
+      {{#each widthOptions}} {{> widthOption}} {{/each}}
+    </select>
+    <div id="width-help" class="sr-only">
+      Narrower text may improve reading for dyslexia and focus issues
+    </div>
+  </div>
+
+  <div class="form-group slider-group">
+    <label for="line-height">Line height:</label>
+    <div class="slider-container">
+      <input
+        type="range"
+        id="line-height"
+        min="1"
+        max="3"
+        step="0.1"
+        value="1.6"
+        aria-describedby="line-height-help"
+        aria-valuetext="1.6"
+      />
+      <span class="range-value" id="line-height-value" aria-live="polite"
+        >1.6</span
+      >
+    </div>
+    <div id="line-height-help" class="sr-only">
+      Adjust spacing between lines (1.0 to 3.0)
+    </div>
+  </div>
+
+  <!-- Paragraph Spacing Control -->
+  <div class="form-group slider-group">
+    <label for="paragraph-spacing">Paragraph spacing:</label>
+    <div class="slider-container">
+      <input
+        type="range"
+        id="paragraph-spacing"
+        min="1"
+        max="3"
+        step="0.5"
+        value="{{paragraphSpacing}}"
+        aria-describedby="para-help"
+        aria-valuetext="{{formatSize paragraphSpacing}} em"
+      />
+      <span class="range-value" id="paragraph-spacing-value" aria-live="polite"
+        >{{formatSize paragraphSpacing}}</span
+      >
+    </div>
+    <div id="para-help" class="sr-only">
+      Adjust spacing between paragraphs (1.0 to 3.0em)
+    </div>
+  </div>
+</div>

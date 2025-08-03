@@ -202,17 +202,20 @@ const MathJaxManager = (function () {
       assistiveMathMLCheckbox.checked = true;
 
       assistiveMathMLCheckbox.addEventListener("change", (event) => {
-        const enabled = event.target.checked;
-        logInfo(`🔧 Assistive MathML control: ${enabled}`);
+        // ✅ FIX: Use setTimeout to ensure we get the updated checked value
+        setTimeout(() => {
+          const enabled = event.target.checked;
+          logInfo(`🔧 Assistive MathML control: ${enabled}`);
 
-        if (!enabled) {
-          // Disabling works immediately
-          this.updateAssistiveMathML(false);
-          this.showRefreshWarning("assistive-mathml-disable");
-        } else {
-          // Re-enabling requires page refresh
-          this.showRefreshRequiredDialog(event.target);
-        }
+          if (!enabled) {
+            // Disabling works immediately
+            this.updateAssistiveMathML(false);
+            this.showRefreshWarning("assistive-mathml-disable");
+          } else {
+            // ✅ IMPROVED UX: Show accessible message instead of disruptive dialog
+            this.showRefreshRequiredMessage(event.target);
+          }
+        }, 10);
       });
 
       logInfo("✅ Enhanced assistive MathML control setup complete");
@@ -488,54 +491,17 @@ const MathJaxManager = (function () {
      * TASK 2.3.2: Update tab order for existing math elements
      */
     updateMathElementTabOrder(enabled) {
-      try {
-        const mathElements = document.querySelectorAll("mjx-container");
-        logInfo(
-          `Updating tab order for ${mathElements.length} mathematical elements`
+      // ✅ REDIRECT: Let mathjax-controls.js handle tab order
+      logInfo("Tab order managed by mathjax-controls.js, delegating...");
+      if (
+        window.dynamicMathJaxManager &&
+        window.dynamicMathJaxManager.updateMathElementTabOrderImmediate
+      ) {
+        window.dynamicMathJaxManager.updateMathElementTabOrderImmediate(
+          enabled
         );
-
-        mathElements.forEach((element, index) => {
-          if (enabled) {
-            element.setAttribute("tabindex", "0");
-
-            // Add enhanced keyboard event handling
-            if (!element.hasAttribute("data-keyboard-enhanced")) {
-              element.addEventListener("keydown", (event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  const contextMenuEvent = new MouseEvent("contextmenu", {
-                    bubbles: true,
-                    cancelable: true,
-                    clientX: element.getBoundingClientRect().left,
-                    clientY: element.getBoundingClientRect().top,
-                  });
-                  element.dispatchEvent(contextMenuEvent);
-                }
-              });
-
-              element.addEventListener("focus", () => {
-                this.announceSettingChange(
-                  `Mathematical expression ${
-                    index + 1
-                  }. Press Enter or Space for options.`
-                );
-              });
-
-              element.setAttribute("data-keyboard-enhanced", "true");
-            }
-          } else {
-            element.removeAttribute("tabindex");
-          }
-        });
-
-        logInfo(
-          `✅ Tab order updated: ${enabled ? "included" : "excluded"} ${
-            mathElements.length
-          } elements`
-        );
-      } catch (error) {
-        logError("Error updating math element tab order:", error);
       }
+      return;
     }
 
     /**
@@ -698,13 +664,148 @@ const MathJaxManager = (function () {
     }
 
     /**
-     * Show refresh warning for assistive MathML disabling
+     * Show accessible refresh required message (replaces disruptive confirm dialog)
      */
-    showRefreshWarning(feature) {
+    showRefreshRequiredMessage(checkbox) {
+      // Create or find the message container
+      let messageContainer = document.getElementById(
+        "assistive-mathml-message"
+      );
+      if (!messageContainer) {
+        messageContainer = document.createElement("div");
+        messageContainer.id = "assistive-mathml-message";
+        messageContainer.setAttribute("role", "status");
+        messageContainer.setAttribute("aria-live", "polite");
+        messageContainer.className = "assistive-mathml-message warning";
+        messageContainer.setAttribute("role", "status");
+        messageContainer.setAttribute("aria-live", "polite");
+
+        // Insert after the checkbox's parent form group
+        const formGroup = checkbox.closest(".form-group");
+        if (formGroup && formGroup.parentNode) {
+          formGroup.parentNode.insertBefore(
+            messageContainer,
+            formGroup.nextSibling
+          );
+        } else {
+          // Fallback: insert after checkbox
+          checkbox.parentNode.insertBefore(
+            messageContainer,
+            checkbox.nextSibling
+          );
+        }
+      }
+
+      // Update classes for warning state
+      messageContainer.className = "assistive-mathml-message warning";
+
+      // Show the message with CSS classes
+      messageContainer.innerHTML = `
+    <div class="message-content">
+      <span class="message-icon" aria-hidden="true">⚠️</span>
+      <div class="message-text">
+        <strong>Page refresh required</strong><br>
+        Re-enabling assistive MathML requires refreshing the page to reload MathJax components.
+        <div class="message-buttons">
+          <button class="message-button primary" onclick="window.location.reload();">
+            Refresh Now
+          </button>
+          <button class="message-button secondary" onclick="this.closest('#assistive-mathml-message').style.display='none'; document.getElementById('assistive-mathml').checked=false;">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+      // Make container visible
+      messageContainer.style.display = "block";
+
+      // Announce to screen readers
       this.announceAccessibilityChange(
         "Assistive MathML",
         false,
-        "Assistive MathML disabled. To re-enable, check the box and refresh the page."
+        "Re-enabling requires page refresh. Use the refresh button below or refresh manually."
+      );
+
+      logInfo("✅ Refresh required message displayed with accessible controls");
+    }
+
+    /**
+     * Show refresh warning for assistive MathML disabling
+     */
+    showRefreshWarning(feature) {
+      // Get the checkbox to disable it
+      const assistiveMathMLCheckbox =
+        document.getElementById("assistive-mathml");
+
+      // Disable the checkbox to prevent immediate re-enabling
+      if (assistiveMathMLCheckbox) {
+        assistiveMathMLCheckbox.disabled = true;
+      }
+
+      // Create or find the message container
+      let messageContainer = document.getElementById(
+        "assistive-mathml-message"
+      );
+      if (!messageContainer) {
+        messageContainer = document.createElement("div");
+        messageContainer.id = "assistive-mathml-message";
+        messageContainer.className = "assistive-mathml-message success";
+        messageContainer.setAttribute("role", "status");
+        messageContainer.setAttribute("aria-live", "polite");
+
+        // Insert after the checkbox's parent form group
+        const formGroup = assistiveMathMLCheckbox?.closest(".form-group");
+        if (formGroup && formGroup.parentNode) {
+          formGroup.parentNode.insertBefore(
+            messageContainer,
+            formGroup.nextSibling
+          );
+        } else if (assistiveMathMLCheckbox) {
+          // Fallback: insert after checkbox
+          assistiveMathMLCheckbox.parentNode.insertBefore(
+            messageContainer,
+            assistiveMathMLCheckbox.nextSibling
+          );
+        }
+      }
+
+      // Update classes for success state
+      messageContainer.className = "assistive-mathml-message success";
+
+      // Show the disabled message with CSS classes
+      messageContainer.innerHTML = `
+    <div class="message-content">
+      <span class="message-icon" aria-hidden="true">✅</span>
+      <div class="message-text">
+        <strong>Assistive MathML disabled</strong><br>
+        Screen reader optimisation removed for performance. To re-enable, use the button below (requires page refresh).
+        <div class="message-buttons">
+          <button class="message-button primary" onclick="
+            const checkbox = document.getElementById('assistive-mathml');
+            checkbox.disabled = false;
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change'));
+          ">
+            Re-enable Assistive MathML
+          </button>
+          <button class="message-button secondary" onclick="this.closest('#assistive-mathml-message').style.display='none';">
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+      // Make container visible
+      messageContainer.style.display = "block";
+
+      // Screen reader announcement
+      this.announceAccessibilityChange(
+        "Assistive MathML",
+        false,
+        "Assistive MathML disabled. Screen reader optimisation removed. Use the re-enable button to restore functionality."
       );
     }
   }

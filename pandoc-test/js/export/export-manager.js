@@ -52,7 +52,7 @@ const ExportManager = (function () {
    * Uses current rendered content with enhanced Pandoc semantic structure
    * Single file generation with proper content source
    */
-  function exportWithEnhancedPandoc() {
+  async function exportWithEnhancedPandoc() {
     logInfo("🧪 === ENHANCED PANDOC EXPORT STARTED ===");
 
     const exportButton = document.getElementById("exportButton");
@@ -141,7 +141,7 @@ const ExportManager = (function () {
 
           // Generate enhanced standalone HTML with enhanced Pandoc content
           const standaloneHTML =
-            generateEnhancedStandaloneHTMLWithMinimalProcessing(
+            await generateEnhancedStandaloneHTMLWithMinimalProcessing(
               cleanedHTML,
               metadata.title || "Enhanced Mathematical Document",
               2 // accessibility level
@@ -171,7 +171,7 @@ const ExportManager = (function () {
 
       // Generate enhanced standalone HTML with current content
       const standaloneHTML =
-        generateEnhancedStandaloneHTMLWithMinimalProcessing(
+        await generateEnhancedStandaloneHTMLWithMinimalProcessing(
           currentContent,
           metadata.title || "Enhanced Mathematical Document",
           2 // accessibility level
@@ -217,7 +217,7 @@ const ExportManager = (function () {
    * "Minimal processing" means leveraging enhanced Pandoc arguments to reduce regex post-processing
    * while maintaining 100% feature parity with standard export
    */
-  function generateEnhancedStandaloneHTMLWithMinimalProcessing(
+  async function generateEnhancedStandaloneHTMLWithMinimalProcessing(
     content,
     title,
     accessibilityLevel
@@ -278,13 +278,62 @@ const ExportManager = (function () {
       htmlComponents.push(enhancedContent);
 
       // Add complete integrated sidebar using template system (ALL sections)
-      const templateGenerator =
-        new window.TemplateSystem.EnhancedHTMLGenerator();
-      const integratedSidebar = templateGenerator.renderTemplate(
-        "integratedDocumentSidebar",
-        metadata
-      );
-      htmlComponents.push(integratedSidebar);
+      // 🎯 CRITICAL FIX: Ensure external templates are loaded first and force sync
+      const loadResults =
+        await window.TemplateSystem.GlobalTemplateCache.ensureTemplatesLoaded();
+      logDebug("Template load results:", loadResults);
+
+      // Check global cache status and wait if necessary
+      let cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
+      logDebug("Cache status after ensureTemplatesLoaded:", cacheStatus);
+
+      // If templates aren't loaded, wait with retries
+      let retries = 0;
+      while (!cacheStatus.isLoaded && retries < 20) {
+        logDebug(`Waiting for templates to load (retry ${retries + 1}/20)...`);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
+        retries++;
+      }
+
+      if (!cacheStatus.isLoaded) {
+        logWarn("Templates failed to load after retries, using fallback");
+        htmlComponents.push(`
+          <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
+            <div class="sidebar-content">
+              <p>Reading tools temporarily unavailable</p>
+            </div>
+          </aside>
+        `);
+      } else {
+        const templateGenerator =
+          new window.TemplateSystem.EnhancedHTMLGenerator();
+        await templateGenerator.engine.initializeFromGlobalCache();
+
+        const integratedSidebar = templateGenerator.renderTemplate(
+          "integratedDocumentSidebar",
+          metadata
+        );
+
+        if (
+          integratedSidebar.includes("<!-- Template") &&
+          integratedSidebar.includes("not found")
+        ) {
+          logWarn("Template not found, using fallback sidebar");
+          htmlComponents.push(`
+            <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
+              <div class="sidebar-content">
+                <p>Reading tools temporarily unavailable</p>
+              </div>
+            </aside>
+          `);
+        } else {
+          logDebug(
+            "✅ Successfully rendered integrated sidebar with templates"
+          );
+          htmlComponents.push(integratedSidebar);
+        }
+      }
 
       // Add document footer
       htmlComponents.push(generateDocumentFooter());
@@ -292,7 +341,7 @@ const ExportManager = (function () {
       htmlComponents.push("</div>"); // Close document-wrapper
 
       // Enhanced JavaScript with complete reading accessibility features
-      htmlComponents.push(generateEnhancedJavaScript(accessibilityLevel));
+      htmlComponents.push(await generateEnhancedJavaScript(accessibilityLevel));
 
       // End document
       htmlComponents.push("</body>");
@@ -347,7 +396,7 @@ const ExportManager = (function () {
   /**
    * Generate enhanced standalone HTML with screen reader controls and theme toggle
    */
-  function generateEnhancedStandaloneHTML(
+  async function generateEnhancedStandaloneHTML(
     content,
     title,
     accessibilityLevel = 2
@@ -404,21 +453,61 @@ const ExportManager = (function () {
       htmlComponents.push(enhancedContent);
 
       // Add integrated sidebar using template system
-      const templateGenerator =
-        new window.TemplateSystem.EnhancedHTMLGenerator();
-      const integratedSidebar = templateGenerator.renderTemplate(
-        "integratedDocumentSidebar",
-        metadata
-      );
-      htmlComponents.push(integratedSidebar);
+      // 🎯 CRITICAL FIX: Ensure templates are loaded before creating generator
+      const loadResults =
+        await window.TemplateSystem.GlobalTemplateCache.ensureTemplatesLoaded();
+      logDebug("Template load results:", loadResults);
 
+      let cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
+      let retries = 0;
+      while (!cacheStatus.isLoaded && retries < 20) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
+        retries++;
+      }
+
+      if (!cacheStatus.isLoaded) {
+        logWarn("Templates failed to load, using fallback sidebar");
+        htmlComponents.push(`
+          <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
+            <div class="sidebar-content">
+              <p>Reading tools temporarily unavailable</p>
+            </div>
+          </aside>
+        `);
+      } else {
+        const templateGenerator =
+          new window.TemplateSystem.EnhancedHTMLGenerator();
+        await templateGenerator.engine.initializeFromGlobalCache();
+
+        const integratedSidebar = templateGenerator.renderTemplate(
+          "integratedDocumentSidebar",
+          metadata
+        );
+
+        if (
+          integratedSidebar.includes("<!-- Template") &&
+          integratedSidebar.includes("not found")
+        ) {
+          logWarn("Template not found, using fallback sidebar");
+          htmlComponents.push(`
+            <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
+              <div class="sidebar-content">
+                <p>Reading tools temporarily unavailable</p>
+              </div>
+            </aside>
+          `);
+        } else {
+          htmlComponents.push(integratedSidebar);
+        }
+      }
       // Add document footer
       htmlComponents.push(generateDocumentFooter());
 
       htmlComponents.push("</div>"); // ✅ Close document-wrapper
 
       // Enhanced JavaScript with reading accessibility features
-      htmlComponents.push(generateEnhancedJavaScript(accessibilityLevel));
+      htmlComponents.push(await generateEnhancedJavaScript(accessibilityLevel));
 
       // End document
       htmlComponents.push("</body>");
@@ -520,7 +609,7 @@ const ExportManager = (function () {
   function generateDocumentFooter() {
     let html = "";
     html += '<footer class="document-footer" role="contentinfo">\n';
-    html += "    <p>Generated with using Pandoc-WASM and MathJax</p>\n";
+    html += "    <p>Generated using Pandoc-WASM and MathJax</p>\n";
     html += "    <p>What other information should appear in this footer?</p>\n";
     html += "</footer>\n";
     return html;
@@ -528,413 +617,236 @@ const ExportManager = (function () {
 
   /**
    * Generate MathJax controls JavaScript for exported documents
+   * ✅ MIGRATED: Now uses external JavaScript template
    */
-  function generateMathJaxControlsJS() {
-    let js = "";
-    js += "        // MathJax Controls Manager for Exported Documents\n";
-    js += "        class MathJaxControlsManager {\n";
-    js += "            constructor() {\n";
-    js += "                this.currentSettings = {\n";
-    js += "                    zoomTrigger: 'Click',\n";
-    js += "                    zoomScale: '200%',\n";
-    js += "                    assistiveMml: true,\n";
-    js += "                    inTabOrder: false\n";
-    js += "                };\n";
-    js += "            }\n\n";
+  async function generateMathJaxControlsJS(accessibilityLevel = 1) {
+    if (window.TemplateSystem) {
+      const generator = window.TemplateSystem.createGenerator();
+      return await generator.generateMathJaxControlsJS(accessibilityLevel);
+    }
+    throw new Error("Template system required for MathJax controls generation");
+  }
 
-    js += "            initialize() {\n";
-    js += "                this.setupZoomTriggerControls();\n";
-    js += "                this.setupZoomScaleControl();\n";
-    js += "                this.setupScreenReaderControls();\n";
-    js +=
-      "                console.log('MathJax controls initialized with settings:', this.currentSettings);\n";
-    js += "            }\n\n";
-
-    js += "            setupZoomTriggerControls() {\n";
-    js +=
-      "                const zoomTriggerRadios = document.querySelectorAll('input[name=\"zoom-trigger\"]');\n";
-    js += "                zoomTriggerRadios.forEach(radio => {\n";
-    js += "                    radio.addEventListener('change', (event) => {\n";
-    js += "                        if (event.target.checked) {\n";
-    js +=
-      "                            this.updateZoomTrigger(event.target.value);\n";
-    js += "                        }\n";
-    js += "                    });\n";
-    js += "                });\n";
-    js += "            }\n\n";
-
-    js += "            setupZoomScaleControl() {\n";
-    js +=
-      "                const zoomScaleSlider = document.getElementById('zoom-scale');\n";
-    js +=
-      "                const zoomScaleValue = document.getElementById('zoom-scale-value');\n";
-    js += "                if (zoomScaleSlider && zoomScaleValue) {\n";
-    js +=
-      "                    zoomScaleSlider.addEventListener('input', (event) => {\n";
-    js +=
-      "                        const scalePercent = event.target.value + '%';\n";
-    js +=
-      "                        zoomScaleValue.textContent = scalePercent;\n";
-    js += "                    });\n";
-    js +=
-      "                    zoomScaleSlider.addEventListener('change', (event) => {\n";
-    js +=
-      "                        const scalePercent = event.target.value + '%';\n";
-    js += "                        this.updateZoomScale(scalePercent);\n";
-    js += "                    });\n";
-    js += "                }\n";
-    js += "            }\n\n";
-
-    js += "            setupScreenReaderControls() {\n";
-    js +=
-      "                const assistiveMmlCheckbox = document.getElementById('assistive-mathml');\n";
-    js +=
-      "                const tabNavigationCheckbox = document.getElementById('tab-navigation');\n";
-    js += "                \n";
-    js += "                if (assistiveMmlCheckbox) {\n";
-    js +=
-      "                    assistiveMmlCheckbox.addEventListener('change', (event) => {\n";
-    js +=
-      "                        this.updateAssistiveMathML(event.target.checked);\n";
-    js += "                    });\n";
-    js += "                }\n";
-    js += "                \n";
-    js += "                if (tabNavigationCheckbox) {\n";
-    js +=
-      "                    tabNavigationCheckbox.addEventListener('change', (event) => {\n";
-    js +=
-      "                        this.updateTabNavigation(event.target.checked);\n";
-    js += "                    });\n";
-    js += "                }\n";
-    js += "            }\n\n";
-
-    js += "            async updateZoomTrigger(newTrigger) {\n";
-    js +=
-      "                console.log('Updating zoom trigger to:', newTrigger);\n";
-    js += "                this.currentSettings.zoomTrigger = newTrigger;\n";
-    js += "                \n";
-    js +=
-      "                if (window.MathJax?.startup?.document?.menu?.settings) {\n";
-    js +=
-      "                    window.MathJax.startup.document.menu.settings.zoom = newTrigger;\n";
-    js +=
-      "                    this.announceSettingChange(`Zoom trigger changed to ${newTrigger}`);\n";
-    js += "                }\n";
-    js += "            }\n\n";
-
-    js += "            async updateZoomScale(newScale) {\n";
-    js += "                console.log('Updating zoom scale to:', newScale);\n";
-    js += "                this.currentSettings.zoomScale = newScale;\n";
-    js += "                \n";
-    js +=
-      "                if (window.MathJax?.startup?.document?.menu?.settings) {\n";
-    js +=
-      "                    window.MathJax.startup.document.menu.settings.zscale = newScale;\n";
-    js +=
-      "                    this.announceSettingChange(`Zoom scale changed to ${newScale}`);\n";
-    js += "                }\n";
-    js += "            }\n\n";
-
-    js += "            updateAssistiveMathML(enabled) {\n";
-    js +=
-      "                console.log('Updating assistive MathML to:', enabled);\n";
-    js += "                this.currentSettings.assistiveMml = enabled;\n";
-    js += "                \n";
-    js +=
-      "                if (window.MathJax?.startup?.document?.menu?.settings) {\n";
-    js +=
-      "                    window.MathJax.startup.document.menu.settings.assistiveMml = enabled;\n";
-    js += "                    \n";
-    js += "                    if (!enabled) {\n";
-    js +=
-      "                        const assistiveElements = document.querySelectorAll('mjx-assistive-mml');\n";
-    js +=
-      "                        assistiveElements.forEach(element => element.remove());\n";
-    js +=
-      "                        this.announceSettingChange('Assistive MathML disabled for performance');\n";
-    js += "                    } else {\n";
-    js += "                        window.MathJax.typesetClear();\n";
-    js += "                        window.MathJax.typesetPromise();\n";
-    js +=
-      "                        this.announceSettingChange('Assistive MathML enabled for screen readers');\n";
-    js += "                    }\n";
-    js += "                }\n";
-    js += "            }\n\n";
-
-    js += "            updateTabNavigation(enabled) {\n";
-    js +=
-      "                console.log('Updating tab navigation to:', enabled);\n";
-    js += "                this.currentSettings.inTabOrder = enabled;\n";
-    js += "                \n";
-    js +=
-      "                const mathElements = document.querySelectorAll('mjx-container');\n";
-    js += "                mathElements.forEach((element, index) => {\n";
-    js += "                    if (enabled) {\n";
-    js += "                        element.setAttribute('tabindex', '0');\n";
-    js +=
-      "                        element.setAttribute('aria-label', `Mathematical expression ${index + 1}. Right-click for options.`);\n";
-    js += "                    } else {\n";
-    js += "                        element.removeAttribute('tabindex');\n";
-    js += "                    }\n";
-    js += "                });\n";
-    js += "                \n";
-    js += "                const announcement = enabled \n";
-    js +=
-      "                    ? 'Tab navigation enabled. Mathematical expressions included in keyboard navigation.' \n";
-    js +=
-      "                    : 'Tab navigation disabled. Mathematical expressions excluded from keyboard navigation.';\n";
-    js += "                this.announceSettingChange(announcement);\n";
-    js += "            }\n\n";
-
-    js += "            announceSettingChange(message) {\n";
-    js +=
-      "                const announcement = document.createElement('div');\n";
-    js += "                announcement.className = 'sr-only';\n";
-    js += "                announcement.setAttribute('role', 'status');\n";
-    js += "                announcement.setAttribute('aria-live', 'polite');\n";
-    js += "                announcement.textContent = message;\n";
-    js += "                document.body.appendChild(announcement);\n";
-    js += "                setTimeout(() => {\n";
-    js += "                    if (document.body.contains(announcement)) {\n";
-    js += "                        document.body.removeChild(announcement);\n";
-    js += "                    }\n";
-    js += "                }, 1000);\n";
-    js += "            }\n";
-    js += "        }\n";
-
-    return js;
+  /**
+   * Generate Reading Tools Setup JavaScript for exported documents
+   * ✅ PHASE 2A STEP 2: Now uses external JavaScript template
+   */
+  async function generateReadingToolsSetupJS(accessibilityLevel = 1) {
+    if (window.TemplateSystem) {
+      const generator = window.TemplateSystem.createGenerator();
+      return await generator.generateReadingToolsSetupJS(accessibilityLevel);
+    }
+    throw new Error(
+      "Template system required for reading tools setup generation"
+    );
   }
 
   /**
    * Generate focus tracking utility for exported documents
+   * ✅ MIGRATED: Now uses external JavaScript template
    */
-  function generateFocusTrackingJS() {
-    let js = "";
-    js += "        // Focus Tracking Utility for Accessibility Testing\n";
-    js += "        const FocusTracker = {\n";
-    js += "            isActive: false,\n";
-    js += "            logFocusChanges: null,\n\n";
+  async function generateFocusTrackingJS(options = {}) {
+    if (window.TemplateSystem) {
+      const generator = window.TemplateSystem.createGenerator();
+      return await generator.generateFocusTrackingJS(options);
+    }
+    throw new Error("Template system required for focus tracking generation");
+  }
 
-    js += "            describeElement(el) {\n";
-    js += "                if (!el) return 'No element focused';\n";
-    js += "                \n";
-    js += "                let desc = el.tagName.toLowerCase();\n";
-    js += "                \n";
-    js += "                // Add ID if present\n";
-    js += "                if (el.id) desc += `#${el.id}`;\n";
-    js += "                \n";
-    js += "                // Add classes if present\n";
-    js +=
-      "                if (el.className && el.className.toString().trim()) {\n";
-    js +=
-      "                    desc += `.${el.className.toString().trim().replace(/\\s+/g, '.')}`;\n";
-    js += "                }\n";
-    js += "                \n";
-    js += "                // Add name attribute if present\n";
-    js += '                if (el.name) desc += ` [name="${el.name}"]`;\n';
-    js += "                \n";
-    js += "                // Add ARIA label if present\n";
-    js +=
-      '                if (el.ariaLabel) desc += ` [aria-label="${el.ariaLabel}"]`;\n';
-    js += "                \n";
-    js += "                // Add aria-labelledby if present\n";
-    js += "                if (el.getAttribute('aria-labelledby')) {\n";
-    js +=
-      "                    desc += ` [aria-labelledby=\"${el.getAttribute('aria-labelledby')}\"]`;\n";
-    js += "                }\n";
-    js += "                \n";
-    js += "                // Add role if present\n";
-    js += "                if (el.getAttribute('role')) {\n";
-    js +=
-      "                    desc += ` [role=\"${el.getAttribute('role')}\"]`;\n";
-    js += "                }\n";
-    js += "                \n";
-    js += "                // Add tabindex if present and not default\n";
-    js += "                const tabindex = el.getAttribute('tabindex');\n";
-    js += "                if (tabindex !== null) {\n";
-    js += '                    desc += ` [tabindex="${tabindex}"]`;\n';
-    js += "                }\n";
-    js += "                \n";
-    js += "                // Add parent context for better identification\n";
-    js +=
-      "                if (el.parentElement && (el.parentElement.id || el.parentElement.className)) {\n";
-    js +=
-      "                    let parentDesc = el.parentElement.tagName.toLowerCase();\n";
-    js +=
-      "                    if (el.parentElement.id) parentDesc += `#${el.parentElement.id}`;\n";
-    js +=
-      "                    if (el.parentElement.className && el.parentElement.className.toString().trim()) {\n";
-    js +=
-      "                        const parentClasses = el.parentElement.className.toString().trim().split(/\\s+/).slice(0, 2).join('.');\n";
-    js +=
-      "                        if (parentClasses) parentDesc += `.${parentClasses}`;\n";
-    js += "                    }\n";
-    js += "                    desc += ` (in ${parentDesc})`;\n";
-    js += "                }\n";
-    js += "                \n";
-    js += "                return desc;\n";
-    js += "            },\n\n";
+  /**
+   * Generate Theme Management JavaScript for exported documents
+   * ✅ MIGRATED: Now uses external JavaScript template
+   */
+  async function generateThemeManagementJS(options = {}) {
+    if (window.TemplateSystem) {
+      const generator = window.TemplateSystem.createGenerator();
+      return await generator.generateThemeManagementJS(options);
+    }
+    throw new Error("Template system required for theme management generation");
+  }
 
-    js += "            start() {\n";
-    js += "                if (this.isActive) {\n";
-    js +=
-      "                    console.warn('Focus tracking already active');\n";
-    js += "                    return;\n";
-    js += "                }\n\n";
+  /**
+   * Generate form initialization JavaScript for exported documents
+   * ✅ MIGRATED: Now uses external JavaScript template
+   */
+  async function generateFormInitializationJS(options = {}) {
+    if (window.TemplateSystem) {
+      const generator = window.TemplateSystem.createGenerator();
+      return await generator.generateFormInitializationJS(options);
+    }
+    throw new Error(
+      "Template system required for form initialization generation"
+    );
+  }
 
-    js +=
-      "                console.log('🎯 Starting focus tracking for accessibility testing...');\n";
-    js += "                \n";
-    js += "                this.logFocusChanges = (event) => {\n";
-    js +=
-      "                    const elementDesc = this.describeElement(document.activeElement);\n";
-    js +=
-      "                    const eventType = event.type === 'focusin' ? 'FOCUS IN' : 'FOCUS OUT';\n";
-    js += "                    \n";
-    js +=
-      "                    console.log(`%c${eventType}:`, 'color: #2563eb; font-weight: bold;', elementDesc);\n";
-    js += "                    \n";
-    js += "                    // Also check for focus-visible state\n";
-    js +=
-      "                    if (document.activeElement && document.activeElement.matches && document.activeElement.matches(':focus-visible')) {\n";
-    js +=
-      "                        console.log(`%c  → Focus-visible: YES`, 'color: #16a34a;');\n";
-    js += "                    } else if (document.activeElement) {\n";
-    js +=
-      "                        console.log(`%c  → Focus-visible: NO`, 'color: #dc2626;');\n";
-    js += "                    }\n";
-    js += "                };\n\n";
-
-    js += "                // Listen for both focusin and focusout events\n";
-    js +=
-      "                document.addEventListener('focusin', this.logFocusChanges);\n";
-    js +=
-      "                document.addEventListener('focusout', this.logFocusChanges);\n";
-    js += "                \n";
-    js += "                this.isActive = true;\n";
-    js += "                \n";
-    js += "                // Log initial state\n";
-    js +=
-      "                console.log(`%cINITIAL FOCUS:`, 'color: #7c3aed; font-weight: bold;', this.describeElement(document.activeElement));\n";
-    js += "                \n";
-    js +=
-      "                console.log('✅ Focus tracking active - use stopFocusTracking() to disable');\n";
-    js += "            },\n\n";
-
-    js += "            stop() {\n";
-    js += "                if (!this.isActive) {\n";
-    js += "                    console.warn('Focus tracking not active');\n";
-    js += "                    return;\n";
-    js += "                }\n\n";
-
-    js += "                if (this.logFocusChanges) {\n";
-    js +=
-      "                    document.removeEventListener('focusin', this.logFocusChanges);\n";
-    js +=
-      "                    document.removeEventListener('focusout', this.logFocusChanges);\n";
-    js += "                    this.logFocusChanges = null;\n";
-    js += "                }\n";
-    js += "                \n";
-    js += "                this.isActive = false;\n";
-    js += "                console.log('🛑 Focus tracking stopped');\n";
-    js += "            },\n\n";
-
-    js += "            getCurrentFocus() {\n";
-    js += "                return {\n";
-    js += "                    element: document.activeElement,\n";
-    js +=
-      "                    description: this.describeElement(document.activeElement),\n";
-    js +=
-      "                    isFocusVisible: document.activeElement && document.activeElement.matches && document.activeElement.matches(':focus-visible')\n";
-    js += "                };\n";
-    js += "            }\n";
-    js += "        };\n\n";
-
-    js += "        // Global functions for console use\n";
-    js += "        function trackFocus() {\n";
-    js += "            FocusTracker.start();\n";
-    js += "        }\n\n";
-
-    js += "        function stopFocusTracking() {\n";
-    js += "            FocusTracker.stop();\n";
-    js += "        }\n\n";
-
-    js += "        function getCurrentFocus() {\n";
-    js += "            const info = FocusTracker.getCurrentFocus();\n";
-    js += "            console.log('Current focus:', info.description);\n";
-    js += "            console.log('Focus-visible:', info.isFocusVisible);\n";
-    js += "            return info;\n";
-    js += "        }\n\n";
-
-    js += "        // Make functions globally available\n";
-    js += "        window.trackFocus = trackFocus;\n";
-    js += "        window.stopFocusTracking = stopFocusTracking;\n";
-    js += "        window.getCurrentFocus = getCurrentFocus;\n";
-    js += "        window.FocusTracker = FocusTracker;\n\n";
-
-    return js;
+  /**
+   * Generate ReadingAccessibilityManager class for exported documents
+   * ✅ MIGRATED: Now uses external JavaScript template
+   */
+  async function generateReadingAccessibilityManagerClass(options = {}) {
+    if (window.TemplateSystem) {
+      const generator = window.TemplateSystem.createGenerator();
+      return await generator.generateReadingAccessibilityManagerClassJS(
+        options
+      );
+    }
+    throw new Error(
+      "Template system required for reading accessibility manager class generation"
+    );
   }
 
   /**
    * Generate enhanced JavaScript with reading accessibility features and MathJax controls
+   * Now uses template system for initialization JavaScript
    */
-  function generateEnhancedJavaScript(accessibilityLevel) {
-    const templateGenerator = new window.TemplateSystem.EnhancedHTMLGenerator();
+  async function generateEnhancedJavaScript(accessibilityLevel) {
+    logInfo(
+      "Generating enhanced JavaScript with complete accessibility functionality"
+    );
 
     let html = "";
     html +=
       "    <!-- Enhanced Script with Reading Controls, Theme Toggle, Focus Tracking, and MathJax Controls -->\n";
     html += "    <script>\n";
 
-    // Reading Accessibility Manager
-    html += templateGenerator.generateReadingAccessibilityManager();
-    html += "\n";
+    // ✅ FIXED: Generate ReadingAccessibilityManager class separately with proper template processing
+    const accessibilityDefaults =
+      window.AppConfig?.CONFIG?.ACCESSIBILITY_DEFAULTS || {};
+    html += await generateReadingAccessibilityManagerClass({
+      defaultFontSize: accessibilityDefaults.defaultFontSize || 1.0, // ✅ Number
+      defaultFontFamily:
+        accessibilityDefaults.defaultFontFamily || "Verdana, sans-serif",
+      defaultReadingWidth:
+        accessibilityDefaults.defaultReadingWidth || "narrow",
+      defaultLineHeight: accessibilityDefaults.defaultLineHeight || 1.6, // ✅ Number
+      defaultParagraphSpacing:
+        accessibilityDefaults.defaultParagraphSpacing || 1.0, // ✅ Number
+      enableAdvancedControls: accessibilityLevel >= 2,
+    });
 
-    // Theme Toggle
-    html += templateGenerator.generateThemeToggleJS();
-    html += "\n";
+    // Generate theme management functionality
+    html += await generateThemeManagementJS();
 
-    // Focus Tracking Utility
-    html += generateFocusTrackingJS();
-    html += "\n";
+    // Generate form initialization (from external template) - Using centralized defaults
+    html += await generateFormInitializationJS({
+      defaultFontSize: accessibilityDefaults.defaultFontSize || "1.0",
+      defaultFontSizePercent:
+        accessibilityDefaults.defaultFontSizePercent || "100%",
+      defaultLineHeight: accessibilityDefaults.defaultLineHeight || "1.6",
+      defaultWordSpacing: accessibilityDefaults.defaultWordSpacing || "0",
+      defaultReadingWidth:
+        accessibilityDefaults.defaultReadingWidth || "narrow", // ✅ FIXED
+      defaultZoomLevel: accessibilityDefaults.defaultZoomLevel || "1.0",
+      enableValidation: accessibilityDefaults.enableValidation !== false,
+      enableAccessibility: accessibilityDefaults.enableAccessibility !== false,
+      enablePreferences: accessibilityDefaults.enablePreferences !== false,
+    });
 
-    // MathJax Zoom Controls Manager
-    html += generateMathJaxControlsJS();
-    html += "\n";
+    // Include focus tracking with console commands
+    html += await generateFocusTrackingJS({
+      enableConsoleCommands: true,
+      commandsDelayMs: 100,
+    });
 
-    // Initialization
-    html += templateGenerator.generateInitializationJS();
+    // Include MathJax controls
+    html += await generateMathJaxControlsJS(accessibilityLevel);
 
-    // Initialize MathJax Controls
-    html += "\n        // Initialize MathJax Controls\n";
-    html += "        if (window.MathJax && window.MathJax.startup) {\n";
-    html += "            window.MathJax.startup.promise.then(() => {\n";
-    html +=
-      "                window.mathJaxControlsManager = new MathJaxControlsManager();\n";
-    html += "                window.mathJaxControlsManager.initialize();\n";
-    html +=
-      "                console.log('✅ MathJax controls initialized in exported document');\n";
-    html += "            }).catch(error => {\n";
-    html +=
-      "                console.error('MathJax controls initialization failed:', error);\n";
-    html += "            });\n";
-    html += "        }\n";
+    // ✅ CRITICAL FIX: Include MathJax Manager for sophisticated refresh dialog logic
+    html += await generateMathJaxManagerJS();
 
-    // Initialize Focus Tracking Commands
-    html += "\n        // Initialize Focus Tracking Commands\n";
-    html += "        setTimeout(() => {\n";
-    html +=
-      "            console.log('🎯 Focus tracking commands available:');\n";
-    html +=
-      "            console.log('  - trackFocus() - Start focus tracking');\n";
-    html +=
-      "            console.log('  - stopFocusTracking() - Stop focus tracking');\n";
-    html +=
-      "            console.log('  - getCurrentFocus() - Check current focus');\n";
-    html += "        }, 100);\n";
+    // ✅ PHASE 1 MIGRATION: Use template system for initialization
+    try {
+      if (window.TemplateSystem) {
+        const generator = window.TemplateSystem.createGenerator();
+        const initializationJS = await generator.generateInitializationJS();
+        html += "\n        // Initialization (from external template)\n";
+        html += initializationJS;
+        logDebug("✅ Using external template for initialization JavaScript");
+      } else {
+        throw new Error("TemplateSystem not available");
+      }
+    } catch (error) {
+      logWarn(
+        "Template system not available, using fallback initialization:",
+        error.message
+      );
+
+      // Fallback initialization (original hardcoded version)
+      html += "\n        // Fallback removed\n";
+    }
+
+    // ✅ CRITICAL FIX: Create Dynamic MathJax Manager instance for sophisticated controls
+    html += `
+        // Create Dynamic MathJax Manager instance for sophisticated controls
+        setTimeout(() => {
+            if (!window.dynamicMathJaxManager && window.MathJaxManager) {
+                try {
+                    window.dynamicMathJaxManager = window.MathJaxManager.createManager();
+                    window.dynamicMathJaxManager.initialise();
+                    console.log('✅ Dynamic MathJax Manager instance created and initialised in exported document');
+                } catch (error) {
+                    console.error('❌ Failed to create Dynamic MathJax Manager in exported document:', error);
+                }
+            } else if (!window.MathJaxManager) {
+                console.warn('⚠️ MathJaxManager module not available in exported document');
+            } else if (window.dynamicMathJaxManager) {
+                console.log('ℹ️ Dynamic MathJax Manager already exists in exported document');
+            }
+        }, 500);
+`;
 
     html += "    </script>\n";
+
     return html;
+  }
+
+  /**
+   * Generate MathJax Manager JavaScript for exported documents
+   * ✅ CRITICAL FIX: Include sophisticated refresh dialog logic
+   */
+  async function generateMathJaxManagerJS() {
+    logInfo(
+      "Including MathJax Manager for sophisticated accessibility controls"
+    );
+
+    try {
+      // Read the mathjax-manager.js file content
+      const response = await fetch("./js/export/mathjax-manager.js");
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load mathjax-manager.js: ${response.status}`
+        );
+      }
+
+      const mathJaxManagerContent = await response.text();
+
+      logDebug("✅ MathJax Manager content loaded successfully");
+
+      // Return with proper formatting and comments
+      return (
+        "\n        // MathJax Manager (sophisticated refresh dialog logic)\n" +
+        "        " +
+        mathJaxManagerContent.split("\n").join("\n        ") +
+        "\n"
+      );
+    } catch (error) {
+      logError("Failed to load MathJax Manager:", error);
+
+      // Return minimal fallback that at least provides the module structure
+      return `
+        // MathJax Manager (fallback - sophisticated features unavailable)
+        window.MathJaxManager = {
+          createManager: function() {
+            console.warn('⚠️ MathJax Manager fallback - sophisticated features unavailable');
+            return {
+              getCurrentSettings: () => ({}),
+              initialise: () => console.log('MathJax Manager fallback initialized')
+            };
+          }
+        };
+`;
+    }
   }
 
   // ===========================================================================================
@@ -945,7 +857,7 @@ const ExportManager = (function () {
    * Enhanced main export function with screen reader accessibility controls
    * Now supports investigation-based enhanced export mode
    */
-  function exportEnhancedHTML() {
+  async function exportEnhancedHTML() {
     // Get DOM elements - use global references if available
     const outputContent =
       (window.appElements && window.appElements.outputDiv) ||
@@ -974,7 +886,7 @@ const ExportManager = (function () {
       logInfo(
         "🧪 Enhanced Pandoc export mode detected - using investigation settings"
       );
-      return exportWithEnhancedPandoc();
+      return await exportWithEnhancedPandoc();
     }
     logInfo("=== ENHANCED EXPORT WITH SCREEN READER CONTROLS STARTED ===");
 
@@ -1020,7 +932,7 @@ const ExportManager = (function () {
       logInfo(
         "✅ Features: Working runtime controls (zoom, tab nav), baked-in context menus, optimal defaults"
       );
-      const standaloneHTML = generateEnhancedStandaloneHTML(
+      const standaloneHTML = await generateEnhancedStandaloneHTML(
         content,
         metadata.title,
         2 // Use Level 2 accessibility (includes simplified working controls)
@@ -1151,11 +1063,8 @@ const ExportManager = (function () {
     // Make the enhanced function globally available for keyboard shortcut
     window.exportToHTML = exportEnhancedHTML;
 
-    // Add tooltip for enhanced features
-    exportButton.setAttribute(
-      "title",
-      "Export enhanced HTML with screen reader enhancement controls, working MathJax context menus, LaTeX preservation, Holy Grail layout, and comprehensive accessibility features"
-    );
+    // Title attribute removed - using aria-label instead for accessibility
+    // (exportButton already has comprehensive aria-label attribute) enhanced HTML with screen reader enhancement controls, working MathJax context menus, LaTeX preservation, Holy Grail layout, and comprehensive accessibility features"
 
     // Set up Dynamic MathJax Manager if not already available
     setTimeout(() => {
@@ -1245,7 +1154,7 @@ const ExportManager = (function () {
   /**
    * Test export generation without download
    */
-  function testExportGeneration() {
+  async function testExportGeneration() {
     logInfo("🧪 Testing export generation...");
 
     try {
@@ -1256,7 +1165,8 @@ const ExportManager = (function () {
         <p>The quadratic formula: $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$</p>
       `;
 
-      const html = generateEnhancedStandaloneHTML(
+      // CRITICAL FIX: Await the async function
+      const html = await generateEnhancedStandaloneHTML(
         testContent,
         "Test Document",
         2
@@ -1271,6 +1181,7 @@ const ExportManager = (function () {
         logInfo(`✅ Export generation test passed (${html.length} characters)`);
       } else {
         logError("❌ Export generation test failed");
+        logDebug("HTML preview:", html.substring(0, 200) + "...");
       }
 
       return {
@@ -1278,6 +1189,8 @@ const ExportManager = (function () {
         size: html.length,
         hasDoctype: html.includes("<!DOCTYPE html>"),
         hasReadingTools: html.includes("reading-tools-section"),
+        hasSidebar: html.includes("document-sidebar"),
+        hasIntegratedSidebar: html.includes("integratedDocumentSidebar"),
       };
     } catch (error) {
       logError("Export generation test failed:", error);

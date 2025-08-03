@@ -207,6 +207,31 @@ const AppConfig = (function () {
     MAX_FILE_SIZE_MB: 5,
     MATHJAX_CDN: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js",
     ANNOUNCEMENT_TIMEOUT: 1000,
+
+    // ===========================================================================================
+    // ACCESSIBILITY DEFAULTS - SINGLE SOURCE OF TRUTH
+    // ===========================================================================================
+    ACCESSIBILITY_DEFAULTS: {
+      // Reading Controls
+      defaultFontSize: "1.0",
+      defaultFontSizePercent: "100%",
+      defaultFontFamily: "Verdana, sans-serif",
+      defaultLineHeight: "1.6",
+      defaultWordSpacing: "0",
+      defaultReadingWidth: "narrow",
+      defaultParagraphSpacing: "1.0",
+      defaultZoomLevel: "1.0",
+
+      // Feature Flags
+      enableValidation: true,
+      enableAccessibility: true,
+      enablePreferences: true,
+      enableAdvancedControls: true,
+      enableConsoleCommands: true,
+
+      // Timing
+      commandsDelayMs: 100,
+    },
   };
 
   /**
