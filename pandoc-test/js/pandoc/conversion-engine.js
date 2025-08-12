@@ -479,13 +479,13 @@ const ConversionEngine = (function () {
         if (sectionSplits.length > 1) {
           // Document has sections - split by sections
           if (sectionSplits[0].trim()) {
-            const wrappedContent = this.wrapContentInDocument(
-              preamble,
-              sectionSplits[0]
-            );
             chunks.push({
               type: "preamble",
-              content: wrappedContent,
+              content: this.wrapContentInDocument(
+                preamble,
+                sectionSplits[0],
+                true
+              ), // Mark as first chunk - INCLUDES title metadata
               title: "Document Introduction",
               rawContent: sectionSplits[0],
             });
@@ -498,7 +498,8 @@ const ConversionEngine = (function () {
 
             const wrappedContent = this.wrapContentInDocument(
               preamble,
-              sectionContent
+              sectionContent,
+              false // NOT first chunk - EXCLUDES title metadata
             );
 
             chunks.push({
@@ -516,7 +517,8 @@ const ConversionEngine = (function () {
             if (subsectionSplits[0].trim()) {
               const wrappedContent = this.wrapContentInDocument(
                 preamble,
-                subsectionSplits[0]
+                subsectionSplits[0],
+                true // First chunk - INCLUDES title metadata
               );
               chunks.push({
                 type: "introduction",
@@ -535,7 +537,8 @@ const ConversionEngine = (function () {
 
               const wrappedContent = this.wrapContentInDocument(
                 preamble,
-                subsectionContent
+                subsectionContent,
+                false // NOT first chunk - EXCLUDES title metadata
               );
 
               chunks.push({
@@ -575,7 +578,8 @@ const ConversionEngine = (function () {
               const chunkContent = documentBody.slice(currentPos, actualEnd);
               const wrappedContent = this.wrapContentInDocument(
                 preamble,
-                chunkContent
+                chunkContent,
+                chunkNum === 1 // Only first fragment gets title metadata
               );
 
               chunks.push({
@@ -600,7 +604,8 @@ const ConversionEngine = (function () {
         // Fallback: return entire content as single chunk
         const fallbackContent = this.wrapContentInDocument(
           "\\documentclass{article}\n\\usepackage{amsmath,amssymb,amsthm}\n",
-          content
+          content,
+          true // Fallback is treated as first/only chunk
         );
         return [
           {
@@ -616,12 +621,21 @@ const ConversionEngine = (function () {
     /**
      * Wrap content chunk in proper LaTeX document structure
      */
-    wrapContentInDocument(preamble, content) {
+    wrapContentInDocument(preamble, content, isFirstChunk = false) {
       try {
         // Clean the preamble to ensure it doesn't have \begin{document}
         let cleanPreamble = preamble
           .replace(/\\begin\{document\}[\s\S]*$/, "")
           .trim();
+
+        // Remove title metadata from preamble for non-first chunks
+        if (!isFirstChunk) {
+          cleanPreamble = cleanPreamble
+            .replace(/\\title\{[^}]*\}/g, "")
+            .replace(/\\author\{[^}]*\}/g, "")
+            .replace(/\\date\{[^}]*\}/g, "")
+            .replace(/\\maketitle/g, "");
+        }
 
         // Ensure we have a document class
         if (!cleanPreamble.includes("\\documentclass")) {
@@ -640,6 +654,15 @@ const ConversionEngine = (function () {
           .replace(/\\begin\{document\}/g, "")
           .replace(/\\end\{document\}/g, "")
           .trim();
+
+        // Remove title commands from content for non-first chunks
+        if (!isFirstChunk) {
+          cleanContent = cleanContent
+            .replace(/\\title\{[^}]*\}/g, "")
+            .replace(/\\author\{[^}]*\}/g, "")
+            .replace(/\\date\{[^}]*\}/g, "")
+            .replace(/\\maketitle/g, "");
+        }
 
         // Wrap in complete document structure
         const wrappedDocument =
@@ -1262,6 +1285,7 @@ const ConversionEngine = (function () {
 
     /**
      * Clean Pandoc output for display
+     * ENHANCED: Now removes duplicate title blocks from chunked processing
      */
     cleanPandocOutput(output) {
       let cleanOutput = output;
@@ -1282,6 +1306,28 @@ const ConversionEngine = (function () {
           .replace(/<style[\s\S]*?<\/style>/gi, "")
           .replace(/<script[\s\S]*?<\/script>/gi, "");
         logInfo("Cleaned HTML output of head elements");
+      }
+
+      // ENHANCEMENT: Remove duplicate title blocks (fixes chunked processing issue)
+      const titleBlockRegex =
+        /<header id="title-block-header">[\s\S]*?<\/header>/g;
+      const titleBlocks = cleanOutput.match(titleBlockRegex);
+
+      if (titleBlocks && titleBlocks.length > 1) {
+        logInfo(
+          `Removing ${
+            titleBlocks.length - 1
+          } duplicate title blocks from chunked processing`
+        );
+
+        // Keep the first title block, remove all others
+        const firstTitleBlock = titleBlocks[0];
+        cleanOutput = cleanOutput.replace(titleBlockRegex, "");
+
+        // Add the first title block back at the beginning
+        cleanOutput = firstTitleBlock + "\n" + cleanOutput;
+
+        logInfo("✅ Duplicate title blocks removed successfully");
       }
 
       return cleanOutput.trim();
