@@ -962,6 +962,269 @@ const ContentGenerator = (function () {
   }
 
   /**
+   * Generate print-specific CSS styles for exported HTML documents
+   * Fixes gaps and spacing issues when printing mathematical content
+   */
+  function generatePrintCSS() {
+    return `
+        /* ===== ENHANCED PRINT STYLES - BOOTSTRAP-INSPIRED UNIVERSAL RESET ===== */
+        @media print {
+            /* CRITICAL: Bootstrap-style universal reset - removes ALL visual effects */
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                
+                /* Universal reset for print context */
+                animation-duration: 0s !important;
+                animation-delay: 0s !important;
+                transition-duration: 0s !important;
+                transition-delay: 0s !important;
+                transform: none !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+
+            /* BREAKTHROUGH FIX: Complete mjx-container reset - let MathJax handle everything */
+            mjx-container, 
+            mjx-container[display="true"], 
+            mjx-container:not([display="true"]),
+            mjx-container:hover,
+            mjx-container:focus,
+            mjx-container:focus-visible {
+                /* Complete CSS reset - removes ALL custom styling */
+                all: unset !important;
+                
+                /* Restore only essential display properties */
+                display: revert !important;
+                font-family: revert !important;
+                font-size: revert !important;
+                color: revert !important;
+                
+                /* Let MathJax's default print behavior work */
+                margin: revert !important;
+                padding: revert !important;
+                background: revert !important;
+                border: revert !important;
+                
+                /* Ensure page break avoidance */
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                
+                /* Remove any interfering properties */
+                cursor: default !important;
+                border-radius: 0 !important;
+                outline: none !important;
+                max-width: 100% !important;
+                overflow: visible !important;
+            }
+
+            /* OPTIMIZED: Document layout for printing */
+            .document-wrapper {
+                display: block !important;
+                grid-template-columns: none !important;
+                grid-template-areas: none !important;
+                max-width: none !important;
+                box-shadow: none !important;
+                background: white !important;
+            }
+
+            /* Hide interactive elements when printing */
+            .document-sidebar,
+            .table-of-contents,
+            .document-navigation,
+            .skip-link {
+                display: none !important;
+            }
+
+            /* Optimize main content for printing */
+            .document-content {
+                max-width: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                background: white !important;
+                grid-area: unset !important;
+                overflow: visible !important;
+            }
+
+            /* ENHANCED: Page break optimization for semantic elements */
+            h1, h2, h3, h4, h5, h6 {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                margin-top: 1em !important;
+                margin-bottom: 0.5em !important;
+
+            }
+
+            /* Orphans and widows optimization */
+            p, li, blockquote {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                orphans: 3 !important;
+                widows: 3 !important;
+            }
+
+            /* Academic content boxes */
+            .definition, .theorem, .example, .proof {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                margin: 0.5em 0 !important;
+                padding: 0.5em !important;
+
+            }
+
+            /* List optimisation */
+            ul, ol {
+                margin: 0.5em 0 !important;
+                padding-left: 1.5em !important;
+            }
+
+            li {
+                margin-bottom: 0.2em !important;
+            }
+
+            /* Footer optimisation */
+            .document-footer {
+                margin-top: 2em !important;
+                padding: 1em 0 !important;
+                border-top: 1px solid #ccc !important;
+                background: transparent !important;
+                font-size: 0.8em !important;
+            }
+
+            /* ENHANCED: Force light mode CSS custom properties for ALL elements */
+            :root, [data-theme="dark"] {
+                --body-bg: #fff !important;
+                --body-text: #000 !important;
+                --link-color: #000 !important;
+                --link-hover: #000 !important;
+                --border-color: #333 !important;
+                --heading-color: #000 !important;
+                --text-secondary: #333 !important;
+                --code-bg: #f5f5f5 !important;
+                --surface-color: #fff !important;
+                --success-color: #000 !important;
+                --warning-color: #000 !important;
+                --error-color: #000 !important;
+                --focus-outline: #000 !important;
+                --focus-bg: transparent !important;
+                --sidebar-bg: #fff !important;
+                --sidebar-border: #ccc !important;
+                --sidebar-shadow: none !important;
+            }
+
+            /* CRITICAL: Force all elements to use light colours */
+            *, *::before, *::after {
+                color: #000 !important;
+                background: transparent !important;
+                background-color: transparent !important;
+                border-color: #666 !important;
+                outline-color: #000 !important;
+            }
+
+            /* Ensure good contrast for printing */
+            body, .document-content {
+                color: #000 !important;
+                background: #fff !important;
+            }
+
+            /* Links should be readable when printed */
+            a {
+                color: #000 !important;
+                text-decoration: underline !important;
+            }
+
+            /* Print-friendly tables */
+            table {
+                border-collapse: collapse !important;
+                width: 100% !important;
+                page-break-inside: auto !important;
+            }
+
+            tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            th, td {
+                border: 1px solid #ccc !important;
+                padding: 0.5em !important;
+            }
+
+            /* CRITICAL: Force proper page margins */
+            @page {
+                margin: 1in !important;
+                size: letter !important;
+            }
+
+            /* Remove any custom scrollbars that might affect printing */
+            ::-webkit-scrollbar {
+                display: none !important;
+            }
+                /* ===== TITLE BLOCK PRINT OPTIMISATION ===== */
+            #title-block-header {
+                background: white !important;
+                border: 2px solid #333 !important;
+                border-radius: 0 !important;
+                padding: 1.5rem 1rem 1rem !important;
+                margin: 0 0 2rem 0 !important;
+                text-align: center !important;
+                box-shadow: none !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            /* Remove decorative elements for print */
+            #title-block-header::before {
+                display: none !important;
+            }
+
+            /* Print-optimised title */
+            #title-block-header .title {
+                font-size: 1.75rem !important;
+                font-weight: 700 !important;
+                color: #000 !important;
+                margin: 0 0 0.75rem 0 !important;
+                line-height: 1.2 !important;
+                letter-spacing: -0.01em !important;
+            }
+
+            /* Print-optimised author */
+            #title-block-header .author {
+                font-size: 1rem !important;
+                font-weight: 500 !important;
+                color: #333 !important;
+                margin: 0 0 0.25rem 0 !important;
+                line-height: 1.3 !important;
+            }
+
+            /* Print-optimised date */
+            #title-block-header .date {
+                font-size: 0.875rem !important;
+                font-weight: 400 !important;
+                color: #666 !important;
+                margin: 0 !important;
+                opacity: 1 !important;
+            }
+
+            /* Ensure title block doesn't break across pages */
+            #title-block-header * {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            /* Add some space after title block */
+            #title-block-header + * {
+                margin-top: 1.5rem !important;
+            }
+        }`;
+  }
+
+  /**
    * Generate large screen optimizations
    */
   function generateLargeScreenOptimizationsCSS() {
@@ -1396,6 +1659,114 @@ const ContentGenerator = (function () {
   }
 
   /**
+   * Generate document title block styling for exported HTML documents
+   * Integrates with existing design system and custom properties
+   */
+  function generateTitleBlockCSS() {
+    return `
+        /* ===== DOCUMENT TITLE BLOCK STYLING ===== */
+        #title-block-header {
+            background: linear-gradient(135deg, var(--body-bg) 0%, var(--surface-color) 100%);
+            border: 1px solid var(--sidebar-border);
+            border-radius: 12px;
+            padding: 2.5rem 2rem 2rem;
+            margin: 0 0 3rem 0;
+            text-align: left;
+            box-shadow: 0 4px 20px var(--sidebar-shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Subtle decorative element */
+        #title-block-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--link-color), var(--border-color), var(--link-color));
+            opacity: 0.6;
+        }
+
+        /* Document title styling */
+        #title-block-header .title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--heading-color);
+            margin: 0 0 1rem 0;
+            line-height: 1.2;
+            letter-spacing: -0.025em;
+            font-family: var(--font-family-sans);
+        }
+
+        /* Author styling */
+        #title-block-header .author {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin: 0 0 0.5rem 0;
+            line-height: 1.4;
+        }
+
+        /* Date styling */
+        #title-block-header .date {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin: 0;
+            opacity: 0.8;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Enhanced styling for dark mode */
+        [data-theme="dark"] #title-block-header {
+            background: linear-gradient(135deg, var(--surface-color) 0%, var(--sidebar-bg) 100%);
+            border-color: var(--sidebar-border);
+            box-shadow: 0 8px 32px rgba(179, 219, 210, 0.08);
+        }
+
+        [data-theme="dark"] #title-block-header::before {
+            background: linear-gradient(90deg, var(--link-color), var(--border-color), var(--link-hover));
+            opacity: 0.8;
+        }
+
+        [data-theme="dark"] #title-block-header .title {
+            color: var(--heading-color);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #title-block-header {
+                padding: 2rem 1.5rem 1.5rem;
+                margin: 0 0 2rem 0;
+                border-radius: 8px;
+            }
+
+            #title-block-header .title {
+                font-size: 1.875rem;
+                margin-bottom: 0.75rem;
+            }
+
+            #title-block-header .author {
+                font-size: 1rem;
+                margin-bottom: 0.25rem;
+            }
+
+            #title-block-header .date {
+                font-size: 0.875rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #title-block-header .title {
+                font-size: 1.5rem;
+                line-height: 1.3;
+            }
+        }`;
+  }
+
+  /**
    * Enhanced CSS generation with all components - COMPLETE ENHANCED VERSION
    */
   function generateEnhancedCSS() {
@@ -1415,9 +1786,11 @@ const ContentGenerator = (function () {
       generateFormControlsCSS(),
       generateAccessibilityControlsCSS(),
       generateMathematicalContentCSS(),
+      generateTitleBlockCSS(),
       generateLargeScreenOptimizationsCSS(),
       generateMobileResponsiveCSS(),
       generateAccessibilitySupportCSS(),
+      generatePrintCSS(),
     ];
 
     const finalCSS = cssComponents.join("\n\n");
