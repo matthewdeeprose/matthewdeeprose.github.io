@@ -1786,6 +1786,7 @@ const ContentGenerator = (function () {
       generateFormControlsCSS(),
       generateAccessibilityControlsCSS(),
       generateMathematicalContentCSS(),
+      generateTableCSS(),
       generateTitleBlockCSS(),
       generateLargeScreenOptimizationsCSS(),
       generateMobileResponsiveCSS(),
@@ -1988,7 +1989,114 @@ const ContentGenerator = (function () {
       holyGrailStructure += enhancedContent + "\n";
       holyGrailStructure += "</main>\n\n";
 
-      logInfo("Document structure enhancement complete with improved layout");
+      // ✅ NEW: Add table accessibility enhancement script
+      // This script will run after the DOM is ready to enhance tables
+      holyGrailStructure += `
+<script>
+// Enhanced Table Accessibility Enhancement Script
+(function() {
+  'use strict';
+  
+  function initializeTableAccessibility() {
+    try {
+      // Wait for DOM to be ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeTableAccessibility);
+        return;
+      }
+      
+      console.log('Initializing table accessibility enhancements...');
+      
+      // Add comprehensive ARIA attributes (Adrian Roselli method)
+      let tableCount = 0;
+      const tables = document.querySelectorAll('table');
+      
+      tables.forEach((table, index) => {
+        // Add ARIA roles
+        table.setAttribute('role', 'table');
+        
+        // Process captions
+        const caption = table.querySelector('caption');
+        if (caption) {
+          caption.setAttribute('role', 'caption');
+        }
+        
+        // Process row groups
+        table.querySelectorAll('thead, tbody, tfoot').forEach(group => {
+          group.setAttribute('role', 'rowgroup');
+        });
+        
+        // Process rows
+        table.querySelectorAll('tr').forEach(row => {
+          row.setAttribute('role', 'row');
+        });
+        
+        // Process cells
+        table.querySelectorAll('td').forEach(cell => {
+          cell.setAttribute('role', 'cell');
+        });
+        
+        // Process headers
+        table.querySelectorAll('th').forEach(header => {
+          if (header.getAttribute('scope') === 'row') {
+            header.setAttribute('role', 'rowheader');
+          } else {
+            header.setAttribute('role', 'columnheader');
+          }
+        });
+        
+        // Generate data-label attributes for mobile responsive design
+        const headerRow = table.querySelector('thead tr, tr:first-child');
+        if (headerRow) {
+          const headers = Array.from(headerRow.querySelectorAll('th, td'))
+            .map(header => header.textContent.trim());
+            
+          table.querySelectorAll('tbody tr, tr:not(:first-child)').forEach(row => {
+            row.querySelectorAll('td, th').forEach((cell, cellIndex) => {
+              if (headers[cellIndex]) {
+                cell.setAttribute('data-label', headers[cellIndex]);
+              }
+            });
+          });
+        }
+        
+        // Add table description for screen readers
+        if (!table.getAttribute('aria-describedby')) {
+          const rows = table.querySelectorAll('tr').length;
+          const cols = headerRow ? headerRow.querySelectorAll('th, td').length : 0;
+          
+          const description = document.createElement('div');
+          description.className = 'table-description sr-only';
+          description.id = 'table-desc-' + (index + 1);
+          description.textContent = 'Data table with ' + rows + ' rows and ' + cols + ' columns';
+          
+          table.parentNode.insertBefore(description, table);
+          table.setAttribute('aria-describedby', description.id);
+        }
+        
+        tableCount++;
+      });
+      
+      console.log('✅ Table accessibility enhancement complete: ' + tableCount + ' tables processed');
+      
+      // Announce to screen readers if function is available
+      if (typeof announceToScreenReader === 'function') {
+        announceToScreenReader(tableCount + ' tables enhanced for accessibility with ARIA labels and responsive design');
+      }
+      
+    } catch (error) {
+      console.error('Error enhancing table accessibility:', error);
+    }
+  }
+  
+  // Initialize immediately or wait for DOM
+  initializeTableAccessibility();
+})();
+</script>`;
+
+      logInfo(
+        "Document structure enhancement complete with improved layout and table accessibility"
+      );
       return holyGrailStructure;
     } catch (error) {
       logError("Error enhancing document structure:", error);
@@ -2122,6 +2230,263 @@ const ContentGenerator = (function () {
     return div.innerHTML;
   }
 
+  // ===========================================================================================
+  // TABLE ACCESSIBILITY ENHANCEMENT (ADRIAN ROSELLI METHODS)
+  // ===========================================================================================
+
+  /**
+   * Add comprehensive ARIA attributes to tables (Adrian Roselli method)
+   * This function enhances table accessibility for screen readers
+   */
+  function addTableARIA() {
+    try {
+      logInfo("Adding comprehensive ARIA attributes to tables");
+      let enhancedCount = 0;
+
+      // Enhance all tables with role="table"
+      const allTables = document.querySelectorAll("table");
+      for (let i = 0; i < allTables.length; i++) {
+        allTables[i].setAttribute("role", "table");
+        enhancedCount++;
+      }
+
+      // Enhance captions
+      const allCaptions = document.querySelectorAll("caption");
+      for (let i = 0; i < allCaptions.length; i++) {
+        allCaptions[i].setAttribute("role", "caption");
+      }
+
+      // Enhance row groups (thead, tbody, tfoot)
+      const allRowGroups = document.querySelectorAll("thead, tbody, tfoot");
+      for (let i = 0; i < allRowGroups.length; i++) {
+        allRowGroups[i].setAttribute("role", "rowgroup");
+      }
+
+      // Enhance all rows
+      const allRows = document.querySelectorAll("tr");
+      for (let i = 0; i < allRows.length; i++) {
+        allRows[i].setAttribute("role", "row");
+      }
+
+      // Enhance data cells
+      const allCells = document.querySelectorAll("td");
+      for (let i = 0; i < allCells.length; i++) {
+        allCells[i].setAttribute("role", "cell");
+      }
+
+      // Enhance header cells
+      const allHeaders = document.querySelectorAll("th");
+      for (let i = 0; i < allHeaders.length; i++) {
+        allHeaders[i].setAttribute("role", "columnheader");
+      }
+
+      // Handle scoped row headers
+      const allRowHeaders = document.querySelectorAll("th[scope=row]");
+      for (let i = 0; i < allRowHeaders.length; i++) {
+        allRowHeaders[i].setAttribute("role", "rowheader");
+      }
+
+      logInfo(`✅ ARIA attributes added to ${enhancedCount} tables`);
+      return enhancedCount;
+    } catch (error) {
+      logError("Error adding table ARIA attributes:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Generate data-label attributes for responsive table cards
+   * This enables the mobile card layout to show column headers
+   */
+  function enhanceTableDataLabels() {
+    try {
+      logInfo("Generating data-label attributes for responsive tables");
+      let processedTables = 0;
+
+      document.querySelectorAll("table").forEach((table) => {
+        // Get headers from the first row
+        const headerRow = table.querySelector("thead tr, tr:first-child");
+        if (!headerRow) return;
+
+        const headers = Array.from(headerRow.querySelectorAll("th, td")).map(
+          (header) => header.textContent.trim()
+        );
+
+        if (headers.length === 0) return;
+
+        // Add data-label to all data cells
+        const dataRows = table.querySelectorAll(
+          "tbody tr, tr:not(:first-child)"
+        );
+        dataRows.forEach((row) => {
+          const cells = row.querySelectorAll("td, th");
+          cells.forEach((cell, index) => {
+            if (headers[index] && headers[index] !== "") {
+              cell.setAttribute("data-label", headers[index]);
+            } else {
+              cell.setAttribute("data-label", `Column ${index + 1}`);
+            }
+          });
+        });
+
+        processedTables++;
+      });
+
+      logInfo(`✅ Data labels generated for ${processedTables} tables`);
+      return processedTables;
+    } catch (error) {
+      logError("Error generating table data labels:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Add table navigation help for screen readers
+   */
+  function addTableNavigationHelp() {
+    try {
+      logInfo("Adding table navigation help for screen readers");
+      let helpAdded = 0;
+
+      document.querySelectorAll("table").forEach((table) => {
+        // Check if help already exists
+        if (table.querySelector(".table-nav-help")) return;
+
+        // Create navigation help element
+        const helpElement = document.createElement("div");
+        helpElement.className = "table-nav-help";
+        helpElement.setAttribute("tabindex", "0");
+        helpElement.setAttribute("role", "region");
+        helpElement.setAttribute("aria-label", "Table navigation help");
+        helpElement.innerHTML = `
+          <p><strong>Table Navigation Help:</strong></p>
+          <ul>
+            <li>Use <kbd>Ctrl + Alt + Arrow Keys</kbd> to navigate between cells</li>
+            <li>Use <kbd>Ctrl + Alt + Home</kbd> to go to the first cell</li>
+            <li>Use <kbd>Ctrl + Alt + End</kbd> to go to the last cell</li>
+            <li>Press <kbd>Enter</kbd> on this help to dismiss it</li>
+          </ul>
+        `;
+
+        // Add event listener to hide help
+        helpElement.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            helpElement.style.display = "none";
+          }
+        });
+
+        // Insert before the table
+        table.parentNode.insertBefore(helpElement, table);
+        helpAdded++;
+      });
+
+      logInfo(`✅ Navigation help added to ${helpAdded} tables`);
+      return helpAdded;
+    } catch (error) {
+      logError("Error adding table navigation help:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Add table descriptions for better context
+   */
+  function addTableDescriptions() {
+    try {
+      logInfo("Adding table descriptions for accessibility");
+      let descriptionsAdded = 0;
+
+      document.querySelectorAll("table").forEach((table, index) => {
+        // Skip if description already exists
+        if (
+          table.previousElementSibling?.classList.contains("table-description")
+        ) {
+          return;
+        }
+
+        // Get table dimensions for description
+        const rows = table.querySelectorAll("tr").length;
+        const headerRow = table.querySelector("thead tr, tr:first-child");
+        const columns = headerRow
+          ? headerRow.querySelectorAll("th, td").length
+          : 0;
+
+        // Create description
+        const description = document.createElement("div");
+        description.className = "table-description";
+        description.setAttribute("id", `table-desc-${index + 1}`);
+
+        let descriptionText = `Table ${index + 1}: `;
+        if (rows > 0 && columns > 0) {
+          descriptionText += `${rows} rows by ${columns} columns`;
+          if (table.querySelector("caption")) {
+            descriptionText += ` with caption`;
+          }
+        } else {
+          descriptionText += `Data table`;
+        }
+
+        description.textContent = descriptionText;
+
+        // Link table to description
+        table.setAttribute("aria-describedby", `table-desc-${index + 1}`);
+
+        // Insert before table
+        table.parentNode.insertBefore(description, table);
+        descriptionsAdded++;
+      });
+
+      logInfo(`✅ Descriptions added to ${descriptionsAdded} tables`);
+      return descriptionsAdded;
+    } catch (error) {
+      logError("Error adding table descriptions:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Comprehensive table accessibility enhancement
+   * This is the main function to call for full table accessibility
+   */
+  function enhanceTableAccessibility() {
+    try {
+      logInfo("Starting comprehensive table accessibility enhancement");
+
+      const results = {
+        ariaCount: addTableARIA(),
+        dataLabelsCount: enhanceTableDataLabels(),
+        navigationHelpCount: addTableNavigationHelp(),
+        descriptionsCount: addTableDescriptions(),
+      };
+
+      const totalTables = document.querySelectorAll("table").length;
+
+      logInfo("✅ Table accessibility enhancement complete:", {
+        totalTables,
+        ariaEnhanced: results.ariaCount,
+        dataLabelsAdded: results.dataLabelsCount,
+        navigationHelp: results.navigationHelpCount,
+        descriptions: results.descriptionsCount,
+      });
+
+      // Screen reader announcement
+      if (window.AppConfig && window.AppConfig.announceToScreenReader) {
+        window.AppConfig.announceToScreenReader(
+          `${totalTables} tables enhanced for accessibility with ARIA labels, responsive data labels, and navigation help.`
+        );
+      }
+
+      return results;
+    } catch (error) {
+      logError(
+        "Error in comprehensive table accessibility enhancement:",
+        error
+      );
+      return null;
+    }
+  }
+
   /**
    * CSS minification (basic)
    */
@@ -2170,11 +2535,11 @@ const ContentGenerator = (function () {
   }
 
   /**
-   * Generate table styling CSS
+   * Generate advanced desktop table styling CSS
    */
-  function generateTableCSS() {
+  function generateAdvancedTableCSS() {
     return `
-        /* ===== TABLE STYLING ===== */
+        /* ===== ENHANCED TABLE STYLING ===== */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -2183,24 +2548,91 @@ const ContentGenerator = (function () {
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--sidebar-border);
+            position: relative;
+            font-variant-numeric: tabular-nums; /* Better number alignment */
         }
 
-        th, td {
-            padding: 1rem;
+        /* Enhanced table typography */
+        table {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Table captions */
+        caption {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--heading-color);
             text-align: left;
-            border-bottom: 1px solid var(--sidebar-border);
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: var(--body-bg);
+            border-radius: 8px 8px 0 0;
+            border: 1px solid var(--sidebar-border);
+            border-bottom: none;
         }
 
+        /* Enhanced cell styling */
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--sidebar-border);
+    vertical-align: top;
+    position: relative;
+}
+
+table td, table th, table tr {
+    border: 1px solid color-mix(in srgb, var(--sidebar-border) 80%, var(--body-text) 20%) !important;
+}
+
+/* Remove border from last column */
+th:last-child, td:last-child {
+    border-right: none;
+}
+
+        /* Header styling with gradient */
         th {
-            background: var(--border-color);
+            background: linear-gradient(135deg, var(--border-color) 0%, color-mix(in srgb, var(--border-color) 90%, white) 100%);
             color: var(--body-bg);
             font-weight: 600;
-            
             font-size: 0.875rem;
             letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid var(--sidebar-border);
         }
 
-        tr:hover {
+        /* Dark mode header adjustments */
+        [data-theme="dark"] th {
+            background: linear-gradient(135deg, var(--border-color) 0%, color-mix(in srgb, var(--border-color) 80%, black) 100%);
+            color: var(--body-bg);
+        }
+
+        /* Row styling with enhanced interactions */
+        tr {
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: var(--focus-bg);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        tbody tr:focus-within {
+            background: var(--focus-bg);
+            outline: 2px solid var(--focus-outline);
+            outline-offset: -2px;
+        }
+
+        /* Zebra striping for better readability */
+        tbody tr:nth-child(even) {
+            background: color-mix(in srgb, var(--surface-color) 50%, var(--body-bg) 50%);
+        }
+
+        tbody tr:nth-child(even):hover {
             background: var(--focus-bg);
         }
 
@@ -2208,43 +2640,399 @@ const ContentGenerator = (function () {
             border-bottom: none;
         }
 
-        /* Table responsiveness */
+        /* Cell content alignment classes */
+        .table-cell-center { text-align: center; }
+        .table-cell-right { text-align: right; }
+        .table-cell-numeric { 
+            text-align: right; 
+            font-variant-numeric: tabular-nums;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace, var(--font-primary);
+        }
+
+        /* Mathematical content in tables */
+        table mjx-container {
+            margin: 0.25em 0;
+            font-size: 0.9em;
+        }
+
+        /* Enhanced focus states for accessibility */
+        th:focus, td:focus {
+            background: var(--focus-bg);
+            outline: 2px solid var(--focus-outline);
+            outline-offset: -2px;
+            z-index: 1;
+        }
+    `;
+  }
+
+  /**
+   * Generate responsive table CSS with card layout for mobile
+   */
+  function generateResponsiveTableCSS() {
+    return `
+        /* ===== RESPONSIVE TABLE DESIGN ===== */
+        
+        /* Tablet adjustments */
+        @media (max-width: 1024px) {
+            table {
+                font-size: 0.9rem;
+            }
+            
+            th, td {
+                padding: 0.75rem;
+            }
+            
+            th {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Mobile card layout */
         @media (max-width: 768px) {
+            /* Hide table structure for mobile card layout */
             table, thead, tbody, th, td, tr {
                 display: block;
             }
 
+            /* Hide table headers but keep them for data-label attributes */
             thead tr {
                 position: absolute;
                 top: -9999px;
                 left: -9999px;
+                clip: rect(0 0 0 0);
+                height: 1px;
+                width: 1px;
+                overflow: hidden;
             }
 
-            tr {
-                border: 1px solid var(--sidebar-border);
+            /* Caption remains visible and styled */
+            caption {
+                display: block;
+                text-align: center;
+                font-size: 1.2rem;
                 margin-bottom: 1rem;
-                border-radius: 6px;
-                padding: 0.5rem;
+                border-radius: 8px;
             }
 
+            /* Transform each row into a card */
+            tbody tr {
+                border: 1px solid var(--sidebar-border);
+                border-radius: 8px;
+                padding: 1rem;
+                margin: 0 0 1rem 0;
+                background: var(--surface-color);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                transform: none; /* Reset hover transform for mobile */
+                transition: box-shadow 0.2s ease;
+            }
+
+            tbody tr:hover {
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+                transform: none;
+            }
+
+            /* Style each cell as a data row */
             td {
                 border: none;
+                padding: 0.5rem 0;
+                text-align: left !important; /* Override alignment classes on mobile */
                 position: relative;
-                padding-left: 50% !important;
+                min-height: 2rem;
+                display: flex;
+                align-items: center;
+            }
+
+            /* Add labels using data-label attribute */
+            td:before {
+                content: attr(data-label) ": ";
+                font-weight: 600;
+                color: var(--heading-color);
+                margin-right: 0.5rem;
+                min-width: 120px;
+                flex-shrink: 0;
+                font-size: 0.875rem;
+                letter-spacing: 0.02em;
+            }
+
+            /* Handle empty cells gracefully */
+            td:empty:before {
+                content: attr(data-label) ": ";
+                color: var(--text-secondary);
+            }
+
+            td:empty:after {
+                content: "—";
+                color: var(--text-secondary);
+                font-style: italic;
+            }
+
+            /* Mathematical content adjustments for mobile cards */
+            td mjx-container {
+                flex: 1;
+                margin-left: 0.5rem;
+            }
+
+            /* Remove zebra striping on mobile - cards are distinct */
+            tbody tr:nth-child(even) {
+                background: var(--surface-color);
+            }
+        }
+
+        /* Mobile card layout */
+@media (max-width: 768px) {
+    /* Hide table structure for mobile card layout */
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+
+    /* ✅ NEW: Remove internal borders for clean card appearance */
+    table td, table th, table tr {
+        border: none !important;
+    }
+
+    /* Caption remains visible and styled */
+    caption {
+        display: block;
+        text-align: center;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        border: none; /* Remove caption borders too */
+    }
+
+    /* Transform each row into a clean card */
+    tbody tr {
+        border: 1px solid var(--sidebar-border); /* Single card border only */
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0 0 1rem 0;
+        background: var(--surface-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Clean cell styling without internal borders */
+    td {
+        border: none !important; /* Emphasize: no internal borders */
+        padding: 0.5rem 0;
+        text-align: left !important;
+        position: relative;
+        min-height: 2rem;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Keep the data labels clean */
+    td:before {
+        content: attr(data-label) ": ";
+        font-weight: 600;
+        color: var(--heading-color);
+        margin-right: 0.5rem;
+        min-width: 120px;
+        flex-shrink: 0;
+        font-size: 0.875rem;
+        letter-spacing: 0.02em;
+    }
+}
+
+        /* Very small screens */
+        @media (max-width: 480px) {
+            tbody tr {
+                padding: 0.75rem;
+                margin: 0 0 0.75rem 0;
             }
 
             td:before {
-                content: attr(data-label);
-                position: absolute;
-                left: 6px;
-                width: 45%;
-                padding-right: 10px;
-                white-space: nowrap;
-                font-weight: 600;
-                color: var(--heading-color);
+                min-width: 100px;
+                font-size: 0.8rem;
+            }
+
+            caption {
+                font-size: 1.1rem;
+                padding: 0.75rem;
             }
         }
     `;
+  }
+
+  /**
+   * Generate table accessibility CSS with ARIA support
+   */
+  function generateTableAccessibilityCSS() {
+    return `
+        /* ===== TABLE ACCESSIBILITY ENHANCEMENTS ===== */
+        
+        /* Enhanced focus indicators for keyboard navigation */
+        table:focus {
+            outline: 2px solid var(--focus-outline);
+            outline-offset: 2px;
+        }
+
+        /* Row and cell focus management */
+        tr[tabindex]:focus {
+            background: var(--focus-bg);
+            outline: 2px solid var(--focus-outline);
+            outline-offset: -2px;
+        }
+
+        /* ARIA-enhanced tables */
+        table[role="table"] {
+            border: 2px solid var(--sidebar-border);
+        }
+
+        /* Screen reader enhancements */
+        .table-description {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-style: italic;
+        }
+
+        /* High contrast mode enhancements */
+        @media (prefers-contrast: high) {
+            table {
+                border: 3px solid currentColor;
+            }
+
+            th {
+                border: 2px solid currentColor;
+                font-weight: 700;
+            }
+
+            td {
+                border: 1px solid currentColor;
+            }
+
+            tbody tr:hover {
+                background: Highlight;
+                color: HighlightText;
+            }
+        }
+
+        /* Reduced motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            tr, tbody tr:hover {
+                transition: none;
+                transform: none;
+            }
+        }
+
+        /* Screen reader only content for table navigation help */
+        .table-nav-help {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .table-nav-help:focus {
+            position: static;
+            width: auto;
+            height: auto;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            overflow: visible;
+            clip: auto;
+            white-space: normal;
+            background: var(--focus-bg);
+            border: 1px solid var(--focus-outline);
+            border-radius: 4px;
+        }
+    `;
+  }
+
+  /**
+   * Generate enhanced table print CSS
+   */
+  function generateTablePrintCSS() {
+    return `
+        /* ===== ENHANCED TABLE PRINT STYLING ===== */
+        @media print {
+            /* Use browser defaults for better print compatibility */
+            table, table *, 
+            table[role="table"], table[role="table"] *,
+            thead, thead *, tbody, tbody *, tfoot, tfoot *,
+            tr, tr *, th, th *, td, td * {
+                all: unset !important;
+                display: revert !important;
+                font-family: revert !important;
+                margin: revert !important;
+                padding: revert !important;
+                background: revert !important;
+                border: revert !important;
+                color: revert !important;
+            }
+
+            /* Restore essential table structure */
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin: 1rem 0 !important;
+                page-break-inside: auto !important;
+            }
+
+            caption {
+                text-align: center !important;
+                font-weight: bold !important;
+                margin-bottom: 0.5rem !important;
+            }
+
+            th, td {
+                border: 1px solid #000 !important;
+                padding: 0.3rem 0.5rem !important;
+                text-align: left !important;
+                vertical-align: top !important;
+            }
+
+            th {
+                background: #f0f0f0 !important;
+                font-weight: bold !important;
+            }
+
+            /* Improve page breaks */
+            tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            /* Ensure headers repeat on new pages */
+            thead {
+                display: table-header-group !important;
+            }
+
+            tbody {
+                display: table-row-group !important;
+            }
+
+            /* Remove interactive elements for print */
+            tr:hover, td:focus, th:focus {
+                background: transparent !important;
+                outline: none !important;
+                transform: none !important;
+                box-shadow: none !important;
+            }
+        }
+    `;
+  }
+
+  /**
+   * Generate main table CSS (replaces the original function)
+   */
+  function generateTableCSS() {
+    logInfo(
+      "Generating comprehensive table CSS with accessibility enhancements"
+    );
+
+    return [
+      generateAdvancedTableCSS(),
+      generateResponsiveTableCSS(),
+      generateTableAccessibilityCSS(),
+      generateTablePrintCSS(),
+    ].join("\n\n");
   }
 
   // ===========================================================================================
@@ -2258,6 +3046,12 @@ const ContentGenerator = (function () {
     generateResponsiveImageCSS,
     generateTableCSS,
 
+    // ✅ NEW: Enhanced table CSS functions
+    generateAdvancedTableCSS,
+    generateResponsiveTableCSS,
+    generateTableAccessibilityCSS,
+    generateTablePrintCSS,
+
     // Table of contents
     generateTableOfContents,
     generateTableOfContentsWithId,
@@ -2266,6 +3060,13 @@ const ContentGenerator = (function () {
     enhanceDocumentStructure,
     enhanceTheoremEnvironments,
     addSectionAnchors,
+
+    // ✅ NEW: Table accessibility functions
+    addTableARIA,
+    enhanceTableDataLabels,
+    addTableNavigationHelp,
+    addTableDescriptions,
+    enhanceTableAccessibility,
 
     // Utilities
     escapeHtml,

@@ -133,6 +133,11 @@ const TestRegistry = (function () {
         command: "testPerformance",
         module: "TestPerformance",
       },
+      {
+        name: "TableEnhancements",
+        command: "testTableEnhancements",
+        module: "TestTableEnhancements",
+      },
     ],
   };
 
