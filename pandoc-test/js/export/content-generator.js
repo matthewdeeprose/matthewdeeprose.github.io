@@ -215,7 +215,6 @@ const ContentGenerator = (function () {
         .focus-toggle-btn:focus-visible {
             outline: 3px solid var(--focus-outline) !important;
             outline-offset: 2px !important;
-            background-color: var(--focus-bg);
             box-shadow: 0 0 0 4px var(--focus-bg);
         }
 
