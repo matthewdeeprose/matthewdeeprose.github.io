@@ -54,6 +54,7 @@ const ExportManager = (function () {
    */
   async function exportWithEnhancedPandoc() {
     logInfo("🧪 === ENHANCED PANDOC EXPORT STARTED ===");
+    window.exportGenerationInProgress = true;
 
     const exportButton = document.getElementById("exportButton");
     const inputTextarea = document.getElementById("input");
@@ -203,7 +204,8 @@ const ExportManager = (function () {
         "Enhanced export failed. Please try again or use standard export."
       );
     } finally {
-      // Reset button state
+      // Reset button state and clear export flag
+      window.exportGenerationInProgress = false;
       if (exportButton) {
         exportButton.disabled = false;
         exportButton.innerHTML = originalButtonContent;
@@ -889,6 +891,7 @@ const ExportManager = (function () {
       return await exportWithEnhancedPandoc();
     }
     logInfo("=== ENHANCED EXPORT WITH SCREEN READER CONTROLS STARTED ===");
+    window.exportGenerationInProgress = true;
 
     // Capture original button content BEFORE any modifications
     let originalButtonContent = exportButton.innerHTML;
@@ -1024,7 +1027,8 @@ const ExportManager = (function () {
         "Enhanced export failed. Please check the error message and try again."
       );
     } finally {
-      // Reset button state - restore original structured content
+      // Reset button state and clear export flag
+      window.exportGenerationInProgress = false;
       if (exportButton) {
         exportButton.disabled = false;
         exportButton.innerHTML = originalButtonContent;
@@ -1053,7 +1057,16 @@ const ExportManager = (function () {
       return;
     }
 
-    // Click handler
+    // ✅ NEW: Check if already has our listener
+    if (exportButton.hasAttribute("data-export-initialized")) {
+      logWarn("Export button already initialized - skipping");
+      return;
+    }
+
+    // ✅ NEW: Mark as initialized
+    exportButton.setAttribute("data-export-initialized", "true");
+
+    // Click handler - now only added once
     exportButton.addEventListener("click", function (e) {
       logInfo("Enhanced export button clicked");
       e.preventDefault();

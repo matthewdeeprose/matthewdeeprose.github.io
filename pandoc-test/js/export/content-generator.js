@@ -185,6 +185,54 @@ const ContentGenerator = (function () {
   }
 
   /**
+   * Generate focus management styles for proper keyboard navigation
+   */
+  function generateFocusManagementCSS() {
+    return `
+        /* ===== FOCUS MANAGEMENT - KEYBOARD NAVIGATION ONLY ===== */
+        /* Remove default focus outline for mouse/touch interactions */
+        :focus:not(:focus-visible) {
+            outline: none !important;
+        }
+
+        /* Apply focus styles only for keyboard navigation */
+        :focus-visible {
+            outline: 3px solid var(--focus-outline) !important;
+            outline-offset: 2px !important;
+            border-radius: 2px;
+        }
+
+        /* Enhanced focus for interactive elements */
+        button:focus-visible,
+        select:focus-visible,
+        input:focus-visible,
+        textarea:focus-visible,
+        a:focus-visible,
+        .theme-toggle:focus-visible,
+        .reset-button:focus-visible,
+        .print-button:focus-visible,
+        .action-button:focus-visible,
+        .focus-toggle-btn:focus-visible {
+            outline: 3px solid var(--focus-outline) !important;
+            outline-offset: 2px !important;
+            background-color: var(--focus-bg);
+            box-shadow: 0 0 0 4px var(--focus-bg);
+        }
+
+        /* MathJax containers */
+        mjx-container:focus:not(:focus-visible) {
+            outline: none;
+            background-color: transparent;
+        }
+
+        mjx-container:focus-visible {
+            outline: 3px solid var(--focus-outline);
+            outline-offset: 2px;
+            background-color: var(--focus-bg);
+        }`;
+  }
+
+  /**
    * Generate FIXED enhanced grid layout system - Natural content flow + proper footer placement
    */
   function generateGridLayoutCSS() {
@@ -451,7 +499,12 @@ const ContentGenerator = (function () {
             text-decoration-thickness: 2px;
         }
 
-        a:focus {
+/* Remove outline for mouse clicks on links */
+        a:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+        a:focus-visible {
             outline: 2px solid var(--focus-outline);
             outline-offset: 2px;
             border-radius: 2px;
@@ -535,7 +588,7 @@ const ContentGenerator = (function () {
             transform: translateY(-1px);
         }
 
-        .print-button:focus {
+        .print-button:focus-visible {
             outline: 3px solid var(--focus-outline);
             outline-offset: 2px;
         }
@@ -563,7 +616,7 @@ const ContentGenerator = (function () {
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
 
-        .action-button:focus {
+        .action-button:focus-visible {
             outline: 3px solid var(--focus-outline);
             outline-offset: 2px;
         }
@@ -600,7 +653,7 @@ const ContentGenerator = (function () {
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .theme-toggle:focus {
+        .theme-toggle:focus-visible {
             outline: 3px solid var(--focus-outline);
             outline-offset: 2px;
             box-shadow: 0 0 0 4px var(--focus-bg);
@@ -682,11 +735,18 @@ const ContentGenerator = (function () {
             margin-top: 2px;
         }
 
-        .form-group input[type="checkbox"]:focus,
-        .form-group input[type="radio"]:focus {
+        /* Remove outline for mouse clicks on checkboxes/radios */
+        .form-group input[type="checkbox"]:focus:not(:focus-visible),
+        .form-group input[type="radio"]:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+        .form-group input[type="checkbox"]:focus-visible,
+        .form-group input[type="radio"]:focus-visible {
             outline: 2px solid var(--focus-outline);
             outline-offset: 2px;
         }
+
 
 .form-group select {
             padding: 8px 12px;
@@ -710,7 +770,12 @@ const ContentGenerator = (function () {
             overflow: hidden;
         }
 
-        .form-group select:focus {
+        /* Remove outline for mouse clicks on selects */
+        .form-group select:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+        .form-group select:focus-visible {
             outline: 3px solid var(--focus-outline);
             outline-offset: 2px;
             border-color: var(--link-color);
@@ -734,7 +799,12 @@ const ContentGenerator = (function () {
             transition: all 0.2s ease;
         }
 
-        .form-group input[type="number"]:focus {
+        /* Remove outline for mouse clicks on number inputs */
+        .form-group input[type="number"]:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+        .form-group input[type="number"]:focus-visible {
             outline: 2px solid var(--focus-outline);
             outline-offset: 1px;
             border-color: var(--focus-outline);
@@ -772,7 +842,12 @@ const ContentGenerator = (function () {
             transition: all 0.2s ease;
         }
 
-        .form-group input[type="range"]:focus {
+        /* Remove outline for mouse clicks on range sliders */
+        .form-group input[type="range"]:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+        .form-group input[type="range"]:focus-visible {
             outline: 2px solid var(--focus-outline);
             outline-offset: 2px;
             box-shadow: 0 0 0 4px var(--focus-bg);
@@ -923,7 +998,7 @@ const ContentGenerator = (function () {
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        mjx-container:focus {
+        mjx-container:focus-visible {
             outline: 3px solid var(--focus-outline);
             outline-offset: 2px;
             background-color: var(--focus-bg);
@@ -984,6 +1059,8 @@ const ContentGenerator = (function () {
                 box-shadow: none !important;
                 text-shadow: none !important;
             }
+
+            .distraction-free-controls {display: none !important;}
 
             /* BREAKTHROUGH FIX: Complete mjx-container reset - let MathJax handle everything */
             mjx-container, 
@@ -1250,8 +1327,8 @@ const ContentGenerator = (function () {
                 grid-template-columns: minmax(220px, 240px) 1fr minmax(400px, 450px);
             }
             
-            .document-content {
-                padding: 4rem 3rem;
+.document-content {
+                padding: 2rem 3rem 4rem 3rem;
                 font-size: 1.05rem;
             }
             
@@ -1269,8 +1346,8 @@ const ContentGenerator = (function () {
                 max-width: 2000px;
             }
             
-            .document-content {
-                padding: 4rem 4rem;
+ .document-content {
+                padding: 2rem 4rem 4rem 4rem;
                 font-size: 1.1rem;
                 line-height: 1.8;
             }
@@ -1580,7 +1657,7 @@ const ContentGenerator = (function () {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
-.message-button:focus {
+.message-button:focus-visible {
     outline: 2px solid var(--focus-outline);
     outline-offset: 2px;
 }
@@ -1669,12 +1746,17 @@ const ContentGenerator = (function () {
             background: linear-gradient(135deg, var(--body-bg) 0%, var(--surface-color) 100%);
             border: 1px solid var(--sidebar-border);
             border-radius: 12px;
-            padding: 2.5rem 2rem 2rem;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2rem) clamp(1.5rem, 3vw, 2rem);
             margin: 0 0 3rem 0;
             text-align: left;
             box-shadow: 0 4px 20px var(--sidebar-shadow);
             position: relative;
-            overflow: hidden;
+            /* FIXED: Remove overflow hidden and add proper text wrapping */
+            box-sizing: border-box;
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
         }
 
         /* Subtle decorative element */
@@ -1689,7 +1771,7 @@ const ContentGenerator = (function () {
             opacity: 0.6;
         }
 
-        /* Document title styling */
+        /* Document title styling - FIXED: Ensure proper text wrapping */
         #title-block-header .title {
             font-size: 2.25rem;
             font-weight: 700;
@@ -1698,18 +1780,26 @@ const ContentGenerator = (function () {
             line-height: 1.2;
             letter-spacing: -0.025em;
             font-family: var(--font-family-sans);
+            /* FIXED: Add text wrapping rules */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            max-width: 100%;
         }
 
-        /* Author styling */
+        /* Author styling - FIXED: Ensure proper text wrapping */
         #title-block-header .author {
             font-size: 1.125rem;
             font-weight: 500;
             color: var(--text-secondary);
             margin: 0 0 0.5rem 0;
             line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
         }
 
-        /* Date styling */
+        /* Date styling - FIXED: Ensure proper text wrapping */
         #title-block-header .date {
             font-size: 1rem;
             font-weight: 400;
@@ -1717,6 +1807,9 @@ const ContentGenerator = (function () {
             margin: 0;
             opacity: 0.8;
             font-variant-numeric: tabular-nums;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
         }
 
         /* Enhanced styling for dark mode */
@@ -1767,6 +1860,251 @@ const ContentGenerator = (function () {
   }
 
   /**
+   * Generate distraction-free mode CSS for neurodivergent users
+   */
+  function generateDistractionFreeCSS() {
+    logInfo("Generating distraction-free mode CSS for neurodivergent users");
+
+    return `
+      /* ===== DISTRACTION-FREE MODE FOR NEURODIVERGENT USERS ===== */
+      
+/* Distraction-free controls container - horizontal inline layout */
+      .distraction-free-controls {
+
+          margin: 0.5rem 0;
+          border: none;
+          border-radius: 0;
+      }
+      
+      .distraction-free-controls h3 {
+          display: inline;
+          font-size: 0.8rem;
+          margin: 0 1rem 0 0;
+          font-weight: 500;
+          color: var(--text-secondary);
+          vertical-align: middle;
+      }
+      
+/* Focus controls layout - horizontal inline */
+      .focus-controls {
+          display: inline-flex;
+          gap: 0.5rem;
+          align-items: center;
+      }
+      
+     /* Toggle button styling - compact horizontal */
+      .focus-toggle-btn {
+          background: var(--body-bg);
+          color: var(--body-text);
+          border: 2px solid var(--sidebar-border);
+          border-radius: 4px;
+          padding: 0.35rem 0.6rem;
+          font-size: 0.75rem;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+      }
+      
+      .focus-toggle-btn:hover {
+          background: var(--focus-bg);
+          border-color: var(--link-color);
+          transform: translateY(-1px);
+      }
+      
+/* Remove outline for mouse clicks */
+      .focus-toggle-btn:focus:not(:focus-visible) {
+          outline: none;
+      }
+      
+      .focus-toggle-btn:focus-visible {
+          outline: 3px solid var(--focus-outline);
+          outline-offset: 2px;
+          background: var(--focus-bg);
+      }
+      
+      /* Pressed state for toggle buttons */
+      .focus-toggle-btn[aria-pressed="false"] {
+          background: var(--error-color);
+          color: var(--body-bg);
+          border-color: var(--error-color);
+      }
+      
+      .focus-toggle-btn[aria-pressed="false"]:hover {
+          background: color-mix(in srgb, var(--error-color) 85%, black 15%);
+          border-color: color-mix(in srgb, var(--error-color) 85%, black 15%);
+      }
+      
+      /* Focus mode button special styling */
+      .focus-mode-btn {
+          background: var(--success-color);
+          color: var(--body-bg);
+          border-color: var(--success-color);
+          font-weight: 600;
+      }
+      
+      .focus-mode-btn:hover {
+          background: color-mix(in srgb, var(--success-color) 85%, black 15%);
+          border-color: color-mix(in srgb, var(--success-color) 85%, black 15%);
+      }
+      
+      .focus-mode-btn[aria-pressed="true"] {
+          background: var(--warning-color);
+          border-color: var(--warning-color);
+      }
+      
+      /* ===== DISTRACTION-FREE GRID LAYOUTS ===== */
+      
+      /* Single column layout - content only */
+      .document-wrapper.distraction-free-mode {
+          grid-template-columns: 1fr !important;
+          grid-template-areas: 
+              "content"
+              "footer" !important;
+      }
+      
+      /* Two column - TOC + content only */
+      .document-wrapper.distraction-free-mode.show-toc-only {
+          grid-template-columns: minmax(200px, 240px) 1fr !important;
+          grid-template-areas: 
+              "toc content"
+              "footer footer" !important;
+      }
+      
+      /* Two column - content + sidebar only */
+      .document-wrapper.distraction-free-mode.show-sidebar-only {
+          grid-template-columns: 1fr minmax(320px, 380px) !important;
+          grid-template-areas: 
+              "content sidebar"
+              "footer footer" !important;
+      }
+
+      /* Dark mode adaptations for horizontal layout */
+      [data-theme="dark"] .distraction-free-controls {
+          background: rgba(31, 41, 55, 0.5);
+          border-left-color: var(--link-color);
+      }
+      
+      [data-theme="dark"] .distraction-free-controls h3 {
+          color: var(--text-secondary);
+      }
+      
+      /* ===== HIDDEN ELEMENTS ===== */
+      .hide-toc,
+      .hide-sidebar {
+          display: none !important;
+      }
+      
+/* Content expansion when elements are hidden - PRESERVE READING WIDTH */
+.document-wrapper.distraction-free-mode .document-content {
+    margin: 0 auto;  /* Center content instead of removing max-width */
+    padding: 1.5rem 3rem 3rem 3rem;
+}
+
+/* Ensure reading width classes work in distraction-free mode */
+.document-wrapper.distraction-free-mode .document-content.width-extra-narrow {
+    max-width: 50ch !important;
+    margin: 0 auto;
+}
+
+.document-wrapper.distraction-free-mode .document-content.width-narrow {
+    max-width: 65ch !important;
+    margin: 0 auto;
+}
+
+.document-wrapper.distraction-free-mode .document-content.width-wide {
+    max-width: 80ch !important;
+    margin: 0 auto;
+}
+
+.document-wrapper.distraction-free-mode .document-content.width-full {
+    max-width: none !important;
+    margin: 0;
+}
+      
+      /* ===== SMOOTH TRANSITIONS ===== */
+      .table-of-contents,
+      .document-sidebar,
+      .document-content {
+          transition: all 0.3s ease;
+      }
+      
+      /* Respect reduced motion preferences */
+      @media (prefers-reduced-motion: reduce) {
+          .table-of-contents,
+          .document-sidebar,
+          .document-content,
+          .focus-toggle-btn {
+              transition: none;
+          }
+      }
+      
+/* ===== MOBILE ADAPTATIONS ===== */
+      @media (max-width: 900px) {
+          /* Hide distraction-free controls on mobile - single column layout already optimal */
+          .distraction-free-controls {
+              display: none !important;
+          }
+          
+          /* Optional: Show mobile optimization message */
+          .mobile-focus-message {
+              display: block;
+              padding: 1rem;
+              margin: 1rem 0;
+              background: var(--surface-color);
+              border: 1px solid var(--sidebar-border);
+              border-radius: 8px;
+              text-align: center;
+              colour: var(--text-secondary);
+              font-size: 0.9rem;
+          }
+      }
+      
+      /* Hide mobile message on desktop */
+      @media (min-width: 901px) {
+          .mobile-focus-message {
+              display: none;
+          }
+      }
+      
+      /* ===== ACCESSIBILITY ENHANCEMENTS ===== */
+      .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+      }
+      
+      /* Live region for announcements */
+      #focus-announcements {
+          position: absolute;
+          left: -10000px;
+          top: auto;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+      }
+      
+      /* High contrast support */
+      @media (prefers-contrast: high) {
+          .focus-toggle-btn {
+              border-width: 3px;
+          }
+          
+          .focus-toggle-btn:focus-visible {
+              outline-width: 4px;
+          }
+      }`;
+  }
+
+  /**
    * Enhanced CSS generation with all components - COMPLETE ENHANCED VERSION
    */
   function generateEnhancedCSS() {
@@ -1788,10 +2126,12 @@ const ContentGenerator = (function () {
       generateMathematicalContentCSS(),
       generateTableCSS(),
       generateTitleBlockCSS(),
+      generateDistractionFreeCSS(), // ✅ NEW: Add distraction-free CSS
       generateLargeScreenOptimizationsCSS(),
       generateMobileResponsiveCSS(),
       generateAccessibilitySupportCSS(),
       generatePrintCSS(),
+      generateFocusManagementCSS(),
     ];
 
     const finalCSS = cssComponents.join("\n\n");
@@ -1803,7 +2143,6 @@ const ContentGenerator = (function () {
 
     return finalCSS;
   }
-
   // ===========================================================================================
   // TABLE OF CONTENTS GENERATION
   // ===========================================================================================
@@ -1932,6 +2271,71 @@ const ContentGenerator = (function () {
   // ===========================================================================================
 
   /**
+   * Generate distraction-free controls HTML with conditional TOC button
+   * @param {Object} metadata - Document metadata containing sections info
+   */
+  function generateDistractionFreeControls(metadata = {}) {
+    logInfo(
+      "Generating distraction-free controls HTML for neurodivergent users"
+    );
+
+    // Determine if TOC button should be shown
+    const hasTOC = metadata.sections && metadata.sections.length > 0;
+
+    // Conditionally generate TOC button and help text
+    const tocButtonHTML = hasTOC
+      ? `
+              <button type="button" 
+                      id="toggle-toc" 
+                      class="focus-toggle-btn"
+                      aria-pressed="true"
+                      aria-describedby="toc-help">
+                  <span aria-hidden="true">📑</span> <span class="toggle-text">Hide Table of Contents</span>
+              </button>
+              <div id="toc-help" class="sr-only">Toggle visibility of the table of contents navigation</div>
+              `
+      : "";
+
+    logDebug(
+      `Generating distraction-free controls: hasTOC=${hasTOC}, sections=${
+        metadata.sections ? metadata.sections.length : 0
+      }`
+    );
+
+    return `
+      <!-- Distraction-Free Mode Controls for Neurodivergent Users -->
+      <div class="distraction-free-controls" role="region" aria-label="Distraction-free mode controls">
+          <h3 id="focusModeHeading">Focus Mode</h3>
+          <div class="focus-controls" role="group" aria-labelledby="focus-controls-heading">
+              <span id="focus-controls-heading" class="sr-only">Choose which elements to show or hide</span>
+              
+              ${tocButtonHTML}
+              
+<button type="button" 
+                      id="toggle-sidebar" 
+                      class="focus-toggle-btn"
+                      aria-pressed="true"
+                      aria-describedby="sidebar-help">
+                  <span aria-hidden="true">⚙️</span> <span class="toggle-text">Hide Tools & Settings</span>
+              </button>
+              <div id="sidebar-help" class="sr-only">Toggle visibility of the document tools and accessibility settings</div>
+              
+              <button type="button" 
+                      id="focus-mode" 
+                      class="focus-toggle-btn focus-mode-btn"
+                      aria-pressed="false"
+                      aria-describedby="focus-help">
+                  <span aria-hidden="true">🎯</span> <span class="focus-mode-text">Enable Focus Mode</span>
+              </button>
+              <div id="focus-help" class="sr-only">Hide all distractions and show only the main content</div>
+          </div>
+          
+          <!-- Status announcements for screen readers -->
+          <div id="focus-announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+      </div>`;
+  }
+
+  /**
    * Enhanced document structure processing with integrated layout
    */
   function enhanceDocumentStructure(content, metadata) {
@@ -1944,7 +2348,7 @@ const ContentGenerator = (function () {
       const hasTOC = metadata.sections && metadata.sections.length > 0;
       let holyGrailStructure = `<div class="document-wrapper${
         hasTOC ? "" : " no-toc"
-      }">\n`;
+      }">`;
 
       // ADD SKIP LINKS (first in tab order)
       holyGrailStructure += "    <!-- Skip Navigation Links -->\n";
@@ -1976,9 +2380,12 @@ const ContentGenerator = (function () {
         "    <!-- Navigation hidden via CSS but preserved for potential future use -->\n";
       holyGrailStructure += "</nav>\n\n";
 
-      // Main content area with ID
+      // Main content area with ID and distraction-free controls
       holyGrailStructure +=
         '<main id="main" class="document-content" role="main">\n';
+
+      // Add distraction-free controls for neurodivergent users
+      holyGrailStructure += generateDistractionFreeControls(metadata) + "\n";
 
       // Enhance theorem environments before adding to content
       enhancedContent = enhanceTheoremEnvironments(enhancedContent);
@@ -2091,6 +2498,433 @@ const ContentGenerator = (function () {
   
   // Initialize immediately or wait for DOM
   initializeTableAccessibility();
+})();
+
+// Distraction-Free Mode Controller for Neurodivergent Users
+(function() {
+    'use strict';
+    
+    // ===========================================================================================
+    // LOGGING CONFIGURATION (IIFE SCOPE)
+    // ===========================================================================================
+
+    const LOG_LEVELS = {
+        ERROR: 0,
+        WARN: 1,
+        INFO: 2,
+        DEBUG: 3,
+    };
+
+    const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+    const ENABLE_ALL_LOGGING = false;
+    const DISABLE_ALL_LOGGING = false;
+
+    function shouldLog(level) {
+        if (DISABLE_ALL_LOGGING) return false;
+        if (ENABLE_ALL_LOGGING) return true;
+        return level <= DEFAULT_LOG_LEVEL;
+    }
+
+    function logError(message, ...args) {
+        if (shouldLog(LOG_LEVELS.ERROR))
+            console.error("[DistractionFree]", message, ...args);
+    }
+
+    function logWarn(message, ...args) {
+        if (shouldLog(LOG_LEVELS.WARN))
+            console.warn("[DistractionFree]", message, ...args);
+    }
+
+    function logInfo(message, ...args) {
+        if (shouldLog(LOG_LEVELS.INFO))
+            console.log("[DistractionFree]", message, ...args);
+    }
+
+    function logDebug(message, ...args) {
+        if (shouldLog(LOG_LEVELS.DEBUG))
+            console.log("[DistractionFree]", message, ...args);
+    }
+    
+    class DistractionFreeManager {
+        constructor() {
+            this.state = {
+                tocVisible: true,
+                sidebarVisible: true,
+                focusMode: false
+            };
+            this.elements = {
+                wrapper: null,
+                toc: null,
+                sidebar: null,
+                content: null,
+                announcements: null,
+                toggleTocBtn: null,
+                toggleSidebarBtn: null,
+                focusModeBtn: null
+            };
+            
+            logInfo("DistractionFreeManager initialised");
+        }
+        
+        initialize() {
+            try {
+                // Get DOM elements
+                this.elements.wrapper = document.querySelector('.document-wrapper');
+                this.elements.toc = document.querySelector('#toc, .table-of-contents');
+                this.elements.sidebar = document.querySelector('#sidebar, .document-sidebar');
+                this.elements.content = document.querySelector('.document-content');
+                this.elements.announcements = document.getElementById('focus-announcements');
+                
+// Get control buttons with null checks
+                this.elements.toggleTocBtn = document.getElementById('toggle-toc');
+                this.elements.toggleSidebarBtn = document.getElementById('toggle-sidebar');
+                this.elements.focusModeBtn = document.getElementById('focus-mode');
+                
+                // Check if elements exist
+                if (!this.elements.wrapper) {
+                    logWarn("Document wrapper not found");
+                    return false;
+                }
+                
+                // Handle missing TOC button gracefully (when document has no TOC)
+                if (!this.elements.toggleTocBtn) {
+                    logInfo("TOC toggle button not found - document has no table of contents");
+                    this.state.tocVisible = false; // No TOC means it's not visible
+                } else {
+                    logDebug("TOC toggle button found - document has table of contents");
+                }
+                
+                // Set up event listeners
+                this.setupEventListeners();
+                
+                // Initialize state based on existing elements
+                this.state.tocVisible = this.elements.toc && !this.elements.toc.classList.contains('hide-toc');
+                this.state.sidebarVisible = this.elements.sidebar && !this.elements.sidebar.classList.contains('hide-sidebar');
+                
+                // Update button states
+                this.updateButtonStates();
+                
+                logInfo("DistractionFreeManager successfully initialised");
+                return true;
+            } catch (error) {
+                logError("Error initialising DistractionFreeManager:", error);
+                return false;
+            }
+        }
+        
+setupEventListeners() {
+            // Only add TOC event listener if button exists
+            if (this.elements.toggleTocBtn) {
+                this.elements.toggleTocBtn.addEventListener('click', () => this.toggleToc());
+                logDebug("TOC toggle event listener added");
+            } else {
+                logDebug("TOC toggle button not present - skipping event listener");
+            }
+            
+            // Sidebar and focus mode buttons should always exist
+            if (this.elements.toggleSidebarBtn) {
+                this.elements.toggleSidebarBtn.addEventListener('click', () => this.toggleSidebar());
+                logDebug("Sidebar toggle event listener added");
+            } else {
+                logWarn("Sidebar toggle button not found");
+            }
+            
+            if (this.elements.focusModeBtn) {
+                this.elements.focusModeBtn.addEventListener('click', () => this.toggleFocusMode());
+                logDebug("Focus mode toggle event listener added");
+            } else {
+                logWarn("Focus mode toggle button not found");
+            }
+            
+            // Keyboard shortcuts (optional enhancement)
+            document.addEventListener('keydown', (event) => {
+                if (event.ctrlKey && event.altKey) {
+                    switch (event.key) {
+                        case 't':
+                        case 'T':
+                            event.preventDefault();
+                            this.toggleToc();
+                            break;
+                        case 's':
+                        case 'S':
+                            event.preventDefault();
+                            this.toggleSidebar();
+                            break;
+                        case 'f':
+                        case 'F':
+                            event.preventDefault();
+                            this.toggleFocusMode();
+                            break;
+                    }
+                } else if (event.key === 'Escape' && this.state.focusMode) {
+                    this.disableFocusMode();
+                }
+            });
+            
+            logDebug("Event listeners set up");
+        }
+        
+        toggleToc() {
+            if (!this.elements.toc) {
+                this.announceChange("Table of contents is not available");
+                return;
+            }
+            
+            this.state.tocVisible = !this.state.tocVisible;
+            
+            if (this.state.tocVisible) {
+                this.elements.toc.classList.remove('hide-toc');
+                this.announceChange("Table of contents shown");
+            } else {
+                this.elements.toc.classList.add('hide-toc');
+                this.announceChange("Table of contents hidden");
+                this.manageFocus(this.elements.toc);
+            }
+            
+            // If focus mode is active, disable it
+            if (this.state.focusMode) {
+                this.state.focusMode = false;
+            }
+            
+            this.updateGridLayout();
+            this.updateButtonStates();
+            this.updateIntelligentFocusMode(); 
+            logInfo("TOC toggled:", this.state.tocVisible ? "shown" : "hidden");
+        }
+        
+        toggleSidebar() {
+            if (!this.elements.sidebar) {
+                this.announceChange("Sidebar is not available");
+                return;
+            }
+            
+            this.state.sidebarVisible = !this.state.sidebarVisible;
+            
+            if (this.state.sidebarVisible) {
+                this.elements.sidebar.classList.remove('hide-sidebar');
+                this.announceChange("Tools and settings shown");
+            } else {
+                this.elements.sidebar.classList.add('hide-sidebar');
+                this.announceChange("Tools and settings hidden");
+                this.manageFocus(this.elements.sidebar);
+            }
+            
+            // If focus mode is active, disable it
+            if (this.state.focusMode) {
+                this.state.focusMode = false;
+            }
+            
+            this.updateGridLayout();
+            this.updateButtonStates();
+            this.updateIntelligentFocusMode(); 
+            logInfo("Sidebar toggled:", this.state.sidebarVisible ? "shown" : "hidden");
+        }
+        
+        toggleFocusMode() {
+            if (this.state.focusMode) {
+                this.disableFocusMode();
+            } else {
+                this.enableFocusMode();
+            }
+        }
+        
+        enableFocusMode() {
+            this.state.focusMode = true;
+            this.state.tocVisible = false;
+            this.state.sidebarVisible = false;
+            
+            // Hide elements
+            if (this.elements.toc) {
+                this.elements.toc.classList.add('hide-toc');
+                this.manageFocus(this.elements.toc);
+            }
+            
+            if (this.elements.sidebar) {
+                this.elements.sidebar.classList.add('hide-sidebar');
+                this.manageFocus(this.elements.sidebar);
+            }
+            
+            this.updateGridLayout();
+            this.updateButtonStates();
+            this.announceChange("Focus mode enabled. All distractions hidden. Press Escape to exit focus mode.");
+            logInfo("Focus mode enabled");
+        }
+        
+        disableFocusMode() {
+            this.state.focusMode = false;
+            this.state.tocVisible = true;
+            this.state.sidebarVisible = true;
+            
+            // Show elements
+            if (this.elements.toc) {
+                this.elements.toc.classList.remove('hide-toc');
+            }
+            
+            if (this.elements.sidebar) {
+                this.elements.sidebar.classList.remove('hide-sidebar');
+            }
+            
+            this.updateGridLayout();
+            this.updateButtonStates();
+            this.announceChange("Focus mode disabled. All elements restored.");
+            logInfo("Focus mode disabled");
+        }
+        
+updateGridLayout() {
+    if (!this.elements.wrapper) return;
+    
+    // Remove all distraction-free classes
+    this.elements.wrapper.classList.remove(
+        'distraction-free-mode',
+        'show-toc-only',
+        'show-sidebar-only'
+    );
+    
+    // Apply appropriate layout class
+    if (this.state.focusMode) {
+        this.elements.wrapper.classList.add('distraction-free-mode');
+    } else if (!this.state.tocVisible && this.state.sidebarVisible) {
+        this.elements.wrapper.classList.add('distraction-free-mode', 'show-sidebar-only');
+    } else if (this.state.tocVisible && !this.state.sidebarVisible) {
+        this.elements.wrapper.classList.add('distraction-free-mode', 'show-toc-only');
+    }
+    
+    logDebug("Grid layout updated");
+}
+
+updateIntelligentFocusMode() {
+    const contentOnlyState = !this.state.tocVisible && !this.state.sidebarVisible;
+    const shouldAutoEnableFocus = contentOnlyState && !this.state.focusMode;
+    
+    if (shouldAutoEnableFocus) {
+        logInfo("Auto-enabling focus mode - content only state detected");
+        this.state.focusMode = true;
+        this.updateButtonStates();
+        this.updateGridLayout();
+        this.announceChange("Focus mode automatically enabled - content only view");
+    }
+}
+        
+updateButtonStates() {
+            this.updateAriaPressed(this.elements.toggleTocBtn, this.state.tocVisible);
+            this.updateAriaPressed(this.elements.toggleSidebarBtn, this.state.sidebarVisible);
+            this.updateAriaPressed(this.elements.focusModeBtn, this.state.focusMode);
+            
+            // Update TOC button text
+            if (this.elements.toggleTocBtn) {
+                const tocTextElement = this.elements.toggleTocBtn.querySelector('.toggle-text');
+                if (tocTextElement) {
+                    tocTextElement.textContent = this.state.tocVisible ? 'Hide Table of Contents' : 'Show Table of Contents';
+                }
+            }
+            
+            // Update sidebar button text
+            if (this.elements.toggleSidebarBtn) {
+                const sidebarTextElement = this.elements.toggleSidebarBtn.querySelector('.toggle-text');
+                if (sidebarTextElement) {
+                    sidebarTextElement.textContent = this.state.sidebarVisible ? 'Hide Tools & Settings' : 'Show Tools & Settings';
+                }
+            }
+            
+            // Update focus mode button text
+            if (this.elements.focusModeBtn) {
+                const textElement = this.elements.focusModeBtn.querySelector('.focus-mode-text');
+                if (textElement) {
+                    textElement.textContent = this.state.focusMode ? 'Disable Focus Mode' : 'Enable Focus Mode';
+                }
+            }
+            
+            logDebug("Button states updated");
+        }
+        
+        updateAriaPressed(button, pressed) {
+            if (button) {
+                button.setAttribute('aria-pressed', pressed.toString());
+            }
+        }
+        
+        announceChange(message) {
+            if (this.elements.announcements) {
+                this.elements.announcements.textContent = message;
+                
+                // Clear announcement after 3 seconds
+                setTimeout(() => {
+                    if (this.elements.announcements) {
+                        this.elements.announcements.textContent = '';
+                    }
+                }, 3000);
+            }
+            
+            // Also use AppConfig if available
+            if (window.AppConfig && typeof window.AppConfig.announceToScreenReader === 'function') {
+                window.AppConfig.announceToScreenReader(message);
+            }
+        }
+        
+        manageFocus(hiddenElement) {
+            // If the currently focused element is inside the hidden element, move focus
+            if (document.activeElement && hiddenElement.contains(document.activeElement)) {
+                if (this.elements.content) {
+                    this.elements.content.focus();
+                } else {
+                    document.getElementById('main')?.focus() || document.body.focus();
+                }
+            }
+        }
+        
+        // Public API
+        getState() {
+            return { ...this.state };
+        }
+        
+        isReady() {
+            return !!(this.elements.wrapper && this.elements.content);
+        }
+    }
+    
+// Initialize when DOM is ready - ONLY when distraction-free controls exist
+function initializeDistractionFree() {
+    // ✅ GUARD: Prevent initialization during export generation
+    if (window.exportGenerationInProgress) {
+        logDebug("Skipping DistractionFreeManager initialization - export in progress");
+        return;
+    }
+    
+    // ✅ GUARD: Only initialize if distraction-free controls exist in DOM
+    if (!document.querySelector('.distraction-free-controls')) {
+        logDebug("Skipping DistractionFreeManager initialization - no distraction-free controls found");
+        return;
+    }
+    
+    // ✅ GUARD: Prevent duplicate initialization
+    if (window.distractionFreeManager) {
+        logDebug("DistractionFreeManager already exists - skipping initialization");
+        return;
+    }
+    
+    try {
+        window.distractionFreeManager = new DistractionFreeManager();
+        const initialized = window.distractionFreeManager.initialize();
+        
+        if (initialized) {
+            logInfo("✅ Distraction-free mode ready for neurodivergent users");
+        } else {
+            logWarn("⚠️ Distraction-free mode initialization incomplete");
+        }
+    } catch (error) {
+        logError("Failed to initialise distraction-free mode:", error);
+    }
+}
+
+// ✅ IMPROVED: Use more reliable initialization trigger
+if (typeof window !== 'undefined' && window.document) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeDistractionFree);
+    } else {
+        // If DOM is already ready, wait a bit for content to be fully rendered
+        setTimeout(initializeDistractionFree, 100);
+    }
+}
 })();
 </script>`;
 
@@ -2656,7 +3490,7 @@ th:last-child, td:last-child {
         }
 
         /* Enhanced focus states for accessibility */
-        th:focus, td:focus {
+        th:focus-visible, td:focus-visble {
             background: var(--focus-bg);
             outline: 2px solid var(--focus-outline);
             outline-offset: -2px;
@@ -2862,13 +3696,13 @@ th:last-child, td:last-child {
         /* ===== TABLE ACCESSIBILITY ENHANCEMENTS ===== */
         
         /* Enhanced focus indicators for keyboard navigation */
-        table:focus {
+        table:focus-visble {
             outline: 2px solid var(--focus-outline);
             outline-offset: 2px;
         }
 
         /* Row and cell focus management */
-        tr[tabindex]:focus {
+        tr[tabindex]:focus-visible {
             background: var(--focus-bg);
             outline: 2px solid var(--focus-outline);
             outline-offset: -2px;
@@ -2929,7 +3763,7 @@ th:last-child, td:last-child {
             border: 0;
         }
 
-        .table-nav-help:focus {
+        .table-nav-help:focus-visible{
             position: static;
             width: auto;
             height: auto;
@@ -3042,6 +3876,7 @@ th:last-child, td:last-child {
   return {
     // CSS generation
     generateEnhancedCSS,
+    generateDistractionFreeCSS, // ✅ NEW: Distraction-free CSS
     minifyCSS,
     generateResponsiveImageCSS,
     generateTableCSS,
@@ -3058,6 +3893,7 @@ th:last-child, td:last-child {
 
     // Document structure
     enhanceDocumentStructure,
+    generateDistractionFreeControls, // ✅ NEW: Distraction-free controls
     enhanceTheoremEnvironments,
     addSectionAnchors,
 
