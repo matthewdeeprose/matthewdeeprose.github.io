@@ -1,6 +1,13 @@
 <div class="tool-group">
   <h4>Actions</h4>
   <button
+    class="action-button save-button"
+    onclick="try { if (window.saveCompleteDocument) { window.saveCompleteDocument(); } else { alert('Save function not ready. Please try again in a moment.'); } } catch(e) { console.error('Save error:', e); alert('Save failed: ' + e.message); }"
+    aria-label="Save this document as an HTML file"
+  >
+    <span aria-hidden="true">💾</span> Save Document
+  </button>
+  <button
     class="action-button print-button"
     onclick="window.print()"
     aria-label="Print this document"

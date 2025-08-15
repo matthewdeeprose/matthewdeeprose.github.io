@@ -342,14 +342,94 @@ const ExportManager = (function () {
 
       htmlComponents.push("</div>"); // Close document-wrapper
 
-      // Enhanced JavaScript with complete reading accessibility features
-      htmlComponents.push(await generateEnhancedJavaScript(accessibilityLevel));
-
-      // End document
+      // End document (but don't add JavaScript yet)
       htmlComponents.push("</body>");
       htmlComponents.push("</html>");
 
-      const finalHTML = htmlComponents.join("\n");
+      // Generate the complete HTML first
+      let preliminaryHTML = htmlComponents.join("\n");
+
+      // 🎯 SELF-CONTAINING BASE64 SOLUTION - ITERATIVE CONVERGENCE APPROACH
+      logInfo(
+        "🔧 Generating self-containing Base64 content through iterative convergence (Enhanced Pandoc)..."
+      );
+
+      // First generate JavaScript without embedded content for structure
+      const enhancedJS = await generateEnhancedJavaScript(accessibilityLevel);
+
+      // Create initial HTML with JavaScript but without Base64
+      let baseHTML = preliminaryHTML.replace(
+        "</body>\n</html>",
+        enhancedJS + "\n</body>\n</html>"
+      );
+
+      // Now implement iterative convergence for self-reference
+      let currentHTML = baseHTML;
+      let previousBase64 = "";
+      let iteration = 0;
+      // Change maxIterations value to increase number of possible saves that can be made
+      // This will increase file size
+      // After maxIterations -1 the save function will stop working properly
+      const maxIterations = 5;
+      let converged = false;
+
+      logInfo(
+        "🔄 Starting iterative Base64 generation for self-reference (Enhanced Pandoc)..."
+      );
+
+      while (iteration < maxIterations) {
+        // Create script with current Base64 (empty on first iteration)
+        const embeddedDataScript = `
+<!-- Embedded Original Content for Save Functionality -->
+<script id="original-content-data" type="application/x-original-html-base64">
+${previousBase64}
+</script>`;
+
+        // Insert script into HTML (before closing body tag)
+        currentHTML = baseHTML.replace(
+          "</body>",
+          embeddedDataScript + "\n</body>"
+        );
+
+        // Generate new Base64 from complete HTML
+        const newBase64 = btoa(unescape(encodeURIComponent(currentHTML)));
+
+        logDebug(
+          `Enhanced Pandoc - Iteration ${iteration}: Base64 length = ${newBase64.length} characters`
+        );
+
+        // Check for convergence (Base64 stabilises when self-referential)
+        if (newBase64 === previousBase64 && iteration > 0) {
+          logInfo(
+            `✅ Self-referential convergence achieved in ${iteration} iterations (Enhanced Pandoc)`
+          );
+          converged = true;
+          break;
+        }
+
+        previousBase64 = newBase64;
+        iteration++;
+      }
+
+      // Final HTML with self-referential Base64
+      const finalHTML = currentHTML;
+      const finalBase64Length = previousBase64.length;
+
+      if (converged) {
+        logInfo(
+          `✅ True self-containing Base64 generated (Enhanced Pandoc): ${finalBase64Length} characters`
+        );
+        logInfo(
+          `🔄 Base64 now contains HTML with exact same Base64 - perfect self-reference (Enhanced Pandoc)`
+        );
+      } else {
+        logWarn(
+          `⚠️ Convergence not achieved after ${maxIterations} iterations (Enhanced Pandoc), using best attempt`
+        );
+        logInfo(
+          `📊 Final Base64 length (Enhanced Pandoc): ${finalBase64Length} characters`
+        );
+      }
 
       logInfo(
         `🧪 Enhanced standalone HTML generated (${finalHTML.length} characters)`
@@ -373,6 +453,7 @@ const ExportManager = (function () {
 
   /**
    * Download HTML file utility
+   * Also stores the content for the save button functionality
    */
   function downloadHTMLFile(htmlContent, filename) {
     const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
@@ -388,6 +469,12 @@ const ExportManager = (function () {
     document.body.removeChild(downloadLink);
 
     URL.revokeObjectURL(url);
+
+    // Store this as the original HTML for future save operations
+    if (typeof window.storeOriginalDocumentHTML === "function") {
+      window.storeOriginalDocumentHTML(htmlContent);
+      logInfo("📄 Stored original HTML content for save functionality");
+    }
 
     logInfo(`Downloaded enhanced HTML file: ${filename}`);
   }
@@ -506,20 +593,92 @@ const ExportManager = (function () {
       // Add document footer
       htmlComponents.push(generateDocumentFooter());
 
-      htmlComponents.push("</div>"); // ✅ Close document-wrapper
+      htmlComponents.push("</div>"); // Close document-wrapper
 
-      // Enhanced JavaScript with reading accessibility features
+      // Enhanced JavaScript with complete reading accessibility features
       htmlComponents.push(await generateEnhancedJavaScript(accessibilityLevel));
 
       // End document
       htmlComponents.push("</body>");
       htmlComponents.push("</html>");
 
-      const finalHTML = htmlComponents.join("\n");
+      // Generate the initial HTML structure
+      let preliminaryHTML = htmlComponents.join("\n");
 
+      // 🎯 SELF-CONTAINING BASE64 SOLUTION - ITERATIVE CONVERGENCE APPROACH
       logInfo(
-        "✅ Enhanced HTML generation complete with screen reader controls and theme toggle"
+        "🔧 Generating self-containing Base64 content through iterative convergence..."
       );
+
+      // Implement iterative convergence to achieve true self-reference
+      let currentHTML = preliminaryHTML;
+      let previousBase64 = "";
+      let iteration = 0;
+      // Change maxIterations value to increase number of possible saves that can be made
+      // This will increase file size
+      // After maxIterations -1 the save function will stop working properly
+      const maxIterations = 5;
+      let converged = false;
+
+      logInfo("🔄 Starting iterative Base64 generation for self-reference...");
+
+      while (iteration < maxIterations) {
+        // Create script with current Base64 (empty on first iteration)
+        const embeddedDataScript = `
+<!-- Embedded Original Content for Save Functionality -->
+<script id="original-content-data" type="application/x-original-html-base64">
+${previousBase64}
+</script>`;
+
+        // Insert script into HTML
+        currentHTML = preliminaryHTML.replace(
+          "</body>",
+          embeddedDataScript + "\n</body>"
+        );
+
+        // Generate new Base64 from complete HTML
+        const newBase64 = btoa(unescape(encodeURIComponent(currentHTML)));
+
+        logDebug(
+          `Iteration ${iteration}: Base64 length = ${newBase64.length} characters`
+        );
+
+        // Check for convergence (Base64 stabilises when self-referential)
+        if (newBase64 === previousBase64 && iteration > 0) {
+          logInfo(
+            `✅ Self-referential convergence achieved in ${iteration} iterations`
+          );
+          converged = true;
+          break;
+        }
+
+        previousBase64 = newBase64;
+        iteration++;
+      }
+
+      // Final HTML with self-referential Base64
+      const finalHTML = currentHTML;
+      const finalBase64Length = previousBase64.length;
+
+      if (converged) {
+        logInfo(
+          `✅ True self-containing Base64 generated: ${finalBase64Length} characters`
+        );
+        logInfo(
+          `🔄 Base64 now contains HTML with exact same Base64 - perfect self-reference`
+        );
+        logInfo(
+          `🧪 Self-containing HTML generated (${finalHTML.length} characters)`
+        );
+        logInfo(
+          `♻️ Infinite save chain achieved: Each save preserves exact same structure`
+        );
+      } else {
+        logWarn(
+          `⚠️ Convergence not achieved after ${maxIterations} iterations, using best attempt`
+        );
+        logInfo(`📊 Final Base64 length: ${finalBase64Length} characters`);
+      }
       logInfo(
         "Accessibility level " +
           accessibilityLevel +
@@ -700,8 +859,12 @@ const ExportManager = (function () {
   /**
    * Generate enhanced JavaScript with reading accessibility features and MathJax controls
    * Now uses template system for initialization JavaScript
+   * ENHANCED: Embeds clean HTML for reliable save functionality
    */
-  async function generateEnhancedJavaScript(accessibilityLevel) {
+  async function generateEnhancedJavaScript(
+    accessibilityLevel,
+    cleanHTMLContent = null
+  ) {
     logInfo(
       "Generating enhanced JavaScript with complete accessibility functionality"
     );
@@ -709,6 +872,21 @@ const ExportManager = (function () {
     let html = "";
     html +=
       "    <!-- Enhanced Script with Reading Controls, Theme Toggle, Focus Tracking, and MathJax Controls -->\n";
+
+    // ✅ NEW: Embed clean HTML content as Base64 for save functionality
+    if (cleanHTMLContent) {
+      html += `    <script id="original-content-data" type="application/x-original-html-base64">\n`;
+      // Convert to Base64 (handling Unicode properly)
+      const base64Content = btoa(
+        unescape(encodeURIComponent(cleanHTMLContent))
+      );
+      html += base64Content;
+      html += `\n    </script>\n`;
+      logInfo(
+        `✅ Embedded clean HTML content (${base64Content.length} Base64 characters)`
+      );
+    }
+
     html += "    <script>\n";
 
     // ✅ FIXED: Generate ReadingAccessibilityManager class separately with proper template processing
@@ -728,6 +906,211 @@ const ExportManager = (function () {
 
     // Generate theme management functionality
     html += await generateThemeManagementJS();
+
+    // Generate document save functionality
+    html += `
+    
+// ===========================================================================================
+// DOCUMENT SAVE FUNCTIONALITY  
+// ===========================================================================================
+
+// Global storage for original HTML content
+window.originalDocumentHTML = null;
+
+/**
+ * Save complete document functionality for exported HTML files
+ * Retrieves clean HTML from embedded Base64 data
+ * Guarantees no MathJax pollution in saved files
+ */
+window.saveCompleteDocument = function() {
+  console.log('🔥 saveCompleteDocument function called');
+  
+  try {
+    // Get the original static HTML content
+    let documentHtml;
+    let retrievalMethod = 'none'; // Track which method succeeded
+    
+    // ✅ PRIMARY METHOD: Retrieve from embedded Base64 data
+    const embeddedData = document.getElementById('original-content-data');
+    console.log('🔍 Looking for embedded data element...');
+    
+    if (embeddedData) {
+      console.log('✅ Found embedded data element');
+      try {
+        const base64Content = embeddedData.textContent.trim();
+        console.log('📊 Embedded Base64 data size:', base64Content.length, 'characters');
+        
+        // Show first 100 chars for debugging
+        console.log('🔍 Base64 preview:', base64Content.substring(0, 100) + '...');
+        
+        documentHtml = decodeURIComponent(escape(atob(base64Content)));
+        console.log('✅ Successfully decoded clean HTML from embedded Base64 data');
+        console.log('📊 Decoded content length:', documentHtml.length, 'characters');
+        retrievalMethod = 'embedded-base64';
+      } catch (decodeError) {
+        console.error('❌ Failed to decode embedded content:', decodeError);
+        console.error('Error details:', decodeError.message);
+        documentHtml = null;
+      }
+    } else {
+      console.warn('⚠️ No embedded data element found with ID "original-content-data"');
+      console.log('🔍 Available script elements:', document.querySelectorAll('script[type*="original"]').length);
+    }
+    
+    // FALLBACK 1: Use stored original HTML if available
+    if (!documentHtml && window.originalDocumentHTML) {
+      documentHtml = window.originalDocumentHTML;
+      console.warn('⚠️ Using FALLBACK 1: stored original HTML');
+      console.log('📊 Stored content length:', documentHtml.length, 'characters');
+      retrievalMethod = 'stored-original';
+    }
+    
+    // FALLBACK 2: Attempt to clean current DOM
+    if (!documentHtml) {
+      console.warn('⚠️ Using FALLBACK 2: attempting to clean current DOM');
+      documentHtml = window.cleanDynamicMathJaxContent(document.documentElement.outerHTML);
+      console.log('📊 Cleaned DOM length:', documentHtml ? documentHtml.length : 0, 'characters');
+      retrievalMethod = 'cleaned-dom';
+    }
+    
+    if (!documentHtml) {
+      throw new Error('Unable to retrieve document content for saving - all methods failed');
+    }
+    
+    console.log('✅ Content retrieved using method:', retrievalMethod);
+    
+    // Create filename based on document title
+    const title = document.title || 'Mathematical Document';
+    const cleanTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = cleanTitle + '_' + timestamp + '.html';
+    
+    // Create and trigger download
+    const blob = new Blob([documentHtml], { 
+      type: 'text/html;charset=utf-8' 
+    });
+    const url = URL.createObjectURL(blob);
+    
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = filename;
+    downloadLink.style.display = 'none';
+    downloadLink.setAttribute('aria-hidden', 'true');
+    
+    // Trigger download
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    // Clean up
+    setTimeout(function() {
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    // Announce to screen readers
+    if (typeof announceToScreenReader === 'function') {
+      announceToScreenReader('Document saved as ' + filename + '. The file contains all original formatting, mathematics, and accessibility features.');
+    }
+    
+console.log('✅ Document saved successfully:', filename);
+    console.log('📄 Final content length:', documentHtml.length, 'characters');
+    console.log('🎯 Save completed using retrieval method:', retrievalMethod);
+    
+  } catch (error) {
+    console.error('❌ Error saving document:', error);
+    console.error('Full error details:', error.stack);
+    alert("Sorry, there was an error saving the document. Please try using your browser's Save As function instead.");
+  }
+};
+
+/**
+ * Clean dynamic MathJax content from HTML to restore original state
+ * Removes runtime-generated styles and elements that can break functionality
+ */
+window.cleanDynamicMathJaxContent = function(html) {
+  console.log('🧹 Cleaning dynamic MathJax content from HTML');
+  
+  // Remove dynamic MathJax style elements added at runtime
+  let cleaned = html.replace(/<style[^>]*id="MJX-CHTML-styles"[^>]*>[\\s\\S]*?<\\/style>/gi, '');
+  cleaned = cleaned.replace(/<style[^>]*>\\s*\\.CtxtMenu_[\\s\\S]*?<\\/style>/gi, '');
+  cleaned = cleaned.replace(/<style[^>]*>\\s*\\.MJX_[\\s\\S]*?<\\/style>/gi, '');
+  
+  // Remove dynamic font-face declarations 
+  cleaned = cleaned.replace(/@font-face\\s*\\/\\*\\s*\\d+\\s*\\*\\/\\s*\\{[\\s\\S]*?\\}/gi, '');
+  
+  // Remove dynamic MathJax font styles
+  cleaned = cleaned.replace(/mjx-c\\.mjx-c[^{]*\\{[^}]*\\}/gi, '');
+  
+  // Remove MathJax accessibility live regions that are added dynamically
+  cleaned = cleaned.replace(/<div[^>]*class="MJX_LiveRegion"[^>]*>[\\s\\S]*?<\\/div>/gi, '');
+  cleaned = cleaned.replace(/<div[^>]*class="MJX_HoverRegion"[^>]*>[\\s\\S]*?<\\/div>/gi, '');
+  cleaned = cleaned.replace(/<div[^>]*class="MJX_ToolTip"[^>]*>[\\s\\S]*?<\\/div>/gi, '');
+  
+  // Remove any script elements that were added by MathJax dynamically
+  cleaned = cleaned.replace(/<script[^>]*src="[^"]*mathjax[^"]*a11y[^"]*"[^>]*><\\/script>/gi, '');
+  
+  console.log('✅ Cleaned dynamic MathJax content');
+  return cleaned;
+};
+
+/**
+ * Store original document HTML for later saving
+ * Call this when the document is first loaded
+ */
+window.storeOriginalDocumentHTML = function(htmlContent) {
+  window.originalDocumentHTML = htmlContent;
+  console.log('📄 Stored original document HTML for saving');
+  console.log('📊 Original content length:', htmlContent.length, 'characters');
+};
+
+// Note: Original content is now embedded as Base64 data, no runtime storage needed
+
+console.log('✅ Save document functionality loaded and ready');
+`;
+
+    // Test and verify save functionality
+    html += `
+
+// ===========================================================================================
+// SAVE FUNCTIONALITY VERIFICATION
+// ===========================================================================================
+
+// Verify function is properly defined
+setTimeout(function() {
+  if (typeof window.saveCompleteDocument === 'function') {
+    console.log('✅ saveCompleteDocument function verified and ready');
+  } else {
+    console.error('❌ saveCompleteDocument function not found!');
+  }
+}, 200);
+`;
+
+    // Store original HTML content for saving functionality
+    html += `
+    
+// ===========================================================================================
+// ORIGINAL CONTENT STORAGE FOR SAVE FUNCTIONALITY
+// ===========================================================================================
+
+// Verify embedded content is available
+setTimeout(function() {
+  const embeddedData = document.getElementById('original-content-data');
+  if (embeddedData) {
+    console.log('✅ Clean HTML content embedded and ready for saving');
+    console.log('📊 Embedded data size:', embeddedData.textContent.length, 'Base64 characters');
+    
+    // Also verify we can decode it
+    try {
+      const testDecode = atob(embeddedData.textContent.trim()).substring(0, 100);
+      console.log('✅ Embedded data decoding verified');
+    } catch (e) {
+      console.error('❌ Embedded data exists but cannot be decoded:', e);
+    }
+  } else {
+    console.warn('⚠️ No embedded clean content found - save functionality will use fallback methods');
+  }
+}, 100);
+`;
 
     // Generate form initialization (from external template) - Using centralized defaults
     html += await generateFormInitializationJS({

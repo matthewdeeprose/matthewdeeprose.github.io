@@ -119,6 +119,11 @@ const ContentGenerator = (function () {
             --success-color: #0A5D3A;        /* From your teal family, WCAG compliant */
             --warning-color: #8B4513;        /* Warm brown, complements your purple */
             --error-color: #8B2635;          /* Deep red, harmonises with your purple */
+
+                  --success-bg: #e8f5e8;
+            --success-text: #2d5a2d;
+            --success-border: #4a7c4a;
+            --success-hover: #d4f4d4;
             
             /* Interactive States */
             --focus-outline: var(--link-color);
@@ -146,6 +151,11 @@ const ContentGenerator = (function () {
             --success-color: #4ADE80;        /* Light green, works with your mint */
             --warning-color: #FCD34D;        /* Your yellow family extended */
             --error-color: #F87171;          /* Warm coral that works with your greys */
+
+            --success-bg: #2d5a2d;
+            --success-text: #e8f5e8;
+            --success-border: #4a7c4a;
+            --success-hover: #3d6a3d;
             
             --focus-outline: var(--link-color);
             --focus-bg: rgba(60, 186, 198, 0.12);
@@ -623,6 +633,23 @@ const ContentGenerator = (function () {
         .action-button:active {
             transform: translateY(0);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .action-button.save-button {
+            background: var(--success-bg, #e8f5e8);
+            color: var(--success-text, #2d5a2d);
+            border: 2px solid var(--success-border, #4a7c4a);
+        }
+            .action-button.save-button {margin-bottom: .5rem;}
+
+        .action-button.save-button:hover {
+            background: var(--success-hover, #d4f4d4);
+            transform: translateY(-1px);
+        }
+
+        .action-button.save-button:focus {
+            outline: 3px solid var(--focus-color);
+            outline-offset: 2px;
         }
 
         /* ===== THEME TOGGLE STYLING ===== */
@@ -1982,7 +2009,6 @@ const ContentGenerator = (function () {
 
       /* Dark mode adaptations for horizontal layout */
       [data-theme="dark"] .distraction-free-controls {
-          background: rgba(31, 41, 55, 0.5);
           border-left-color: var(--link-color);
       }
       
