@@ -1,53 +1,160 @@
+<section
+  class="sidebar-section accessibility-controls"
+  aria-label="Accessibility Configuration"
+>
+  <h3>
+    <svg
+      height="24"
+      width="24"
+      viewBox="0 0 21 21"
+      class="action-icon device-icon"
+      aria-hidden="true"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g fill="none" fill-rule="evenodd" transform="translate(5 4)">
+        <path
+          d="m2.5.5h6c1.1045695 0 2 .8954305 2 2v9c0 1.1045695-.8954305 2-2 2h-6c-1.1045695 0-2-.8954305-2-2v-9c0-1.1045695.8954305-2 2-2z"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="m.5 5.5h10"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <g fill="currentColor">
+          <circle cx="2.5" cy="7.5" r="1" />
+          <circle cx="4.5" cy="7.5" r="1" />
+          <circle cx="6.5" cy="7.5" r="1" />
+          <circle cx="8.5" cy="7.5" r="1" />
+          <circle cx="2.5" cy="9.5" r="1" />
+          <circle cx="4.5" cy="9.5" r="1" />
+          <circle cx="6.5" cy="9.5" r="1" />
+          <circle cx="8.5" cy="9.5" r="1" />
+          <circle cx="2.5" cy="11.5" r="1" />
+          <circle cx="4.5" cy="11.5" r="1" />
+          <circle cx="6.5" cy="11.5" r="1" />
+          <circle cx="8.5" cy="11.5" r="1" />
+        </g>
+      </g>
+    </svg>
+    MathJax Accessibility
+  </h3>
 
-        <section class="sidebar-section accessibility-controls" aria-label="Accessibility Configuration">
-            <h3><span aria-hidden="true">📱</span> MathJax Accessibility</h3>
-            
-            <!-- Zoom Configuration Controls -->
-            <div class="control-group">
-                <h4><span aria-hidden="true">🎯</span> Zoom Configuration (Dynamic)</h4>
-                <div class="radio-group" role="radiogroup" aria-labelledby="zoom-config-label">
-                    <span id="zoom-config-label" class="sr-only">Choose zoom trigger method</span>
-                    {{#each zoomOptions}}
-                    {{> zoomOption}}
-                    {{/each}}
-                </div>
-                
-                <div class="form-group slider-group">
-                    <label for="zoom-scale">Zoom scale:</label>
-                    <div class="slider-container">
-                        <input type="range" id="zoom-scale" min="150" max="400" step="25" value="{{zoomScale}}" 
-                               aria-describedby="zoom-scale-help" aria-valuetext="{{zoomScale}} percent">
-                        <span class="range-value" id="zoom-scale-value" aria-live="polite">{{zoomScale}}%</span>
-                    </div>
-                    <div id="zoom-scale-help" class="sr-only">Adjust zoom level from 150% to 400%</div>
-                </div>
-            </div>
-            
-            <!-- Screen Reader Support -->
-            <div class="control-group">
-                <h4><span aria-hidden="true">🔊</span> Screen Reader Support</h4>
-                <div class="form-group">
-                    <input type="checkbox" id="assistive-mathml" {{#if assistiveMathML}}checked{{/if}} 
-                           aria-describedby="mathml-help">
-                    <label for="assistive-mathml">Generate assistive MathML</label>
-                    <div id="mathml-help" class="sr-only">Creates hidden MathML for screen readers to read mathematical content</div>
-                </div>
-                <div class="form-group">
-                    <input type="checkbox" id="tab-navigation" {{#if tabNavigation}}checked{{/if}} 
-                           aria-describedby="tab-help">
-                    <label for="tab-navigation">Include in tab order</label>
-                    <div id="tab-help" class="sr-only">Include mathematical equations in keyboard tab navigation sequence</div>
-                </div>
-            </div>
-            
-            <!-- Usage Instructions -->
-            <div class="control-group usage-instructions">
-                <h4>How to use:</h4>
-                <ul class="usage-list">
-                    {{#each usageInstructions}}
-                    <li><strong>{{type}}:</strong> {{instruction}}</li>
-                    {{/each}}
-                </ul>
-            </div>
-        </section>
-      
+  <!-- Zoom Configuration Controls -->
+  <div class="control-group">
+    <h4>
+      <svg
+        height="24"
+        width="24"
+        viewBox="0 0 21 21"
+        class="action-icon zoom-icon"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g
+          fill="none"
+          fill-rule="evenodd"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          transform="translate(3 3)"
+        >
+          <circle cx="5.5" cy="5.5" r="5" />
+          <path d="m7.5 5.5h-4zm-2 2v-4z" />
+          <path d="m14.5 14.5-5.367-5.367" />
+        </g>
+      </svg>
+      Zoom Configuration (Dynamic)
+    </h4>
+    <div
+      class="radio-group"
+      role="radiogroup"
+      aria-labelledby="zoom-config-label"
+    >
+      <span id="zoom-config-label" class="sr-only"
+        >Choose zoom trigger method</span
+      >
+      {{#each zoomOptions}} {{> zoomOption}} {{/each}}
+    </div>
+
+    <div class="form-group slider-group">
+      <label for="zoom-scale">Zoom scale:</label>
+      <div class="slider-container">
+        <input
+          type="range"
+          id="zoom-scale"
+          min="150"
+          max="400"
+          step="25"
+          value="{{zoomScale}}"
+          aria-describedby="zoom-scale-help"
+          aria-valuetext="{{zoomScale}} percent"
+        />
+        <span class="range-value" id="zoom-scale-value" aria-live="polite"
+          >{{zoomScale}}%</span
+        >
+      </div>
+      <div id="zoom-scale-help" class="sr-only">
+        Adjust zoom level from 150% to 400%
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen Reader Support -->
+  <div class="control-group">
+    <h4>
+      <svg
+        height="24"
+        width="24"
+        viewBox="0 0 21 21"
+        class="action-icon sound-icon"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g
+          fill="none"
+          fill-rule="evenodd"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m6.5 8.5v4" />
+          <path d="m8.5 6.5v9" />
+          <path d="m10.5 9.5v2" />
+          <path d="m12.5 7.5v6.814" />
+          <path d="m14.5 4.5v12" />
+        </g>
+      </svg>
+      Screen Reader Support
+    </h4>
+    <div class="form-group">
+      <input type="checkbox" id="assistive-mathml" {{#if
+      assistiveMathML}}checked{{/if}} aria-describedby="mathml-help">
+      <label for="assistive-mathml">Generate assistive MathML</label>
+      <div id="mathml-help" class="sr-only">
+        Creates hidden MathML for screen readers to read mathematical content
+      </div>
+    </div>
+    <div class="form-group">
+      <input type="checkbox" id="tab-navigation" {{#if
+      tabNavigation}}checked{{/if}} aria-describedby="tab-help">
+      <label for="tab-navigation">Include in tab order</label>
+      <div id="tab-help" class="sr-only">
+        Include mathematical equations in keyboard tab navigation sequence
+      </div>
+    </div>
+  </div>
+
+  <!-- Usage Instructions -->
+  <div class="control-group usage-instructions">
+    <h4>How to use:</h4>
+    <ul class="usage-list">
+      {{#each usageInstructions}}
+      <li><strong>{{type}}:</strong> {{instruction}}</li>
+      {{/each}}
+    </ul>
+  </div>
+</section>

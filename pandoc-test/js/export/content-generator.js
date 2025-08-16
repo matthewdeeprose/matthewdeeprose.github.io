@@ -652,6 +652,98 @@ const ContentGenerator = (function () {
             outline-offset: 2px;
         }
 
+.action-button:hover .action-icon {
+  transform: scale(1.1);
+}
+
+.action-button {
+  stroke-width: 1.5; /* Adjust line thickness if needed */
+}
+  .action-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+  .theme-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-icon {
+    transition: none;
+  }
+}
+
+.theme-toggle:hover .theme-icon {
+  transform: rotate(15deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle:hover .theme-icon {
+    transform: none;
+  }
+}
+
+.theme-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+  .reset-icon {
+  transition: transform 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reset-icon {
+    transition: none;
+  }
+}
+
+.reset-button:hover .reset-icon {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reset-button:hover .reset-icon {
+    transform: none;
+  }
+}
+
+.reset-button:active .reset-icon {
+  transform: rotate(360deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reset-button:active .reset-icon {
+    transform: none;
+  }
+}
+  .heading-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+.action-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+
+
+
+
+
+
+@media (prefers-reduced-motion: reduce) {
+  .action-button:hover .action-icon {
+    transform: none;
+  }
+}
+
+
+
         /* ===== THEME TOGGLE STYLING ===== */
         .theme-toggle {
             width: 100%;
@@ -1922,7 +2014,7 @@ const ContentGenerator = (function () {
       .focus-toggle-btn {
           background: var(--body-bg);
           color: var(--body-text);
-          border: 2px solid var(--sidebar-border);
+  border: 2px solid var(--border-color);
           border-radius: 4px;
           padding: 0.35rem 0.6rem;
           font-size: 0.75rem;
@@ -1952,16 +2044,18 @@ const ContentGenerator = (function () {
       }
       
       /* Pressed state for toggle buttons */
-      .focus-toggle-btn[aria-pressed="false"] {
-          background: var(--error-color);
-          color: var(--body-bg);
-          border-color: var(--error-color);
-      }
+.focus-toggle-btn[aria-pressed="false"] {
+    background: var(--body-bg);
+    color: var( --border-color);
+    border-color: var( --border-color);
+}
       
-      .focus-toggle-btn[aria-pressed="false"]:hover {
-          background: color-mix(in srgb, var(--error-color) 85%, black 15%);
-          border-color: color-mix(in srgb, var(--error-color) 85%, black 15%);
-      }
+.focus-toggle-btn[aria-pressed="false"]:hover {
+    background:   var( --code-bg);
+    color: var( --body-text);
+    border-color:     var( --body-text);
+
+}
       
       /* Focus mode button special styling */
       .focus-mode-btn {
@@ -1976,10 +2070,11 @@ const ContentGenerator = (function () {
           border-color: color-mix(in srgb, var(--success-color) 85%, black 15%);
       }
       
-      .focus-mode-btn[aria-pressed="true"] {
-          background: var(--warning-color);
-          border-color: var(--warning-color);
-      }
+.focus-mode-btn[aria-pressed="true"] {
+    color: var(  --warning-color);
+    background: var(--body-bg);
+	     border-color: var( --warning-color);
+}
       
       /* ===== DISTRACTION-FREE GRID LAYOUTS ===== */
       
@@ -2310,12 +2405,12 @@ const ContentGenerator = (function () {
     // Conditionally generate TOC button and help text
     const tocButtonHTML = hasTOC
       ? `
-              <button type="button" 
+<button type="button" 
                       id="toggle-toc" 
                       class="focus-toggle-btn"
                       aria-pressed="true"
                       aria-describedby="toc-help">
-                  <span aria-hidden="true">📑</span> <span class="toggle-text">Hide Table of Contents</span>
+                  <svg height="24" width="24" viewBox="0 0 21 21" class="action-icon toc-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m.5 12.5v-10c0-1.1045695.8954305-2 2-2h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2z"/><path d="m2.5 12.5v-10c0-1.1045695.8954305-2 2-2h-2c-1 0-2 .8954305-2 2v10c0 1.1045695 1 2 2 2h2c-1.1045695 0-2-.8954305-2-2z" fill="currentColor"/><path d="m7.5 10.5-3-3 3-3"/><path d="m12.5 7.5h-8"/></g></svg> <span class="toggle-text">Hide Table of Contents</span>
               </button>
               <div id="toc-help" class="sr-only">Toggle visibility of the table of contents navigation</div>
               `
@@ -2341,16 +2436,16 @@ const ContentGenerator = (function () {
                       class="focus-toggle-btn"
                       aria-pressed="true"
                       aria-describedby="sidebar-help">
-                  <span aria-hidden="true">⚙️</span> <span class="toggle-text">Hide Tools & Settings</span>
+                  <svg height="24" width="24" viewBox="0 0 21 21" class="action-icon settings-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m7.5.5c.35132769 0 .69661025.02588228 1.03404495.07584411l.50785434 1.53911115c.44544792.12730646.86820077.30839026 1.26078721.53578009l1.4600028-.70360861c.5166435.39719686.9762801.86487779 1.3645249 1.388658l-.7293289 1.44720284c.2201691.39604534.3936959.82158734.5131582 1.2692035l1.5298263.5338186c.0390082.29913986.0591302.60421522.0591302.91399032 0 .35132769-.0258823.69661025-.0758441 1.03404495l-1.5391112.50785434c-.1273064.44544792-.3083902.86820077-.5357801 1.26078721l.7036087 1.4600028c-.3971969.5166435-.8648778.9762801-1.388658 1.3645249l-1.4472029-.7293289c-.39604532.2201691-.82158732.3936959-1.26920348.5131582l-.5338186 1.5298263c-.29913986.0390082-.60421522.0591302-.91399032.0591302-.35132769 0-.69661025-.0258823-1.03404495-.0758441l-.50785434-1.5391112c-.44544792-.1273064-.86820077-.3083902-1.26078723-.5357801l-1.46000277.7036087c-.51664349-.3971969-.97628006-.8648778-1.36452491-1.388658l.72932886-1.4472029c-.2203328-.39633993-.39395403-.82222042-.51342462-1.27020241l-1.52968981-.53381682c-.03892294-.29882066-.05900023-.60356226-.05900023-.91299317 0-.35132769.02588228-.69661025.07584411-1.03404495l1.53911115-.50785434c.12730646-.44544792.30839026-.86820077.53578009-1.26078723l-.70360861-1.46000277c.39719686-.51664349.86487779-.97628006 1.388658-1.36452491l1.44720284.72932886c.39633995-.2203328.82222044-.39395403 1.27020243-.51342462l.53381682-1.52968981c.29882066-.03892294.60356226-.05900023.91299317-.05900023z" stroke-width=".933"/><circle cx="7.5" cy="7.5" r="3"/></g></svg> <span class="toggle-text">Hide Tools & Settings</span>
               </button>
               <div id="sidebar-help" class="sr-only">Toggle visibility of the document tools and accessibility settings</div>
               
-              <button type="button" 
+<button type="button" 
                       id="focus-mode" 
                       class="focus-toggle-btn focus-mode-btn"
                       aria-pressed="false"
                       aria-describedby="focus-help">
-                  <span aria-hidden="true">🎯</span> <span class="focus-mode-text">Enable Focus Mode</span>
+                  <svg height="24" width="24" viewBox="0 0 21 21" class="action-icon focus-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 2)"><path d="m8.5 14.5c3.3285018 0 6-2.6447124 6-5.97321429 0-3.32850184-2.6714982-6.02678571-6-6.02678571-3.32850184 0-6 2.69828387-6 6.02678571 0 3.32850189 2.67149816 5.97321429 6 5.97321429z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" fill="currentColor" r="3.5"/><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m.5 8.5h2"/><path d="m14.5 8.5h2"/><path d="m7.5 1.5h2" transform="matrix(0 1 -1 0 10 -7)"/><path d="m7.5 15.5h2" transform="matrix(0 1 -1 0 24 7)"/></g></g></svg> <span class="focus-mode-text">Enable Focus Mode</span>
               </button>
               <div id="focus-help" class="sr-only">Hide all distractions and show only the main content</div>
           </div>

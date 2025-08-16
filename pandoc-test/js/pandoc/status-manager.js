@@ -131,6 +131,52 @@ const StatusManager = (function () {
     }
 
     /**
+     * Update status with HTML content for icons
+     * @param {string} status - 'loading', 'ready', 'error'
+     * @param {string} htmlContent - HTML content to display
+     * @param {number} progress - Progress percentage (0-100)
+     */
+    updateStatusWithHTML(status, htmlContent, progress = 0) {
+      if (!this.isInitialised) {
+        logWarn("Status system not initialised, attempting update anyway");
+      }
+
+      logInfo(`Status HTML update: ${status} - ${progress}%`);
+
+      // Store current status
+      this.currentStatus = status;
+
+      // Update status icon
+      if (this.statusIcon) {
+        // Remove all status classes
+        this.statusIcon.classList.remove("loading", "ready", "error");
+        // Add new status class
+        this.statusIcon.classList.add(status);
+      }
+
+      // Update status text with HTML content
+      if (this.statusText) {
+        this.statusText.innerHTML = htmlContent;
+      }
+
+      // Update progress bar
+      if (this.statusProgressBar) {
+        this.statusProgressBar.style.width = `${progress}%`;
+      }
+
+      // Show/hide progress bar based on status
+      if (this.statusProgress) {
+        if (status === "loading" && progress > 0 && progress < 100) {
+          this.statusProgress.classList.add("visible");
+        } else {
+          this.statusProgress.classList.remove("visible");
+        }
+      }
+
+      logDebug(`Status HTML updated successfully: ${status}`);
+    }
+
+    /**
      * Update progress bar based on status and progress
      */
     updateProgress(status, progress) {
@@ -180,10 +226,31 @@ const StatusManager = (function () {
     }
 
     /**
-     * Set ready status
+     * Set ready status with automatic success icon for achievements
      */
-    setReady(message = "✨ Ready! Start creating mathematical documents...") {
-      this.updateStatus("ready", message, 100);
+    setReady(message = "Ready! Start creating mathematical documents...") {
+      // Check if this is a success/completion message that should get trophy icon
+      const isSuccessMessage =
+        message.includes("successfully") ||
+        message.includes("complete") ||
+        message.includes("processed") ||
+        message.includes("Ready for export");
+
+      if (isSuccessMessage) {
+        const successMessage = `
+      <svg class="action-icon trophy-icon" height="24" width="24" viewBox="0 0 21 21" aria-hidden="true">
+        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)">
+          <path d="m4.5.5h6c.5522847 0 1 .44771525 1 1v5c0 2.209139-1.790861 4-4 4s-4-1.790861-4-4v-5c0-.55228475.44771525-1 1-1z"/>
+          <path d="m7.5 10.5v3"/>
+          <path d="m4.5 13.5h6c.5522847 0 1 .4477153 1 1s-.4477153 1-1 1h-6c-.55228475 0-1-.4477153-1-1s.44771525-1 1-1zm7-11h2c.5522847 0 1 .44771525 1 1v1c0 1.1045695-.8954305 2-2 2h-1zm-8 0h-2c-.55228475 0-1 .44771525-1 1v1c0 1.1045695.8954305 2 2 2h1z"/>
+        </g>
+      </svg>
+      ${message}
+    `;
+        this.updateStatusWithHTML("ready", successMessage, 100);
+      } else {
+        this.updateStatus("ready", message, 100);
+      }
     }
 
     /**
@@ -273,12 +340,12 @@ const StatusManager = (function () {
     INIT_MEMORY: "Configuring memory management...",
     INIT_PANDOC: "Initialising Pandoc converter...",
     INIT_FINALISE: "Finalising setup...",
-    READY: "✨ Ready! Start creating mathematical documents...",
+    READY: "Ready! Start creating mathematical documents...",
     CONVERT_START: "Converting LaTeX to HTML...",
     CONVERT_MATH: "Processing mathematical expressions...",
     CONVERT_CLEAN: "Cleaning and formatting output...",
     CONVERT_MATHJAX: "Rendering mathematical expressions...",
-    CONVERT_COMPLETE: "🎉 Conversion complete! Ready for export.",
+    CONVERT_COMPLETE: "Conversion complete! Ready for export.",
     ERROR_INIT: "Initialisation failed",
     ERROR_CONVERT: "Conversion failed",
     ERROR_NETWORK: "Network connection error",

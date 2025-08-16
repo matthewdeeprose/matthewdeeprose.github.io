@@ -125,6 +125,208 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Theme toggle icon animations with reduced motion support */
+.theme-toggle-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle-icon {
+    transition: none;
+  }
+}
+
+.theme-toggle:hover .theme-toggle-icon {
+  transform: scale(1.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle:hover .theme-toggle-icon {
+    transform: none;
+  }
+}
+
+.moon-icon path {
+  stroke: currentColor;
+  fill: none;
+}
+
+.sun-icon path,
+.sun-icon circle {
+  stroke: currentColor;
+  fill: none;
+}
+
+/* Smooth theme transition for the icons */
+.theme-toggle-icon path,
+.theme-toggle-icon circle {
+  transition: stroke 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle-icon path,
+  .theme-toggle-icon circle {
+    transition: none;
+  }
+}
+/* Status text with icons */
+.status-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--body-text);
+  margin: 0;
+  line-height: 1.4;
+  transition: color 0.3s ease;
+}
+
+.trophy-icon {
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trophy-icon {
+    transition: none;
+  }
+}
+
+/* Success status styling */
+.status-icon.ready ~ .status-content .status-text {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+/* Celebration animation for success */
+.status-text:has(.trophy-icon) {
+  animation: celebrate 0.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-text:has(.trophy-icon) {
+    animation: none;
+  }
+}
+
+@keyframes celebrate {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.trophy-icon path {
+  stroke: currentColor;
+}
+
+/* Coffee cup icon for experimental features */
+.coffee-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coffee-icon {
+    transition: none;
+  }
+}
+
+/* Subtle steam animation for coffee icons */
+.coffee-icon:hover {
+  transform: scale(1.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coffee-icon:hover {
+    transform: none;
+  }
+}
+
+/* Optional: Steam effect animation */
+.coffee-icon {
+  position: relative;
+}
+
+.coffee-icon::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 2px;
+  height: 6px;
+  background: linear-gradient(transparent, currentColor);
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coffee-icon::after {
+    display: none;
+  }
+}
+
+.investigation-controls:hover .coffee-icon::after,
+label:hover .coffee-icon::after {
+  opacity: 0.3;
+  animation: steam 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .investigation-controls:hover .coffee-icon::after,
+  label:hover .coffee-icon::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes steam {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    opacity: 0.1;
+    transform: translateX(-50%) translateY(-3px);
+  }
+}
+
+.coffee-icon path {
+  stroke: currentColor;
+}
+
+/* Ensure labels with coffee icons align properly */
+label:has(.coffee-icon) {
+  align-items: center;
+  gap: 0.5rem;
+}
+/* Make experimental features feel more "special" */
+.investigation-controls .coffee-icon {
+  filter: drop-shadow(0 2px 4px rgba(139, 69, 19, 0.1));
+}
+
+.investigation-controls:hover .coffee-icon {
+  filter: drop-shadow(0 2px 8px rgba(139, 69, 19, 0.2));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .investigation-controls .coffee-icon,
+  .investigation-controls:hover .coffee-icon {
+    filter: none;
+  }
+}
+
 /* ===== ACCESSIBILITY - SCREEN READER ONLY CONTENT ===== */
 .sr-only {
   position: absolute;

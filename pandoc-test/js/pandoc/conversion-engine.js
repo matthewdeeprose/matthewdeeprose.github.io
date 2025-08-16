@@ -428,7 +428,7 @@ const ConversionEngine = (function () {
 
         if (window.StatusManager) {
           window.StatusManager.setReady(
-            "🎉 Complex document processed successfully!"
+            "Complex document processed successfully!"
           );
         }
 
