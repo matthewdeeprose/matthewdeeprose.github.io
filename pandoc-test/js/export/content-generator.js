@@ -258,9 +258,9 @@ const ContentGenerator = (function () {
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
         }
 
-        /* FIXED: Layout with TOC (3 columns, content flows naturally) - IMPROVED: Better proportions */
+/* FIXED: Layout with TOC (3 columns, content flows naturally) - IMPROVED: Better proportions */
         .document-wrapper:not(.no-toc) {
-            grid-template-columns: minmax(200px, 220px) 1fr minmax(300px, 360px);
+            grid-template-columns: minmax(220px, 240px) 1fr minmax(300px, 360px);
             grid-template-rows: auto auto;
             grid-template-areas: 
                 "toc content sidebar"
@@ -282,7 +282,7 @@ const ContentGenerator = (function () {
             display: none !important;
         }
 
-        /* ===== TABLE OF CONTENTS (Only when exists) ===== */
+/* ===== TABLE OF CONTENTS (Only when exists) ===== */
         .table-of-contents {
             grid-area: toc;
             background: var(--sidebar-bg);
@@ -290,6 +290,19 @@ const ContentGenerator = (function () {
             padding: 1.5rem;
             /* ENHANCED: Let content flow naturally without height constraints */
             /* Removed max-height and overflow-y to prevent scroll bars at zoom levels */
+        }
+
+        /* Visual heading for TOC using CSS pseudo-element */
+        .table-of-contents::before {
+            content: "Table of Contents";
+            display: block;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--heading-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            line-height: 1.3;
         }
 
         .document-wrapper.no-toc .table-of-contents {
@@ -365,7 +378,7 @@ const ContentGenerator = (function () {
             border-bottom: none;
         }
 
-        .sidebar-section h3 {
+.sidebar-section h2 {
             margin: 0 0 1rem 0;
             font-size: 1rem;
             font-weight: 600;
@@ -374,7 +387,7 @@ const ContentGenerator = (function () {
             padding-bottom: 0.5rem;
         }
 
-        .sidebar-section h4 {
+        .sidebar-section h3 {
             margin: 1.5rem 0 0.75rem 0;
             font-size: 0.9rem;
             font-weight: 600;
@@ -383,7 +396,7 @@ const ContentGenerator = (function () {
             letter-spacing: 0.05em;
         }
 
-        .sidebar-section h4:first-of-type {
+        .sidebar-section h3:first-of-type {
             margin-top: 0;
         }
 
@@ -749,7 +762,6 @@ const ContentGenerator = (function () {
             width: 100%;
             background: var(--surface-color);
             color: var(--body-text);
-            border: 2px solid var(--sidebar-border);
             border-radius: 8px;
             padding: 12px 16px;
             font-size: 14px;
@@ -1426,9 +1438,9 @@ const ContentGenerator = (function () {
     return `
         /* ===== LARGE SCREEN OPTIMIZATIONS ===== */
         @media (max-width: 1200px) {
-            /* IMPROVED: Better responsive TOC layout for tablets */
+            /* IMPROVED: Better responsive TOC layout for tablets - Enhanced TOC width */
             .document-wrapper:not(.no-toc) {
-                grid-template-columns: minmax(180px, 200px) 1fr minmax(280px, 320px);
+               grid-template-columns: minmax(220px, 240px) 1fr minmax(240px, 260px);
             }
         }
 
@@ -1438,11 +1450,11 @@ const ContentGenerator = (function () {
             }
             
             .document-wrapper.no-toc {
-                grid-template-columns: 1fr minmax(400px, 450px);
+                grid-template-columns: 1fr minmax(300px, 350px);
             }
             
-            .document-wrapper:not(.no-toc) {
-                grid-template-columns: minmax(220px, 240px) 1fr minmax(400px, 450px);
+.document-wrapper:not(.no-toc) {
+                grid-template-columns: minmax(240px, 260px) 1fr minmax(300px, 350px);
             }
             
 .document-content {
@@ -1868,7 +1880,7 @@ const ContentGenerator = (function () {
             margin: 0 0 3rem 0;
             text-align: left;
             box-shadow: 0 4px 20px var(--sidebar-shadow);
-            position: relative;
+
             /* FIXED: Remove overflow hidden and add proper text wrapping */
             box-sizing: border-box;
             max-width: 100%;
@@ -2014,16 +2026,18 @@ const ContentGenerator = (function () {
       .focus-toggle-btn {
           background: var(--body-bg);
           color: var(--body-text);
-  border: 2px solid var(--border-color);
+            border: 2px solid var(--border-color);
           border-radius: 4px;
           padding: 0.35rem 0.6rem;
           font-size: 0.75rem;
           font-weight: 400;
           cursor: pointer;
+          text-align:left;
           transition: all 0.3s ease;
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
+          	margin: 8px;
       }
       
       .focus-toggle-btn:hover {
@@ -2075,6 +2089,14 @@ const ContentGenerator = (function () {
     background: var(--body-bg);
 	     border-color: var( --warning-color);
 }
+
+
+.distraction-free-controls legend {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--heading-color);
+    padding: 0 0.5rem;
+}
       
       /* ===== DISTRACTION-FREE GRID LAYOUTS ===== */
       
@@ -2086,9 +2108,9 @@ const ContentGenerator = (function () {
               "footer" !important;
       }
       
-      /* Two column - TOC + content only */
+/* Two column - TOC + content only */
       .document-wrapper.distraction-free-mode.show-toc-only {
-          grid-template-columns: minmax(200px, 240px) 1fr !important;
+          grid-template-columns: minmax(220px, 260px) 1fr !important;
           grid-template-areas: 
               "toc content"
               "footer footer" !important;
@@ -2279,10 +2301,9 @@ const ContentGenerator = (function () {
       logInfo(`Generating TOC for ${sections.length} sections`);
 
       let tocHTML =
-        '\n        <nav class="table-of-contents" aria-label="Table of contents" tabindex="0">\n' +
-        "            <h2>Table of Contents</h2>\n";
+        '\n        <nav class="table-of-contents" aria-label="Table of contents" tabindex="0">\n';
 
-      // Build nested structure
+      // Build nested structure - heading now provided by CSS
       tocHTML += buildNestedTOC(sections, "            ");
 
       tocHTML += "\n        </nav>";
@@ -2370,10 +2391,9 @@ const ContentGenerator = (function () {
       logInfo(`Generating TOC with ID for ${sections.length} sections`);
 
       let tocHTML =
-        '\n        <nav id="toc" class="table-of-contents" aria-label="Table of contents" tabindex="0">\n' +
-        "            <h2>Table of Contents</h2>\n";
+        '\n        <nav id="toc" class="table-of-contents" aria-label="Table of contents" tabindex="0">\n';
 
-      // Build nested structure
+      // Build nested structure - heading now provided by CSS
       tocHTML += buildNestedTOC(sections, "            ");
 
       tocHTML += "\n        </nav>";
@@ -2421,38 +2441,37 @@ const ContentGenerator = (function () {
         metadata.sections ? metadata.sections.length : 0
       }`
     );
-
     return `
-      <!-- Distraction-Free Mode Controls for Neurodivergent Users -->
-      <div class="distraction-free-controls" role="region" aria-label="Distraction-free mode controls">
-          <h3 id="focusModeHeading">Focus Mode</h3>
-          <div class="focus-controls" role="group" aria-labelledby="focus-controls-heading">
-              <span id="focus-controls-heading" class="sr-only">Choose which elements to show or hide</span>
-              
-              ${tocButtonHTML}
-              
+    <!-- Distraction-Free Mode Controls for Neurodivergent Users -->
+    <fieldset class="distraction-free-controls" aria-label="Distraction-free mode controls">
+        <legend>Focus Mode</legend>
+        <div class="focus-controls" role="group" aria-labelledby="focus-controls-heading">
+            <span id="focus-controls-heading" class="sr-only">Choose which elements to show or hide</span>
+            
+            ${tocButtonHTML}
+            
 <button type="button" 
-                      id="toggle-sidebar" 
-                      class="focus-toggle-btn"
-                      aria-pressed="true"
-                      aria-describedby="sidebar-help">
-                  <svg height="24" width="24" viewBox="0 0 21 21" class="action-icon settings-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m7.5.5c.35132769 0 .69661025.02588228 1.03404495.07584411l.50785434 1.53911115c.44544792.12730646.86820077.30839026 1.26078721.53578009l1.4600028-.70360861c.5166435.39719686.9762801.86487779 1.3645249 1.388658l-.7293289 1.44720284c.2201691.39604534.3936959.82158734.5131582 1.2692035l1.5298263.5338186c.0390082.29913986.0591302.60421522.0591302.91399032 0 .35132769-.0258823.69661025-.0758441 1.03404495l-1.5391112.50785434c-.1273064.44544792-.3083902.86820077-.5357801 1.26078721l.7036087 1.4600028c-.3971969.5166435-.8648778.9762801-1.388658 1.3645249l-1.4472029-.7293289c-.39604532.2201691-.82158732.3936959-1.26920348.5131582l-.5338186 1.5298263c-.29913986.0390082-.60421522.0591302-.91399032.0591302-.35132769 0-.69661025-.0258823-1.03404495-.0758441l-.50785434-1.5391112c-.44544792-.1273064-.86820077-.3083902-1.26078723-.5357801l-1.46000277.7036087c-.51664349-.3971969-.97628006-.8648778-1.36452491-1.388658l.72932886-1.4472029c-.2203328-.39633993-.39395403-.82222042-.51342462-1.27020241l-1.52968981-.53381682c-.03892294-.29882066-.05900023-.60356226-.05900023-.91299317 0-.35132769.02588228-.69661025.07584411-1.03404495l1.53911115-.50785434c.12730646-.44544792.30839026-.86820077.53578009-1.26078723l-.70360861-1.46000277c.39719686-.51664349.86487779-.97628006 1.388658-1.36452491l1.44720284.72932886c.39633995-.2203328.82222044-.39395403 1.27020243-.51342462l.53381682-1.52968981c.29882066-.03892294.60356226-.05900023.91299317-.05900023z" stroke-width=".933"/><circle cx="7.5" cy="7.5" r="3"/></g></svg> <span class="toggle-text">Hide Tools & Settings</span>
-              </button>
-              <div id="sidebar-help" class="sr-only">Toggle visibility of the document tools and accessibility settings</div>
-              
+                    id="toggle-sidebar" 
+                    class="focus-toggle-btn"
+                    aria-pressed="true"
+                    aria-describedby="sidebar-help">
+                <svg height="24" width="24" viewBox="0 0 21 21" class="action-icon settings-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m7.5.5c.35132769 0 .69661025.02588228 1.03404495.07584411l.50785434 1.53911115c.44544792.12730646.86820077.30839026 1.26078721.53578009l1.4600028-.70360861c.5166435.39719686.9762801.86487779 1.3645249 1.388658l-.7293289 1.44720284c.2201691.39604534.3936959.82158734.5131582 1.2692035l1.5298263.5338186c.0390082.29913986.0591302.60421522.0591302.91399032 0 .35132769-.0258823.69661025-.0758441 1.03404495l-1.5391112.50785434c-.1273064.44544792-.3083902.86820077-.5357801 1.26078721l.7036087 1.4600028c-.3971969.5166435-.8648778.9762801-1.388658 1.3645249l-1.4472029-.7293289c-.39604532.2201691-.82158732.3936959-1.26920348.5131582l-.5338186 1.5298263c-.29913986.0390082-.60421522.0591302-.91399032.0591302-.35132769 0-.69661025-.0258823-1.03404495-.0758441l-.50785434-1.5391112c-.44544792-.1273064-.86820077-.3083902-1.26078723-.5357801l-1.46000277.7036087c-.51664349-.3971969-.97628006-.8648778-1.36452491-1.388658l.72932886-1.4472029c-.2203328-.39633993-.39395403-.82222042-.51342462-1.27020241l-1.52968981-.53381682c-.03892294-.29882066-.05900023-.60356226-.05900023-.91299317 0-.35132769.02588228-.69661025.07584411-1.03404495l1.53911115-.50785434c.12730646-.44544792.30839026-.86820077.53578009-1.26078723l-.70360861-1.46000277c.39719686-.51664349.86487779-.97628006 1.388658-1.36452491l1.44720284.72932886c.39633995-.2203328.82222044-.39395403 1.27020243-.51342462l.53381682-1.52968981c.29882066-.03892294.60356226-.05900023.91299317-.05900023z" stroke-width=".933"/><circle cx="7.5" cy="7.5" r="3"/></g></svg> <span class="toggle-text">Hide Tools & Settings</span>
+            </button>
+            <div id="sidebar-help" class="sr-only">Toggle visibility of the document tools and accessibility settings</div>
+            
 <button type="button" 
-                      id="focus-mode" 
-                      class="focus-toggle-btn focus-mode-btn"
-                      aria-pressed="false"
-                      aria-describedby="focus-help">
-                  <svg height="24" width="24" viewBox="0 0 21 21" class="action-icon focus-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 2)"><path d="m8.5 14.5c3.3285018 0 6-2.6447124 6-5.97321429 0-3.32850184-2.6714982-6.02678571-6-6.02678571-3.32850184 0-6 2.69828387-6 6.02678571 0 3.32850189 2.67149816 5.97321429 6 5.97321429z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" fill="currentColor" r="3.5"/><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m.5 8.5h2"/><path d="m14.5 8.5h2"/><path d="m7.5 1.5h2" transform="matrix(0 1 -1 0 10 -7)"/><path d="m7.5 15.5h2" transform="matrix(0 1 -1 0 24 7)"/></g></g></svg> <span class="focus-mode-text">Enable Focus Mode</span>
-              </button>
-              <div id="focus-help" class="sr-only">Hide all distractions and show only the main content</div>
-          </div>
-          
-          <!-- Status announcements for screen readers -->
-          <div id="focus-announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>
-      </div>`;
+                    id="focus-mode" 
+                    class="focus-toggle-btn focus-mode-btn"
+                    aria-pressed="false"
+                    aria-describedby="focus-help">
+                <svg height="24" width="24" viewBox="0 0 21 21" class="action-icon focus-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 2)"><path d="m8.5 14.5c3.3285018 0 6-2.6447124 6-5.97321429 0-3.32850184-2.6714982-6.02678571-6-6.02678571-3.32850184 0-6 2.69828387-6 6.02678571 0 3.32850189 2.67149816 5.97321429 6 5.97321429z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" fill="currentColor" r="3.5"/><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m.5 8.5h2"/><path d="m14.5 8.5h2"/><path d="m7.5 1.5h2" transform="matrix(0 1 -1 0 10 -7)"/><path d="m7.5 15.5h2" transform="matrix(0 1 -1 0 24 7)"/></g></g></svg> <span class="focus-mode-text">Enable Focus Mode</span>
+            </button>
+            <div id="focus-help" class="sr-only">Hide all distractions and show only the main content</div>
+        </div>
+        
+        <!-- Status announcements for screen readers -->
+        <div id="focus-announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+    </fieldset>`;
   }
 
   /**

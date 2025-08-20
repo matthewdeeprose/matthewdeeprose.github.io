@@ -10,11 +10,33 @@ class ReadingAccessibilityManager {
             paragraphSpacing: {{defaultParagraphSpacing}}
         };
         this.setupEventHandlers();
-        console.log('✅ Reading Accessibility Manager initialised');
+        console.log('✅ Reading Accessibility Manager initialised - CLASS TEMPLATE v2');
     }
 
     setupEventHandlers() {
+        // Sort font options alphabetically before setting up handlers
         const fontSelect = document.getElementById("font-family");
+        if (fontSelect && fontSelect.options.length > 0) {
+            const optionsArray = Array.from(fontSelect.options);
+            const selectedValue = fontSelect.value;
+            
+            // Sort alphabetically using British locale
+            optionsArray.sort(function(a, b) {
+                return a.text.localeCompare(b.text, 'en-GB');
+            });
+            
+            // Clear and re-populate
+            fontSelect.innerHTML = '';
+            optionsArray.forEach(function(option) {
+                fontSelect.appendChild(option);
+            });
+            
+            // Restore selection
+            fontSelect.value = selectedValue;
+            console.log('✅ Font options sorted alphabetically');
+        }
+        
+        // Font family selection
         if (fontSelect) {
             fontSelect.addEventListener("change", (e) => {
                 this.updateFontFamily(e.target.value);

@@ -586,6 +586,7 @@ const LaTeXProcessor = (function () {
 
   /**
    * Enhanced document metadata extraction from LaTeX and HTML content
+   * FIXED: Now correctly extracts Pandoc-generated HTML author/date classes
    */
   function extractDocumentMetadata(content) {
     logInfo("Extracting document metadata from content");
@@ -633,7 +634,10 @@ const LaTeXProcessor = (function () {
         }
       }
 
-      // Extract author
+      // ===========================================================================================
+      // FIXED: Extract author (LaTeX and Pandoc HTML formats)
+      // ===========================================================================================
+
       const latexAuthorMatch = content.match(/\\author\{([^}]+)\}/);
       if (latexAuthorMatch) {
         metadata.author = latexAuthorMatch[1]
@@ -641,16 +645,29 @@ const LaTeXProcessor = (function () {
           .trim();
         logDebug("Found LaTeX author:", metadata.author);
       } else {
+        // FIXED: Look for Pandoc's actual HTML class "author" (not "document-author")
         const htmlAuthorMatch = content.match(
-          /<[^>]+class="document-author"[^>]*>(.*?)<\/[^>]+>/i
+          /<p[^>]+class="author"[^>]*>(.*?)<\/p>/i
         );
         if (htmlAuthorMatch) {
           metadata.author = htmlAuthorMatch[1].replace(/<[^>]+>/g, "").trim();
-          logDebug("Found HTML author:", metadata.author);
+          logDebug("Found Pandoc HTML author:", metadata.author);
+        } else {
+          // Fallback: try the old "document-author" pattern
+          const oldAuthorMatch = content.match(
+            /<[^>]+class="document-author"[^>]*>(.*?)<\/[^>]+>/i
+          );
+          if (oldAuthorMatch) {
+            metadata.author = oldAuthorMatch[1].replace(/<[^>]+>/g, "").trim();
+            logDebug("Found document-author class:", metadata.author);
+          }
         }
       }
 
-      // Extract date
+      // ===========================================================================================
+      // FIXED: Extract date (LaTeX and Pandoc HTML formats)
+      // ===========================================================================================
+
       const latexDateMatch = content.match(/\\date\{([^}]+)\}/);
       if (latexDateMatch) {
         metadata.date = latexDateMatch[1]
@@ -658,12 +675,22 @@ const LaTeXProcessor = (function () {
           .trim();
         logDebug("Found LaTeX date:", metadata.date);
       } else {
+        // FIXED: Look for Pandoc's actual HTML class "date" (not "document-date")
         const htmlDateMatch = content.match(
-          /<[^>]+class="document-date"[^>]*>(.*?)<\/[^>]+>/i
+          /<p[^>]+class="date"[^>]*>(.*?)<\/p>/i
         );
         if (htmlDateMatch) {
           metadata.date = htmlDateMatch[1].replace(/<[^>]+>/g, "").trim();
-          logDebug("Found HTML date:", metadata.date);
+          logDebug("Found Pandoc HTML date:", metadata.date);
+        } else {
+          // Fallback: try the old "document-date" pattern
+          const oldDateMatch = content.match(
+            /<[^>]+class="document-date"[^>]*>(.*?)<\/[^>]+>/i
+          );
+          if (oldDateMatch) {
+            metadata.date = oldDateMatch[1].replace(/<[^>]+>/g, "").trim();
+            logDebug("Found document-date class:", metadata.date);
+          }
         }
       }
 

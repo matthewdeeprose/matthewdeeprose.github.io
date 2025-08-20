@@ -1,0 +1,39 @@
+<section class="credits-acknowledgements" aria-labelledby="credits-heading">
+    <h3 id="credits-heading">Credits and Acknowledgements</h3>
+    <ul class="credits-list">
+        <li>
+            <strong>Document Processing:</strong>
+            <a href="https://github.com/tweag/pandoc-wasm"  rel="noopener">pandoc-wasm</a>
+            -  version of pandoc CLI compiled as a standalone wasm32-wasi module that can be run by engines like wasmtime as well as browsers. <a href="https://github.com/tweag/pandoc-wasm?tab=MIT-1-ov-file">Pandoc-wasm is provided on an MIT licence</a>.</li>
+        
+        <li>
+            <strong>Mathematical Rendering:</strong>
+            <a href="https://www.mathjax.org/"  rel="noopener">MathJax</a>
+            - Beautiful and accessible math in all browsers. <a href="https://github.com/mathjax/MathJax/blob/master/LICENSE">MathJax is provided on an Apache License 2.0</a>.</li>
+        </li>
+        <li>
+            <strong>Syntax Highlighting:</strong>
+            <a href="https://prismjs.com/"  rel="noopener">Prism.js</a>
+            - Lightweight, extensible syntax highlighter. <a href="https://github.com/PrismJS/prism?tab=MIT-1-ov-file#readme">Prism.js is provided on an MIT License</a>.</li>
+        </li>
+        <li>
+            <strong>Accessibility Fonts:</strong>
+            <a href="https://opendyslexic.org/"  rel="noopener">OpenDyslexic</a> by <a href="https://abbiegonzalez.com/"  rel="noopener">Abbie Gonzalez</a>
+            - Font designed to increase readability for dyslexic readers. <a href="https://forge.hackers.town/antijingoist/opendyslexic/src/branch/main/OFL.txt">OpenDyslexic is provided through an SIL Open Font Licence</a>. <a href="https://qwerasd205.github.io/AnnotationMono/">Annotation Mono</a> - a handwriting-style monospace font by <a href="https://github.com/qwerasd205"  rel="noopener">Qwerasd</a>, provided as through a <a href="https://github.com/qwerasd205/AnnotationMono?tab=OFL-1.1-1-ov-file#readme">SIL Open Font License</a>.</li>
+        {{#if customCredits}}
+        {{#each customCredits}}
+        <li>
+            <strong>{{category}}:</strong>
+            {{#if url}}
+            <a href="{{url}}"  rel="noopener">{{name}}</a>
+            {{else}}
+            {{name}}
+            {{/if}}
+            {{#if description}}
+            - {{description}}
+            {{/if}}
+        </li>
+        {{/each}}
+        {{/if}}
+    </ul>
+</section>

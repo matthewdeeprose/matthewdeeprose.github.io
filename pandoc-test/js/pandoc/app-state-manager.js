@@ -271,7 +271,7 @@ const AppStateManager = (function () {
         }
 
         const { instance } = await WebAssembly.instantiateStreaming(
-          fetch("https://tweag.github.io/pandoc-wasm/pandoc.wasm"),
+          fetch("wasm/pandoc.wasm"),
           {
             wasi_snapshot_preview1: wasi.wasiImport,
           }
@@ -378,13 +378,20 @@ const AppStateManager = (function () {
           }, 300);
         }
 
-        // Enable export button
+        // Enable export buttons
         const exportButton =
           window.appElements?.exportButton ||
           document.getElementById("exportButton");
         if (exportButton) {
           exportButton.disabled = false;
           logInfo("✅ Export button enabled");
+        }
+
+        // Enable SCORM export button
+        const scormExportButton = document.getElementById("exportSCORMButton");
+        if (scormExportButton) {
+          scormExportButton.disabled = false;
+          logInfo("✅ SCORM export button enabled");
         }
 
         logInfo("✅ Module integrations setup complete");

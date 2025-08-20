@@ -48,6 +48,8 @@
       console.log("MathJax config set");
     </script>
     <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?version=3.98.0&features=es6"></script>
+    <!-- JSZip for SCORM package generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script
       id="MathJax-script"
       async
@@ -59,6 +61,20 @@
       rel="stylesheet"
       id="mainCSS"
       href="css/playground-styles.css"
+      media="all"
+    />
+
+    <link
+      rel="stylesheet"
+      id="modalCSS"
+      href="css/modal-styles.css"
+      media="all"
+    />
+
+    <link
+      rel="stylesheet"
+      id="notifCSS"
+      href="css/universal-notifications-playground.css"
       media="all"
     />
   </head>
@@ -149,6 +165,45 @@
               accessibility features, working MathJax equations, and offline
               capability.
             </span>
+            <!-- SCORM Export Button - Matching Current Export Button Structure -->
+            <button
+              id="exportSCORMButton"
+              class="scorm-export-btn"
+              aria-describedby="scorm-description"
+              disabled
+            >
+              <div class="scorm-export-btn-icon">
+                <svg
+                  class="icon"
+                  aria-hidden="true"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7,10 12,15 17,10" />
+                  <line x1="12" x2="12" y1="15" y2="3" />
+                  <rect x="9" y="1" width="6" height="2" rx="1" />
+                </svg>
+              </div>
+
+              <div class="scorm-export-btn-content">
+                <div class="scorm-export-btn-text">Export as SCORM Package</div>
+                <div class="scorm-export-btn-subtitle">
+                  LMS-ready with full accessibility
+                </div>
+              </div>
+            </button>
+
+            <!-- Screen reader description -->
+            <div id="scorm-description" class="sr-only">
+              Export as SCORM 2004 3rd Edition package for Learning Management
+              Systems. Includes all accessibility features and mathematical
+              interactivity compatible with most LMS platforms.
+            </div>
           </div>
         </div>
         <div class="examples-container">
@@ -466,7 +521,32 @@
                   type="button"
                   aria-describedby="refresh-help"
                 >
-                  🔄 Refresh Output to Use These Enhancement Settings
+                  <svg
+                    class="heading-icon reset-heading-icon"
+                    height="20"
+                    width="20"
+                    viewBox="0 0 21 21"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="matrix(0 1 1 0 2.5 2.5)"
+                    >
+                      <path
+                        d="m3.98652376 1.07807068c-2.38377179 1.38514556-3.98652376 3.96636605-3.98652376 6.92192932 0 4.418278 3.581722 8 8 8s8-3.581722 8-8-3.581722-8-8-8"
+                      ></path>
+                      <path
+                        d="m4 1v4h-4"
+                        transform="matrix(1 0 0 -1 0 6)"
+                      ></path>
+                    </g>
+                  </svg>
+                  Refresh Output to Use These Enhancement Settings
                 </button>
                 <div
                   id="refresh-help"
@@ -567,6 +647,9 @@
     <!-- Modular JavaScript Architecture -->
     <!-- Core Application Modules (Load Order is Critical) -->
     <script src="js/export/app-config.js"></script>
+    <!-- UI Systems (Load Early) -->
+    <script src="./js/ui/universal-modal.js"></script>
+    <script src="./js/ui/universal-notifications.js"></script>
     <!-- Foundation utilities -->
     <script src="js/export/mathjax-manager.js"></script>
     <!-- MathJax controls -->
@@ -576,7 +659,10 @@
     <!-- CSS & structure -->
     <script src="js/export/template-system.js"></script>
     <!-- HTML generation -->
+    <script src="js/export/download-monitor.js"></script>
     <script src="js/export/export-manager.js"></script>
+    <script src="./js/export/scorm-export-manager.js"></script>
+    <script src="js/export/source-viewer.js"></script>
     <!-- Export orchestration -->
 
     <!-- Application Feature Modules -->
@@ -618,6 +704,9 @@
     <script src="./js/testing/individual/test-app-state-manager.js"></script>
     <script src="./js/testing/individual/test-layout-debugger.js"></script>
     <script src="./js/testing/individual/test-table-enhancements.js"></script>
+    <script src="./js/testing/individual/test-scorm-export-manager.js"></script>
+    <script src="./js/testing/individual/test-download-monitor.js"></script>
+    <script src="js/testing/individual/test-source-viewer.js"></script>
     <script src="./js/testing/test-framework.js"></script>
     <script src="./js/testing/test-registry.js"></script>
     <script src="./js/testing/comprehensive/test-runner.js"></script>

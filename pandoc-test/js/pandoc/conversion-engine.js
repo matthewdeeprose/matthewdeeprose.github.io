@@ -1267,8 +1267,8 @@ const ConversionEngine = (function () {
           const successMessage = enhancedMode
             ? `🧪 Enhanced ${complexity.level} document converted! Check output for improvements.`
             : complexity.level === "basic"
-            ? "🎉 Conversion complete! Ready for export."
-            : `🎉 ${complexity.level} document converted successfully! Ready for export.`;
+            ? " Conversion complete! Ready for export."
+            : ` ${complexity.level} document converted successfully! Ready for export.`;
           window.StatusManager.setReady(successMessage);
         }
 

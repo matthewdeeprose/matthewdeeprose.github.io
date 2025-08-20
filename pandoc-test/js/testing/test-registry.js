@@ -82,6 +82,11 @@ const TestRegistry = (function () {
         module: "ExportManager",
       },
       {
+        name: "SCORMExportManager",
+        command: "testSCORMExportManager",
+        module: "SCORMExportManager",
+      },
+      {
         name: "ExampleSystem",
         command: "testExampleSystem",
         module: "ExampleSystem",
@@ -110,6 +115,11 @@ const TestRegistry = (function () {
         name: "LayoutDebugger",
         command: "testLayoutDebugger",
         module: "LayoutDebugger",
+      },
+      {
+        name: "SourceViewer",
+        command: "testSourceViewer",
+        module: "SourceViewer",
       },
     ],
     integration: [

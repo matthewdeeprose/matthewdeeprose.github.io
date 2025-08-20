@@ -124,6 +124,7 @@ const TemplateSystem = (function () {
     async loadExternalTemplates() {
       logInfo("🚀 GLOBAL: Loading external templates (singleton)...");
 
+      // List of external template files to load
       const externalTemplateFiles = [
         "reading-tools-section.html",
         "theme-toggle-section.html",
@@ -132,9 +133,13 @@ const TemplateSystem = (function () {
         "mathjax-accessibility-controls.html",
         "integrated-document-sidebar.html",
         "table-of-contents.html",
+        "embedded-fonts.html",
         "partials/font-option.html",
         "partials/width-option.html",
         "partials/zoom-option.html",
+        "prism-css.html",
+        "prism-js.html",
+        "credits-acknowledgements.html",
       ];
 
       const results = { loaded: [], failed: [] };
@@ -171,9 +176,13 @@ const TemplateSystem = (function () {
         "mathjax-accessibility-controls.html": "mathJaxAccessibilityControls",
         "integrated-document-sidebar.html": "integratedDocumentSidebar",
         "table-of-contents.html": "tableOfContents",
+        "embedded-fonts.html": "embedded-fonts",
         "partials/font-option.html": "fontOption",
         "partials/width-option.html": "widthOption",
         "partials/zoom-option.html": "zoomOption",
+        "prism-css.html": "prismCSS",
+        "prism-js.html": "prismJS",
+        "credits-acknowledgements.html": "creditsAcknowledgements",
       };
       return mappings[fileName] || fileName.replace(/\.html$/, "");
     },
@@ -1491,6 +1500,20 @@ const TemplateSystem = (function () {
               selected: false,
             },
             {
+              value: "OpenDyslexic, sans-serif",
+              label: "OpenDyslexic ('dyslexia-friendly')",
+              selected: false,
+            },
+            // ✅ VARIABLE FONT with weight options
+            {
+              value: "Annotation Mono, monospace",
+              label: "Annotation Mono (variable monospace)",
+              selected: false,
+              isVariable: true, // ✅ Flag for advanced features
+              weightRange: "100-1000",
+              supportsItalic: true,
+            },
+            {
               value: "'Times New Roman', serif",
               label: "Times New Roman (serif)",
               selected: false,
@@ -1516,17 +1539,26 @@ const TemplateSystem = (function () {
               selected: false,
             },
           ],
+          // ✅ ADD: Variable font weight options
+          variableFontWeights: [
+            { value: "300", label: "Light" },
+            { value: "400", label: "Regular" },
+            { value: "500", label: "Medium" },
+            { value: "600", label: "Semi-Bold" },
+            { value: "700", label: "Bold" },
+            { value: "800", label: "Extra Bold" },
+          ],
           widthOptions: [
             { value: "full", label: "Full width", selected: false },
-            { value: "wide", label: "Wide (80ch)", selected: false },
+            { value: "wide", label: "Wide", selected: false },
             {
               value: "narrow",
-              label: "Narrow (65ch) - Recommended",
+              label: "Narrow",
               selected: true,
             },
             {
               value: "extra-narrow",
-              label: "Extra narrow (50ch)",
+              label: "Extra narrow",
               selected: false,
             },
           ],
@@ -1725,6 +1757,7 @@ const TemplateSystem = (function () {
         "mathjax-accessibility-controls.html": "mathJaxAccessibilityControls",
         "integrated-document-sidebar.html": "integratedDocumentSidebar",
         "table-of-contents.html": "tableOfContents",
+        "embedded-fonts.html": "embedded-fonts",
         "partials/font-option.html": "fontOption",
         "partials/width-option.html": "widthOption",
         "partials/zoom-option.html": "zoomOption",
@@ -2249,25 +2282,23 @@ const TemplateSystem = (function () {
         const defaults = window.AppConfig?.CONFIG?.ACCESSIBILITY_DEFAULTS || {};
         const config = {
           // Template expects these EXACT variable names (without double braces)
-          defaultFontSize:
-            options.defaultFontSize || defaults.defaultFontSize || 1.0, // ✅ Number, not string
-          defaultFontFamily:
+          fontSize: options.defaultFontSize || defaults.defaultFontSize || 1.0, // ✅ Number, not string
+          fontFamily:
             options.defaultFontFamily ||
             defaults.defaultFontFamily ||
             "Verdana, sans-serif",
-          defaultReadingWidth:
+          readingWidth:
             options.defaultReadingWidth ||
             defaults.defaultReadingWidth ||
             "narrow",
-          defaultLineHeight:
+          lineHeight:
             options.defaultLineHeight || defaults.defaultLineHeight || 1.6, // ✅ Number, not string
-          defaultParagraphSpacing:
+          paragraphSpacing:
             options.defaultParagraphSpacing ||
             defaults.defaultParagraphSpacing ||
             1.0, // ✅ Number, not string
           advancedControls: accessibilityLevel >= 2,
         };
-
         // Process template variables using the engine's render method
         const tempTemplateName = "readingToolsSetupJS_temp";
         this.engine.templates.set(tempTemplateName, rawJavascriptContent);
@@ -2442,6 +2473,199 @@ const TemplateSystem = (function () {
         );
         throw new Error(`External template required: ${error.message}`);
       }
+    }
+
+    /**
+     * Generate embedded fonts CSS
+     * @param {Object} fontData - Base64 encoded font data (optional override)
+     * @returns {Promise<string>} CSS with embedded fonts
+     */
+    async generateEmbeddedFontsCSS(fontData = {}) {
+      const LOG_LEVELS = {
+        ERROR: 0,
+        WARN: 1,
+        INFO: 2,
+        DEBUG: 3,
+      };
+
+      const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+      const ENABLE_ALL_LOGGING = false;
+      const DISABLE_ALL_LOGGING = false;
+
+      function shouldLog(level) {
+        if (DISABLE_ALL_LOGGING) return false;
+        if (ENABLE_ALL_LOGGING) return true;
+        return level <= DEFAULT_LOG_LEVEL;
+      }
+
+      function logError(message, ...args) {
+        if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+      }
+
+      function logWarn(message, ...args) {
+        if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+      }
+
+      function logInfo(message, ...args) {
+        if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+      }
+
+      function logDebug(message, ...args) {
+        if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+      }
+
+      try {
+        logDebug("🔄 Loading embedded fonts template");
+
+        // Check if template is available
+        if (!this.engine.templates.has("embedded-fonts")) {
+          logWarn(
+            "⚠️ Embedded fonts template not found - graceful degradation"
+          );
+          return "";
+        }
+
+        // Load font data from external files or use provided data
+        const resolvedFontData = await this.loadFontData(fontData);
+
+        // ✅ Map AnnotationMonoVF data to template variables
+        const templateData = {
+          // OpenDyslexic (existing static font - direct mapping)
+          base64Regular: resolvedFontData.base64Regular,
+          base64Bold: resolvedFontData.base64Bold,
+          base64Italic: resolvedFontData.base64Italic,
+          base64BoldItalic: resolvedFontData.base64BoldItalic,
+
+          // ✅ AnnotationMonoVF variable font mapping
+          fontNameVariableBase64: resolvedFontData.base64AnnotationMonoVF,
+
+          // ✅ Conditional flag for template
+          hasFontNameVariable:
+            !!resolvedFontData.base64AnnotationMonoVF &&
+            resolvedFontData.base64AnnotationMonoVF !==
+              "YOUR_BASE64_PLACEHOLDER",
+        };
+
+        logDebug("🎨 Template data prepared:", {
+          staticFonts: 4,
+          variableFonts: templateData.hasFontNameVariable ? 1 : 0,
+          annotationMonoVFLength: templateData.fontNameVariableBase64
+            ? templateData.fontNameVariableBase64.length
+            : 0,
+        });
+
+        // Render template with mapped data
+        const css = this.engine.render("embedded-fonts", templateData);
+
+        logDebug("✅ Embedded fonts CSS generated successfully");
+        logInfo(
+          `🎯 Font CSS includes Annotation Mono: ${css.includes(
+            "Annotation Mono"
+          )}`
+        );
+
+        return css;
+      } catch (error) {
+        logError("❌ Failed to generate embedded fonts CSS:", error.message);
+        // Return empty string if fonts fail to load (graceful degradation)
+        return "";
+      }
+    }
+
+    /**
+     * Load OpenDyslexic font data from external files
+     * @param {Object} overrideFontData - Optional font data to override defaults
+     * @returns {Promise<Object>} Font data object with base64 strings
+     */
+    async loadFontData(overrideFontData = {}) {
+      const LOG_LEVELS = {
+        ERROR: 0,
+        WARN: 1,
+        INFO: 2,
+        DEBUG: 3,
+      };
+
+      const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+      const ENABLE_ALL_LOGGING = false;
+      const DISABLE_ALL_LOGGING = false;
+
+      function shouldLog(level) {
+        if (DISABLE_ALL_LOGGING) return false;
+        if (ENABLE_ALL_LOGGING) return true;
+        return level <= DEFAULT_LOG_LEVEL;
+      }
+
+      function logError(message, ...args) {
+        if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+      }
+
+      function logWarn(message, ...args) {
+        if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+      }
+
+      function logInfo(message, ...args) {
+        if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+      }
+
+      function logDebug(message, ...args) {
+        if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+      }
+
+      // Font file mapping
+      const fontFiles = {
+        regular: "fonts/opendyslexic-regular.txt",
+        bold: "fonts/opendyslexic-bold.txt",
+        italic: "fonts/opendyslexic-italic.txt",
+        boldItalic: "fonts/opendyslexic-bold-italic.txt",
+        AnnotationMonoVF: "fonts/AnnotationMono-VF.txt",
+      };
+
+      const fontData = {};
+
+      // Load each font file
+      for (const [variant, filepath] of Object.entries(fontFiles)) {
+        try {
+          // Use override data if provided
+          if (overrideFontData[variant]) {
+            fontData[
+              `base64${variant.charAt(0).toUpperCase() + variant.slice(1)}`
+            ] = overrideFontData[variant];
+            logDebug(`✅ Using provided font data for ${variant}`);
+            continue;
+          }
+
+          // Load from external file
+          logDebug(`🔄 Loading font file: ${filepath}`);
+          const response = await fetch(filepath);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const base64Data = (await response.text()).trim();
+          fontData[
+            `base64${variant.charAt(0).toUpperCase() + variant.slice(1)}`
+          ] = base64Data;
+
+          logDebug(`✅ Loaded ${variant} font (${base64Data.length} chars)`);
+        } catch (error) {
+          logWarn(
+            `⚠️ Failed to load ${variant} font from ${filepath}:`,
+            error.message
+          );
+          // Fallback to placeholder
+          fontData[
+            `base64${variant.charAt(0).toUpperCase() + variant.slice(1)}`
+          ] = "YOUR_BASE64_PLACEHOLDER";
+        }
+      }
+
+      logInfo(
+        `🎨 Font data loading complete: ${
+          Object.keys(fontData).length
+        }/4 variants loaded`
+      );
+      return fontData;
     }
 
     /**

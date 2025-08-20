@@ -1,0 +1,45 @@
+<!-- OpenDyslexic Font Family - Embedded for Offline Use -->
+<style>
+    @font-face {
+      font-family: "OpenDyslexic";
+      src: url("data:font/woff2;base64,{{base64Regular}}") format("woff2");
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "OpenDyslexic";
+      src: url("data:font/woff2;base64,{{base64Bold}}") format("woff2");
+      font-weight: bold;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "OpenDyslexic";
+      src: url("data:font/woff2;base64,{{base64Italic}}") format("woff2");
+      font-weight: normal;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "OpenDyslexic";
+      src: url("data:font/woff2;base64,{{base64BoldItalic}}") format("woff2");
+      font-weight: bold;
+      font-style: italic;
+      font-display: swap;
+    }
+  {{#if hasFontNameVariable}}
+    <!-- ✅ VARIABLE FONT - MULTIPLE FORMAT COMPATIBILITY -->
+    @font-face {
+      font-family: "Annotation Mono";
+      src: url("data:font/woff2;base64,{{fontNameVariableBase64}}") format("woff2 supports variations"),
+           url("data:font/woff2;base64,{{fontNameVariableBase64}}") format("woff2-variations"),
+           url("data:font/woff2;base64,{{fontNameVariableBase64}}") format("woff2") tech(variations);
+      font-weight: 100 1000;
+      font-display: swap;
+    }
+    {{/if}}
+</style>

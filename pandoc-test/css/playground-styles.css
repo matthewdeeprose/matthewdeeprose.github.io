@@ -64,6 +64,59 @@
   --sidebar-shadow: rgba(179, 219, 210, 0.05); /* Sidebar shadow */
 }
 
+/* Ensure toasts work with playground layout */
+.workspace .gb-toast-container,
+.workspace .universal-toast-container {
+  z-index: 2147483647; /* Above all playground content */
+}
+
+.upload-icon {
+  margin-right: 0.5rem;
+  vertical-align: text-top;
+}
+
+.document-list-icon {
+  vertical-align: middle;
+}
+
+details > summary:hover .action-icon {
+  transform: scale(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  details > summary:hover .action-icon {
+    transform: none;
+  }
+}
+
+.warning-icon {
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+.check-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .check-icon {
+    transition: none;
+  }
+}
+
+h4:hover .check-icon {
+  transform: scale(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  h4:hover .check-icon {
+    transform: none;
+  }
+}
+
 #pandoc-enhancement-preset {
   width: 100%;
   padding: 0.4rem;
@@ -881,7 +934,7 @@ input[type="text"]:hover {
 
 /* ===== MODERN EXPORT BUTTON ===== */
 .export-btn {
-  background: linear-gradient(135deg, var(--link-color), var(--link-hover));
+  background: var(--link-color);
   color: var(--body-bg);
   border: none;
   padding: 0;
@@ -924,7 +977,7 @@ input[type="text"]:hover {
 .export-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 46, 59, 0.35);
-  background: linear-gradient(135deg, var(--link-hover), #006b7a);
+  background: var(--link-hover);
 }
 
 .export-btn:active {
@@ -936,7 +989,7 @@ input[type="text"]:hover {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-  background: linear-gradient(135deg, var(--text-secondary), #64748b);
+  background: var(--text-secondary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -950,7 +1003,6 @@ input[type="text"]:hover {
 }
 
 .export-btn-icon {
-  background: rgba(255, 255, 255, 0.15);
   padding: 1rem;
   display: flex;
   align-items: center;
@@ -1001,17 +1053,17 @@ input[type="text"]:hover {
 
 /* Dark mode export button */
 [data-theme="dark"] .export-btn {
-  background: linear-gradient(135deg, var(--link-color), #5dd5e6);
+  background: var(--link-color);
   box-shadow: 0 4px 12px rgba(60, 186, 198, 0.25);
 }
 
 [data-theme="dark"] .export-btn:hover {
-  background: linear-gradient(135deg, #5dd5e6, var(--link-hover));
+  background: var(--link-hover);
   box-shadow: 0 8px 20px rgba(60, 186, 198, 0.35);
 }
 
 [data-theme="dark"] .export-btn:disabled {
-  background: linear-gradient(135deg, var(--text-secondary), #64748b);
+  background: var(--text-secondary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -1334,4 +1386,328 @@ mjx-container:focus-visible {
   * {
     transition: none !important;
   }
+}
+
+/* ===== SCORM EXPORT BUTTON - MATCHING MODERN STYLE ===== */
+.scorm-button {
+  background: var(--success-color);
+  color: var(--body-bg);
+  border: none;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(10, 93, 58, 0.25);
+  position: relative;
+  overflow: hidden;
+  min-width: 200px;
+  margin-left: 8px;
+}
+
+.scorm-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.scorm-button:hover::before {
+  transform: translateX(100%);
+}
+
+.scorm-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(10, 93, 58, 0.35);
+  background: var(--link-color);
+}
+
+.scorm-button:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(10, 93, 58, 0.25);
+}
+
+.scorm-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  background: var(--text-secondary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.scorm-button:disabled::before {
+  display: none;
+}
+
+.scorm-button:disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.scorm-button-icon {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px 0 0 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.scorm-button-content {
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  flex: 1;
+}
+
+.scorm-button-text {
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  letter-spacing: 0.025em;
+}
+
+.scorm-button-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.scorm-button .icon {
+  fill: none;
+  stroke: currentColor;
+  transition: transform 0.3s ease;
+}
+
+.scorm-button:hover .icon {
+  transform: translateY(-1px);
+}
+
+/* Dark mode SCORM button */
+[data-theme="dark"] .scorm-button {
+  background: var(--success-color);
+  box-shadow: 0 4px 12px rgba(74, 222, 128, 0.25);
+}
+
+[data-theme="dark"] .scorm-button:hover {
+  background: var(--link-color);
+  box-shadow: 0 8px 20px rgba(74, 222, 128, 0.35);
+}
+
+[data-theme="dark"] .scorm-button:disabled {
+  background: var(--text-secondary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== ENHANCED BUTTON STRUCTURE FOR SCORM ===== */
+/* If you want to use the advanced button structure like your export button */
+
+.scorm-export-btn {
+  background: var(--success-color);
+  color: var(--body-bg);
+  border: none;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(10, 93, 58, 0.25);
+  position: relative;
+  overflow: hidden;
+  min-width: 200px;
+  margin-left: 8px;
+}
+
+.scorm-export-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.scorm-export-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.scorm-export-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(10, 93, 58, 0.35);
+  background: var(--link-color);
+}
+
+.scorm-export-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(10, 93, 58, 0.25);
+}
+
+.scorm-export-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  background: var(--text-secondary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.scorm-export-btn:disabled::before {
+  display: none;
+}
+
+.scorm-export-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.scorm-export-btn-icon {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px 0 0 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.scorm-export-btn-content {
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  flex: 1;
+}
+
+.scorm-export-btn-text {
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  letter-spacing: 0.025em;
+}
+
+.scorm-export-btn-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.scorm-export-btn .icon {
+  fill: none;
+  stroke: currentColor;
+  transition: transform 0.3s ease;
+}
+
+.scorm-export-btn:hover .icon {
+  transform: translateY(-1px);
+}
+
+/* Dark mode SCORM export button */
+[data-theme="dark"] .scorm-export-btn {
+  background: var(--success-color);
+  box-shadow: 0 4px 12px rgba(74, 222, 128, 0.25);
+}
+
+[data-theme="dark"] .scorm-export-btn:hover {
+  background: var(--link-color);
+  box-shadow: 0 8px 20px rgba(74, 222, 128, 0.35);
+}
+
+[data-theme="dark"] .scorm-export-btn:disabled {
+  background: var(--text-secondary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== RESPONSIVE DESIGN FOR SCORM BUTTON ===== */
+@media (max-width: 768px) {
+  .scorm-button,
+  .scorm-export-btn {
+    min-width: auto;
+    width: 100%;
+    max-width: 280px;
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+
+  .scorm-button-content,
+  .scorm-export-btn-content {
+    padding: 0.75rem 1rem;
+  }
+
+  .scorm-button-text,
+  .scorm-export-btn-text {
+    font-size: 0.8rem;
+  }
+
+  .scorm-button-subtitle,
+  .scorm-export-btn-subtitle {
+    font-size: 0.7rem;
+  }
+}
+
+/* ===== HIGH CONTRAST MODE SUPPORT ===== */
+@media (prefers-contrast: high) {
+  .scorm-button,
+  .scorm-export-btn {
+    border-width: 3px;
+    font-weight: 700;
+  }
+}
+
+/* ===== REDUCED MOTION SUPPORT ===== */
+@media (prefers-reduced-motion: reduce) {
+  .scorm-button:hover,
+  .scorm-button:active,
+  .scorm-button:hover .icon,
+  .scorm-export-btn:hover,
+  .scorm-export-btn:active,
+  .scorm-export-btn:hover .icon {
+    transform: none;
+  }
+
+  .scorm-button::before,
+  .scorm-export-btn::before {
+    display: none;
+  }
+}
+
+.heading-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+#refresh-output-button {
+  margin: 0 0 0.75rem 0;
+  letter-spacing: 0.05em;
 }

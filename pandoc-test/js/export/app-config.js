@@ -85,35 +85,129 @@ const AppConfig = (function () {
   }
 
   /**
-   * Generate safe filename from metadata with enhanced logic
+   * Enhanced Academic Paper Style Filename Generation
+   * Format: Title_with_Underscores-Author_Year-Converted_on_YYYY-MM-DD.html
+   * Easy to adjust via configuration constants
    */
   function generateEnhancedFilename(metadata) {
     try {
-      const timestamp = new Date().toISOString().slice(0, 10);
-      let baseFilename = "";
+      // ===========================================================================================
+      // FILENAME CONFIGURATION (Easy to adjust)
+      // ===========================================================================================
 
-      if (metadata.title) {
-        baseFilename = metadata.title;
+      const FILENAME_CONFIG = {
+        // Main separators
+        WORD_SEPARATOR: "_", // For spaces within title/author names
+        SECTION_SEPARATOR: "-", // Between major sections (title-author-date)
+
+        // Section templates
+        CONVERSION_TEMPLATE: "Converted_on_", // Easy to change to "Exported_on_", "Typeset_on_", etc.
+
+        // Fallback values
+        DEFAULT_TITLE: "Mathematical_Document",
+        DEFAULT_AUTHOR: "Unknown_Author",
+        DEFAULT_YEAR: new Date().getFullYear().toString(),
+
+        // Length limits
+        MAX_TITLE_LENGTH: 60,
+        MAX_AUTHOR_LENGTH: 30,
+
+        // Character filtering
+        ALLOWED_CHARS_REGEX: /[^a-zA-Z0-9\s]/g, // Remove special characters
+        MULTIPLE_SPACES_REGEX: /\s+/g, // Collapse multiple spaces
+      };
+
+      // ===========================================================================================
+      // DATE PROCESSING
+      // ===========================================================================================
+
+      const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+
+      // ===========================================================================================
+      // TITLE PROCESSING
+      // ===========================================================================================
+
+      let processedTitle;
+      if (metadata.title && metadata.title.trim()) {
+        processedTitle = metadata.title
+          .trim()
+          .replace(FILENAME_CONFIG.ALLOWED_CHARS_REGEX, " ") // Remove special chars
+          .replace(FILENAME_CONFIG.MULTIPLE_SPACES_REGEX, " ") // Collapse spaces
+          .trim()
+          .slice(0, FILENAME_CONFIG.MAX_TITLE_LENGTH) // Limit length
+          .replace(/\s+/g, FILENAME_CONFIG.WORD_SEPARATOR); // Spaces to underscores
       } else {
-        baseFilename = "mathematical-document";
+        processedTitle = FILENAME_CONFIG.DEFAULT_TITLE;
       }
 
-      const safeFilename = baseFilename
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 50);
+      // ===========================================================================================
+      // AUTHOR PROCESSING
+      // ===========================================================================================
 
-      const filename = safeFilename + "-" + timestamp + ".html";
-      logInfo("Generated enhanced filename:", filename);
+      let processedAuthor;
+      if (metadata.author && metadata.author.trim()) {
+        processedAuthor = metadata.author
+          .trim()
+          .replace(FILENAME_CONFIG.ALLOWED_CHARS_REGEX, " ") // Remove special chars
+          .replace(FILENAME_CONFIG.MULTIPLE_SPACES_REGEX, " ") // Collapse spaces
+          .trim()
+          .slice(0, FILENAME_CONFIG.MAX_AUTHOR_LENGTH) // Limit length
+          .replace(/\s+/g, FILENAME_CONFIG.WORD_SEPARATOR); // Spaces to underscores
+      } else {
+        processedAuthor = FILENAME_CONFIG.DEFAULT_AUTHOR;
+      }
+
+      // ===========================================================================================
+      // YEAR PROCESSING
+      // ===========================================================================================
+
+      let documentYear;
+      if (metadata.date) {
+        // Try to extract year from various date formats
+        const yearMatch = metadata.date.match(/\b(19|20)\d{2}\b/);
+        documentYear = yearMatch ? yearMatch[0] : FILENAME_CONFIG.DEFAULT_YEAR;
+      } else {
+        documentYear = FILENAME_CONFIG.DEFAULT_YEAR;
+      }
+
+      // ===========================================================================================
+      // FILENAME ASSEMBLY (Academic Paper Style)
+      // ===========================================================================================
+
+      const filenameParts = [
+        processedTitle, // Mathematical_Foundations_A_Sample_Document
+        processedAuthor + FILENAME_CONFIG.WORD_SEPARATOR + documentYear, // Smith_2025
+        FILENAME_CONFIG.CONVERSION_TEMPLATE + timestamp, // Converted_on_2025-08-19
+      ];
+
+      const filename =
+        filenameParts.join(FILENAME_CONFIG.SECTION_SEPARATOR) + ".html";
+
+      // ===========================================================================================
+      // VALIDATION & LOGGING
+      // ===========================================================================================
+
+      logInfo("Generated academic filename:", filename);
+      logDebug("Filename components:", {
+        title: processedTitle,
+        author: processedAuthor,
+        year: documentYear,
+        timestamp: timestamp,
+        totalLength: filename.length,
+      });
+
       return filename;
     } catch (error) {
-      logError("Error generating filename:", error);
-      const fallbackFilename =
-        "mathematical-document-" +
-        new Date().toISOString().slice(0, 10) +
-        ".html";
+      logError("Error generating enhanced filename:", error);
+
+      // ===========================================================================================
+      // FALLBACK FILENAME (Academic Style)
+      // ===========================================================================================
+
+      const fallbackTimestamp = new Date().toISOString().slice(0, 10);
+      const fallbackFilename = `Mathematical_Document-Unknown_Author-Converted_on_${fallbackTimestamp}.html`;
+
+      logWarn("Using fallback filename:", fallbackFilename);
       return fallbackFilename;
     }
   }

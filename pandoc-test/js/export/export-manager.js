@@ -272,7 +272,7 @@ const ExportManager = (function () {
 
       // Enhanced head section with complete metadata
       htmlComponents.push(
-        generateEnhancedHead(documentTitle, metadata, accessibilityLevel)
+        await generateEnhancedHead(documentTitle, metadata, accessibilityLevel)
       );
 
       // Body and main content with complete structure
@@ -338,7 +338,17 @@ const ExportManager = (function () {
       }
 
       // Add document footer
-      htmlComponents.push(generateDocumentFooter());
+      // Add enhanced document footer with source viewer
+      // Get DOM elements safely (may not exist during testing)
+      const inputTextarea = document.getElementById("input");
+      const argumentsInput = document.getElementById("arguments");
+
+      const originalSource = inputTextarea?.value || "";
+      const pandocArgs =
+        argumentsInput?.value || "--from latex --to html5 --mathjax";
+      htmlComponents.push(
+        generateDocumentFooter(originalSource, pandocArgs, metadata)
+      );
 
       htmlComponents.push("</div>"); // Close document-wrapper
 
@@ -452,31 +462,80 @@ ${previousBase64}
   }
 
   /**
-   * Download HTML file utility
-   * Also stores the content for the save button functionality
+   * Download HTML file with enhanced filename generation
+   * @param {string} htmlContent - HTML content to download
+   * @param {string} baseTitle - Base title for filename
+   * @param {Object} metadata - Document metadata
    */
-  function downloadHTMLFile(htmlContent, filename) {
-    const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+  function downloadHTMLFile(htmlContent, baseTitle, metadata) {
+    logInfo("Preparing HTML file download...");
 
-    const downloadLink = document.createElement("a");
-    downloadLink.href = url;
-    downloadLink.download = filename;
-    downloadLink.style.display = "none";
-
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-
-    URL.revokeObjectURL(url);
-
-    // Store this as the original HTML for future save operations
-    if (typeof window.storeOriginalDocumentHTML === "function") {
-      window.storeOriginalDocumentHTML(htmlContent);
-      logInfo("📄 Stored original HTML content for save functionality");
+    // 🛡️ Prevent duplicate downloads
+    if (window.downloadInProgress) {
+      logWarn("Download already in progress - preventing duplicate");
+      return;
     }
+    window.downloadInProgress = true;
 
-    logInfo(`Downloaded enhanced HTML file: ${filename}`);
+    try {
+      const filename = window.AppConfig
+        ? window.AppConfig.generateEnhancedFilename(metadata)
+        : "mathematical_document.html";
+
+      const blob = new Blob([htmlContent], {
+        type: "text/html;charset=utf-8",
+      });
+
+      // 🛡️ Record download for duplicate detection
+      if (window.DownloadMonitor) {
+        window.DownloadMonitor.recordDownload(filename, {
+          type: "html",
+          size: blob.size,
+          source: "export-manager",
+          metadata: {
+            title: baseTitle,
+            sections: metadata?.sections?.length || 0,
+            hasAuthor: !!metadata?.author,
+            documentClass: metadata?.documentClass || "unknown",
+            generatedAt: new Date().toISOString(),
+          },
+        });
+      }
+
+      const url = URL.createObjectURL(blob);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = url;
+      downloadLink.download = filename;
+      downloadLink.style.display = "none";
+      downloadLink.setAttribute("aria-hidden", "true");
+
+      // 🛡️ Enhanced click protection
+      let hasClicked = false;
+      downloadLink.addEventListener("click", function () {
+        if (hasClicked) {
+          logWarn("Preventing duplicate click on download link");
+          return false;
+        }
+        hasClicked = true;
+        logInfo("Download link clicked successfully");
+      });
+
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      // Clean up
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        window.downloadInProgress = false;
+      }, 200);
+
+      logInfo("HTML file download initiated:", filename);
+    } catch (error) {
+      logError("Download failed:", error);
+      window.downloadInProgress = false;
+      throw error;
+    }
   }
 
   // ===========================================================================================
@@ -534,7 +593,7 @@ ${previousBase64}
 
       // Enhanced head section
       htmlComponents.push(
-        generateEnhancedHead(documentTitle, metadata, accessibilityLevel)
+        await generateEnhancedHead(documentTitle, metadata, accessibilityLevel)
       );
 
       // Body and main content
@@ -591,7 +650,20 @@ ${previousBase64}
         }
       }
       // Add document footer
-      htmlComponents.push(generateDocumentFooter());
+      // Add enhanced document footer with source viewer
+      // Get DOM elements safely (may not exist during testing)
+      const inputTextarea = document.getElementById("input");
+      const argumentsInput = document.getElementById("arguments");
+
+      const originalSource = inputTextarea?.value || "";
+      const pandocArgs =
+        argumentsInput?.value || "--from latex --to html5 --mathjax";
+      const footerHTML = await generateDocumentFooter(
+        originalSource,
+        pandocArgs,
+        metadata
+      );
+      htmlComponents.push(footerHTML);
 
       htmlComponents.push("</div>"); // Close document-wrapper
 
@@ -695,7 +767,7 @@ ${previousBase64}
   /**
    * Generate enhanced head section with all required components
    */
-  function generateEnhancedHead(title, metadata, accessibilityLevel) {
+  async function generateEnhancedHead(title, metadata, accessibilityLevel) {
     const headComponents = [];
 
     // Meta tags
@@ -730,6 +802,26 @@ ${previousBase64}
       );
     }
 
+    // Embedded OpenDyslexic fonts - asynchronous inclusion
+    try {
+      if (window.TemplateSystem) {
+        const generator = window.TemplateSystem.createGenerator();
+
+        // Load fonts asynchronously from external files
+        const embeddedFontsCSS = await generator.generateEmbeddedFontsCSS();
+
+        if (embeddedFontsCSS && embeddedFontsCSS.length > 0) {
+          headComponents.push(
+            "    " + embeddedFontsCSS.replace(/\n/g, "\n    ")
+          );
+          logInfo("✅ OpenDyslexic fonts embedded successfully");
+        } else {
+          logWarn("⚠️ Font CSS generation returned empty result");
+        }
+      }
+    } catch (error) {
+      logWarn("⚠️ Could not embed OpenDyslexic fonts:", error.message);
+    }
     headComponents.push(
       '    <meta name="keywords" content="mathematics, LaTeX, MathJax, accessibility, WCAG, reading tools, theme toggle">'
     );
@@ -755,9 +847,18 @@ ${previousBase64}
     headComponents.push(mathJaxConfig);
     headComponents.push("");
 
-    // Enhanced CSS generation
+    // Enhanced CSS generation with source viewer styles
     headComponents.push("    <style>");
     headComponents.push(window.ContentGenerator.generateEnhancedCSS());
+
+    // Add source viewer CSS if available
+    if (window.SourceViewer) {
+      headComponents.push("");
+      headComponents.push("/* Source Viewer Styles */");
+      const prismCSS = await window.SourceViewer.getPrismCSS();
+      headComponents.push(prismCSS);
+    }
+
     headComponents.push("    </style>");
     headComponents.push("</head>");
 
@@ -765,15 +866,50 @@ ${previousBase64}
   }
 
   /**
-   * Generate document footer
+   * Generate enhanced document footer with source viewer
+   * @param {string} originalSource - Original source content
+   * @param {string} pandocArgs - Pandoc arguments for language detection
+   * @param {Object} metadata - Document metadata
+   * @returns {string} HTML footer with embedded source viewer
    */
-  function generateDocumentFooter() {
-    let html = "";
-    html += '<footer class="document-footer" role="contentinfo">\n';
-    html += "    <p>Generated using Pandoc-WASM and MathJax</p>\n";
-    html += "    <p>What other information should appear in this footer?</p>\n";
-    html += "</footer>\n";
-    return html;
+  function generateDocumentFooter(
+    originalSource = "",
+    pandocArgs = "",
+    metadata = {}
+  ) {
+    try {
+      // Check if SourceViewer module is available
+      if (window.SourceViewer && originalSource.trim()) {
+        logDebug("Generating enhanced footer with source viewer");
+        return window.SourceViewer.generateEnhancedFooter(
+          originalSource,
+          pandocArgs,
+          metadata
+        );
+      } else {
+        // Fallback to basic footer
+        logWarn(
+          "SourceViewer not available or no source content, using basic footer"
+        );
+        const generationDate = new Date().toISOString().split("T")[0];
+        let html = "";
+        html += '<footer class="document-footer" role="contentinfo">\n';
+        html += `    <p>Generated on <time datetime="${generationDate}">${generationDate}</time> using Pandoc-WASM and MathJax</p>\n`;
+        html += "</footer>\n";
+        return html;
+      }
+    } catch (error) {
+      logError("Error generating enhanced footer:", error);
+
+      // Error fallback
+      const generationDate = new Date().toISOString().split("T")[0];
+      let html = "";
+      html += '<footer class="document-footer" role="contentinfo">\n';
+      html += `    <p>Generated on <time datetime="${generationDate}">${generationDate}</time> using Pandoc-WASM and MathJax</p>\n`;
+      html += "    <p><em>Source viewing temporarily unavailable</em></p>\n";
+      html += "</footer>\n";
+      return html;
+    }
   }
 
   /**
@@ -1139,6 +1275,24 @@ setTimeout(function() {
     // ✅ CRITICAL FIX: Include MathJax Manager for sophisticated refresh dialog logic
     html += await generateMathJaxManagerJS();
 
+    // Add source viewer JavaScript for syntax highlighting
+    if (window.SourceViewer) {
+      html += "\n        // Source Viewer - Prism.js Syntax Highlighting\n";
+      const prismJS = await window.SourceViewer.getPrismJS();
+      html += "        " + prismJS.split("\n").join("\n        ") + "\n";
+
+      // Add accessibility enhancements
+      html += `
+        
+        // Source Viewer - Accessibility Enhancements
+        document.addEventListener('DOMContentLoaded', function() {
+          if (window.SourceViewer && window.SourceViewer.enhanceAccessibility) {
+            window.SourceViewer.enhanceAccessibility();
+          }
+        });
+`;
+    }
+
     // ✅ PHASE 1 MIGRATION: Use template system for initialization
     try {
       if (window.TemplateSystem) {
@@ -1327,25 +1481,90 @@ setTimeout(function() {
 
       // Create blob and download
       logInfo("Creating download blob...");
+      // Create download blob
+      // Create download blob
       const blob = new Blob([standaloneHTML], {
         type: "text/html;charset=utf-8",
       });
-      const url = URL.createObjectURL(blob);
 
       // Create enhanced filename
       const filename = window.AppConfig.generateEnhancedFilename(metadata);
 
-      // Create temporary download link
-      const downloadLink = document.createElement("a");
-      downloadLink.href = url;
-      downloadLink.download = filename;
-      downloadLink.style.display = "none";
-      downloadLink.setAttribute("aria-hidden", "true");
+      // 🛡️ SINGLE DOWNLOAD ENFORCER
+      const downloadId = `export_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
 
-      // Trigger download
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
+      if (window.activeDownloads && window.activeDownloads.has(downloadId)) {
+        logWarn("Duplicate download prevented by ID system");
+        return;
+      }
+
+      window.activeDownloads = window.activeDownloads || new Set();
+      window.activeDownloads.add(downloadId);
+
+      let blobUrl = null; // ✅ Fixed: Declare outside scope
+
+      try {
+        // Use more reliable download method
+        if (navigator.msSaveBlob) {
+          // Internet Explorer/Edge
+          navigator.msSaveBlob(blob, filename);
+          logInfo("Downloaded using IE/Edge method");
+          window.activeDownloads.delete(downloadId); // Clean up immediately for IE
+        } else {
+          // Modern browsers - enhanced protection
+          blobUrl = URL.createObjectURL(blob); // ✅ Fixed: Use blobUrl variable
+          const downloadLink = document.createElement("a");
+          downloadLink.href = blobUrl;
+          downloadLink.download = filename;
+          downloadLink.style.display = "none";
+          downloadLink.setAttribute("aria-hidden", "true");
+          downloadLink.setAttribute("data-download-id", downloadId);
+
+          // Enhanced click protection
+          let hasTriggered = false;
+          const protectedClick = function (e) {
+            if (hasTriggered) {
+              e.preventDefault();
+              e.stopPropagation();
+              logWarn("Protected against duplicate click");
+              return false;
+            }
+            hasTriggered = true;
+            logInfo("Single protected download triggered");
+          };
+
+          downloadLink.addEventListener("click", protectedClick, true);
+
+          // Trigger download with protection
+          document.body.appendChild(downloadLink);
+
+          // Use requestAnimationFrame to ensure DOM is ready
+          requestAnimationFrame(() => {
+            downloadLink.click();
+
+            // Immediate cleanup
+            setTimeout(() => {
+              if (document.body.contains(downloadLink)) {
+                document.body.removeChild(downloadLink);
+              }
+              if (blobUrl) {
+                // ✅ Fixed: Check if blobUrl exists
+                URL.revokeObjectURL(blobUrl);
+              }
+              window.activeDownloads.delete(downloadId);
+            }, 100);
+          });
+        }
+      } catch (error) {
+        window.activeDownloads.delete(downloadId);
+        if (blobUrl) {
+          // ✅ Fixed: Clean up on error too
+          URL.revokeObjectURL(blobUrl);
+        }
+        throw error;
+      }
 
       // Clean up
       setTimeout(function () {
@@ -1431,36 +1650,84 @@ setTimeout(function() {
       "Setting up enhanced export event handlers with Screen Reader Enhancement support..."
     );
 
+    // ✅ ENHANCED: Global function guard to prevent multiple setups
+    if (window.exportHandlersSetup) {
+      logWarn("⚠️ Export handlers already set up globally - skipping");
+      return;
+    }
+
     // Find export button
     const exportButton = document.getElementById("exportButton");
 
     if (!exportButton) {
       logError("Export button not found - retrying in 100ms");
-      setTimeout(setupEnhancedExportHandlers, 100);
+      // ✅ ENHANCED: Add retry limit to prevent infinite retries
+      const retryCount = (window.exportButtonRetries || 0) + 1;
+      if (retryCount <= 5) {
+        window.exportButtonRetries = retryCount;
+        setTimeout(setupEnhancedExportHandlers, 100);
+      } else {
+        logError("❌ Export button not found after 5 retries - giving up");
+        window.exportButtonRetries = 0;
+      }
       return;
     }
 
-    // ✅ NEW: Check if already has our listener
+    // ✅ ENHANCED: Double-check for existing listeners
     if (exportButton.hasAttribute("data-export-initialized")) {
-      logWarn("Export button already initialized - skipping");
+      logWarn(
+        "Export button already initialized with data attribute - skipping"
+      );
+      window.exportHandlersSetup = true;
       return;
     }
 
-    // ✅ NEW: Mark as initialized
-    exportButton.setAttribute("data-export-initialized", "true");
+    // ✅ FIXED: Preserve button element - DON'T replace it
+    // Instead, store a reference to our handler to avoid duplicates
+    if (!window.exportButtonHandler) {
+      window.exportButtonHandler = function (e) {
+        logInfo("Enhanced export button clicked");
+        e.preventDefault();
 
-    // Click handler - now only added once
-    exportButton.addEventListener("click", function (e) {
-      logInfo("Enhanced export button clicked");
-      e.preventDefault();
-      exportEnhancedHTML();
-    });
+        // ✅ ENHANCED: Prevent double-clicks during export
+        if (window.exportGenerationInProgress) {
+          logWarn("Export already in progress - ignoring click");
+          return;
+        }
+
+        // 🛡️ NEW: Add download debouncing
+        const now = Date.now();
+        if (window.lastExportTime && now - window.lastExportTime < 1000) {
+          logWarn("Export called too quickly - ignoring to prevent duplicates");
+          return;
+        }
+        window.lastExportTime = now;
+
+        exportEnhancedHTML();
+      };
+    }
+
+    // ✅ FIXED: Remove any existing listeners without replacing the element
+    // This preserves AppStateManager's reference to the button
+    exportButton.removeEventListener("click", window.exportButtonHandler);
+
+    // Add our handler (safe even if it wasn't there before)
+    exportButton.addEventListener("click", window.exportButtonHandler);
+
+    // ✅ NEW: Mark as initialized at multiple levels
+    exportButton.setAttribute("data-export-initialized", "true");
+    window.exportHandlersSetup = true;
 
     // Make the enhanced function globally available for keyboard shortcut
     window.exportToHTML = exportEnhancedHTML;
 
-    // Title attribute removed - using aria-label instead for accessibility
-    // (exportButton already has comprehensive aria-label attribute) enhanced HTML with screen reader enhancement controls, working MathJax context menus, LaTeX preservation, Holy Grail layout, and comprehensive accessibility features"
+    // ✅ CRITICAL: Force enable the button if AppStateManager already ran
+    // This handles race conditions where AppStateManager enables the button
+    // before our handlers are attached, but the button gets disabled again
+    if (window.AppStateManager && window.AppStateManager.isReady()) {
+      exportButton.disabled = false;
+      logInfo("✅ Export button force-enabled (AppStateManager ready)");
+    }
 
     // Set up Dynamic MathJax Manager if not already available
     setTimeout(() => {
@@ -1474,18 +1741,33 @@ setTimeout(function() {
 
     logInfo("Enhanced export functionality initialised successfully");
     logDebug("Export button found and enhanced handlers attached");
+    logInfo("✅ Export handlers setup complete with button element preserved");
   }
 
   /**
    * Initialise enhanced export functionality with screen reader accessibility controls
    */
   function initialiseEnhancedExportFunctionality() {
+    // ✅ ENHANCED: Add call stack tracing for debugging
+    const caller = new Error().stack.split("\n")[2]?.trim() || "unknown";
     logInfo(
       "Initialising enhanced export functionality with Screen Reader Enhancement Controls..."
     );
+    logDebug("🔍 Initialization called from:", caller);
     logInfo(
       "Key features: Working MathJax context menus, Screen reader accessibility controls, LaTeX conversion, Holy Grail layout, accessibility configuration panel"
     );
+
+    // ✅ ENHANCED: Prevent duplicate initialization with more robust checking
+    if (window.exportFunctionalityInitialized) {
+      logWarn(
+        "⚠️ Export functionality already initialized - skipping duplicate"
+      );
+      logDebug("Previous initialization caller was logged above");
+      return;
+    }
+
+    window.exportFunctionalityInitialized = true;
 
     // Wait for DOM to be ready
     if (document.readyState === "loading") {
@@ -1493,7 +1775,9 @@ setTimeout(function() {
         "DOMContentLoaded",
         setupEnhancedExportHandlers
       );
+      logDebug("📋 Added DOMContentLoaded listener for export setup");
     } else {
+      logDebug("📋 DOM already ready - setting up export handlers immediately");
       setupEnhancedExportHandlers();
     }
   }
@@ -1633,5 +1917,22 @@ setTimeout(function() {
 // Make globally available for other modules
 window.ExportManager = ExportManager;
 
-// Auto-initialise when the script loads
-ExportManager.initialiseEnhancedExportFunctionality();
+// ===========================================================================================
+// GLOBAL INITIALIZATION GUARD
+// ===========================================================================================
+
+// Prevent duplicate module initialization
+if (!window.ExportManagerInitialized) {
+  window.ExportManagerInitialized = true;
+
+  // Auto-initialise when the script loads with duplicate prevention
+  ExportManager.initialiseEnhancedExportFunctionality();
+
+  ExportManager.logDebug(
+    "✅ ExportManager auto-initialization completed with global guard"
+  );
+} else {
+  ExportManager.logWarn(
+    "⚠️ ExportManager already initialized - skipping duplicate initialization"
+  );
+}
