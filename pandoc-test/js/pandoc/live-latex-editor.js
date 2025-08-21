@@ -61,6 +61,7 @@ const LiveLaTeXEditor = (function () {
       this.syncTimeout = null;
       this.observer = null;
       this.prismReady = false;
+      this.lastKnownContent = "";
 
       // Performance settings
       this.syncDelay = 150; // ms - debounce for performance
@@ -364,17 +365,19 @@ const LiveLaTeXEditor = (function () {
     }
 
     /**
-     * Debounced update to improve performance AND ensure conversion system integration
+     * Debounced update function to avoid excessive re-highlighting
      */
     debouncedUpdate() {
-      if (this.syncTimeout) {
-        clearTimeout(this.syncTimeout);
+      if (this.updateTimeout) {
+        clearTimeout(this.updateTimeout);
       }
 
-      this.syncTimeout = setTimeout(() => {
+      this.updateTimeout = setTimeout(() => {
         this.updateHighlighting();
-        this.syncHiddenInput(); // This now triggers conversion system events
-      }, this.options.syncDelay);
+        // Update content tracking before sync
+        this.lastKnownContent = this.getPlainTextContent();
+        this.syncHiddenInput();
+      }, this.syncDelay);
     }
 
     /**
@@ -423,27 +426,36 @@ const LiveLaTeXEditor = (function () {
     }
 
     /**
-     * Sync hidden input with contenteditable content AND trigger conversion
+     * Sync hidden input with contenteditable content AND trigger conversion ONLY when content changes
      */
     syncHiddenInput() {
+      const currentContent = this.getPlainTextContent();
+
       if (this.hiddenInput) {
-        this.hiddenInput.value = this.getPlainTextContent();
+        this.hiddenInput.value = currentContent;
       }
 
-      // CRITICAL: Also update original textarea and trigger its events for backward compatibility
+      // CRITICAL: Only trigger input events if content actually changed
       if (this.originalTextarea) {
-        this.originalTextarea.value = this.getPlainTextContent();
+        const previousValue = this.originalTextarea.value;
+        this.originalTextarea.value = currentContent;
 
-        // Trigger input event on original textarea to maintain real-time conversion
-        const inputEvent = new Event("input", {
-          bubbles: true,
-          cancelable: true,
-        });
-        this.originalTextarea.dispatchEvent(inputEvent);
+        // Only dispatch input event if content actually changed
+        if (previousValue !== currentContent) {
+          const inputEvent = new Event("input", {
+            bubbles: true,
+            cancelable: true,
+          });
+          this.originalTextarea.dispatchEvent(inputEvent);
 
-        logDebug(
-          "Triggered input event on original textarea for conversion system"
-        );
+          logDebug(
+            "Content changed - triggered input event on original textarea for conversion system"
+          );
+        } else {
+          logDebug(
+            "Content unchanged - skipped input event to prevent false conversion triggers"
+          );
+        }
       }
     }
 

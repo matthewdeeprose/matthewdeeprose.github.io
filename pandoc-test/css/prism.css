@@ -9,7 +9,6 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   border: 1px solid var(--sidebar-border);
-  border-radius: 8px;
   padding: 1rem;
   background: var(--body-bg);
   color: var(--body-text);
