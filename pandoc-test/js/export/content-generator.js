@@ -531,7 +531,163 @@ const ContentGenerator = (function () {
             outline-offset: 2px;
             border-radius: 2px;
             background-color: var(--focus-bg);
-        }`;
+        }
+            /* ===== CREDITS AND ACKNOWLEDGEMENTS - DESCRIPTION LIST STYLING ===== */
+
+/* Main credits section */
+.credits-acknowledgements {
+    background: linear-gradient(135deg, var(--body-bg) 0%, var(--surface-color) 100%);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2rem);
+    margin: 2rem 0;
+    box-shadow: 0 4px 20px var(--sidebar-shadow);
+    position: relative;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+/* Subtle decorative top border */
+.credits-acknowledgements::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--link-color), var(--border-color), var(--link-color));
+    opacity: 0.6;
+    border-radius: 12px 12px 0 0;
+}
+
+/* Credits heading */
+.credits-acknowledgements h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--heading-color);
+    margin: 0 0 1.5rem 0;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    font-family: var(--font-family-sans, inherit);
+}
+
+/* Description list container */
+.credits-list {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Definition terms (categories) */
+.credits-list dt {
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--heading-color);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.25rem;
+    display: inline-block;
+    /* Ensure proper text wrapping */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+/* Definition descriptions */
+.credits-list dd {
+    margin: 0 0 1.5rem 1rem;
+    line-height: 1.6;
+    color: var(--body-text);
+    font-size: 1rem;
+    /* Ensure proper text wrapping */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    max-width: 100%;
+}
+
+/* Last description item spacing */
+.credits-list dd:last-child {
+    margin-bottom: 0;
+}
+
+/* Links styling within credits */
+.credits-list a {
+    color: var(--link-color);
+    text-decoration: underline;
+    font-weight: 500;
+    transition: color 0.3s ease, text-decoration-color 0.3s ease;
+}
+
+.credits-list a:hover,
+.credits-list a:focus {
+    color: var(--link-hover);
+    text-decoration: none;
+}
+
+/* Enhanced focus styles for links */
+.credits-list a:focus-visible {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+    border-radius: 2px;
+    background-color: var(--focus-bg);
+    padding: 0.125rem 0.25rem;
+    margin: -0.125rem -0.25rem;
+}
+
+/* Dark mode enhancements */
+[data-theme="dark"] .credits-acknowledgements {
+    background: linear-gradient(135deg, var(--surface-color) 0%, var(--sidebar-bg) 100%);
+    border-color: var(--sidebar-border);
+    box-shadow: 0 8px 32px rgba(179, 219, 210, 0.08);
+}
+
+[data-theme="dark"] .credits-list dt {
+    border-bottom-color: var(--border-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .credits-acknowledgements {
+        padding: 1.25rem 1rem;
+        margin: 1.5rem 0;
+    }
+    
+    .credits-list dd {
+        margin-left: 0.5rem;
+    }
+    
+    .credits-acknowledgements h3 {
+        font-size: 1.375rem;
+    }
+    
+    .credits-list dt {
+        font-size: 1.0625rem;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .credits-list dt {
+        border-bottom-width: 3px;
+    }
+    
+    .credits-list a {
+        text-decoration-thickness: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .credits-list a {
+        transition: none;
+    }
+}
+        `;
   }
 
   /**
@@ -1281,6 +1437,31 @@ const ContentGenerator = (function () {
                 padding: 0.5em !important;
 
             }
+
+            .credits-acknowledgements {
+        background: white !important;
+        border: 1px solid #333 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+    }
+    
+    .credits-acknowledgements::before {
+        display: none;
+    }
+    
+    .credits-list dt {
+        color: #000 !important;
+        border-bottom-color: #333 !important;
+    }
+    
+    .credits-list dd {
+        color: #000 !important;
+    }
+    
+    .credits-list a {
+        color: #000 !important;
+        text-decoration: underline !important;
+    }
 
             /* List optimisation */
             ul, ol {

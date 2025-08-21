@@ -1,0 +1,303 @@
+/* ===== CONTENTEDITABLE LATEX EDITOR STYLES ===== */
+/* Direct syntax highlighting for LaTeX contenteditable element */
+
+.live-latex-contenteditable {
+  /* Ensure it looks and behaves like the original textarea */
+  font-family: var(--font-family-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--body-bg);
+  color: var(--body-text);
+  /* FIXED: Use container-based sizing like original textarea */
+  width: 100%;
+  height: 100%;
+  min-height: 0; /* Let flexbox control minimum height */
+  max-height: none;
+  overflow-y: auto;
+  resize: vertical;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  display: block;
+  /* ADDED: Ensure proper flex behavior */
+  flex: 1;
+}
+
+.live-latex-contenteditable:focus {
+  border-color: var(--link-color);
+  box-shadow: 0 0 0 3px var(--focus-bg);
+  outline: 3px solid var(--focus-outline, #2563eb);
+  outline-offset: 2px;
+}
+
+/* Ensure contenteditable behaves like textarea for paste operations */
+/* FIXED: Exclude token elements from style reset to preserve syntax highlighting */
+.live-latex-contenteditable *:not([class*="token"]):not(code):not(pre) {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: inherit !important;
+  background: transparent !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Reset pasted spans and divs specifically, but preserve token classes */
+.live-latex-contenteditable span:not([class*="token"]),
+.live-latex-contenteditable div:not([class*="language-"]) {
+  color: inherit !important;
+  background: transparent !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+}
+
+/* Placeholder-like styling when empty */
+.live-latex-contenteditable:empty::before {
+  content: attr(placeholder);
+  color: var(--text-secondary);
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* Ensure screen readers can access the content properly */
+.live-latex-contenteditable[contenteditable="true"] {
+  -webkit-user-modify: read-write-plaintext-only;
+}
+
+/* ===== A11Y THEME VARIABLES ===== */
+@media (forced-colors: none), (forced-colors: active) {
+  :root {
+    --prism-a11y-border-radius: 0.3em;
+    --prism-a11y-font-family: var(--font-family-mono);
+    --prism-a11y-line-height: 1.5;
+    --prism-a11y-code-block-margin: 0.5em 0;
+    --prism-a11y-code-block-padding: 1em;
+    --prism-a11y-code-inline-padding: 0.1em;
+    --prism-a11y-width-border: 1px;
+    --prism-a11y-width-tab: 2;
+  }
+}
+
+/* Light theme colors (default) */
+@media (forced-colors: none), (forced-colors: active) {
+  :root {
+    --prism-a11y-color-background: transparent;
+    --prism-a11y-color-text-no-token: hsla(0, 0%, 33%, 1);
+    --prism-a11y-color-text-comment: hsla(16, 100%, 25%, 1);
+    --prism-a11y-color-text-blue: hsla(212, 55.2%, 43.7%, 1);
+    --prism-a11y-color-text-cyan: hsla(192, 65.2%, 34.9%, 1);
+    --prism-a11y-color-text-green: hsla(120, 100%, 25%, 1);
+    --prism-a11y-color-text-gray: hsla(0, 0%, 41%, 1);
+    --prism-a11y-color-text-purple: hsla(282, 100%, 41%, 1);
+    --prism-a11y-color-text-red: hsla(2, 80%, 47%, 1);
+    --prism-a11y-color-text-yellow: hsla(43, 74%, 30%, 1);
+    --prism-a11y-plugin-color-border: hsla(43, 74%, 30%, 0.55);
+    --prism-a11y-plugin-color-background: hsla(43, 74%, 30%, 0.1);
+  }
+}
+
+/* Dark theme colors */
+[data-theme="dark"] {
+  --prism-a11y-color-background: transparent;
+  --prism-a11y-color-text-no-token: hsla(60, 30%, 96%, 1);
+  --prism-a11y-color-text-comment: hsla(54, 32%, 75%, 1);
+  --prism-a11y-color-text-blue: hsla(206, 100%, 71%, 1);
+  --prism-a11y-color-text-cyan: hsla(187, 77.9%, 66.3%, 1);
+  --prism-a11y-color-text-green: hsla(80, 75%, 55%, 1);
+  --prism-a11y-color-text-gray: hsla(60, 30%, 96%, 1);
+  --prism-a11y-color-text-purple: hsla(291, 30%, 83%, 1);
+  --prism-a11y-color-text-red: hsla(17, 100%, 74%, 1);
+  --prism-a11y-color-text-yellow: hsla(51, 100%, 50%, 1);
+  --prism-a11y-plugin-color-border: hsla(51, 100%, 50%, 0.55);
+  --prism-a11y-plugin-color-background: hsla(51, 100%, 50%, 0.1);
+}
+
+@media (forced-colors: none), (forced-colors: active) {
+  /*
+     * Live LaTeX Editor Prism.js Theme - A11Y VERSION
+     * Based on professional a11y themes by @ericwbailey
+     */
+  .live-latex-contenteditable code[class*="language-"],
+  .live-latex-contenteditable pre[class*="language-"] {
+    color: var(--prism-a11y-color-text-no-token);
+    background: var(--prism-a11y-color-background);
+    font-family: var(--prism-a11y-font-family);
+    text-align: start;
+    white-space: pre-wrap;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: break-word;
+    line-height: var(--prism-a11y-line-height);
+
+    -moz-tab-size: var(--prism-a11y-width-tab);
+    -o-tab-size: var(--prism-a11y-width-tab);
+    tab-size: var(--prism-a11y-width-tab);
+
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+  }
+
+  /* Live LaTeX Editor specific code blocks */
+  .live-latex-contenteditable pre[class*="language-"] {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    border-radius: 0;
+    background: transparent !important;
+  }
+
+  .live-latex-contenteditable code[class*="language-"] {
+    background: transparent !important;
+  }
+
+  /* Token styling for live editor - using A11Y colors with original selectors */
+  .live-latex-contenteditable .token.comment,
+  .live-latex-contenteditable .token.prolog,
+  .live-latex-contenteditable .token.doctype,
+  .live-latex-contenteditable .token.cdata {
+    color: var(--prism-a11y-color-text-comment);
+    font-style: italic;
+  }
+
+  .live-latex-contenteditable .token.punctuation {
+    color: var(--prism-a11y-color-text-gray);
+  }
+
+  /* ===== LATEX-SPECIFIC TOKEN CLASSES (using A11Y colors) ===== */
+
+  /* LaTeX Commands: \documentclass, \begin, \end, \textbf, etc. */
+  .live-latex-contenteditable .token.function,
+  .live-latex-contenteditable .token.function.selector {
+    color: var(--prism-a11y-color-text-blue);
+    font-weight: 600;
+  }
+
+  /* Environment names and keywords: article, document, equation, etc. */
+  .live-latex-contenteditable .token.keyword {
+    color: var(--prism-a11y-color-text-cyan);
+    font-weight: 500;
+  }
+
+  /* String content in braces */
+  .live-latex-contenteditable .token.string {
+    color: var(--prism-a11y-color-text-green);
+  }
+
+  /* Math environments and equations - clean text-only styling */
+  .live-latex-contenteditable .token.equation,
+  .live-latex-contenteditable .token.math {
+    color: var(--prism-a11y-color-text-green);
+    font-weight: 500;
+  }
+
+  /* CDATA blocks (verbatim, lstlisting, etc.) - keep subtle background for these */
+  .live-latex-contenteditable .token.cdata {
+    color: var(--prism-a11y-color-text-yellow);
+    background: var(--prism-a11y-plugin-color-background);
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+
+  /* Numbers */
+  .live-latex-contenteditable .token.number {
+    color: var(--prism-a11y-color-text-purple);
+    font-weight: 600;
+  }
+
+  .live-latex-contenteditable .token.important,
+  .live-latex-contenteditable .token.bold {
+    font-weight: bold;
+  }
+
+  .live-latex-contenteditable .token.italic {
+    font-style: italic;
+  }
+
+  .live-latex-contenteditable .token.entity {
+    cursor: help;
+  }
+}
+
+/* ===== ACCESSIBILITY ENHANCEMENTS ===== */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Live region for announcements */
+#live-latex-announcements {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+
+@media (max-width: 768px) {
+  .live-latex-contenteditable {
+    font-size: 0.8rem;
+    padding: 0.75rem;
+    min-height: 200px; /* Reasonable minimum for mobile */
+    height: 100%; /* Still fill container on mobile */
+  }
+}
+
+/* ===== REDUCED MOTION SUPPORT ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .live-latex-contenteditable {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ===== FOCUS INDICATORS ===== */
+
+/* Enhanced focus indication when contenteditable is focused */
+.live-latex-contenteditable:focus {
+  outline: 3px solid var(--focus-outline, #2563eb);
+  outline-offset: 2px;
+}
+
+/* Ensure focus is visible in high contrast mode */
+@media (prefers-contrast: high) {
+  .live-latex-contenteditable:focus {
+    outline: 3px solid #000000;
+    outline-offset: 2px;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+
+@media print {
+  .live-latex-contenteditable {
+    background: white !important;
+    color: black !important;
+    border: 1px solid black !important;
+  }
+
+  .live-latex-contenteditable .token {
+    color: black !important;
+    background: transparent !important;
+    text-shadow: none !important;
+  }
+}

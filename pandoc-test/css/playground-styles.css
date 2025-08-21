@@ -556,7 +556,7 @@ main {
 /* ===== STATUS BAR WITH MODERN INDICATOR ===== */
 .status-bar {
   background-color: var(--surface-color);
-  border-bottom: 1px solid var(--sidebar-border);
+  border-bottom: 1px solid var(--body-text);
   padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
@@ -827,7 +827,7 @@ main {
 
 .panel-header {
   background-color: var(--surface-color);
-  border-bottom: 1px solid var(--sidebar-border);
+  border-bottom: 1px solid var(--body-text);
   padding: 0.75rem 1rem;
   font-weight: 500;
   font-size: 0.875rem;
@@ -861,7 +861,7 @@ textarea {
 }
 
 .input-panel {
-  border-right: 1px solid var(--sidebar-border);
+  border-right: 1px solid var(--body-text);
 }
 
 .output-panel .panel-content {
@@ -1201,7 +1201,7 @@ mjx-container:focus-visible {
 
   .input-panel {
     border-right: none;
-    border-bottom: 1px solid var(--sidebar-border);
+    border-bottom: 1px solid var(--body-text);
   }
 
   .panel {

@@ -64,6 +64,8 @@
       media="all"
     />
 
+    <link rel="stylesheet" id="prismCSS" href="css/prism.css" media="all" />
+
     <link
       rel="stylesheet"
       id="modalCSS"
@@ -83,8 +85,9 @@
       <div class="header-content">
         <h1>Pandoc-WASM Mathematical Playground - BETA</h1>
         <p class="subtitle">
-          Convert LaTeX mathematical expressions to HTML with MathJax rendering.
-          For testing and development purposes only.
+          Convert LaTeX to standalone HTML and SCORM files.<br />
+          Privacy-friendly: No data leaves your browser, everything happens on
+          your computer.
         </p>
       </div>
       <button
@@ -567,58 +570,297 @@
       </footer>
     </main>
 
-    <!-- Theme Toggle Script -->
+    <!-- Enhanced Theme Toggle Script with System Preference Detection -->
     <script>
-      // Enhanced Theme Management - Matching Export Functionality
+      // Enhanced Theme Management with System Preference Support
       (function () {
+        "use strict";
+
+        // Logging configuration
+        const LOG_LEVELS = {
+          ERROR: 0,
+          WARN: 1,
+          INFO: 2,
+          DEBUG: 3,
+        };
+
+        const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+        const ENABLE_ALL_LOGGING = false;
+        const DISABLE_ALL_LOGGING = false;
+
+        function shouldLog(level) {
+          if (DISABLE_ALL_LOGGING) return false;
+          if (ENABLE_ALL_LOGGING) return true;
+          return level <= DEFAULT_LOG_LEVEL;
+        }
+
+        function logError(message, ...args) {
+          if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+        }
+
+        function logWarn(message, ...args) {
+          if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+        }
+
+        function logInfo(message, ...args) {
+          if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+        }
+
+        function logDebug(message, ...args) {
+          if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+        }
+
+        // Theme configuration
+        const THEME_CONFIG = {
+          defaultTheme: "light",
+          storageKey: "pandoc-playground-theme",
+          enableTransitions: true,
+          respectSystemPreference: true,
+        };
+
+        // Get DOM elements
         const themeToggle = document.getElementById("theme-toggle");
         const themeIcon = themeToggle?.querySelector(".theme-toggle-icon");
         const themeText = themeToggle?.querySelector(".theme-toggle-text");
 
-        let currentTheme = "light";
+        /**
+         * Get user's preferred theme based on storage and system preferences
+         * @returns {string} 'light' or 'dark'
+         */
+        function getPreferredTheme() {
+          // Check stored preference first
+          const stored = localStorage.getItem(THEME_CONFIG.storageKey);
+          if (stored) {
+            logDebug("Using stored theme preference:", stored);
+            return stored;
+          }
 
+          // Check system preference if enabled
+          if (THEME_CONFIG.respectSystemPreference) {
+            if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+              logInfo("Using system preference: dark");
+              return "dark";
+            }
+            if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+              logInfo("Using system preference: light");
+              return "light";
+            }
+          }
+
+          // Default fallback
+          logDebug("Using default theme:", THEME_CONFIG.defaultTheme);
+          return THEME_CONFIG.defaultTheme;
+        }
+
+        /**
+         * Set theme and update UI elements
+         * @param {string} theme - 'light' or 'dark'
+         */
         function setTheme(theme) {
-          currentTheme = theme;
+          if (theme !== "light" && theme !== "dark") {
+            logWarn("Invalid theme:", theme, "defaulting to light");
+            theme = "light";
+          }
+
+          // Apply theme to document
           document.documentElement.setAttribute("data-theme", theme);
 
+          // Store preference
+          localStorage.setItem(THEME_CONFIG.storageKey, theme);
+
+          // SVG icon definitions
+          const lightModeIcon = `<svg height="24" width="24" viewBox="210 0 21 21" class="action-icon theme-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m220.5 2.5v2"/><path d="m227 5-1.5 1.5"/><circle cx="220.5" cy="11.5" r="4"/><path d="m214 5 1.5 1.5"/><path d="m220.5 20.5v-2"/><path d="m227 18-1.5-1.5"/><path d="m214 18 1.5-1.5"/><path d="m211.5 11.5h2"/><path d="m227.5 11.5h2"/></g></svg>`;
+
+          const darkModeIcon = `<svg height="24" width="24" viewBox="0 0 21 21" class="action-icon theme-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="m7.5.5c1.3280962 0 2.5698071.36985953 3.6277499 1.01219586-3.14075981.19184303-5.6277499 2.79938976-5.6277499 5.98780414 0 3.1884144 2.48699009 5.7959611 5.6269199 5.9885898-1.0571128.6415507-2.2988237 1.0114102-3.6269199 1.0114102-3.86599325 0-7-3.1340068-7-7 0-3.86599325 3.13400675-7 7-7z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"/></svg>`;
+
+          // Update theme toggle UI
           if (theme === "dark") {
-            // Switch to sun icon
-            if (themeIcon) {
-              themeIcon.innerHTML =
-                '<path d="m220.5 2.5v2"/><path d="m227 5-1.5 1.5"/><circle cx="220.5" cy="11.5" r="4"/><path d="m214 5 1.5 1.5"/><path d="m220.5 20.5v-2"/><path d="m227 18-1.5-1.5"/><path d="m214 18 1.5-1.5"/><path d="m211.5 11.5h2"/><path d="m227.5 11.5h2"/>';
-              themeIcon.setAttribute("viewBox", "210 0 21 21");
-              themeIcon.classList.remove("moon-icon");
-              themeIcon.classList.add("sun-icon");
-            }
+            if (themeIcon) themeIcon.innerHTML = lightModeIcon;
             if (themeText) themeText.textContent = "Light";
             if (themeToggle)
               themeToggle.setAttribute("aria-label", "Switch to light mode");
           } else {
-            // Switch to moon icon
-            if (themeIcon) {
-              themeIcon.innerHTML =
-                '<path d="m7.5.5c1.3280962 0 2.5698071.36985953 3.6277499 1.01219586-3.14075981.19184303-5.6277499 2.79938976-5.6277499 5.98780414 0 3.1884144 2.48699009 5.7959611 5.6269199 5.9885898-1.0571128.6415507-2.2988237 1.0114102-3.6269199 1.0114102-3.86599325 0-7-3.1340068-7-7 0-3.86599325 3.13400675-7 7-7z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"/>';
-              themeIcon.setAttribute("viewBox", "0 0 21 21");
-              themeIcon.classList.remove("sun-icon");
-              themeIcon.classList.add("moon-icon");
-            }
+            if (themeIcon) themeIcon.innerHTML = darkModeIcon;
             if (themeText) themeText.textContent = "Dark";
             if (themeToggle)
               themeToggle.setAttribute("aria-label", "Switch to dark mode");
           }
-          console.log("Theme changed to:", theme);
+
+          // Update aria-pressed state for better accessibility
+          if (themeToggle) {
+            themeToggle.setAttribute("aria-pressed", theme === "dark");
+          }
+
+          // Announce theme change to screen readers
+          announceThemeChange(theme);
+
+          logInfo("✅ Theme set to:", theme);
         }
 
-        // Initialize theme
-        setTimeout(() => {
-          setTheme(currentTheme);
-          if (themeToggle) {
-            themeToggle.addEventListener("click", function () {
-              const newTheme = currentTheme === "light" ? "dark" : "light";
-              setTheme(newTheme);
-            });
+        /**
+         * Toggle between light and dark themes
+         * @returns {string} The new theme that was set
+         */
+        function toggleTheme() {
+          const current =
+            document.documentElement.getAttribute("data-theme") || "light";
+          const newTheme = current === "light" ? "dark" : "light";
+          setTheme(newTheme);
+          return newTheme;
+        }
+
+        /**
+         * Announce theme change to screen readers
+         * @param {string} theme - The new theme
+         */
+        function announceThemeChange(theme) {
+          const announcement = document.createElement("div");
+          announcement.setAttribute("aria-live", "polite");
+          announcement.setAttribute("role", "status");
+          announcement.textContent = `Theme changed to ${theme} mode`;
+
+          // Screen reader only styles
+          announcement.style.cssText = `
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+      `;
+
+          document.body.appendChild(announcement);
+          setTimeout(() => {
+            if (document.body.contains(announcement)) {
+              document.body.removeChild(announcement);
+            }
+          }, 1000);
+        }
+
+        /**
+         * Setup smooth transitions for theme changes
+         */
+        function setupThemeTransitions() {
+          // Check for reduced motion preference
+          if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            logInfo(
+              "⚠️ Respecting reduced motion preference - transitions disabled"
+            );
+            return;
           }
-        }, 100);
+
+          const style = document.createElement("style");
+          style.id = "theme-transitions";
+          style.textContent = `
+        :root {
+          transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        body {
+          transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .theme-toggle {
+          transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+      `;
+          document.head.appendChild(style);
+          logDebug("✅ Theme transitions enabled");
+        }
+
+        /**
+         * Initialise theme management system
+         */
+        function initialiseThemeSystem() {
+          logInfo("🎨 Initialising theme management system...");
+
+          if (THEME_CONFIG.enableTransitions) {
+            setupThemeTransitions();
+          }
+
+          // Set initial theme
+          const initialTheme = getPreferredTheme();
+          setTheme(initialTheme);
+
+          // Setup theme toggle button
+          if (themeToggle) {
+            // Click handler
+            themeToggle.addEventListener("click", function (event) {
+              event.preventDefault();
+              toggleTheme();
+            });
+
+            // Keyboard support (Enter and Space)
+            themeToggle.addEventListener("keydown", function (event) {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                toggleTheme();
+              }
+            });
+
+            logDebug(
+              "✅ Theme toggle button initialised with full keyboard support"
+            );
+          }
+
+          // Listen for system theme changes
+          if (THEME_CONFIG.respectSystemPreference && window.matchMedia) {
+            const mediaQuery = window.matchMedia(
+              "(prefers-color-scheme: dark)"
+            );
+
+            // Use modern addEventListener or fallback to addListener
+            const addListener =
+              mediaQuery.addEventListener || mediaQuery.addListener;
+            if (addListener) {
+              const handler = function (e) {
+                // Only auto-switch if user hasn't manually set a preference
+                if (!localStorage.getItem(THEME_CONFIG.storageKey)) {
+                  setTheme(e.matches ? "dark" : "light");
+                  logInfo(
+                    "🔄 Auto-switched theme based on system preference:",
+                    e.matches ? "dark" : "light"
+                  );
+                }
+              };
+
+              if (mediaQuery.addEventListener) {
+                mediaQuery.addEventListener("change", handler);
+              } else {
+                mediaQuery.addListener(handler);
+              }
+
+              logInfo("✅ System theme preference monitoring enabled");
+            }
+          }
+
+          logInfo("✅ Theme management system fully initialised");
+
+          // Log current configuration for debugging
+          logDebug("🎨 Theme Configuration:", {
+            defaultTheme: THEME_CONFIG.defaultTheme,
+            enableTransitions: THEME_CONFIG.enableTransitions,
+            respectSystemPreference: THEME_CONFIG.respectSystemPreference,
+            currentTheme: document.documentElement.getAttribute("data-theme"),
+            systemPrefersDark: window.matchMedia("(prefers-color-scheme: dark)")
+              .matches,
+          });
+        }
+
+        // Export functions for global access
+        window.setTheme = setTheme;
+        window.getPreferredTheme = getPreferredTheme;
+        window.toggleTheme = toggleTheme;
+
+        // Initialise when DOM is ready
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initialiseThemeSystem);
+        } else {
+          initialiseThemeSystem();
+        }
+
+        logInfo("✅ Enhanced theme management module loaded");
       })();
     </script>
 
@@ -645,6 +887,7 @@
     </script>
 
     <!-- Modular JavaScript Architecture -->
+    <script src="js/plugins/prism.js"></script>
     <!-- Core Application Modules (Load Order is Critical) -->
     <script src="js/export/app-config.js"></script>
     <!-- UI Systems (Load Early) -->
@@ -678,7 +921,9 @@
     <!-- Main Application Coordinator -->
     <script src="js/pandoc/app-state-manager.js"></script>
     <!-- Application lifecycle -->
-
+    <!-- Live LaTeX Editor -->
+    <script src="js/pandoc/live-latex-editor.js"></script>
+    <!-- Live syntax highlighting -->
     <!-- Development Tools (Optional) -->
     <script src="js/pandoc/layout-debugger.js"></script>
     <!-- Layout debugging -->

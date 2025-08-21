@@ -233,19 +233,45 @@ const ExampleSystem = (function () {
       }
 
       try {
-        // Get input textarea (should be available globally)
-        const inputTextarea =
-          window.appElements?.inputTextarea || document.getElementById("input");
+        const exampleContent = this.allExamples[exampleKey];
 
-        if (!inputTextarea) {
-          throw new Error("Input textarea not found");
+        // Check if live LaTeX editor is available and initialized
+        if (
+          window.liveLaTeXEditor &&
+          window.liveLaTeXEditor.isReady &&
+          window.liveLaTeXEditor.isReady()
+        ) {
+          // Use live LaTeX editor's setContent method for contenteditable
+          window.liveLaTeXEditor.setContent(exampleContent);
+
+          // Focus the contenteditable element for accessibility
+          if (window.liveLaTeXEditor.contentEditableElement) {
+            window.liveLaTeXEditor.contentEditableElement.focus({
+              preventScroll: true,
+            });
+          }
+
+          logInfo(`✅ Example loaded via Live LaTeX Editor: ${exampleKey}`);
+        } else {
+          // Fallback to original textarea approach
+          const inputTextarea =
+            window.appElements?.inputTextarea ||
+            document.getElementById("input");
+
+          if (!inputTextarea) {
+            throw new Error(
+              "Input textarea not found and Live LaTeX Editor not available"
+            );
+          }
+
+          // Load example content into textarea
+          inputTextarea.value = exampleContent;
+
+          // Focus input for accessibility without scrolling
+          inputTextarea.focus({ preventScroll: true });
+
+          logInfo(`✅ Example loaded via textarea fallback: ${exampleKey}`);
         }
-
-        // Load example content
-        inputTextarea.value = this.allExamples[exampleKey];
-
-        // Focus input for accessibility without scrolling
-        inputTextarea.focus({ preventScroll: true });
 
         // Trigger conversion if available
         if (window.ConversionEngine && window.ConversionEngine.convertInput) {
@@ -254,7 +280,6 @@ const ExampleSystem = (function () {
           logWarn("ConversionEngine not available for automatic conversion");
         }
 
-        logInfo(`✅ Example loaded successfully: ${exampleKey}`);
         return true;
       } catch (error) {
         logError("Error loading example:", error);

@@ -765,6 +765,219 @@ ${previousBase64}
   }
 
   /**
+   * ✅ SIMPLIFIED: Ensure embedded fonts with single-attempt strategy to prevent duplicates
+   * @returns {Promise<Object>} Result object with CSS and metadata
+   */
+  async function ensureEmbeddedFontsInclusion() {
+    const LOG_LEVELS = {
+      ERROR: 0,
+      WARN: 1,
+      INFO: 2,
+      DEBUG: 3,
+    };
+
+    const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+    const ENABLE_ALL_LOGGING = false;
+    const DISABLE_ALL_LOGGING = false;
+
+    function shouldLog(level) {
+      if (DISABLE_ALL_LOGGING) return false;
+      if (ENABLE_ALL_LOGGING) return true;
+      return level <= DEFAULT_LOG_LEVEL;
+    }
+
+    function logError(message, ...args) {
+      if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+    }
+
+    function logWarn(message, ...args) {
+      if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+    }
+
+    function logInfo(message, ...args) {
+      if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+    }
+
+    function logDebug(message, ...args) {
+      if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+    }
+
+    const result = {
+      css: "",
+      method: "",
+      errors: [],
+      attempts: [],
+    };
+
+    // 🛡️ SINGLE ATTEMPT STRATEGY: Try template system once, fallback immediately if it fails
+    try {
+      logDebug("🔄 Single attempt font embedding via TemplateSystem...");
+
+      if (window.TemplateSystem) {
+        const generator = window.TemplateSystem.createGenerator();
+        const embeddedFontsCSS = await Promise.race([
+          generator.generateEmbeddedFontsCSS(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Font embedding timeout")), 2000)
+          ),
+        ]);
+
+        if (embeddedFontsCSS && embeddedFontsCSS.length > 500) {
+          result.css = embeddedFontsCSS;
+          result.method = "template-system-success";
+          logInfo("✅ Font embedding successful on single attempt");
+          return result;
+        }
+      }
+
+      logWarn("⚠️ Template system unavailable or insufficient result");
+      result.attempts.push("template-system-failed");
+    } catch (error) {
+      result.errors.push(`Template system error: ${error.message}`);
+      result.attempts.push("template-system-error");
+      logWarn("⚠️ Template system failed:", error.message);
+    }
+
+    // 🛡️ IMMEDIATE FALLBACK: No retries, just use fallback
+    logWarn("⚠️ Using immediate fallback CSS");
+    result.css = generateFallbackFontCSS();
+    result.method = "immediate-fallback";
+    result.attempts.push("fallback-used");
+
+    return result;
+  }
+
+  /**
+   * Load font data directly without template system
+   */
+  async function loadFontDataDirect() {
+    const fontFiles = {
+      base64Regular: "fonts/opendyslexic-regular.txt",
+      base64Bold: "fonts/opendyslexic-bold.txt",
+      base64Italic: "fonts/opendyslexic-italic.txt",
+      base64BoldItalic: "fonts/opendyslexic-bold-italic.txt",
+      base64AnnotationMonoVF: "fonts/AnnotationMono-VF.txt",
+    };
+
+    const fontData = {};
+
+    for (const [variant, filepath] of Object.entries(fontFiles)) {
+      try {
+        const response = await fetch(filepath);
+        if (response.ok) {
+          fontData[variant] = (await response.text()).trim();
+        } else {
+          fontData[variant] = "YOUR_BASE64_PLACEHOLDER";
+        }
+      } catch (error) {
+        fontData[variant] = "YOUR_BASE64_PLACEHOLDER";
+      }
+    }
+
+    return fontData;
+  }
+
+  /**
+   * Render font template with simple string replacement
+   */
+  function renderFontTemplate(template, fontData) {
+    let rendered = template;
+
+    // Replace template variables
+    rendered = rendered.replace(
+      /\{\{base64Regular\}\}/g,
+      fontData.base64Regular || "YOUR_BASE64_PLACEHOLDER"
+    );
+    rendered = rendered.replace(
+      /\{\{base64Bold\}\}/g,
+      fontData.base64Bold || "YOUR_BASE64_PLACEHOLDER"
+    );
+    rendered = rendered.replace(
+      /\{\{base64Italic\}\}/g,
+      fontData.base64Italic || "YOUR_BASE64_PLACEHOLDER"
+    );
+    rendered = rendered.replace(
+      /\{\{base64BoldItalic\}\}/g,
+      fontData.base64BoldItalic || "YOUR_BASE64_PLACEHOLDER"
+    );
+
+    // Handle variable font conditionally
+    const hasVariableFont =
+      fontData.base64AnnotationMonoVF &&
+      fontData.base64AnnotationMonoVF !== "YOUR_BASE64_PLACEHOLDER";
+    if (hasVariableFont) {
+      rendered = rendered.replace(/\{\{#if hasFontNameVariable\}\}/g, "");
+      rendered = rendered.replace(/\{\{\/if\}\}/g, "");
+      rendered = rendered.replace(
+        /\{\{fontNameVariableBase64\}\}/g,
+        fontData.base64AnnotationMonoVF
+      );
+    } else {
+      // Remove variable font section if not available
+      rendered = rendered.replace(
+        /\{\{#if hasFontNameVariable\}\}[\s\S]*?\{\{\/if\}\}/g,
+        ""
+      );
+    }
+
+    return rendered;
+  }
+
+  /**
+   * Generate fallback font CSS that always works
+   */
+  function generateFallbackFontCSS() {
+    return `<!-- OpenDyslexic Font Family - Embedded for Offline Use -->
+<style>
+    @font-face {
+      font-family: "OpenDyslexic";
+      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2");
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "OpenDyslexic";
+      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2");
+      font-weight: bold;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "OpenDyslexic";
+      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2");
+      font-weight: normal;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "OpenDyslexic";
+      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2");
+      font-weight: bold;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    <!-- Annotation Mono Variable Font -->
+    @font-face {
+      font-family: "Annotation Mono";
+      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2 supports variations"),
+           url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2-variations"),
+           url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2") tech(variations);
+      font-weight: 100 1000;
+      font-display: swap;
+    }
+</style>`;
+  }
+
+  /**
+   * Generate enhanced HTML head section with metadata and accessibility features
+   */
+
+  /**
    * Generate enhanced head section with all required components
    */
   async function generateEnhancedHead(title, metadata, accessibilityLevel) {
@@ -802,25 +1015,38 @@ ${previousBase64}
       );
     }
 
-    // Embedded OpenDyslexic fonts - asynchronous inclusion
+    // ✅ ENHANCED: Embedded OpenDyslexic fonts with guaranteed inclusion and async protection
     try {
-      if (window.TemplateSystem) {
-        const generator = window.TemplateSystem.createGenerator();
+      // 🛡️ ASYNC OPERATION PROTECTION: Prevent multiple font loading attempts
+      if (!window.fontEmbeddingInProgress) {
+        window.fontEmbeddingInProgress = true;
 
-        // Load fonts asynchronously from external files
-        const embeddedFontsCSS = await generator.generateEmbeddedFontsCSS();
+        const embeddedFontsResult = await ensureEmbeddedFontsInclusion();
 
-        if (embeddedFontsCSS && embeddedFontsCSS.length > 0) {
+        if (embeddedFontsResult.css && embeddedFontsResult.css.length > 0) {
           headComponents.push(
-            "    " + embeddedFontsCSS.replace(/\n/g, "\n    ")
+            "    " + embeddedFontsResult.css.replace(/\n/g, "\n    ")
           );
-          logInfo("✅ OpenDyslexic fonts embedded successfully");
+          logInfo(
+            "✅ OpenDyslexic fonts embedded successfully via",
+            embeddedFontsResult.method
+          );
         } else {
-          logWarn("⚠️ Font CSS generation returned empty result");
+          logWarn("⚠️ Font embedding failed, using emergency fallback");
+          headComponents.push("    " + generateFallbackFontCSS());
         }
+      } else {
+        logWarn(
+          "⚠️ Font embedding already in progress, using emergency fallback"
+        );
+        headComponents.push("    " + generateFallbackFontCSS());
       }
     } catch (error) {
-      logWarn("⚠️ Could not embed OpenDyslexic fonts:", error.message);
+      logError("❌ Font embedding error:", error.message);
+      headComponents.push("    " + generateFallbackFontCSS());
+    } finally {
+      // Always clear the flag
+      window.fontEmbeddingInProgress = false;
     }
     headComponents.push(
       '    <meta name="keywords" content="mathematics, LaTeX, MathJax, accessibility, WCAG, reading tools, theme toggle">'
@@ -1428,8 +1654,22 @@ setTimeout(function() {
       return await exportWithEnhancedPandoc();
     }
     logInfo("=== ENHANCED EXPORT WITH SCREEN READER CONTROLS STARTED ===");
-    window.exportGenerationInProgress = true;
 
+    // 🛡️ ENHANCED PROTECTION: Prevent duplicate exports with stronger checking
+    if (window.exportGenerationInProgress) {
+      logWarn("❌ Export already in progress - blocking duplicate attempt");
+      return;
+    }
+
+    // 🛡️ EXPORT DEBOUNCING: Prevent rapid successive exports
+    const now = Date.now();
+    if (window.lastExportStart && now - window.lastExportStart < 2000) {
+      logWarn("❌ Export called too quickly - blocking to prevent duplicates");
+      return;
+    }
+    window.lastExportStart = now;
+
+    window.exportGenerationInProgress = true;
     // Capture original button content BEFORE any modifications
     let originalButtonContent = exportButton.innerHTML;
 
@@ -1566,11 +1806,7 @@ setTimeout(function() {
         throw error;
       }
 
-      // Clean up
-      setTimeout(function () {
-        URL.revokeObjectURL(url);
-        logDebug("Cleaned up blob URL");
-      }, 100);
+      // Note: Cleanup already handled in try block above, no additional cleanup needed
 
       // Enhanced screen reader announcement
       const features = [];

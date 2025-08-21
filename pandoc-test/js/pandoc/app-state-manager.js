@@ -77,7 +77,11 @@ const AppStateManager = (function () {
       ];
 
       // Optional development modules (tracked but not required)
-      this.optionalModules = ["LayoutDebugger", "TestCommands"];
+      this.optionalModules = [
+        "LayoutDebugger",
+        "TestCommands",
+        "LiveLaTeXEditor",
+      ];
     }
 
     /**
@@ -392,6 +396,51 @@ const AppStateManager = (function () {
         if (scormExportButton) {
           scormExportButton.disabled = false;
           logInfo("✅ SCORM export button enabled");
+        }
+
+        // Initialize Live LaTeX Editor if available - CONTENTEDITABLE VERSION
+        if (window.LiveLaTeXEditor && window.initLiveHighlighting) {
+          try {
+            // Initialize Live LaTeX Editor first (before examples load)
+            setTimeout(async () => {
+              const textarea = document.getElementById("input");
+              if (textarea) {
+                logInfo("Initializing Live LaTeX Editor (contenteditable)...");
+                const success = await window.initLiveHighlighting();
+                if (success) {
+                  logInfo("✅ Live LaTeX Editor initialized successfully");
+
+                  // FIXED: Re-sync after example system loads default content
+                  setTimeout(() => {
+                    if (
+                      window.liveLaTeXEditor &&
+                      window.liveLaTeXEditor.isEnabled
+                    ) {
+                      // FIXED: Use correct method name for contenteditable implementation
+                      window.liveLaTeXEditor.updateHighlighting();
+                      logInfo(
+                        "✅ Live LaTeX Editor re-synced after example loading"
+                      );
+                    }
+                  }, 400); // Re-sync 400ms after init (100ms after example loads at 300ms)
+                } else {
+                  logWarn("⚠️ Live LaTeX Editor initialization returned false");
+                }
+              } else {
+                logWarn(
+                  "⚠️ LaTeX input textarea not found for Live LaTeX Editor"
+                );
+              }
+            }, 200); // FIXED: Initialize earlier (200ms instead of 500ms)
+          } catch (error) {
+            logWarn(
+              "⚠️ Live LaTeX Editor initialization failed:",
+              error.message
+            );
+            // Don't throw - this is optional functionality
+          }
+        } else {
+          logDebug("ℹ️ Live LaTeX Editor not available (optional feature)");
         }
 
         logInfo("✅ Module integrations setup complete");
