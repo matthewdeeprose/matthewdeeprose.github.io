@@ -955,6 +955,7 @@ input[type="text"]:hover {
   position: relative;
   overflow: hidden;
   min-width: 200px;
+  text-align: left;
 }
 
 .export-btn::before {
@@ -1075,6 +1076,7 @@ input[type="text"]:hover {
   overflow: hidden;
   min-width: 200px;
   margin-left: 8px;
+  text-align: left;
 }
 
 .scorm-export-btn::before {
@@ -1930,15 +1932,15 @@ h4:hover .check-icon {
 
 [data-theme="dark"] header {
   background-color: var(--body-bg);
-  color: var(--link-color);
+  color: var(--heading-color);
   border-bottom: 1px solid var(--link-color);
 }
 
 [data-theme="dark"] .export-btn {
   background: var(--body-bg);
   box-shadow: 0 4px 12px rgba(60, 186, 198, 0.25);
-  color: var(--link-color);
-  border: 1px solid var(--link-color);
+  color: var(--heading-color);
+  border: 1px solid var(--heading-color);
 }
 
 [data-theme="dark"] .export-btn:hover {
@@ -1958,8 +1960,8 @@ h4:hover .check-icon {
 [data-theme="dark"] .scorm-export-btn {
   background: var(--body-bg);
   box-shadow: 0 4px 12px rgba(15, 15, 15, 0.25);
-  color: var(--success-color);
-  border: 1px solid var(--success-color);
+  color: var(--warning-color);
+  border: 1px solid var(--warning-color);
 }
 
 [data-theme="dark"] .scorm-export-btn:disabled {
@@ -2146,4 +2148,8 @@ h4:hover .check-icon {
   .investigation-controls-details[open] .investigation-content {
     animation: none;
   }
+}
+
+#title-block-header {
+  margin-bottom: 1rem;
 }
