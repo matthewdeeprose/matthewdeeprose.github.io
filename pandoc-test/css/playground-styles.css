@@ -1711,3 +1711,177 @@ mjx-container:focus-visible {
   margin: 0 0 0.75rem 0;
   letter-spacing: 0.05em;
 }
+
+/* ===== FONT STATUS INDICATOR - INTEGRATED WITH THEME SYSTEM ===== */
+#font-status-indicator {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: var(--surface-color);
+  color: var(--body-text);
+  border: 1px solid var(--sidebar-border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10000;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px var(--sidebar-shadow);
+  font-family: var(--font-family-sans);
+  min-width: 160px;
+}
+
+/* Font status loading state */
+#font-status-indicator.loading {
+  background: var(--warning-color);
+  color: var(--body-bg);
+  border-color: var(--warning-color);
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.25);
+  animation: pulse-glow 2s infinite;
+}
+
+/* Font status ready state */
+#font-status-indicator.ready {
+  background: var(--success-color);
+  color: var(--body-bg);
+  border-color: var(--success-color);
+  box-shadow: 0 4px 12px rgba(10, 93, 58, 0.25);
+}
+
+/* Font status error state */
+#font-status-indicator.error {
+  background: var(--error-color);
+  color: var(--body-bg);
+  border-color: var(--error-color);
+  box-shadow: 0 4px 12px rgba(139, 38, 53, 0.25);
+}
+
+/* Font status hidden state */
+#font-status-indicator.hidden {
+  opacity: 0;
+  transform: translateX(120%);
+  pointer-events: none;
+}
+
+/* Status icon styling */
+.status-icon {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.status-icon svg {
+  width: 16px;
+  height: 16px;
+  color: inherit;
+  stroke: currentColor;
+  fill: none;
+}
+
+/* Status text */
+.status-text {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.025em;
+}
+
+/* ===== DARK MODE FONT STATUS INDICATOR ===== */
+[data-theme="dark"] #font-status-indicator {
+  background: var(--surface-color);
+  color: var(--body-text);
+  border-color: var(--sidebar-border);
+  box-shadow: 0 4px 12px rgba(179, 219, 210, 0.1), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] #font-status-indicator.loading {
+  background: var(--warning-color);
+  color: var(--body-bg);
+  border-color: var(--warning-color);
+  box-shadow: 0 4px 12px rgba(252, 188, 77, 0.25),
+    0 0 20px rgba(252, 188, 77, 0.3);
+}
+
+[data-theme="dark"] #font-status-indicator.ready {
+  background: var(--success-color);
+  color: var(--body-bg);
+  border-color: var(--success-color);
+  box-shadow: 0 4px 12px rgba(74, 222, 128, 0.25),
+    0 0 20px rgba(74, 222, 128, 0.3);
+}
+
+[data-theme="dark"] #font-status-indicator.error {
+  background: var(--error-color);
+  color: var(--body-bg);
+  border-color: var(--error-color);
+  box-shadow: 0 4px 12px rgba(248, 113, 113, 0.25),
+    0 0 20px rgba(248, 113, 113, 0.3);
+}
+
+/* ===== RESPONSIVE DESIGN FOR FONT STATUS ===== */
+@media (max-width: 768px) {
+  #font-status-indicator {
+    top: 5px;
+    right: 5px;
+    font-size: 11px;
+    padding: 6px 10px;
+    min-width: 140px;
+  }
+
+  .status-text {
+    font-size: 11px;
+  }
+
+  .status-icon {
+    font-size: 12px;
+    min-width: 14px;
+  }
+
+  .status-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* ===== ACCESSIBILITY ENHANCEMENTS ===== */
+#font-status-indicator:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  #font-status-indicator {
+    transition: opacity 0.3s ease;
+    animation: none;
+  }
+
+  #font-status-indicator.loading {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  #font-status-indicator {
+    border-width: 2px;
+  }
+
+  #font-status-indicator.loading {
+    border-color: orange;
+  }
+
+  #font-status-indicator.ready {
+    border-color: green;
+  }
+
+  #font-status-indicator.error {
+    border-color: red;
+  }
+}

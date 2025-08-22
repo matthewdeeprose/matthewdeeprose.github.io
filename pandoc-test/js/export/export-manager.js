@@ -478,9 +478,10 @@ ${previousBase64}
     window.downloadInProgress = true;
 
     try {
-      const filename = window.AppConfig
-        ? window.AppConfig.generateEnhancedFilename(metadata)
-        : "mathematical_document.html";
+      const filename =
+        window.AppConfig && metadata
+          ? window.AppConfig.generateEnhancedFilename(metadata)
+          : baseTitle || "mathematical_document.html";
 
       const blob = new Blob([htmlContent], {
         type: "text/html;charset=utf-8",
@@ -556,7 +557,12 @@ ${previousBase64}
     logInfo("Accessibility level:", accessibilityLevel);
 
     try {
-      // Check dependencies
+      // ✅ NEW: Add these 3 lines here
+      logInfo("🔍 Ensuring fonts are loaded for export...");
+      const fontResult = await ensureEmbeddedFontsInclusion();
+      logInfo("✅ Fonts validated successfully for export");
+
+      // Check dependencies (your existing code continues here)
       if (!window.LaTeXProcessor) {
         throw new Error("LaTeXProcessor module not available");
       }
@@ -765,8 +771,146 @@ ${previousBase64}
   }
 
   /**
-   * ✅ SIMPLIFIED: Ensure embedded fonts with single-attempt strategy to prevent duplicates
-   * @returns {Promise<Object>} Result object with CSS and metadata
+   * Validate that font CSS contains actual base64 data, not placeholders
+   * @param {string} css - The CSS to validate
+   * @returns {Object} Validation result with details
+   */
+  function validateFontCSS(css) {
+    const validation = {
+      isValid: false,
+      hasPlaceholders: false,
+      hasRealFontData: false,
+      placeholderCount: 0,
+      realFontCount: 0,
+      details: [],
+      errors: [],
+    };
+
+    if (!css || typeof css !== "string") {
+      validation.errors.push("CSS is empty or invalid");
+      return validation;
+    }
+
+    // Check for placeholder patterns
+    const placeholderMatches = css.match(/YOUR_BASE64_PLACEHOLDER/g);
+    validation.placeholderCount = placeholderMatches
+      ? placeholderMatches.length
+      : 0;
+    validation.hasPlaceholders = validation.placeholderCount > 0;
+
+    // Check for real base64 font data patterns
+    // Real base64 font data should be long strings starting with typical font headers
+    const realFontMatches = css.match(
+      /data:font\/woff2;base64,([A-Za-z0-9+/]{100,})/g
+    );
+    validation.realFontCount = realFontMatches ? realFontMatches.length : 0;
+    validation.hasRealFontData = validation.realFontCount > 0;
+
+    // Additional validation: Check for common font file signatures in base64
+    const fontSignatures = [
+      "d09G", // WOFF/WOFF2 signature
+      "wOF2", // WOFF2 signature
+      "OTTO", // OpenType signature
+      "true", // TrueType signature
+      "0001", // TrueType signature variant
+    ];
+
+    let validSignatureCount = 0;
+    for (const signature of fontSignatures) {
+      if (css.includes(signature)) {
+        validSignatureCount++;
+      }
+    }
+
+    // Log detailed analysis
+    validation.details.push(`CSS length: ${css.length} characters`);
+    validation.details.push(
+      `Placeholders found: ${validation.placeholderCount}`
+    );
+    validation.details.push(
+      `Real font data sections: ${validation.realFontCount}`
+    );
+    validation.details.push(`Valid font signatures: ${validSignatureCount}`);
+
+    // Determine overall validity
+    validation.isValid =
+      !validation.hasPlaceholders &&
+      validation.hasRealFontData &&
+      validSignatureCount > 0 &&
+      css.length > 1000; // Real fonts should be substantial
+
+    // Add specific error messages
+    if (validation.hasPlaceholders) {
+      validation.errors.push(
+        `Found ${validation.placeholderCount} placeholder(s) - fonts not loaded`
+      );
+    }
+    if (!validation.hasRealFontData) {
+      validation.errors.push("No real font data detected");
+    }
+    if (validSignatureCount === 0) {
+      validation.errors.push("No valid font signatures found");
+    }
+    if (css.length <= 1000) {
+      validation.errors.push("CSS too short for embedded fonts");
+    }
+
+    return validation;
+  }
+
+  /**
+   * Wait for fonts to be loaded with timeout and validation
+   * @param {number} timeoutMs - Maximum time to wait
+   * @param {number} retryIntervalMs - Time between retry attempts
+   * @returns {Promise<Object>} Result with font CSS or error
+   */
+  async function waitForFontsToLoad(timeoutMs = 5000, retryIntervalMs = 100) {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        if (window.TemplateSystem) {
+          const generator = window.TemplateSystem.createGenerator();
+          const embeddedFontsCSS = await generator.generateEmbeddedFontsCSS();
+
+          if (embeddedFontsCSS) {
+            const validation = validateFontCSS(embeddedFontsCSS);
+
+            if (validation.isValid) {
+              console.log("✅ Fonts loaded and validated successfully");
+              return {
+                success: true,
+                css: embeddedFontsCSS,
+                validation: validation,
+                loadTime: Date.now() - startTime,
+              };
+            } else {
+              console.log(
+                "⏳ Fonts still loading...",
+                validation.errors.join(", ")
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("Font loading attempt failed:", error.message);
+      }
+
+      // Wait before retry
+      await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+    }
+
+    return {
+      success: false,
+      error: "Font loading timeout - fonts may not be ready",
+      timeout: true,
+      loadTime: Date.now() - startTime,
+    };
+  }
+
+  /**
+   * UPDATED: Enhanced ensureEmbeddedFontsInclusion with proper validation
+   * Replace the existing ensureEmbeddedFontsInclusion function with this version
    */
   async function ensureEmbeddedFontsInclusion() {
     const LOG_LEVELS = {
@@ -807,44 +951,295 @@ ${previousBase64}
       method: "",
       errors: [],
       attempts: [],
+      validation: null,
     };
 
-    // 🛡️ SINGLE ATTEMPT STRATEGY: Try template system once, fallback immediately if it fails
+    // ✅ ENHANCED: Try to load fonts with validation and timeout
     try {
-      logDebug("🔄 Single attempt font embedding via TemplateSystem...");
+      logDebug("🔄 Attempting to load fonts with validation...");
 
+      // First, try immediate load attempt
       if (window.TemplateSystem) {
         const generator = window.TemplateSystem.createGenerator();
-        const embeddedFontsCSS = await Promise.race([
-          generator.generateEmbeddedFontsCSS(),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Font embedding timeout")), 2000)
-          ),
-        ]);
+        const embeddedFontsCSS = await generator.generateEmbeddedFontsCSS();
 
-        if (embeddedFontsCSS && embeddedFontsCSS.length > 500) {
-          result.css = embeddedFontsCSS;
-          result.method = "template-system-success";
-          logInfo("✅ Font embedding successful on single attempt");
-          return result;
+        if (embeddedFontsCSS) {
+          const validation = validateFontCSS(embeddedFontsCSS);
+          result.validation = validation;
+
+          if (validation.isValid) {
+            result.css = embeddedFontsCSS;
+            result.method = "immediate-success";
+            result.attempts.push("immediate-validated");
+            logInfo("✅ Font embedding successful on immediate attempt");
+            return result;
+          } else {
+            logWarn(
+              "⚠️ Immediate attempt failed validation:",
+              validation.errors.join(", ")
+            );
+            result.attempts.push("immediate-invalid");
+          }
         }
       }
 
-      logWarn("⚠️ Template system unavailable or insufficient result");
-      result.attempts.push("template-system-failed");
+      // If immediate attempt failed, wait for fonts to load
+      logDebug("⏳ Waiting for fonts to load properly...");
+      const fontLoadResult = await waitForFontsToLoad(3000); // 3 second timeout
+
+      if (fontLoadResult.success) {
+        result.css = fontLoadResult.css;
+        result.method = "wait-success";
+        result.validation = fontLoadResult.validation;
+        result.attempts.push("wait-validated");
+        logInfo(
+          `✅ Font embedding successful after ${fontLoadResult.loadTime}ms`
+        );
+        return result;
+      } else {
+        logWarn("⚠️ Font loading failed:", fontLoadResult.error);
+        result.attempts.push("wait-failed");
+        result.errors.push(fontLoadResult.error);
+      }
     } catch (error) {
       result.errors.push(`Template system error: ${error.message}`);
       result.attempts.push("template-system-error");
       logWarn("⚠️ Template system failed:", error.message);
     }
 
-    // 🛡️ IMMEDIATE FALLBACK: No retries, just use fallback
-    logWarn("⚠️ Using immediate fallback CSS");
+    // 🛡️ FALLBACK: Use fallback only if fonts cannot be loaded
+    logWarn("⚠️ Using fallback CSS - fonts may not display correctly");
     result.css = generateFallbackFontCSS();
-    result.method = "immediate-fallback";
+    result.method = "fallback-forced";
     result.attempts.push("fallback-used");
 
+    // Validate even the fallback to confirm it has placeholders
+    result.validation = validateFontCSS(result.css);
+
     return result;
+  }
+
+  /**
+   * UPDATED: Enhanced export function with font validation guard
+   * Add this validation check to the main export functions
+   */
+  async function validateExportReadiness() {
+    console.log("🔍 Validating export readiness...");
+
+    const fontResult = await ensureEmbeddedFontsInclusion();
+
+    if (!fontResult.validation || !fontResult.validation.isValid) {
+      const errors = fontResult.validation
+        ? fontResult.validation.errors
+        : ["Unknown font validation error"];
+
+      // Show user-friendly error message
+      const warningIcon = `<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg>`;
+
+      const errorMessage = `
+${warningIcon} Export blocked: Fonts are not ready
+
+The fonts are still loading. Please wait a moment and try again.
+
+Technical details:
+${errors.join("\n")}
+
+This prevents broken exports with missing font data.
+`.trim();
+
+      console.error("❌ Export validation failed:", errorMessage);
+
+      // If universal notification system exists, use it
+      if (window.showNotification) {
+        window.showNotification(
+          "Fonts still loading - please wait and try again",
+          "error",
+          5000
+        );
+      } else {
+        alert(
+          "Export blocked: Fonts are still loading. Please wait a moment and try again."
+        );
+      }
+
+      return {
+        ready: false,
+        error: errorMessage,
+        fontResult: fontResult,
+      };
+    }
+
+    console.log("✅ Export validation passed");
+    return {
+      ready: true,
+      fontResult: fontResult,
+    };
+  }
+
+  /**
+   * Create and manage font loading status indicator
+   */
+  function createFontStatusIndicator() {
+    // Create status indicator element
+    const statusIndicator = document.createElement("div");
+    statusIndicator.id = "font-status-indicator";
+    statusIndicator.className = "font-status loading";
+    statusIndicator.innerHTML = `
+    <span class="status-icon">
+      <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="matrix(-1 0 0 1 19 2)">
+          <circle cx="8.5" cy="8.5" r="8"/>
+          <path d="m8.5 5.5v4h-3.5"/>
+        </g>
+      </svg>
+    </span>
+    <span class="status-text">Loading fonts...</span>
+  `;
+
+    document.body.appendChild(statusIndicator);
+
+    return statusIndicator;
+  }
+
+  /**
+   * Update font status indicator
+   */
+  function updateFontStatus(status, message) {
+    let indicator = document.getElementById("font-status-indicator");
+
+    if (!indicator) {
+      indicator = createFontStatusIndicator();
+    }
+
+    const icon = indicator.querySelector(".status-icon");
+    const text = indicator.querySelector(".status-text");
+
+    // Remove existing status classes
+    indicator.classList.remove("loading", "ready", "error", "hidden");
+
+    switch (status) {
+      case "loading":
+        indicator.classList.add("loading");
+        icon.innerHTML = `<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="matrix(-1 0 0 1 19 2)">
+            <circle cx="8.5" cy="8.5" r="8"/>
+            <path d="m8.5 5.5v4h-3.5"/>
+          </g>
+        </svg>`;
+        text.textContent = message || "Loading fonts...";
+        break;
+      case "ready":
+        indicator.classList.add("ready");
+        icon.innerHTML =
+          '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="m.5 5.5 3 3 8.028-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 6)"/></svg>';
+        text.textContent = message || "Fonts ready";
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          indicator.classList.add("hidden");
+        }, 3000);
+        break;
+      case "error":
+        indicator.classList.add("error");
+        icon.innerHTML =
+          '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg>';
+        text.textContent = message || "Font loading failed";
+        break;
+      case "hidden":
+        indicator.classList.add("hidden");
+        break;
+    }
+  }
+
+  /**
+   * Monitor font loading status and update UI
+   */
+  async function monitorFontLoadingStatus() {
+    updateFontStatus("loading", "Checking fonts...");
+
+    try {
+      // Check if fonts are already loaded
+      const validation = await validateExportReadiness();
+
+      if (validation.ready) {
+        updateFontStatus("ready", "Fonts ready for export");
+        return;
+      }
+
+      // If not ready, monitor until they are
+      updateFontStatus("loading", "Loading fonts...");
+
+      const fontResult = await waitForFontsToLoad(10000); // 10 second timeout
+
+      if (fontResult.success) {
+        updateFontStatus("ready", "Fonts loaded successfully");
+      } else {
+        updateFontStatus("error", "Font loading timeout");
+        // Hide after showing error
+        setTimeout(() => {
+          updateFontStatus("hidden");
+        }, 5000);
+      }
+    } catch (error) {
+      console.error("Font monitoring error:", error);
+      updateFontStatus("error", "Font loading error");
+      setTimeout(() => {
+        updateFontStatus("hidden");
+      }, 5000);
+    }
+  }
+
+  /**
+   * Add export button enhancement to show font status
+   */
+  function enhanceExportButtonWithFontStatus() {
+    const exportButton = document.getElementById("export-html");
+    if (!exportButton) return;
+
+    // Store original click handler
+    const originalClickHandler = exportButton.onclick;
+
+    // Replace with enhanced handler
+    exportButton.onclick = async function (event) {
+      event.preventDefault();
+
+      // Check font readiness
+      const validation = await validateExportReadiness();
+
+      if (!validation.ready) {
+        // User already notified by validateExportReadiness
+        return;
+      }
+
+      // Proceed with original export
+      if (originalClickHandler) {
+        originalClickHandler.call(this, event);
+      } else {
+        // Fallback to calling export function directly
+        if (window.ExportManager && window.ExportManager.exportEnhancedHTML) {
+          window.ExportManager.exportEnhancedHTML();
+        }
+      }
+    };
+
+    // Update button title to indicate font validation
+    exportButton.title =
+      exportButton.title + " (Validates fonts before export)";
+  }
+
+  /**
+   * Initialize font monitoring system
+   */
+  function initializeFontMonitoring() {
+    // Start monitoring when DOM is ready
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(monitorFontLoadingStatus, 1000); // Start after 1 second
+        enhanceExportButtonWithFontStatus();
+      });
+    } else {
+      setTimeout(monitorFontLoadingStatus, 1000);
+      enhanceExportButtonWithFontStatus();
+    }
   }
 
   /**
@@ -1623,77 +2018,49 @@ setTimeout(function() {
    * Now supports investigation-based enhanced export mode
    */
   async function exportEnhancedHTML() {
-    // Get DOM elements - use global references if available
-    const outputContent =
-      (window.appElements && window.appElements.outputDiv) ||
-      document.getElementById("output");
-    const exportButton =
-      (window.appElements && window.appElements.exportButton) ||
-      document.getElementById("exportButton");
+    const logInfo = window.ExportManager?.logInfo || console.log;
+    const logError = window.ExportManager?.logError || console.error;
+    const logWarn = window.ExportManager?.logWarn || console.warn;
+
+    // Get UI elements
+    const outputContent = document.querySelector(".output-content");
+    const exportButton = document.getElementById("export-html");
 
     if (!outputContent) {
-      logError("Output content element not found");
-      alert("Error: Could not find the output content to export.");
+      logError("Output content not found - cannot export");
+      if (window.showNotification) {
+        window.showNotification("Cannot find content to export", "error");
+      }
       return;
     }
 
-    if (!exportButton) {
-      logError("Export button element not found");
-      return;
-    }
-
-    // 🧪 CHECK FOR ENHANCED EXPORT MODE
-    const useEnhancedPandoc = document.getElementById(
-      "export-enhanced-pandoc"
-    )?.checked;
-
-    if (useEnhancedPandoc) {
-      logInfo(
-        "🧪 Enhanced Pandoc export mode detected - using investigation settings"
-      );
-      return await exportWithEnhancedPandoc();
-    }
-    logInfo("=== ENHANCED EXPORT WITH SCREEN READER CONTROLS STARTED ===");
-
-    // 🛡️ ENHANCED PROTECTION: Prevent duplicate exports with stronger checking
-    if (window.exportGenerationInProgress) {
-      logWarn("❌ Export already in progress - blocking duplicate attempt");
-      return;
-    }
-
-    // 🛡️ EXPORT DEBOUNCING: Prevent rapid successive exports
-    const now = Date.now();
-    if (window.lastExportStart && now - window.lastExportStart < 2000) {
-      logWarn("❌ Export called too quickly - blocking to prevent duplicates");
-      return;
-    }
-    window.lastExportStart = now;
-
-    window.exportGenerationInProgress = true;
-    // Capture original button content BEFORE any modifications
-    let originalButtonContent = exportButton.innerHTML;
+    // Store original button state
+    const originalButtonContent = exportButton ? exportButton.innerHTML : "";
+    window.exportGenerationInProgress = false;
 
     try {
-      // Check all dependencies
-      const dependencies = [
-        "AppConfig",
-        "LaTeXProcessor",
-        "ContentGenerator",
-        "TemplateSystem",
-      ];
-      const missingDeps = dependencies.filter((dep) => !window[dep]);
+      // ✅ NEW: Validate export readiness (including fonts)
+      logInfo("🔍 Validating export readiness...");
+      const validation = await validateExportReadiness();
 
-      if (missingDeps.length > 0) {
-        throw new Error(`Missing dependencies: ${missingDeps.join(", ")}`);
+      if (!validation.ready) {
+        logError("❌ Export validation failed:", validation.error);
+        return; // Stop export - user has been notified
       }
 
-      // Disable button and show loading state
-      exportButton.disabled = true;
-      exportButton.innerHTML =
-        '<svg class="icon spinning" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24">' +
-        '<path d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"/>' +
-        "</svg>" +
-        "Generating Enhanced Export...";
+      logInfo("✅ Export validation passed - proceeding with export");
+
+      // Set button state to loading
+      window.exportGenerationInProgress = true;
+      if (exportButton) {
+        exportButton.disabled = true;
+        exportButton.innerHTML =
+          '<svg class="icon spinning" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24">' +
+          '<path d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"/>' +
+          "</svg>" +
+          "Generating Enhanced Export...";
+      }
+
       // Get the current output content
       const content = outputContent.innerHTML.trim();
       logInfo("Retrieved content, length:", content.length);
@@ -1705,164 +2072,54 @@ setTimeout(function() {
       const metadata = window.LaTeXProcessor.extractDocumentMetadata(content);
       logInfo("Extracted metadata:", metadata);
 
-      // Generate the enhanced standalone HTML with simplified accessibility controls
-      logInfo(
-        "Generating enhanced standalone HTML with Phase 2.3 Simplified Accessibility Controls..."
-      );
-      logInfo(
-        "✅ Features: Working runtime controls (zoom, tab nav), baked-in context menus, optimal defaults"
-      );
+      // Generate the enhanced standalone HTML
+      logInfo("Generating enhanced standalone HTML with validated fonts...");
       const standaloneHTML = await generateEnhancedStandaloneHTML(
         content,
         metadata.title,
-        2 // Use Level 2 accessibility (includes simplified working controls)
+        2 // Use Level 2 accessibility
       );
       logInfo("Generated enhanced HTML length:", standaloneHTML.length);
 
       // Create blob and download
       logInfo("Creating download blob...");
-      // Create download blob
-      // Create download blob
       const blob = new Blob([standaloneHTML], {
         type: "text/html;charset=utf-8",
       });
 
       // Create enhanced filename
-      const filename = window.AppConfig.generateEnhancedFilename(metadata);
-
-      // 🛡️ SINGLE DOWNLOAD ENFORCER
-      const downloadId = `export_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-
-      if (window.activeDownloads && window.activeDownloads.has(downloadId)) {
-        logWarn("Duplicate download prevented by ID system");
-        return;
-      }
-
-      window.activeDownloads = window.activeDownloads || new Set();
-      window.activeDownloads.add(downloadId);
-
-      let blobUrl = null; // ✅ Fixed: Declare outside scope
-
-      try {
-        // Use more reliable download method
-        if (navigator.msSaveBlob) {
-          // Internet Explorer/Edge
-          navigator.msSaveBlob(blob, filename);
-          logInfo("Downloaded using IE/Edge method");
-          window.activeDownloads.delete(downloadId); // Clean up immediately for IE
-        } else {
-          // Modern browsers - enhanced protection
-          blobUrl = URL.createObjectURL(blob); // ✅ Fixed: Use blobUrl variable
-          const downloadLink = document.createElement("a");
-          downloadLink.href = blobUrl;
-          downloadLink.download = filename;
-          downloadLink.style.display = "none";
-          downloadLink.setAttribute("aria-hidden", "true");
-          downloadLink.setAttribute("data-download-id", downloadId);
-
-          // Enhanced click protection
-          let hasTriggered = false;
-          const protectedClick = function (e) {
-            if (hasTriggered) {
-              e.preventDefault();
-              e.stopPropagation();
-              logWarn("Protected against duplicate click");
-              return false;
-            }
-            hasTriggered = true;
-            logInfo("Single protected download triggered");
-          };
-
-          downloadLink.addEventListener("click", protectedClick, true);
-
-          // Trigger download with protection
-          document.body.appendChild(downloadLink);
-
-          // Use requestAnimationFrame to ensure DOM is ready
-          requestAnimationFrame(() => {
-            downloadLink.click();
-
-            // Immediate cleanup
-            setTimeout(() => {
-              if (document.body.contains(downloadLink)) {
-                document.body.removeChild(downloadLink);
-              }
-              if (blobUrl) {
-                // ✅ Fixed: Check if blobUrl exists
-                URL.revokeObjectURL(blobUrl);
-              }
-              window.activeDownloads.delete(downloadId);
-            }, 100);
-          });
-        }
-      } catch (error) {
-        window.activeDownloads.delete(downloadId);
-        if (blobUrl) {
-          // ✅ Fixed: Clean up on error too
-          URL.revokeObjectURL(blobUrl);
-        }
-        throw error;
-      }
-
-      // Note: Cleanup already handled in try block above, no additional cleanup needed
-
-      // Enhanced screen reader announcement
-      const features = [];
-      if (metadata.sections.length > 0) features.push("table of contents");
-      if (content.includes("theorem") || content.includes("proof"))
-        features.push("mathematical theorems");
-      if (content.includes("table")) features.push("structured tables");
-      features.push("LaTeX context menus");
-      features.push("screen reader enhancement controls");
-
-      const featuresText =
-        features.length > 0 ? " with " + features.join(", ") : "";
-
-      window.AppConfig.announceToScreenReader(
-        'Enhanced HTML file "' +
-          filename +
-          '" has been downloaded successfully' +
-          featuresText +
-          ". The file includes Phase 2.3 simplified accessibility controls with working MathJax context menus, runtime zoom and navigation controls, and comprehensive screen reader support."
+      const filename = window.AppConfig.generateEnhancedFilename(
+        metadata.title
       );
 
-      logInfo("Successfully exported enhanced HTML file: " + filename);
-      logInfo("✅ Phase 2.3 Export Complete - Document includes:", {
-        sections: metadata.sections.length,
-        author: !!metadata.author,
-        date: !!metadata.date,
-        documentClass: !!metadata.documentClass,
-        simplifiedControls: true,
-        workingRuntimeControls: true,
-        latexConversion: true,
-        holyGrailLayout: true,
-        accessibilityLevel: 2,
-        screenReaderControls: true,
-      });
-      logInfo("=== ENHANCED EXPORT COMPLETED ===");
-    } catch (error) {
-      logError("Enhanced export error:", error);
+      // Download the file
+      window.ExportManager.downloadHTMLFile(standaloneHTML, filename, metadata);
 
-      // Show user-friendly error message
-      if (
-        error.message.includes("No content") ||
-        error.message.includes("Please enter")
-      ) {
-        alert("Export failed: " + error.message);
-      } else if (error.message.includes("cancelled")) {
-        logInfo("Export cancelled by user");
-      } else {
-        alert(
-          "Export failed: " +
-            error.message +
-            "\n\nPlease try again or check the browser console for more details."
+      // Show success notification
+      if (window.showNotification) {
+        window.showNotification(
+          `Enhanced HTML exported successfully: ${filename}`,
+          "success"
+        );
+      }
+
+      logInfo(`✅ Enhanced export completed: ${filename}`);
+
+      window.AppConfig.announceToScreenReader(
+        `Enhanced HTML document exported successfully as ${filename}`
+      );
+    } catch (error) {
+      logError("Enhanced export failed:", error);
+
+      if (window.showNotification) {
+        window.showNotification(
+          "Enhanced export failed. Please try again or use standard export.",
+          "error"
         );
       }
 
       window.AppConfig.announceToScreenReader(
-        "Enhanced export failed. Please check the error message and try again."
+        "Enhanced export failed. Please try again or use standard export."
       );
     } finally {
       // Reset button state and clear export flag
@@ -2127,6 +2384,19 @@ setTimeout(function() {
     exportEnhancedHTML,
     exportWithEnhancedPandoc,
     generateEnhancedStandaloneHTMLWithMinimalProcessing,
+
+    // Font validation functions
+    validateFontCSS,
+    waitForFontsToLoad,
+    validateExportReadiness,
+    ensureEmbeddedFontsInclusion,
+
+    // UI functions
+    createFontStatusIndicator,
+    updateFontStatus,
+    monitorFontLoadingStatus,
+    enhanceExportButtonWithFontStatus,
+    initializeFontMonitoring,
 
     // Initialization
     initialiseEnhancedExportFunctionality,
