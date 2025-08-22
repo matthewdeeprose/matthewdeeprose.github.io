@@ -290,7 +290,7 @@
           <input
             type="text"
             id="arguments"
-            value="-s --from latex --to html5 --mathjax"
+            value="-s --from latex --to html5 --mathjax --section-divs --id-prefix=content- --html-q-tags --number-sections --wrap=preserve"
             aria-describedby="argsHelp"
           />
           <div id="argsHelp" class="sr-only">
@@ -300,25 +300,38 @@
         </div>
 
         <!-- 🧪 PANDOC ENHANCEMENT INVESTIGATION CONTROLS -->
-        <div
-          class="control-group investigation-controls"
+        <details
+          class="control-group investigation-controls-details"
+          id="investigation-details"
           style="
             margin-top: 1.5rem;
-            padding: 1rem;
             border: 2px solid var(--border-color);
             border-radius: 8px;
             background: var(--surface-color);
+            overflow: hidden;
           "
         >
-          <label
+          <summary
+            class="investigation-summary"
+            aria-expanded="false"
+            aria-controls="investigation-content"
             style="
               font-weight: 600;
               color: var(--heading-color);
-              margin-bottom: 0.75rem;
-              display: block;
+              padding: 1rem;
+              cursor: pointer;
               display: flex;
               align-items: center;
               gap: 0.5rem;
+              background: var(--surface-color);
+              border: none;
+              outline: none;
+              transition: all 0.3s ease;
+              position: relative;
+              user-select: none;
+              width: 100%;
+              box-sizing: border-box;
+              margin: 0;
             "
           >
             <svg
@@ -344,8 +357,33 @@
               </g>
             </svg>
             Pandoc Enhancement Investigation
-          </label>
-          <div style="margin-left: 0.5rem">
+            <svg
+              class="investigation-chevron"
+              height="20"
+              width="20"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              style="
+                margin-left: auto;
+                transition: transform 0.3s ease;
+                transform: rotate(0deg);
+              "
+            >
+              <path
+                d="M6 9l6 6 6-6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </summary>
+          <div
+            id="investigation-content"
+            class="investigation-content"
+            style="padding: 0 1rem 1rem 1rem; margin-left: 0.5rem"
+          >
             <!-- Checkbox removed - preset dropdown now serves as the single control -->
             <div class="form-group" style="margin-bottom: 0.5rem">
               <label
@@ -580,10 +618,193 @@
               </div>
             </div>
           </div>
-        </div>
+        </details>
       </footer>
     </main>
+    <script>
+      /**
+       * Enhanced Investigation Details/Summary Accessibility Manager
+       * Provides proper ARIA attributes and screen reader support
+       */
+      (function () {
+        "use strict";
 
+        /**
+         * Initialize investigation details accessibility
+         */
+        function initializeInvestigationDetails() {
+          const details = document.getElementById("investigation-details");
+          const summary = details?.querySelector(".investigation-summary");
+          const content = document.getElementById("investigation-content");
+
+          if (!details || !summary || !content) {
+            console.warn("Investigation details elements not found");
+            return;
+          }
+
+          // Set initial ARIA states
+          updateAriaStates();
+
+          // Listen for toggle events
+          details.addEventListener("toggle", handleToggle);
+
+          // Enhanced keyboard support
+          summary.addEventListener("keydown", handleKeydown);
+
+          // Mouse interaction
+          summary.addEventListener("click", handleClick);
+
+          console.log("✅ Investigation details accessibility initialized");
+
+          /**
+           * Update ARIA attributes based on current state
+           */
+          function updateAriaStates() {
+            const isOpen = details.hasAttribute("open");
+
+            // Update aria-expanded on summary
+            summary.setAttribute("aria-expanded", isOpen.toString());
+
+            // Update content visibility for screen readers
+            if (isOpen) {
+              content.removeAttribute("aria-hidden");
+              content.setAttribute("aria-live", "polite");
+            } else {
+              content.setAttribute("aria-hidden", "true");
+              content.removeAttribute("aria-live");
+            }
+          }
+
+          /**
+           * Handle details toggle event
+           */
+          function handleToggle() {
+            updateAriaStates();
+            announceStateChange();
+
+            // Optional: Save state to localStorage for persistence
+            try {
+              localStorage.setItem(
+                "investigation-details-open",
+                details.hasAttribute("open")
+              );
+            } catch (e) {
+              // Silently fail if localStorage is not available
+            }
+          }
+
+          /**
+           * Handle keyboard interaction
+           */
+          function handleKeydown(event) {
+            // Only handle Enter and Space - let details handle the rest
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+
+              // Toggle the details
+              if (details.hasAttribute("open")) {
+                details.removeAttribute("open");
+              } else {
+                details.setAttribute("open", "");
+              }
+
+              // Manually trigger toggle event for our handler
+              details.dispatchEvent(new Event("toggle"));
+            }
+          }
+
+          /**
+           * Handle mouse click
+           */
+          function handleClick() {
+            // Let the browser handle the toggle, our toggle event will fire
+            // This ensures consistent behavior between mouse and keyboard
+          }
+
+          /**
+           * Announce state change to screen readers
+           */
+          function announceStateChange() {
+            const isOpen = details.hasAttribute("open");
+            const message = isOpen
+              ? "Investigation controls expanded. Form controls are now available."
+              : "Investigation controls collapsed.";
+
+            announceToScreenReader(message);
+          }
+
+          /**
+           * Announce message to screen readers
+           */
+          function announceToScreenReader(message) {
+            const announcement = document.createElement("div");
+            announcement.setAttribute("aria-live", "polite");
+            announcement.setAttribute("aria-atomic", "true");
+            announcement.setAttribute("role", "status");
+            announcement.textContent = message;
+
+            // Screen reader only styles
+            announcement.style.cssText = `
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+      `;
+
+            document.body.appendChild(announcement);
+
+            // Remove after screen readers have processed it
+            setTimeout(() => {
+              if (document.body.contains(announcement)) {
+                document.body.removeChild(announcement);
+              }
+            }, 1000);
+          }
+
+          /**
+           * Restore saved state on page load
+           */
+          function restoreSavedState() {
+            try {
+              const savedState = localStorage.getItem(
+                "investigation-details-open"
+              );
+              if (savedState === "true") {
+                details.setAttribute("open", "");
+                updateAriaStates();
+              }
+            } catch (e) {
+              // Silently fail if localStorage is not available
+            }
+          }
+
+          // Restore state after a short delay to ensure DOM is ready
+          setTimeout(restoreSavedState, 100);
+        }
+
+        /**
+         * Initialize when DOM is ready
+         */
+        if (document.readyState === "loading") {
+          document.addEventListener(
+            "DOMContentLoaded",
+            initializeInvestigationDetails
+          );
+        } else {
+          initializeInvestigationDetails();
+        }
+
+        // Export for external access if needed
+        window.InvestigationDetailsManager = {
+          initialize: initializeInvestigationDetails,
+        };
+      })();
+    </script>
     <!-- Enhanced Theme Toggle Script with System Preference Detection -->
     <script>
       // Enhanced Theme Management with System Preference Support

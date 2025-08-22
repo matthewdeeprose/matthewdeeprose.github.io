@@ -1948,11 +1948,25 @@ h4:hover .check-icon {
   border: 1px solid var(--body-text);
 }
 
+[data-theme="dark"] .export-btn:disabled {
+  background: var(--body-bg);
+  box-shadow: 0 4px 12px rgba(15, 15, 15, 0.25);
+  color: var(--text-secondary);
+  border: 0px solid var(--body-text);
+}
+
 [data-theme="dark"] .scorm-export-btn {
   background: var(--body-bg);
-  box-shadow: 0 4px 12px rgba(74, 222, 128, 0.25);
+  box-shadow: 0 4px 12px rgba(15, 15, 15, 0.25);
   color: var(--success-color);
   border: 1px solid var(--success-color);
+}
+
+[data-theme="dark"] .scorm-export-btn:disabled {
+  background: var(--body-bg);
+  box-shadow: 0 4px 12px rgba(18, 17, 17, 0.25);
+  color: var(--text-secondary);
+  border: 0px solid var(--body-text);
 }
 
 [data-theme="dark"] .scorm-export-btn:hover {
@@ -1976,4 +1990,160 @@ h4:hover .check-icon {
 
 [data-theme="dark"] .theme-toggle {
   border-color: var(--body-text);
+}
+
+/* ===== INVESTIGATION DETAILS/SUMMARY STYLING ===== */
+
+/* Details container */
+.investigation-controls-details {
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px var(--sidebar-shadow);
+}
+
+/* Summary header styling */
+.investigation-summary {
+  list-style: none !important; /* Remove default triangle */
+  position: relative;
+}
+
+/* Remove default disclosure triangle across browsers */
+.investigation-summary::-webkit-details-marker {
+  display: none;
+}
+
+.investigation-summary::marker {
+  display: none;
+}
+
+/* Summary hover states */
+.investigation-summary:hover {
+  background: var(--focus-bg) !important;
+  color: var(--link-color) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px var(--sidebar-shadow);
+}
+
+/* Summary focus states */
+.investigation-summary:focus {
+  outline: none;
+}
+
+.investigation-summary:focus-visible {
+  outline: 3px solid var(--focus-outline) !important;
+  outline-offset: 2px !important;
+  background: var(--focus-bg) !important;
+  color: var(--link-color) !important;
+  box-shadow: 0 0 0 4px rgba(0, 46, 59, 0.1);
+}
+
+/* Remove focus for mouse users */
+.investigation-summary:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none;
+}
+
+/* Active state for immediate feedback */
+.investigation-summary:active {
+  transform: translateY(0) !important;
+  background: var(--link-color) !important;
+  color: var(--body-bg) !important;
+}
+
+/* Chevron rotation when expanded */
+.investigation-controls-details[open] .investigation-chevron {
+  transform: rotate(180deg) !important;
+}
+
+/* Enhanced expanded state styling */
+.investigation-controls-details[open] {
+  border-color: var(--link-color);
+  box-shadow: 0 4px 16px var(--sidebar-shadow);
+}
+
+.investigation-controls-details[open] .investigation-summary {
+  border-bottom: 1px solid var(--sidebar-border);
+  background: var(--body-bg) !important;
+}
+
+/* Content area styling */
+.investigation-content {
+  background: var(--surface-color);
+  animation: fadeInContent 0.3s ease-out;
+}
+
+/* Animation for content reveal */
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .investigation-controls-details,
+  .investigation-summary,
+  .investigation-chevron,
+  .investigation-content {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .investigation-controls-details {
+    border-width: 3px;
+  }
+
+  .investigation-summary:focus-visible {
+    outline-width: 4px;
+  }
+}
+
+/* Dark theme specific enhancements */
+[data-theme="dark"] .investigation-controls-details {
+  box-shadow: 0 2px 8px rgba(179, 219, 210, 0.1);
+}
+
+[data-theme="dark"] .investigation-controls-details[open] {
+  box-shadow: 0 4px 16px rgba(179, 219, 210, 0.15);
+}
+
+[data-theme="dark"] .investigation-summary:hover {
+  background: rgba(60, 186, 198, 0.1) !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .investigation-controls-details {
+    margin-top: 1rem;
+    border-radius: 6px;
+  }
+
+  .investigation-summary {
+    padding: 0.75rem !important;
+    font-size: 0.9rem;
+  }
+
+  .investigation-content {
+    padding: 0 0.75rem 0.75rem 0.75rem !important;
+    margin-left: 0 !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .investigation-controls-details {
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+
+  .investigation-controls-details[open] .investigation-content {
+    animation: none;
+  }
 }

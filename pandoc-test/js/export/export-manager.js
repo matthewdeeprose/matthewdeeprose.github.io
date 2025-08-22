@@ -214,6 +214,347 @@ const ExportManager = (function () {
   }
 
   /**
+   * Get user-configured Pandoc arguments from UI elements
+   * Respects enhancement presets, custom args, and export settings
+   */
+  function getUserConfiguredPandocArgs() {
+    // Start with base arguments from main input
+    const argumentsInput = document.getElementById("arguments");
+    let baseArgs =
+      argumentsInput?.value || "-s --from latex --to html5 --mathjax";
+
+    // Check if enhanced export is enabled
+    const exportEnhanced = document.getElementById(
+      "export-enhanced-pandoc"
+    )?.checked;
+
+    if (exportEnhanced) {
+      // Apply enhancement preset if selected
+      const preset = document.getElementById(
+        "pandoc-enhancement-preset"
+      )?.value;
+
+      if (
+        preset &&
+        preset !== "" &&
+        window.ConversionEngine?.generateEnhancedPandocArgs
+      ) {
+        try {
+          logInfo("Applying enhancement preset:", preset);
+          baseArgs =
+            window.ConversionEngine.generateEnhancedPandocArgs(baseArgs);
+        } catch (error) {
+          logWarn("Enhancement preset application failed:", error.message);
+        }
+      }
+
+      // Add custom arguments if provided
+      const customArgs = document
+        .getElementById("custom-pandoc-args")
+        ?.value?.trim();
+      if (customArgs) {
+        logInfo("Adding custom arguments:", customArgs);
+        baseArgs = baseArgs + " " + customArgs;
+      }
+    }
+
+    return baseArgs;
+  }
+
+  /**
+   * Generate enhanced standalone HTML with screen reader controls and theme toggle
+   * FIXED: Now properly handles Pandoc conversion for original LaTeX content
+   */
+  async function generateEnhancedStandaloneHTML(
+    content,
+    title,
+    accessibilityLevel = 2
+  ) {
+    logInfo(
+      "Generating enhanced standalone HTML with screen reader controls and theme toggle"
+    );
+    logDebug("Content length:", content.length);
+    logInfo("Accessibility level:", accessibilityLevel);
+
+    try {
+      // Ensure fonts are loaded for export
+      logInfo("Ensuring fonts are loaded for export...");
+      const fontResult = await ensureEmbeddedFontsInclusion();
+      logInfo("Fonts validated successfully for export");
+
+      // Check dependencies
+      if (!window.LaTeXProcessor) {
+        throw new Error("LaTeXProcessor module not available");
+      }
+      if (!window.ContentGenerator) {
+        throw new Error("ContentGenerator module not available");
+      }
+      if (!window.TemplateSystem) {
+        throw new Error("TemplateSystem module not available");
+      }
+
+      // SMART: Use optimal content source to preserve quality when possible
+      const contentSource = getOptimalContentSource();
+      logInfo(
+        `Export strategy: ${contentSource.type} (quality: ${contentSource.qualityLevel})`
+      );
+
+      let latexContent;
+      let htmlContent;
+
+      // Step 1: Handle MathJax conversion if needed
+      if (contentSource.needsConversion) {
+        // Convert pre-rendered content for menu functionality
+        logInfo("Converting pre-rendered MathJax for menu attachment");
+        latexContent = window.LaTeXProcessor.convertMathJaxToLatex(
+          contentSource.content
+        );
+      } else {
+        // Use content directly - no MathJax conversion needed
+        logInfo("Using content directly - no MathJax conversion needed");
+        latexContent = contentSource.content;
+      }
+
+      // Step 2: Handle Pandoc conversion if needed
+      if (contentSource.needsPandocConversion) {
+        logInfo("Running Pandoc conversion for LaTeX structure commands");
+
+        // Run through Pandoc to convert LaTeX commands to HTML
+        if (window.ConversionEngine && window.ConversionEngine.pandocFunction) {
+          try {
+            // Get user's configured arguments from UI
+            let pandocArgs = getUserConfiguredPandocArgs();
+
+            logInfo("Using user-configured Pandoc args:", pandocArgs);
+            htmlContent = await window.ConversionEngine.pandocFunction(
+              latexContent,
+              pandocArgs.split(" ")
+            );
+
+            // Clean the output
+            if (window.ConversionEngine.cleanPandocOutput) {
+              htmlContent =
+                window.ConversionEngine.cleanPandocOutput(htmlContent);
+            }
+
+            logInfo("Pandoc conversion completed successfully");
+          } catch (error) {
+            logError("Pandoc conversion failed:", error);
+            // Fallback to original content
+            htmlContent = latexContent;
+          }
+        } else {
+          logWarn("ConversionEngine not available - using content as-is");
+          htmlContent = latexContent;
+        }
+      } else {
+        // Content is already processed HTML
+        logInfo("Content already processed - using as-is");
+        htmlContent = latexContent;
+      }
+
+      // Extract comprehensive metadata from the processed content
+      const metadata =
+        window.LaTeXProcessor.extractDocumentMetadata(htmlContent);
+      const documentTitle = metadata.title || title || "Mathematical Document";
+
+      // Enhance document structure with integrated sidebar
+      const enhancedContent = window.ContentGenerator.enhanceDocumentStructure(
+        htmlContent,
+        metadata
+      );
+
+      logInfo("Document title:", documentTitle);
+      logInfo("Metadata:", metadata);
+
+      // Build HTML structure using template system
+      const htmlComponents = [];
+
+      // Document declaration and opening
+      htmlComponents.push("<!DOCTYPE html>");
+      htmlComponents.push('<html lang="en-GB">');
+
+      // Enhanced head section
+      htmlComponents.push(
+        await generateEnhancedHead(documentTitle, metadata, accessibilityLevel)
+      );
+
+      // Body and main content
+      htmlComponents.push("<body>");
+      htmlComponents.push(enhancedContent);
+
+      // Add integrated sidebar using template system
+      // Ensure templates are loaded before creating generator
+      const loadResults =
+        await window.TemplateSystem.GlobalTemplateCache.ensureTemplatesLoaded();
+      logDebug("Template load results:", loadResults);
+
+      let cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
+      let retries = 0;
+      while (!cacheStatus.isLoaded && retries < 20) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
+        retries++;
+      }
+
+      if (!cacheStatus.isLoaded) {
+        logWarn("Templates failed to load, using fallback sidebar");
+        htmlComponents.push(`
+        <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
+          <div class="sidebar-content">
+            <p>Reading tools temporarily unavailable</p>
+          </div>
+        </aside>
+      `);
+      } else {
+        const templateGenerator =
+          new window.TemplateSystem.EnhancedHTMLGenerator();
+        await templateGenerator.engine.initializeFromGlobalCache();
+
+        const integratedSidebar = templateGenerator.renderTemplate(
+          "integratedDocumentSidebar",
+          metadata
+        );
+
+        if (
+          integratedSidebar.includes("<!-- Template") &&
+          integratedSidebar.includes("not found")
+        ) {
+          logWarn("Template not found, using fallback sidebar");
+          htmlComponents.push(`
+          <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
+            <div class="sidebar-content">
+              <p>Reading tools temporarily unavailable</p>
+            </div>
+          </aside>
+        `);
+        } else {
+          htmlComponents.push(integratedSidebar);
+        }
+      }
+
+      // Add enhanced document footer with source viewer
+      // Get DOM elements safely (may not exist during testing)
+      const inputTextarea = document.getElementById("input");
+
+      // Use user-configured args for footer display
+      const originalSource = inputTextarea?.value || "";
+      const pandocArgs = getUserConfiguredPandocArgs();
+      const footerHTML = await generateDocumentFooter(
+        originalSource,
+        pandocArgs,
+        metadata
+      );
+      htmlComponents.push(footerHTML);
+
+      htmlComponents.push("</div>"); // Close document-wrapper
+
+      // Enhanced JavaScript with complete reading accessibility features
+      htmlComponents.push(await generateEnhancedJavaScript(accessibilityLevel));
+
+      // End document
+      htmlComponents.push("</body>");
+      htmlComponents.push("</html>");
+
+      // Generate the initial HTML structure
+      let preliminaryHTML = htmlComponents.join("\n");
+
+      // Self-containing Base64 solution - iterative convergence approach
+      logInfo(
+        "Generating self-containing Base64 content through iterative convergence..."
+      );
+
+      // Implement iterative convergence to achieve true self-reference
+      let currentHTML = preliminaryHTML;
+      let previousBase64 = "";
+      let iteration = 0;
+      const maxIterations = 5;
+      let converged = false;
+
+      logInfo("Starting iterative Base64 generation for self-reference...");
+
+      while (iteration < maxIterations) {
+        // Create script with current Base64 (empty on first iteration)
+        const embeddedDataScript = `
+<!-- Embedded Original Content for Save Functionality -->
+<script id="original-content-data" type="application/x-original-html-base64">
+${previousBase64}
+</script>`;
+
+        // Insert script into HTML
+        currentHTML = preliminaryHTML.replace(
+          "</body>",
+          embeddedDataScript + "\n</body>"
+        );
+
+        // Generate new Base64 from complete HTML
+        const newBase64 = btoa(unescape(encodeURIComponent(currentHTML)));
+
+        logDebug(
+          `Iteration ${iteration}: Base64 length = ${newBase64.length} characters`
+        );
+
+        // Check for convergence (Base64 stabilises when self-referential)
+        if (newBase64 === previousBase64 && iteration > 0) {
+          logInfo(
+            `Self-referential convergence achieved in ${iteration} iterations`
+          );
+          converged = true;
+          break;
+        }
+
+        previousBase64 = newBase64;
+        iteration++;
+      }
+
+      // Final HTML with self-referential Base64
+      const finalHTML = currentHTML;
+      const finalBase64Length = previousBase64.length;
+
+      if (converged) {
+        logInfo(
+          `True self-containing Base64 generated: ${finalBase64Length} characters`
+        );
+        logInfo(
+          `Base64 now contains HTML with exact same Base64 - perfect self-reference`
+        );
+        logInfo(
+          `Self-containing HTML generated (${finalHTML.length} characters)`
+        );
+      } else {
+        logWarn(
+          `Convergence not achieved after ${maxIterations} iterations, using best attempt`
+        );
+        logInfo(`Final Base64 length: ${finalBase64Length} characters`);
+      }
+
+      logInfo(`Enhanced export completed: ${finalHTML.length} characters`);
+      logInfo(`Quality level: ${contentSource.qualityLevel}`);
+      logInfo(
+        `Menu functionality: ${
+          contentSource.needsConversion ? "preserved via conversion" : "native"
+        }`
+      );
+
+      if (converged) {
+        logInfo(
+          "Infinite save chain achieved: Each save preserves exact same structure"
+        );
+      }
+
+      logInfo(
+        "Accessibility level " +
+          accessibilityLevel +
+          " features included with reading controls and theme toggle"
+      );
+
+      return finalHTML;
+    } catch (error) {
+      logError("Error generating enhanced standalone HTML:", error);
+      throw new Error("Failed to generate enhanced HTML: " + error.message);
+    }
+  }
+  /**
    * Generate enhanced standalone HTML with minimal post-processing
    * Uses enhanced Pandoc HTML content with complete feature set and accessibility
    * "Minimal processing" means leveraging enhanced Pandoc arguments to reduce regex post-processing
@@ -301,12 +642,12 @@ const ExportManager = (function () {
       if (!cacheStatus.isLoaded) {
         logWarn("Templates failed to load after retries, using fallback");
         htmlComponents.push(`
-          <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
-            <div class="sidebar-content">
-              <p>Reading tools temporarily unavailable</p>
-            </div>
-          </aside>
-        `);
+        <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
+          <div class="sidebar-content">
+            <p>Reading tools temporarily unavailable</p>
+          </div>
+        </aside>
+      `);
       } else {
         const templateGenerator =
           new window.TemplateSystem.EnhancedHTMLGenerator();
@@ -323,12 +664,12 @@ const ExportManager = (function () {
         ) {
           logWarn("Template not found, using fallback sidebar");
           htmlComponents.push(`
-            <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
-              <div class="sidebar-content">
-                <p>Reading tools temporarily unavailable</p>
-              </div>
-            </aside>
-          `);
+          <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
+            <div class="sidebar-content">
+              <p>Reading tools temporarily unavailable</p>
+            </div>
+          </aside>
+        `);
         } else {
           logDebug(
             "✅ Successfully rendered integrated sidebar with templates"
@@ -539,235 +880,90 @@ ${previousBase64}
     }
   }
 
-  // ===========================================================================================
-  // ENHANCED STANDALONE HTML GENERATION
-  // ===========================================================================================
   /**
-   * Generate enhanced standalone HTML with screen reader controls and theme toggle
+   * ENHANCED: Smart content source detection with chunked document support
+   * CRITICAL FIX: Properly detects and uses combined chunked content
    */
-  async function generateEnhancedStandaloneHTML(
-    content,
-    title,
-    accessibilityLevel = 2
-  ) {
-    logInfo(
-      "Generating enhanced standalone HTML with screen reader controls and theme toggle"
-    );
-    logDebug("Content length:", content.length);
-    logInfo("Accessibility level:", accessibilityLevel);
+  function getOptimalContentSource() {
+    logInfo("Determining optimal content source for export...");
 
-    try {
-      // ✅ NEW: Add these 3 lines here
-      logInfo("🔍 Ensuring fonts are loaded for export...");
-      const fontResult = await ensureEmbeddedFontsInclusion();
-      logInfo("✅ Fonts validated successfully for export");
+    const inputTextarea = document.getElementById("input");
+    const outputDiv = document.getElementById("output");
 
-      // Check dependencies (your existing code continues here)
-      if (!window.LaTeXProcessor) {
-        throw new Error("LaTeXProcessor module not available");
-      }
-      if (!window.ContentGenerator) {
-        throw new Error("ContentGenerator module not available");
-      }
-      if (!window.TemplateSystem) {
-        throw new Error("TemplateSystem module not available");
-      }
+    // Check for original LaTeX input (highest priority for quality)
+    if (inputTextarea && inputTextarea.value.trim()) {
+      const originalLatex = inputTextarea.value.trim();
 
-      // CRITICAL: Convert pre-rendered MathJax back to LaTeX for proper menu attachment
-      const latexContent = window.LaTeXProcessor.convertMathJaxToLatex(content);
+      // ENHANCED: Detect if this is a full document with chunking requirements
+      const isFullDocument =
+        originalLatex.includes("\\documentclass") &&
+        originalLatex.includes("\\begin{document}");
 
-      // Extract comprehensive metadata
-      const metadata =
-        window.LaTeXProcessor.extractDocumentMetadata(latexContent);
-      const documentTitle = metadata.title || title || "Mathematical Document";
+      // CRITICAL FIX: Check if the document was processed in chunks
+      const outputContent = outputDiv?.innerHTML?.trim();
+      const hasProcessedOutput =
+        outputContent &&
+        outputContent.length > 100 &&
+        !outputContent.includes("Enter some LaTeX content");
 
-      // Enhance document structure with integrated sidebar
-      const enhancedContent = window.ContentGenerator.enhanceDocumentStructure(
-        latexContent,
-        metadata
-      );
+      if (isFullDocument && hasProcessedOutput) {
+        // Document was chunked and processed - use the combined output
+        logInfo("CHUNKED DOCUMENT DETECTED: Using combined processed output");
+        logInfo(
+          `Original input length: ${originalLatex.length}, Combined output length: ${outputContent.length}`
+        );
 
-      logInfo("Document title:", documentTitle);
-      logInfo("Metadata:", metadata);
-
-      // Build HTML structure using template system
-      const htmlComponents = [];
-
-      // Document declaration and opening
-      htmlComponents.push("<!DOCTYPE html>");
-      htmlComponents.push('<html lang="en-GB">');
-
-      // Enhanced head section
-      htmlComponents.push(
-        await generateEnhancedHead(documentTitle, metadata, accessibilityLevel)
-      );
-
-      // Body and main content
-      htmlComponents.push("<body>");
-      htmlComponents.push(enhancedContent);
-
-      // Add integrated sidebar using template system
-      // 🎯 CRITICAL FIX: Ensure templates are loaded before creating generator
-      const loadResults =
-        await window.TemplateSystem.GlobalTemplateCache.ensureTemplatesLoaded();
-      logDebug("Template load results:", loadResults);
-
-      let cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
-      let retries = 0;
-      while (!cacheStatus.isLoaded && retries < 20) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
-        retries++;
-      }
-
-      if (!cacheStatus.isLoaded) {
-        logWarn("Templates failed to load, using fallback sidebar");
-        htmlComponents.push(`
-          <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
-            <div class="sidebar-content">
-              <p>Reading tools temporarily unavailable</p>
-            </div>
-          </aside>
-        `);
+        return {
+          content: outputContent,
+          type: "chunked-processed",
+          needsConversion: true, // MathJax conversion needed for menus
+          needsPandocConversion: false, // Already processed by Pandoc in chunks
+          qualityLevel: "optimal-chunked",
+          sourceInfo: "Combined output from chunked processing",
+        };
       } else {
-        const templateGenerator =
-          new window.TemplateSystem.EnhancedHTMLGenerator();
-        await templateGenerator.engine.initializeFromGlobalCache();
+        // Standard single-pass document
+        logInfo("SINGLE DOCUMENT: Using original LaTeX for processing");
 
-        const integratedSidebar = templateGenerator.renderTemplate(
-          "integratedDocumentSidebar",
-          metadata
-        );
-
-        if (
-          integratedSidebar.includes("<!-- Template") &&
-          integratedSidebar.includes("not found")
-        ) {
-          logWarn("Template not found, using fallback sidebar");
-          htmlComponents.push(`
-            <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
-              <div class="sidebar-content">
-                <p>Reading tools temporarily unavailable</p>
-              </div>
-            </aside>
-          `);
-        } else {
-          htmlComponents.push(integratedSidebar);
-        }
+        return {
+          content: originalLatex,
+          type: "original-latex",
+          needsConversion: false, // No MathJax conversion needed
+          needsPandocConversion: true, // Needs Pandoc conversion
+          qualityLevel: "optimal",
+          sourceInfo: "Original LaTeX from input",
+        };
       }
-      // Add document footer
-      // Add enhanced document footer with source viewer
-      // Get DOM elements safely (may not exist during testing)
-      const inputTextarea = document.getElementById("input");
-      const argumentsInput = document.getElementById("arguments");
-
-      const originalSource = inputTextarea?.value || "";
-      const pandocArgs =
-        argumentsInput?.value || "--from latex --to html5 --mathjax";
-      const footerHTML = await generateDocumentFooter(
-        originalSource,
-        pandocArgs,
-        metadata
-      );
-      htmlComponents.push(footerHTML);
-
-      htmlComponents.push("</div>"); // Close document-wrapper
-
-      // Enhanced JavaScript with complete reading accessibility features
-      htmlComponents.push(await generateEnhancedJavaScript(accessibilityLevel));
-
-      // End document
-      htmlComponents.push("</body>");
-      htmlComponents.push("</html>");
-
-      // Generate the initial HTML structure
-      let preliminaryHTML = htmlComponents.join("\n");
-
-      // 🎯 SELF-CONTAINING BASE64 SOLUTION - ITERATIVE CONVERGENCE APPROACH
-      logInfo(
-        "🔧 Generating self-containing Base64 content through iterative convergence..."
-      );
-
-      // Implement iterative convergence to achieve true self-reference
-      let currentHTML = preliminaryHTML;
-      let previousBase64 = "";
-      let iteration = 0;
-      // Change maxIterations value to increase number of possible saves that can be made
-      // This will increase file size
-      // After maxIterations -1 the save function will stop working properly
-      const maxIterations = 5;
-      let converged = false;
-
-      logInfo("🔄 Starting iterative Base64 generation for self-reference...");
-
-      while (iteration < maxIterations) {
-        // Create script with current Base64 (empty on first iteration)
-        const embeddedDataScript = `
-<!-- Embedded Original Content for Save Functionality -->
-<script id="original-content-data" type="application/x-original-html-base64">
-${previousBase64}
-</script>`;
-
-        // Insert script into HTML
-        currentHTML = preliminaryHTML.replace(
-          "</body>",
-          embeddedDataScript + "\n</body>"
-        );
-
-        // Generate new Base64 from complete HTML
-        const newBase64 = btoa(unescape(encodeURIComponent(currentHTML)));
-
-        logDebug(
-          `Iteration ${iteration}: Base64 length = ${newBase64.length} characters`
-        );
-
-        // Check for convergence (Base64 stabilises when self-referential)
-        if (newBase64 === previousBase64 && iteration > 0) {
-          logInfo(
-            `✅ Self-referential convergence achieved in ${iteration} iterations`
-          );
-          converged = true;
-          break;
-        }
-
-        previousBase64 = newBase64;
-        iteration++;
-      }
-
-      // Final HTML with self-referential Base64
-      const finalHTML = currentHTML;
-      const finalBase64Length = previousBase64.length;
-
-      if (converged) {
-        logInfo(
-          `✅ True self-containing Base64 generated: ${finalBase64Length} characters`
-        );
-        logInfo(
-          `🔄 Base64 now contains HTML with exact same Base64 - perfect self-reference`
-        );
-        logInfo(
-          `🧪 Self-containing HTML generated (${finalHTML.length} characters)`
-        );
-        logInfo(
-          `♻️ Infinite save chain achieved: Each save preserves exact same structure`
-        );
-      } else {
-        logWarn(
-          `⚠️ Convergence not achieved after ${maxIterations} iterations, using best attempt`
-        );
-        logInfo(`📊 Final Base64 length: ${finalBase64Length} characters`);
-      }
-      logInfo(
-        "Accessibility level " +
-          accessibilityLevel +
-          " features included with reading controls and theme toggle"
-      );
-
-      return finalHTML;
-    } catch (error) {
-      logError("Error generating enhanced standalone HTML:", error);
-      throw new Error("Failed to generate enhanced HTML: " + error.message);
     }
+
+    // Fallback: Use processed output if available
+    if (outputDiv && outputDiv.innerHTML.trim()) {
+      const outputHtml = outputDiv.innerHTML.trim();
+
+      if (!outputHtml.includes("Enter some LaTeX content")) {
+        logInfo("FALLBACK: Using existing processed output");
+
+        return {
+          content: outputHtml,
+          type: "pre-rendered",
+          needsConversion: true, // MathJax conversion needed
+          needsPandocConversion: false, // Already processed
+          qualityLevel: "processed",
+          sourceInfo: "Existing processed output",
+        };
+      }
+    }
+
+    // No valid content found
+    logWarn("No valid content source found for export");
+    return {
+      content: "",
+      type: "empty",
+      needsConversion: false,
+      needsPandocConversion: false,
+      qualityLevel: "none",
+      sourceInfo: "No content available",
+    };
   }
 
   /**

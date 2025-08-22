@@ -191,12 +191,12 @@ const ConversionEngine = (function () {
 
         const level =
           complexityScore < 10
-            ? "basic"
+            ? "Basic"
             : complexityScore < 30
-            ? "intermediate"
+            ? "Intermediate"
             : complexityScore < 70
-            ? "advanced"
-            : "complex";
+            ? "Advanced"
+            : "Complex";
 
         logInfo(
           `Document complexity assessment: ${level} (score: ${complexityScore.toFixed(
@@ -1265,10 +1265,10 @@ const ConversionEngine = (function () {
             "pandoc-enhanced-mode"
           )?.checked;
           const successMessage = enhancedMode
-            ? `🧪 Enhanced ${complexity.level} document converted! Check output for improvements.`
+            ? `🧪 Enhanced ${complexity.level} document converted. Check output for improvements.`
             : complexity.level === "basic"
             ? " Conversion complete! Ready for export."
-            : ` ${complexity.level} document converted successfully! Ready for export.`;
+            : ` ${complexity.level} document converted. Ready for export.`;
           window.StatusManager.setReady(successMessage);
         }
 
