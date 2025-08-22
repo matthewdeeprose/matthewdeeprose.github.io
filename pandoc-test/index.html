@@ -83,9 +83,8 @@
   <body>
     <header>
       <div class="header-content">
-        <h1>Pandoc-WASM Mathematical Playground - BETA</h1>
+        <h1>Convert LaTeX to standalone HTML and SCORM files (BETA)</h1>
         <p class="subtitle">
-          Convert LaTeX to standalone HTML and SCORM files.<br />
           Privacy-friendly: No data leaves your browser, everything happens on
           your computer.
         </p>
@@ -209,30 +208,45 @@
             </div>
           </div>
         </div>
-        <div class="examples-container">
-          <label for="example-select" class="sr-only"
-            >Select an example to load</label
-          >
-          <select
-            id="example-select"
-            class="example-select"
-            aria-describedby="example-help"
-          >
-            <option value="">Choose an example...</option>
-            <!-- Options will be populated by ExampleSystem module -->
-          </select>
-          <button
-            id="random-example-btn"
-            class="random-example-btn"
-            aria-label="Load random example"
-          >
-            <span aria-hidden="true">🎲</span> Random
-          </button>
-          <div id="example-help" class="sr-only">
-            Select an example from the dropdown or click random to load a
-            demonstration
+        <fieldset class="examples-fieldset">
+          <legend class="examples-legend">Mathematical Examples Library</legend>
+          <div class="examples-container">
+            <label for="example-select" class="sr-only"
+              >Select an example to load</label
+            >
+            <select
+              id="example-select"
+              class="example-select"
+              aria-describedby="example-help"
+            >
+              <option value="">Choose an example...</option>
+              <!-- Your existing options -->
+              <option value="mathematical-foundations">
+                Mathematical Foundations
+              </option>
+              <option value="advanced-calculus">Advanced Calculus</option>
+              <option value="linear-algebra">Linear Algebra</option>
+              <option value="statistics">Statistics &amp; Probability</option>
+              <option value="complex-analysis">Complex Analysis</option>
+              <option value="differential-equations">
+                Differential Equations
+              </option>
+              <option value="topology">Topology</option>
+              <option value="algebraic-structures">Abstract Algebra</option>
+            </select>
+            <button
+              id="random-example-btn"
+              class="random-example-btn"
+              aria-label="Load random example"
+            >
+              <span aria-hidden="true">🎲</span> Random
+            </button>
+            <div id="example-help" class="sr-only">
+              Select an example from the dropdown or click random to load a
+              demonstration
+            </div>
           </div>
-        </div>
+        </fieldset>
       </div>
 
       <div class="workspace">

@@ -1035,43 +1035,82 @@ const ContentGenerator = (function () {
 
 
 .form-group select {
-            padding: 8px 12px;
-            border: 1px solid var(--sidebar-border);
-            border-radius: 6px;
-            background: var(--surface-color);
-            color: var(--body-text);
-            font-size: 0.85rem;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            /* FIXED: Responsive sizing to prevent overflow */
-            max-width: 100%;
-            min-width: 0;
-            width: 100%;
-            box-sizing: border-box;
-            /* IMPROVED: Better text overflow handling */
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            overflow: hidden;
-        }
+  background-color: var(--body-bg);
+  border: 1px solid var(--body-text);
 
-        /* Remove outline for mouse clicks on selects */
-        .form-group select:focus:not(:focus-visible) {
-            outline: none;
-        }
+  color: var(--body-text);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  min-width: 200px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
-        .form-group select:focus-visible {
-            outline: 3px solid var(--focus-outline);
-            outline-offset: 2px;
-            border-color: var(--link-color);
-            box-shadow: 0 0 0 4px var(--focus-bg);
-        }
+  
+}
 
-        .form-group select:hover {
-            border-color: var(--link-color);
-            background: var(--focus-bg);
-        }
+/* Specific styling for select options */
+.form-group select option {
+  background-color: var(--body-bg);
+  color: var(--body-text);
+  padding: 0.5rem;
+}
+
+/* Dark mode specific fixes */
+[data-theme="dark"] .form-group select {
+  background-color: var(--body-bg);
+  color: var(--body-text);
+  border-color: var(--body-text);
+
+  
+}
+
+/* Force dark mode option styling with higher specificity */
+[data-theme="dark"] .form-group select option {
+  background-color: var(--body-bg) !important;
+  color: var(--body-text) !important;
+}
+
+/* Additional browser-specific fixes */
+[data-theme="dark"] .form-group select {
+  /* Webkit browsers (Chrome, Safari) */
+  -webkit-color-scheme: dark;
+
+  /* Firefox */
+  color-scheme: dark;
+}
+
+/* Focus states */
+.form-group select:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 2px;
+  border-color: var(--link-color);
+}
+
+[data-theme="dark"] .form-group select:focus-visible {
+  border-color: var(--link-color);
+}
+
+.form-group select:focus {
+	outline: transparent 2px solid !important;
+}
+
+[data-theme="dark"] .form-group select:focus {
+	outline: transparent 2px solid;
+}
+
+/* Hover states */
+.form-group select:hover {
+  border-color: var(--link-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .form-group select:hover {
+  border-color: var(--link-color);
+  box-shadow: 0 2px 6px rgba(179, 219, 210, 0.2);
+}
 
         .form-group input[type="number"] {
             padding: 6px 8px;
