@@ -1480,13 +1480,13 @@ h4:hover .check-icon {
 /* Dark mode examples fieldset */
 [data-theme="dark"] .examples-fieldset {
   background: var(--sidebar-bg);
-  border-color: var(--sidebar-border);
+  border-color: var(--text-secondary);
   box-shadow: 0 4px 12px rgba(179, 219, 210, 0.1);
 }
 
 [data-theme="dark"] .examples-legend {
   background: var(--surface-color);
-  border-color: var(--sidebar-border);
+  border-color: var(--text-secondary);
   color: var(--heading-color);
 }
 
@@ -1543,6 +1543,10 @@ h4:hover .check-icon {
 
   .status-bar .examples-fieldset {
     min-width: 350px;
+  }
+
+  .status-text {
+    max-width: 225px;
   }
 
   .controls {
@@ -2152,4 +2156,85 @@ h4:hover .check-icon {
 
 #title-block-header {
   margin-bottom: 1rem;
+}
+
+/* ===== HEADER STYLING ===== */
+header {
+  background-color: var(--link-color);
+  color: var(--body-bg);
+  padding: 1rem;
+  box-shadow: 0 2px 4px var(--sidebar-shadow);
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.3s ease;
+}
+
+.header-content {
+  flex: 1;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: inherit;
+}
+
+.subtitle {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  opacity: 0.9;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ===== PRIVACY BADGE SVG STYLING ===== */
+.privacy-badge {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--body-bg);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  transition: all var(--transition-base);
+}
+
+/* Privacy badge hover effect for enhanced visual feedback */
+.subtitle:hover .privacy-badge {
+  transform: scale(1.1);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Dark mode privacy badge styling */
+[data-theme="dark"] .privacy-badge {
+  color: var(--body-text);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+[data-theme="dark"] .subtitle:hover .privacy-badge {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+/* Accessibility: Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .privacy-badge {
+    transition: none;
+  }
+
+  .subtitle:hover .privacy-badge {
+    transform: none;
+  }
+}
+[data-theme="dark"] .status-indicator {
+  background: var(--surface-color);
+  box-shadow: 0 2px 8px rgba(179, 219, 210, 0.1);
+  border: 1px solid var(--text-secondary);
+}
+[data-theme="dark"] .status-icon-container {
+  background: linear-gradient(135deg, var(--sidebar-bg), var(--surface-color));
+  border-color: var(--sidebar-border);
+  border: 2px dotted var(--body-text);
 }

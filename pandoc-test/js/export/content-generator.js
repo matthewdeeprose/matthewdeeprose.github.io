@@ -745,9 +745,9 @@ const ContentGenerator = (function () {
         /* ===== PRINT BUTTON STYLING ===== */
         .print-button {
             width: 100%;
-            background: var(--success-color);
-            color: var(--body-bg);
-            border: none;
+    background: var(    --success-hover);
+    color: var(--body-text);
+    border: 2px solid var(--success-text) !important;
             border-radius: 6px;
             padding: 10px 16px;
             font-size: 14px;
@@ -764,8 +764,19 @@ const ContentGenerator = (function () {
         .print-button:hover {
             background: var(--link-color);
             transform: translateY(-1px);
+			  color: var(--body-bg);
         }
+[data-theme="dark"] .print-button {
+    background: var(   --sidebar-border);
+    color: var(--body-text);
+    border: 2px solid var(--success-text);
 
+}
+
+[data-theme="dark"] .print-button:hover {
+    background: var(--surface-color)
+;
+}
         .print-button:focus-visible {
             outline: 3px solid var(--focus-outline);
             outline-offset: 2px;
@@ -820,6 +831,18 @@ const ContentGenerator = (function () {
             outline: 3px solid var(--focus-color);
             outline-offset: 2px;
         }
+
+        /* Hide save button when no more saves available with full MathJax */
+button.action-button.save-button[style*="display: none"] {
+  display: none !important;
+}
+
+/* Alternative selectors for save button hiding */
+.save-button[style*="display: none"],
+[title*="Save"][style*="display: none"],
+[aria-label*="Save"][style*="display: none"] {
+  display: none !important;
+}
 
 .action-button:hover .action-icon {
   transform: scale(1.1);
@@ -996,7 +1019,19 @@ const ContentGenerator = (function () {
             max-width: 100%;
             min-width: 0;
         }
+        /* Special layout for form groups containing select elements */
+        .form-group:has(select) {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+        }
 
+        /* Fallback for browsers that don't support :has() */
+        .form-group.select-group {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+        }
         .form-group:last-child {
             margin-bottom: 0;
         }
@@ -1009,6 +1044,15 @@ const ContentGenerator = (function () {
             line-height: 1.4;
             font-weight: 500;
         }
+
+        /* Adjust label styling when above select elements */
+        .form-group:has(select) label,
+        .form-group.select-group label {
+            flex: none;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
 
         .form-group input[type="checkbox"],
         .form-group input[type="radio"] {
@@ -1542,7 +1586,7 @@ const ContentGenerator = (function () {
                 --sidebar-shadow: none !important;
             }
 
-            /* CRITICAL: Force all elements to use light colours */
+            /* CRITICAL: Force all elements to use light colors */
             *, *::before, *::after {
                 color: #000 !important;
                 background: transparent !important;
@@ -2141,7 +2185,7 @@ const ContentGenerator = (function () {
         #title-block-header .author {
             font-size: 1.125rem;
             font-weight: 500;
-            color: var(--text-secondary);
+            color: var(--body-text);
             margin: 0 0 0.5rem 0;
             line-height: 1.4;
             word-wrap: break-word;
@@ -2153,7 +2197,7 @@ const ContentGenerator = (function () {
         #title-block-header .date {
             font-size: 1rem;
             font-weight: 400;
-            color: var(--text-secondary);
+            color: var(--body-text);
             margin: 0;
             opacity: 0.8;
             font-variant-numeric: tabular-nums;
@@ -2236,86 +2280,57 @@ const ContentGenerator = (function () {
       }
       
 /* Focus controls layout - horizontal inline */
-      .focus-controls {
-          display: inline-flex;
-          gap: 0.5rem;
-          align-items: center;
-      }
-      
-     /* Toggle button styling - compact horizontal */
-      .focus-toggle-btn {
-          background: var(--body-bg);
-          color: var(--body-text);
-            border: 2px solid var(--border-color);
-          border-radius: 4px;
-          padding: 0.35rem 0.6rem;
-          font-size: 0.75rem;
-          font-weight: 400;
-          cursor: pointer;
-          text-align:left;
-          transition: all 0.3s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          	margin: 8px;
-      }
-      
-      .focus-toggle-btn:hover {
-          background: var(--focus-bg);
-          border-color: var(--link-color);
-          transform: translateY(-1px);
-      }
-      
+.focus-controls {
+	display: inline-flex;
+	gap: 0.5rem;
+	align-items: center;
+}
+/* Toggle button styling - compact horizontal */
+.focus-toggle-btn {
+	background: var(--body-bg);
+	color: var(--body-text);
+	border: 2px solid var(--body-text);
+	border-radius: 4px;
+	padding: 0.35rem 0.6rem;
+	font-size: 0.75rem;
+	font-weight: 400;
+	cursor: pointer;
+	text-align: left;
+	transition: all 0.3s ease;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 8px;
+}
+.focus-toggle-btn:hover {
+	border: 2px dotted;
+	transform: translateY(-1px);
+}
 /* Remove outline for mouse clicks */
-      .focus-toggle-btn:focus:not(:focus-visible) {
-          outline: none;
-      }
-      
-      .focus-toggle-btn:focus-visible {
-          outline: 3px solid var(--focus-outline);
-          outline-offset: 2px;
-          background: var(--focus-bg);
-      }
-      
-      /* Pressed state for toggle buttons */
-.focus-toggle-btn[aria-pressed="false"] {
-    background: var(--body-bg);
-    color: var( --border-color);
-    border-color: var( --border-color);
+.focus-toggle-btn:focus:not(:focus-visible) {
+	outline: none;
 }
-      
-.focus-toggle-btn[aria-pressed="false"]:hover {
-    background:   var( --code-bg);
-    color: var( --body-text);
-    border-color:     var( --body-text);
-
+.focus-toggle-btn:focus-visible {
+	/* ensure high-contrast mode still has an indicator */
+	outline: 2px transparent solid;
+	/* Apply a thick white box-shadow with 
+	   a thin dark blue indicator in the middle */
+	box-shadow: 0 0 0 2px white, 0 0 0 4px #002e3b, 0 0 4px 8px white;
 }
-      
-      /* Focus mode button special styling */
-      .focus-mode-btn {
-          background: var(--success-color);
-          color: var(--body-bg);
-          border-color: var(--success-color);
-          font-weight: 600;
-      }
-      
-      .focus-mode-btn:hover {
-          background: color-mix(in srgb, var(--success-color) 85%, black 15%);
-          border-color: color-mix(in srgb, var(--success-color) 85%, black 15%);
-      }
-      
+/* Pressed state for toggle buttons */
+.focus-toggle-btn[aria-pressed="false"] {}
+/* Focus mode button special styling */
+.focus-mode-btn {
+	font-weight: 600;
+}
 .focus-mode-btn[aria-pressed="true"] {
-    color: var(  --warning-color);
-    background: var(--body-bg);
-	     border-color: var( --warning-color);
+	border: 2px dashed;
 }
-
-
 .distraction-free-controls legend {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--heading-color);
-    padding: 0 0.5rem;
+	font-size: 1rem;
+	font-weight: 600;
+	color: var(--heading-color);
+	padding: 0 0.5rem;
 }
       
       /* ===== DISTRACTION-FREE GRID LAYOUTS ===== */
@@ -2419,7 +2434,7 @@ const ContentGenerator = (function () {
               border: 1px solid var(--sidebar-border);
               border-radius: 8px;
               text-align: center;
-              colour: var(--text-secondary);
+              color: var(--text-secondary);
               font-size: 0.9rem;
           }
       }

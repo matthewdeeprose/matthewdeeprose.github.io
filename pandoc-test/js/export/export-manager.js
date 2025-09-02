@@ -262,6 +262,43 @@ const ExportManager = (function () {
   }
 
   /**
+   * Validate and clean Base64 content
+   * @param {string} content - The content to encode
+   * @returns {string} - Clean Base64 encoded content
+   */
+  function createSafeBase64(content) {
+    try {
+      // Ensure content is a string
+      const stringContent =
+        typeof content === "string" ? content : String(content);
+
+      // Remove any null bytes or problematic characters
+      const cleanContent = stringContent.replace(/\0/g, "");
+
+      // Encode to Base64
+      const base64Content = btoa(cleanContent);
+
+      // Validate by attempting to decode
+      const testDecode = atob(base64Content);
+
+      console.log("✅ Base64 encoding validated successfully");
+      console.log("📊 Original content length:", stringContent.length);
+      console.log("📊 Base64 content length:", base64Content.length);
+
+      return base64Content;
+    } catch (error) {
+      console.error("❌ Base64 encoding failed:", error);
+      console.log(
+        "🔍 Content preview:",
+        content ? String(content).substring(0, 100) : "null/undefined"
+      );
+
+      // Return empty string as fallback
+      return "";
+    }
+  }
+
+  /**
    * Generate enhanced standalone HTML with screen reader controls and theme toggle
    * FIXED: Now properly handles Pandoc conversion for original LaTeX content
    */
@@ -2045,22 +2082,78 @@ setTimeout(function() {
 // ORIGINAL CONTENT STORAGE FOR SAVE FUNCTIONALITY
 // ===========================================================================================
 
-// Verify embedded content is available
+// Verify embedded content and hide save button if no more saves available
 setTimeout(function() {
   const embeddedData = document.getElementById('original-content-data');
+  
   if (embeddedData) {
-    console.log('✅ Clean HTML content embedded and ready for saving');
-    console.log('📊 Embedded data size:', embeddedData.textContent.length, 'Base64 characters');
+    const base64Content = embeddedData.textContent.trim();
     
-    // Also verify we can decode it
-    try {
-      const testDecode = atob(embeddedData.textContent.trim()).substring(0, 100);
-      console.log('✅ Embedded data decoding verified');
-    } catch (e) {
-      console.error('❌ Embedded data exists but cannot be decoded:', e);
+    if (base64Content.length === 0) {
+      // Empty script tag means no more saves with full MathJax functionality
+      console.log('⚠️ No embedded Base64 content - this is the final save iteration');
+      console.log('🔒 Hiding save button as MathJax will not work properly on next save');
+      
+      // Hide the save button
+      const saveButton = document.querySelector('button.action-button.save-button');
+      if (saveButton) {
+        saveButton.style.display = 'none';
+        console.log('✅ Save button hidden successfully');
+        
+        // Announce to screen readers
+        if (typeof announceToScreenReader === 'function') {
+          announceToScreenReader('Save functionality has reached its limit. This document can still be saved using your browser\\'s Save As function, but mathematical expressions may have limited functionality.');
+        }
+      } else {
+        console.warn('⚠️ Save button not found - selector may need adjustment');
+        // Try alternative selectors
+        const altButton = document.querySelector('.save-button') || document.querySelector('[title*="Save"]') || document.querySelector('[aria-label*="Save"]');
+        if (altButton) {
+          altButton.style.display = 'none';
+          console.log('✅ Save button hidden using alternative selector');
+        }
+      }
+      
+    } else {
+      console.log('✅ Clean HTML content embedded and ready for saving');
+      console.log('📊 Embedded data size:', base64Content.length, 'Base64 characters');
+      
+// Verify we can decode it
+try {
+  // First check if base64Content is valid
+  if (!base64Content || typeof base64Content !== 'string') {
+    throw new Error('Base64 content is null, undefined, or not a string');
+  }
+  
+  // Check for invalid Base64 characters
+  const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+  if (!base64Regex.test(base64Content)) {
+    throw new Error('Base64 content contains invalid characters');
+  }
+  
+  // Test decode with error handling
+  const testDecode = atob(base64Content).substring(0, 100);
+  console.log('✅ Embedded data decoding verified');
+  console.log('🔍 Decoded preview:', testDecode.substring(0, 50) + '...');
+  
+} catch (e) {
+  console.error('❌ Embedded data exists but cannot be decoded:', e);
+  console.log('🔍 Base64 content type:', typeof base64Content);
+  console.log('🔍 Base64 content length:', base64Content ? base64Content.length : 'null/undefined');
+  console.log('🔍 Base64 content preview:', base64Content ? base64Content.substring(0, 100) : 'null/undefined');
+  
+  // Log invalid characters if any
+  if (base64Content && typeof base64Content === 'string') {
+    const invalidChars = base64Content.match(/[^A-Za-z0-9+/=]/g);
+    if (invalidChars) {
+      console.log('🚨 Invalid Base64 characters found:', [...new Set(invalidChars)]);
     }
+  }
+}
+    }
+    
   } else {
-    console.warn('⚠️ No embedded clean content found - save functionality will use fallback methods');
+    console.warn('⚠️ No embedded data element found - save functionality will use fallback methods');
   }
 }, 100);
 `;
