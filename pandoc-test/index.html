@@ -8,8 +8,14 @@
       name="description"
       content="An accessibility focussed browser-based LaTeX to HTML converter with HTML and SCORM export features powered by Pandoc WebAssembly with MathJax rendering"
     />
-	    <meta property="og:title" content="Pandoc-WASM Mathematical Playground - BETA - Matthew Deeprose" />
-    <meta property="og:description" content="An accessibility focussed browser-based LaTeX to HTML converter with HTML and SCORM export features powered by Pandoc WebAssembly with MathJax rendering" />
+    <meta
+      property="og:title"
+      content="Pandoc-WASM Mathematical Playground - BETA - Matthew Deeprose"
+    />
+    <meta
+      property="og:description"
+      content="An accessibility focussed browser-based LaTeX to HTML converter with HTML and SCORM export features powered by Pandoc WebAssembly with MathJax rendering"
+    />
     <meta
       property="og:image"
       content="https://matthewdeeprose.github.io/image.png"
@@ -43,8 +49,14 @@
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Pandoc-WASM Mathematical Playground - BETA - Matthew Deeprose" />
-    <meta name="twitter:description" content="An accessibility focussed browser-based LaTeX to HTML converter with HTML and SCORM export features powered by Pandoc WebAssembly with MathJax rendering" />
+    <meta
+      name="twitter:title"
+      content="Pandoc-WASM Mathematical Playground - BETA - Matthew Deeprose"
+    />
+    <meta
+      name="twitter:description"
+      content="An accessibility focussed browser-based LaTeX to HTML converter with HTML and SCORM export features powered by Pandoc WebAssembly with MathJax rendering"
+    />
     <meta name="twitter:creator" content="@VLEguru" />
     <meta name="twitter:site" content="@VLEguru" />
     <meta
@@ -316,7 +328,43 @@
       <div class="workspace">
         <section class="panel input-panel">
           <header class="panel-header">
-            <label for="input">LaTeX Input</label>
+            <div class="panel-header-content">
+              <label for="input">LaTeX Input</label>
+              <div class="panel-controls">
+                <input
+                  type="checkbox"
+                  id="scrollbars-toggle"
+                  class="scrollbars-checkbox"
+                  aria-describedby="scrollbars-help"
+                />
+                <label for="scrollbars-toggle" class="scrollbars-label">
+                  <svg
+                    height="21"
+                    viewBox="0 0 21 21"
+                    width="21"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                    class="scrollbars-icon"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m14.5 9v-6.5" />
+                      <path d="m14.5 18.5v-4.5" />
+                      <circle cx="14.5" cy="11.5" r="2.5" />
+                      <path d="m6.5 5v-2.5" />
+                      <path d="m6.5 18.5v-8.5" />
+                      <circle cx="6.5" cy="7.5" r="2.5" />
+                    </g>
+                  </svg>
+                  Scrollbars
+                </label>
+              </div>
+            </div>
           </header>
           <div class="panel-content">
             <textarea
@@ -1520,6 +1568,301 @@
       );
       console.log("");
       console.log("====================================================");
+    </script>
+    <!-- Scrollbars Toggle Functionality -->
+    <script>
+      (function () {
+        "use strict";
+
+        // ===========================================================================================
+        // LOGGING CONFIGURATION (IIFE SCOPE)
+        // ===========================================================================================
+
+        const LOG_LEVELS = {
+          ERROR: 0,
+          WARN: 1,
+          INFO: 2,
+          DEBUG: 3,
+        };
+
+        const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+        const ENABLE_ALL_LOGGING = false;
+        const DISABLE_ALL_LOGGING = false;
+
+        function shouldLog(level) {
+          if (DISABLE_ALL_LOGGING) return false;
+          if (ENABLE_ALL_LOGGING) return true;
+          return level <= DEFAULT_LOG_LEVEL;
+        }
+
+        function logError(message, ...args) {
+          if (shouldLog(LOG_LEVELS.ERROR))
+            console.error("[SCROLLBARS]", message, ...args);
+        }
+
+        function logWarn(message, ...args) {
+          if (shouldLog(LOG_LEVELS.WARN))
+            console.warn("[SCROLLBARS]", message, ...args);
+        }
+
+        function logInfo(message, ...args) {
+          if (shouldLog(LOG_LEVELS.INFO))
+            console.log("[SCROLLBARS]", message, ...args);
+        }
+
+        function logDebug(message, ...args) {
+          if (shouldLog(LOG_LEVELS.DEBUG))
+            console.log("[SCROLLBARS]", message, ...args);
+        }
+
+        // ===========================================================================================
+        // SCROLLBARS TOGGLE IMPLEMENTATION
+        // ===========================================================================================
+
+        /**
+         * Scrollbars Toggle Manager
+         * Handles enabling/disabling panel scrollbars with accessibility support
+         */
+        class ScrollbarsToggleManager {
+          constructor() {
+            this.checkbox = null;
+            this.workspace = null;
+            this.isInitialised = false;
+            this.storageKey = "pandoc-playground-scrollbars-enabled";
+          }
+
+          /**
+           * Initialise the scrollbars toggle system
+           */
+          initialise() {
+            logInfo("Initialising scrollbars toggle system...");
+
+            try {
+              // Get DOM elements
+              this.checkbox = document.getElementById("scrollbars-toggle");
+              this.workspace = document.querySelector(".workspace");
+
+              if (!this.checkbox || !this.workspace) {
+                throw new Error(
+                  "Required scrollbars toggle DOM elements not found"
+                );
+              }
+
+              // Add screen reader help text
+              this.addAccessibilitySupport();
+
+              // Setup event listeners
+              this.setupEventListeners();
+
+              // Restore saved state
+              this.restoreSavedState();
+
+              this.isInitialised = true;
+              logInfo("✅ Scrollbars toggle system initialised successfully");
+
+              return true;
+            } catch (error) {
+              logError("Failed to initialise scrollbars toggle system:", error);
+              return false;
+            }
+          }
+
+          /**
+           * Add accessibility support elements
+           */
+          addAccessibilitySupport() {
+            // Add help text for screen readers
+            const helpId = "scrollbars-help";
+            if (!document.getElementById(helpId)) {
+              const helpText = document.createElement("div");
+              helpText.id = helpId;
+              helpText.className = "sr-only";
+              helpText.textContent =
+                "Toggle scrollbars for LaTeX input and HTML output panels. When enabled, panels scroll independently.";
+              document.body.appendChild(helpText);
+            }
+
+            logDebug("Accessibility support added for scrollbars toggle");
+          }
+
+          /**
+           * Setup event listeners
+           */
+          setupEventListeners() {
+            if (!this.checkbox) return;
+
+            this.checkbox.addEventListener("change", (event) => {
+              const isEnabled = event.target.checked;
+              this.toggleScrollbars(isEnabled);
+              this.saveState(isEnabled);
+              this.announceStateChange(isEnabled);
+            });
+
+            logDebug("Event listeners setup for scrollbars toggle");
+          }
+
+          /**
+           * Toggle scrollbars on/off
+           */
+          toggleScrollbars(enabled) {
+            if (!this.workspace) return;
+
+            if (enabled) {
+              this.workspace.classList.remove("scrollbars-disabled");
+              // Restore constrained viewport scrolling
+              document.body.style.overflow = "";
+              logInfo(
+                "Panel scrollbars enabled - individual panel scrolling active"
+              );
+            } else {
+              this.workspace.classList.add("scrollbars-disabled");
+              // Enable full document scrolling
+              document.body.style.overflow = "auto";
+              logInfo(
+                "Panel scrollbars disabled - full document scrolling active"
+              );
+            }
+
+            // Update checkbox state if called programmatically
+            if (this.checkbox && this.checkbox.checked !== enabled) {
+              this.checkbox.checked = enabled;
+            }
+          }
+
+          /**
+           * Save scrollbars state to localStorage
+           */
+          saveState(enabled) {
+            try {
+              localStorage.setItem(this.storageKey, enabled.toString());
+              logDebug("Scrollbars state saved:", enabled);
+            } catch (error) {
+              logWarn("Could not save scrollbars state:", error);
+            }
+          }
+
+          /**
+           * Restore saved scrollbars state
+           */
+          restoreSavedState() {
+            try {
+              const savedState = localStorage.getItem(this.storageKey);
+
+              if (savedState !== null) {
+                const isEnabled = savedState === "true";
+                this.checkbox.checked = isEnabled;
+                this.toggleScrollbars(isEnabled);
+                logInfo("Restored scrollbars state:", isEnabled);
+              } else {
+                // Default to enabled (checkbox starts checked)
+                this.toggleScrollbars(true);
+                logInfo("Using default scrollbars state: enabled");
+              }
+            } catch (error) {
+              logWarn("Could not restore scrollbars state:", error);
+              // Fallback to enabled state
+              this.toggleScrollbars(true);
+            }
+          }
+
+          /**
+           * Announce state change to screen readers
+           */
+          announceStateChange(enabled) {
+            try {
+              const message = enabled
+                ? "Panel scrollbars enabled. LaTeX input and HTML output panels will scroll independently when content overflows."
+                : "Panel scrollbars disabled. Panels will not show scrollbars when content overflows.";
+
+              const announcement = document.createElement("div");
+              announcement.setAttribute("aria-live", "polite");
+              announcement.setAttribute("aria-atomic", "true");
+              announcement.setAttribute("role", "status");
+              announcement.className = "sr-only";
+              announcement.textContent = message;
+
+              document.body.appendChild(announcement);
+
+              // Remove after announcement
+              setTimeout(() => {
+                if (document.body.contains(announcement)) {
+                  document.body.removeChild(announcement);
+                }
+              }, 2000);
+
+              logDebug("Screen reader announcement made:", message);
+            } catch (error) {
+              logError("Error announcing scrollbars state change:", error);
+            }
+          }
+
+          /**
+           * Get current scrollbars state
+           */
+          isScrollbarsEnabled() {
+            return this.checkbox ? this.checkbox.checked : true;
+          }
+
+          /**
+           * Public API to enable/disable scrollbars
+           */
+          enable() {
+            if (this.checkbox) {
+              this.checkbox.checked = true;
+              this.toggleScrollbars(true);
+              this.saveState(true);
+              this.announceStateChange(true);
+            }
+          }
+
+          disable() {
+            if (this.checkbox) {
+              this.checkbox.checked = false;
+              this.toggleScrollbars(false);
+              this.saveState(false);
+              this.announceStateChange(false);
+            }
+          }
+        }
+
+        // ===========================================================================================
+        // INITIALISATION AND GLOBAL ACCESS
+        // ===========================================================================================
+
+        // Create global instance
+        const scrollbarsToggle = new ScrollbarsToggleManager();
+
+        // Make available globally for console testing
+        window.ScrollbarsToggle = {
+          enable: () => scrollbarsToggle.enable(),
+          disable: () => scrollbarsToggle.disable(),
+          toggle: () => {
+            if (scrollbarsToggle.isScrollbarsEnabled()) {
+              scrollbarsToggle.disable();
+            } else {
+              scrollbarsToggle.enable();
+            }
+          },
+          isEnabled: () => scrollbarsToggle.isScrollbarsEnabled(),
+          getInstance: () => scrollbarsToggle,
+        };
+
+        // Initialise when DOM is ready
+        function initScrollbarsToggle() {
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", () => {
+              setTimeout(() => scrollbarsToggle.initialise(), 100);
+            });
+          } else {
+            setTimeout(() => scrollbarsToggle.initialise(), 100);
+          }
+        }
+
+        // Auto-initialise
+        initScrollbarsToggle();
+
+        logInfo("Scrollbars toggle system loaded");
+      })();
     </script>
   </body>
 </html>

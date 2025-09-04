@@ -818,6 +818,7 @@ label:has(.coffee-icon) {
   overflow: hidden;
   width: 100%;
   min-height: 0;
+  max-height: 100vh;
 }
 
 .panel {
@@ -827,6 +828,7 @@ label:has(.coffee-icon) {
   min-width: 0;
   width: 100%;
   max-width: none;
+  min-height: 0;
 }
 
 .panel-header {
@@ -839,14 +841,103 @@ label:has(.coffee-icon) {
   box-sizing: border-box;
   color: var(--heading-color);
   transition: background-color 0.3s ease, color 0.3s ease;
+  flex: 0 0 auto;
+}
+
+/* Panel header controls styling */
+.panel-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.panel-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.scrollbars-checkbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+.scrollbars-label {
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--body-text);
+  font-weight: 400;
+  transition: color 0.2s ease;
+}
+
+.scrollbars-label:hover {
+  color: var(--link-color);
+}
+
+/* Scrollbars disabled state - Remove viewport constraint and panel scrolling */
+.workspace.scrollbars-disabled {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.workspace.scrollbars-disabled .panel-content {
+  overflow: visible !important;
+  height: auto !important;
+}
+
+/* Disable scrolling on all content areas when scrollbars are disabled */
+.workspace.scrollbars-disabled .live-latex-contenteditable,
+.workspace.scrollbars-disabled #output,
+.workspace.scrollbars-disabled .output-content {
+  overflow: visible !important;
+  height: 100% !important;
+  max-height: none !important;
+}
+
+/* Ensure the body can scroll normally when panels don't have individual scrollbars */
+body:has(.workspace.scrollbars-disabled) {
+  overflow-y: auto;
+}
+
+/* Fallback for browsers that don't support :has() */
+.workspace.scrollbars-disabled ~ * {
+  /* This ensures content below workspace is accessible when scrollbars are disabled */
+}
+
+/* Dark mode support */
+[data-theme="dark"] .scrollbars-label {
+  color: var(--body-text);
+}
+
+[data-theme="dark"] .scrollbars-label:hover {
+  color: var(--link-color);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .panel-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .panel-controls {
+    align-self: flex-end;
+  }
 }
 
 .panel-content {
   flex: 1;
   position: relative;
-  overflow: hidden;
+  overflow: auto;
   width: 100%;
   max-width: none;
+  min-height: 0;
 }
 
 /* ===== INPUT AND OUTPUT STYLING ===== */
