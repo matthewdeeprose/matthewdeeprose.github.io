@@ -66,30 +66,49 @@ const LaTeXProcessor = (function () {
         // Check if it has assistive MathML
         const mathML = container.querySelector("mjx-assistive-mml math");
         if (mathML) {
-          // Try to extract LaTeX from MathML annotation
-          const annotation = mathML.querySelector(
+          // ENHANCED: Try multiple annotation encodings
+          let annotation = mathML.querySelector(
             'annotation[encoding="application/x-tex"]'
           );
-          if (annotation) {
-            const latex = annotation.textContent;
+
+          // Also try alternative encodings
+          if (!annotation) {
+            annotation = mathML.querySelector('annotation[encoding="TeX"]');
+          }
+          if (!annotation) {
+            annotation = mathML.querySelector('annotation[encoding="LaTeX"]');
+          }
+
+          if (annotation && annotation.textContent.trim()) {
+            const latex = annotation.textContent.trim();
             const isDisplay = container.getAttribute("display") === "true";
 
-            // Replace the entire mjx-container with LaTeX delimiters
-            if (isDisplay) {
-              container.outerHTML = `\\[${latex}\\]`;
+            // ENHANCED: Better LaTeX validation
+            if (latex && latex.length > 0 && !latex.includes("undefined")) {
+              // Replace the entire mjx-container with LaTeX delimiters
+              if (isDisplay) {
+                container.outerHTML = `\\[${latex}\\]`;
+              } else {
+                container.outerHTML = `\\(${latex}\\)`;
+              }
+              conversionCount++;
+              logDebug(
+                `✅ Converted equation ${conversionCount}: ${latex.substring(
+                  0,
+                  50
+                )}...`
+              );
             } else {
-              container.outerHTML = `\\(${latex}\\)`;
+              logWarn(
+                "Empty or invalid LaTeX annotation found, skipping conversion"
+              );
             }
-            conversionCount++;
-            logDebug(
-              `Converted equation ${conversionCount}: ${latex.substring(
-                0,
-                30
-              )}...`
-            );
           } else {
-            // Fallback: Try to extract from the visual representation
-            const texContent = extractLatexFromVisual(container);
+            // ENHANCED: Better fallback with semantic structure preservation
+            logInfo(
+              "No LaTeX annotation found, attempting semantic extraction..."
+            );
+            const texContent = extractLatexFromSemanticMathML(mathML);
             if (texContent) {
               const isDisplay = container.getAttribute("display") === "true";
               container.outerHTML = isDisplay
@@ -97,10 +116,16 @@ const LaTeXProcessor = (function () {
                 : `\\(${texContent}\\)`;
               conversionCount++;
               logDebug(
-                `Converted equation ${conversionCount} using visual extraction`
+                `✅ Converted equation ${conversionCount} using semantic extraction: ${texContent}`
+              );
+            } else {
+              logWarn(
+                "Could not extract LaTeX from MathJax container, leaving as-is"
               );
             }
           }
+        } else {
+          logDebug("No MathML found in container, skipping");
         }
       });
 
@@ -112,17 +137,30 @@ const LaTeXProcessor = (function () {
           // Already has raw LaTeX, keep it
           return;
         }
-        // Process as above
+        // Process as above with same enhanced logic
         const mathML = mathContainer.querySelector("mjx-assistive-mml math");
         if (mathML) {
-          const annotation = mathML.querySelector(
+          let annotation = mathML.querySelector(
             'annotation[encoding="application/x-tex"]'
           );
-          if (annotation) {
-            const latex = annotation.textContent;
+
+          if (!annotation) {
+            annotation = mathML.querySelector('annotation[encoding="TeX"]');
+          }
+          if (!annotation) {
+            annotation = mathML.querySelector('annotation[encoding="LaTeX"]');
+          }
+
+          if (annotation && annotation.textContent.trim()) {
+            const latex = annotation.textContent.trim();
             const isDisplay = span.classList.contains("display");
-            span.innerHTML = isDisplay ? `\\[${latex}\\]` : `\\(${latex}\\)`;
-            conversionCount++;
+            if (latex && latex.length > 0 && !latex.includes("undefined")) {
+              span.innerHTML = isDisplay ? `\\[${latex}\\]` : `\\(${latex}\\)`;
+              conversionCount++;
+              logDebug(
+                `✅ Converted span equation: ${latex.substring(0, 50)}...`
+              );
+            }
           }
         }
       });
@@ -131,7 +169,7 @@ const LaTeXProcessor = (function () {
       processedContent = doc.body.innerHTML;
 
       logInfo(
-        `Converted ${conversionCount} pre-rendered MathJax elements back to LaTeX`
+        `✅ Successfully converted ${conversionCount} pre-rendered MathJax elements back to LaTeX`
       );
 
       // Also check for any remaining MathJax scripts/styles and remove them
@@ -153,17 +191,118 @@ const LaTeXProcessor = (function () {
   }
 
   /**
-   * Fallback: Try to extract LaTeX from visual MathJax representation
+   * ENHANCED: Extract LaTeX from semantic MathML structure
+   * This preserves mathematical structure better than text extraction
+   */
+  function extractLatexFromSemanticMathML(mathML) {
+    try {
+      logInfo("Attempting semantic MathML to LaTeX conversion...");
+
+      // Start with the root math element
+      const mathElement = mathML.querySelector("math") || mathML;
+
+      // Simple recursive conversion for common structures
+      const convertElement = (element) => {
+        if (!element) return "";
+
+        const tagName = element.tagName.toLowerCase();
+        const textContent = element.textContent.trim();
+
+        switch (tagName) {
+          case "math":
+            // Process children
+            return Array.from(element.children).map(convertElement).join("");
+
+          case "mi": // Identifier (variables)
+            return textContent;
+
+          case "mn": // Number
+            return textContent;
+
+          case "mo": // Operator
+            const op = textContent;
+            // Map special operators
+            if (op === "⁢") return ""; // Invisible times - omit
+            if (op === "∅") return "\\varnothing";
+            return op;
+
+          case "msup": // Superscript
+            const base = element.children[0]
+              ? convertElement(element.children[0])
+              : "";
+            const exp = element.children[1]
+              ? convertElement(element.children[1])
+              : "";
+            return `${base}^{${exp}}`;
+
+          case "msub": // Subscript
+            const baseB = element.children[0]
+              ? convertElement(element.children[0])
+              : "";
+            const sub = element.children[1]
+              ? convertElement(element.children[1])
+              : "";
+            return `${baseB}_{${sub}}`;
+
+          case "mrow": // Row grouping
+            return Array.from(element.children).map(convertElement).join("");
+
+          case "mfrac": // Fraction
+            const num = element.children[0]
+              ? convertElement(element.children[0])
+              : "";
+            const den = element.children[1]
+              ? convertElement(element.children[1])
+              : "";
+            return `\\frac{${num}}{${den}}`;
+
+          case "msqrt": // Square root
+            const content = Array.from(element.children)
+              .map(convertElement)
+              .join("");
+            return `\\sqrt{${content}}`;
+
+          case "mroot": // nth root
+            const contentR = element.children[0]
+              ? convertElement(element.children[0])
+              : "";
+            const index = element.children[1]
+              ? convertElement(element.children[1])
+              : "";
+            return `\\sqrt[${index}]{${contentR}}`;
+
+          default:
+            // For unknown elements, try to extract text content
+            logDebug(`Unknown MathML element: ${tagName}, using text content`);
+            return textContent;
+        }
+      };
+
+      const result = convertElement(mathElement);
+
+      if (result && result.trim().length > 0) {
+        logInfo(`✅ Semantic conversion successful: ${result}`);
+        return result.trim();
+      } else {
+        logWarn("Semantic conversion produced empty result");
+        return null;
+      }
+    } catch (error) {
+      logError("Error in semantic MathML conversion:", error);
+      return null;
+    }
+  }
+
+  /**
+   * DEPRECATED: Fallback visual extraction (kept for compatibility)
    */
   function extractLatexFromVisual(container) {
     try {
-      // Common patterns we can recognise
+      logWarn("Using deprecated visual extraction method");
       const textContent = container.textContent;
 
       // Very basic conversion - this would need to be much more sophisticated
-      // for production use
       if (textContent.includes("=")) {
-        // Try to preserve basic structure
         return textContent.replace(/\s+/g, " ").trim();
       }
 
