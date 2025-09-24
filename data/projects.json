@@ -1,5 +1,13 @@
 {
   "projects": [
+        {
+      "title": "Contrast Cards",
+      "link": "contrastCards",
+      "imageSrc": "concards169.png",
+      "imageAlt": "",
+      "description": "Present palette contrast as cards",
+      "isHighlighted": true
+    },
       {
       "title": "FocusLens",
       "link": "focusLens",
