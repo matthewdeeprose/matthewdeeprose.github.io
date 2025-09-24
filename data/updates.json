@@ -1,6 +1,14 @@
 {
   "updates": [
           {
+      "title": "Contrast Cards",
+      "link": "contrastCards",
+      "imageSrc": "concards169.png",
+      "imageAlt": "",
+      "description": "Present palette contrast as cards",
+
+    },
+          {
       "title": "Colour Vision Deficiency Image Tester",
       "link": "imageCVD",
       "imageSrc": "cvdImage169.png",
