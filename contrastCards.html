@@ -217,22 +217,50 @@
   	flex-direction: column;
   	gap: 0.75rem;
   }
-  .contrast-item {
+.contrast-item {
   	display: flex;
   	align-items: center;
   	justify-content: space-between;
   	padding: 0.5rem 0;
   	border-bottom: 1px solid;
+  	gap: 0.5rem;
+  	flex-wrap: wrap;
   }
   .contrast-item:last-child {
   	border-bottom: none;
   }
-  .contrast-text {
+.contrast-text {
   	font-weight: 500;
+  	flex: 1 1 0;
+  	min-width: 0;
+  	word-break: break-word;
+  	line-height: 1.3;
+  }
+  .colour-name {
+  	color: inherit;
+  }
+  .contrast-ratio {
+  	white-space: nowrap;
+  	font-size: 0.75rem;
+  	margin-left: 0.5rem;
+  	display: inline-block;
   }
   .contrast-badges {
   	display: flex;
   	gap: 0.25rem;
+  	flex-shrink: 0;
+  }
+  
+  /* Responsive adjustment for smaller cards */
+  @media (max-width: 400px) {
+  	.contrast-item {
+  		flex-direction: column;
+  		align-items: flex-start;
+  		gap: 0.25rem;
+  	}
+  	.contrast-badges {
+  		align-self: flex-end;
+  	}
   }
 
 
@@ -449,7 +477,7 @@ Generate cards where each cards background is a palette colour. Within each card
 
         <section class="results-section" aria-labelledby="results-title">
             <h2 id="results-title" class="results-title">Contrast Analysis Results</h2>
-             <div class="checkbox-container">
+<div class="checkbox-container">
                         <input 
                             type="checkbox" 
                             id="showRatios" 
@@ -461,6 +489,21 @@ Generate cards where each cards background is a palette colour. Within each card
                         </label>
                         <div id="ratios-help" class="visually-hidden">
                             When checked, displays numerical contrast ratios alongside AA and AAA badges
+                        </div>
+                    </div>
+                    
+                    <div class="checkbox-container">
+                        <input 
+                            type="checkbox" 
+                            id="showHexCodes" 
+                            class="checkbox-input"
+                            aria-describedby="hex-help"
+                        >
+                        <label for="showHexCodes" class="checkbox-label">
+                            Show hex codes
+                        </label>
+                        <div id="hex-help" class="visually-hidden">
+                            When checked, displays hex colour codes alongside colour names
                         </div>
                     </div>
             <ul class="cards-container" id="cardsContainer" role="list" aria-label="Colour contrast cards">
@@ -603,12 +646,14 @@ const ColourContrastAnalyser = (function () {
         { name: 'Horizon 5', hex: '#8D3970' }
     ];
 
-    // DOM elements
-    let elements = {};
+// DOM elements
+        let elements = {};
 
-    // Application state
-    let parsedColours = [];
-    let showContrastRatios = false;
+        // Application state
+        let parsedColours = [];
+        let showContrastRatios = false;
+        let showHexCodes = false;
+        let hasColoursWithNames = false;
 
     /**
      * Initialise the application
@@ -617,12 +662,13 @@ const ColourContrastAnalyser = (function () {
         logInfo('Colour Contrast Analyser initialising...');
         
         // Cache DOM elements
-        elements = {
+elements = {
             colourInput: document.getElementById('colourInput'),
             generateBtn: document.getElementById('generateBtn'),
             loadDefaultBtn: document.getElementById('loadDefaultBtn'),
             clearBtn: document.getElementById('clearBtn'),
             showRatios: document.getElementById('showRatios'),
+            showHexCodes: document.getElementById('showHexCodes'),
             cardsContainer: document.getElementById('cardsContainer'),
             unusableSection: document.getElementById('unusableSection'),
             unusableColours: document.getElementById('unusableColours'),
@@ -642,11 +688,12 @@ const ColourContrastAnalyser = (function () {
     /**
      * Bind event listeners to interactive elements
      */
-    function bindEventListeners() {
+function bindEventListeners() {
         elements.generateBtn.addEventListener('click', handleGenerateCards);
         elements.loadDefaultBtn.addEventListener('click', handleLoadDefault);
         elements.clearBtn.addEventListener('click', handleClearAll);
         elements.showRatios.addEventListener('change', handleShowRatiosChange);
+        elements.showHexCodes.addEventListener('change', handleShowHexCodesChange);
         
         // Details/summary accessibility handling
         elements.colourInputDetails.addEventListener('toggle', handleDetailsToggle);
@@ -671,7 +718,7 @@ const ColourContrastAnalyser = (function () {
         logDebug('Details toggle:', isOpen ? 'opened' : 'closed');
     }
 
-    /**
+/**
      * Auto-generate cards with default colours on page load
      */
     function autoGenerateDefaultCards() {
@@ -680,6 +727,7 @@ const ColourContrastAnalyser = (function () {
         try {
             // Use the default colours directly
             parsedColours = [...DEFAULT_COLOURS];
+            updateHexCodesCheckboxState();
             generateContrastCards();
             logInfo(`Auto-generated contrast cards for ${parsedColours.length} default colours`);
         } catch (error) {
@@ -688,7 +736,7 @@ const ColourContrastAnalyser = (function () {
         }
     }
 
-    /**
+/**
      * Handle generate cards button click
      */
     function handleGenerateCards() {
@@ -708,6 +756,7 @@ const ColourContrastAnalyser = (function () {
                 return;
             }
 
+            updateHexCodesCheckboxState();
             generateContrastCards();
             logInfo(`Generated contrast cards for ${parsedColours.length} colours`);
         } catch (error) {
@@ -750,6 +799,43 @@ const ColourContrastAnalyser = (function () {
         // Re-generate cards if colours are already parsed
         if (parsedColours.length > 0) {
             generateContrastCards();
+        }
+    }
+
+/**
+     * Handle show hex codes checkbox change
+     */
+    function handleShowHexCodesChange() {
+        showHexCodes = elements.showHexCodes.checked;
+        logDebug('Show hex codes:', showHexCodes);
+        
+        // Re-generate cards if colours are already parsed
+        if (parsedColours.length > 0) {
+            generateContrastCards();
+        }
+    }
+
+    /**
+     * Update hex codes checkbox state based on available data
+     */
+    function updateHexCodesCheckboxState() {
+        // Determine if we have colours with actual names (not just hex codes as names)
+        hasColoursWithNames = parsedColours.some(colour => 
+            colour.name && colour.name !== colour.hex
+        );
+        
+        if (hasColoursWithNames) {
+            // We have both names and hex codes - enable checkbox, uncheck by default
+            elements.showHexCodes.disabled = false;
+            elements.showHexCodes.checked = false;
+            showHexCodes = false;
+            logDebug('Hex codes checkbox enabled - colours have names');
+        } else {
+            // We only have hex codes - enable checkbox and check it
+            elements.showHexCodes.disabled = true;
+            elements.showHexCodes.checked = true;
+            showHexCodes = true;
+            logDebug('Hex codes checkbox disabled and checked - colours only have hex codes');
         }
     }
 
@@ -971,6 +1057,12 @@ const ColourContrastAnalyser = (function () {
                 badges.push('<span class="contrast-badge badge-aa">AA</span>');
             }
 
+// Determine what text to display based on settings
+            let displayText = escapeHTML(contrast.colour.name);
+            if (showHexCodes && contrast.colour.name !== contrast.colour.hex) {
+                displayText += ` (${contrast.colour.hex})`;
+            }
+
             const ratioDisplay = showContrastRatios ? 
                 `<span class="contrast-ratio">${contrast.ratio.toFixed(1)}:1</span>` : '';
 
@@ -980,9 +1072,9 @@ const ColourContrastAnalyser = (function () {
 
             cardHTML += `
                 <div class="contrast-item" style="${borderStyle}">
-                    <span class="contrast-text" style="color: ${contrast.colour.hex};">
-                        ${escapeHTML(contrast.colour.name)}${ratioDisplay}
-                    </span>
+                    <div class="contrast-text">
+                        <span class="colour-name" style="color: ${contrast.colour.hex};">${displayText}</span>${ratioDisplay}
+                    </div>
                     <div class="contrast-badges">
                         ${badges.join('')}
                     </div>
