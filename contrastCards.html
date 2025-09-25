@@ -229,10 +229,8 @@
   .contrast-item:last-child {
   	border-bottom: none;
   }
-.contrast-text {
+  .contrast-text {
   	font-weight: 500;
-  	flex: 1 1 0;
-  	min-width: 0;
   	word-break: break-word;
   	line-height: 1.3;
   }
@@ -282,6 +280,44 @@
   .badge-aaa {
   	color: #002e3b;
   	border-color: #002e3b;
+  }
+  .badge-graphics {
+  	color: #7c2d12;
+  	border-color: #7c2d12;
+  }
+  
+/* Graphics section styling */
+.graphics-section {
+  	margin-top: 1rem;
+  	padding-top: 0.75rem;
+  	border-top: 2px dashed;
+  }
+  .graphics-title {
+  	font-size: 0.875rem;
+  	font-weight: 600;
+  	margin-bottom: 0.5rem;
+  }
+  .graphics-warning {
+  	font-size: 0.75rem;
+  	margin-bottom: 0.75rem;
+  	font-style: italic;
+  	font-weight: 500;
+  }
+  
+  /* Colour swatch styling */
+  .colour-swatch-small {
+  	width: 100%;
+  	height: 0.5rem;
+  	border: 1px solid rgba(0, 0, 0, 0.2);
+  	border-radius: 0.25rem;
+  	margin-top: 0.25rem;
+  	flex-shrink: 0;
+  }
+  .contrast-text-container {
+  	display: flex;
+  	flex-direction: column;
+  	flex: 1 1 0;
+  	min-width: 0;
   }
   .contrast-ratio {
   	font-size: 0.75rem;
@@ -980,7 +1016,7 @@ function bindEventListeners() {
     /**
      * Generate contrast cards for all parsed colours
      */
-    function generateContrastCards() {
+     function generateContrastCards() {
         logDebug('Generating contrast cards for', parsedColours.length, 'colours');
         
         const cardsHTML = [];
@@ -988,25 +1024,34 @@ function bindEventListeners() {
 
         for (const backgroundColour of parsedColours) {
             const contrastingColours = [];
+            const graphicsOnlyColours = [];
             
             for (const textColour of parsedColours) {
                 if (backgroundColour.hex === textColour.hex) continue;
                 
                 const contrastRatio = chroma.contrast(backgroundColour.hex, textColour.hex);
                 
-                if (contrastRatio >= 4.5) { // AA standard
+                if (contrastRatio >= 4.5) { // AA standard for normal text
                     const isAAA = contrastRatio >= 7.0;
                     contrastingColours.push({
                         colour: textColour,
                         ratio: contrastRatio,
                         isAA: true,
-                        isAAA: isAAA
+                        isAAA: isAAA,
+                        type: 'normal'
+                    });
+                } else if (contrastRatio >= 3.0) { // Graphics and large text only
+                    graphicsOnlyColours.push({
+                        colour: textColour,
+                        ratio: contrastRatio,
+                        isGraphics: true,
+                        type: 'graphics'
                     });
                 }
             }
 
-            if (contrastingColours.length > 0) {
-                cardsHTML.push(generateCardHTML(backgroundColour, contrastingColours));
+            if (contrastingColours.length > 0 || graphicsOnlyColours.length > 0) {
+                cardsHTML.push(generateCardHTML(backgroundColour, contrastingColours, graphicsOnlyColours));
             } else {
                 unusableColours.push(backgroundColour);
             }
@@ -1020,14 +1065,14 @@ function bindEventListeners() {
 
         logInfo(`Generated ${cardsHTML.length} cards, ${unusableColours.length} unusable colours`);
     }
-
-    /**
+/**
      * Generate HTML for a single contrast card
      * @param {Object} backgroundColour - Background colour object
-     * @param {Array} contrastingColours - Array of contrasting colour objects
+     * @param {Array} contrastingColours - Array of contrasting colour objects for normal text
+     * @param {Array} graphicsOnlyColours - Array of colours suitable only for graphics/large text
      * @returns {string} HTML string for the card
      */
-    function generateCardHTML(backgroundColour, contrastingColours) {
+     function generateCardHTML(backgroundColour, contrastingColours, graphicsOnlyColours = []) {
         // Determine best text colour for card header
         const whiteContrast = chroma.contrast('#FFFFFF', backgroundColour.hex);
         const blackContrast = chroma.contrast('#000000', backgroundColour.hex);
@@ -1044,42 +1089,98 @@ function bindEventListeners() {
                 <div class="card-body">
         `;
 
-        // Sort contrasting colours by contrast ratio (highest first) - already done but ensuring
+        // Sort contrasting colours by contrast ratio (highest first)
         contrastingColours.sort((a, b) => b.ratio - a.ratio);
 
-        for (let i = 0; i < contrastingColours.length; i++) {
-            const contrast = contrastingColours[i];
-            const badges = [];
-            if (contrast.isAAA) {
-                badges.push('<span class="contrast-badge badge-aaa">AAA</span>');
+        // Generate normal text section
+        if (contrastingColours.length > 0) {
+            for (let i = 0; i < contrastingColours.length; i++) {
+                const contrast = contrastingColours[i];
+                const badges = [];
+                if (contrast.isAAA) {
+                    badges.push('<span class="contrast-badge badge-aaa">AAA</span>');
+                }
+                if (contrast.isAA) {
+                    badges.push('<span class="contrast-badge badge-aa">AA</span>');
+                }
+
+                // Determine what text to display based on settings
+                let displayText = escapeHTML(contrast.colour.name);
+                if (showHexCodes && contrast.colour.name !== contrast.colour.hex) {
+                    displayText += ` (${contrast.colour.hex})`;
+                }
+
+                const ratioDisplay = showContrastRatios ? 
+                    `<span class="contrast-ratio" style="color: ${contrast.colour.hex};">${contrast.ratio.toFixed(1)}:1</span>` : '';
+
+                // Apply border colour using the most contrasting colour, except for the last item
+                const borderStyle = (i < contrastingColours.length - 1 || graphicsOnlyColours.length > 0) ? 
+                    `border-bottom-color: ${mostContrastingColour};` : '';
+
+                    cardHTML += `
+                    <div class="contrast-item" style="${borderStyle}">
+                        <div class="contrast-text-container">
+                            <div class="contrast-text">
+                                <span class="colour-name" style="color: ${contrast.colour.hex};">${displayText}</span>${ratioDisplay}
+                            </div>
+                            <div class="colour-swatch-small" style="background-color: ${contrast.colour.hex};" aria-hidden="true"></div>
+                        </div>
+                        <div class="contrast-badges">
+                            ${badges.join('')}
+                        </div>
+                    </div>
+                `;
             }
-            if (contrast.isAA) {
-                badges.push('<span class="contrast-badge badge-aa">AA</span>');
-            }
+        }
 
-// Determine what text to display based on settings
-let displayText = escapeHTML(contrast.colour.name);
-            if (showHexCodes && contrast.colour.name !== contrast.colour.hex) {
-                displayText += ` (${contrast.colour.hex})`;
-            }
-
-            const ratioDisplay = showContrastRatios ? 
-                `<span class="contrast-ratio" style="color: ${contrast.colour.hex};">${contrast.ratio.toFixed(1)}:1</span>` : '';
-
-            // Apply border colour using the most contrasting colour, except for the last item
-            const borderStyle = i < contrastingColours.length - 1 ? 
-                `border-bottom-color: ${mostContrastingColour};` : '';
-
+        // Generate graphics-only section
+        if (graphicsOnlyColours.length > 0) {
+            // Sort graphics colours by contrast ratio (highest first)
+            graphicsOnlyColours.sort((a, b) => b.ratio - a.ratio);
+            
             cardHTML += `
-                <div class="contrast-item" style="${borderStyle}">
-                    <div class="contrast-text">
-                        <span class="colour-name" style="color: ${contrast.colour.hex};">${displayText}</span>${ratioDisplay}
+                <div class="graphics-section" style="border-top-color: ${mostContrastingColour};">
+                    <div class="graphics-title" style="color: ${headerTextColour};">
+                        Graphics & Large Text Only
                     </div>
-                    <div class="contrast-badges">
-                        ${badges.join('')}
+                    <div class="graphics-warning" style="color: ${headerTextColour};">
+                        Not suitable for normal text (requires 18pt or higher)
                     </div>
-                </div>
             `;
+
+            for (let i = 0; i < graphicsOnlyColours.length; i++) {
+                const contrast = graphicsOnlyColours[i];
+                const badges = ['<span class="contrast-badge badge-graphics">G / AA18</span>'];
+
+                // Determine what text to display based on settings
+                let displayText = escapeHTML(contrast.colour.name);
+                if (showHexCodes && contrast.colour.name !== contrast.colour.hex) {
+                    displayText += ` (${contrast.colour.hex})`;
+                }
+
+                const ratioDisplay = showContrastRatios ? 
+                    `<span class="contrast-ratio" style="color: ${headerTextColour};">${contrast.ratio.toFixed(1)}:1</span>` : '';
+
+                // Apply border colour using the most contrasting colour, except for the last item
+                const borderStyle = i < graphicsOnlyColours.length - 1 ? 
+                    `border-bottom-color: ${mostContrastingColour};` : '';
+
+                    cardHTML += `
+                    <div class="contrast-item" style="${borderStyle}">
+                        <div class="contrast-text-container">
+                            <div class="contrast-text">
+                                <span class="colour-name" style="color: ${headerTextColour};">${displayText}</span>${ratioDisplay}
+                            </div>
+                            <div class="colour-swatch-small" style="background-color: ${contrast.colour.hex};" aria-hidden="true"></div>
+                        </div>
+                        <div class="contrast-badges">
+                            ${badges.join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            cardHTML += `</div>`;
         }
 
         cardHTML += `
