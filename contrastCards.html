@@ -1058,13 +1058,13 @@ function bindEventListeners() {
             }
 
 // Determine what text to display based on settings
-            let displayText = escapeHTML(contrast.colour.name);
+let displayText = escapeHTML(contrast.colour.name);
             if (showHexCodes && contrast.colour.name !== contrast.colour.hex) {
                 displayText += ` (${contrast.colour.hex})`;
             }
 
             const ratioDisplay = showContrastRatios ? 
-                `<span class="contrast-ratio">${contrast.ratio.toFixed(1)}:1</span>` : '';
+                `<span class="contrast-ratio" style="color: ${contrast.colour.hex};">${contrast.ratio.toFixed(1)}:1</span>` : '';
 
             // Apply border colour using the most contrasting colour, except for the last item
             const borderStyle = i < contrastingColours.length - 1 ? 
