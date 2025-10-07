@@ -43,8 +43,8 @@
 [data-theme="dark"] {
   --body-bg: #231f20; /* Sophisticated charcoal */
   --body-text: #e1e8ec; /* Light blue-grey - 12.6:1 ratio ✓ */
-  --link-color: #3cbac6; /* Bright teal - 6.8:1 ratio ✓ */
-  --link-hover: #fcbc00; /* Energetic yellow - 10.2:1 ratio ✓ */
+  --link-color: #4fc3d7; /* Improved: 7.2:1 ratio */
+  --link-hover: #fdd835; /* Improved: 11.4:1 ratio */
   --border-color: #b3dbd2; /* Soft mint green */
   --heading-color: #b3dbd2; /* Mint for headings - 6.1:1 ratio ✓ */
 
@@ -69,6 +69,10 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+em {
+  font-style: normal;
 }
 
 html {
@@ -126,38 +130,6 @@ textarea:focus-visible,
 a:focus-visible {
   outline: 3px solid var(--focus-outline);
   outline-offset: 2px;
-  background-color: var(--focus-bg);
-}
-
-/* ===== HEADER STYLING ===== */
-header {
-  background-color: var(--link-color);
-  color: var(--body-bg);
-  padding: 1rem;
-  box-shadow: 0 2px 4px var(--sidebar-shadow);
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: background-color 0.3s ease;
-}
-
-.header-content {
-  flex: 1;
-}
-
-h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: inherit;
-}
-
-.subtitle {
-  margin: 0.25rem 0 0 0;
-  font-size: 0.875rem;
-  opacity: 0.9;
-  color: inherit;
 }
 
 /* ===== THEME TOGGLE STYLING - WCAG AA COMPLIANT ===== */
@@ -774,9 +746,8 @@ label:has(.coffee-icon) {
 }
 
 .random-example-btn {
-  background-color: var(--success-color);
-  color: var(--body-bg);
-  border: none;
+  color: var(--success-color);
+  border: 2px solid var(--success-color);
   padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;
@@ -789,16 +760,14 @@ label:has(.coffee-icon) {
   gap: 0.375rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   white-space: nowrap;
-}
-
-.random-example-btn:focus-visible {
-  background-color: var(--body-text);
+  background: var(--body-bg);
 }
 
 .random-example-btn:hover {
-  background-color: #0a4c30;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  color: var(--body-bg);
+  background: var(--success-color);
 }
 
 .random-example-btn:active {
@@ -843,6 +812,23 @@ label:has(.coffee-icon) {
   color: var(--heading-color);
   transition: background-color 0.3s ease, color 0.3s ease;
   flex: 0 0 auto;
+
+  /* ✅ FIX: Ensure consistent height across all panel headers */
+  min-height: 4rem; /* Accommodates button height + padding */
+  display: flex;
+  align-items: center;
+}
+
+/* Ensure panel headers without controls still align properly */
+.panel-header:not(:has(.panel-header-content)) {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* Fallback for browsers that don't support :has() */
+.panel-header.simple-header {
+  align-items: center;
+  justify-content: flex-start;
 }
 
 /* Panel header controls styling */
@@ -851,6 +837,7 @@ label:has(.coffee-icon) {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-height: 2rem; /* Ensure minimum height for content area */
 }
 
 .panel-controls {
@@ -1148,6 +1135,222 @@ input[type="text"]:hover {
   flex-wrap: wrap;
 }
 
+/* ===== CLEAR INPUT BUTTON - MATCHING MODERN STYLE ===== */
+.clear-input-btn {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: var(--body-bg);
+  border: none;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.25);
+  position: relative;
+  overflow: hidden;
+  min-width: 160px;
+  margin-right: 0.5rem;
+  text-align: left;
+}
+
+.clear-input-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.clear-input-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.clear-input-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(220, 53, 69, 0.35);
+  background: linear-gradient(135deg, #c82333, #a71e2a);
+}
+
+.clear-input-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.25);
+}
+
+.clear-input-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  background: var(--text-secondary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.clear-input-btn:disabled::before {
+  display: none;
+}
+
+.clear-input-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.clear-input-btn-icon {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px 0 0 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.clear-input-btn-content {
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  flex: 1;
+}
+
+.clear-input-btn-text {
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  letter-spacing: 0.025em;
+}
+
+.clear-input-btn-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.clear-input-btn .icon {
+  fill: none;
+  stroke: currentColor;
+  transition: transform 0.3s ease;
+}
+
+.clear-input-btn:hover .icon {
+  transform: translateY(-1px);
+}
+
+/* ===== PANEL HEADER CLEAR BUTTON - COMPACT DESIGN ===== */
+.panel-clear-btn {
+  color: var(--body-text);
+  border: 1px solid var(--body-text);
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+  margin-right: 0.75rem;
+  background: var(--sidebar-bg);
+  font-family: inherit;
+}
+
+.panel-clear-btn:hover {
+  background: var(--body-text);
+  color: var(--body-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(220, 53, 69, 0.3);
+}
+
+.panel-clear-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(220, 53, 69, 0.3);
+}
+
+.panel-clear-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  background: var(--text-secondary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.panel-clear-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.panel-clear-btn .clear-icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.panel-clear-btn:hover .clear-icon {
+  transform: scale(1.05);
+}
+
+.panel-clear-btn:active .clear-icon {
+  transform: scale(0.95);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .panel-clear-btn {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.7rem;
+    margin-right: 0.5rem;
+  }
+
+  .panel-clear-btn .clear-icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Focus states for accessibility */
+.panel-clear-btn:focus {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
+}
+
+.panel-clear-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.panel-clear-btn:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
+}
+
+/* Loading state styling */
+.panel-clear-btn.clearing {
+  background: var(--text-secondary);
+  cursor: wait;
+}
+
+/* Ensure proper spacing in panel controls */
+.panel-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
 /* ===== SCORM EXPORT BUTTON - MATCHING MODERN STYLE ===== */
 .scorm-export-btn {
   background: var(--success-color);
@@ -1316,6 +1519,218 @@ mjx-container:focus-visible {
 .MathJax_Display {
   width: auto !important;
   max-width: none !important;
+}
+
+/* ===== OUTPUT HEADINGS STYLING ===== */
+/* Headings within output content - proper typographic hierarchy */
+#output h1,
+#output h2,
+#output h3,
+#output h4,
+#output h5,
+#output h6 {
+  font-family: var(--font-family-sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.5rem 0 1rem 0;
+  transition: color 0.3s ease;
+}
+
+/* Main document title */
+#output h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+}
+
+/* Section headings */
+#output h2 {
+  font-size: 1.4rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+/* Subsection headings */
+#output h3 {
+  font-size: 1.2rem;
+  margin-top: 1.75rem;
+}
+
+/* Sub-subsection headings */
+#output h4 {
+  font-size: 1.1rem;
+  margin-top: 1.5rem;
+}
+
+/* Minor headings */
+#output h5 {
+  font-size: 1rem;
+  margin-top: 1.25rem;
+  font-weight: 500;
+}
+
+#output h6 {
+  font-size: 0.95rem;
+  margin-top: 1rem;
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* First heading after content starts - reduce top margin */
+#output > h1:first-child,
+#output > h2:first-child,
+#output > h3:first-child,
+#output > h4:first-child,
+#output > h5:first-child,
+#output > h6:first-child {
+  margin-top: 0;
+}
+
+/* Headings followed by mathematical content - adjust spacing */
+#output h1 + .MathJax_Display,
+#output h2 + .MathJax_Display,
+#output h3 + .MathJax_Display,
+#output h4 + .MathJax_Display,
+#output h5 + .MathJax_Display,
+#output h6 + .MathJax_Display,
+#output h1 + mjx-container[display="true"],
+#output h2 + mjx-container[display="true"],
+#output h3 + mjx-container[display="true"],
+#output h4 + mjx-container[display="true"],
+#output h5 + mjx-container[display="true"],
+#output h6 + mjx-container[display="true"] {
+  margin-top: 1rem;
+}
+
+/* ===========================================================================================
+   PROCESSING OVERLAY - Cloudy effect while content renders
+   ========================================================================================= */
+
+.processing-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease-in-out;
+  pointer-events: all;
+  border-radius: var(--border-radius);
+}
+
+/* Dark theme adaptation */
+[data-theme="dark"] .processing-overlay {
+  background: rgba(31, 41, 55, 0.85);
+}
+
+.processing-overlay-content {
+  text-align: center;
+  padding: 2rem;
+  max-width: 400px;
+}
+
+.processing-cloud-animation {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1.5rem;
+  opacity: 0.7;
+  animation: float 3s ease-in-out infinite,
+    pulse 2s ease-in-out infinite alternate;
+}
+
+.processing-message {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.processing-detail {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  text-align: left;
+}
+
+.processing-progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  margin-top: 1rem;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .processing-progress {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.processing-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-color), var(--accent-hover));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* Animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Accessibility - respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .processing-overlay,
+  .processing-progress-bar {
+    transition: none;
+  }
+
+  .processing-cloud-animation {
+    animation: none;
+  }
+
+  .processing-progress-bar {
+    animation: none;
+  }
+}
+
+/* Ensure output div is positioned relatively for overlay */
+.output-container {
+  position: relative;
 }
 
 /* ===== FONT STATUS INDICATOR - INTEGRATED WITH THEME SYSTEM ===== */
@@ -1534,7 +1949,6 @@ h4:hover .check-icon {
 
 /* Dark mode random button - improved hover contrast */
 [data-theme="dark"] .random-example-btn:hover {
-  background-color: #10b981;
 }
 
 /* Dark mode export buttons */
@@ -2248,6 +2662,7 @@ h4:hover .check-icon {
 
 #title-block-header {
   margin-bottom: 1rem;
+  display: block;
 }
 
 /* ===== HEADER STYLING ===== */
@@ -2329,4 +2744,300 @@ h1 {
   background: linear-gradient(135deg, var(--sidebar-bg), var(--surface-color));
   border-color: var(--sidebar-border);
   border: 2px dotted var(--body-text);
+}
+/* ===== MATHEMATICAL ENVIRONMENTS CONSISTENCY FIX ===== */
+/* Ensure all mathematical environment numbers are consistently bold */
+
+/* Target definition environments - already working correctly */
+.definition p strong {
+  font-weight: 700 !important;
+}
+
+/* Target example environments - fix the number outside strong tag */
+.example p em strong + * {
+  font-weight: 700 !important;
+}
+
+/* More specific fix for examples with number after the strong tag */
+.example p em {
+  font-weight: normal !important;
+}
+
+.example p em strong {
+  font-weight: 700 !important;
+}
+
+/* Fix for content immediately following the strong tag in examples */
+.example p em strong:first-child {
+  font-weight: 700 !important;
+}
+
+/* Target exercise environments - fix the number outside strong tag */
+.exercise p em strong + * {
+  font-weight: 700 !important;
+}
+
+.exercise p em {
+  font-weight: normal !important;
+}
+
+.exercise p em strong {
+  font-weight: 700 !important;
+}
+
+/* Universal fix approach - target all mathematical environments */
+.definition p,
+.theorem p,
+.lemma p,
+.corollary p,
+.proposition p,
+.example p,
+.exercise p,
+.proof p {
+  font-weight: normal;
+}
+
+/* Ensure the environment name is always bold */
+.definition p strong:first-child,
+.theorem p strong:first-child,
+.lemma p strong:first-child,
+.corollary p strong:first-child,
+.proposition p strong:first-child,
+.example p em strong:first-child,
+.exercise p em strong:first-child,
+.proof p strong:first-child {
+  font-weight: 700 !important;
+}
+
+/* Fix for numbers appearing outside the strong tag */
+.example p em strong:first-child::after,
+.exercise p em strong:first-child::after {
+  font-weight: 700 !important;
+}
+
+/* Alternative approach: target the specific pattern directly */
+.example p em,
+.exercise p em {
+  font-weight: 700 !important;
+}
+
+.example p em *:not(strong),
+.exercise p em *:not(strong) {
+  font-weight: 700 !important;
+}
+
+/* Specific fix for the pattern <em><strong>Word</strong> Number</em> */
+.example p em:first-child,
+.exercise p em:first-child {
+  font-weight: 700 !important;
+}
+
+/* ===== COMPREHENSIVE LINK STYLING - WCAG 2.2 AA COMPLIANT ===== */
+
+/* Base link styling for all links */
+a {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  color: var(--link-hover);
+  text-decoration-thickness: 2px;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 2px;
+  background-color: var(--focus-bg);
+  border-radius: 2px;
+}
+
+a:active {
+  color: var(--link-hover);
+  transform: translateY(1px);
+}
+
+/* Visited links - slightly muted but still accessible */
+a:visited {
+  color: var(--text-secondary);
+}
+
+a:visited:hover {
+  color: var(--link-color);
+}
+
+/* ===== OUTPUT CONTENT LINKS - ENHANCED STYLING ===== */
+
+/* Links within converted document content */
+#output a,
+.output-content a {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-color: var(--link-color);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: all 0.2s ease;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+#output a:hover,
+.output-content a:hover {
+  color: var(--link-hover);
+  text-decoration-color: var(--link-hover);
+  text-decoration-thickness: 2px;
+  background-color: var(--focus-bg);
+  transform: none; /* Disable transform for document content */
+}
+
+#output a:focus-visible,
+.output-content a:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 2px;
+  background-color: var(--focus-bg);
+  text-decoration: none;
+}
+
+#output a:active,
+.output-content a:active {
+  color: var(--link-hover);
+  background-color: var(--focus-bg);
+  transform: none;
+}
+
+/* ===== CROSS-REFERENCE LINKS - SPECIAL STYLING ===== */
+
+/* Links generated by cross-reference fixer */
+a[data-reference-type="ref"] {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  font-weight: 500;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background-color: rgba(0, 46, 59, 0.05);
+  transition: all 0.2s ease;
+}
+
+a[data-reference-type="ref"]:hover {
+  color: var(--link-hover);
+  text-decoration-style: solid;
+  text-decoration-thickness: 2px;
+  background-color: var(--focus-bg);
+  box-shadow: 0 1px 3px rgba(0, 46, 59, 0.1);
+}
+
+a[data-reference-type="ref"]:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 2px;
+  background-color: var(--focus-bg);
+  text-decoration: none;
+}
+
+/* ===== DARK MODE LINK ENHANCEMENTS ===== */
+
+[data-theme="dark"] a {
+  color: var(--link-color);
+}
+
+[data-theme="dark"] a:hover {
+  color: var(--link-hover);
+}
+
+[data-theme="dark"] a:visited {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] a:visited:hover {
+  color: var(--link-color);
+}
+
+/* Dark mode output content links */
+[data-theme="dark"] #output a,
+[data-theme="dark"] .output-content a {
+  color: var(--link-color);
+  text-decoration-color: var(--link-color);
+}
+
+[data-theme="dark"] #output a:hover,
+[data-theme="dark"] .output-content a:hover {
+  color: var(--link-hover);
+  text-decoration-color: var(--link-hover);
+  background-color: rgba(60, 186, 198, 0.1);
+}
+
+[data-theme="dark"] #output a:focus-visible,
+[data-theme="dark"] .output-content a:focus-visible {
+  background-color: rgba(60, 186, 198, 0.1);
+}
+
+/* Dark mode cross-reference links */
+[data-theme="dark"] a[data-reference-type="ref"] {
+  color: var(--link-color);
+  background-color: rgba(60, 186, 198, 0.08);
+}
+
+[data-theme="dark"] a[data-reference-type="ref"]:hover {
+  color: var(--link-hover);
+  background-color: rgba(60, 186, 198, 0.15);
+  box-shadow: 0 1px 3px rgba(60, 186, 198, 0.2);
+}
+
+/* ===== HIGH CONTRAST MODE - ENHANCED LINK SUPPORT ===== */
+
+@media (prefers-contrast: high) {
+  a,
+  #output a,
+  .output-content a {
+    text-decoration-thickness: 2px;
+    font-weight: 600;
+    border: 1px solid transparent;
+  }
+
+  a:hover,
+  #output a:hover,
+  .output-content a:hover {
+    border-color: currentColor;
+    text-decoration-thickness: 3px;
+  }
+
+  a:focus-visible,
+  #output a:focus-visible,
+  .output-content a:focus-visible {
+    outline-width: 4px;
+    border: 2px solid var(--focus-outline);
+  }
+
+  a[data-reference-type="ref"] {
+    border: 1px solid var(--link-color);
+    text-decoration-thickness: 2px;
+  }
+
+  a[data-reference-type="ref"]:hover {
+    border-width: 2px;
+    text-decoration-thickness: 3px;
+  }
+}
+
+/* ===== REDUCED MOTION - LINK ACCESSIBILITY ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  a,
+  #output a,
+  .output-content a,
+  a[data-reference-type="ref"] {
+    transition: none;
+  }
+
+  a:hover,
+  #output a:hover,
+  .output-content a:hover,
+  a[data-reference-type="ref"]:hover {
+    transform: none;
+  }
 }
