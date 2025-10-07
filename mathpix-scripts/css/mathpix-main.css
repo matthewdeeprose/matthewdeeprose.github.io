@@ -955,6 +955,11 @@
   font-weight: bold;
 }
 
+input#custom-width,
+input#custom-height {
+  margin-bottom: 0.5rem;
+}
+
 .mathpix-mode-options {
   font-size: 1rem;
 }
