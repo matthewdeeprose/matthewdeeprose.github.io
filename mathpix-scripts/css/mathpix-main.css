@@ -230,10 +230,6 @@
   border: 0.2rem solid #00131d;
 }
 
-.mathpix-file-info {
-  color: #00131d;
-}
-
 .mathpix-progress-container {
   border: 1px solid #00131d;
   background: #e1e8ec;
@@ -273,10 +269,6 @@
 .mathpix-rendered-output {
   background: #fffff4;
   border: 1px solid #00131d;
-}
-
-.mathpix-confidence-indicator {
-  color: #00131d;
 }
 
 .mathpix-confidence-badge {

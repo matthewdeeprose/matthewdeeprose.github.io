@@ -845,7 +845,7 @@ class MathPixUIManager extends MathPixBaseModule {
             <span>Width (pixels):</span>
             <input type="number" id="custom-width" name="width" min="300" max="2000" step="50" value="${current.width}" required>
           </label>
-          
+          <br>
           <label>
             <span>Height (pixels):</span>
             <input type="number" id="custom-height" name="height" min="200" max="1500" step="50" value="${current.height}" required>

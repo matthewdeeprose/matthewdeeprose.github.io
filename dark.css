@@ -1,4 +1,37 @@
 /* Dark mode */
+/* Math pix */
+
+.file-upload-section {
+  border-color: #e1e8ec;
+  background-color: #00131d;
+}
+
+.file-upload-section:hover,
+.file-upload-section:focus-visible {
+  border-color: #fffdf9;
+  border: solid;
+  background-color: #005c84;
+}
+
+.mathpix-image-preview-container {
+  border: 1px solid #e1e8ec;
+  background: #00131d;
+}
+
+.mathpix-comparison-panel {
+  border: 1px solid #e1e8ec;
+  background: #00131d;
+}
+
+.mathpix-comparison-title {
+  border-bottom: 2px solid #c1d100;
+}
+
+.mathpix-rendered-output {
+  background: #231f20;
+  border: 1px solid #e1e8ec;
+}
+
 /* ===== MODAL COLOUR SECTION ===== */
 
 dialog {

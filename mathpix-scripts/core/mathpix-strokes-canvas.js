@@ -138,16 +138,12 @@ function getDefaultSize() {
 }
 
 /**
- * Default canvas size (viewport-responsive)
+ * Static fallback canvas size (used as last resort)
  * @const {string}
  */
-const DEFAULT_SIZE = getDefaultSize();
+const DEFAULT_SIZE = "large";
 
-/**
- * localStorage key for canvas size preference
- * @const {string}
- */
-const CANVAS_SIZE_STORAGE_KEY = "mathpix-canvas-size";
+// localStorage removed - always use responsive defaults based on viewport
 
 /**
  * @class MathPixStrokesCanvas
@@ -238,6 +234,14 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
      */
     this.resizeObserver = null;
 
+    /**
+     * Flag to allow container resize responses
+     * Disabled during init to prevent override of responsive defaults
+     * @type {boolean}
+     * @since Phase 2A
+     */
+    this.allowContainerResize = false;
+
     logDebug("MathPixStrokesCanvas instance created");
   }
 
@@ -275,8 +279,19 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
 
       this.configureDrawingStyle();
 
+      // Apply responsive default size based on current viewport
+      const responsiveSize = getDefaultSize();
+      this.resizeCanvas(responsiveSize, false);
+      logInfo(
+        `Canvas initialized with responsive size: ${responsiveSize} (${window.innerWidth}px viewport)`
+      );
+
       // Set up resize observer to detect when user resizes container
       this.setupResizeObserver();
+
+      // Enable container resizing now that initialization is complete
+      this.allowContainerResize = true;
+      logDebug("Container resize enabled after initialization");
 
       this.isInitialised = true;
 
@@ -833,12 +848,18 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
         this.resizeCanvas(savedSize, false); // Don't save during load
         logDebug(`Loaded canvas size preference: ${savedSize}`);
       } else {
-        this.resizeCanvas(DEFAULT_SIZE, false);
-        logDebug(`Applied default canvas size: ${DEFAULT_SIZE}`);
+        // No saved preference - use responsive default based on current viewport
+        const responsiveDefault = getDefaultSize();
+        this.resizeCanvas(responsiveDefault, false);
+        logDebug(
+          `Applied responsive default canvas size: ${responsiveDefault} for viewport ${window.innerWidth}px`
+        );
       }
     } catch (error) {
       logWarn("Could not load canvas size preference:", error);
-      this.resizeCanvas(DEFAULT_SIZE, false);
+      // Use responsive default as fallback
+      const responsiveDefault = getDefaultSize();
+      this.resizeCanvas(responsiveDefault, false);
     }
   }
 
@@ -922,10 +943,7 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
     // Update current size tracking
     this.currentSize = sizeName;
 
-    // Save preference if requested
-    if (savePreference) {
-      this.saveCanvasSizePreference(sizeName);
-    }
+    // No localStorage saving - responsive defaults only
 
     // Update size button states
     this.updateSizeButtonStates();
@@ -1091,7 +1109,23 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
    * @since 1.0.0
    */
   handleContainerResize(newWidth, newHeight) {
+    // Ignore resize events during initialization
+    if (!this.allowContainerResize) {
+      logDebug(
+        `Container resize ignored during initialization: ${newWidth}×${newHeight}`
+      );
+      return;
+    }
+
     if (!this.canvas) return;
+
+    // Ignore invalid dimensions (container hidden or not rendered)
+    if (newWidth < 100 || newHeight < 100) {
+      logDebug(
+        `Ignoring invalid container dimensions: ${newWidth}×${newHeight}`
+      );
+      return;
+    }
 
     const oldWidth = this.canvas.width;
     const oldHeight = this.canvas.height;
