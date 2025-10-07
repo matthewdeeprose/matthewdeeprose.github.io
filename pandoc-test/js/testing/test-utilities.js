@@ -408,3 +408,25 @@ const TestUtilities = (function () {
     LOG_LEVELS,
   };
 })();
+
+// Export pattern for global access (PROVEN working pattern)
+window.TestUtilities = TestUtilities;
+
+console.log("✅ TestUtilities loaded and exported to global scope");
+console.log("🧪 Available utilities:");
+console.log("  • TestUtilities.runTestSuite(name, tests) - Execute test suite");
+console.log(
+  "  • TestUtilities.runAsyncTestSuite(name, tests) - Execute async test suite"
+);
+console.log(
+  "  • TestUtilities.measurePerformance(operation, iterations) - Performance testing"
+);
+console.log(
+  "  • TestUtilities.validateModuleAvailability(name, module) - Module validation"
+);
+console.log(
+  "  • TestUtilities.createTestSummary(results) - Format test results"
+);
+console.log(
+  "  • TestUtilities.checkBrowserCompatibility() - Browser feature check"
+);

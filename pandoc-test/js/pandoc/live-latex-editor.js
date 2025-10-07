@@ -59,9 +59,12 @@ const LiveLaTeXEditor = (function () {
       this.contentEditableElement = null;
       this.hiddenInput = null;
       this.syncTimeout = null;
+      this.updateTimeout = null;
+      this.blurSyncTimeout = null;
       this.observer = null;
       this.prismReady = false;
       this.lastKnownContent = "";
+      this.pendingSyncOperation = false;
 
       // Performance settings
       this.syncDelay = 150; // ms - debounce for performance
@@ -253,9 +256,11 @@ const LiveLaTeXEditor = (function () {
         logDebug("ContentEditable focused");
       });
 
+      // ENHANCED: Smart blur handling to prevent false conversion triggers
       this.contentEditableElement.addEventListener("blur", () => {
-        this.syncHiddenInput();
-        logDebug("ContentEditable blurred, hidden input synced");
+        // Use smart sync that respects pending debounced operations
+        this.smartSyncHiddenInput("blur");
+        logDebug("ContentEditable blurred, smart sync performed");
       });
 
       // Keyboard shortcuts
@@ -372,12 +377,46 @@ const LiveLaTeXEditor = (function () {
         clearTimeout(this.updateTimeout);
       }
 
+      // Mark that we have a pending sync operation
+      this.pendingSyncOperation = true;
+
       this.updateTimeout = setTimeout(() => {
         this.updateHighlighting();
         // Update content tracking before sync
         this.lastKnownContent = this.getPlainTextContent();
-        this.syncHiddenInput();
+        this.syncHiddenInput("debounced");
+        // Clear pending sync flag
+        this.pendingSyncOperation = false;
       }, this.syncDelay);
+    }
+
+    /**
+     * Enhanced smart sync that prevents duplicate operations and false triggers
+     */
+    smartSyncHiddenInput(source = "unknown") {
+      // OPTIMIZATION: If we have a pending debounced sync and this is a blur event,
+      // let the debounced sync handle it to prevent duplicate operations
+      if (this.pendingSyncOperation && source === "blur") {
+        logDebug(
+          "Blur event ignored - pending debounced sync will handle content synchronisation"
+        );
+        return;
+      }
+
+      // For blur events, add a small delay to avoid race conditions with input events
+      if (source === "blur") {
+        // Cancel any existing blur sync timeout
+        if (this.blurSyncTimeout) {
+          clearTimeout(this.blurSyncTimeout);
+        }
+
+        this.blurSyncTimeout = setTimeout(() => {
+          this.syncHiddenInput(source);
+          this.blurSyncTimeout = null;
+        }, 50); // Small delay to let any pending input events settle
+      } else {
+        this.syncHiddenInput(source);
+      }
     }
 
     /**
@@ -394,6 +433,37 @@ const LiveLaTeXEditor = (function () {
         // Performance check for large content
         if (content.length > this.options.maxContentLength) {
           logWarn("Content too large for live highlighting, disabling");
+
+          // Inform user about live highlighting being disabled
+          if (window.UniversalNotifications) {
+            window.UniversalNotifications.info(
+              "Live LaTeX highlighting disabled due to document size.",
+              {
+                duration: 8000, // Show for 8 seconds
+                dismissible: true,
+                ariaLive: "polite",
+              }
+            );
+          } else {
+            // Fallback if notifications system isn't available
+            const statusElement = document.getElementById("status-display");
+            if (statusElement) {
+              statusElement.textContent =
+                "Live highlighting disabled - content too large";
+              statusElement.setAttribute("aria-live", "polite");
+
+              // Clear the message after 5 seconds
+              setTimeout(() => {
+                if (
+                  statusElement.textContent ===
+                  "Live highlighting disabled - content too large"
+                ) {
+                  statusElement.textContent = "";
+                }
+              }, 5000);
+            }
+          }
+
           this.disable();
           return;
         }
@@ -428,7 +498,7 @@ const LiveLaTeXEditor = (function () {
     /**
      * Sync hidden input with contenteditable content AND trigger conversion ONLY when content changes
      */
-    syncHiddenInput() {
+    syncHiddenInput(source = "unknown") {
       const currentContent = this.getPlainTextContent();
 
       if (this.hiddenInput) {
@@ -438,10 +508,15 @@ const LiveLaTeXEditor = (function () {
       // CRITICAL: Only trigger input events if content actually changed
       if (this.originalTextarea) {
         const previousValue = this.originalTextarea.value;
+
+        // ENHANCED: Normalise both values for more reliable comparison
+        const normalisedPrevious = this.normaliseContent(previousValue);
+        const normalisedCurrent = this.normaliseContent(currentContent);
+
         this.originalTextarea.value = currentContent;
 
-        // Only dispatch input event if content actually changed
-        if (previousValue !== currentContent) {
+        // Only dispatch input event if content actually changed after normalisation
+        if (normalisedPrevious !== normalisedCurrent) {
           const inputEvent = new Event("input", {
             bubbles: true,
             cancelable: true,
@@ -449,16 +524,30 @@ const LiveLaTeXEditor = (function () {
           this.originalTextarea.dispatchEvent(inputEvent);
 
           logDebug(
-            "Content changed - triggered input event on original textarea for conversion system"
+            `Content changed (${source}) - triggered input event for conversion system`
+          );
+          logDebug(
+            `Previous length: ${previousValue.length}, Current length: ${currentContent.length}`
           );
         } else {
           logDebug(
-            "Content unchanged - skipped input event to prevent false conversion triggers"
+            `Content unchanged (${source}) - skipped input event to prevent false conversion triggers`
           );
         }
       }
     }
 
+    /**
+     * Normalise content for reliable comparison by handling whitespace variations
+     */
+    normaliseContent(content) {
+      if (!content) return "";
+
+      return content
+        .replace(/\r\n/g, "\n") // Normalise line endings
+        .replace(/\r/g, "\n") // Handle old Mac line endings
+        .trim(); // Remove leading/trailing whitespace
+    }
     /**
      * Save cursor position - IMPROVED: More robust position tracking
      */

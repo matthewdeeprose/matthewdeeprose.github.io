@@ -74,8 +74,14 @@ const TestTemplateSystem = (function () {
           return generator && typeof generator.renderTemplate === "function";
         },
 
-        renderReadingTools: () => {
+        renderReadingTools: async () => {
+          await window.TemplateSystem.ensureTemplatesLoaded();
           const generator = window.TemplateSystem.createGenerator();
+
+          if (generator.engine.templates.size === 0) {
+            generator.engine.copyFromGlobalCache();
+          }
+
           const html = generator.renderTemplate("readingToolsSection");
           return (
             html.includes("reading-tools-section") &&
@@ -98,8 +104,8 @@ const TestTemplateSystem = (function () {
           );
         },
 
-        validateSystem: () => {
-          const result = window.TemplateSystem.validateTemplateSystem();
+        validateSystem: async () => {
+          const result = await window.TemplateSystem.validateTemplateSystem();
           return result && typeof result.success === "boolean";
         },
 

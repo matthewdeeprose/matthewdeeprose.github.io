@@ -76,7 +76,7 @@ const TestAppConfig = (function () {
           const metadata = { title: "Test Document" };
           const filename = window.AppConfig.generateEnhancedFilename(metadata);
           return (
-            filename.includes("test-document") && filename.endsWith(".html")
+            filename.includes("Test_Document") && filename.endsWith(".html")
           );
         },
 

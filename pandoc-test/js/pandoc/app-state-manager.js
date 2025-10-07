@@ -17,7 +17,7 @@ const AppStateManager = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -75,6 +75,8 @@ const AppStateManager = (function () {
         "ExportManager",
         "AppStateManager", // FIXED: Include self (brings count to 11)
       ];
+      // 🔧 MEMORY MANAGEMENT: Track polling timeouts for cleanup
+      this.pollingTimeouts = new Set();
 
       // Optional development modules (tracked but not required)
       this.optionalModules = [
@@ -379,24 +381,84 @@ const AppStateManager = (function () {
           setTimeout(() => {
             window.ExampleSystem.loadDefaultExample();
             logInfo("✅ Default example loaded");
+
+            // 🎯 CRITICAL FIX: Ensure automatic conversions are enabled after default example loading
+            // This addresses the issue where the flag gets stuck during initialization
+            setTimeout(() => {
+              if (window.ConversionEngine) {
+                logInfo(
+                  "🔧 Post-initialization: Ensuring automatic conversions are enabled..."
+                );
+
+                // Force reset the flag using all available methods
+                window.ConversionEngine.automaticConversionsDisabled = false;
+
+                if (window.ConversionEngine.manager) {
+                  window.ConversionEngine.manager.automaticConversionsDisabled = false;
+                  // If using fallback state management
+                  if (
+                    window.ConversionEngine.manager
+                      ._automaticConversionsDisabled !== undefined
+                  ) {
+                    window.ConversionEngine.manager._automaticConversionsDisabled = false;
+                  }
+                }
+
+                // Use StateManager if available
+                if (
+                  window.StateManager &&
+                  typeof window.StateManager.updateConfiguration === "function"
+                ) {
+                  window.StateManager.updateConfiguration({
+                    automaticConversionsDisabled: false,
+                  });
+                }
+
+                // Invalidate any cached values
+                if (
+                  window.ConversionEngine.invalidateAutomaticConversionsCache
+                ) {
+                  window.ConversionEngine.invalidateAutomaticConversionsCache();
+                }
+
+                // Force cache invalidation on the manager if available
+                if (
+                  window.ConversionEngine.manager &&
+                  typeof window.ConversionEngine.manager
+                    ._invalidateStatusCache === "function"
+                ) {
+                  window.ConversionEngine.manager._invalidateStatusCache();
+                }
+
+                logInfo(
+                  "✅ Post-initialization: Automatic conversions restoration complete"
+                );
+
+                // Verify the fix worked
+                const finalState =
+                  window.ConversionEngine.automaticConversionsDisabled;
+                if (finalState) {
+                  logWarn(
+                    `⚠️ Post-initialization restoration failed: automaticConversionsDisabled is still ${finalState}`
+                  );
+                } else {
+                  logInfo(
+                    `✅ Post-initialization verification: automaticConversionsDisabled = ${finalState}`
+                  );
+                }
+              }
+            }, 500); // Extra delay to ensure all systems are fully initialized
           }, 300);
         }
 
-        // Enable export buttons
-        const exportButton =
-          window.appElements?.exportButton ||
-          document.getElementById("exportButton");
-        if (exportButton) {
-          exportButton.disabled = false;
-          logInfo("✅ Export button enabled");
-        }
+        // ✅ ENHANCED: DO NOT enable export buttons immediately
+        // Wait for complete MathJax rendering and annotation injection instead
+        logInfo(
+          "🔄 Export buttons will be enabled after MathJax rendering completes"
+        );
 
-        // Enable SCORM export button
-        const scormExportButton = document.getElementById("exportSCORMButton");
-        if (scormExportButton) {
-          scormExportButton.disabled = false;
-          logInfo("✅ SCORM export button enabled");
-        }
+        // Set up MathJax completion monitoring system
+        this.setupMathJaxCompletionMonitoring();
 
         // Initialize Live LaTeX Editor if available - CONTENTEDITABLE VERSION
         if (window.LiveLaTeXEditor && window.initLiveHighlighting) {
@@ -487,6 +549,429 @@ const AppStateManager = (function () {
         throw error;
       }
     }
+    /**
+     * ✅ NEW: Monitor MathJax completion and enable buttons when ready
+     * This ensures buttons are only enabled after complete rendering pipeline
+     */
+    setupMathJaxCompletionMonitoring() {
+      logInfo("🔄 Setting up MathJax completion monitoring system...");
+
+      // Store button references for later enablement
+      this.exportButton =
+        window.appElements?.exportButton ||
+        document.getElementById("exportButton");
+      this.scormExportButton = document.getElementById("exportSCORMButton");
+
+      // Enhanced completion detection system
+      const enableButtonsWhenReady = () => {
+        logInfo("🧪 Checking MathJax and annotation injection completion...");
+
+        // Check if MathJax is ready and has finished initial rendering
+        if (
+          !window.MathJax ||
+          !window.MathJax.startup ||
+          !window.MathJax.startup.document
+        ) {
+          logDebug("⏳ MathJax not fully ready yet, waiting...");
+          return false;
+        }
+
+        // Check if annotation injection system is available
+        if (
+          !window.injectMathJaxAnnotations ||
+          !window.triggerAnnotationInjection
+        ) {
+          logDebug("⏳ Annotation injection system not ready yet, waiting...");
+          return false;
+        }
+
+        // ✅ ENHANCED: Check for any active conversions (including chunked processing)
+        if (
+          window.ConversionEngine &&
+          window.ConversionEngine.conversionInProgress
+        ) {
+          logDebug("⏳ Conversion still in progress, waiting...");
+          return false;
+        }
+
+        // ✅ ENHANCED: Check if StatusManager shows loading state
+        if (window.StatusManager) {
+          const currentStatus = window.StatusManager.getCurrentStatus();
+          if (currentStatus && currentStatus.state === "loading") {
+            logDebug(
+              `⏳ Status still loading: ${currentStatus.message}, waiting...`
+            );
+            return false;
+          }
+        }
+
+        // ✅ ENHANCED: Check for active chunked processing
+        if (
+          window.ConversionEngine &&
+          window.ConversionEngine.isProcessingChunks
+        ) {
+          logDebug("⏳ Chunked processing still active, waiting...");
+          return false;
+        }
+
+        // ✅ ENHANCED: Check if we have content to process
+        const currentInput = window.ConversionEngine?.getCurrentInput?.() || "";
+        const hasContent = currentInput.trim().length > 0;
+
+        // ✅ ENHANCED: Handle empty documents vs documents with content
+        const mathElements = document.querySelectorAll("mjx-container");
+
+        if (hasContent && mathElements.length === 0) {
+          // Content exists but no MathJax elements yet - still processing
+          logDebug(
+            "⏳ Content exists but no MathJax elements found yet, waiting..."
+          );
+          return false;
+        }
+
+        if (!hasContent && mathElements.length === 0) {
+          // No content and no MathJax elements - empty document is complete
+          logDebug(
+            "✅ Empty document detected - no content to render, marking as complete"
+          );
+          this.enableExportButtons("Empty document ready for export");
+          return true;
+        }
+
+        // ✅ ENHANCED: For documents with content, ensure annotation injection completed
+        if (hasContent && mathElements.length > 0) {
+          const annotatedElements = document.querySelectorAll(
+            'annotation[encoding="application/x-tex"]'
+          );
+          if (annotatedElements.length === 0) {
+            logDebug(
+              "⏳ Content has MathJax but annotations not yet injected, waiting..."
+            );
+            return false;
+          }
+        }
+
+        // All systems ready - enable buttons using our enhanced method
+        const message = hasContent
+          ? "Complete rendering pipeline finished"
+          : "Empty document ready";
+        this.enableExportButtons(message);
+        return true;
+      };
+
+      // Approach 1: Hook into MathJax completion events
+      if (
+        window.MathJax &&
+        window.MathJax.startup &&
+        window.MathJax.startup.promise
+      ) {
+        window.MathJax.startup.promise.then(() => {
+          logInfo(
+            "🔗 MathJax startup completed, setting up completion monitoring..."
+          );
+
+          // Hook into MathJax typesetPromise to detect completion
+          const originalTypesetPromise = window.MathJax.typesetPromise;
+          if (originalTypesetPromise) {
+            window.MathJax.typesetPromise = function (...args) {
+              return originalTypesetPromise.apply(this, args).then((result) => {
+                // Wait a bit for annotation injection to complete
+                setTimeout(() => {
+                  enableButtonsWhenReady();
+                }, 500);
+                return result;
+              });
+            };
+            logInfo("✅ MathJax completion hook installed");
+          }
+        });
+      }
+
+      // Approach 2: BOUNDED polling backup system (prevents memory leaks)
+      let pollAttempts = 0;
+      const maxPollAttempts = 20; // Maximum 10 seconds of polling
+
+      const pollForCompletion = () => {
+        pollAttempts++;
+        if (pollAttempts > maxPollAttempts) {
+          logWarn("⏰ Polling timeout reached - enabling buttons anyway");
+          this.enableExportButtons("Timeout - ready for export");
+          return;
+        }
+
+        if (!enableButtonsWhenReady()) {
+          const timeoutId = setTimeout(pollForCompletion, 500);
+          // Track timeout for cleanup
+          this.pollingTimeouts.add(timeoutId);
+
+          // Clean up completed timeout from tracking after it executes
+          setTimeout(() => {
+            this.pollingTimeouts.delete(timeoutId);
+          }, 501);
+        }
+      };
+
+      // Start polling after initial setup delay
+      const initialTimeoutId = setTimeout(pollForCompletion, 1000);
+      this.pollingTimeouts.add(initialTimeoutId);
+
+      // Approach 3: Conversion completion hook
+      if (window.ConversionEngine) {
+        // Store original renderMathJax method
+        const originalRenderMathJax = window.ConversionEngine.renderMathJax;
+        if (originalRenderMathJax) {
+          window.ConversionEngine.renderMathJax = function () {
+            return originalRenderMathJax
+              .call(this)
+              .then((result) => {
+                // Wait for annotation injection after MathJax rendering
+                setTimeout(() => {
+                  enableButtonsWhenReady();
+                }, 300);
+                return result;
+              })
+              .catch((error) => {
+                // Enable buttons even if MathJax fails
+                logWarn("⚠️ MathJax rendering failed, enabling buttons anyway");
+                setTimeout(() => {
+                  this.enableExportButtons(
+                    "MathJax failed but ready for export"
+                  );
+                }, 100);
+                throw error;
+              });
+          };
+          logInfo("✅ ConversionEngine MathJax completion hook installed");
+        }
+      }
+
+      logInfo("✅ MathJax completion monitoring system setup complete");
+
+      // Set up change detection hooks to disable buttons during processing
+      this.setupChangeDetectionHooks();
+    }
+    /**
+     * ✅ ENHANCED: Control button states and processing overlay with smart messaging
+     */
+    disableExportButtons(reason = "Processing...", customDetail = null) {
+      logInfo(`🔒 Disabling export buttons: ${reason}`);
+
+      if (this.exportButton) {
+        this.exportButton.disabled = true;
+      }
+
+      if (this.scormExportButton) {
+        this.scormExportButton.disabled = true;
+      }
+
+      // Determine appropriate detail message if not provided
+      let detailMessage = customDetail;
+      if (!detailMessage) {
+        // Add a small delay to let DOM updates complete before checking content
+        setTimeout(() => {
+          const currentInput =
+            window.ConversionEngine?.getCurrentInput?.() || "";
+          const hasContent = currentInput.trim().length > 0;
+
+          logInfo(
+            `🔍 DEBUG: Content check - hasContent: ${hasContent}, length: ${currentInput.length}`
+          );
+
+          const detail = document.getElementById("processingDetail");
+          if (detail) {
+            if (!hasContent) {
+              detail.textContent =
+                "Clearing output and preparing interface. Ready for your input.";
+              logInfo("📝 Updated overlay message for empty content");
+            } else {
+              const hasMath = /\$|\\\[|\\begin\{/.test(currentInput);
+              if (hasMath) {
+                detail.textContent = "Please wait while we render equations";
+              } else {
+                detail.textContent = "Please wait while we convert the content";
+              }
+              logInfo(
+                `📝 Updated overlay message for content (hasMath: ${hasMath})`
+              );
+            }
+          }
+        }, 50); // Small delay to let DOM update
+      }
+
+      // Show processing overlay with initial message
+      this.showProcessingOverlay(reason, detailMessage);
+
+      // Update status if available
+      if (window.StatusManager) {
+        window.StatusManager.showProcessing(reason);
+      }
+    }
+
+    enableExportButtons(reason = "Ready") {
+      logInfo(`🔓 Preparing to enable export buttons: ${reason}`);
+
+      // First update the status and give it time to render
+      if (window.StatusManager) {
+        window.StatusManager.setReady("Ready! Export buttons enabled.");
+      }
+
+      // Hide processing overlay first
+      this.hideProcessingOverlay();
+
+      // Small delay to ensure status update renders before enabling buttons
+      setTimeout(() => {
+        if (this.exportButton) {
+          this.exportButton.disabled = false;
+          logInfo("✅ Export button enabled after status update");
+        }
+
+        if (this.scormExportButton) {
+          this.scormExportButton.disabled = false;
+          logInfo("✅ SCORM export button enabled after status update");
+        }
+
+        logInfo("🎉 All export buttons now enabled and ready for use");
+      }, 100); // Small delay to allow DOM update to render
+    }
+
+    /**
+     * ✅ ENHANCED: Show processing overlay with context-aware messages
+     */
+    showProcessingOverlay(reason = "Processing...", detailMessage = null) {
+      const overlay = document.getElementById("processingOverlay");
+      const message = document.getElementById("processingMessage");
+      const detail = document.getElementById("processingDetail");
+
+      if (overlay) {
+        overlay.style.display = "flex";
+
+        if (message) {
+          message.textContent = reason;
+        }
+
+        if (detail) {
+          // Use custom detail if provided, otherwise determine based on context
+          if (detailMessage) {
+            detail.textContent = detailMessage;
+          } else {
+            // Smart detection based on current input content
+            const currentInput =
+              window.ConversionEngine?.getCurrentInput?.() || "";
+            const hasContent = currentInput.trim().length > 0;
+            const hasMath =
+              hasContent && /\$|\\\[|\\begin\{/.test(currentInput);
+
+            if (!hasContent) {
+              detail.textContent = "Please wait while we process the changes";
+            } else if (hasMath) {
+              detail.textContent = "Please wait while we render equations";
+            } else {
+              detail.textContent = "Please wait while we convert the content";
+            }
+          }
+        }
+
+        // Announce to screen readers
+        if (window.AppConfig && window.AppConfig.announceToScreenReader) {
+          const announcement = detailMessage
+            ? `${reason}. ${detailMessage}`
+            : `Processing started: ${reason}`;
+          window.AppConfig.announceToScreenReader(announcement);
+        }
+
+        logInfo("☁️ Processing overlay shown");
+      }
+    }
+
+    /**
+     * ✅ NEW: Hide processing overlay
+     */
+    hideProcessingOverlay() {
+      const overlay = document.getElementById("processingOverlay");
+
+      if (overlay) {
+        // Smooth fade out
+        overlay.style.opacity = "0";
+
+        setTimeout(() => {
+          overlay.style.display = "none";
+          overlay.style.opacity = "1"; // Reset for next time
+        }, 300);
+
+        // Announce to screen readers
+        if (window.AppConfig && window.AppConfig.announceToScreenReader) {
+          window.AppConfig.announceToScreenReader(
+            "Processing complete - content is ready"
+          );
+        }
+
+        logInfo("☁️ Processing overlay hidden");
+      }
+    }
+
+    /**
+     * ✅ NEW: Set up hooks to detect changes and disable buttons
+     */
+    setupChangeDetectionHooks() {
+      logInfo("🔗 Setting up change detection hooks...");
+
+      // Hook 1: Input textarea changes
+      const inputTextarea = document.getElementById("input");
+      if (inputTextarea) {
+        // Disable buttons immediately on input
+        inputTextarea.addEventListener("input", () => {
+          this.disableExportButtons("Processing content changes...");
+        });
+
+        // Also disable on paste events
+        inputTextarea.addEventListener("paste", () => {
+          setTimeout(() => {
+            this.disableExportButtons("Processing pasted content...");
+          }, 10);
+        });
+
+        logInfo("✅ Input change detection hook installed");
+      }
+
+      // Hook 2: Example loading detection
+      if (window.ExampleSystem) {
+        // Store original loadExample method
+        const originalLoadExample = window.ExampleSystem.loadExample;
+        if (originalLoadExample) {
+          window.ExampleSystem.loadExample = (...args) => {
+            this.disableExportButtons("Loading example...");
+            return originalLoadExample.apply(window.ExampleSystem, args);
+          };
+          logInfo("✅ ExampleSystem hook installed");
+        }
+
+        // Hook loadDefaultExample as well
+        const originalLoadDefaultExample =
+          window.ExampleSystem.loadDefaultExample;
+        if (originalLoadDefaultExample) {
+          window.ExampleSystem.loadDefaultExample = (...args) => {
+            this.disableExportButtons("Loading default example...");
+            return originalLoadDefaultExample.apply(window.ExampleSystem, args);
+          };
+          logInfo("✅ ExampleSystem default example hook installed");
+        }
+      }
+
+      // Hook 3: Conversion start detection
+      if (window.ConversionEngine) {
+        // Store original convertInput method
+        const originalConvertInput = window.ConversionEngine.convertInput;
+        if (originalConvertInput) {
+          window.ConversionEngine.convertInput = (...args) => {
+            this.disableExportButtons("Converting LaTeX...");
+            return originalConvertInput.apply(window.ConversionEngine, args);
+          };
+          logInfo("✅ ConversionEngine start hook installed");
+        }
+      }
+
+      logInfo("✅ Change detection hooks setup complete");
+    }
 
     /**
      * FIXED: Enhanced status reporting with all tracked modules
@@ -545,12 +1030,41 @@ const AppStateManager = (function () {
     }
 
     /**
+     * 🧹 MEMORY MANAGEMENT: Cleanup polling timeouts and other resources
+     */
+    cleanup() {
+      logInfo("🧹 Performing app state manager cleanup...");
+
+      // Clear polling timeouts
+      if (this.pollingTimeouts) {
+        this.pollingTimeouts.forEach((timeout) => {
+          clearTimeout(timeout);
+        });
+        this.pollingTimeouts.clear();
+      }
+
+      // Cleanup conversion engine
+      if (
+        window.ConversionEngine &&
+        window.ConversionEngine.manager &&
+        window.ConversionEngine.manager.cleanup
+      ) {
+        window.ConversionEngine.manager.cleanup();
+      }
+
+      logInfo("🧹 App state manager cleanup completed");
+    }
+
+    /**
      * Shutdown application gracefully
      */
     shutdown() {
       logInfo("Shutting down application...");
 
       try {
+        // Perform cleanup first
+        this.cleanup();
+
         // Cleanup event manager
         if (window.EventManager) {
           window.EventManager.cleanup();

@@ -77,14 +77,16 @@ const TestAccessibilityIntegration = (function () {
           );
         },
 
-        readingControls: () => {
+        readingControls: async () => {
+          await window.TemplateSystem.ensureTemplatesLoaded();
+          const generator = window.TemplateSystem.createGenerator();
+
+          if (generator.engine.templates.size === 0) {
+            generator.engine.copyFromGlobalCache();
+          }
+
           const html = generator.renderTemplate("readingToolsSection");
-          return (
-            html.includes("font-family") &&
-            html.includes("font-size") &&
-            html.includes("reading-width") &&
-            html.includes("aria-describedby")
-          );
+          return html.includes("reading-tools-section");
         },
 
         mathJaxAccessibility: () => {

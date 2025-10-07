@@ -65,8 +65,8 @@ const TestContentGenerator = (function () {
       }
 
       const tests = {
-        generateCSS: () => {
-          const css = window.ContentGenerator.generateEnhancedCSS();
+        generateCSS: async () => {
+          const css = await window.ContentGenerator.generateEnhancedCSS();
           return (
             css.includes("grid") &&
             css.includes("--body-bg") &&

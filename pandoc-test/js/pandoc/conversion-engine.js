@@ -7,45 +7,19 @@ const ConversionEngine = (function () {
   "use strict";
 
   // ===========================================================================================
-  // LOGGING CONFIGURATION (IIFE SCOPE)
+  // LOGGING CONFIGURATION (USING MODULAR SYSTEM)
   // ===========================================================================================
 
-  const LOG_LEVELS = {
-    ERROR: 0,
-    WARN: 1,
-    INFO: 2,
-    DEBUG: 3,
+  // Create logger instance for conversion module
+  const logger = window.LoggingSystem?.createModuleLogger("CONVERSION") || {
+    logError: console.error.bind(console, "[CONVERSION]"),
+    logWarn: console.warn.bind(console, "[CONVERSION]"),
+    logInfo: console.log.bind(console, "[CONVERSION]"),
+    logDebug: console.log.bind(console, "[CONVERSION]"),
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
-  const ENABLE_ALL_LOGGING = false;
-  const DISABLE_ALL_LOGGING = false;
-
-  function shouldLog(level) {
-    if (DISABLE_ALL_LOGGING) return false;
-    if (ENABLE_ALL_LOGGING) return true;
-    return level <= DEFAULT_LOG_LEVEL;
-  }
-
-  function logError(message, ...args) {
-    if (shouldLog(LOG_LEVELS.ERROR))
-      console.error("[CONVERSION]", message, ...args);
-  }
-
-  function logWarn(message, ...args) {
-    if (shouldLog(LOG_LEVELS.WARN))
-      console.warn("[CONVERSION]", message, ...args);
-  }
-
-  function logInfo(message, ...args) {
-    if (shouldLog(LOG_LEVELS.INFO))
-      console.log("[CONVERSION]", message, ...args);
-  }
-
-  function logDebug(message, ...args) {
-    if (shouldLog(LOG_LEVELS.DEBUG))
-      console.log("[CONVERSION]", message, ...args);
-  }
+  // Extract individual logging functions for backwards compatibility
+  const { logError, logWarn, logInfo, logDebug } = logger;
 
   // ===========================================================================================
   // ENHANCED CONVERSION ENGINE IMPLEMENTATION
@@ -57,22 +31,201 @@ const ConversionEngine = (function () {
    */
   class ConversionEngineManager {
     constructor() {
+      // Initialize StateManager delegation
+      if (!window.StateManager) {
+        logError(
+          "StateManager module not available - using fallback state management"
+        );
+        this.useStateManagerFallback = true;
+        this.initializeFallbackState();
+      } else {
+        this.useStateManagerFallback = false;
+        this.stateManager = window.StateManager.instance;
+        logInfo("StateManager module integrated successfully");
+      }
+
+      // Non-state properties (kept in conversion engine)
       this.pandocFunction = null;
-      this.isReady = false;
       this.inputTextarea = null;
       this.outputDiv = null;
       this.argumentsInput = null;
-      this.isInitialised = false;
-      this.conversionInProgress = false;
+      this.conversionTimeout = null;
+    }
 
-      // ENHANCED: Complexity assessment thresholds
-      this.maxComplexityScore = 50; // Threshold for chunked processing
-      this.maxDocumentLength = 10000; // Characters threshold
-      this.defaultTimeout = 10000; // 10 second default timeout
+    // ===========================================================================================
+    // OPTIMIZED STATE PROPERTY GETTERS (DELEGATES TO STATEMANAGER)
+    // ===========================================================================================
+
+    /**
+     * OPTIMIZATION: Get cached status object to reduce repeated getEngineStatus() calls
+     * Cache is valid for 50ms to balance performance with state accuracy
+     */
+    _getCachedStatus() {
+      const now = Date.now();
+      if (!this._statusCache || now - this._statusCacheTime > 50) {
+        if (!this.useStateManagerFallback && window.StateManager) {
+          this._statusCache = window.StateManager.getEngineStatus();
+          this._statusCacheTime = now;
+        } else {
+          this._statusCache = null;
+        }
+      }
+      return this._statusCache;
+    }
+
+    /**
+     * OPTIMIZATION: Invalidate status cache when state changes
+     */
+    _invalidateStatusCache() {
+      this._statusCache = null;
+      this._statusCacheTime = 0;
+    }
+
+    /**
+     * Get conversionInProgress state (optimized StateManager delegation)
+     */
+    get conversionInProgress() {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        const status = this._getCachedStatus();
+        return status ? status.conversionInProgress : false;
+      }
+      return this._conversionInProgress || false;
+    }
+
+    /**
+     * Set conversionInProgress state (optimized with cache invalidation)
+     */
+    set conversionInProgress(value) {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        this._invalidateStatusCache(); // Clear cache before state change
+        if (value) {
+          window.StateManager.startConversion();
+        } else {
+          window.StateManager.completeConversion(true);
+        }
+      } else {
+        this._conversionInProgress = value;
+      }
+    }
+
+    /**
+     * Get isConversionQueued state (optimized StateManager delegation)
+     */
+    get isConversionQueued() {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        const status = this._getCachedStatus();
+        return status ? status.conversionQueued : false;
+      }
+      return this._isConversionQueued || false;
+    }
+
+    /**
+     * Set isConversionQueued state (optimized with cache invalidation)
+     */
+    set isConversionQueued(value) {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        this._invalidateStatusCache(); // Clear cache before state change
+        if (value) {
+          window.StateManager.queueConversion();
+        }
+      } else {
+        this._isConversionQueued = value;
+      }
+    }
+
+    /**
+     * Get activeTimeouts (optimized StateManager delegation with cached Set-like object)
+     */
+    get activeTimeouts() {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        // Cache the Set-like object for better performance
+        if (!this._cachedTimeoutsObject || this._statusCache === null) {
+          const status = this._getCachedStatus();
+          this._cachedTimeoutsObject = {
+            get size() {
+              const currentStatus = window.StateManager.getEngineStatus();
+              return currentStatus.activeTimeouts;
+            },
+            add: (timeoutId) => {
+              this._invalidateStatusCache(); // Clear cache when timeouts change
+              return window.StateManager.addTimeout(timeoutId, "active");
+            },
+            delete: (timeoutId) => {
+              this._invalidateStatusCache(); // Clear cache when timeouts change
+              return window.StateManager.removeTimeout(timeoutId, "active");
+            },
+            clear: () => {
+              this._invalidateStatusCache(); // Clear cache when timeouts change
+              return window.StateManager.clearAllTimeouts(false);
+            },
+            forEach: () => {}, // Stub for compatibility
+          };
+        }
+        return this._cachedTimeoutsObject;
+      }
+      return this._activeTimeouts || new Set();
+    }
+
+    /**
+     * Get isInitialised state (optimized StateManager delegation)
+     */
+    get isInitialised() {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        const status = this._getCachedStatus();
+        return status ? status.initialised : false;
+      }
+      return this._isInitialised || false;
+    }
+
+    /**
+     * Get isReady state (optimized StateManager delegation)
+     */
+    get isReady() {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        const status = this._getCachedStatus();
+        return status ? status.ready : false;
+      }
+      return this._isReady || false;
+    }
+
+    /**
+     * Get automaticConversionsDisabled state (optimized StateManager delegation)
+     */
+    get automaticConversionsDisabled() {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        const status = this._getCachedStatus();
+        return status ? status.automaticConversionsDisabled : false;
+      }
+      return this._automaticConversionsDisabled || false;
+    }
+
+    /**
+     * Set automaticConversionsDisabled state (optimized with cache invalidation)
+     */
+    set automaticConversionsDisabled(value) {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        this._invalidateStatusCache(); // Clear cache before state change
+        window.StateManager.updateConfiguration({
+          automaticConversionsDisabled: value,
+        });
+      } else {
+        this._automaticConversionsDisabled = value;
+      }
+    }
+
+    /**
+     * Initialize fallback state management when StateManager module not available
+     * ENHANCED: Now delegates to FinalCoordinationManager for modular fallback state management
+     */
+    initializeFallbackState() {
+      return (
+        window.FinalCoordinationManager?.initializeFallbackState(this) || false
+      );
     }
 
     /**
      * Initialise the conversion engine
+     * ENHANCED: Now uses StateManager for state tracking
      */
     initialise() {
       logInfo("Initialising Enhanced Conversion Engine Manager...");
@@ -94,51 +247,63 @@ const ConversionEngine = (function () {
         // Setup event listeners
         this.setupEventListeners();
 
-        this.isInitialised = true;
-        logInfo("✅ Enhanced Conversion Engine initialised successfully");
+        // Update state using StateManager or fallback
+        const domElements = {
+          inputTextarea: this.inputTextarea,
+          outputDiv: this.outputDiv,
+          argumentsInput: this.argumentsInput,
+        };
 
+        if (!this.useStateManagerFallback && window.StateManager) {
+          window.StateManager.setInitialisationState(true, domElements);
+          logInfo("✅ StateManager: Initialisation state updated");
+        } else {
+          this.isInitialised = true;
+          logInfo("✅ Fallback: Initialisation state updated");
+        }
+
+        logInfo("✅ Enhanced Conversion Engine initialised successfully");
         return true;
       } catch (error) {
         logError("Failed to initialise Enhanced Conversion Engine:", error);
-        this.isInitialised = false;
+
+        // Update state using StateManager or fallback
+        if (!this.useStateManagerFallback && window.StateManager) {
+          window.StateManager.setInitialisationState(false);
+        } else {
+          this.isInitialised = false;
+        }
+
         return false;
       }
     }
 
     /**
      * Setup event listeners for conversion triggers
+     * ENHANCED: Now delegates to FinalCoordinationManager for modular event management
      */
     setupEventListeners() {
-      logInfo("Setting up conversion engine event listeners...");
-
-      // Input change handler with debouncing
-      if (this.inputTextarea) {
-        let conversionTimeout;
-        this.inputTextarea.addEventListener("input", () => {
-          clearTimeout(conversionTimeout);
-          conversionTimeout = setTimeout(() => {
-            this.convertInput();
-          }, 300); // 300ms debounce
-        });
-      }
-
-      // Arguments change handler
-      if (this.argumentsInput) {
-        this.argumentsInput.addEventListener("input", () => {
-          this.convertInput();
-        });
-      }
-
-      logInfo("✅ Conversion engine event listeners setup complete");
+      return (
+        window.FinalCoordinationManager?.setupEventListeners(this) || false
+      );
     }
 
     /**
      * Set the Pandoc function (called after Pandoc initialisation)
+     * ENHANCED: Now syncs with StateManager for centralized state tracking
      */
     setPandocFunction(pandocFn) {
       logInfo("Setting Pandoc function...");
       this.pandocFunction = pandocFn;
-      this.isReady = true;
+
+      // Update state using StateManager or fallback
+      if (!this.useStateManagerFallback && window.StateManager) {
+        window.StateManager.setReadyState(true, pandocFn);
+        logInfo("✅ StateManager: Engine readiness updated");
+      } else {
+        this.isReady = true;
+        logInfo("✅ Fallback: Engine readiness updated");
+      }
 
       // Enable interface
       if (this.inputTextarea) {
@@ -151,291 +316,194 @@ const ConversionEngine = (function () {
     }
 
     // ===========================================================================================
+    // LATEX PRESERVATION SYSTEM - BREAKTHROUGH TECHNOLOGY
+    // ===========================================================================================
+
+    /**
+     * Extract and map LaTeX expressions (delegates to LatexPreservationEngine)
+     */
+    extractAndMapLatexExpressions(content) {
+      return window.LatexPreservationEngine.extractAndMapLatexExpressions(
+        content
+      );
+    }
+
+    // NOTE: Fallback LaTeX extraction removed - LatexPreservationEngine module required
+    // ===========================================================================================
     // ENHANCED ERROR HANDLING AND COMPLEXITY ASSESSMENT METHODS
     // ===========================================================================================
 
     /**
      * Assess document complexity to determine processing strategy
+     * Delegates to ProcessingStrategyManager for complexity assessment
+     * @param {string} content - LaTeX content to assess
+     * @returns {Object} - Complexity analysis with level, score, and recommendations
      */
     assessDocumentComplexity(content) {
-      try {
-        const indicators = {
-          equations:
-            (content.match(/\$.*?\$/g) || []).length +
-            (content.match(/\\\[[\s\S]*?\\\]/g) || []).length,
-          displayMath: (content.match(/\$\$[\s\S]*?\$\$/g) || []).length,
-          matrices: (content.match(/\\begin\{.*?matrix.*?\}/g) || []).length,
-          environments: (content.match(/\\begin\{.*?\}/g) || []).length,
-          sections:
-            (content.match(/\\section\{/g) || []).length +
-            (content.match(/\\subsection\{/g) || []).length,
-          tables: (content.match(/\\begin\{table.*?\}/g) || []).length,
-          figures: (content.match(/\\begin\{figure.*?\}/g) || []).length,
-          commands: (content.match(/\\[a-zA-Z]+/g) || []).length,
-          length: content.length,
-          lineCount: content.split("\n").length,
-        };
-
-        // Calculate complexity score with weighted factors
-        const complexityScore =
-          indicators.equations * 1 +
-          indicators.displayMath * 2 +
-          indicators.matrices * 5 +
-          indicators.environments * 2 +
-          indicators.sections * 3 +
-          indicators.tables * 3 +
-          indicators.figures * 2 +
-          indicators.commands * 0.1 +
-          Math.floor(indicators.length / 1000) +
-          Math.floor(indicators.lineCount / 100);
-
-        const level =
-          complexityScore < 10
-            ? "Basic"
-            : complexityScore < 30
-            ? "Intermediate"
-            : complexityScore < 70
-            ? "Advanced"
-            : "Complex";
-
-        logInfo(
-          `Document complexity assessment: ${level} (score: ${complexityScore.toFixed(
-            1
-          )})`
+      if (!window.ProcessingStrategyManager) {
+        logError(
+          "ProcessingStrategyManager not available - falling back to minimal assessment"
         );
-        logDebug("Complexity indicators:", indicators);
+        return this.fallbackComplexityAssessment(content);
+      }
 
-        return {
-          score: complexityScore,
-          level: level,
-          requiresChunking:
-            complexityScore > this.maxComplexityScore ||
-            indicators.length > this.maxDocumentLength,
-          indicators: indicators,
-          estimatedProcessingTime: Math.min(complexityScore * 100, 15000), // ms
-        };
+      try {
+        const complexityResult =
+          window.ProcessingStrategyManager.assessDocumentComplexity(content);
+        logInfo(
+          `Document complexity assessment: ${
+            complexityResult.level
+          } (score: ${complexityResult.score.toFixed(1)})`
+        );
+        logDebug("Complexity indicators:", complexityResult.indicators);
+        return complexityResult;
       } catch (error) {
-        logError("Error assessing document complexity:", error);
-        return {
-          score: 0,
-          level: "unknown",
-          requiresChunking: false,
-          indicators: {},
-          estimatedProcessingTime: 2000,
-        };
+        logError("ProcessingStrategyManager failed - using fallback:", error);
+        return this.fallbackComplexityAssessment(content);
       }
     }
 
+    // NOTE: Fallback complexity assessment removed - ProcessingStrategyManager module required
+
     /**
-     * Handle WebAssembly and Pandoc-specific errors with graceful fallback
+     * Handle conversion errors with graceful fallback
+     * @param {Error} error - The error that occurred
+     * @param {string} inputText - LaTeX input text
+     * @param {string} argumentsText - Pandoc arguments
+     * @param {number} attempt - Current attempt number
+     * @returns {Promise<boolean>} - Success/failure of error handling
      */
     async handleConversionError(error, inputText, argumentsText, attempt = 1) {
-      logError(`Conversion error (attempt ${attempt}):`, error);
-
-      const errorMessage = error.message || error.toString();
-      const isMemoryError =
-        errorMessage.includes("out of memory") ||
-        errorMessage.includes("Stack space overflow") ||
-        errorMessage.includes("Maximum call stack");
-      const isWasmError =
-        errorMessage.includes("wasm") ||
-        errorMessage.includes("WebAssembly") ||
-        errorMessage.includes("trap");
-      const isTimeoutError =
-        errorMessage.includes("timeout") || errorMessage.includes("Timeout");
-
-      // Attempt recovery strategies
-      if (isMemoryError && attempt === 1) {
-        logWarn("Memory error detected - attempting chunked processing");
-        return await this.processInChunks(inputText, argumentsText);
-      }
-
-      if (isWasmError && attempt === 1) {
-        logWarn("WebAssembly error detected - attempting simplified arguments");
-        const simplifiedArgs = "--from latex --to html5 --mathml";
-        return await this.attemptSimplifiedConversion(
+      if (!window.ErrorHandler) {
+        logError(
+          "ErrorHandler module not available - using fallback error handling"
+        );
+        return this.fallbackErrorHandling(
+          error,
           inputText,
-          simplifiedArgs
+          argumentsText,
+          attempt
         );
       }
 
-      if (isTimeoutError) {
-        logWarn("Timeout error detected - document may be too complex");
+      try {
+        const dependencies = window.ErrorHandler.createErrorContext(this);
+        return await window.ErrorHandler.handleConversionError(
+          error,
+          inputText,
+          argumentsText,
+          attempt,
+          dependencies
+        );
+      } catch (handlerError) {
+        logError("ErrorHandler module failed - using fallback:", handlerError);
+        return this.fallbackErrorHandling(
+          error,
+          inputText,
+          argumentsText,
+          attempt
+        );
       }
-
-      // Generate user-friendly error message
-      const userMessage = this.generateUserFriendlyErrorMessage(
-        error,
-        errorMessage
-      );
-
-      this.setErrorOutput(new Error(userMessage));
-
-      if (window.StatusManager) {
-        window.StatusManager.setError(`Conversion failed: ${userMessage}`);
-      }
-
-      // Announce error to screen readers
-      this.announceErrorToScreenReader(userMessage);
-
-      return false;
     }
 
+    // NOTE: fallbackErrorHandling removed - ErrorHandler module now required
+
     /**
-     * Generate user-friendly error messages for different error types
+     * Generate user-friendly error messages (delegates to ErrorMessageGenerator)
+     * @param {Error} originalError - The original error object
+     * @param {string} errorMessage - Raw error message
+     * @returns {string} - User-friendly error message
      */
     generateUserFriendlyErrorMessage(originalError, errorMessage) {
-      if (
-        errorMessage.includes("out of memory") ||
-        errorMessage.includes("Stack space overflow")
-      ) {
-        return "Document too complex for processing. Try reducing mathematical content or splitting into smaller sections.";
+      if (!window.ErrorMessageGenerator) {
+        logError("ErrorMessageGenerator module not available - using fallback");
+        return this.fallbackErrorMessageGeneration(originalError, errorMessage);
       }
-
-      if (
-        errorMessage.includes("wasm") ||
-        errorMessage.includes("WebAssembly")
-      ) {
-        return "Mathematical processing engine error. Please check LaTeX syntax and try again.";
-      }
-
-      if (errorMessage.includes("timeout")) {
-        return "Document processing timed out. Document may be too large or complex.";
-      }
-
-      if (errorMessage.includes("syntax") || errorMessage.includes("parse")) {
-        return "LaTeX syntax error detected. Please check mathematical expressions and commands.";
-      }
-
-      if (
-        errorMessage.includes("Unknown command") ||
-        errorMessage.includes("Undefined control sequence")
-      ) {
-        return "Unknown LaTeX command found. Please check mathematical expressions and package requirements.";
-      }
-
-      return "Conversion failed. Please check LaTeX syntax and try again.";
-    }
-
-    /**
-     * Process large documents in chunks by sections
-     */
-    async processInChunks(inputText, argumentsText) {
-      logInfo("Processing document in chunks due to complexity");
 
       try {
-        if (window.StatusManager) {
-          window.StatusManager.setLoading(
-            "Processing complex document in sections...",
-            10
+        return window.ErrorMessageGenerator.generateUserFriendlyErrorMessage(
+          originalError,
+          errorMessage
+        );
+      } catch (generatorError) {
+        logError(
+          "ErrorMessageGenerator failed - using fallback:",
+          generatorError
+        );
+        return this.fallbackErrorMessageGeneration(originalError, errorMessage);
+      }
+    }
+
+    // NOTE: fallbackErrorMessageGeneration removed - ErrorMessageGenerator module now required
+
+    /**
+     * Process large documents in chunks (delegates to ChunkedProcessingEngine)
+     * @param {string} inputText - LaTeX document to process
+     * @param {string} argumentsText - Pandoc arguments
+     * @returns {Promise<boolean>} - Success/failure of chunked processing
+     */
+    async processInChunks(inputText, argumentsText) {
+      if (!window.ChunkedProcessingEngine) {
+        logError(
+          "ChunkedProcessingEngine not available - falling back to error handling"
+        );
+        return await this.handleConversionError(
+          new Error("Chunked processing not available"),
+          inputText,
+          argumentsText,
+          2
+        );
+      }
+
+      try {
+        logInfo(
+          "Delegating to ChunkedProcessingEngine for complex document processing..."
+        );
+
+        const chunkingResult =
+          await window.ChunkedProcessingEngine.processInChunks(
+            inputText,
+            argumentsText,
+            this.pandocFunction,
+            {
+              outputDiv: this.outputDiv,
+              statusManager: window.StatusManager,
+              renderMathJax: this.renderMathJax.bind(this),
+            }
           );
-        }
 
-        // Split document into logical chunks (by sections)
-        const chunks = this.splitDocumentIntoChunks(inputText);
-        logInfo(`Document split into ${chunks.length} chunks`);
-
-        const processedChunks = [];
-        const totalChunks = chunks.length;
-
-        for (let i = 0; i < chunks.length; i++) {
-          const chunk = chunks[i];
-          const progress = Math.floor(((i + 1) / totalChunks) * 70) + 15;
+        if (chunkingResult.success) {
+          if (this.outputDiv && chunkingResult.output) {
+            this.outputDiv.innerHTML = chunkingResult.output;
+          }
 
           if (window.StatusManager) {
             window.StatusManager.setLoading(
-              `Processing section ${i + 1} of ${totalChunks}...`,
-              progress
+              "Rendering mathematical expressions...",
+              90
             );
           }
 
-          try {
-            // Process chunk with shorter timeout
-            const chunkTimeout = 5000; // 5 seconds per chunk
-            const chunkPromise = new Promise((resolve, reject) => {
-              try {
-                const chunkOutput = this.pandocFunction(
-                  argumentsText,
-                  chunk.content
-                );
-                resolve(chunkOutput);
-              } catch (chunkError) {
-                reject(chunkError);
-              }
-            });
+          await this.renderMathJax();
 
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => {
-                reject(new Error(`Chunk ${i + 1} processing timeout`));
-              }, chunkTimeout);
-            });
-
-            const chunkOutput = await Promise.race([
-              chunkPromise,
-              timeoutPromise,
-            ]);
-
-            processedChunks.push({
-              ...chunk,
-              output: this.cleanPandocOutput(chunkOutput),
-            });
-
-            // Small delay to prevent overwhelming the system
-            await new Promise((resolve) => setTimeout(resolve, 50));
-          } catch (chunkError) {
-            logWarn(
-              `Error processing chunk ${i + 1} (${chunk.title}):`,
-              chunkError
-            );
-            // Include error in output for user awareness
-            processedChunks.push({
-              ...chunk,
-              output: `<div class="error-message"><strong>Error processing section "${
-                chunk.title
-              }":</strong> ${this.generateUserFriendlyErrorMessage(
-                chunkError,
-                chunkError.message
-              )}</div>`,
-            });
+          if (window.StatusManager) {
+            const successMessage = `Complex document processed successfully! (${chunkingResult.chunksProcessed} sections processed, ${chunkingResult.chunksSucceeded} succeeded)`;
+            window.StatusManager.setReady(successMessage);
           }
-        }
 
-        if (window.StatusManager) {
-          window.StatusManager.setLoading(
-            "Combining processed sections...",
-            85
+          logInfo("ChunkedProcessingEngine completed successfully");
+          return true;
+        } else {
+          logError("ChunkedProcessingEngine failed:", chunkingResult.error);
+          return await this.handleConversionError(
+            new Error(chunkingResult.error || "Chunked processing failed"),
+            inputText,
+            argumentsText,
+            2
           );
         }
-
-        // Combine processed chunks
-        const combinedOutput = processedChunks
-          .map((chunk) => chunk.output)
-          .join("\n\n");
-
-        if (this.outputDiv) {
-          this.outputDiv.innerHTML = combinedOutput;
-        }
-
-        if (window.StatusManager) {
-          window.StatusManager.setLoading(
-            "Rendering mathematical expressions...",
-            90
-          );
-        }
-
-        // Re-render MathJax for combined content
-        await this.renderMathJax();
-
-        if (window.StatusManager) {
-          window.StatusManager.setReady(
-            "Complex document processed successfully!"
-          );
-        }
-
-        logInfo("✅ Chunked processing completed successfully");
-        return true;
       } catch (error) {
-        logError("Error in chunked processing:", error);
+        logError("Error delegating to ChunkedProcessingEngine:", error);
         return await this.handleConversionError(
           error,
           inputText,
@@ -445,740 +513,313 @@ const ConversionEngine = (function () {
       }
     }
 
-    /**
-     * Split document into logical chunks for processing with proper LaTeX structure
-     */
-    splitDocumentIntoChunks(content) {
-      try {
-        // Extract document preamble (everything before \begin{document})
-        const documentMatch = content.match(
-          /([\s\S]*?)\\begin\{document\}([\s\S]*?)\\end\{document\}/
-        );
+    // NOTE: Chunked processing methods moved to ChunkedProcessingEngine module
+    // These methods are now handled by window.ChunkedProcessingEngine:
+    // - splitDocumentIntoChunks() → ChunkedProcessingEngine.splitDocumentIntoChunks()
+    // - addSequentialSectionNumbering() → ChunkedProcessingEngine.addSequentialSectionNumbering()
+    // - wrapContentInDocument() → ChunkedProcessingEngine.wrapContentInDocument()
 
-        let preamble = "";
-        let documentBody = content;
-        let hasFullDocument = false;
-
-        if (documentMatch) {
-          preamble = documentMatch[1];
-          documentBody = documentMatch[2];
-          hasFullDocument = true;
-          logDebug("Detected full LaTeX document with preamble");
-        } else {
-          // No full document structure - create minimal preamble
-          preamble =
-            "\\documentclass{article}\n\\usepackage{amsmath,amssymb,amsthm}\n\\usepackage{geometry}\n";
-          logDebug("Creating minimal document preamble for fragments");
-        }
-
-        const chunks = [];
-
-        // Try to split by sections first
-        const sectionSplits = documentBody.split(/\\section\{/);
-
-        if (sectionSplits.length > 1) {
-          // Document has sections - split by sections
-          if (sectionSplits[0].trim()) {
-            chunks.push({
-              type: "preamble",
-              content: this.wrapContentInDocument(
-                preamble,
-                sectionSplits[0],
-                true
-              ), // Mark as first chunk - INCLUDES title metadata
-              title: "Document Introduction",
-              rawContent: sectionSplits[0],
-            });
-          }
-
-          for (let i = 1; i < sectionSplits.length; i++) {
-            const sectionContent = "\\section{" + sectionSplits[i];
-            const titleMatch = sectionContent.match(/\\section\{([^}]+)\}/);
-            const title = titleMatch ? titleMatch[1] : `Section ${i}`;
-
-            const wrappedContent = this.wrapContentInDocument(
-              preamble,
-              sectionContent,
-              false // NOT first chunk - EXCLUDES title metadata
-            );
-
-            chunks.push({
-              type: "section",
-              content: wrappedContent,
-              title: title.slice(0, 50),
-              rawContent: sectionContent,
-            });
-          }
-        } else {
-          // Try to split by subsections
-          const subsectionSplits = documentBody.split(/\\subsection\{/);
-
-          if (subsectionSplits.length > 1) {
-            if (subsectionSplits[0].trim()) {
-              const wrappedContent = this.wrapContentInDocument(
-                preamble,
-                subsectionSplits[0],
-                true // First chunk - INCLUDES title metadata
-              );
-              chunks.push({
-                type: "introduction",
-                content: wrappedContent,
-                title: "Introduction",
-                rawContent: subsectionSplits[0],
-              });
-            }
-
-            for (let i = 1; i < subsectionSplits.length; i++) {
-              const subsectionContent = "\\subsection{" + subsectionSplits[i];
-              const titleMatch = subsectionContent.match(
-                /\\subsection\{([^}]+)\}/
-              );
-              const title = titleMatch ? titleMatch[1] : `Subsection ${i}`;
-
-              const wrappedContent = this.wrapContentInDocument(
-                preamble,
-                subsectionContent,
-                false // NOT first chunk - EXCLUDES title metadata
-              );
-
-              chunks.push({
-                type: "subsection",
-                content: wrappedContent,
-                title: title.slice(0, 50),
-                rawContent: subsectionContent,
-              });
-            }
-          } else {
-            // No sections - split by approximate size
-            const maxChunkSize = 3000; // characters
-            let currentPos = 0;
-            let chunkNum = 1;
-
-            while (currentPos < documentBody.length) {
-              const chunkEnd = Math.min(
-                currentPos + maxChunkSize,
-                documentBody.length
-              );
-
-              // Try to find a good breaking point (end of paragraph)
-              let actualEnd = chunkEnd;
-              if (chunkEnd < documentBody.length) {
-                const nextParagraphBreak = documentBody.indexOf(
-                  "\n\n",
-                  chunkEnd - 200
-                );
-                if (
-                  nextParagraphBreak > chunkEnd - 200 &&
-                  nextParagraphBreak < chunkEnd + 200
-                ) {
-                  actualEnd = nextParagraphBreak + 2;
-                }
-              }
-
-              const chunkContent = documentBody.slice(currentPos, actualEnd);
-              const wrappedContent = this.wrapContentInDocument(
-                preamble,
-                chunkContent,
-                chunkNum === 1 // Only first fragment gets title metadata
-              );
-
-              chunks.push({
-                type: "fragment",
-                content: wrappedContent,
-                title: `Fragment ${chunkNum}`,
-                rawContent: chunkContent,
-              });
-
-              currentPos = actualEnd;
-              chunkNum++;
-            }
-          }
-        }
-
-        logInfo(
-          `Document split strategy: ${chunks[0]?.type}, ${chunks.length} chunks created with proper LaTeX structure`
-        );
-        return chunks;
-      } catch (error) {
-        logError("Error splitting document into chunks:", error);
-        // Fallback: return entire content as single chunk
-        const fallbackContent = this.wrapContentInDocument(
-          "\\documentclass{article}\n\\usepackage{amsmath,amssymb,amsthm}\n",
-          content,
-          true // Fallback is treated as first/only chunk
-        );
-        return [
-          {
-            type: "fallback",
-            content: fallbackContent,
-            title: "Complete Document",
-            rawContent: content,
-          },
-        ];
-      }
-    }
-
-    /**
-     * Wrap content chunk in proper LaTeX document structure
-     */
-    wrapContentInDocument(preamble, content, isFirstChunk = false) {
-      try {
-        // Clean the preamble to ensure it doesn't have \begin{document}
-        let cleanPreamble = preamble
-          .replace(/\\begin\{document\}[\s\S]*$/, "")
-          .trim();
-
-        // Remove title metadata from preamble for non-first chunks
-        if (!isFirstChunk) {
-          cleanPreamble = cleanPreamble
-            .replace(/\\title\{[^}]*\}/g, "")
-            .replace(/\\author\{[^}]*\}/g, "")
-            .replace(/\\date\{[^}]*\}/g, "")
-            .replace(/\\maketitle/g, "");
-        }
-
-        // Ensure we have a document class
-        if (!cleanPreamble.includes("\\documentclass")) {
-          cleanPreamble = "\\documentclass{article}\n" + cleanPreamble;
-        }
-
-        // Ensure we have essential packages for mathematical content
-        if (!cleanPreamble.includes("amsmath")) {
-          cleanPreamble += "\n\\usepackage{amsmath,amssymb,amsthm}";
-        }
-
-        // Clean the content to remove any document structure commands
-        let cleanContent = content
-          .replace(/\\documentclass\{[^}]+\}/g, "")
-          .replace(/\\usepackage\{[^}]*\}/g, "")
-          .replace(/\\begin\{document\}/g, "")
-          .replace(/\\end\{document\}/g, "")
-          .trim();
-
-        // Remove title commands from content for non-first chunks
-        if (!isFirstChunk) {
-          cleanContent = cleanContent
-            .replace(/\\title\{[^}]*\}/g, "")
-            .replace(/\\author\{[^}]*\}/g, "")
-            .replace(/\\date\{[^}]*\}/g, "")
-            .replace(/\\maketitle/g, "");
-        }
-
-        // Wrap in complete document structure
-        const wrappedDocument =
-          cleanPreamble +
-          "\n" +
-          "\\begin{document}\n" +
-          cleanContent +
-          "\n" +
-          "\\end{document}";
-
-        return wrappedDocument;
-      } catch (error) {
-        logError("Error wrapping content in document structure:", error);
-        // Return minimal wrapped content as fallback
-        return (
-          "\\documentclass{article}\n\\usepackage{amsmath,amssymb,amsthm}\n\\begin{document}\n" +
-          content +
-          "\n\\end{document}"
-        );
-      }
-    }
     /**
      * Attempt simplified conversion with reduced arguments
      */
     async attemptSimplifiedConversion(inputText, simplifiedArgs) {
-      logInfo("Attempting simplified conversion with reduced arguments");
+      if (!window.FallbackCoordinator) {
+        logError("FallbackCoordinator module not available - using fallback");
+        return this.fallbackSimplifiedConversion(inputText, simplifiedArgs);
+      }
 
       try {
-        if (window.StatusManager) {
-          window.StatusManager.setLoading(
-            "Retrying with simplified processing...",
-            50
-          );
-        }
-
-        // Try with timeout
-        const simplifiedPromise = new Promise((resolve, reject) => {
-          try {
-            const output = this.pandocFunction(simplifiedArgs, inputText);
-            resolve(output);
-          } catch (simplifiedError) {
-            reject(simplifiedError);
-          }
-        });
-
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(new Error("Simplified conversion timeout"));
-          }, 8000);
-        });
-
-        const output = await Promise.race([simplifiedPromise, timeoutPromise]);
-        const cleanOutput = this.cleanPandocOutput(output);
-
-        if (this.outputDiv) {
-          this.outputDiv.innerHTML = cleanOutput;
-        }
-
-        await this.renderMathJax();
-
-        if (window.StatusManager) {
-          window.StatusManager.setReady("✅ Simplified conversion completed");
-        }
-
-        logInfo("✅ Simplified conversion successful");
-        return true;
-      } catch (simplifiedError) {
-        logError("Simplified conversion also failed:", simplifiedError);
-        return false;
+        const dependencies =
+          window.FallbackCoordinator.createFallbackContext(this);
+        return await window.FallbackCoordinator.attemptSimplifiedConversion(
+          inputText,
+          simplifiedArgs,
+          this.pandocFunction,
+          dependencies
+        );
+      } catch (coordinatorError) {
+        logError(
+          "FallbackCoordinator module failed - using fallback:",
+          coordinatorError
+        );
+        return this.fallbackSimplifiedConversion(inputText, simplifiedArgs);
       }
     }
+
+    // NOTE: fallbackSimplifiedConversion removed - FallbackCoordinator module now required
 
     /**
-     * Announce error to screen readers for accessibility
+     * Announce error to screen readers (delegates to AccessibilityAnnouncer)
      */
     announceErrorToScreenReader(message) {
-      try {
-        const announcement = document.createElement("div");
-        announcement.className = "sr-only";
-        announcement.setAttribute("role", "alert");
-        announcement.setAttribute("aria-live", "assertive");
-        announcement.textContent = `Conversion error: ${message}`;
-
-        document.body.appendChild(announcement);
-        setTimeout(() => {
-          if (document.body.contains(announcement)) {
-            document.body.removeChild(announcement);
-          }
-        }, 3000);
-
-        logDebug("Error announced to screen readers");
-      } catch (error) {
-        logError("Failed to announce error to screen readers:", error);
-      }
+      return (
+        window.AccessibilityAnnouncer?.announceErrorToScreenReader(message) ||
+        this.fallbackScreenReaderAnnouncement?.(message) ||
+        false
+      );
     }
+
+    // NOTE: fallbackScreenReaderAnnouncement removed - AccessibilityAnnouncer module now required
 
     // ===========================================================================================
     // MAIN CONVERSION METHODS (ENHANCED)
     // ===========================================================================================
 
     // ===========================================================================================
-    // 🧪 PANDOC INVESTIGATION METHODS
+    // PANDOC INVESTIGATION METHODS - NOW DELEGATED TO PANDOC ARGUMENT ENHANCER
     // ===========================================================================================
 
     /**
      * INVESTIGATION: Enhanced Pandoc argument generation
-     * Tests different Pandoc argument combinations to improve HTML output
+     * ENHANCED: Now delegates to PandocArgumentEnhancer for modular argument enhancement
      */
     generateEnhancedPandocArgs(baseArgs) {
-      try {
-        const preset = document.getElementById(
-          "pandoc-enhancement-preset"
-        )?.value;
-
-        if (!preset || preset === "") {
-          logDebug("No preset selected, using base arguments");
-          return baseArgs;
-        }
-
-        const enhancements = this.getEnhancementsByPreset(preset);
-        const enhancedArgs = baseArgs + " " + enhancements.join(" ");
-
-        logInfo(`🧪 Enhanced Pandoc args: ${enhancedArgs}`);
-        logDebug(
-          `🔬 Preset: ${preset}, Enhancements: ${enhancements.join(", ")}`
-        );
-
-        return enhancedArgs;
-      } catch (error) {
-        logError("Error generating enhanced Pandoc args:", error);
-        return baseArgs;
-      }
+      return (
+        window.PandocArgumentEnhancer?.generateEnhancedPandocArgs(baseArgs) ||
+        baseArgs
+      );
     }
 
     /**
      * INVESTIGATION: Get enhancement arguments by preset
-     * Different presets test various Pandoc capabilities
+     * ENHANCED: Now delegates to PandocArgumentEnhancer
      */
     getEnhancementsByPreset(preset) {
-      const presets = {
-        semantic: ["--section-divs", "--html-q-tags", "--wrap=preserve"],
-        accessibility: [
+      return (
+        window.PandocArgumentEnhancer?.getEnhancementsByPreset(preset) || [
           "--section-divs",
-          "--id-prefix=content-",
-          "--html-q-tags",
-          "--number-sections",
-        ],
-        structure: [
-          "--section-divs",
-          "--wrap=preserve",
-          "--standalone",
-          "--toc",
-        ],
-        theorem: [
-          "--section-divs",
-          "--wrap=preserve",
-          "--html-q-tags",
-          "--from=latex+fancy_lists",
-        ],
-        custom: this.getCustomArguments(),
-      };
-
-      const selectedPreset = presets[preset] || presets.semantic;
-      logDebug(
-        `Selected enhancement preset: ${preset} → ${selectedPreset.join(", ")}`
+        ]
       );
-
-      return selectedPreset;
     }
 
     /**
      * INVESTIGATION: Get custom arguments from textarea
+     * ENHANCED: Now delegates to PandocArgumentEnhancer
      */
     getCustomArguments() {
-      try {
-        const customArgsTextarea =
-          document.getElementById("custom-pandoc-args");
-        if (!customArgsTextarea || !customArgsTextarea.value.trim()) {
-          logDebug("No custom arguments provided, using default custom preset");
-          return [
-            "--from=latex+tex_math_dollars+fancy_lists",
-            "--section-divs",
-            "--html-q-tags",
-          ];
-        }
-
-        // Parse custom arguments - split by whitespace but preserve quoted arguments
-        const customArgsText = customArgsTextarea.value.trim();
-        const customArgs = customArgsText
-          .split(/\s+/)
-          .filter((arg) => arg.length > 0);
-
-        logInfo(`🧪 Custom arguments parsed: ${customArgs.join(", ")}`);
-        return customArgs;
-      } catch (error) {
-        logError("Error parsing custom arguments:", error);
-        return ["--section-divs"]; // Fallback
-      }
+      return (
+        window.PandocArgumentEnhancer?.getCustomArguments() || [
+          "--section-divs",
+        ]
+      );
     }
 
     /**
      * INVESTIGATION: Handle comparison mode for side-by-side analysis
-     * Runs both standard and enhanced conversion for comparison
+     * ENHANCED: Now delegates to PandocArgumentEnhancer with pandoc function access
      */
     async handleComparisonMode(inputText, baseArgumentsText) {
-      const showComparison = document.getElementById(
-        "pandoc-comparison-mode"
-      )?.checked;
-
-      if (!showComparison) {
-        logDebug("Comparison mode disabled, using single conversion");
-        return null; // Signal to use normal conversion
-      }
-
-      logInfo("🔬 Running comparison mode: standard vs enhanced conversion");
-
       try {
-        // Update status for comparison
-        if (window.StatusManager) {
-          window.StatusManager.setLoading("Running comparison analysis...", 30);
-        }
-
-        // Run standard conversion
-        logInfo("🧪 Running standard conversion...");
-        const standardOutput = this.pandocFunction(
-          baseArgumentsText,
-          inputText
+        return (
+          (await window.PandocArgumentEnhancer?.handleComparisonMode(
+            inputText,
+            baseArgumentsText,
+            this.pandocFunction
+          )) || null
         );
-
-        // Run enhanced conversion
-        logInfo("🧪 Running enhanced conversion...");
-        const enhancedArgs = this.generateEnhancedPandocArgs(baseArgumentsText);
-        const enhancedOutput = this.pandocFunction(enhancedArgs, inputText);
-
-        // Display comparison
-        this.displayComparisonResults(
-          standardOutput,
-          enhancedOutput,
-          baseArgumentsText,
-          enhancedArgs
-        );
-
-        if (window.StatusManager) {
-          window.StatusManager.setReady("🔬 Comparison analysis complete");
-        }
-
-        return true; // Signal that comparison was handled
       } catch (error) {
-        logError("Error in comparison mode:", error);
-        if (window.StatusManager) {
-          window.StatusManager.setError("Comparison analysis failed");
-        }
+        logError("Comparison mode failed:", error);
+        window.StatusManager?.setError("Comparison analysis failed");
         return false;
       }
     }
 
+    // NOTE: The following methods are now handled by PandocArgumentEnhancer module:
+    // - displayComparisonResults() → PandocArgumentEnhancer.displayComparisonResults()
+    // - generateComparisonAnalysis() → PandocArgumentEnhancer.generateComparisonAnalysis()
+    // - escapeHtml() → PandocArgumentEnhancer.escapeHtml()
+
     /**
-     * INVESTIGATION: Display comparison results in enhanced format
-     * Shows side-by-side standard vs enhanced output with analysis
+     * Memory management: Comprehensive cleanup system using modular system
      */
-    displayComparisonResults(
-      standardOutput,
-      enhancedOutput,
-      standardArgs,
-      enhancedArgs
-    ) {
-      if (!this.outputDiv) return;
+    cleanup() {
+      logInfo("Performing comprehensive memory cleanup...");
 
-      logInfo("📊 Displaying comparison results");
+      // Use the new CleanupCoordinator for comprehensive cleanup
+      if (window.CleanupCoordinator) {
+        window.CleanupCoordinator.cleanup(
+          this.activeTimeouts,
+          this.pollingTimeouts
+        );
+      } else {
+        // Fallback cleanup if CleanupCoordinator not available
+        logWarn("CleanupCoordinator not available - using fallback cleanup");
 
-      // Clean both outputs for display
-      const cleanStandardOutput = this.cleanPandocOutput(standardOutput);
-      const cleanEnhancedOutput = this.cleanPandocOutput(enhancedOutput);
+        // Clear ALL tracked timeouts
+        this.activeTimeouts.forEach((timeout) => {
+          clearTimeout(timeout);
+        });
+        this.activeTimeouts.clear();
 
-      // Generate analysis
-      const analysis = this.generateComparisonAnalysis(
-        cleanStandardOutput,
-        cleanEnhancedOutput
+        // Clear polling timeouts
+        this.pollingTimeouts.forEach((timeout) => {
+          clearTimeout(timeout);
+        });
+        this.pollingTimeouts.clear();
+      }
+
+      // Reset conversion state
+      this.conversionInProgress = false;
+      this.isConversionQueued = false;
+      this.conversionTimeout = null;
+
+      logInfo("Memory cleanup completed (LaTeX registries preserved)");
+    }
+
+    /**
+     * Emergency: Full shutdown cleanup - clears everything including LaTeX registries
+     */
+    emergencyCleanup() {
+      logWarn(
+        "Emergency cleanup - clearing all memory including LaTeX registries"
       );
 
-      this.outputDiv.innerHTML = `
-        <div class="investigation-comparison" style="font-family: inherit;">
-          <div style="border-bottom: 2px solid var(--border-color); margin-bottom: 1.5rem; padding-bottom: 0.75rem;">
-            <h3 style="color: var(--heading-color); margin: 0 0 0.5rem 0;">🧪 Pandoc Investigation: Standard vs Enhanced Conversion</h3>
-            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">
-              Comparing conversion outputs to evaluate enhanced Pandoc argument effectiveness.
-            </p>
-          </div>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
-            <div>
-              <h4 style="color: var(--text-secondary); margin: 0 0 0.75rem 0; font-size: 1rem; border-bottom: 1px solid var(--sidebar-border); padding-bottom: 0.25rem;">
-                📋 Standard Conversion
-              </h4>
-              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-family: monospace; background: var(--surface-color); padding: 0.4rem; border-radius: 3px;">
-                ${this.escapeHtml(standardArgs)}
-              </div>
-              <div style="border: 1px solid var(--sidebar-border); padding: 1rem; border-radius: 6px; max-height: 400px; overflow-y: auto; background: var(--body-bg);">
-                ${cleanStandardOutput}
-              </div>
-            </div>
-            
-            <div>
-              <h4 style="color: var(--link-color); margin: 0 0 0.75rem 0; font-size: 1rem; border-bottom: 1px solid var(--link-color); padding-bottom: 0.25rem;">
-                ✨ Enhanced Conversion
-              </h4>
-              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-family: monospace; background: var(--surface-color); padding: 0.4rem; border-radius: 3px;">
-                ${this.escapeHtml(enhancedArgs)}
-              </div>
-              <div style="border: 2px solid var(--link-color); padding: 1rem; border-radius: 6px; max-height: 400px; overflow-y: auto; background: var(--body-bg);">
-                ${cleanEnhancedOutput}
-              </div>
-            </div>
-          </div>
-          
-          <div>
-            <h4 style="color: var(--heading-color); margin: 0 0 1rem 0; font-size: 1.1rem;">📊 Comparative Analysis</h4>
-            <div id="comparison-analysis" style="background: var(--surface-color); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--border-color);">
-              ${analysis}
-            </div>
-          </div>
-          
-          <div style="margin-top: 2rem; padding: 1rem; background: var(--focus-bg); border-radius: 6px; border-left: 4px solid var(--link-color);">
-            <h5 style="color: var(--heading-color); margin: 0 0 0.5rem 0;">🔬 Investigation Notes</h5>
-            <p style="margin: 0; font-size: 0.9rem; color: var(--body-text);">
-              This comparison helps determine whether enhanced Pandoc arguments improve semantic HTML structure, 
-              accessibility features, and overall document quality. Look for differences in element structure, 
-              ID attributes, section organisation, and mathematical expression handling.
-            </p>
-          </div>
-        </div>
-      `;
+      // Use the new CleanupCoordinator for emergency cleanup
+      if (window.CleanupCoordinator) {
+        window.CleanupCoordinator.emergencyCleanup(
+          this.activeTimeouts,
+          this.pollingTimeouts
+        );
+      } else {
+        // Fallback emergency cleanup
+        logWarn(
+          "CleanupCoordinator not available - using fallback emergency cleanup"
+        );
+        this.cleanup();
+        this.performFullCleanup();
+      }
 
-      // Re-render MathJax for both outputs
-      setTimeout(() => {
-        if (window.MathJax && window.MathJax.typesetPromise) {
-          window.MathJax.typesetPromise([this.outputDiv]).catch((error) => {
-            logWarn("MathJax rendering failed in comparison view:", error);
-          });
-        }
-      }, 100);
+      logWarn("Emergency cleanup completed");
     }
 
     /**
-     * INVESTIGATION: Generate analysis of differences between outputs
+     * Performance: Enhanced DOM cleanup for empty content and large deletions
+     * ENHANCED: Now delegates to FinalCoordinationManager for modular DOM cleanup
      */
-    generateComparisonAnalysis(standardOutput, enhancedOutput) {
-      const differences = [];
-
-      // Check for section divs
-      const standardSections = (standardOutput.match(/<section/g) || []).length;
-      const enhancedSections = (enhancedOutput.match(/<section/g) || []).length;
-
-      if (enhancedSections > standardSections) {
-        differences.push(
-          `✅ Enhanced version adds ${
-            enhancedSections - standardSections
-          } semantic section elements`
-        );
-      }
-
-      // Check for ID attributes
-      const standardIds = (standardOutput.match(/id="/g) || []).length;
-      const enhancedIds = (enhancedOutput.match(/id="/g) || []).length;
-
-      if (enhancedIds > standardIds) {
-        differences.push(
-          `✅ Enhanced version adds ${
-            enhancedIds - standardIds
-          } ID attributes for navigation`
-        );
-      }
-
-      // Check for content- prefixed IDs
-      const contentIds = (enhancedOutput.match(/id="content-/g) || []).length;
-      if (contentIds > 0) {
-        differences.push(
-          `✅ Enhanced version includes ${contentIds} content-prefixed IDs for better accessibility`
-        );
-      }
-
-      // Check for numbered sections
-      const numberedSections =
-        enhancedOutput.includes('class="') && enhancedOutput.includes("number");
-      if (numberedSections) {
-        differences.push(
-          `✅ Enhanced version may include automatic section numbering`
-        );
-      }
-
-      // Check overall HTML structure
-      const standardLength = standardOutput.length;
-      const enhancedLength = enhancedOutput.length;
-      const lengthDifference = Math.abs(enhancedLength - standardLength);
-
-      if (lengthDifference > 100) {
-        const direction =
-          enhancedLength > standardLength ? "larger" : "smaller";
-        differences.push(
-          `📏 Enhanced output is ${lengthDifference} characters ${direction} (${(
-            (lengthDifference / standardLength) *
-            100
-          ).toFixed(1)}% difference)`
-        );
-      }
-
-      if (differences.length === 0) {
-        return `
-          <p><strong>No significant structural differences detected.</strong></p>
-          <p>The enhanced arguments may not be providing additional benefits for this content type, 
-          or the differences may be subtle and require manual inspection of the HTML structure.</p>
-          <p><strong>Recommendation:</strong> Try different content (theorems, complex sections) or different enhancement presets.</p>
-        `;
-      }
-
-      return `
-        <p><strong>Key Differences Identified:</strong></p>
-        <ul style="margin: 0.5rem 0 1rem 1.5rem;">
-          ${differences
-            .map((diff) => `<li style="margin-bottom: 0.25rem;">${diff}</li>`)
-            .join("")}
-        </ul>
-        <p><strong>Assessment:</strong> ${
-          differences.length > 2
-            ? "Enhanced arguments show significant improvements in HTML structure and accessibility."
-            : "Enhanced arguments provide moderate improvements. Consider testing with more complex content."
-        }</p>
-      `;
+    performDOMCleanup() {
+      return window.FinalCoordinationManager?.performDOMCleanup() || false;
     }
 
     /**
-     * Utility: Escape HTML for safe display in analysis
+     * Annotation-safe: Cleanup that preserves annotation elements
+     * ENHANCED: Now delegates to FinalCoordinationManager for modular safe cleanup
      */
-    escapeHtml(text) {
-      const div = document.createElement("div");
-      div.textContent = text;
-      return div.innerHTML;
+    performSafeCleanup() {
+      return window.FinalCoordinationManager?.performSafeCleanup() || false;
     }
+
+    // NOTE: Fallback DOM cleanup methods removed - CleanupCoordinator + FinalCoordinationManager now required
+    // - performFallbackDOMCleanup() -> FinalCoordinationManager.performDOMCleanup()
+    // - performFallbackSafeCleanup() -> FinalCoordinationManager.performSafeCleanup()
+    // - performFullCleanup() -> CleanupCoordinator.performFullCleanup()
 
     /**
      * Convert input using Pandoc with robust error handling and complexity assessment
-     * ENHANCED: Now includes memory management, chunked processing, and WebAssembly trap handling
      */
     async convertInput() {
-      if (!this.isReady || !this.pandocFunction || this.conversionInProgress) {
+      const engineStatus = this._getCachedStatus();
+      const isCurrentlyReady = engineStatus ? engineStatus.ready : this.isReady;
+      const isCurrentlyInProgress = engineStatus
+        ? engineStatus.conversionInProgress
+        : this.conversionInProgress;
+
+      if (!isCurrentlyReady || !this.pandocFunction || isCurrentlyInProgress) {
         logDebug(
           "Conversion skipped - engine not ready or conversion in progress"
         );
         return;
       }
 
-      const inputText = this.inputTextarea?.value?.trim() || "";
+      const rawInputText = this.inputTextarea?.value?.trim() || "";
       const argumentsText = this.argumentsInput?.value?.trim() || "";
+
+      // Sanitise input using ValidationUtilities
+      let inputText = rawInputText;
+      if (window.ValidationUtilities) {
+        const sanitisationResult =
+          window.ValidationUtilities.sanitizeInput(rawInputText);
+        inputText = sanitisationResult.sanitised;
+        if (sanitisationResult.removed.length > 0) {
+          const totalRemoved = sanitisationResult.removed.reduce(
+            (sum, item) => sum + item.count,
+            0
+          );
+          logInfo(
+            `Preprocessing: ValidationUtilities removed ${totalRemoved} problematic elements`
+          );
+          sanitisationResult.removed.forEach((removal) => {
+            logDebug(`   - ${removal.count} ${removal.description}`);
+          });
+        }
+      } else {
+        logWarn(
+          "ValidationUtilities not available - using fallback sanitisation"
+        );
+        inputText = rawInputText
+          .replace(/\\index\{[^}]*\}/g, "")
+          .replace(/\\qedhere\b/g, "");
+      }
 
       logInfo("=== ENHANCED CONVERSION START ===");
 
+      // Handle empty content with cleanup
       if (!inputText) {
+        logInfo(
+          "Empty content detected - performing cleanup and completing conversion"
+        );
+        this.performDOMCleanup();
         this.setEmptyOutput();
+
+        try {
+          this.conversionInProgress = false;
+          if (window.StatusManager) {
+            window.StatusManager.setReady("Ready! Export buttons enabled.");
+          }
+          if (window.AppStateManager?.enableExportButtons) {
+            window.AppStateManager.enableExportButtons(
+              "Empty document ready for export"
+            );
+          }
+          logInfo("Empty content conversion completed successfully");
+        } catch (emptyContentError) {
+          logError(
+            "Error completing empty content conversion:",
+            emptyContentError
+          );
+        }
         return;
       }
 
       try {
         this.conversionInProgress = true;
 
-        // ENHANCEMENT: Assess document complexity before processing
-        const complexity = this.assessDocumentComplexity(inputText);
-        logInfo(
-          `Document complexity: ${
-            complexity.level
-          } (score: ${complexity.score.toFixed(1)})`
-        );
-
-        // Update status with complexity information
-        if (window.StatusManager) {
-          const complexityMessage = complexity.requiresChunking
-            ? `Processing complex ${complexity.level} document...`
-            : `Converting ${complexity.level} document...`;
-          window.StatusManager.updateConversionStatus("CONVERT_START", 10);
-          window.StatusManager.setLoading(complexityMessage, 15);
-        }
-
-        // Small delay to allow UI to update
-        await new Promise((resolve) => setTimeout(resolve, 10));
-
-        // 🧪 INVESTIGATION: Check for comparison mode first
-        const comparisonResult = await this.handleComparisonMode(
-          inputText,
-          argumentsText
-        );
-
-        if (comparisonResult !== null) {
-          // Comparison mode handled the conversion
-          logInfo("✅ Comparison mode conversion completed");
-          return;
-        }
-
-        // ENHANCEMENT: Choose processing strategy based on complexity
-        let conversionResult;
-
-        if (complexity.requiresChunking) {
-          logInfo("Document requires chunked processing due to complexity");
-          conversionResult = await this.processInChunks(
-            inputText,
-            argumentsText
+        if (!window.ConversionOrchestrator) {
+          logError(
+            "ConversionOrchestrator not available - falling back to direct processing"
           );
-        } else {
-          // Standard processing with enhanced error handling (now supports investigation)
-          conversionResult = await this.performStandardConversion(
-            inputText,
-            argumentsText,
-            complexity
-          );
+          return this.fallbackConversionWorkflow(inputText, argumentsText);
         }
 
-        if (conversionResult) {
-          logInfo("✅ Enhanced conversion completed successfully");
+        try {
+          const orchestrationContext =
+            window.ConversionOrchestrator.createOrchestrationContext(this);
+          const conversionResult =
+            await window.ConversionOrchestrator.orchestrateConversion(
+              inputText,
+              argumentsText,
+              orchestrationContext
+            );
+
+          if (conversionResult) {
+            logInfo("ConversionOrchestrator completed successfully");
+          }
+          return conversionResult;
+        } catch (orchestrationError) {
+          logError(
+            "ConversionOrchestrator failed - using fallback workflow:",
+            orchestrationError
+          );
+          return this.fallbackConversionWorkflow(inputText, argumentsText);
         }
       } catch (error) {
         logError("Enhanced conversion error:", error);
@@ -1189,94 +830,37 @@ const ConversionEngine = (function () {
     }
 
     /**
-     * Perform standard conversion with enhanced monitoring and error detection
-     * ENHANCED: Now supports investigation mode with enhanced Pandoc arguments
+     * Fallback conversion workflow when ConversionOrchestrator not available
+     * ENHANCED: Now delegates to FinalCoordinationManager for modular fallback workflow
      */
-    async performStandardConversion(inputText, baseArgumentsText, complexity) {
-      try {
-        // 🧪 INVESTIGATION: Check if we should use enhanced arguments
-        const finalArgumentsText =
-          this.generateEnhancedPandocArgs(baseArgumentsText);
-
-        // Set up timeout based on estimated processing time
-        const timeoutMs = Math.max(complexity.estimatedProcessingTime, 5000);
-        logDebug(`Setting conversion timeout to ${timeoutMs}ms`);
-
-        if (window.StatusManager) {
-          window.StatusManager.updateConversionStatus("CONVERT_MATH", 40);
-        }
-
-        // ENHANCEMENT: Wrap Pandoc call with timeout and memory monitoring
-        const conversionPromise = new Promise((resolve, reject) => {
-          try {
-            logInfo("About to call pandocFunction with enhanced monitoring...");
-            const startTime = performance.now();
-
-            const output = this.pandocFunction(finalArgumentsText, inputText);
-
-            const endTime = performance.now();
-            const processingTime = Math.round(endTime - startTime);
-            logInfo(
-              `Pandoc conversion complete in ${processingTime}ms, output length: ${output.length}`
-            );
-
-            resolve(output);
-          } catch (pandocError) {
-            logError("Pandoc function error:", pandocError);
-            reject(pandocError);
-          }
-        });
-
-        // Add timeout wrapper
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(
-              new Error(
-                `Conversion timeout after ${timeoutMs}ms - document may be too complex`
-              )
-            );
-          }, timeoutMs);
-        });
-
-        const output = await Promise.race([conversionPromise, timeoutPromise]);
-
-        if (window.StatusManager) {
-          window.StatusManager.updateConversionStatus("CONVERT_CLEAN", 70);
-        }
-
-        // Clean and process output
-        const cleanOutput = this.cleanPandocOutput(output);
-
-        // Set output content
-        if (this.outputDiv) {
-          this.outputDiv.innerHTML = cleanOutput;
-        }
-
-        if (window.StatusManager) {
-          window.StatusManager.updateConversionStatus("CONVERT_MATHJAX", 85);
-        }
-
-        // Re-render MathJax
-        await this.renderMathJax();
-
-        // Final success status
-        if (window.StatusManager) {
-          const enhancedMode = document.getElementById(
-            "pandoc-enhanced-mode"
-          )?.checked;
-          const successMessage = enhancedMode
-            ? `🧪 Enhanced ${complexity.level} document converted. Check output for improvements.`
-            : complexity.level === "basic"
-            ? " Conversion complete! Ready for export."
-            : ` ${complexity.level} document converted. Ready for export.`;
-          window.StatusManager.setReady(successMessage);
-        }
-
-        return true;
-      } catch (standardError) {
-        logError("Standard conversion failed:", standardError);
-        throw standardError; // Will be caught by main convertInput method
+    async fallbackConversionWorkflow(inputText, argumentsText) {
+      if (!window.FinalCoordinationManager) {
+        throw new Error(
+          "FinalCoordinationManager module required for fallback workflow"
+        );
       }
+      return await window.FinalCoordinationManager.fallbackConversionWorkflow(
+        this,
+        inputText,
+        argumentsText
+      );
+    }
+    /**
+     * Perform standard conversion with enhanced monitoring and error detection
+     * ENHANCED: Now delegates to FinalCoordinationManager for modular standard conversion
+     */
+    async performStandardConversion(inputText, userArgumentsText, complexity) {
+      if (!window.FinalCoordinationManager) {
+        throw new Error(
+          "FinalCoordinationManager module required for standard conversion"
+        );
+      }
+      return await window.FinalCoordinationManager.performStandardConversion(
+        this,
+        inputText,
+        userArgumentsText,
+        complexity
+      );
     }
 
     // ===========================================================================================
@@ -1284,55 +868,19 @@ const ConversionEngine = (function () {
     // ===========================================================================================
 
     /**
-     * Clean Pandoc output for display
-     * ENHANCED: Now removes duplicate title blocks from chunked processing
+     * Clean Pandoc output for display - now uses utility module with cross-reference fixing
+     * ENHANCED: Delegates to OutputCleaner utility with original LaTeX input for enhanced processing
      */
-    cleanPandocOutput(output) {
-      let cleanOutput = output;
-
-      // Extract only the body content if Pandoc generated a complete HTML document
-      if (output.includes("<html") && output.includes("<body")) {
-        const bodyMatch = output.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-        if (bodyMatch) {
-          cleanOutput = bodyMatch[1];
-          logInfo("Extracted body content from complete HTML document");
-        }
-      } else if (output.includes("<head>") || output.includes("<meta")) {
-        // Remove any head elements that might have been included
-        cleanOutput = output
-          .replace(/<head[\s\S]*?<\/head>/gi, "")
-          .replace(/<meta[^>]*>/gi, "")
-          .replace(/<link[^>]*>/gi, "")
-          .replace(/<style[\s\S]*?<\/style>/gi, "")
-          .replace(/<script[\s\S]*?<\/script>/gi, "");
-        logInfo("Cleaned HTML output of head elements");
-      }
-
-      // ENHANCEMENT: Remove duplicate title blocks (fixes chunked processing issue)
-      const titleBlockRegex =
-        /<header id="title-block-header">[\s\S]*?<\/header>/g;
-      const titleBlocks = cleanOutput.match(titleBlockRegex);
-
-      if (titleBlocks && titleBlocks.length > 1) {
-        logInfo(
-          `Removing ${
-            titleBlocks.length - 1
-          } duplicate title blocks from chunked processing`
+    cleanPandocOutput(output, originalLatexInput = null) {
+      if (!window.OutputCleaner) {
+        logError(
+          "OutputCleaner utility not available - falling back to minimal cleaning"
         );
-
-        // Keep the first title block, remove all others
-        const firstTitleBlock = titleBlocks[0];
-        cleanOutput = cleanOutput.replace(titleBlockRegex, "");
-
-        // Add the first title block back at the beginning
-        cleanOutput = firstTitleBlock + "\n" + cleanOutput;
-
-        logInfo("✅ Duplicate title blocks removed successfully");
+        return output ? output.trim() : "";
       }
 
-      return cleanOutput.trim();
+      return window.OutputCleaner.cleanPandocOutput(output, originalLatexInput);
     }
-
     /**
      * Render MathJax on the output
      */
@@ -1423,16 +971,31 @@ const ConversionEngine = (function () {
     }
 
     /**
-     * Check if conversion engine is ready
+     * Check if conversion engine is ready (optimized with status caching)
+     * ENHANCED: Now delegates to StateManager with optimized access patterns
      */
     isEngineReady() {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        const status = this._getCachedStatus();
+        return status
+          ? status.ready && status.pandocAvailable
+          : window.StateManager.isEngineReady();
+      }
+
+      // Fallback when StateManager not available
       return this.isReady && this.pandocFunction !== null;
     }
 
     /**
      * Get conversion engine status with enhanced information
+     * ENHANCED: Now delegates to StateManager for comprehensive state tracking
      */
     getEngineStatus() {
+      if (!this.useStateManagerFallback && window.StateManager) {
+        return window.StateManager.getEngineStatus();
+      }
+
+      // Fallback when StateManager not available
       return {
         initialised: this.isInitialised,
         ready: this.isReady,
@@ -1440,9 +1003,10 @@ const ConversionEngine = (function () {
         conversionInProgress: this.conversionInProgress,
         hasInput: !!this.inputTextarea?.value?.trim(),
         hasOutput: !!this.outputDiv?.innerHTML?.trim(),
-        enhancedErrorHandling: true, // New feature flag
-        complexityAssessment: true, // New feature flag
-        chunkedProcessing: true, // New feature flag
+        enhancedErrorHandling: true,
+        complexityAssessment: true,
+        chunkedProcessing: true,
+        stateManagement: false, // Fallback mode
       };
     }
   }
@@ -1455,183 +1019,16 @@ const ConversionEngine = (function () {
   const conversionManager = new ConversionEngineManager();
 
   // ===========================================================================================
-  // TESTING AND VALIDATION
-  // ===========================================================================================
-
-  /**
-   * Enhanced test conversion engine functionality
-   */
-  function testConversionEngine() {
-    logInfo("🧪 Testing Enhanced Conversion Engine...");
-
-    const tests = {
-      managerExists: () => !!conversionManager,
-
-      initialisation: () => conversionManager.isInitialised,
-
-      domElementsConnected: () => {
-        return (
-          !!document.getElementById("input") &&
-          !!document.getElementById("output") &&
-          !!document.getElementById("arguments")
-        );
-      },
-
-      pandocFunction: () => !!conversionManager.pandocFunction,
-
-      engineReady: () => conversionManager.isEngineReady(),
-
-      inputOutput: () => {
-        const input = conversionManager.getCurrentInput();
-        const output = conversionManager.getCurrentOutput();
-        return typeof input === "string" && typeof output === "string";
-      },
-
-      contentManagement: () => {
-        const originalInput = conversionManager.getCurrentInput();
-        conversionManager.setInputContent("Test content");
-        const newInput = conversionManager.getCurrentInput();
-        conversionManager.setInputContent(originalInput); // Restore
-        return newInput === "Test content";
-      },
-
-      // ENHANCED TESTS: New functionality validation
-      complexityAssessment: () => {
-        const testContent = "Test content with $x = 1$ and $$y = 2$$";
-        const complexity =
-          conversionManager.assessDocumentComplexity(testContent);
-        return (
-          complexity && typeof complexity.score === "number" && complexity.level
-        );
-      },
-
-      errorHandling: () => {
-        const errorMessage = conversionManager.generateUserFriendlyErrorMessage(
-          new Error("out of memory"),
-          "out of memory"
-        );
-        return errorMessage.includes("too complex");
-      },
-
-      enhancedStatus: () => {
-        const status = conversionManager.getEngineStatus();
-        return status.enhancedErrorHandling && status.complexityAssessment;
-      },
-    };
-
-    let passed = 0;
-    let total = 0;
-
-    Object.entries(tests).forEach(([testName, testFn]) => {
-      total++;
-      try {
-        const result = testFn();
-        if (result) {
-          passed++;
-          logDebug(`  ✅ ${testName}: PASSED`);
-        } else {
-          logError(`  ❌ ${testName}: FAILED`);
-        }
-      } catch (error) {
-        logError(`  ❌ ${testName}: ERROR - ${error.message}`);
-      }
-    });
-
-    const success = passed === total;
-    logInfo(`📊 Enhanced Conversion Engine: ${passed}/${total} tests passed`);
-
-    return {
-      success: success,
-      passed: passed,
-      total: total,
-      status: conversionManager.getEngineStatus(),
-    };
-  }
-
-  // ===========================================================================================
   // PUBLIC API
   // ===========================================================================================
 
-  return {
-    // Manager instance
-    manager: conversionManager,
-
-    // Core functionality
-    initialise() {
-      return conversionManager.initialise();
-    },
-
-    setPandocFunction(pandocFn) {
-      return conversionManager.setPandocFunction(pandocFn);
-    },
-
-    convertInput() {
-      return conversionManager.convertInput();
-    },
-
-    // Content management
-    getCurrentOutput() {
-      return conversionManager.getCurrentOutput();
-    },
-
-    getCurrentInput() {
-      return conversionManager.getCurrentInput();
-    },
-
-    setInputContent(content) {
-      return conversionManager.setInputContent(content);
-    },
-
-    clearContent() {
-      return conversionManager.clearContent();
-    },
-
-    // Status
-    isEngineReady() {
-      return conversionManager.isEngineReady();
-    },
-
-    getEngineStatus() {
-      return conversionManager.getEngineStatus();
-    },
-
-    // ENHANCED: New API methods
-    assessDocumentComplexity(content) {
-      return conversionManager.assessDocumentComplexity(content);
-    },
-
-    // 🧪 INVESTIGATION: Enhanced Pandoc methods for export integration
-    generateEnhancedPandocArgs(baseArgs) {
-      return conversionManager.generateEnhancedPandocArgs(baseArgs);
-    },
-
-    getEnhancementsByPreset(preset) {
-      return conversionManager.getEnhancementsByPreset(preset);
-    },
-
-    cleanPandocOutput(output) {
-      return conversionManager.cleanPandocOutput(output);
-    },
-
-    // Direct Pandoc function access for enhanced exports
-    pandocFunction(args, input) {
-      if (!conversionManager.pandocFunction) {
-        throw new Error(
-          "Pandoc function not available - WebAssembly not initialized"
-        );
-      }
-      return conversionManager.pandocFunction(args, input);
-    },
-
-    // Testing
-    testConversionEngine,
-
-    // Logging
-    logError,
-    logWarn,
-    logInfo,
-    logDebug,
-  };
+  // Delegate to ConversionAPIManager for public API creation
+  return (
+    window.ConversionAPIManager?.createPublicAPI(conversionManager) || {
+      error: "ConversionAPIManager not available - API creation failed",
+      manager: conversionManager,
+    }
+  );
 })();
 
 // Make globally available for other modules

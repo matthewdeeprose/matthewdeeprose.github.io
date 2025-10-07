@@ -16,7 +16,7 @@ const ExampleSystem = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -44,6 +44,17 @@ const ExampleSystem = (function () {
     if (shouldLog(LOG_LEVELS.DEBUG))
       console.log("[EXAMPLES]", message, ...args);
   }
+
+  // ===========================================================================================
+  // CONFIGURATION
+  // ===========================================================================================
+
+  /**
+   * Default example to load on page startup
+   * Change this value to set which example loads automatically
+   * Must match a key in examples.json
+   */
+  const DEFAULT_EXAMPLE_KEY = "mathematical-foundations";
 
   // ===========================================================================================
   // EXAMPLE SYSTEM IMPLEMENTATION
@@ -145,7 +156,7 @@ const ExampleSystem = (function () {
     }
 
     /**
-     * Update dropdown options with loaded examples
+     * Update dropdown options with loaded examples (in alphabetical order)
      */
     updateExampleDropdown() {
       if (!this.exampleSelect) {
@@ -160,38 +171,51 @@ const ExampleSystem = (function () {
         this.exampleSelect.removeChild(this.exampleSelect.lastChild);
       }
 
-      // Add options for each example
-      this.exampleKeys.forEach((key) => {
+      // Create friendly display names mapping
+      const displayNames = {
+        equations: "Fundamental Equations",
+        matrices: "Matrix Mathematics",
+        calculus: "Calculus Concepts",
+        theorem: "Mathematical Theorem",
+        logic: "Logic & Truth Tables",
+        proofs: "Mathematical Proofs",
+        "number-theory": "Number Theory",
+        "full-document": "Complete Document",
+        "advanced-calculus": "Advanced Calculus",
+        "linear-algebra": "Linear Algebra",
+        statistics: "Statistics & Probability",
+        "complex-analysis": "Complex Analysis",
+        "differential-equations": "Differential Equations",
+        topology: "Topology",
+        "algebraic-structures": "Abstract Algebra",
+      };
+
+      // Helper function to get display name for a key
+      const getDisplayName = (key) => {
+        return (
+          displayNames[key] ||
+          key.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+        );
+      };
+
+      // Sort keys alphabetically by their display names
+      const sortedKeys = [...this.exampleKeys].sort((a, b) => {
+        const nameA = getDisplayName(a).toLowerCase();
+        const nameB = getDisplayName(b).toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+      // Add options for each example in alphabetical order
+      sortedKeys.forEach((key) => {
         const option = document.createElement("option");
         option.value = key;
-
-        // Create friendly display names
-        const displayNames = {
-          equations: "Fundamental Equations",
-          matrices: "Matrix Mathematics",
-          calculus: "Calculus Concepts",
-          theorem: "Mathematical Theorem",
-          logic: "Logic & Truth Tables",
-          proofs: "Mathematical Proofs",
-          "number-theory": "Number Theory",
-          "full-document": "Complete Document",
-          "advanced-calculus": "Advanced Calculus",
-          "linear-algebra": "Linear Algebra",
-          statistics: "Statistics & Probability",
-          "complex-analysis": "Complex Analysis",
-          "differential-equations": "Differential Equations",
-          topology: "Topology",
-          "algebraic-structures": "Abstract Algebra",
-        };
-
-        option.textContent =
-          displayNames[key] ||
-          key.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-
+        option.textContent = getDisplayName(key);
         this.exampleSelect.appendChild(option);
       });
 
-      logInfo(`✅ Dropdown updated with ${this.exampleKeys.length} examples`);
+      logInfo(
+        `✅ Dropdown updated with ${this.exampleKeys.length} examples (alphabetically sorted)`
+      );
     }
 
     /**
@@ -222,9 +246,9 @@ const ExampleSystem = (function () {
     }
 
     /**
-     * Load a specific example by key
+     * Load a specific example with proper annotation timing
      */
-    loadExample(exampleKey) {
+    async loadExample(exampleKey) {
       logInfo(`Loading example: ${exampleKey}`);
 
       if (!this.allExamples[exampleKey]) {
@@ -235,56 +259,365 @@ const ExampleSystem = (function () {
       try {
         const exampleContent = this.allExamples[exampleKey];
 
-        // Check if live LaTeX editor is available and initialized
+        // 🔄 ENHANCED: Clear any existing state first
+        await this.clearPreviousContent();
+
+        // Load content using appropriate method
+        await this.setExampleContent(exampleContent, exampleKey);
+
+        // 🔄 ENHANCED: Trigger conversion with proper timing
+        await this.triggerConversionWithAnnotationWait();
+
+        logInfo(`✅ Example with annotations loaded: ${exampleKey}`);
+        return true;
+      } catch (error) {
+        logError("Error loading example:", error);
+        return false;
+      }
+    }
+
+    /**
+     * 🧹 Clear previous content to prevent interference
+     */
+    async clearPreviousContent() {
+      // Clear output first
+      const outputDiv = document.getElementById("output");
+      if (outputDiv) {
+        outputDiv.innerHTML =
+          '<p class="placeholder-text">Loading example...</p>';
+      }
+
+      // Clear input
+      const inputTextarea =
+        window.appElements?.inputTextarea || document.getElementById("input");
+      if (inputTextarea) {
+        inputTextarea.value = "";
+      }
+
+      // Clear Live LaTeX Editor if present
+      if (window.liveLaTeXEditor?.contentEditableElement) {
+        window.liveLaTeXEditor.contentEditableElement.innerHTML = "";
+      }
+
+      // Small delay to let DOM settle
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    /**
+     * 📝 Set example content using appropriate method
+     */
+    async setExampleContent(content, exampleKey) {
+      // 🔒 CRITICAL FIX: Disable automatic conversions during example loading
+      const originalConversionLock = this.temporarilyDisableAutoConversion();
+
+      try {
         if (
           window.liveLaTeXEditor &&
           window.liveLaTeXEditor.isReady &&
           window.liveLaTeXEditor.isReady()
         ) {
-          // Use live LaTeX editor's setContent method for contenteditable
-          window.liveLaTeXEditor.setContent(exampleContent);
+          // Use Live LaTeX Editor
+          window.liveLaTeXEditor.setContent(content);
 
-          // Focus the contenteditable element for accessibility
+          // Focus for accessibility
           if (window.liveLaTeXEditor.contentEditableElement) {
             window.liveLaTeXEditor.contentEditableElement.focus({
               preventScroll: true,
             });
           }
 
-          logInfo(`✅ Example loaded via Live LaTeX Editor: ${exampleKey}`);
+          logInfo(`📝 Content set via Live LaTeX Editor: ${exampleKey}`);
         } else {
-          // Fallback to original textarea approach
+          // Use textarea
           const inputTextarea =
             window.appElements?.inputTextarea ||
             document.getElementById("input");
 
           if (!inputTextarea) {
-            throw new Error(
-              "Input textarea not found and Live LaTeX Editor not available"
-            );
+            throw new Error("No input method available");
           }
 
-          // Load example content into textarea
-          inputTextarea.value = exampleContent;
-
-          // Focus input for accessibility without scrolling
+          inputTextarea.value = content;
           inputTextarea.focus({ preventScroll: true });
 
-          logInfo(`✅ Example loaded via textarea fallback: ${exampleKey}`);
+          logInfo(`📝 Content set via textarea: ${exampleKey}`);
         }
 
-        // Trigger conversion if available
-        if (window.ConversionEngine && window.ConversionEngine.convertInput) {
-          window.ConversionEngine.convertInput();
-        } else {
-          logWarn("ConversionEngine not available for automatic conversion");
-        }
-
-        return true;
-      } catch (error) {
-        logError("Error loading example:", error);
-        return false;
+        // Allow content to settle
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      } finally {
+        // 🔓 Re-enable automatic conversions after content is set
+        this.restoreAutoConversion(originalConversionLock);
       }
+    }
+
+    /**
+     * 🔒 Temporarily disable ConversionEngine's automatic conversion triggers
+     * Returns lock state for restoration
+     * ENHANCED: Properly handles StateManager integration
+     */
+    temporarilyDisableAutoConversion() {
+      if (!window.ConversionEngine) {
+        return null;
+      }
+
+      logInfo(
+        "🔒 Temporarily disabling automatic conversions during example loading"
+      );
+
+      // Store current conversion queue state - get actual current value
+      const currentDisabledState =
+        window.ConversionEngine.automaticConversionsDisabled;
+
+      const lockState = {
+        wasQueued: window.ConversionEngine.isConversionQueued || false,
+        activeTimeouts: new Set(window.ConversionEngine.activeTimeouts || []),
+        wasDisabled: currentDisabledState, // Use actual current state, not || false
+        timestamp: Date.now(), // Add timestamp for debugging
+      };
+
+      logInfo(
+        `🔍 Current disabled state before locking: ${currentDisabledState}`
+      );
+
+      try {
+        // 🔒 ENHANCED: Use proper StateManager integration for setting
+
+        // Method 1: Try StateManager integration first (if available)
+        if (
+          window.StateManager &&
+          typeof window.StateManager.updateConfiguration === "function"
+        ) {
+          logInfo("🔄 Disabling via StateManager integration");
+          window.StateManager.updateConfiguration({
+            automaticConversionsDisabled: true,
+          });
+        }
+
+        // Method 2: Set on public API (backward compatibility)
+        window.ConversionEngine.automaticConversionsDisabled = true;
+
+        // Method 3: Set on manager instance (if accessible)
+        if (window.ConversionEngine.manager) {
+          // If manager uses StateManager delegation, this might not be needed,
+          // but include for completeness
+          if (!window.StateManager) {
+            window.ConversionEngine.manager._automaticConversionsDisabled = true;
+          }
+        }
+
+        // 🔧 ENHANCED: Force cache invalidation to ensure changes take effect immediately
+        if (
+          window.ConversionEngine.manager &&
+          typeof window.ConversionEngine.manager._invalidateStatusCache ===
+            "function"
+        ) {
+          window.ConversionEngine.manager._invalidateStatusCache();
+        }
+
+        // 🎯 CRITICAL FIX: Invalidate input event listener cache
+        if (window.ConversionEngine.invalidateAutomaticConversionsCache) {
+          window.ConversionEngine.invalidateAutomaticConversionsCache();
+          logInfo("🔄 Input event cache invalidated during restoration");
+        }
+
+        // Clear any pending conversions
+        if (window.ConversionEngine.conversionTimeout) {
+          clearTimeout(window.ConversionEngine.conversionTimeout);
+          window.ConversionEngine.conversionTimeout = null;
+        }
+
+        // Clear active timeouts
+        if (window.ConversionEngine.activeTimeouts) {
+          window.ConversionEngine.activeTimeouts.forEach((timeout) =>
+            clearTimeout(timeout)
+          );
+          window.ConversionEngine.activeTimeouts.clear();
+        }
+
+        // Reset queue state
+        window.ConversionEngine.isConversionQueued = false;
+
+        // 🎯 VERIFICATION: Check that disabling actually worked
+        const actualValue =
+          window.ConversionEngine.automaticConversionsDisabled;
+        if (actualValue !== true) {
+          logWarn(
+            `⚠️ Disabling verification failed: expected true, got ${actualValue}`
+          );
+
+          // Force direct property setting as fallback
+          if (window.ConversionEngine.manager) {
+            window.ConversionEngine.manager._automaticConversionsDisabled = true;
+            logInfo("🔧 Applied direct fallback disabling");
+          }
+        } else {
+          logInfo("✅ Disabling verified: automaticConversionsDisabled = true");
+        }
+      } catch (error) {
+        logError("Error during automatic conversion disabling:", error);
+
+        // Emergency fallback
+        try {
+          window.ConversionEngine.automaticConversionsDisabled = true;
+          if (window.ConversionEngine.manager) {
+            window.ConversionEngine.manager._automaticConversionsDisabled = true;
+          }
+          logInfo("🚨 Emergency fallback applied for disabling");
+        } catch (fallbackError) {
+          logError(
+            "Emergency fallback for disabling also failed:",
+            fallbackError
+          );
+        }
+      }
+
+      return lockState;
+    }
+
+    /**
+     * 🔓 Restore ConversionEngine's automatic conversion triggers
+     * Restores the previous lock state
+     * ENHANCED: Properly handles StateManager integration
+     */
+    restoreAutoConversion(lockState) {
+      if (!window.ConversionEngine || !lockState) {
+        return;
+      }
+
+      logInfo("🔓 Restoring automatic conversions after example loading");
+
+      try {
+        // 🔓 CRITICAL FIX: Use proper StateManager integration for restoration
+        const targetValue = lockState.wasDisabled;
+
+        // Method 1: Try StateManager integration first (if available)
+        if (
+          window.StateManager &&
+          typeof window.StateManager.updateConfiguration === "function"
+        ) {
+          logInfo("🔄 Restoring via StateManager integration");
+          window.StateManager.updateConfiguration({
+            automaticConversionsDisabled: targetValue,
+          });
+        }
+
+        // Method 2: Set on public API (backward compatibility)
+        window.ConversionEngine.automaticConversionsDisabled = targetValue;
+
+        // Method 3: Set on manager instance (if accessible)
+        if (window.ConversionEngine.manager) {
+          // If manager uses StateManager delegation, this might not be needed,
+          // but include for completeness
+          if (!window.StateManager) {
+            window.ConversionEngine.manager._automaticConversionsDisabled =
+              targetValue;
+          }
+        }
+
+        // 🔧 ENHANCED: Force cache invalidation to ensure changes take effect
+        if (
+          window.ConversionEngine.manager &&
+          typeof window.ConversionEngine.manager._invalidateStatusCache ===
+            "function"
+        ) {
+          window.ConversionEngine.manager._invalidateStatusCache();
+        }
+
+        // Restore timeout tracking
+        if (lockState.activeTimeouts) {
+          window.ConversionEngine.activeTimeouts = lockState.activeTimeouts;
+        }
+
+        // Restore queue state if it was previously queued
+        if (lockState.wasQueued) {
+          window.ConversionEngine.isConversionQueued = lockState.wasQueued;
+        }
+
+        // 🎯 VERIFICATION: Check that restoration actually worked
+        const actualValue =
+          window.ConversionEngine.automaticConversionsDisabled;
+        if (actualValue !== targetValue) {
+          logWarn(
+            `⚠️ Restoration verification failed: expected ${targetValue}, got ${actualValue}`
+          );
+
+          // Final fallback: direct property setting
+          if (window.ConversionEngine.manager) {
+            window.ConversionEngine.manager._automaticConversionsDisabled =
+              targetValue;
+            logInfo("🔧 Applied direct fallback restoration");
+          }
+        } else {
+          logInfo(
+            `✅ Restoration verified: automaticConversionsDisabled = ${actualValue}`
+          );
+        }
+      } catch (error) {
+        logError("Error during automatic conversion restoration:", error);
+
+        // Emergency fallback
+        try {
+          window.ConversionEngine.automaticConversionsDisabled = false;
+          if (window.ConversionEngine.manager) {
+            window.ConversionEngine.manager._automaticConversionsDisabled = false;
+          }
+          logInfo("🚨 Emergency fallback applied - forced to false");
+        } catch (fallbackError) {
+          logError("Emergency fallback also failed:", fallbackError);
+        }
+      }
+    }
+
+    /**
+     * 🔄 Trigger conversion and wait for annotations
+     */
+    async triggerConversionWithAnnotationWait() {
+      if (!window.ConversionEngine || !window.ConversionEngine.convertInput) {
+        logWarn("ConversionEngine not available");
+        return;
+      }
+
+      logInfo("🔄 Triggering conversion with annotation wait...");
+
+      // Trigger conversion
+      window.ConversionEngine.convertInput();
+
+      // Wait for MathJax and annotations to complete
+      const maxWaitTime = 10000; // 10 seconds
+      const checkInterval = 200; // Check every 200ms
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < maxWaitTime) {
+        await new Promise((resolve) => setTimeout(resolve, checkInterval));
+
+        const mathElements = document.querySelectorAll("mjx-container").length;
+        const annotations = document.querySelectorAll(
+          'annotation[encoding="application/x-tex"]'
+        ).length;
+
+        if (mathElements > 0 && annotations > 0) {
+          logInfo(
+            `✅ Annotations ready: ${annotations} annotations for ${mathElements} math elements`
+          );
+          return;
+        }
+
+        if (mathElements === 0) {
+          // No math content, no annotations needed
+          logInfo("ℹ️ No math content detected - no annotations needed");
+          return;
+        }
+      }
+
+      // Timeout reached
+      const mathElements = document.querySelectorAll("mjx-container").length;
+      const annotations = document.querySelectorAll(
+        'annotation[encoding="application/x-tex"]'
+      ).length;
+      logWarn(
+        `⏱️ Annotation wait timeout: ${annotations} annotations for ${mathElements} math elements`
+      );
     }
 
     /**
@@ -357,11 +690,11 @@ const ExampleSystem = (function () {
         return false;
       }
 
-      logInfo("Loading default example...");
+      logInfo(`Loading default example: ${DEFAULT_EXAMPLE_KEY}...`);
 
-      // Try to load 'equations' first, then first available example
-      const defaultKey = this.exampleKeys.includes("equations")
-        ? "equations"
+      // Try to load configured default first, then first available example
+      const defaultKey = this.exampleKeys.includes(DEFAULT_EXAMPLE_KEY)
+        ? DEFAULT_EXAMPLE_KEY
         : this.exampleKeys[0];
 
       if (this.exampleSelect) {
@@ -555,3 +888,542 @@ const ExampleSystem = (function () {
 
 // Make globally available for other modules
 window.ExampleSystem = ExampleSystem;
+
+// ===========================================================================================
+// ENHANCED EXAMPLE DEBUG SYSTEM FOR ANNOTATION DIAGNOSTICS
+// ===========================================================================================
+
+// Enhanced Example Debug System for Annotation Diagnostics
+window.exampleDebug = (function () {
+  "use strict";
+
+  function logInfo(message, ...args) {
+    console.log("[EXAMPLE-DEBUG]", message, ...args);
+  }
+
+  function logWarn(message, ...args) {
+    console.warn("[EXAMPLE-DEBUG]", message, ...args);
+  }
+
+  /**
+   * Test current example state using existing ExampleSystem
+   */
+  async function testCurrent() {
+    logInfo("🔍 Testing current example state...");
+
+    const timeline = {
+      startTime: Date.now(),
+      events: [],
+      finalState: null,
+    };
+
+    function addEvent(event, data = {}) {
+      timeline.events.push({
+        timestamp: Date.now() - timeline.startTime,
+        event: event,
+        ...data,
+      });
+    }
+
+    addEvent("test_current_start");
+
+    // Check if ExampleSystem is ready
+    if (!window.ExampleSystem?.isReady()) {
+      addEvent("example_system_not_ready");
+      logWarn("ExampleSystem not ready");
+      return timeline;
+    }
+
+    // Check current DOM state
+    const mathElements = document.querySelectorAll("mjx-container").length;
+    const annotations = document.querySelectorAll(
+      'annotation[encoding="application/x-tex"]'
+    ).length;
+
+    addEvent("dom_state_check", { mathElements, annotations });
+
+    // If no math content, load a test example using existing system
+    if (mathElements === 0) {
+      addEvent("loading_test_example");
+
+      const availableKeys = window.ExampleSystem.getExampleKeys();
+      if (availableKeys.length > 0) {
+        // Use first available example that likely has math
+        const mathExamples = [
+          "basic-math",
+          "equations",
+          "calculus",
+          "statistics",
+        ];
+        const testKey =
+          mathExamples.find((key) => availableKeys.includes(key)) ||
+          availableKeys[0];
+
+        addEvent("selected_test_example", { key: testKey });
+        await window.ExampleSystem.loadExample(testKey);
+        addEvent("test_example_loaded");
+
+        // Wait a bit more for processing
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else {
+        addEvent("no_examples_available");
+      }
+    }
+
+    // Final state check
+    const finalMath = document.querySelectorAll("mjx-container").length;
+    const finalAnnotations = document.querySelectorAll(
+      'annotation[encoding="application/x-tex"]'
+    ).length;
+
+    timeline.finalState = {
+      mathElements: finalMath,
+      annotations: finalAnnotations,
+      percentage:
+        finalMath > 0 ? ((finalAnnotations / finalMath) * 100).toFixed(1) : "0",
+      totalTime: Date.now() - timeline.startTime,
+      status: finalAnnotations > 0 ? "WORKING" : "FAILING",
+    };
+
+    addEvent("test_current_complete", timeline.finalState);
+
+    logInfo("📊 Current test results:", timeline.finalState);
+
+    return timeline;
+  }
+
+  /**
+   * Test specific example using existing ExampleSystem
+   */
+  async function testExample(exampleKey) {
+    logInfo(`🧪 Testing specific example: ${exampleKey}`);
+
+    if (!window.ExampleSystem?.isReady()) {
+      logWarn("ExampleSystem not ready");
+      return {
+        example: exampleKey,
+        mathElements: 0,
+        annotations: 0,
+        percentage: "0",
+        success: false,
+        error: "ExampleSystem not ready",
+      };
+    }
+
+    const availableKeys = window.ExampleSystem.getExampleKeys();
+    if (!availableKeys.includes(exampleKey)) {
+      logWarn(`Example ${exampleKey} not found. Available:`, availableKeys);
+      return {
+        example: exampleKey,
+        mathElements: 0,
+        annotations: 0,
+        percentage: "0",
+        success: false,
+        error: `Example not found. Available: ${availableKeys
+          .slice(0, 5)
+          .join(", ")}`,
+      };
+    }
+
+    try {
+      // Use the existing ExampleSystem's loadExample method
+      logInfo(`Loading example ${exampleKey} using ExampleSystem...`);
+      const loadSuccess = await window.ExampleSystem.loadExample(exampleKey);
+
+      if (!loadSuccess) {
+        throw new Error("ExampleSystem.loadExample returned false");
+      }
+
+      // Wait a bit longer for the enhanced annotation system to complete
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Check results
+      const mathElements = document.querySelectorAll("mjx-container").length;
+      const annotations = document.querySelectorAll(
+        'annotation[encoding="application/x-tex"]'
+      ).length;
+      const percentage =
+        mathElements > 0
+          ? ((annotations / mathElements) * 100).toFixed(1)
+          : "0";
+
+      logInfo(
+        `Results for ${exampleKey}: ${annotations}/${mathElements} (${percentage}%)`
+      );
+
+      return {
+        example: exampleKey,
+        mathElements,
+        annotations,
+        percentage,
+        success: annotations > 0,
+        loadSuccess,
+      };
+    } catch (error) {
+      logWarn(`❌ Error testing ${exampleKey}:`, error.message);
+      return {
+        example: exampleKey,
+        mathElements: 0,
+        annotations: 0,
+        percentage: "0",
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Compare different loading methods using existing ExampleSystem
+   */
+  async function compareMethods() {
+    logInfo("🔬 Comparing different loading methods...");
+
+    if (!window.ExampleSystem?.isReady()) {
+      return { error: "ExampleSystem not ready" };
+    }
+
+    const availableKeys = window.ExampleSystem.getExampleKeys();
+    const testKey =
+      availableKeys.find((key) =>
+        ["statistics", "equations", "calculus", "basic-math"].includes(key)
+      ) || availableKeys[0];
+
+    if (!testKey) {
+      return { error: "No suitable test example found" };
+    }
+
+    const methods = {
+      standard: "Standard ExampleSystem.loadExample()",
+      withDelay: "ExampleSystem.loadExample() with extra delay",
+      viaDropdown: "Via dropdown selection change event",
+    };
+
+    const results = {};
+
+    for (const [methodName, description] of Object.entries(methods)) {
+      logInfo(`Testing method: ${methodName} with example: ${testKey}`);
+
+      try {
+        if (methodName === "standard") {
+          // Standard ExampleSystem loading
+          await window.ExampleSystem.loadExample(testKey);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        } else if (methodName === "withDelay") {
+          // Loading with extra delay for annotation processing
+          await window.ExampleSystem.loadExample(testKey);
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        } else if (methodName === "viaDropdown") {
+          // Simulate dropdown selection
+          const dropdown = document.getElementById("example-select");
+          if (dropdown) {
+            dropdown.value = testKey;
+            dropdown.dispatchEvent(new Event("change", { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 2500));
+          } else {
+            throw new Error("Dropdown not found");
+          }
+        }
+
+        // Check results
+        const mathElements = document.querySelectorAll("mjx-container").length;
+        const annotations = document.querySelectorAll(
+          'annotation[encoding="application/x-tex"]'
+        ).length;
+        const percentage =
+          mathElements > 0
+            ? ((annotations / mathElements) * 100).toFixed(1)
+            : "0";
+
+        results[methodName] = {
+          method: description,
+          testExample: testKey,
+          mathElements,
+          annotations,
+          percentage,
+          success: annotations > 0,
+        };
+
+        logInfo(
+          `${methodName} results: ${annotations}/${mathElements} (${percentage}%)`
+        );
+      } catch (error) {
+        results[methodName] = {
+          method: description,
+          testExample: testKey,
+          mathElements: 0,
+          annotations: 0,
+          percentage: "0",
+          success: false,
+          error: error.message,
+        };
+
+        logWarn(`${methodName} failed:`, error.message);
+      }
+
+      // Wait between methods to avoid interference
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    logInfo("📊 Method comparison complete:", results);
+    return results;
+  }
+
+  /**
+   * Test example system health
+   */
+  function checkExampleSystemHealth() {
+    const health = {
+      exampleSystemReady: !!window.ExampleSystem?.isReady(),
+      availableExamples: 0,
+      hasRequiredExamples: false,
+      domElementsPresent: {
+        dropdown: !!document.getElementById("example-select"),
+        randomButton: !!document.getElementById("random-example-btn"),
+      },
+      conversionEngineReady: !!window.ConversionEngine?.convertInput,
+    };
+
+    if (health.exampleSystemReady) {
+      const keys = window.ExampleSystem.getExampleKeys();
+      health.availableExamples = keys.length;
+      health.exampleKeys = keys.slice(0, 10); // First 10 for reference
+      health.hasRequiredExamples = keys.some((key) =>
+        ["equations", "statistics", "calculus", "basic-math"].includes(key)
+      );
+    }
+
+    health.overallHealth =
+      health.exampleSystemReady &&
+      health.availableExamples > 0 &&
+      health.domElementsPresent.dropdown &&
+      health.conversionEngineReady;
+
+    logInfo("🏥 Example System Health Check:", health);
+    return health;
+  }
+
+  return {
+    testCurrent,
+    testExample,
+    compareMethods,
+    checkExampleSystemHealth,
+  };
+})();
+// ===========================================================================================
+// ANNOTATION DEBUG SYSTEM
+// ===========================================================================================
+
+// Annotation Debug System
+window.annotationDebug = (function () {
+  "use strict";
+
+  function logInfo(message, ...args) {
+    console.log("[ANNOTATION-DEBUG]", message, ...args);
+  }
+
+  function logWarn(message, ...args) {
+    console.warn("[ANNOTATION-DEBUG]", message, ...args);
+  }
+
+  /**
+   * Check current annotation state with detailed analysis
+   */
+  function check() {
+    logInfo("🔍 Checking annotation state...");
+
+    const mathElements = document.querySelectorAll("mjx-container");
+    const annotations = document.querySelectorAll(
+      'annotation[encoding="application/x-tex"]'
+    );
+
+    const analysis = {
+      timestamp: new Date().toISOString(),
+      mathElements: mathElements.length,
+      annotations: annotations.length,
+      percentage:
+        mathElements.length > 0
+          ? ((annotations.length / mathElements.length) * 100).toFixed(1)
+          : "0",
+      status: annotations.length > 0 ? "✅ WORKING" : "❌ FAILING",
+      details: {
+        mathElementsWithAnnotations: 0,
+        mathElementsWithoutAnnotations: 0,
+        annotationSources: [],
+        mathJaxState: !!window.MathJax,
+        injectionFunctionExists: !!window.injectMathJaxAnnotations,
+        conversionEngineReady: !!window.ConversionEngine?.convertInput,
+        exampleSystemReady: !!window.ExampleSystem?.isReady(),
+      },
+    };
+
+    // Detailed analysis of each math element
+    mathElements.forEach((mathEl, index) => {
+      const hasAnnotation = mathEl.querySelector(
+        'annotation[encoding="application/x-tex"]'
+      );
+      if (hasAnnotation) {
+        analysis.details.mathElementsWithAnnotations++;
+        const source = hasAnnotation.textContent;
+        if (source && analysis.details.annotationSources.length < 5) {
+          analysis.details.annotationSources.push({
+            index,
+            source: source.substring(0, 50) + (source.length > 50 ? "..." : ""),
+            element: mathEl.tagName,
+          });
+        }
+      } else {
+        analysis.details.mathElementsWithoutAnnotations++;
+      }
+    });
+
+    // Check for any problematic patterns
+    analysis.details.issues = [];
+
+    if (mathElements.length > 0 && annotations.length === 0) {
+      analysis.details.issues.push(
+        "Math content present but no annotations found"
+      );
+    }
+
+    if (analysis.details.mathElementsWithoutAnnotations > 0) {
+      analysis.details.issues.push(
+        `${analysis.details.mathElementsWithoutAnnotations} math elements missing annotations`
+      );
+    }
+
+    if (!analysis.details.mathJaxState) {
+      analysis.details.issues.push("MathJax not loaded");
+    }
+
+    if (!analysis.details.injectionFunctionExists) {
+      analysis.details.issues.push("Annotation injection function not found");
+    }
+
+    logInfo("📊 Annotation Analysis:");
+    logInfo(`  Math elements: ${analysis.mathElements}`);
+    logInfo(`  Annotations: ${analysis.annotations} (${analysis.percentage}%)`);
+    logInfo(`  Status: ${analysis.status}`);
+    logInfo(
+      `  With annotations: ${analysis.details.mathElementsWithAnnotations}`
+    );
+    logInfo(
+      `  Without annotations: ${analysis.details.mathElementsWithoutAnnotations}`
+    );
+
+    if (analysis.details.issues.length > 0) {
+      logWarn(`  Issues found: ${analysis.details.issues.length}`);
+      analysis.details.issues.forEach((issue) => logWarn(`    - ${issue}`));
+    }
+
+    if (analysis.details.annotationSources.length > 0) {
+      logInfo("  Sample sources:");
+      analysis.details.annotationSources.forEach((source) =>
+        logInfo(`    [${source.index}]: ${source.source}`)
+      );
+    }
+
+    return analysis;
+  }
+
+  /**
+   * Monitor annotation changes over time
+   */
+  async function monitorAnnotations(durationMs = 5000) {
+    logInfo(`🕐 Monitoring annotations for ${durationMs}ms...`);
+
+    const monitoring = {
+      startTime: Date.now(),
+      snapshots: [],
+      changes: [],
+    };
+
+    const takeSnapshot = () => {
+      const mathElements = document.querySelectorAll("mjx-container").length;
+      const annotations = document.querySelectorAll(
+        'annotation[encoding="application/x-tex"]'
+      ).length;
+      const timestamp = Date.now() - monitoring.startTime;
+
+      const snapshot = {
+        timestamp,
+        mathElements,
+        annotations,
+        percentage:
+          mathElements > 0
+            ? ((annotations / mathElements) * 100).toFixed(1)
+            : "0",
+      };
+
+      monitoring.snapshots.push(snapshot);
+
+      // Detect changes
+      if (monitoring.snapshots.length > 1) {
+        const prev = monitoring.snapshots[monitoring.snapshots.length - 2];
+        const curr = snapshot;
+
+        if (
+          prev.mathElements !== curr.mathElements ||
+          prev.annotations !== curr.annotations
+        ) {
+          monitoring.changes.push({
+            timestamp,
+            mathChange: curr.mathElements - prev.mathElements,
+            annotationChange: curr.annotations - prev.annotations,
+            from: `${prev.annotations}/${prev.mathElements}`,
+            to: `${curr.annotations}/${curr.mathElements}`,
+          });
+
+          logInfo(
+            `📈 Change detected at ${timestamp}ms: ${prev.annotations}/${prev.mathElements} → ${curr.annotations}/${curr.mathElements}`
+          );
+        }
+      }
+
+      return snapshot;
+    };
+
+    // Take initial snapshot
+    takeSnapshot();
+
+    // Monitor at intervals
+    const monitorInterval = setInterval(takeSnapshot, 200);
+
+    // Stop after duration
+    setTimeout(() => {
+      clearInterval(monitorInterval);
+
+      const finalSnapshot = takeSnapshot();
+
+      logInfo("📊 Monitoring complete:");
+      logInfo(`  Duration: ${durationMs}ms`);
+      logInfo(`  Snapshots: ${monitoring.snapshots.length}`);
+      logInfo(`  Changes detected: ${monitoring.changes.length}`);
+      logInfo(
+        `  Final state: ${finalSnapshot.annotations}/${finalSnapshot.mathElements} (${finalSnapshot.percentage}%)`
+      );
+
+      monitoring.summary = {
+        duration: durationMs,
+        totalSnapshots: monitoring.snapshots.length,
+        totalChanges: monitoring.changes.length,
+        finalState: finalSnapshot,
+        successful: finalSnapshot.annotations > 0,
+      };
+    }, durationMs);
+
+    // Return promise that resolves when monitoring is complete
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(monitoring), durationMs + 100);
+    });
+  }
+
+  return {
+    check,
+    monitorAnnotations,
+  };
+})();
+
+// Enhanced checkAnnotationQuality function
+window.checkAnnotationQuality = function () {
+  return window.annotationDebug.check();
+};

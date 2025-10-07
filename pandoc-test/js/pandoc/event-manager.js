@@ -16,7 +16,7 @@ const EventManager = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -41,6 +41,73 @@ const EventManager = (function () {
 
   function logDebug(message, ...args) {
     if (shouldLog(LOG_LEVELS.DEBUG)) console.log("[EVENTS]", message, ...args);
+  }
+
+  // ===========================================================================================
+  // CONVERSION DIAGNOSIS & RECOVERY UTILITIES
+  // ===========================================================================================
+
+  /**
+   * Diagnostic function to check and fix conversion blocking issues
+   * Specifically addresses the automaticConversionsDisabled flag getting stuck
+   */
+  function diagnoseConversionBlocking() {
+    console.log("=== CONVERSION BLOCKING DIAGNOSIS ===");
+    console.log("ConversionEngine exists:", !!window.ConversionEngine);
+    console.log(
+      "ConversionEngine.automaticConversionsDisabled:",
+      window.ConversionEngine?.automaticConversionsDisabled
+    );
+    console.log(
+      "Manager.automaticConversionsDisabled:",
+      window.ConversionEngine?.manager?.automaticConversionsDisabled
+    );
+    console.log(
+      "ConversionEngine.conversionInProgress:",
+      window.ConversionEngine?.conversionInProgress
+    );
+    console.log(
+      "ConversionEngine.isConversionQueued:",
+      window.ConversionEngine?.isConversionQueued
+    );
+
+    // Check if automatic conversions are blocked
+    const isBlocked =
+      window.ConversionEngine?.automaticConversionsDisabled ||
+      window.ConversionEngine?.manager?.automaticConversionsDisabled;
+
+    if (isBlocked) {
+      console.log("⚠️  ISSUE DETECTED: Automatic conversions are disabled!");
+      console.log("🔧 ATTEMPTING AUTOMATIC FIX...");
+
+      // Try to reset and trigger
+      if (window.ConversionEngine) {
+        window.ConversionEngine.automaticConversionsDisabled = false;
+        if (window.ConversionEngine.manager) {
+          window.ConversionEngine.manager.automaticConversionsDisabled = false;
+        }
+
+        // CRITICAL: Invalidate the input event cache
+        if (window.ConversionEngine.invalidateAutomaticConversionsCache) {
+          window.ConversionEngine.invalidateAutomaticConversionsCache();
+          console.log("🔄 Input event cache invalidated");
+        }
+
+        console.log("✅ Reset automatic conversions disabled flag");
+
+        // Try manual conversion
+        console.log("🚀 Attempting manual conversion...");
+        window.ConversionEngine.convertInput();
+
+        console.log("✅ DIAGNOSIS COMPLETE - Issue should be resolved!");
+        return true;
+      }
+    } else {
+      console.log(
+        "✅ No blocking issues detected - conversions should work normally"
+      );
+      return false;
+    }
   }
 
   // ===========================================================================================
@@ -568,6 +635,28 @@ const EventManager = (function () {
     };
   }
 
+  // Optional: Auto-diagnostic on page load to catch any remaining edge cases
+  if (typeof window !== "undefined") {
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        // Only run auto-diagnostic if there are signs of the issue
+        const hasProcessingOverlay =
+          document.getElementById("processingOverlay")?.style.display ===
+          "flex";
+        const isStuck =
+          hasProcessingOverlay &&
+          window.ConversionEngine?.automaticConversionsDisabled;
+
+        if (isStuck) {
+          console.warn(
+            "🔧 Auto-diagnostic: Detected stuck processing overlay, attempting automatic fix..."
+          );
+          diagnoseConversionBlocking();
+        }
+      }, 2000); // Run 2 seconds after page load
+    });
+  }
+
   // ===========================================================================================
   // PUBLIC API
   // ===========================================================================================
@@ -585,6 +674,9 @@ const EventManager = (function () {
     emitEvent(eventName, detail) {
       return eventManager.emitEvent(eventName, detail);
     },
+
+    // Diagnostic utilities
+    diagnoseConversionBlocking,
 
     // Keyboard shortcuts
     getKeyboardShortcuts() {

@@ -830,13 +830,14 @@ const SourceViewer = (function () {
           });
         },
 
-        footerGeneration: function () {
+        footerGeneration: async function () {
           const testSource =
             "\\documentclass{article}\n\\begin{document}\nHello World\n\\end{document}";
           const testArgs = "--from latex --to html5 --mathjax";
-          const footer = generateEnhancedFooter(testSource, testArgs);
+          const footer = await generateEnhancedFooter(testSource, testArgs);
 
           return (
+            typeof footer === "string" &&
             footer.includes("<footer") &&
             footer.includes("source-viewer") &&
             footer.includes("View source file") &&
@@ -852,18 +853,26 @@ const SourceViewer = (function () {
           );
         },
 
-        escaping: function () {
+        escaping: async function () {
           const testSource = "<script>alert('test')</script>";
-          const footer = generateEnhancedFooter(testSource, "--from latex");
+          const footer = await generateEnhancedFooter(
+            testSource,
+            "--from latex"
+          );
           return (
+            typeof footer === "string" &&
             footer.includes("&lt;script&gt;") &&
             !footer.includes("<script>alert")
           );
         },
 
-        accessibilityFeatures: function () {
-          const footer = generateEnhancedFooter("Test source", "--from latex");
+        accessibilityFeatures: async function () {
+          const footer = await generateEnhancedFooter(
+            "Test source",
+            "--from latex"
+          );
           return (
+            typeof footer === "string" &&
             footer.includes('role="contentinfo"') &&
             footer.includes("aria-controls=") &&
             footer.includes("aria-expanded=") &&

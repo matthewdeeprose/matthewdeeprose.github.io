@@ -76,7 +76,7 @@ const TestLaTeXProcessor = (function () {
           const config = window.LaTeXProcessor.generateMathJaxConfig(2);
           return (
             config.includes("MathJax") &&
-            config.includes("Simplified MathJax Configuration")
+            config.includes("Enhanced MathJax Configuration")
           );
         },
 
@@ -88,8 +88,33 @@ const TestLaTeXProcessor = (function () {
         },
 
         validateLatex: () => {
-          const result = window.LaTeXProcessor.validateLatexSyntax("$x = 1$");
-          return result && typeof result.valid === "boolean";
+          const testLatex = "x^2 + y^2 = z^2";
+          const result = window.LaTeXProcessor.validateLatexSyntax(testLatex);
+          return result && result.valid === true;
+        },
+
+        consistencyIntegration: () => {
+          // Test integration with consistency testing system
+          if (window.TestLaTeXConsistency) {
+            const testResult =
+              window.TestLaTeXConsistency.testLatexExpression("x^2");
+            return testResult && testResult.success;
+          }
+          return false;
+        },
+
+        exportConsistencyReady: () => {
+          // Verify export consistency capabilities
+          if (window.TestLaTeXConsistency) {
+            const consistency =
+              window.TestLaTeXConsistency.testExportConsistency();
+            return (
+              consistency &&
+              consistency.processorTest &&
+              consistency.processorTest.available
+            );
+          }
+          return false;
         },
 
         cleanContent: () => {

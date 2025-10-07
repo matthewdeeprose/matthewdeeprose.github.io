@@ -1,7 +1,5 @@
 // js/testing/individual/test-mathjax-manager.js
-// Individual Test Module for MathJaxManager
-// Part of Enhanced Pandoc-WASM Mathematical Playground Phase 5.7 Refactoring
-// Tests MathJax dynamic configuration functionality with proper WCAG 2.2 AA compliance
+// Standard MathJax Manager Testing Module
 
 const TestMathJaxManager = (function () {
   "use strict";
@@ -29,87 +27,131 @@ const TestMathJaxManager = (function () {
 
   function logError(message, ...args) {
     if (shouldLog(LOG_LEVELS.ERROR))
-      console.error(`[TestMathJaxManager] ${message}`, ...args);
+      console.error("[TEST-MATHJAX-MANAGER]", message, ...args);
   }
 
   function logWarn(message, ...args) {
     if (shouldLog(LOG_LEVELS.WARN))
-      console.warn(`[TestMathJaxManager] ${message}`, ...args);
+      console.warn("[TEST-MATHJAX-MANAGER]", message, ...args);
   }
 
   function logInfo(message, ...args) {
     if (shouldLog(LOG_LEVELS.INFO))
-      console.log(`[TestMathJaxManager] ${message}`, ...args);
+      console.log("[TEST-MATHJAX-MANAGER]", message, ...args);
   }
 
   function logDebug(message, ...args) {
     if (shouldLog(LOG_LEVELS.DEBUG))
-      console.log(`[TestMathJaxManager] ${message}`, ...args);
+      console.log("[TEST-MATHJAX-MANAGER]", message, ...args);
   }
 
   // ===========================================================================================
-  // MATHJAXMANAGER MODULE TESTING IMPLEMENTATION
+  // MATHJAX MANAGER TESTING
   // ===========================================================================================
 
-  /**
-   * Test MathJaxManager module functionality
-   * Validates dynamic MathJax configuration, zoom controls, and accessibility features
-   * @returns {Object} Test results with success status and detailed results
-   */
   function testMathJaxManager() {
-    logInfo("Starting MathJaxManager module tests");
+    const tests = {
+      moduleExists: () => {
+        return typeof window.MathJaxManager !== "undefined";
+      },
 
-    try {
-      if (!window.MathJaxManager) {
-        throw new Error("MathJaxManager module not available");
-      }
+      dynamicManagerExists: () => {
+        return (
+          window.MathJaxManager &&
+          typeof window.MathJaxManager.DynamicMathJaxManager !== "undefined"
+        );
+      },
 
-      const tests = {
-        createManager: () => {
-          const manager = window.MathJaxManager.createManager();
-          return manager && typeof manager.getCurrentSettings === "function";
-        },
+      mathJaxAvailable: () => {
+        return typeof window.MathJax !== "undefined";
+      },
 
-        dynamicMathJaxClass: () => {
-          return (
-            typeof window.MathJaxManager.DynamicMathJaxManager === "function"
-          );
-        },
+      accessibilityModulesLoaded: () => {
+        if (!window.MathJax || !window.MathJax._) return false;
+        const a11yModules = Object.keys(window.MathJax._.a11y || {});
+        return a11yModules.length >= 1; // At least assistive-mml should be loaded
+      },
 
-        managerSettings: () => {
-          const manager = window.MathJaxManager.createManager();
-          const settings = manager.getCurrentSettings();
-          return settings && typeof settings === "object";
-        },
+      managerInitialisation: () => {
+        try {
+          if (
+            window.MathJaxManager &&
+            window.MathJaxManager.DynamicMathJaxManager
+          ) {
+            const manager = new window.MathJaxManager.DynamicMathJaxManager();
+            return !!manager.currentSettings;
+          }
+          return false;
+        } catch (error) {
+          logError("Manager initialisation failed:", error);
+          return false;
+        }
+      },
 
-        initialisation: () => {
-          const manager = window.MathJaxManager.createManager();
-          return typeof manager.initialise === "function";
-        },
-      };
+      settingsConfiguration: () => {
+        try {
+          if (
+            window.MathJaxManager &&
+            window.MathJaxManager.DynamicMathJaxManager
+          ) {
+            const manager = new window.MathJaxManager.DynamicMathJaxManager();
+            const settings = manager.getCurrentSettings();
+            return !!settings && typeof settings === "object";
+          }
+          return false;
+        } catch (error) {
+          logError("Settings configuration test failed:", error);
+          return false;
+        }
+      },
 
-      // FIXED: Use TestUtilities.runTestSuite (after test-commands.js removal)
-      logInfo("Running MathJaxManager test suite with TestUtilities");
-      return TestUtilities.runTestSuite("MathJaxManager", tests);
-    } catch (error) {
-      logError("MathJaxManager test failed:", error);
-      return { success: false, error: error.message };
-    }
+      mathJaxConfigurationGeneration: () => {
+        // Test if MathJax configuration can be generated
+        if (
+          window.LaTeXProcessor &&
+          typeof window.LaTeXProcessor.generateMathJaxConfig === "function"
+        ) {
+          try {
+            const config = window.LaTeXProcessor.generateMathJaxConfig();
+            return typeof config === "string" && config.length > 0;
+          } catch (error) {
+            logError("MathJax config generation failed:", error);
+            return false;
+          }
+        }
+        return false;
+      },
+
+      accessibilitySupport: () => {
+        // Check if accessibility features are working
+        const containers = document.querySelectorAll("mjx-container");
+        if (containers.length === 0) return true; // No math to test
+
+        let accessibleCount = 0;
+        containers.forEach((container) => {
+          if (
+            container.getAttribute("aria-label") ||
+            container.querySelector("mjx-assistive-mml")
+          ) {
+            accessibleCount++;
+          }
+        });
+
+        return accessibleCount > 0; // At least some containers should be accessible
+      },
+    };
+
+    return TestUtilities.runTestSuite("MathJax Manager", tests);
   }
 
   // ===========================================================================================
-  // PUBLIC API EXPORTS
+  // PUBLIC API
   // ===========================================================================================
 
   return {
     testMathJaxManager,
-    logError,
-    logWarn,
-    logInfo,
-    logDebug,
   };
 })();
 
-// Export pattern for global access (matches Session 1 success pattern)
-window.TestMathJaxManager = TestMathJaxManager;
+// Global function for easy access
 window.testMathJaxManager = TestMathJaxManager.testMathJaxManager;

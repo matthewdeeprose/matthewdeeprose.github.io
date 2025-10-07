@@ -1762,7 +1762,7 @@ button.action-button.save-button[style*="display: none"] {
 
 
         /* ===== ENHANCED MOBILE RESPONSIVE ===== */
-        @media (max-width: 900px) {
+        @media (max-width: 1024px) {
             /* IMPROVED: Single column layout for better mobile experience */
             .document-wrapper,
             .document-wrapper.no-toc {
@@ -3749,126 +3749,83 @@ if (typeof window !== 'undefined' && window.document) {
     return `
         /* ===== ENHANCED TABLE STYLING ===== */
         table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 2rem 0;
-            background: var(--surface-color);
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--sidebar-border);
-            position: relative;
-            font-variant-numeric: tabular-nums; /* Better number alignment */
+        	width: 100%;
+        	border-collapse: collapse;
+        	margin: 2rem 0;
+        	border-radius: 8px;
+        	overflow: hidden;
+        	box-shadow: 0 2px 8px rgba(0, 0, 0, .39);
+        	border: 1px solid var(--body-text);
+        	position: relative;
+        	font-variant-numeric: tabular-nums;
+        	/* Better number alignment */
         }
-
         /* Enhanced table typography */
         table {
-            font-size: 0.95rem;
-            line-height: 1.5;
+        	font-size: 0.95rem;
+        	line-height: 1.5;
         }
-
         /* Table captions */
         caption {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--heading-color);
-            text-align: left;
-            padding: 1rem;
-            margin-bottom: 0.5rem;
-            background: var(--body-bg);
-            border-radius: 8px 8px 0 0;
-            border: 1px solid var(--sidebar-border);
-            border-bottom: none;
+        	font-size: 1.1rem;
+        	font-weight: 600;
+        	color: var(--body-text);
+        	text-align: left;
+        	padding: 1rem;
+        	margin-bottom: 0.5rem;
+        	background: var(--body-bg);
+        	border-radius: 8px 8px 0 0;
+        	border: 1px solid var(--body-text);
+        	border-bottom: none;
         }
-
         /* Enhanced cell styling */
-th, td {
-    padding: 1rem;
-    text-align: left;
-    border-bottom: 1px solid var(--sidebar-border);
-    vertical-align: top;
-    position: relative;
-}
-
-table td, table th, table tr {
-    border: 1px solid color-mix(in srgb, var(--sidebar-border) 80%, var(--body-text) 20%) !important;
-}
-
-/* Remove border from last column */
-th:last-child, td:last-child {
-    border-right: none;
-}
-
+        th,
+        td {
+        	padding: 1rem;
+        	text-align: left;
+        	vertical-align: top;
+        	position: relative;
+        	border: 2px solid var(--body-text);
+        }
+        /* Remove border from last column */
+        th:last-child,
+        td:last-child {
+        	border-right: none;
+        }
         /* Header styling with gradient */
         th {
-            background: linear-gradient(135deg, var(--border-color) 0%, color-mix(in srgb, var(--border-color) 90%, white) 100%);
-            color: var(--body-bg);
-            font-weight: 600;
-            font-size: 0.875rem;
-            letter-spacing: 0.05em;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            border-bottom: 2px solid var(--sidebar-border);
+        	font-weight: 600;
+        	font-size: 0.875rem;
+        	letter-spacing: 0.05em;
+        	position: sticky;
+        	top: 0;
+        	z-index: 10;
+        	border: 2px solid var(--body-text);
         }
-
-        /* Dark mode header adjustments */
-        [data-theme="dark"] th {
-            background: linear-gradient(135deg, var(--border-color) 0%, color-mix(in srgb, var(--border-color) 80%, black) 100%);
-            color: var(--body-bg);
-        }
-
         /* Row styling with enhanced interactions */
         tr {
-            transition: all 0.2s ease;
+        	transition: all 0.2s ease;
         }
-
-        tbody tr:hover {
-            background: var(--focus-bg);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        tbody tr:focus-within {
-            background: var(--focus-bg);
-            outline: 2px solid var(--focus-outline);
-            outline-offset: -2px;
-        }
-
         /* Zebra striping for better readability */
-        tbody tr:nth-child(even) {
-            background: color-mix(in srgb, var(--surface-color) 50%, var(--body-bg) 50%);
-        }
-
-        tbody tr:nth-child(even):hover {
-            background: var(--focus-bg);
-        }
-
         tr:last-child td {
-            border-bottom: none;
+        	border-bottom: none;
         }
-
         /* Cell content alignment classes */
-        .table-cell-center { text-align: center; }
-        .table-cell-right { text-align: right; }
-        .table-cell-numeric { 
-            text-align: right; 
-            font-variant-numeric: tabular-nums;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace, var(--font-primary);
+        .table-cell-center {
+        	text-align: center;
         }
-
+        .table-cell-right {
+        	text-align: right;
+        }
+        .table-cell-numeric {
+        	text-align: right;
+        	font-variant-numeric: tabular-nums;
+        	font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace, var(--font-primary);
+        }
         /* Mathematical content in tables */
         table mjx-container {
-            margin: 0.25em 0;
-            font-size: 0.9em;
-        }
-
-        /* Enhanced focus states for accessibility */
-        th:focus-visible, td:focus-visble {
-            background: var(--focus-bg);
-            outline: 2px solid var(--focus-outline);
-            outline-offset: -2px;
-            z-index: 1;
+        	margin: 0.25em 0;
+        	font-size: 0.9em;
         }
     `;
   }
@@ -3878,187 +3835,136 @@ th:last-child, td:last-child {
    */
   function generateResponsiveTableCSS() {
     return `
-        /* ===== RESPONSIVE TABLE DESIGN ===== */
-        
-        /* Tablet adjustments */
-        @media (max-width: 1024px) {
-            table {
-                font-size: 0.9rem;
-            }
-            
-            th, td {
-                padding: 0.75rem;
-            }
-            
-            th {
-                font-size: 0.8rem;
-            }
-        }
+/* ===== RESPONSIVE TABLE DESIGN ===== */
 
-        /* Mobile card layout */
-        @media (max-width: 768px) {
-            /* Hide table structure for mobile card layout */
-            table, thead, tbody, th, td, tr {
-                display: block;
-            }
-
-            /* Hide table headers but keep them for data-label attributes */
-            thead tr {
-                position: absolute;
-                top: -9999px;
-                left: -9999px;
-                clip: rect(0 0 0 0);
-                height: 1px;
-                width: 1px;
-                overflow: hidden;
-            }
-
-            /* Caption remains visible and styled */
-            caption {
-                display: block;
-                text-align: center;
-                font-size: 1.2rem;
-                margin-bottom: 1rem;
-                border-radius: 8px;
-            }
-
-            /* Transform each row into a card */
-            tbody tr {
-                border: 1px solid var(--sidebar-border);
-                border-radius: 8px;
-                padding: 1rem;
-                margin: 0 0 1rem 0;
-                background: var(--surface-color);
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-                transform: none; /* Reset hover transform for mobile */
-                transition: box-shadow 0.2s ease;
-            }
-
-            tbody tr:hover {
-                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-                transform: none;
-            }
-
-            /* Style each cell as a data row */
-            td {
-                border: none;
-                padding: 0.5rem 0;
-                text-align: left !important; /* Override alignment classes on mobile */
-                position: relative;
-                min-height: 2rem;
-                display: flex;
-                align-items: center;
-            }
-
-            /* Add labels using data-label attribute */
-            td:before {
-                content: attr(data-label) ": ";
-                font-weight: 600;
-                color: var(--heading-color);
-                margin-right: 0.5rem;
-                min-width: 120px;
-                flex-shrink: 0;
-                font-size: 0.875rem;
-                letter-spacing: 0.02em;
-            }
-
-            /* Handle empty cells gracefully */
-            td:empty:before {
-                content: attr(data-label) ": ";
-                color: var(--text-secondary);
-            }
-
-            td:empty:after {
-                content: "—";
-                color: var(--text-secondary);
-                font-style: italic;
-            }
-
-            /* Mathematical content adjustments for mobile cards */
-            td mjx-container {
-                flex: 1;
-                margin-left: 0.5rem;
-            }
-
-            /* Remove zebra striping on mobile - cards are distinct */
-            tbody tr:nth-child(even) {
-                background: var(--surface-color);
-            }
-        }
-
-        /* Mobile card layout */
+/* Tablet adjustments */
+@media (max-width: 1024px) {
+	table {
+		font-size: 0.9rem;
+	}
+	th,
+	td {
+		padding: 0.75rem;
+	}
+	th {
+		font-size: 0.8rem;
+	}
+}
+/* Mobile card layout */
 @media (max-width: 768px) {
-    /* Hide table structure for mobile card layout */
-    table, thead, tbody, th, td, tr {
-        display: block;
-    }
-
-    /* ✅ NEW: Remove internal borders for clean card appearance */
-    table td, table th, table tr {
-        border: none !important;
-    }
-
-    /* Caption remains visible and styled */
-    caption {
-        display: block;
-        text-align: center;
-        font-size: 1.2rem;
-        margin-bottom: 1rem;
-        border-radius: 8px;
-        border: none; /* Remove caption borders too */
-    }
-
-    /* Transform each row into a clean card */
-    tbody tr {
-        border: 1px solid var(--sidebar-border); /* Single card border only */
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 0 0 1rem 0;
-        background: var(--surface-color);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-
-    /* Clean cell styling without internal borders */
-    td {
-        border: none !important; /* Emphasize: no internal borders */
-        padding: 0.5rem 0;
-        text-align: left !important;
-        position: relative;
-        min-height: 2rem;
-        display: flex;
-        align-items: center;
-    }
-
-    /* Keep the data labels clean */
-    td:before {
-        content: attr(data-label) ": ";
-        font-weight: 600;
-        color: var(--heading-color);
-        margin-right: 0.5rem;
-        min-width: 120px;
-        flex-shrink: 0;
-        font-size: 0.875rem;
-        letter-spacing: 0.02em;
-    }
+	/* Hide table structure for card layout */
+	table,
+	thead,
+	tbody,
+	th,
+	td,
+	tr {
+		display: block;
+	}
+	table[role="table"] {
+		border: 0px solid var(--body-text);
+	}
+	table {
+		border: 0px solid var(--body-text);
+	}
+	/* Remove internal borders for clean cards (prioritised from later block) */
+	table td,
+	table th,
+	table tr {
+		border: none !important;
+	}
+	/* Keep headers for data-labels but visually hide them */
+	thead tr {
+		position: absolute;
+		top: -9999px;
+		left: -9999px;
+		clip: rect(0 0 0 0);
+		height: 1px;
+		width: 1px;
+		overflow: hidden;
+	}
+	table td {
+		border-top: 1px dashed var(--body-text)!important;
+	}
+	table td:last-child {
+		border-bottom: 1px dashed var(--body-text) !important;
+	}
+	/* Caption remains visible and styled, no borders (later block) */
+	caption {
+		display: block;
+		text-align: center;
+		font-size: 1.2rem;
+		margin-bottom: 1rem;
+		border-radius: 8px;
+		border: none;
+	}
+	/* Turn each row into a clean card (no hover/transition—later behaviour) */
+	tbody tr {
+		border-radius: 0px;
+		padding: 1rem;
+		margin: 0 0 1rem 0;
+		background: var(--surface-color);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+		border-bottom: 1px solid var(--body-text)!important;
+	}
+	/* Style each cell as a data row */
+	td {
+		/* border removed via group rule above */
+		padding: 0.5rem 0;
+		text-align: left !important;
+		/* override alignment utilities on mobile */
+		position: relative;
+		min-height: 2rem;
+		display: flex;
+		align-items: center;
+	}
+	/* Add labels using data-label attribute */
+	td:before {
+		content: attr(data-label) ": ";
+		font-weight: 600;
+		color: var(--body-text);
+		margin-right: 0.5rem;
+		min-width: 120px;
+		flex-shrink: 0;
+		font-size: 0.875rem;
+		letter-spacing: 0.02em;
+	}
+	/* Handle empty cells gracefully */
+	td:empty:before {
+		content: attr(data-label) ": ";
+		color: var(--text-secondary);
+	}
+	td:empty:after {
+		content: "—";
+		color: var(--text-secondary);
+		font-style: italic;
+	}
+	/* Mathematical content adjustments for mobile cards */
+	td mjx-container {
+		flex: 1;
+		margin-left: 0.5rem;
+	}
+	/* Ensure zebra striping doesn't clash with card background */
+	tbody tr:nth-child(even) {
+		background: var(--surface-color);
+	}
+}
+/* Very small screens */
+@media (max-width: 480px) {
+	tbody tr {
+		padding: 0.75rem;
+		margin: 0 0 0.75rem 0;
+	}
+	td:before {
+		min-width: 100px;
+		font-size: 0.8rem;
+	}
+	caption {
+		font-size: 1.1rem;
+		padding: 0.75rem;
+	}
 }
 
-        /* Very small screens */
-        @media (max-width: 480px) {
-            tbody tr {
-                padding: 0.75rem;
-                margin: 0 0 0.75rem 0;
-            }
-
-            td:before {
-                min-width: 100px;
-                font-size: 0.8rem;
-            }
-
-            caption {
-                font-size: 1.1rem;
-                padding: 0.75rem;
-            }
-        }
     `;
   }
 
@@ -4067,10 +3973,11 @@ th:last-child, td:last-child {
    */
   function generateTableAccessibilityCSS() {
     return `
-        /* ===== TABLE ACCESSIBILITY ENHANCEMENTS ===== */
+        
+/* ===== TABLE ACCESSIBILITY ENHANCEMENTS ===== */
         
         /* Enhanced focus indicators for keyboard navigation */
-        table:focus-visble {
+        table:focus-visible {
             outline: 2px solid var(--focus-outline);
             outline-offset: 2px;
         }
@@ -4084,7 +3991,7 @@ th:last-child, td:last-child {
 
         /* ARIA-enhanced tables */
         table[role="table"] {
-            border: 2px solid var(--sidebar-border);
+            border: 2px solid var(--body-text);
         }
 
         /* Screen reader enhancements */
