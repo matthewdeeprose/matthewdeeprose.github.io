@@ -951,6 +951,14 @@
   gap: 0.4rem;
 }
 
+.mathpix-size-btn.active {
+  font-weight: bold;
+}
+
+.mathpix-mode-options {
+  font-size: 1rem;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .size-button-group {
