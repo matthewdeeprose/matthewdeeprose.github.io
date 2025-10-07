@@ -1,0 +1,573 @@
+/* Mermaid Diagram Controls Styling */
+.mermaid-theme-label,
+.mermaid-orientation-label {
+  border-radius: 3px;
+}
+
+/* Colours */
+
+.mermaid-theme-select,
+.chart-palette-select {
+  padding: 0.25rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  font-family: Verdana, sans-serif;
+  min-width: 8rem;
+}
+
+.mermaid-theme-select:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+/* Match existing styles for responsive design */
+@media (max-width: 1024px) {
+  .mermaid-theme-container {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    justify-content: flex-start;
+  }
+
+  .mermaid-theme-select {
+    flex-grow: 1;
+  }
+}
+
+/* Colours  Ends */
+
+.sliders-container {
+  /* display: none !important; */
+}
+
+/* Auto-crop styles */
+.mermaid-container.auto-cropped {
+  transition: height 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.mermaid-container.auto-cropped svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Ensure cropped diagrams still display properly across devices */
+@media (max-width: 1024px) {
+  .mermaid-container.auto-cropped {
+    min-height: 150px;
+  }
+}
+
+/* For better color contrast in auto-cropped mode */
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-container.auto-cropped {
+    transition: none;
+  }
+}
+
+.mermaid-container {
+  position: relative;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+  overflow: visible;
+  /* padding-bottom: 5rem; /* Increased space for controls */
+}
+
+.mermaid-container > div > svg {
+  height: auto !important; /* Force auto height to respect content */
+  overflow: visible;
+}
+
+.mermaid-controls {
+  display: flex;
+  /*flex-wrap: wrap;*/
+  position: relative;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  justify-content: flex-end;
+  align-items: flex-start;
+  border-radius: 0px 0px 4px 4px;
+}
+
+.mermaid-control-button {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.mermaid-control-button:focus {
+  outline-offset: 1px;
+}
+
+.mermaid-control-button svg {
+  width: 16px;
+  height: 16px;
+}
+/* Slider styles */
+.mermaid-slider-group {
+  display: flex;
+
+  /* Zoom controls group */
+  .mermaid-zoom-controls-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.5rem;
+  }
+
+  /* Fit options group */
+  .mermaid-fit-options-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.5rem;
+  }
+
+  /* Preset sizes group */
+  .mermaid-preset-sizes-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.5rem;
+  }
+
+  /* Advanced controls container */
+  .mermaid-advanced-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+
+  /* Responsive design for small screens */
+  @media (max-width: 1024px) {
+    .mermaid-zoom-controls-group,
+    .mermaid-fit-options-group,
+    .mermaid-preset-sizes-group {
+      width: 100%;
+      margin-bottom: 0.5rem;
+      justify-content: center;
+    }
+  }
+  display: flex;
+  align-items: center;
+  margin-right: auto; /* Push other controls to the right */
+  gap: 0.5rem;
+}
+
+.sliders-container {
+  display: flex;
+  flex-direction: column;
+  margin-right: auto;
+  position: relative;
+}
+
+/* Row container for multi-row layout */
+.mermaid-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+}
+
+.mermaid-width-slider-group,
+.mermaid-height-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.mermaid-slider-label {
+  font-size: 0.85rem;
+}
+
+.mermaid-size-slider {
+  width: 100px;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 4px;
+  outline: none;
+}
+
+.mermaid-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.mermaid-size-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.mermaid-size-slider:focus {
+  outline-offset: 5px;
+}
+
+/* Aspect ratio container */
+.aspect-ratio-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+/* Aspect ratio checkbox styling */
+.aspect-ratio-checkbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Aspect ratio label styling */
+.aspect-ratio-label {
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Orientation control group */
+.mermaid-orientation-group {
+  display: flex;
+  align-items: center;
+  margin-right: 1rem;
+}
+
+.mermaid-orientation-label {
+  font-size: 0.85rem;
+}
+
+.mermaid-orientation-select {
+  padding: 0.25rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  font-family: Verdana, sans-serif;
+}
+
+.mermaid-orientation-select:focus {
+  outline-offset: 1px;
+}
+
+/* Disabled state */
+.mermaid-orientation-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Auto-fit button */
+button.mermaid-auto-fit-button {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+button.mermaid-auto-fit-button svg {
+  margin-right: 0.25rem;
+}
+
+/* Auto-fit on load checkbox */
+.mermaid-auto-fit-on-load-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mermaid-auto-fit-on-load-checkbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Visual indicator for linked sliders */
+.sliders-linked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 1;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.slider-adjusting::-webkit-slider-thumb {
+  animation: slider-highlight 0.5s ease-out;
+}
+
+.slider-adjusting::-moz-range-thumb {
+  animation: slider-highlight 0.5s ease-out;
+}
+
+/* Padding control group */
+.mermaid-padding-control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.mermaid-padding-label {
+  font-size: 0.85rem;
+  min-width: 60px;
+}
+
+/* Responsive mode checkbox */
+.mermaid-responsive-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+}
+
+.mermaid-responsive-mode-checkbox {
+  margin: 0;
+}
+
+.mermaid-zoom-controls-group,
+.mermaid-fit-options-group,
+.mermaid-preset-sizes-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+}
+
+button[aria-label="Apply content-aware scaling"] {
+  float: left;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .sliders-container {
+    flex-direction: column;
+    /* gap: 0.5rem; */
+    width: 100%;
+  }
+
+  .mermaid-zoom-controls-group .mermaid-control-button,
+  .mermaid-fit-options-group .mermaid-control-button,
+  .mermaid-preset-sizes-group .mermaid-control-button {
+    width: auto !important;
+    display: inline-block;
+  }
+
+  .mermaid-controls-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    /* align-items: start; */
+    align-items: stretch;
+  }
+
+  .mermaid-width-slider-group,
+  .mermaid-height-slider-group,
+  .mermaid-orientation-group {
+    width: 100%;
+  }
+
+  .mermaid-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mermaid-padding-control-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .mermaid-responsive-mode-label {
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+
+  /* Adjust linked indicator for vertical layout */
+  .sliders-linked::after {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    width: 2px;
+    height: auto;
+  }
+
+  .slider-group-linked::after {
+    right: auto;
+    top: auto;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%) rotate(90deg);
+  }
+}
+
+/* Normal viewport styling for reset button */
+button[aria-label="Reset diagram to default size"],
+.mermaid-controls-row button.mermaid-control-button {
+  width: auto;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Override mobile styles for normal viewport */
+@media (min-width: 767px) {
+  .mermaid-control-button,
+  button[aria-label="Reset diagram to default size"] {
+    width: auto !important;
+    max-width: none !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+}
+
+/* For when viewing on smaller screens */
+@media (max-width: 1024px) {
+  .mermaid-controls {
+    flex-wrap: wrap;
+    /* justify-content: center; */
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .mermaid-controls-row {
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 0.75rem;
+    padding: 0;
+  }
+
+  /* Make all control groups stretch full width */
+  .mermaid-orientation-group,
+  .mermaid-width-slider-group,
+  .mermaid-height-slider-group,
+  .aspect-ratio-container {
+    width: 100%;
+    /* margin-bottom: 0.5rem; */
+    justify-content: flex-start;
+  }
+
+  /* Add consistent spacing for button text */
+  .mermaid-control-button svg {
+    margin-right: 0.5rem;
+  }
+
+  /* Make orientation select and reset button stretch full width like the bottom buttons */
+  .mermaid-orientation-select,
+  .mermaid-control-button {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    justify-content: center;
+    margin: 0.25rem 0;
+  }
+
+  /* Ensure all buttons have exactly the same width and styling in mobile view */
+  .mermaid-control-button,
+  button[aria-label="Reset diagram to default size"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0.25rem 0 !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding-left: 1rem !important;
+  }
+
+  /* Ensure consistent text alignment for all buttons in mobile view */
+  .mermaid-controls .mermaid-control-button svg,
+  .mermaid-controls-row .mermaid-control-button svg {
+    margin-right: 0.5rem !important;
+  }
+
+  /* Add a container for the reset button to match other buttons */
+  .mermaid-controls-row {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure sliders take full width on small screens */
+  .mermaid-size-slider {
+    width: 100%;
+    flex-grow: 1;
+    max-width: none;
+  }
+
+  /* Adjust width/height slider groups to fill width */
+  .mermaid-width-slider-group,
+  .mermaid-height-slider-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* Make labels and controls layout better on mobile */
+  .mermaid-slider-label,
+  .mermaid-orientation-label {
+    display: block;
+    width: auto;
+    margin-bottom: 0.25rem;
+  }
+
+  /* Make aspect ratio container stretch and align better */
+  .aspect-ratio-container {
+    /* justify-content: center; */
+    padding: 0.5rem 0;
+  }
+}
+@media (max-width: 1024px) {
+  .mermaid-controls {
+    flex-wrap: wrap;
+    /* justify-content: center; */
+    align-items: stretch;
+    padding: 20px;
+    width: 100%;
+  }
+  .mermaid-control-button svg {
+    width: 14px;
+    height: 14px;
+  }
+  .mermaid-theme-container {
+    margin: 0;
+  }
+}
+.mermaid-orientation-label {
+  margin-left: 10px;
+  font-size: 0.85rem;
+  border-radius: 3px;
+}
+
+.mermaid-orientation-group {
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .mermaid-orientation-label {
+    margin-left: 0px;
+    margin-right: 5px;
+    top: 2px;
+    position: relative;
+  }
+
+  .mermaid-theme-container {
+    right: 7px;
+    position: relative;
+  }
+}

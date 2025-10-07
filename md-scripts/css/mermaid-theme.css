@@ -1,0 +1,29 @@
+/* Mermaid Theme Selector Styling */
+.mermaid-theme-container {
+  display: flex;
+  align-items: center;
+  margin: 0 1rem 0 0.5rem;
+}
+
+.mermaid-theme-label {
+  font-size: 0.85rem;
+  color: currentColor;
+}
+
+.mermaid-theme-select:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+/* Match existing styles for responsive design */
+@media (max-width: 768px) {
+  .mermaid-theme-container {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    justify-content: flex-start;
+  }
+
+  .mermaid-theme-select {
+    flex-grow: 1;
+  }
+}

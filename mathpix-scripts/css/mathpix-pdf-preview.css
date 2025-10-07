@@ -1,0 +1,612 @@
+/* MathPix PDF Preview Styling - Phase 3.4 */
+/* Accessible, theme-aware styling with WCAG 2.2 AA compliance */
+
+/* ==========================================
+   COLOUR PROPERTIES
+   ========================================== */
+
+/* Upload Preview Colours */
+.mathpix-upload-preview {
+  background: #e1e8ec;
+  border: 2px dashed #00131d;
+}
+
+.upload-preview-display {
+  border: 1px solid #e1e8ec;
+  background: #e1e8ec;
+}
+
+#upload-preview-canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Main PDF Preview Colours */
+.mathpix-pdf-preview {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.pdf-preview-display {
+  border: 1px solid #dee2e6;
+  background: #ffffff;
+}
+
+#pdf-preview-canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Statistics Panel Colours */
+.pdf-preview-stats {
+  background: rgba(255, 255, 255, 0.8);
+  border-left: 4px solid #0d6efd;
+}
+
+.pdf-preview-stats h3 {
+  color: #212529;
+}
+
+.pdf-content-summary dt {
+  color: #6c757d;
+}
+
+.pdf-content-summary dd {
+  color: #212529;
+}
+
+/* Navigation Controls Colours */
+.pdf-nav-button {
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  color: #212529;
+}
+
+.pdf-nav-button:hover:not(:disabled) {
+  background: #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-nav-button:disabled {
+  background: #f8f9fa;
+}
+
+.pdf-nav-button:focus-visible {
+  outline: 3px solid #0d6efd;
+}
+
+/* Legend Colours */
+.pdf-preview-legend {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.pdf-preview-legend h4 {
+  color: #212529;
+}
+
+.legend-math {
+  color: #3b82f6;
+}
+
+.legend-handwritten {
+  color: #22c55e;
+}
+
+.legend-table {
+  color: #f97316;
+}
+
+.legend-diagram {
+  color: #a855f7;
+}
+
+.legend-low-confidence {
+  color: #eab308;
+}
+
+/* Action Buttons Colours */
+
+/* Page Navigation with Integrated Statistics */
+.mathpix-page-navigation {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.mathpix-nav-button {
+  background: #0066cc;
+  color: white;
+}
+
+.mathpix-nav-button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+/* Page Statistics Panel */
+.mathpix-page-statistics {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.stats-heading {
+  color: #666;
+}
+
+.page-content-summary dt {
+  color: #666;
+}
+
+.page-content-summary dd {
+  color: #333;
+  background: white;
+}
+
+/* Simplified PDF Preview */
+.pdf-preview-description {
+  color: #666;
+}
+
+.pdf-preview-display {
+  background: #f5f5f5;
+}
+
+#pdf-preview-canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-preview-controls {
+  background: #f8f9fa;
+}
+
+.zoom-indicator {
+  color: #666;
+}
+
+/* ==========================================
+   LAYOUT & NON-COLOUR PROPERTIES
+   ========================================== */
+/* Ensure hidden attribute works correctly - MUST come first */
+.mathpix-upload-preview[hidden],
+#mathpix-pdf-preview-container[hidden] {
+  display: none !important;
+}
+
+/* Upload Preview Styles */
+.mathpix-upload-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+  transform: translateY(0);
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+/* Only apply animations if user hasn't requested reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  .mathpix-upload-preview {
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  }
+
+  /* Animate entrance when shown */
+  .mathpix-upload-preview.entering {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  /* Animate exit when hidden */
+  .mathpix-upload-preview.exiting {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.mathpix-upload-preview h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+}
+
+.upload-preview-display {
+  position: relative;
+  overflow: auto;
+  border-radius: 4px;
+  max-height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+#upload-preview-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.upload-preview-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.upload-preview-info dt {
+  font-weight: 600;
+}
+
+.upload-preview-info dd {
+  margin: 0;
+}
+
+.upload-preview-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.primary-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+.primary-button:hover {
+  transform: translateY(-1px);
+}
+
+.primary-button:focus-visible {
+  outline-offset: 2px;
+}
+
+.secondary-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+.secondary-button:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Main PDF Preview Styles */
+.mathpix-pdf-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.pdf-preview-display {
+  position: relative;
+  overflow: auto;
+  border-radius: 4px;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#pdf-preview-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  cursor: default;
+}
+
+/* Statistics Panel */
+.pdf-preview-stats {
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.pdf-preview-stats h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
+}
+
+.pdf-content-summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.pdf-content-summary dt {
+  font-weight: 600;
+}
+
+.pdf-content-summary dd {
+  margin: 0;
+}
+
+.pdf-content-summary meter {
+  width: 100%;
+  height: 1.5rem;
+}
+
+/* Navigation Controls */
+.pdf-preview-navigation {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.pdf-nav-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9375rem;
+}
+
+.pdf-nav-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.pdf-nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pdf-nav-button:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Legend */
+.pdf-preview-legend {
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.pdf-preview-legend h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.pdf-preview-legend ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pdf-preview-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+}
+
+.legend-math,
+.legend-handwritten,
+.legend-table,
+.legend-diagram,
+.legend-low-confidence {
+  font-size: 1.25rem;
+}
+
+/* Action Buttons */
+.pdf-preview-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9375rem;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+}
+
+.action-button:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Page Navigation with Integrated Statistics */
+.mathpix-page-navigation {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.mathpix-page-nav-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.mathpix-nav-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.mathpix-nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mathpix-page-info {
+  font-size: 1.1em;
+  font-weight: 500;
+}
+
+/* Page Statistics Panel */
+.mathpix-page-statistics {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.stats-heading {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95em;
+  font-weight: 600;
+}
+
+.page-content-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.page-content-summary dt {
+  font-weight: 600;
+  margin: 0;
+}
+
+.page-content-summary dd {
+  margin: 0;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  min-width: 2rem;
+  text-align: center;
+}
+
+/* Simplified PDF Preview */
+.pdf-preview-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.pdf-preview-header h3 {
+  margin: 0 0 0.5rem 0;
+}
+
+.pdf-preview-description {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.pdf-preview-display {
+  text-align: center;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow: auto;
+}
+
+#pdf-preview-canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.pdf-preview-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.zoom-indicator {
+  min-width: 80px;
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.95em;
+}
+
+/* Hide removed overlay elements */
+#pdf-preview-overlay-canvas,
+.pdf-preview-legend,
+.pdf-preview-stats,
+.pdf-preview-navigation,
+#pdf-preview-toggle-overlays {
+  display: none !important;
+}
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pdf-preview-navigation {
+    flex-direction: column;
+  }
+
+  .pdf-nav-button {
+    width: 100%;
+  }
+
+  .upload-preview-actions {
+    flex-direction: column;
+  }
+
+  .primary-button,
+  .secondary-button {
+    width: 100%;
+  }
+
+  .pdf-preview-legend ul {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .mathpix-upload-preview,
+  .pdf-preview-navigation,
+  .pdf-preview-actions,
+  .pdf-preview-legend {
+    display: none;
+  }
+
+  .pdf-preview-display {
+    border: none;
+    box-shadow: none;
+    page-break-inside: avoid;
+  }
+}

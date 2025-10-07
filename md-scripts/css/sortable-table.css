@@ -1,0 +1,742 @@
+/**
+ * Sortable Table CSS
+ * 
+ * Styles for sortable tables with accessibility features.
+ * WCAG 2.2 AA compliant
+ * Firefox compatibility fixes included
+ */
+
+/* Chart Data Table Responsive Styles */
+.chart-data-table-container {
+  max-width: 100%;
+  margin: 1rem 0;
+}
+
+.chart-data-table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
+}
+
+/* ===== DUAL HORIZONTAL SCROLLBARS ===== */
+.mdSortableTable-table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
+  position: relative;
+}
+
+/* Top scrollbar container - only show when table has many rows */
+.mdSortableTable-top-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-bottom: 0.5rem;
+  border-radius: 4px 4px 0 0;
+  display: none; /* Hidden by default */
+}
+
+/* Invisible content to create scrollbar width */
+.mdSortableTable-top-scroll-content {
+  height: 12px;
+}
+
+/* Show top scrollbar when table has many rows */
+.mdSortableTable-table-container.has-many-rows .mdSortableTable-top-scroll {
+  display: block;
+}
+
+/* ===== WEBKIT SCROLLBAR STYLING ===== */
+.mdSortableTable-top-scroll::-webkit-scrollbar {
+  height: 12px;
+}
+
+.mdSortableTable-top-scroll::-webkit-scrollbar-track {
+  border-radius: 4px;
+}
+
+.mdSortableTable-top-scroll::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+}
+
+/* ===== LAYOUT & STRUCTURE ===== */
+
+/* Container Structure */
+.mdSortableTable-table-container {
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 2rem 0;
+}
+
+.mdSortableTable-table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
+  position: relative;
+}
+
+/* ===== MAIN TABLE STYLING ===== */
+.mdSortableTable-data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  position: relative;
+  /* Default fallback for older browsers */
+  min-width: 100%;
+}
+
+/* ===== BROWSER COMPATIBILITY - WIDTH HANDLING ===== */
+/* Only apply max-content for browsers that handle it properly */
+@supports (min-width: max-content) and (not (-moz-appearance: none)) {
+  .mdSortableTable-data-table {
+    min-width: max-content;
+  }
+}
+
+/* Firefox-specific override using -moz-appearance detection */
+@supports (-moz-appearance: none) {
+  .mdSortableTable-data-table {
+    min-width: 100%;
+    table-layout: auto;
+  }
+}
+
+/* Additional Chrome/Webkit optimisation */
+@supports (-webkit-appearance: none) {
+  .mdSortableTable-data-table {
+    min-width: max-content;
+  }
+}
+
+/* ===== TABLE ELEMENTS STYLING ===== */
+.mdSortableTable-data-table caption {
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 1rem;
+}
+
+/* Sticky header for better UX */
+.mdSortableTable-data-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Table header cells */
+.mdSortableTable-data-table th {
+  font-weight: 500;
+  text-align: left;
+  padding: 1rem;
+  border: none;
+  position: relative;
+  white-space: nowrap;
+  min-width: 120px;
+  max-width: 300px;
+}
+
+/* table header cells spacing */
+.mdSortableTable-data-table th {
+  white-space: normal !important;
+  max-width: none !important;
+  width: auto !important;
+}
+
+/* Header border and radius styling */
+.mdSortableTable-data-table th:last-child {
+  border-right: none;
+}
+
+.mdSortableTable-data-table th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.mdSortableTable-data-table th:last-child {
+  border-top-right-radius: 8px;
+}
+
+/* ===== SORT BUTTON STYLING ===== */
+.mdSortableTable-sort-button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+/* Sort button interactive states */
+.mdSortableTable-sort-button:hover,
+.mdSortableTable-sort-button:focus-visible {
+  outline-offset: 10px;
+}
+
+/* Sort icon styling */
+.mdSortableTable-sort-icon {
+  font-size: 0.875rem;
+}
+
+/* Active sort state indicators */
+th[aria-sort="ascending"] .mdSortableTable-sort-icon,
+th[aria-sort="descending"] .mdSortableTable-sort-icon {
+  opacity: 1;
+}
+
+/* ===== TABLE DATA CELLS ===== */
+.mdSortableTable-data-table td {
+  padding: 1rem;
+  vertical-align: top;
+  word-wrap: break-word;
+  min-width: 120px;
+  max-width: 300px;
+}
+
+/* Row focus indicator for accessibility */
+.mdSortableTable-data-table tbody tr:focus-within {
+  outline-offset: -2px;
+}
+
+/* Screen Reader Only Content */
+.mdSortableTable-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== Base Table Styles ===== */
+.sortable-table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1rem 0;
+  border-radius: 4px;
+  overflow-x: auto;
+  display: table;
+  border: 1px solid transparent;
+  table-layout: auto;
+}
+
+/* Table caption styling */
+.sortable-table caption {
+  font-weight: bold;
+  padding: 0.5rem;
+  text-align: left;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  width: 100%;
+  box-sizing: border-box;
+  display: block;
+}
+
+/* ===== Table Structure ===== */
+.sortable-table thead th {
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  white-space: normal;
+}
+
+.sortable-table th,
+.sortable-table td {
+  padding: 0.5rem;
+  text-align: left;
+}
+
+/* For specific columns where you want to enforce breaks at spaces */
+.sortable-table thead th.break-at-space {
+  word-spacing: normal;
+  word-break: break-all;
+  hyphens: manual;
+  overflow-wrap: break-word;
+  max-width: 150px;
+}
+
+/* ===== Sort Controls ===== */
+/* Container for header content and button */
+.th-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem;
+}
+
+.th-content {
+  flex: 1;
+  text-align: left;
+}
+
+/* Sort button styles - meets WCAG minimum touch target size */
+.sort-button {
+  background: none;
+  color: #00131d;
+  padding: 0px 5px 15px 5px;
+  border: 0.2rem solid transparent !important;
+  margin: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 4px;
+}
+
+.sort-button:hover {
+  background: transparent !important;
+  box-shadow: 0 0 0 0.4rem transparent !important;
+}
+
+/* Sort icon styles */
+.sort-icon {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  position: relative;
+}
+
+/* ===== SORT DIRECTION INDICATORS ===== */
+.sort-button[data-sort-direction="none"] .sort-icon::before {
+  content: "⇵";
+}
+
+.sort-button[data-sort-direction="ascending"] .sort-icon::before {
+  content: "↑";
+}
+
+.sort-button[data-sort-direction="descending"] .sort-icon::before {
+  content: "↓";
+}
+
+/* ===== List Styles within Cells ===== */
+.table-cell-list {
+  margin: 0;
+  padding: 0;
+}
+
+.table-list-item {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: baseline;
+}
+
+.table-list-item:last-child {
+  margin-bottom: 0;
+}
+
+/* ===== Responsive Styles ===== */
+/* Desktop and Tablet Landscape (min-width: 957px) */
+@media (min-width: 957px) {
+  .sortable-table {
+    display: table;
+    overflow-x: auto;
+    width: 100%;
+    max-width: none;
+  }
+
+  .sortable-table tbody {
+    display: table-row-group;
+  }
+
+  .sortable-table tr {
+    display: table-row;
+  }
+
+  .sortable-table th,
+  .sortable-table td {
+    display: table-cell;
+  }
+
+  /* Reset captions for desktop view */
+  .sortable-table caption {
+    display: table-caption;
+    width: auto;
+  }
+}
+
+/* ===== MEDIUM SCREEN CARD LAYOUT ===== */
+/* Medium Screen Styles (min-width: 600px and max-width: 956px) */
+@media (min-width: 600px) and (max-width: 956px) {
+  .sortable-table {
+    white-space: normal;
+    overflow-x: hidden;
+    border: none;
+  }
+
+  .sortable-table thead {
+    display: none;
+  }
+
+  .sortable-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  /* Create a two-column layout for medium screens */
+  .sortable-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding: 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    background-color: #fff;
+  }
+
+  /* Row header for each card */
+
+  .sortable-table tr::before {
+    content: attr(data-point-name);
+    grid-column: 1 / -1;
+    font-size: 1.2em;
+    font-weight: bold;
+    background-color: #aec7d6;
+    color: #231f20;
+    padding: 0.75rem;
+    margin-bottom: 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  /* Cell styling */
+  .sortable-table td {
+    text-align: left;
+    min-height: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 0.75rem 0.5rem 0.5rem 0.75rem;
+    padding-top: 4rem; /* Much more space for the label */
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+    word-break: break-word;
+  }
+
+  /* Data labels */
+  .sortable-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.5rem;
+    left: 0.75rem;
+    width: calc(100% - 1.5rem);
+    font-weight: bold;
+    text-align: left;
+    white-space: normal;
+    font-size: 0.85rem;
+    color: #555;
+    text-transform: uppercase;
+    line-height: 1.2;
+    min-height: 3rem; /* Ensure minimum height for multi-line headers */
+    display: flex;
+    align-items: center;
+  }
+
+  /* Remove bottom border from last cell in each column */
+  .sortable-table tr > td:nth-last-child(1),
+  .sortable-table tr > td:nth-last-child(2) {
+    border-bottom: none;
+  }
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+/* Tablet adjustments */
+@media (max-width: 900px) {
+  .mdSortableTable-data-table th,
+  .mdSortableTable-data-table td {
+    padding: 0.75rem;
+    min-width: 100px;
+    font-size: 0.875rem;
+  }
+
+  .mdSortableTable-sort-button {
+    gap: 0.25rem;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .mdSortableTable-data-table th,
+  .mdSortableTable-data-table td {
+    padding: 0.5rem;
+    min-width: 80px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ===== MOBILE CARD LAYOUT ===== */
+@media (max-width: 900px) {
+  .mdSortableTable-data-table caption {
+    white-space: normal;
+    box-sizing: border-box;
+    padding: 0.8rem;
+    line-height: 1.4;
+    font-size: 1rem;
+    text-align: center;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 0;
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  .mdSortableTable-table-wrapper {
+    overflow-x: visible;
+  }
+
+  .mdSortableTable-data-table {
+    min-width: 100%;
+    display: block;
+  }
+
+  /* Hide table header on mobile */
+  .mdSortableTable-data-table thead {
+    display: none;
+  }
+
+  .mdSortableTable-data-table tbody {
+    display: block;
+  }
+
+  /* Convert rows to cards */
+  .mdSortableTable-data-table tr {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* Mobile cell styling */
+  .mdSortableTable-data-table td {
+    display: flex;
+    padding: 0.8rem;
+    width: 100%;
+    border-top: none;
+    min-width: auto;
+    max-width: none;
+  }
+
+  .mdSortableTable-data-table td:last-child {
+    border-bottom: none;
+  }
+
+  /* Show data labels on mobile */
+  .mdSortableTable-data-table tbody td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    min-width: 40%;
+    padding-right: 1rem;
+  }
+}
+
+/* Small mobile adjustments */
+@media (max-width: 480px) {
+  .mdSortableTable-data-table caption {
+    font-size: 0.9rem;
+    padding: 0.6rem 0.8rem;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .sortable-table {
+    display: table;
+    width: 100%;
+    overflow: visible;
+    border: 1px solid #000;
+  }
+
+  .sortable-table th,
+  .sortable-table td {
+    border: 1px solid #000;
+    background: none !important;
+    color: #000 !important;
+  }
+
+  /* Hide interactive elements when printing */
+  .sort-button {
+    display: none;
+  }
+}
+
+/* ===== FIREFOX-SPECIFIC FIXES ===== */
+@-moz-document url-prefix() {
+  .sortable-table {
+    display: table !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+  }
+
+  .sortable-table thead th {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+
+  .sortable-table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Additional responsive fallback for Firefox */
+@media (min-width: 957px) {
+  .sortable-table thead th,
+  .sortable-table td {
+    white-space: normal;
+    max-width: none;
+  }
+}
+
+/* Base styles for row display controls */
+.mdSortableTable-preview-controls {
+  padding: 1rem !important;
+}
+
+.mdSortableTable-preview-status {
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.mdSortableTable-preview-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Base button styles */
+.mdSortableTable-show-more-button,
+.mdSortableTable-show-less-button,
+.mdSortableTable-show-all-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.mdSortableTable-show-all-button {
+  font-weight: 600;
+}
+
+/* Large tablets and small desktops */
+@media (max-width: 900px) {
+  /* Apply mobile layout only to tbody cells, preserve footer controls */
+  .mdSortableTable-data-table tbody td {
+    display: flex;
+    padding: 0.8rem;
+    width: 100%;
+    border-top: none;
+    min-width: auto;
+    max-width: none;
+  }
+
+  /* Keep footer controls as normal table layout */
+  .mdSortableTable-data-table tfoot td {
+    display: table-cell;
+    padding: 1rem;
+    text-align: center;
+    width: auto;
+    min-width: auto;
+    max-width: none;
+  }
+
+  /* Ensure footer row doesn't break into mobile card layout */
+  .mdSortableTable-data-table tfoot tr {
+    display: table-row;
+    margin-bottom: 0;
+    padding: 0;
+  }
+}
+
+/* Tablets */
+@media (max-width: 768px) {
+  .mdSortableTable-preview-controls {
+    padding: 1.5rem 1rem !important;
+  }
+
+  .mdSortableTable-preview-status {
+    font-size: 1rem;
+    margin: 0 auto 1.25rem auto;
+    line-height: 1.4;
+  }
+
+  .mdSortableTable-preview-actions {
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .mdSortableTable-show-more-button,
+  .mdSortableTable-show-less-button,
+  .mdSortableTable-show-all-button {
+    width: 100%;
+    min-width: auto;
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    margin: 0 auto;
+  }
+
+  /* Enhanced styling for "Show all" button */
+  .mdSortableTable-show-all-button {
+    font-weight: 700;
+    order: 2;
+    margin-top: 0.5rem;
+  }
+
+  /* Visual hierarchy adjustments */
+  .mdSortableTable-show-more-button {
+    order: 1;
+  }
+
+  .mdSortableTable-show-less-button {
+    order: 1;
+  }
+}
+
+/* Mobile phones */
+@media (max-width: 480px) {
+  .mdSortableTable-preview-controls {
+    padding: 1.25rem 0.75rem !important;
+  }
+
+  .mdSortableTable-preview-actions {
+    max-width: 280px;
+    gap: 0.875rem;
+  }
+
+  .mdSortableTable-show-more-button,
+  .mdSortableTable-show-less-button,
+  .mdSortableTable-show-all-button {
+    padding: 1rem;
+    font-size: 0.95rem;
+    border-radius: 8px;
+  }
+}

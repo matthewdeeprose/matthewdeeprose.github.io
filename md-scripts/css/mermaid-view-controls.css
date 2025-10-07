@@ -1,0 +1,252 @@
+/* Mermaid Pan and Zoom Styles */
+
+/* Fullscreen mode for wide diagrams */
+.fullscreen-wide-diagram {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 1rem;
+  z-index: 9999;
+  overflow: auto;
+  display: block; /* Changed from flex to block */
+}
+
+/* Ensure the diagram container takes proper space */
+.fullscreen-mode .mermaid-pan-zoom-container {
+  width: 100%;
+  height: auto;
+  min-height: 90vh;
+  overflow: visible;
+}
+
+.mermaid-wide-diagram {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 80vh !important;
+  margin: 0 auto;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+}
+
+/*
+.mermaid-wide-diagram svg {
+  max-width: none !important;
+  width: auto !important;
+  min-width: 95% !important;
+  margin: 1rem auto !important;
+} */
+
+/* For specifically wide diagrams like timelines */
+.mermaid-wide-diagram svg {
+  width: auto !important;
+  max-width: none !important;
+  min-width: 95% !important;
+}
+
+/* Ensure the mermaid container stays fullwidth in fullscreen */
+.fullscreen-mode .mermaid-container {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.mermaid-pan-zoom-container {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.mermaid-zoomable {
+  transform-origin: 0 0;
+  transition: transform 0.1s ease-out;
+}
+
+/* Remove transitions for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-zoomable {
+    transition: none;
+  }
+}
+
+/* Control panel styling */
+.mermaid-pan-zoom-controls {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: none; /* Hidden by default */
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 120px;
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 9999;
+  margin: 1rem; /*new*/
+}
+
+/* Make sure controls are visible in fullscreen mode */
+.fullscreen-mode .mermaid-pan-zoom-controls {
+  display: flex !important; /* Force display in fullscreen mode */
+}
+
+/* Button styling */
+.mermaid-pan-zoom-controls .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 2px;
+  padding: 0;
+  border-radius: 4px;
+  color: #333;
+  cursor: pointer;
+}
+
+/* Dark mode hover/focus */
+/* Button arrangement - 3x3 grid */
+.mermaid-pan-zoom-controls .btn:nth-child(1),
+.mermaid-pan-zoom-controls .btn:nth-child(2),
+.mermaid-pan-zoom-controls .btn:nth-child(3) {
+  /* First row: zoom in, zoom out, reset */
+  order: 1;
+}
+
+.mermaid-pan-zoom-controls .btn:nth-child(4) {
+  /* Second row: up button in middle column */
+  order: 2;
+  grid-column: 2;
+}
+
+.mermaid-pan-zoom-controls .btn:nth-child(5) {
+  /* Third row: down button in middle column */
+  order: 4;
+  grid-column: 2;
+}
+
+.mermaid-pan-zoom-controls .btn:nth-child(6) {
+  /* Third row: left button */
+  order: 3;
+}
+
+.mermaid-pan-zoom-controls .btn:nth-child(7) {
+  /* Third row: right button */
+  order: 5;
+}
+/* SVG icon styling */
+.mermaid-pan-zoom-controls .btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* Hide control panel by default and only show in fullscreen mode */
+.mermaid-pan-zoom-controls {
+  display: none;
+}
+
+.fullscreen-mode .mermaid-pan-zoom-controls {
+  display: flex;
+}
+
+/* Make sure the diagram fits properly in fullscreen mode */
+/* .fullscreen-mode .mermaid svg {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+    margin: 0 auto;
+  } */
+
+.fullscreen-mode .mermaid svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 95%;
+  width: auto;
+}
+
+/* Default width constraint for mermaid diagrams */
+.mermaid-container {
+  max-width: 70%;
+  margin: 0 auto;
+  position: relative;
+}
+
+.mermaid-view-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px 4px 0px 0px;
+}
+
+/* Full width mode when expanded */
+.mermaid-container.expanded {
+  max-width: 100%;
+  transition: max-width 0.3s ease-out;
+}
+
+/* Full screen mode styling */
+.mermaid-container.fullscreen-mode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  z-index: 9999;
+  padding: 1rem;
+  overflow: auto;
+}
+
+/* Button styling for view controls */
+.mermaid-view-button {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+/* Icon within buttons */
+.mermaid-view-button svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.mermaid-container.fullscreen-mode .fullscreen-close {
+  display: block;
+}
+
+/* Hide width toggle button in fullscreen mode */
+.mermaid-container.fullscreen-mode .mermaid-view-button[id^="toggle-width-"] {
+  display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .mermaid-container {
+    max-width: 100%;
+  }
+  button[aria-label="Toggle diagram width"] {
+    display: none;
+  }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-container {
+    transition: none;
+  }
+
+  .mermaid-container.expanded {
+    transition: none;
+  }
+}

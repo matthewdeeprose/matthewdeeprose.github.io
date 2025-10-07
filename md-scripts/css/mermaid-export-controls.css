@@ -1,0 +1,63 @@
+/**
+ * Styles for Mermaid diagram description export controls
+ */
+
+/* Structure styles */
+.mermaid-export-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+.mermaid-export-group {
+  display: flex;
+  flex-direction: column;
+  margin-right: 1.5rem;
+}
+
+.mermaid-export-group-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.mermaid-export-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 6.5rem;
+  margin-right: 10px;
+}
+
+.mermaid-export-button svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .mermaid-export-controls {
+    flex-direction: column;
+  }
+
+  .mermaid-export-group {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+
+  .mermaid-export-buttons {
+    flex-wrap: wrap;
+  }
+
+  .mermaid-export-button {
+    min-width: 5.5rem;
+  }
+}

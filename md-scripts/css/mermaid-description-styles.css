@@ -1,0 +1,3462 @@
+/* =================
+    MERMAID DESCRIPTION STYLES
+   ================= */
+
+/* =================
+   COLOURS
+   ================= */
+
+/* Flowchart-specific colours */
+.diagram-condition {
+  background-color: #f3f9ff;
+  border-bottom: 1px solid #005c84;
+}
+
+.diagram-decision {
+  color: #8d3970;
+}
+
+.diagram-action {
+  color: #005c84;
+}
+
+.diagram-node {
+  color: #00131d;
+}
+
+.terminal-node .diagram-node {
+  border-left: 3px solid #495961;
+  padding-left: 0.5rem;
+}
+
+.decision-paths {
+  background-color: #f5f5f5;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border-left: 3px solid #8d3970;
+}
+
+/* Export Control Colours */
+
+.mermaid-export-feedback.visible {
+  border: 1px solid #231f20;
+}
+
+.mermaid-export-feedback.success {
+  background-color: #e6f7e6;
+  color: #2e7d32;
+}
+
+.mermaid-export-feedback.error {
+  background-color: #fdecea;
+  color: #d32f2f;
+}
+
+/* =================
+   ARCHITECTURE DIAGRAM COLOURS
+   ================= */
+
+/* Section backgrounds */
+
+.architecture-structure {
+  background-color: #f3f9ff !important;
+}
+
+.architecture-services {
+  background-color: #fafafa !important;
+}
+
+.architecture-connections {
+  background-color: #f5f5f5 !important;
+}
+
+.architecture-insights {
+  background-color: #f0f2e8 !important;
+}
+
+.architecture-visual-notes {
+  background-color: #fafafa !important;
+}
+
+/* Section headings */
+.architecture-section h3 {
+  color: #002e3b;
+  border-bottom: 1px solid #00131d;
+}
+
+/* Group styling */
+.architecture-group-name {
+  color: #002e3b;
+}
+
+.architecture-icon-info {
+  color: #495961;
+}
+
+/* Services styling */
+.architecture-service-item {
+  background-color: #fafafa;
+  border-left-color: #005c84;
+}
+
+.architecture-service-item:nth-child(odd) {
+  background-color: #f3f9ff;
+}
+
+.architecture-service-name {
+  color: #005c84;
+}
+
+.architecture-service-icon {
+  color: #495961;
+}
+
+.architecture-parent-group {
+  color: #002e3b;
+}
+
+/* Connection styling */
+.architecture-connection {
+  background-color: #fafafa;
+  border-left: 3px solid #005c84;
+  border-top: 1px solid #005c84;
+  border-right: 1px solid #005c84;
+  border-bottom: 1px solid #005c84;
+}
+
+.architecture-connection:nth-child(odd) {
+  background-color: #f3f9ff;
+}
+
+.architecture-source {
+  color: #005c84;
+}
+
+.architecture-target {
+  color: #005c84;
+}
+
+.architecture-junction-id {
+  color: #8d3970;
+}
+
+.architecture-junction-group {
+  background-color: #f3f9ff;
+  border-color: #005c84;
+}
+
+.architecture-junction-connections {
+  background-color: #f0f2e8;
+  border-color: #495961;
+}
+
+.architecture-junction-group h6,
+.architecture-junction-connections h6 {
+  color: #002e3b;
+}
+
+.architecture-junction-group,
+.architecture-junction-connections {
+  border: 1px solid #231f20;
+}
+
+.architecture-children::before {
+  border-left: 1px dashed #231f20;
+}
+
+/* =================
+   MINDMAP COLOURS
+   ================= */
+/* Section backgrounds */
+.mindmap-overview,
+.mindmap-visual-note {
+  background-color: #e1e8ec;
+}
+
+.mindmap-structure {
+  background-color: #f3f9ff;
+}
+
+.mindmap-insights {
+  background-color: #f0f2e8;
+}
+
+/* Section headings */
+.mindmap-section-heading {
+  color: #002e3b;
+  border-bottom-color: #00131d;
+}
+
+/* Node styling */
+.mindmap-node {
+  background-color: #fafafa;
+  border: 1px solid #231f20;
+}
+
+.mindmap-node-default {
+  border-left: 3px solid #005c84;
+}
+
+.mindmap-node-circle {
+  border-left: 3px solid #002e3b;
+}
+
+.mindmap-node-square {
+  border-left: 3px solid #8d3970;
+}
+
+.mindmap-node-rounded {
+  border-left: 3px solid #005c84;
+}
+
+.mindmap-node-cloud {
+  border-left: 3px solid #495961;
+  background-color: #f5f5f5;
+}
+
+.mindmap-node-hexagon {
+  border-left: 3px solid #002e3b;
+  background-color: #f0f2e8;
+}
+
+.mindmap-node-bang {
+  border-left: 3px solid #8d3970;
+  background-color: #fff8f8;
+}
+
+/* Text within nodes */
+.mindmap-level-1 {
+  color: #002e3b;
+}
+
+.mindmap-level-2 {
+  color: #005c84;
+}
+
+.mindmap-level-3 {
+  color: #8d3970;
+}
+
+.mindmap-level-5,
+.mindmap-level-6 {
+  color: #00131d;
+}
+
+/* Root concepts and branches */
+.mindmap-root-concept,
+.diagram-root-node {
+  color: #002e3b;
+}
+
+.mindmap-topic,
+.diagram-branch-name {
+  color: #005c84;
+}
+
+/* Insights */
+.mindmap-insight {
+  background-color: #fafafa;
+  border-left: 3px solid #005c84;
+  border-top: 1px solid #231f20;
+  border-right: 1px solid #231f20;
+  border-bottom: 1px solid #231f20;
+}
+
+.mindmap-insight:nth-child(odd) {
+  background-color: #f3f9ff;
+}
+
+/* Stats and counts */
+.diagram-node-count,
+.diagram-level-count {
+  color: #005c84;
+}
+
+/* =================
+   GANTT CHART COLOURS
+   ================= */
+/* Main section backgrounds */
+.gantt-overview,
+.gantt-sections,
+.gantt-dependencies-note {
+  background-color: #e1e8ec;
+}
+
+.gantt-milestones,
+.gantt-parallel-work,
+.gantt-critical-path-section {
+  background-color: #f3f9ff;
+  border-color: #495961;
+}
+
+.gantt-risk-areas {
+  background-color: #fff8f8;
+  border-color: #8d3970;
+}
+
+.gantt-phase-transitions {
+  background-color: #f0f2e8;
+}
+
+.gantt-exclusions {
+  background-color: #f5f5f5;
+  border-color: #495961;
+}
+
+/* Headings */
+.gantt-title {
+  color: #002e3b;
+}
+
+.gantt-exclusions-heading,
+.gantt-milestones-heading,
+.gantt-parallel-heading,
+.gantt-critical-path-heading,
+.gantt-risk-heading,
+.gantt-transitions-heading {
+  color: #002e3b;
+  border-bottom-color: #00131d;
+}
+
+.gantt-exclusion-impact {
+  color: #495961;
+}
+
+/* Task styling */
+.gantt-task {
+  border-left: 3px solid #005c84;
+}
+
+.gantt-milestone {
+  border-left-color: #1e8765;
+}
+
+.gantt-done {
+  border-left-color: #495961;
+}
+
+.gantt-active {
+  border-left-color: #005c84;
+}
+
+.gantt-critical,
+.gantt-critical-path {
+  border-left-color: #8d3970;
+}
+
+.gantt-task-name,
+.gantt-section-name {
+  color: #00131d;
+}
+
+.gantt-milestone-name {
+  color: #1e8765;
+}
+
+.gantt-critical-task-name {
+  color: #8d3970;
+}
+
+/* Task status */
+.gantt-task-status {
+  background-color: #f5f5f5;
+  color: #495961;
+}
+
+.gantt-task-type {
+  background-color: #f0f2e8;
+  color: #1e8765;
+}
+
+.gantt-resource-note {
+  background-color: #fff8f8;
+  color: #8d3970;
+}
+
+/* Dates */
+.gantt-section-dates,
+.gantt-task-start-date,
+.gantt-task-end-date,
+.gantt-milestone-date,
+.gantt-parallel-date,
+.gantt-transition-date {
+  color: #005c84;
+}
+
+/* Dependencies */
+.gantt-task-dependency,
+.gantt-task-until {
+  color: #005c84;
+}
+
+.gantt-task-duration,
+.gantt-critical-task-duration {
+  color: #00131d;
+  background-color: #f3f9ff;
+  border-bottom: 1px solid #005c84;
+}
+
+/* Emphasis for special sections */
+.gantt-exclusion-weekends,
+.gantt-exclusion-dates {
+  color: #8d3970;
+}
+
+.gantt-from-phase,
+.gantt-to-phase {
+  color: #005c84;
+}
+
+.gantt-critical-path-note {
+  color: #495961;
+}
+
+/* Sequence diagram specific styles */
+.note-step,
+.process-step {
+  border-top: 1px solid #231f20;
+  border-right: 1px solid #231f20;
+  border-bottom: 1px solid #231f20;
+}
+
+h5.flow-heading {
+  color: #002e3b;
+}
+
+/* Section headings */
+.mermaid-section-heading {
+  color: #002e3b;
+  border-bottom: 1px solid #00131d;
+}
+
+/* Diagram title */
+.diagram-title {
+  color: #002e3b;
+}
+
+/* Specific section styling */
+.sequence-overview,
+.mermaid-section,
+.mermaid-short-description,
+.mermaid-detailed-description {
+  background-color: #e1e8ec;
+}
+
+.mermaid-detailed-description {
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* Actor and Participant sections */
+.actor-item,
+.participant-item {
+  background-color: #f3f9ff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Actor and participant names */
+.actor-name {
+  color: #8d3970;
+}
+
+.participant-name {
+  color: #005c84;
+}
+
+/* Group styling */
+.actor-group,
+.participant-group {
+  color: #495961;
+}
+
+.group-item {
+  background-color: #f5f5f5;
+  border-left: 4px solid #002e3b;
+}
+
+.group-name {
+  color: #002e3b;
+}
+
+/* Process steps styling */
+.process-step {
+  background-color: #fafafa;
+  border-left: 3px solid #005c84;
+}
+
+.step-number {
+  color: #005c84;
+}
+
+.message-number {
+  color: #005c84;
+}
+
+.message-type {
+  color: #231f20;
+}
+
+/* Message sender and receiver */
+.message-sender.actor,
+.message-receiver.actor {
+  color: #8d3970;
+}
+
+.message-sender.participant,
+.message-receiver.participant {
+  color: #005c84;
+}
+
+/* Comments and notes */
+.message-comment {
+  color: #495961;
+  background-color: #fffff4;
+  border-left: 3px solid #495961;
+}
+
+.standalone-comment {
+  background-color: #fffff4;
+  border-left: 3px solid #495961;
+}
+
+.associated-comment {
+  border-left: 5px solid #d5007f;
+  border-top: 1px dotted #d5007f;
+  border-right: 1px dotted #d5007f;
+  border-bottom: 1px dotted #d5007f;
+}
+
+.comment-step,
+.note-indicator {
+  color: #495961;
+}
+
+.standalone-comment-container {
+  background-color: #f8f8f8;
+}
+
+/* Notes */
+.note-step {
+  background-color: #f5f5f5;
+  border-left: 3px solid #495961;
+}
+
+.note-content {
+  background-color: #fffff4;
+}
+
+/* Lifecycle steps */
+.lifecycle-step {
+  background-color: #f0f2e8;
+  border-left: 3px solid #495961;
+}
+
+.creation-step {
+  border-left-color: #1e8765;
+}
+
+.destruction-step {
+  border-left-color: #e73037;
+}
+
+.activate-step {
+  border-left-color: #005c84;
+}
+
+.deactivate-step {
+  border-left-color: #495961;
+}
+
+/* Conditional blocks */
+.conditional-step {
+  background-color: #f5f5f5;
+  border-left: 3px solid #005c84;
+}
+
+.conditional-context {
+  color: #495961;
+}
+
+.branch-container {
+  border: 1px dotted #495961;
+}
+
+.branch-title {
+  color: #005c84;
+}
+
+.branch {
+  border: 1px dashed #495961;
+  background-color: #e1e8ec;
+}
+
+.branch-condition {
+  color: #231f20;
+}
+
+.branch-outcome {
+  color: #00131d;
+}
+
+/* Break blocks */
+.break-step {
+  border-left-color: #8d3970;
+}
+
+.break-container {
+  background-color: #fff8f8;
+  border: 1px dotted #8d3970;
+}
+
+.break-condition-header {
+  color: #8d3970;
+}
+
+.break-subsequent-note {
+  color: #495961;
+  border-top: 1px dashed #495961;
+}
+
+/* Parallel blocks */
+.parallel-step .branch-container {
+  border-left: 3px solid #1e8765;
+}
+
+.parallel-step .branch {
+  background-color: rgba(76, 175, 80, 0.05);
+}
+
+.parallel-step .branch-condition {
+  color: #8d3970;
+}
+
+.sequence-summary-heading,
+.diagram-notation-heading,
+.sequence-reading-heading {
+  color: #002e3b;
+}
+
+.success-path {
+  color: #00131d;
+  border: 1px dotted #1e8765;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.alternative-path {
+  color: #00131d;
+  border: 1px dotted #005c84;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.break-path {
+  color: #00131d;
+  border: 1px dotted #d5007f;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+h6.comment-category {
+  color: #002e3b;
+}
+
+/* Original message numbers */
+.original-message-number {
+  color: #00131d;
+}
+
+/* =================
+   PIE CHART COLOURS
+   ================= */
+
+/* Section backgrounds */
+.chart-construction {
+  background-color: #e1e8ec;
+}
+
+.chart-insights {
+  background-color: #f3f9ff !important;
+}
+
+.chart-data {
+  background-color: #f5f5f5 !important;
+}
+
+.chart-patterns {
+  background-color: #f0f2e8 !important;
+}
+
+.chart-insights,
+.chart-data,
+.chart-patterns {
+  border: 1px solid #231f20;
+}
+
+/* Insight styling */
+.diagram-insight {
+  background-color: #fafafa;
+  border-left: 3px solid #005c84;
+  border-top: 1px solid #231f20;
+  border-right: 1px solid #231f20;
+  border-bottom: 1px solid #231f20;
+}
+
+.diagram-insight:nth-child(odd) {
+  background-color: #f3f9ff;
+}
+
+.diagram-insight-primary::before {
+  color: #8d3970;
+}
+
+.diagram-insight-total::before {
+  color: #495961;
+}
+
+.diagram-insight-largest::before {
+  color: #1e8765;
+}
+
+.diagram-insight-smallest::before {
+  color: #005c84;
+}
+
+/* Data items */
+.diagram-data-item::before {
+  color: #005c84;
+}
+
+/* Text elements */
+.diagram-segment {
+  color: #005c84;
+}
+
+.diagram-percentage,
+.diagram-value,
+.diagram-count {
+  color: #00131d;
+}
+
+.diagram-proportion {
+  color: #495961;
+}
+
+/* Distribution patterns */
+.diagram-pattern {
+  background-color: #f5f5f5;
+  border: 1px solid #231f20;
+}
+
+.diagram-pattern-skewed {
+  border-left: 3px solid #8d3970;
+  color: #8d3970;
+}
+
+.diagram-pattern-balanced {
+  border-left: 3px solid #1e8765;
+  color: #1e8765;
+}
+
+/* =================
+    STRUCTURE & LAYOUT
+    ================= */
+
+.mermaid-description {
+  font-size: 1rem;
+}
+
+/* Comment categories */
+h6.comment-category {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+h5.flow-heading {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Comment lists by category */
+.structure-comments,
+.flow-comments,
+.functionality-comments,
+.other-comments {
+  margin-bottom: 1rem;
+}
+
+/* Original message numbers */
+.original-message-number {
+  font-weight: bold;
+}
+
+/* Better spacing for steps with original message numbers */
+li.process-step .step-number {
+  display: inline-block;
+  /*min-width: 180px; */
+}
+
+/* Section headings */
+.mermaid-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.mermaid-section-heading {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Specific section styling */
+.sequence-overview,
+.mermaid-section,
+.mermaid-short-description {
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* List styling */
+.mermaid-description ul,
+.mermaid-description ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.mermaid-description li {
+  margin-bottom: 0.5rem;
+}
+
+/* Actor and Participant sections */
+.sequence-actors,
+.sequence-participants {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.actor-list,
+.participant-list {
+  list-style-type: none;
+  padding-left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.actor-item,
+.participant-item {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+/* Actor and participant names */
+.actor-name {
+  font-weight: bold;
+}
+
+.participant-name {
+  font-weight: bold;
+}
+
+/* Group styling */
+.actor-group,
+.participant-group {
+  font-style: normal;
+  margin-left: 0.5rem;
+}
+
+.group-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.group-item {
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+}
+
+.group-name {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.group-members {
+  display: block;
+  font-size: 0.9rem;
+}
+
+/* Process steps styling */
+.process-step {
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+.step-number {
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+.message-content {
+  font-weight: 500;
+  margin-left: 0.25rem;
+}
+
+.message-number {
+  font-weight: 600;
+}
+
+.message-type {
+  font-style: normal;
+  margin: 0 0.25rem;
+}
+
+/* Message sender and receiver */
+.message-sender,
+.message-receiver {
+  display: inline;
+}
+
+.message-sender.actor,
+.message-receiver.actor {
+  font-weight: bold;
+}
+
+.message-sender.participant,
+.message-receiver.participant {
+  font-weight: bold;
+}
+
+/* Comments and notes */
+.message-comment {
+  margin-top: 0.25rem;
+  margin-left: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-style: normal;
+}
+
+.standalone-comment {
+  padding: 0.5rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.associated-comment {
+  margin-left: 2rem;
+  padding-left: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.comment-step,
+.note-indicator {
+  font-style: normal;
+}
+
+.comment-icon {
+  margin-right: 0.25rem;
+}
+
+.comment-label,
+.comment-prefix {
+  font-weight: bold;
+}
+
+.comment-content {
+  font-style: normal;
+}
+
+.comments-list .comment-item {
+  margin-bottom: 0.5rem;
+}
+
+.standalone-comment-container {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Notes */
+.note-step {
+  padding-left: 0.5rem;
+}
+
+.note-content {
+  font-weight: 500;
+  position: relative;
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  margin-left: 0.5rem;
+}
+
+.notes-summary {
+  margin-top: 1rem;
+}
+
+.notes-list {
+  margin-top: 0.5rem;
+}
+
+/* Lifecycle steps */
+.lifecycle-step {
+  padding-left: 0.5rem;
+}
+
+.lifecycle-event {
+  display: inline-block;
+  margin-left: 0.5rem;
+}
+
+/* Conditional blocks */
+.conditional-step {
+  padding: 0.75rem;
+}
+
+.conditional-context {
+  font-style: normal;
+  margin-bottom: 0.5rem;
+}
+
+.branch-container {
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.branch-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.branch {
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.branch-condition {
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.branch-outcome {
+  font-style: normal;
+  margin: 0.25rem 0 0.5rem 1rem;
+}
+
+.branch-messages {
+  padding-left: 1.5rem;
+}
+
+.message-item {
+  margin-bottom: 0.25rem;
+}
+
+/* Break blocks */
+.break-container {
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.break-condition-header {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.break-explanation {
+  margin-bottom: 0.5rem;
+}
+
+.break-action-list {
+  margin-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.break-action-item {
+  margin-bottom: 0.25rem;
+}
+
+.break-subsequent-note {
+  font-style: normal;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+/* Parallel blocks */
+.parallel-step .branch {
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+
+.parallel-step .branch-condition {
+  font-weight: bold;
+}
+
+/* Explanations and summaries */
+.sequence-explanation {
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.sequence-summary-heading,
+.diagram-notation-heading,
+.sequence-reading-heading {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.sequence-paths {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.sequence-path {
+  margin-bottom: 0.5rem;
+}
+
+.condition-point {
+  margin: 0.25rem 0 0.25rem 1.5rem;
+}
+
+.notation-list {
+  columns: 1;
+}
+
+/* Diagram title */
+.diagram-title {
+  font-weight: bold;
+}
+
+/* Break-specific styles */
+.break-container {
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 0.25rem;
+}
+
+.break-condition-header {
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.break-icon {
+  margin-right: 0.5rem;
+}
+
+.break-explanation {
+  margin-bottom: 0.5rem;
+}
+
+.break-action-list {
+  margin-left: 1.5rem;
+  padding-left: 0;
+}
+
+.break-action-item {
+  margin-bottom: 0.5rem;
+  list-style-type: disc;
+}
+
+.break-subsequent-note {
+  margin-top: 0.5rem;
+  font-size: 0.9em;
+}
+
+/* Mermaid description container */
+.mermaid-description {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  max-width: 70%;
+  margin: 0 auto;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  line-height: 1.5;
+}
+
+/* was @media (max-width: 768px) { */
+@media (max-width: 1024px) {
+  .mermaid-description,
+  .mermaid-figcaption {
+    max-width: 100%;
+  }
+}
+
+/* Figure and figcaption styles */
+.mermaid-figure {
+  margin: 1.5rem 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+.mermaid-figcaption {
+  padding: 0.5rem;
+  line-height: 1.5;
+  color: currentColor;
+  max-width: 70%;
+  margin: 0 auto;
+}
+
+/* Short description heading */
+.mermaid-short-description-heading {
+  font-weight: bold;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+}
+
+/* Short description */
+.mermaid-short-description {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+/* Details heading */
+.mermaid-details-heading {
+  font-weight: bold;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+}
+
+/* Detailed description */
+.mermaid-detailed-description {
+  margin-top: 0.75rem;
+}
+
+.mermaid-detailed-description ul {
+  margin-left: 1.5rem;
+}
+
+.mermaid-detailed-description li {
+  margin-bottom: 0.5rem;
+}
+
+/* =================
+   COLOURS
+   ================= */
+.note-step,
+.process-step {
+  border-top: 1px solid #231f20;
+  border-right: 1px solid #231f20;
+  border-bottom: 1px solid #231f20;
+}
+
+h5.flow-heading {
+  color: #002e3b;
+}
+
+/* Section headings */
+.mermaid-section-heading {
+  color: #002e3b;
+  border-bottom: 1px solid #00131d;
+}
+
+/* Diagram title */
+.diagram-title {
+  color: #002e3b;
+}
+
+/* Specific section styling */
+.sequence-overview,
+.mermaid-section,
+.mermaid-short-description {
+  background-color: #e1e8ec;
+}
+
+/* Actor and Participant sections */
+.actor-item,
+.participant-item {
+  background-color: #f3f9ff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Actor and participant names */
+.actor-name {
+  color: #8d3970;
+}
+
+.participant-name {
+  color: #005c84;
+}
+
+/* Group styling */
+.actor-group,
+.participant-group {
+  color: #495961;
+}
+
+.group-item {
+  background-color: #f5f5f5;
+  border-left: 4px solid #002e3b;
+}
+
+.group-name {
+  color: #002e3b;
+}
+
+/* Process steps styling */
+.process-step {
+  background-color: #fafafa;
+  border-left: 3px solid #005c84;
+}
+
+.step-number {
+  color: #005c84;
+}
+
+.message-number {
+  color: #005c84;
+}
+
+.message-type {
+  color: #231f20;
+}
+
+/* Message sender and receiver */
+.message-sender.actor,
+.message-receiver.actor {
+  color: #8d3970;
+}
+
+.message-sender.participant,
+.message-receiver.participant {
+  color: #005c84;
+}
+
+/* Comments and notes */
+.message-comment {
+  color: #495961;
+  background-color: #fffff4;
+  border-left: 3px solid #495961;
+}
+
+.standalone-comment {
+  background-color: #fffff4;
+  border-left: 3px solid #495961;
+}
+
+.associated-comment {
+  border-left: 5px solid #d5007f;
+  border-top: 1px dotted #d5007f;
+  border-right: 1px dotted #d5007f;
+  border-bottom: 1px dotted #d5007f;
+}
+
+.comment-step,
+.note-indicator {
+  color: #495961;
+}
+
+.standalone-comment-container {
+  background-color: #f8f8f8;
+}
+
+/* Notes */
+.note-step {
+  background-color: #f5f5f5;
+  border-left: 3px solid #495961;
+}
+
+.note-content {
+  background-color: #fffff4;
+}
+
+/* Lifecycle steps */
+.lifecycle-step {
+  background-color: #f0f2e8;
+  border-left: 3px solid #495961;
+}
+
+.creation-step {
+  border-left-color: #1e8765;
+}
+
+.destruction-step {
+  border-left-color: #e73037;
+}
+
+.activate-step {
+  border-left-color: #005c84;
+}
+
+.deactivate-step {
+  border-left-color: #495961;
+}
+
+/* Conditional blocks */
+.conditional-step {
+  background-color: #f5f5f5;
+  border-left: 3px solid #005c84;
+}
+
+.conditional-context {
+  color: #495961;
+}
+
+.branch-container {
+  border: 1px dotted #495961;
+}
+
+.branch-title {
+  color: #005c84;
+}
+
+.branch {
+  border: 1px dashed #495961;
+  background-color: #e1e8ec;
+}
+
+.branch-condition {
+  color: #231f20;
+}
+
+.branch-outcome {
+  color: #00131d;
+}
+
+/* Break blocks */
+.break-step {
+  border-left-color: #8d3970;
+}
+
+.break-container {
+  background-color: #fff8f8;
+  border: 1px dotted #8d3970;
+}
+
+.break-condition-header {
+  color: #8d3970;
+}
+
+.break-subsequent-note {
+  color: #495961;
+  border-top: 1px dashed #495961;
+}
+
+/* Parallel blocks */
+.parallel-step .branch-container {
+  border-left: 3px solid #1e8765;
+}
+
+.parallel-step .branch {
+  background-color: rgba(76, 175, 80, 0.05);
+}
+
+.parallel-step .branch-condition {
+  color: #8d3970;
+}
+
+.sequence-summary-heading,
+.diagram-notation-heading,
+.sequence-reading-heading {
+  color: #002e3b;
+}
+
+.success-path {
+  color: #00131d;
+  border: 1px dotted #1e8765;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.alternative-path {
+  color: #00131d;
+  border: 1px dotted #005c84;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.break-path {
+  color: #00131d;
+  border: 1px dotted #d5007f;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+h6.comment-category {
+  color: #002e3b;
+}
+
+/* Original message numbers */
+.original-message-number {
+  color: #00131d;
+}
+
+/* Flowchart-specific colours */
+.diagram-condition {
+  background-color: #f3f9ff;
+  border-bottom: 1px solid #005c84;
+}
+
+/* =================
+   TIMELINE COLOURS
+   ================= */
+/* Section backgrounds */
+.timeline-overview {
+  background-color: #e1e8ec;
+}
+
+.timeline-structure {
+  background-color: #f3f9ff;
+}
+
+.timeline-content {
+  background-color: #fafafa;
+}
+
+.timeline-insights {
+  background-color: #f0f2e8;
+}
+
+.timeline-structure,
+.timeline-content,
+.timeline-insights {
+  border: 1px solid #231f20;
+}
+
+/* Section elements */
+.timeline-section-heading {
+  color: #002e3b;
+  border-bottom-color: #00131d;
+}
+
+.timeline-section-name {
+  color: #005c84;
+}
+
+/* Content elements */
+.timeline-time {
+  color: #005c84;
+  background-color: #f3f9ff;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  border-bottom: 1px solid #005c84;
+}
+
+.timeline-event {
+  color: #00131d;
+}
+
+.timeline-start,
+.timeline-end,
+.timeline-sections,
+.timeline-events {
+  color: #005c84;
+  font-weight: bold;
+}
+
+/* List items */
+.timeline-time-period {
+  border-left: 3px solid #005c84;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.timeline-time-period:nth-child(odd) {
+  border-left-color: #8d3970;
+}
+
+.timeline-time-period::before {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #005c84;
+  left: -6px;
+  top: 6px;
+}
+
+.timeline-time-period:nth-child(odd)::before {
+  background-color: #8d3970;
+}
+
+/* =================
+   USER JOURNEY COLOURS
+   ================= */
+
+/* Section backgrounds */
+.journey-overview {
+  background-color: #e1e8ec;
+}
+
+.journey-details {
+  background-color: #f3f9ff;
+}
+
+.journey-analysis {
+  background-color: #f0f2e8;
+}
+
+.journey-visual {
+  background-color: #fafafa;
+}
+
+.score-value {
+  border: 1px solid #00131d;
+}
+
+/* Journey sections */
+.journey-section-name {
+  color: #002e3b;
+  border-bottom-color: #00131d;
+}
+
+.journey-task {
+  background-color: #fafafa;
+  border-color: #231f20;
+  border-left-color: #005c84;
+}
+
+/* Task elements */
+.task-name {
+  color: #00131d;
+}
+
+.detail-label {
+  color: #495961;
+}
+
+/* Score styling with different value indicators */
+.score-value {
+  background-color: #f3f9ff;
+  color: #00131d;
+}
+
+.score-1,
+.score-2 {
+  background-color: #fff8f8;
+  color: #8d3970;
+}
+
+.score-3,
+.score-4 {
+  background-color: #f5f5f5;
+  color: #495961;
+}
+
+.score-5,
+.score-6 {
+  background-color: #f3f9ff;
+  color: #005c84;
+}
+
+.score-7,
+.score-8,
+.score-9,
+.score-10 {
+  background-color: #f0f2e8;
+  color: #1e8765;
+}
+
+/* Satisfaction bar styling */
+.satisfaction-indicator {
+  background-color: #f5f5f5;
+  border-color: #495961;
+}
+
+.satisfaction-bar {
+  background-color: #005c84;
+}
+
+.satisfaction-bar[data-level="very-low"],
+.satisfaction-bar[data-level="low"] {
+  background-color: #8d3970;
+}
+
+.satisfaction-bar[data-level="medium"] {
+  background-color: #495961;
+}
+
+.satisfaction-bar[data-level="high"],
+.satisfaction-bar[data-level="very-high"] {
+  background-color: #1e8765;
+}
+
+/* Insights section styling */
+.journey-insight {
+  background-color: #fafafa;
+  border-color: #231f20;
+  border-left-color: #005c84;
+}
+
+.journey-insight:nth-child(odd) {
+  background-color: #f3f9ff;
+}
+
+/* Specific insight types */
+.high-satisfaction {
+  border-left-color: #1e8765;
+}
+
+.low-satisfaction {
+  border-left-color: #8d3970;
+}
+
+.key-participant {
+  border-left-color: #005c84;
+}
+
+.complex-stage {
+  border-left-color: #495961;
+}
+
+.insight-title {
+  color: #002e3b;
+}
+
+/* Actor and special elements */
+.key-actor {
+  color: #005c84;
+}
+
+.stage-name {
+  color: #005c84;
+}
+
+/* Diagram title and count elements */
+.diagram-actors,
+.diagram-scores {
+  color: #00131d;
+}
+
+/****************************************************************************************************/
+
+/* =================
+ STRUCTURE & LAYOUT
+ ================= */
+
+.mermaid-description {
+  font-size: 1rem;
+}
+
+/*Flowchart-specific structure*/
+
+/* Flowchart structure styling */
+.flowchart-description ol {
+  counter-reset: flowchart-steps;
+  list-style-type: none;
+  padding-left: 1rem;
+}
+
+/* Increased padding for list items to accommodate double-digit numbers */
+.flowchart-description ol > li {
+  margin-bottom: 1rem;
+  position: relative;
+  padding-left: 2.5rem; /* Increased from 1.5rem to 2.5rem */
+}
+
+/* Decision node styling */
+.flowchart-description li ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  list-style-type: none;
+}
+
+.flowchart-description li ul li {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.flowchart-description li ul li:before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* Accessibility-friendly alternatives to italics */
+.diagram-condition {
+  font-weight: normal;
+  margin: 0 0.25rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  display: inline-block;
+  position: relative;
+}
+
+/* Option 1: Quotation symbol approach */
+.diagram-condition::before {
+  content: '"';
+}
+
+.diagram-condition::after {
+  content: '"';
+}
+
+.diagram-condition {
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  padding-bottom: 0.1rem;
+}
+
+.terminal-node {
+  position: relative;
+}
+
+.diagram-decision {
+  font-weight: 600;
+}
+
+.diagram-action {
+  font-weight: 100;
+}
+
+.diagram-node {
+  font-weight: 600;
+}
+
+.diagram-action {
+  position: relative;
+}
+
+/* Comment categories */
+h6.comment-category {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+h5.flow-heading {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Comment lists by category */
+.structure-comments,
+.flow-comments,
+.functionality-comments,
+.other-comments {
+  margin-bottom: 1rem;
+}
+
+/* Original message numbers */
+.original-message-number {
+  font-weight: bold;
+}
+
+/* Better spacing for steps with original message numbers */
+li.process-step .step-number {
+  display: inline-block;
+  /*min-width: 180px; */
+}
+
+/* Section headings */
+.mermaid-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.mermaid-section-heading {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Specific section styling */
+.sequence-overview,
+.mermaid-section,
+.mermaid-short-description {
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* List styling */
+.mermaid-description ul,
+.mermaid-description ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.mermaid-description li {
+  margin-bottom: 0.5rem;
+}
+
+/* Actor and Participant sections */
+.sequence-actors,
+.sequence-participants {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.actor-list,
+.participant-list {
+  list-style-type: none;
+  padding-left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.actor-item,
+.participant-item {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+/* Actor and participant names */
+.actor-name {
+  font-weight: bold;
+}
+
+.participant-name {
+  font-weight: bold;
+}
+
+/* Group styling */
+.actor-group,
+.participant-group {
+  font-style: normal;
+  margin-left: 0.5rem;
+}
+
+.group-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.group-item {
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+}
+
+.group-name {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.group-members {
+  display: block;
+  font-size: 0.9rem;
+}
+
+/* Process steps styling */
+.process-step {
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+.step-number {
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+.message-content {
+  font-weight: 500;
+  margin-left: 0.25rem;
+}
+
+.message-number {
+  font-weight: 600;
+}
+
+.message-type {
+  font-style: normal;
+  margin: 0 0.25rem;
+}
+
+/* Message sender and receiver */
+.message-sender,
+.message-receiver {
+  display: inline;
+}
+
+.message-sender.actor,
+.message-receiver.actor {
+  font-weight: bold;
+}
+
+.message-sender.participant,
+.message-receiver.participant {
+  font-weight: bold;
+}
+
+/* Comments and notes */
+.message-comment {
+  margin-top: 0.25rem;
+  margin-left: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-style: normal;
+}
+
+.standalone-comment {
+  padding: 0.5rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.associated-comment {
+  margin-left: 2rem;
+  padding-left: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.comment-step,
+.note-indicator {
+  font-style: normal;
+}
+
+.comment-icon {
+  margin-right: 0.25rem;
+}
+
+.comment-label,
+.comment-prefix {
+  font-weight: bold;
+}
+
+.comment-content {
+  font-style: normal;
+}
+
+.comments-list .comment-item {
+  margin-bottom: 0.5rem;
+}
+
+.standalone-comment-container {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Notes */
+.note-step {
+  padding-left: 0.5rem;
+}
+
+.note-content {
+  font-weight: 500;
+  position: relative;
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  margin-left: 0.5rem;
+}
+
+.notes-summary {
+  margin-top: 1rem;
+}
+
+.notes-list {
+  margin-top: 0.5rem;
+}
+
+/* Lifecycle steps */
+.lifecycle-step {
+  padding-left: 0.5rem;
+}
+
+.lifecycle-event {
+  display: inline-block;
+  margin-left: 0.5rem;
+}
+
+/* Conditional blocks */
+.conditional-step {
+  padding: 0.75rem;
+}
+
+.conditional-context {
+  font-style: normal;
+  margin-bottom: 0.5rem;
+}
+
+.branch-container {
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.branch-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.branch {
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.branch-condition {
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.branch-outcome {
+  font-style: normal;
+  margin: 0.25rem 0 0.5rem 1rem;
+}
+
+.branch-messages {
+  padding-left: 1.5rem;
+}
+
+.message-item {
+  margin-bottom: 0.25rem;
+}
+
+/* Break blocks */
+.break-container {
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.break-condition-header {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.break-explanation {
+  margin-bottom: 0.5rem;
+}
+
+.break-action-list {
+  margin-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.break-action-item {
+  margin-bottom: 0.25rem;
+}
+
+.break-subsequent-note {
+  font-style: normal;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+/* Parallel blocks */
+.parallel-step .branch {
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+
+.parallel-step .branch-condition {
+  font-weight: bold;
+}
+
+/* Explanations and summaries */
+.sequence-explanation {
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.sequence-summary-heading,
+.diagram-notation-heading,
+.sequence-reading-heading {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.sequence-paths {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.sequence-path {
+  margin-bottom: 0.5rem;
+}
+
+.condition-point {
+  margin: 0.25rem 0 0.25rem 1.5rem;
+}
+
+.notation-list {
+  columns: 1;
+}
+
+/* Diagram title */
+.diagram-title {
+  font-weight: bold;
+}
+
+/* Flowchart structure styling */
+.flowchart-description ol {
+  counter-reset: flowchart-steps;
+  list-style-type: none;
+  padding-left: 1rem;
+}
+
+/* Increased padding for list items to accommodate double-digit numbers */
+.flowchart-description ol > li {
+  margin-bottom: 1rem;
+  position: relative;
+  padding-left: 2.5rem; /* Increased from 1.5rem to 2.5rem */
+}
+
+/* Only increment counter for direct children of ordered list */
+.flowchart-description ol > li:before {
+  counter-increment: flowchart-steps;
+  content: counter(flowchart-steps) ".";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: bold;
+  min-width: 2rem; /* Ensure a minimum width for the counter */
+  text-align: right; /* Right-align the numbers */
+}
+
+/* Decision node styling */
+.flowchart-description li ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  list-style-type: none;
+}
+
+.flowchart-description li ul li {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.flowchart-description li ul li:before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* Accessibility-friendly alternatives to italics */
+.diagram-condition {
+  font-weight: normal;
+  margin: 0 0.25rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  display: inline-block;
+  position: relative;
+}
+
+/* Option 1: Quotation symbol approach */
+.diagram-condition::before {
+  content: '"';
+}
+
+.diagram-condition::after {
+  content: '"';
+}
+
+.diagram-condition {
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  padding-bottom: 0.1rem;
+}
+
+.state-disclaimer {
+  text-align: center;
+}
+
+/* =================
+   GANTT CHART LAYOUT
+   ================= */
+/* Main container structure */
+.gantt-description {
+  margin-bottom: 1.5rem;
+}
+
+.gantt-milestones,
+.gantt-parallel-work,
+.gantt-critical-path-section,
+.gantt-risk-areas,
+.gantt-phase-transitions,
+.gantt-exclusions {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.gantt-dependencies-note,
+.gantt-overview,
+.gantt-sections {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Section headings */
+.gantt-title,
+.gantt-date-format,
+.gantt-project-duration,
+.gantt-exclusion-impact {
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.gantt-task-duration,
+.gantt-critical-task-duration {
+  font-weight: normal;
+  margin: 0 0.25rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  display: inline-block;
+  position: relative;
+}
+
+.gantt-exclusions-heading,
+.gantt-milestones-heading,
+.gantt-parallel-heading,
+.gantt-critical-path-heading,
+.gantt-risk-heading,
+.gantt-transitions-heading {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid;
+}
+
+.gantt-sections-intro,
+.gantt-milestones-intro,
+.gantt-parallel-intro,
+.gantt-critical-path-intro,
+.gantt-exclusion-note,
+.gantt-critical-path-note {
+  margin-bottom: 1rem;
+}
+
+/* Lists */
+.gantt-section-list,
+.gantt-task-list,
+.gantt-milestone-list,
+.gantt-parallel-list,
+.gantt-critical-path-list,
+.gantt-risk-list,
+.gantt-transitions-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.gantt-section-list > li {
+  margin-bottom: 1.5rem;
+}
+
+.gantt-task-list {
+  padding-left: 1rem;
+}
+
+.gantt-milestone-item,
+.gantt-parallel-item,
+.gantt-critical-path-item,
+.gantt-risk-item,
+.gantt-transition-item {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.gantt-milestone-item:before,
+.gantt-parallel-item:before,
+.gantt-critical-path-item:before,
+.gantt-risk-item:before,
+.gantt-transition-item:before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  font-weight: bold;
+}
+
+/* Section elements */
+.gantt-section {
+  margin-bottom: 1.5rem;
+}
+
+.gantt-section-header {
+  margin-bottom: 0.75rem;
+}
+
+.gantt-section-name {
+  font-weight: bold;
+  display: inline-block;
+}
+
+.gantt-section-dates {
+  display: inline-block;
+  margin-left: 0.5rem;
+}
+
+/* Task styling */
+.gantt-task {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.gantt-task::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+}
+
+.gantt-milestone::before {
+  content: "◆";
+}
+
+.gantt-task-name,
+.gantt-milestone-name,
+.gantt-critical-task-name {
+  font-weight: bold;
+}
+
+.gantt-task-status,
+.gantt-task-type,
+.gantt-resource-note {
+  display: inline-block;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  margin: 0 0.3rem;
+}
+
+.gantt-task-start-date,
+.gantt-task-end-date,
+.gantt-milestone-date,
+.gantt-parallel-date,
+.gantt-transition-date {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.gantt-task-dependency,
+.gantt-task-until {
+  text-decoration: none;
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.1em;
+}
+
+.gantt-task-duration,
+.gantt-critical-task-duration {
+  white-space: nowrap;
+}
+
+/* Special sections */
+.gantt-exclusions,
+.gantt-critical-path-section,
+.gantt-risk-areas {
+  border: 1px solid;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.gantt-exclusion-weekends,
+.gantt-exclusion-dates {
+  font-weight: 500;
+}
+
+.gantt-from-phase,
+.gantt-to-phase {
+  font-weight: bold;
+}
+
+/* =================
+   MINDMAP STRUCTURE & LAYOUT
+   ================= */
+/* General mindmap container */
+.mindmap-description {
+  margin-bottom: 2rem;
+}
+
+/* Mindmap sections */
+.mindmap-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.mindmap-section-heading {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid;
+}
+
+/* Overview section */
+.mindmap-root-concept {
+  font-weight: bold;
+}
+
+.mindmap-main-topics {
+  padding-left: 1.5rem;
+}
+
+.mindmap-topic {
+  font-weight: bold;
+}
+
+/* Hierarchy structure */
+.mindmap-hierarchy {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.mindmap-hierarchy ul {
+  list-style-type: none;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Node styling */
+.mindmap-node {
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+/* Add different shapes */
+.mindmap-node-circle {
+  border-radius: 1.5rem;
+}
+
+.mindmap-node-square {
+  border-radius: 0;
+}
+
+.mindmap-node-rounded {
+  border-radius: 0.5rem;
+}
+
+.mindmap-node-cloud {
+  border-radius: 1rem 0.5rem 1rem 0.5rem;
+}
+
+.mindmap-node-hexagon {
+  position: relative;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.mindmap-node-hexagon::before,
+.mindmap-node-hexagon::after {
+  content: "";
+  position: absolute;
+  width: 0.75rem;
+  height: 100%;
+  top: 0;
+}
+
+.mindmap-node-hexagon::before {
+  left: 0;
+  border-left: 1px solid;
+  transform: skewY(-30deg);
+}
+
+.mindmap-node-hexagon::after {
+  right: 0;
+  border-right: 1px solid;
+  transform: skewY(30deg);
+}
+
+.mindmap-node-bang {
+  border-radius: 0.5rem 1.5rem 0.5rem 1.5rem;
+}
+
+/* Text within nodes */
+.mindmap-node-text {
+  display: inline-block;
+  padding: 0.25rem;
+}
+
+/* Level formatting */
+.mindmap-level-1 {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.mindmap-level-2 {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.mindmap-level-3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.mindmap-level-4,
+.mindmap-level-5,
+.mindmap-level-6 {
+  font-size: 1rem;
+}
+
+/* Icon styling */
+.has-icon {
+  padding-left: 2rem;
+  position: relative;
+}
+
+.has-icon::before {
+  content: "✦";
+  /* Default icon placeholder */
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  width: 1rem;
+  height: 1rem;
+  display: inline-block;
+  text-align: center;
+}
+
+/* Insights section */
+.mindmap-insights-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.mindmap-insight {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  position: relative;
+  padding-left: 2rem;
+}
+
+.mindmap-insight::before {
+  content: "→";
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  font-weight: bold;
+}
+
+/* Short description styles */
+.diagram-root-node {
+  font-weight: bold;
+}
+
+.diagram-node-count,
+.diagram-level-count {
+  font-weight: bold;
+}
+
+.diagram-main-branches {
+  display: inline-block;
+}
+
+.diagram-branch-name {
+  font-weight: 600;
+}
+
+/* =================
+   PIE CHART STRUCTURE & LAYOUT
+   ================= */
+/* General sections */
+.chart-construction,
+.chart-insights,
+.chart-data,
+.chart-patterns {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Segment lists */
+.diagram-segment-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.diagram-segment-list li {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.diagram-segment-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  font-weight: bold;
+}
+
+/* Insights formatting */
+.diagram-insights-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.diagram-insight {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+.diagram-insight-primary {
+  padding-left: 2rem;
+  position: relative;
+}
+
+.diagram-insight-primary::before {
+  content: "★";
+  position: absolute;
+  left: 0.5rem;
+  top: 0.75rem;
+}
+
+.diagram-insight-total,
+.diagram-insight-largest,
+.diagram-insight-smallest {
+  padding-left: 2rem;
+  position: relative;
+}
+
+.diagram-insight-total::before,
+.diagram-insight-largest::before,
+.diagram-insight-smallest::before {
+  content: "→";
+  position: absolute;
+  left: 0.5rem;
+  top: 0.75rem;
+}
+
+/* Data points formatting */
+.diagram-data-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+  columns: 1;
+}
+
+@media (min-width: 768px) {
+  .diagram-data-list {
+    columns: 2;
+  }
+}
+
+.diagram-data-item {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+  break-inside: avoid;
+}
+
+.diagram-data-item::before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+}
+
+/* In-text elements */
+.diagram-segment {
+  font-weight: 600;
+}
+
+.diagram-percentage,
+.diagram-value,
+.diagram-count {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.diagram-proportion {
+  font-weight: normal;
+  font-weight: bold;
+}
+
+/* Distribution patterns */
+.diagram-pattern {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  margin: 0 0.25rem;
+  font-weight: 500;
+}
+
+/* =================
+   PIE CHART STRUCTURE & LAYOUT
+   ================= */
+
+/* General sections */
+.chart-construction,
+.chart-insights,
+.chart-data,
+.chart-patterns {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Segment lists */
+.diagram-segment-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.diagram-segment-list li {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.diagram-segment-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  font-weight: bold;
+}
+
+/* Insights formatting */
+.diagram-insights-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.diagram-insight {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  position: relative;
+}
+
+.diagram-insight-primary {
+  padding-left: 2rem;
+  position: relative;
+}
+
+.diagram-insight-primary::before {
+  content: "★";
+  position: absolute;
+  left: 0.5rem;
+  top: 0.75rem;
+}
+
+.diagram-insight-total,
+.diagram-insight-largest,
+.diagram-insight-smallest {
+  padding-left: 2rem;
+  position: relative;
+}
+
+.diagram-insight-total::before,
+.diagram-insight-largest::before,
+.diagram-insight-smallest::before {
+  content: "→";
+  position: absolute;
+  left: 0.5rem;
+  top: 0.75rem;
+}
+
+/* Data points formatting */
+.diagram-data-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+  columns: 1;
+}
+
+@media (min-width: 768px) {
+  .diagram-data-list {
+    columns: 2;
+  }
+}
+
+.diagram-data-item {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+  break-inside: avoid;
+}
+
+.diagram-data-item::before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+}
+
+/* In-text elements */
+.diagram-segment {
+  font-weight: 600;
+}
+
+.diagram-percentage,
+.diagram-value,
+.diagram-count {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.diagram-proportion {
+  font-weight: bold;
+}
+
+/* Distribution patterns */
+.diagram-pattern {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  margin: 0 0.25rem;
+  font-weight: 500;
+}
+
+/* =================
+   TIMELINE STRUCTURE & LAYOUT
+   ================= */
+/* Main timeline sections */
+.timeline-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.timeline-overview,
+.timeline-structure,
+.timeline-content,
+.timeline-insights {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Section elements */
+.timeline-section-heading {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid;
+}
+
+.timeline-section-container {
+  margin-bottom: 1.5rem;
+}
+
+.timeline-section-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+/* Lists and items */
+.timeline-sections-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.timeline-section-item {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.timeline-section-item::before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  top: 0;
+}
+
+.timeline-events-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.timeline-time-period {
+  margin-bottom: 1rem;
+  padding-left: 0;
+}
+
+.timeline-period-events {
+  list-style-type: disc;
+  padding-left: 2rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Content elements */
+.timeline-time {
+  font-weight: bold;
+  display: inline-block;
+  margin-right: 0.25rem;
+}
+
+.timeline-event {
+  margin-bottom: 0.5rem;
+}
+
+.timeline-start,
+.timeline-end {
+  font-weight: bold;
+}
+
+/* =================
+   USER JOURNEY STRUCTURE & LAYOUT
+   ================= */
+
+/* Main journey sections */
+.journey-overview,
+.journey-details,
+.journey-analysis,
+.journey-visual {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Journey sections and tasks */
+.journey-section {
+  margin-bottom: 1.5rem;
+}
+
+.journey-section-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid;
+}
+
+.journey-tasks {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.journey-task {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid;
+  border-left-width: 3px;
+}
+
+/* Task elements */
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.task-name {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.task-details {
+  list-style-type: none;
+  padding-left: 0;
+  margin-top: 0.5rem;
+}
+
+.task-detail {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.task-detail::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+}
+
+.detail-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  min-width: 7rem;
+}
+
+/* Satisfaction score visualization */
+.score-value {
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.satisfaction-indicator {
+  display: inline-block;
+  width: 100px;
+  height: 0.75rem;
+  border: 1px solid;
+  border-radius: 3px;
+  margin-left: 0.5rem;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.satisfaction-bar {
+  display: block;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* Actor list in task details */
+.actor-list {
+  display: inline;
+}
+
+/* Journey insights section */
+.journey-insights {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.journey-insight {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid;
+  border-left-width: 3px;
+  position: relative;
+}
+
+.insight-title {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.insight-details {
+  margin-top: 0.5rem;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+/* Special classes for actors and key elements */
+.key-actor,
+.stage-name {
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .satisfaction-indicator {
+    width: 80px;
+  }
+
+  .task-detail {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .detail-label {
+    margin-bottom: 0.25rem;
+  }
+}
+/* Hide Quadrant table at small screen sizes */
+@media (max-width: 956px) {
+  .points-table-section {
+    display: none;
+  }
+}
+
+/* =================
+   ARCHITECTURE DIAGRAM LAYOUT
+   ================= */
+
+/* Main container */
+.architecture-description {
+  margin-bottom: 2rem;
+}
+
+/* Section styling */
+.architecture-overview,
+.architecture-structure,
+.architecture-services,
+.architecture-connections,
+.architecture-insights,
+.architecture-visual-notes {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Groups structure */
+.architecture-groups-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.architecture-group {
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.architecture-children {
+  list-style-type: none;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  position: relative;
+}
+
+.architecture-children::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.architecture-group-name {
+  font-weight: bold;
+  display: inline-block;
+}
+
+.architecture-icon-info {
+  font-size: 0.9rem;
+  margin-left: 0.5rem;
+}
+
+/* Services styling */
+.architecture-services-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.architecture-service-item {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  border-left: 3px solid;
+  border-top: 3px solid;
+  border-right: 3px solid;
+  border-bottom: 3px solid;
+  position: relative;
+}
+
+.architecture-service-name {
+  font-weight: 600;
+}
+
+.architecture-service-icon {
+  margin-left: 0.5rem;
+}
+
+.architecture-parent-group {
+  font-weight: 600;
+}
+
+/* Connections styling */
+.architecture-connections-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.architecture-connection {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.architecture-connection::before {
+  content: "→";
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+.architecture-source,
+.architecture-target,
+.architecture-junction-id {
+  font-weight: 600;
+}
+
+.architecture-junction-group,
+.architecture-junction-connections {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+.architecture-junction-group h6,
+.architecture-junction-connections h6 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.architecture-main-groups {
+  display: inline;
+}
+
+/* Export controls */
+/* Mermaid export feedback */
+.mermaid-export-feedback {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+  height: 0;
+  overflow: hidden;
+}
+
+.mermaid-export-feedback.visible {
+  opacity: 1;
+  height: auto;
+  overflow: visible;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+/* Print styles for better formatting when printed */
+@media print {
+  .gantt-overview,
+  .gantt-sections,
+  .gantt-milestones,
+  .gantt-critical-path-section,
+  .gantt-task {
+    page-break-inside: avoid;
+  }
+  .mindmap-section,
+  .mindmap-hierarchy > li {
+    page-break-inside: avoid;
+  }
+
+  .mindmap-section-heading {
+    page-break-after: avoid;
+  }
+  .gantt-section-header,
+  .gantt-exclusions-heading,
+  .gantt-milestones-heading,
+  .gantt-parallel-heading,
+  .gantt-critical-path-heading {
+    page-break-after: avoid;
+  }
+  .mermaid-description {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+
+  .mermaid-detailed-description {
+    display: block !important;
+    padding-left: 0;
+  }
+
+  .mermaid-figcaption {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+  }
+
+  /* Ensure sr-only content is visible in print */
+  .sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* Group all elements that need to avoid page breaks inside */
+  .process-step,
+  .conditional-step,
+  .break-step,
+  .branch-container,
+  .branch,
+  .sequence-actors,
+  .sequence-participants {
+    page-break-inside: avoid;
+  }
+
+  .mermaid-section-heading {
+    page-break-after: avoid;
+  }
+  .mermaid-export-controls,
+  .mermaid-controls,
+  .mermaid-view-controls {
+    display: none !important;
+  }
+  .mermaid-description {
+    display: block !important;
+  }
+  .chart-construction,
+  .chart-insights,
+  .chart-data,
+  .chart-patterns {
+    page-break-inside: avoid;
+  }
+
+  .diagram-data-list {
+    columns: 1;
+  }
+  .timeline-section,
+  .timeline-section-container,
+  .timeline-time-period {
+    page-break-inside: avoid;
+  }
+
+  .timeline-section-heading,
+  .timeline-section-name {
+    page-break-after: avoid;
+  }
+
+  .journey-section,
+  .journey-task,
+  .journey-insight {
+    page-break-inside: avoid;
+    border: 1px solid #000;
+  }
+
+  .journey-section-name {
+    page-break-after: avoid;
+  }
+
+  .satisfaction-indicator {
+    border: 1px solid #000;
+  }
+
+  .satisfaction-bar {
+    print-color-adjust: exact;
+  }
+}

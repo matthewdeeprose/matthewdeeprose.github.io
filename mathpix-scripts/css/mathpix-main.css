@@ -1,0 +1,3153 @@
+/* ===========================================
+   COLOUR-ONLY DECLARATIONS (TOP)
+   =========================================== */
+
+/*temp*/
+
+/* ========================================
+   COLOR DEFINITIONS
+   ======================================== */
+
+.mathpix-processing-options {
+  border: 1px solid currentcolor;
+}
+/* modal*/
+
+.mathpix-fullscreen-backdrop {
+  background: #fffff4;
+}
+
+.mathpix-fullscreen-container {
+  color: #231f20;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.mathpix-fullscreen-header {
+  border-bottom: 1px solid currentcolor;
+}
+
+/* Basic Configuration Colours */
+.mathpix-config {
+  border: 1px solid #00131d;
+}
+
+.config-inputs input {
+  border: 0.2rem solid #00131d !important;
+  outline: 0.2rem solid #fffff4 !important;
+}
+
+/* Multi-Format Output Styling – colour */
+.mathpix-format-selection {
+  border: 1px solid #00131d;
+}
+
+.mathpix-format-option {
+  border: 2px solid #00131d;
+  background: #e1e8ec;
+}
+
+.mathpix-format-option:hover {
+  border-color: #005c84;
+  background: #fffff4;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.mathpix-format-option:focus-visible {
+  border-color: #005c84;
+  background: #fffff4;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.mathpix-format-option input[type="radio"]:checked + .format-content {
+  color: #005c84;
+}
+
+.mathpix-format-option
+  input[type="radio"]:checked
+  + .format-content
+  .format-label {
+  color: #005c84;
+}
+
+/* Disabled state for unavailable formats – colour */
+.mathpix-format-option.unavailable {
+  background: #fffff4;
+}
+
+.mathpix-format-option.unavailable:hover {
+  border-color: #fffff4;
+  background: #fffff4;
+  box-shadow: none;
+}
+
+/* HTML Preview – colour */
+.mathpix-html-preview {
+  border: 1px solid #00131d;
+}
+
+.mathpix-html-preview h4 {
+  color: #6c757d;
+}
+
+.preview-content {
+  background: white;
+  border: 1px solid #00131d;
+}
+
+/* Processing Metadata – colour */
+.mathpix-metadata {
+  border: 1px solid #00131d;
+}
+
+.mathpix-info-list dd {
+  font-weight: bold;
+}
+
+/* High contrast support – colour */
+@media (prefers-contrast: high) {
+  .mathpix-copy-btn {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Empty content styling – colour */
+.empty-content {
+  color: #6c757d;
+  background: #fffff4;
+}
+
+.line-data-content {
+  background: #fffff4;
+  border: 1px solid #00131d;
+}
+
+.line-data-summary {
+  border-bottom: 1px solid #e1e8ec;
+}
+
+.line-data-item {
+  border-bottom: 1px solid #e1e8ec;
+}
+
+.line-data-item:last-child {
+  border-bottom: none;
+}
+
+/* Privacy Consent Modal – colour */
+.consent-file-info {
+  border-left: 4px solid #005c84;
+}
+
+.consent-section h3 {
+  color: #00131d;
+}
+
+.consent-section li strong {
+  color: #00131d;
+}
+
+.privacy-protection {
+  background: #e8f5e8;
+  border-left: 4px solid #005051;
+}
+
+.privacy-protection h3 {
+  color: #005051;
+}
+
+.gdpr-compliance {
+  background: #e3f2fd;
+  border-left: 4px solid #005c84;
+}
+
+.gdpr-compliance h3 {
+  color: #005c84;
+}
+
+.data-rights {
+  background: #fff3e0;
+  border-left: 4px solid #d5007f;
+}
+
+.data-rights h3 {
+  color: #d5007f;
+}
+
+.important-notes {
+  background: #ffeaa7;
+  border-left: 4px solid #00131d;
+}
+
+.important-notes h3 {
+  color: #00131d;
+}
+
+/* High contrast mode support – colour */
+@media (prefers-contrast: high) {
+  .consent-section {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Testing Options – colour */
+.consent-testing-options {
+  border: 2px dashed #00131d;
+}
+
+.consent-checkbox {
+  accent-color: #005c84;
+}
+
+.checkbox-label strong {
+  color: #005c84;
+}
+
+.checkbox-label small {
+  color: #00131d;
+}
+
+/* High contrast mode support – colour */
+@media (prefers-contrast: high) {
+  .consent-checkbox {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Phase 3 MVP: Responsive Preview Colours */
+.mathpix-image-preview-container {
+  border: 1px solid #00131d;
+  background: #e1e8ec;
+}
+
+.mathpix-image-preview {
+  border: 1px solid #00131d;
+  box-shadow: 0 2px 8px rgba(0, 19, 29, 0.1);
+}
+
+.mathpix-open-original-btn:hover {
+  box-shadow: 0 0 0 0.4rem #005c84;
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid #00131d;
+}
+
+.mathpix-file-info {
+  color: #00131d;
+}
+
+.mathpix-progress-container {
+  border: 1px solid #00131d;
+  background: #e1e8ec;
+}
+
+.mathpix-progress-bar {
+  background: #fffff4;
+  border: 1px solid #00131d;
+}
+
+.mathpix-progress-fill {
+  background: #005c84;
+}
+
+.mathpix-progress-label {
+  color: #00131d;
+}
+
+.mathpix-comparison-container {
+  border: 1px solid #00131d;
+}
+
+.mathpix-comparison-panel {
+  border: 1px solid #00131d;
+  background: #e1e8ec;
+}
+
+.mathpix-comparison-title {
+  color: #00131d;
+  border-bottom: 2px solid #005c84;
+}
+
+.mathpix-original-image {
+  border: 1px solid #00131d;
+}
+
+.mathpix-rendered-output {
+  background: #fffff4;
+  border: 1px solid #00131d;
+}
+
+.mathpix-confidence-indicator {
+  color: #00131d;
+}
+
+.mathpix-confidence-badge {
+  border: 1px solid #00131d;
+}
+
+.mathpix-confidence-high {
+  background: #e8f5e8;
+  color: #2d5a2d;
+  border-color: #2d5a2d;
+}
+
+.mathpix-confidence-medium {
+  background: #fff3e0;
+  color: #8b5a00;
+  border-color: #8b5a00;
+}
+
+.mathpix-confidence-low {
+  background: #ffeaa7;
+  color: #6d4c00;
+  border-color: #6d4c00;
+}
+
+@media (prefers-contrast: high) {
+  .mathpix-image-preview-container,
+  .mathpix-progress-container,
+  .mathpix-comparison-container {
+    border: 2px solid currentColor;
+  }
+
+  .mathpix-open-original-btn {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Phase 3.1: Enhanced Progress Bar & HTML Preview Colours */
+.html-preview-controls {
+  border: 1px solid #005c84;
+  background: #e8f4f8;
+}
+
+.preview-control-header {
+  background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%);
+}
+
+.preview-stats {
+  color: #00131d;
+}
+
+.line-count {
+  color: #005c84;
+}
+
+.preview-summary {
+  background: rgba(0, 92, 132, 0.05);
+  border-top: 1px solid rgba(0, 92, 132, 0.1);
+  color: #666;
+}
+
+.html-content-collapsed::after {
+  background: linear-gradient(transparent, #fffff4);
+}
+
+.html-fade-overlay {
+  background: linear-gradient(transparent, #fffff4);
+}
+
+.progress-container-enhanced {
+  background: #fffff4;
+  border: 2px solid #005c84;
+  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
+}
+
+.progress-title {
+  color: #00131d;
+}
+
+.progress-subtitle {
+  color: #666;
+}
+
+.cancel-btn {
+  background: #dc3545;
+  color: #ffffff;
+  border: none;
+}
+
+.cancel-btn:hover {
+  background: #c82333;
+}
+
+.progress-container-enhanced .progress-bar {
+  background: #e9ecef;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+  background: linear-gradient(135deg, #005c84 0%, #007ba7 100%);
+}
+
+.progress-shine {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+}
+
+.progress-percentage {
+  color: #005c84;
+}
+
+.progress-container-enhanced .progress-text {
+  color: #00131d;
+}
+
+.detailed-status {
+  color: #666;
+  background: rgba(0, 92, 132, 0.08);
+  border-left: 3px solid #005c84;
+}
+
+.current-stage {
+  color: #005c84;
+}
+
+.stage-separator {
+  color: #005c84;
+}
+
+.time-label {
+  color: #231f20;
+}
+
+.progress-stages::before {
+  background: #e9ecef;
+}
+
+.stage-indicator {
+  background: #fffff4;
+}
+
+.stage-dot {
+  background: #e9ecef;
+  border: 3px solid #e9ecef;
+}
+
+.stage-indicator.active .stage-dot {
+  background: #005c84;
+  border-color: #005c84;
+}
+
+.stage-indicator.completed .stage-dot {
+  background: #005051;
+  border-color: #005051;
+}
+
+.stage-indicator.completed .stage-dot::after {
+  color: white;
+}
+
+.stage-label {
+  color: #666;
+}
+
+.stage-indicator.active .stage-label,
+.stage-indicator.completed .stage-label {
+  color: #00131d;
+}
+
+.content-summary-container {
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+}
+
+.content-summary h4 {
+  color: #005c84;
+}
+
+.content-summary p {
+  color: #00131d;
+}
+
+.content-details {
+  color: #666;
+}
+
+@media (prefers-contrast: high) {
+  .progress-container-enhanced,
+  .html-preview-controls,
+  .content-summary-container {
+    border-width: 3px;
+  }
+
+  .preview-toggle-btn,
+  .cancel-btn {
+    border: 2px solid currentColor;
+  }
+
+  .stage-dot {
+    border-width: 2px;
+  }
+}
+
+/* Phase 2.1: PDF Document Processing Colours */
+.mathpix-pdf-upload-container {
+  border: 1px solid #00131d;
+}
+
+.mathpix-pdf-drop-zone {
+  border: 2px dashed #00131d;
+  background: #e1e8ec;
+}
+
+.mathpix-pdf-drop-zone:hover {
+  border-color: #005c84;
+  background: #fffff4;
+  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.15);
+}
+
+.mathpix-pdf-drop-zone:focus {
+  border-color: #005c84;
+  background: #fffff4;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.mathpix-pdf-drop-zone.drag-over {
+  border-color: #005c84;
+  background: #fffff4;
+}
+
+.mathpix-pdf-options {
+  border: 1px solid #00131d;
+  background: #e1e8ec;
+}
+
+.mathpix-option-group {
+  border: 1px solid #00131d;
+}
+
+.mathpix-option {
+  border: 2px solid #00131d;
+  background: #fffff4;
+}
+
+.mathpix-option:hover {
+  border-color: #005c84;
+  background: #fffff4;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.mathpix-option input[type="radio"]:checked + .option-content {
+  color: #005c84;
+}
+
+.mathpix-option input[type="radio"]:checked + .option-content .option-label {
+  color: #005c84;
+}
+
+.mathpix-custom-range {
+  background: #fffff4;
+  border: 1px solid #00131d;
+}
+
+.mathpix-custom-range input {
+  border: 2px solid #00131d;
+  background: #fffff4;
+}
+
+.mathpix-custom-range input:focus {
+  border-color: #005c84;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.mathpix-format-checkbox {
+  border: 2px solid #00131d;
+  background: #fffff4;
+}
+
+.mathpix-format-checkbox:hover {
+  border-color: #005c84;
+  background: #fffff4;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.mathpix-format-checkbox input[type="checkbox"]:checked + .format-content {
+  color: #005c84;
+}
+
+.mathpix-format-checkbox
+  input[type="checkbox"]:checked
+  + .format-content
+  .format-label {
+  color: #005c84;
+}
+
+.mathpix-process-btn {
+  border: 0.2rem solid #00131d;
+}
+
+.mathpix-pdf-progress {
+  border: 1px solid #00131d;
+  background: #e1e8ec;
+}
+
+.mathpix-progress-bar-container {
+  background: #fffff4;
+  border: 1px solid #00131d;
+}
+
+.mathpix-progress-text {
+  color: #00131d;
+}
+
+.mathpix-status-text {
+  color: #00131d;
+}
+
+.mathpix-timing-text {
+  color: #6c757d;
+}
+
+.mathpix-pdf-results {
+  border: 1px solid #00131d;
+  background: #e1e8ec;
+}
+
+.mathpix-document-info {
+  background: #fffff4;
+  border: 1px solid #00131d;
+}
+
+.mathpix-doc-details dd {
+  color: #005c84;
+  font-weight: bold;
+}
+
+.mathpix-view-selection {
+  border: 1px solid #00131d;
+}
+
+.mathpix-view-option {
+  border: 2px solid #00131d;
+  background: #fffff4;
+}
+
+.mathpix-view-option:hover {
+  border-color: #005c84;
+  background: #fffff4;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.mathpix-view-option input[type="radio"]:checked + .view-content {
+  color: #005c84;
+}
+
+.mathpix-view-option input[type="radio"]:checked + .view-content .view-label {
+  color: #005c84;
+}
+
+.mathpix-results-tabs {
+  border: 1px solid #00131d;
+}
+
+.mathpix-tab-header {
+  background: #e1e8ec;
+  color: #00131d;
+  outline: 0.2rem solid transparent !important;
+}
+
+.mathpix-tab-header:hover {
+  background: #fffff4;
+  color: #005c84;
+}
+
+.mathpix-tab-header[aria-selected="true"] {
+  background: #fffff4;
+  color: #005c84;
+  border-bottom: 2px solid #005c84;
+}
+
+.mathpix-tab-panel {
+  background: #fffff4;
+  border: 1px solid #00131d;
+  border-top: none;
+}
+
+.mathpix-format-actions {
+  border-bottom: 1px solid #00131d;
+}
+
+.mathpix-copy-btn,
+.mathpix-download-btn,
+.mathpix-preview-btn {
+  background: #fffff4;
+  color: #00131d;
+  border: 2px solid #00131d;
+}
+
+.mathpix-copy-btn:hover,
+.mathpix-download-btn:hover,
+.mathpix-preview-btn:hover {
+  background: #005c84;
+  color: #fffff4;
+  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.2);
+}
+
+.mathpix-html-preview-area {
+  background: #fffff4;
+  border: 1px solid #00131d;
+}
+
+.mathpix-preview-frame {
+  background: white;
+  border: 2px solid #00131d;
+}
+
+.mathpix-docx-info {
+  background: #e3f2fd;
+  border: 1px solid #005c84;
+  color: #00131d;
+}
+
+.mathpix-docx-info p {
+  color: #00131d;
+}
+
+@media (prefers-contrast: high) {
+  .mathpix-pdf-drop-zone,
+  .mathpix-option,
+  .mathpix-format-checkbox,
+  .mathpix-view-option {
+    border-width: 3px;
+  }
+
+  .mathpix-process-btn,
+  .mathpix-cancel-btn,
+  .mathpix-copy-btn,
+  .mathpix-download-btn,
+  .mathpix-preview-btn {
+    border-width: 3px;
+  }
+
+  .mathpix-tab-header[aria-selected="true"] {
+    border-bottom-width: 3px;
+  }
+}
+
+/* Page Navigation Colours */
+.mathpix-page-navigation {
+  background-color: #f8f9fa;
+  border: 1px solid #e1e5e9;
+}
+
+.mathpix-nav-button {
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.mathpix-nav-button:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.mathpix-nav-button:disabled {
+  background-color: #f9fafb;
+  color: #9ca3af;
+}
+
+.mathpix-page-info {
+  color: #4b5563;
+}
+
+.mathpix-page-placeholder {
+  background-color: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  color: #6c757d;
+}
+
+/* ===========================================
+   LAYOUT AND STRUCTURAL STYLES (NO COLOURS)
+   =========================================== */
+
+#openrouter-toggle-visibility svg,
+#openrouter-save-config svg,
+#openrouter-clear-config svg,
+.mathpix-action-button svg,
+.mathpix-copy-button svg,
+.latex-zip-info svg,
+.mathpix-mode-options svg,
+.mathpix-canvas-controls svg,
+.mathpix-canvas-instructions svg {
+  vertical-align: middle;
+  /* space between icon and text */
+}
+
+/* Modal */
+.mathpix-zoom-button {
+  padding: 3px !important;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.mathpix-fullscreen-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+}
+
+.mathpix-fullscreen-modal.active {
+  display: block;
+  overflow: auto;
+}
+
+.mathpix-fullscreen-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.mathpix-fullscreen-container {
+  border-radius: 8px;
+  max-width: 95vw;
+  margin: 2.5vh auto;
+}
+
+.mathpix-fullscreen-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+}
+
+.mathpix-fullscreen-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 0;
+  word-wrap: break-word;
+}
+
+.mathpix-fullscreen-close {
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.mathpix-fullscreen-content {
+  padding: 2rem;
+  overflow: auto;
+}
+
+.mathpix-fullscreen-content mjx-container {
+  max-width: none !important;
+  width: max-content;
+}
+
+/* ===========================================
+   MATHPIX STROKES CANVAS - TIER 1 LAYOUT
+   =========================================== */
+
+.mathpix-draw-container {
+  margin: 2rem auto;
+  max-width: 100%; /* Changed from 850px to allow larger canvases */
+  overflow-x: auto; /* Allow horizontal scroll if canvas too wide */
+}
+
+.mathpix-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%; /* Constrain to container */
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* Ensure canvas container stays centered */
+.mathpix-canvas-container {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Canvas container with border and shadow */
+.mathpix-canvas-container {
+  border: 2px solid #00131d;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 19, 29, 0.1);
+  overflow: hidden; /* Ensures border-radius applies to canvas */
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.mathpix-canvas-container:hover {
+  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
+  border-color: #005c84;
+}
+
+/* Ensure canvas doesn't interfere with resize handle */
+.mathpix-draw-canvas {
+  pointer-events: auto;
+}
+
+/* Make resize area more obvious on hover */
+.mathpix-canvas-wrapper:hover {
+  border-color: rgba(0, 92, 132, 0.2);
+}
+
+/* Custom draggable resize handle */
+.mathpix-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background: #005c84;
+  cursor: nwse-resize;
+  z-index: 1001;
+  border-radius: 0 0 8px 0;
+  opacity: 0.5;
+  transition: opacity 0.2s, width 0.2s, height 0.2s;
+}
+
+/* Canvas Size Controls */
+.mathpix-canvas-size-controls {
+  border: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.size-button-group {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.mathpix-size-btn {
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .size-button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mathpix-size-btn {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-size-btn {
+    transition: none;
+  }
+
+  .mathpix-size-btn:hover {
+    transform: none;
+  }
+}
+
+/* Canvas Instructions */
+.mathpix-canvas-instructions {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Canvas Element */
+.mathpix-draw-canvas {
+  cursor: crosshair;
+  touch-action: none; /* Prevent scrolling on touch */
+  display: block;
+  /* NO fixed width/height - let canvas buffer size control display */
+  /* NO border, padding, or margin - pure dimensions */
+  border: none;
+  padding: 0;
+  margin: 0;
+  /* Prevent any browser default styling */
+  box-sizing: content-box;
+}
+
+/* Canvas Controls */
+.mathpix-canvas-controls {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.mathpix-canvas-btn {
+  font-size: 0.8rem;
+}
+
+.mathpix-canvas-controls .action-button {
+  min-width: 120px;
+}
+
+/* Responsive adjustments - only for mobile */
+@media (max-width: 768px) {
+  .mathpix-draw-container {
+    padding: 1rem;
+    margin: 1rem auto;
+  }
+
+  .mathpix-canvas-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mathpix-canvas-controls .action-button {
+    width: 100%;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-draw-canvas {
+    transition: none;
+  }
+
+  .mathpix-draw-canvas:hover {
+    box-shadow: 0 2px 8px rgba(0, 19, 29, 0.1);
+  }
+}
+
+/* Basic Upload Container Layout */
+.mathpix-upload-container {
+  margin-bottom: 2rem;
+}
+
+.drop-zone {
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-zone p {
+  margin: 0;
+}
+
+.drop-zone small {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+#mathpix-output-container {
+  margin-top: 2rem;
+}
+
+.code-block-wrapper {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.code-block-wrapper pre {
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.code-block-wrapper code {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* Configuration Layout */
+.mathpix-config {
+  margin-top: 2rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.config-inputs {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.config-inputs label {
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.config-inputs input {
+  height: 2.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+#mathpix-save-config {
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+@media (prefers-contrast: high) {
+  .drop-zone {
+    border-width: 3px;
+  }
+}
+
+/* Multi-Format Output Styling – layout */
+.mathpix-format-selection {
+  margin: 2px 0;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.mathpix-format-selection legend {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.mathpix-format-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.5rem;
+}
+
+.mathpix-format-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mathpix-format-option:hover {
+  transform: translateY(-1px);
+}
+
+.mathpix-format-option input[type="radio"] {
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.format-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mathpix-format-option .format-label {
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.mathpix-format-option .format-description {
+  font-size: 0.85rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.mathpix-format-option.unavailable {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mathpix-format-option.unavailable:hover {
+  transform: none;
+}
+
+.mathpix-format-option.unavailable input[type="radio"] {
+  cursor: not-allowed;
+}
+
+.mathpix-format-option.unavailable .format-label::after {
+  content: " (not available)";
+  font-weight: normal;
+  font-size: 0.85rem;
+}
+
+/* Output Display – layout */
+.mathpix-output-display {
+  margin-top: 1rem;
+}
+
+.mathpix-format-panel {
+  display: none;
+}
+
+.mathpix-format-panel.active {
+  display: block;
+}
+
+.mathpix-copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* HTML Preview – layout */
+.mathpix-html-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.mathpix-html-preview h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.preview-content {
+  padding: 0.5rem;
+  border-radius: 4px;
+  min-height: 2rem;
+}
+
+/* Processing Metadata – layout */
+.mathpix-metadata {
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.mathpix-info-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .drop-zone,
+  .mathpix-copy-btn,
+  .mathpix-format-option {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .mathpix-format-option {
+    border-width: 2px;
+  }
+}
+
+/* Phase 3.2: Line Data Section – layout */
+.line-data-section {
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.line-data-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.line-data-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.line-data-toggle:active {
+  transform: translateY(0);
+}
+
+.toggle-icon {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.line-data-toggle[aria-expanded="true"] .toggle-icon {
+  content: "☑";
+}
+
+.toggle-text {
+  flex: 1;
+}
+
+.line-data-content {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.line-data-summary {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.line-data-summary h4 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.line-data-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.line-data-summary-list li {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.line-data-details {
+  margin-top: 1.5rem;
+}
+
+.line-data-details h4 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.line-data-details-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.line-data-item {
+  padding: 0.75rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.line-data-item:last-child {
+  padding-bottom: 0;
+}
+
+/* Screen reader only class for status text */
+.line-data-item .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Responsive adjustments for line data */
+@media (max-width: 768px) {
+  .line-data-section {
+    padding: 0.75rem;
+  }
+
+  .line-data-toggle {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+
+  .line-data-content {
+    padding: 0.85rem;
+  }
+
+  .line-data-summary-list li,
+  .line-data-item {
+    font-size: 0.85rem;
+  }
+}
+
+/* Reduced motion support for line data */
+@media (prefers-reduced-motion: reduce) {
+  .line-data-toggle,
+  .toggle-icon {
+    transition: none;
+  }
+
+  .line-data-toggle:hover {
+    transform: none;
+  }
+}
+
+/* Print styles for line data */
+@media print {
+  .line-data-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .line-data-toggle {
+    display: none;
+  }
+
+  .line-data-content {
+    display: block !important;
+  }
+}
+
+/* Empty content styling – layout */
+.empty-content {
+  padding: 1rem;
+  border-radius: 4px;
+  text-align: center;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .mathpix-format-options {
+    grid-template-columns: 1fr;
+  }
+
+  .mathpix-format-option {
+    padding: 1rem;
+  }
+}
+
+/* Privacy Consent Modal Styling – layout */
+.mathpix-privacy-consent {
+  max-width: 100%;
+  line-height: 1.5;
+}
+
+.consent-file-info {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.consent-file-info p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.consent-section {
+  margin-bottom: 1.5rem;
+}
+
+.consent-section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 1rem;
+}
+
+.consent-section ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+}
+
+.consent-section li {
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
+}
+
+@media (prefers-contrast: high) {
+  .consent-section h3 {
+    text-decoration: underline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consent-section {
+    transition: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .mathpix-privacy-consent {
+    font-size: 0.9rem;
+  }
+
+  .consent-file-info,
+  .privacy-protection,
+  .gdpr-compliance,
+  .data-rights,
+  .important-notes,
+  .consent-question {
+    padding: 0.75rem;
+  }
+
+  .consent-section h3 {
+    font-size: 0.95rem;
+  }
+
+  .consent-section ul {
+    padding-left: 1.25rem;
+  }
+}
+
+/* Testing Options Styling – layout */
+.consent-testing-options {
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+}
+
+.consent-checkbox-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.consent-checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.checkbox-label {
+  flex: 1;
+  line-height: 1.4;
+}
+
+@media (prefers-contrast: high) {
+  .consent-testing-options {
+    border-width: 3px;
+  }
+}
+
+/* Phase 3 MVP: Responsive Preview Layout */
+.mathpix-image-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem auto;
+  padding: 1.5rem;
+  border-radius: 8px;
+  max-width: 450px;
+  width: 100%;
+}
+
+.mathpix-image-preview {
+  max-width: 400px;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  transition: transform 0.2s ease;
+}
+
+.mathpix-image-preview:hover {
+  transform: scale(1.02);
+}
+
+.mathpix-preview-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.mathpix-open-original-btn {
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mathpix-open-original-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
+}
+
+.mathpix-open-original-btn:active {
+  transform: translateY(0);
+}
+
+.mathpix-file-info {
+  font-size: 0.9rem;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.mathpix-file-info strong {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.mathpix-progress-container {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.mathpix-progress-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  position: relative;
+}
+
+.mathpix-progress-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 0%;
+  position: relative;
+}
+
+.mathpix-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.2) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.2) 75%,
+    transparent 75%
+  );
+  background-size: 20px 20px;
+  animation: progress-stripe 1s linear infinite;
+}
+
+@keyframes progress-stripe {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 0;
+  }
+}
+
+.mathpix-progress-label {
+  font-size: 0.95rem;
+  text-align: center;
+  font-weight: 500;
+  min-height: 1.2rem;
+}
+
+.mathpix-comparison-container {
+  display: grid;
+  gap: 1.5rem;
+  margin: 2rem 0;
+  padding: 1rem;
+  border-radius: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.mathpix-comparison-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0;
+  border-radius: 8px;
+  min-height: 200px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.mathpix-comparison-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 1.25rem 1.25rem 0.75rem 1.25rem;
+  padding-bottom: 0.5rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.mathpix-rendered-output {
+  overflow-x: auto;
+  overflow-y: auto;
+  margin: 0 1.25rem 1.25rem 1.25rem;
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.mathpix-rendered-output mjx-container {
+  display: inline-block;
+  max-width: none !important;
+  min-width: max-content;
+}
+.mathpix-original-image {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  max-height: 300px;
+  align-self: center;
+}
+
+.mathpix-rendered-output {
+  min-height: 120px;
+  padding: 1.25rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 1rem;
+  line-height: 1.5;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mathpix-confidence-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.mathpix-confidence-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  min-width: 4rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .mathpix-comparison-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0.75rem;
+  }
+
+  .mathpix-image-preview {
+    max-width: 300px;
+    max-height: 250px;
+  }
+
+  .mathpix-comparison-panel {
+    padding: 1rem;
+  }
+
+  .mathpix-image-preview-container {
+    padding: 1rem;
+    margin: 1rem auto;
+    max-width: 350px;
+  }
+
+  .mathpix-progress-container {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+
+  .mathpix-open-original-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .mathpix-file-info {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .mathpix-comparison-container {
+    gap: 1.25rem;
+  }
+
+  .mathpix-image-preview {
+    max-height: 350px;
+  }
+
+  .mathpix-original-image {
+    max-height: 250px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .mathpix-comparison-container {
+    gap: 2rem;
+    padding: 1.5rem;
+  }
+
+  .mathpix-comparison-panel {
+    padding: 1.5rem;
+  }
+
+  .mathpix-image-preview {
+    max-height: 450px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-image-preview,
+  .mathpix-open-original-btn,
+  .mathpix-progress-fill {
+    transition: none;
+  }
+
+  .mathpix-progress-fill::after {
+    animation: none;
+  }
+
+  .mathpix-image-preview:hover {
+    transform: none;
+  }
+
+  .mathpix-open-original-btn:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .mathpix-image-preview-container,
+  .mathpix-progress-container,
+  .mathpix-comparison-container,
+  .mathpix-comparison-panel {
+    border-width: 2px;
+  }
+
+  .mathpix-open-original-btn {
+    border-width: 2px;
+  }
+
+  .mathpix-confidence-badge {
+    border-width: 2px;
+  }
+}
+
+@media print {
+  .mathpix-image-preview-container,
+  .mathpix-comparison-container {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .mathpix-progress-container {
+    display: none;
+  }
+
+  .mathpix-open-original-btn {
+    display: none;
+  }
+}
+
+/* Phase 3.1: Enhanced Progress Bar & HTML Preview Layout */
+.html-preview-controls {
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.preview-control-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}
+
+.preview-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.preview-toggle-btn:hover {
+  transform: translateY(-1px);
+}
+
+.preview-toggle-btn:active {
+  transform: translateY(0);
+}
+
+.toggle-icon {
+  transition: transform 0.3s ease;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.preview-toggle-btn[aria-expanded="true"] .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.toggle-text {
+  font-weight: 600;
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.preview-stats {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.line-count {
+  font-weight: 700;
+}
+
+.size-info {
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+.preview-summary {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+}
+
+.html-content-container {
+  position: relative;
+  transition: max-height 0.4s ease-in-out;
+  overflow: hidden;
+}
+
+.html-content-collapsed {
+  max-height: 400px;
+  position: relative;
+}
+
+.html-content-expanded {
+  max-height: none;
+}
+
+.html-content-collapsed::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.html-content-expanded::after {
+  opacity: 0;
+}
+
+.mathpix-format-content .html-content-container {
+  margin-top: 0;
+}
+
+.mathpix-format-content .html-preview-controls {
+  margin-bottom: 0.5rem;
+}
+
+.html-fade-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.html-content-expanded .html-fade-overlay {
+  opacity: 0;
+}
+
+.progress-container-enhanced {
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.progress-title-section {
+  flex-grow: 1;
+}
+
+.progress-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.progress-icon {
+  font-size: 1.5rem;
+}
+
+.progress-subtitle {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+  transform: translateY(-1px);
+}
+
+.progress-bar-section {
+  margin-bottom: 1.5rem;
+}
+
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.progress-container-enhanced .progress-bar {
+  flex-grow: 1;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-shine {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  animation: shine 2s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.progress-percentage-display {
+  min-width: 50px;
+  text-align: right;
+}
+
+.progress-percentage {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.progress-details-enhanced {
+  margin-bottom: 1.5rem;
+}
+
+.progress-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.status-left {
+  flex-grow: 1;
+}
+
+.progress-container-enhanced .progress-text {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.detailed-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+.current-stage {
+  font-weight: 600;
+}
+
+.stage-separator {
+  font-weight: bold;
+}
+
+.stage-progress {
+  font-style: italic;
+}
+
+.status-right {
+  min-width: 200px;
+}
+
+.processing-time {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: right;
+}
+
+.time-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.time-label {
+  font-weight: 500;
+}
+
+.time-value {
+  font-weight: 700;
+  font-family: "Courier New", monospace;
+}
+
+.time-estimate {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.progress-stages {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  padding: 1rem 0;
+}
+
+.progress-stages::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 1;
+}
+
+.stage-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  z-index: 2;
+  padding: 0 0.5rem;
+}
+
+.stage-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.stage-indicator.active .stage-dot {
+  transform: scale(1.2);
+}
+
+.stage-indicator.completed .stage-dot::after {
+  content: "✓";
+  font-size: 0.7rem;
+  font-weight: bold;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.stage-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.content-summary-container {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.content-summary h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.content-summary p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+}
+
+.content-details {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.content-details span {
+  margin-right: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .progress-container-enhanced {
+    padding: 1rem;
+  }
+
+  .progress-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .progress-status-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .status-right {
+    min-width: auto;
+  }
+
+  .processing-time {
+    text-align: left;
+  }
+
+  .progress-stages {
+    overflow-x: auto;
+    padding-bottom: 1.5rem;
+  }
+
+  .stage-indicator {
+    min-width: 80px;
+  }
+
+  .preview-control-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .preview-info {
+    align-items: center;
+  }
+
+  .preview-toggle-btn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .progress-container-enhanced {
+    padding: 1.25rem;
+  }
+
+  .progress-status-row {
+    gap: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-toggle-btn,
+  .progress-fill,
+  .stage-dot,
+  .cancel-btn {
+    transition: none;
+  }
+
+  .progress-shine {
+    animation: none;
+  }
+
+  .progress-icon {
+    animation: none;
+  }
+
+  .html-content-container {
+    transition: none;
+  }
+
+  .toggle-icon {
+    transition: none;
+  }
+}
+
+@media print {
+  .progress-container-enhanced,
+  .html-preview-controls {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .cancel-btn,
+  .preview-toggle-btn {
+    display: none;
+  }
+
+  .progress-icon {
+    animation: none;
+  }
+}
+
+/* Phase 2.1: PDF Document Processing Layout */
+.mathpix-pdf-upload-container {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.mathpix-pdf-drop-zone {
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mathpix-pdf-drop-zone p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.mathpix-pdf-drop-zone .help-text {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.mathpix-pdf-options {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.mathpix-pdf-options h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.mathpix-option-group {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.mathpix-option-group legend {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+}
+
+.mathpix-radio-group,
+.mathpix-checkbox-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mathpix-option,
+.mathpix-format-checkbox,
+.mathpix-view-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mathpix-option:hover,
+.mathpix-format-checkbox:hover,
+.mathpix-view-option:hover {
+  transform: translateY(-1px);
+}
+
+.mathpix-option input[type="radio"],
+.mathpix-option input[type="checkbox"],
+.mathpix-format-checkbox input[type="checkbox"],
+.mathpix-view-option input[type="radio"] {
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.option-content,
+.format-content,
+.view-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.option-label,
+.format-label,
+.view-label {
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.option-description,
+.format-description,
+.view-description {
+  font-size: 0.85rem;
+  line-height: 1.3;
+  margin: 0;
+  opacity: 0.8;
+}
+
+.mathpix-custom-range {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.mathpix-custom-range label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.mathpix-custom-range input {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.mathpix-custom-range .help-text {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.mathpix-pdf-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.mathpix-process-btn,
+.mathpix-cancel-btn,
+.mathpix-process-another-btn,
+.mathpix-clear-results-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mathpix-process-btn:hover,
+.mathpix-process-another-btn:hover {
+  transform: translateY(-1px);
+}
+
+.mathpix-cancel-btn:hover,
+.mathpix-clear-results-btn:hover {
+  transform: translateY(-1px);
+}
+
+.mathpix-pdf-progress {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.mathpix-pdf-progress h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.mathpix-progress-bar-container {
+  margin-bottom: 1rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mathpix-progress-text {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.mathpix-progress-details {
+  display: grid;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.mathpix-status-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.mathpix-timing-text {
+  font-size: 0.85rem;
+}
+
+.mathpix-pdf-results {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.mathpix-pdf-results h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.mathpix-document-info {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.mathpix-doc-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.mathpix-doc-details dt {
+  font-weight: 500;
+}
+
+.mathpix-doc-details dd {
+  margin: 0;
+}
+
+.mathpix-results-controls {
+  margin-bottom: 2rem;
+}
+
+.mathpix-view-selection {
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.mathpix-view-selection legend {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+}
+
+.mathpix-view-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.mathpix-results-tabs {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mathpix-tab-headers {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.mathpix-tab-header {
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-radius: 0;
+}
+
+.mathpix-tab-header:first-child {
+  border-top-left-radius: 8px;
+}
+
+.mathpix-tab-header:last-child {
+  border-top-right-radius: 8px;
+}
+
+.mathpix-tab-header:hover {
+  transform: translateY(-1px);
+}
+
+.mathpix-tab-panel {
+  padding: 1.5rem;
+  display: none;
+}
+
+.mathpix-tab-panel.active {
+  display: block;
+}
+
+.mathpix-format-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.mathpix-format-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.mathpix-format-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mathpix-copy-btn,
+.mathpix-download-btn,
+.mathpix-preview-btn {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mathpix-copy-btn:hover,
+.mathpix-download-btn:hover,
+.mathpix-preview-btn:hover {
+  transform: translateY(-1px);
+}
+
+.mathpix-html-preview-area {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.mathpix-html-preview-area h5 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.mathpix-preview-frame {
+  min-height: 200px;
+  padding: 1rem;
+  border-radius: 4px;
+  overflow: auto;
+}
+
+.mathpix-docx-info {
+  padding: 1.5rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.mathpix-docx-info p {
+  margin: 0;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.mathpix-pdf-final-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #00131d;
+}
+
+@media (max-width: 768px) {
+  .mathpix-pdf-options,
+  .mathpix-pdf-progress,
+  .mathpix-pdf-results {
+    padding: 1rem;
+  }
+
+  .mathpix-option-group {
+    padding: 0.75rem;
+  }
+
+  .mathpix-option,
+  .mathpix-format-checkbox,
+  .mathpix-view-option {
+    padding: 0.75rem;
+  }
+
+  .mathpix-view-options {
+    grid-template-columns: 1fr;
+  }
+
+  .mathpix-tab-headers {
+    flex-direction: column;
+  }
+
+  .mathpix-tab-header {
+    border-radius: 0 !important;
+    border-right: none;
+    border-left: none;
+  }
+
+  .mathpix-tab-header:first-child {
+    border-top-left-radius: 8px !important;
+    border-top-right-radius: 8px !important;
+  }
+
+  .mathpix-format-header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .mathpix-format-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .mathpix-pdf-actions,
+  .mathpix-pdf-final-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mathpix-process-btn,
+  .mathpix-cancel-btn,
+  .mathpix-process-another-btn,
+  .mathpix-clear-results-btn {
+    text-align: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .mathpix-view-options {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mathpix-tab-header {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-pdf-drop-zone,
+  .mathpix-option,
+  .mathpix-format-checkbox,
+  .mathpix-view-option,
+  .mathpix-process-btn,
+  .mathpix-cancel-btn,
+  .mathpix-tab-header,
+  .mathpix-copy-btn,
+  .mathpix-download-btn,
+  .mathpix-preview-btn,
+  .mathpix-process-another-btn,
+  .mathpix-clear-results-btn {
+    transition: none;
+  }
+
+  .mathpix-option:hover,
+  .mathpix-format-checkbox:hover,
+  .mathpix-view-option:hover,
+  .mathpix-process-btn:hover,
+  .mathpix-cancel-btn:hover,
+  .mathpix-tab-header:hover,
+  .mathpix-copy-btn:hover,
+  .mathpix-download-btn:hover,
+  .mathpix-preview-btn:hover,
+  .mathpix-process-another-btn:hover,
+  .mathpix-clear-results-btn:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .mathpix-option,
+  .mathpix-format-checkbox,
+  .mathpix-view-option,
+  .mathpix-document-info,
+  .mathpix-view-selection,
+  .mathpix-results-tabs,
+  .mathpix-html-preview-area,
+  .mathpix-docx-info {
+    border-width: 2px;
+  }
+}
+
+@media print {
+  .mathpix-pdf-progress,
+  .mathpix-pdf-actions,
+  .mathpix-format-actions,
+  .mathpix-pdf-final-actions {
+    display: none;
+  }
+
+  .mathpix-pdf-results {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .mathpix-tab-panel {
+    display: block !important;
+  }
+
+  .mathpix-tab-headers {
+    display: none;
+  }
+}
+
+/* Page-by-Page View Mode Navigation Controls */
+.mathpix-page-navigation {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.mathpix-page-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mathpix-nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mathpix-nav-button:hover:not(:disabled) {
+  /* hover effects handled by colour section */
+}
+
+.mathpix-nav-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.mathpix-page-info {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0 0.5rem;
+  min-width: 80px;
+  text-align: center;
+}
+
+.mathpix-view-selection {
+  margin-bottom: 1rem;
+}
+
+.mathpix-view-options {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mathpix-view-option {
+  flex: 1;
+  min-width: 200px;
+}
+
+.mathpix-page-placeholder {
+  padding: 2rem;
+  text-align: center;
+  border-radius: 8px;
+  font-style: italic;
+}
+
+#upload-instructions svg {
+  vertical-align: middle; /* aligns with text baseline */
+  margin-right: 0.5rem; /* space between icon and text */
+}
+
+.mathpix-process-confirm-btn svg {
+  vertical-align: middle;
+  margin-right: 5px;
+}
+.mathpix-process-btn svg {
+  margin-top: 5px;
+  vertical-align: middle;
+  margin-right: 5px;
+  /* space between icon and text */
+}
+
+@media (max-width: 768px) {
+  .mathpix-page-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .mathpix-nav-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ===========================================
+   MATHPIX STROKES CANVAS - TIER 1 COLOURS
+   =========================================== */
+
+/* Canvas Element */
+.mathpix-draw-canvas {
+  background: #fffff4;
+  /* No border on canvas itself - use wrapper instead */
+}
+
+/* High contrast support */
+@media (prefers-contrast: high) {
+  .mathpix-draw-canvas {
+    border-width: 3px;
+  }
+}
+
+/* Processing Options - Structure */
+.mathpix-processing-options {
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.mathpix-processing-options legend {
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0 0.5rem;
+}
+
+.mathpix-option-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.mathpix-option-checkbox,
+.mathpix-option-radio {
+  margin-top: 0.15rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.mathpix-option-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.mathpix-option-text code {
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-family: "Courier New", monospace;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.mathpix-option-description {
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0.75rem 1.75rem;
+  line-height: 1.3;
+}
+
+.mathpix-option-description code {
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+  font-family: "Courier New", monospace;
+  font-size: 0.9em;
+}
+
+.mathpix-delimiter-format {
+  border: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.mathpix-delimiter-format legend {
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.mathpix-radio-label {
+  margin-left: 0.5rem;
+}
+
+.mathpix-option-checkbox:focus,
+.mathpix-option-radio:focus {
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .mathpix-processing-options {
+    padding: 0.75rem;
+  }
+
+  .mathpix-option-label {
+    font-size: 0.85rem;
+  }
+
+  .mathpix-option-description {
+    margin-left: 1.5rem;
+    font-size: 0.75rem;
+  }
+}

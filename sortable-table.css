@@ -1,0 +1,544 @@
+
+
+/**
+ * Sortable Table CSS
+ * 
+ * Styles for sortable tables with accessibility features.
+ * WCAG 2.2 AA compliant
+ */
+
+
+
+/* ===== Base Table Styles ===== */
+.sortable-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1rem 0;
+  border-radius: 4px;
+  overflow-x: auto;
+  display: block;
+    border:1px solid transparent;
+}
+
+/* ===== Table Structure ===== */
+.sortable-table thead th {
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  white-space: normal;
+}
+
+.sortable-table th,
+.sortable-table td {
+  padding: 0.5rem;
+  text-align: left;
+}
+
+/* For specific columns where you want to enforce breaks at spaces */
+.sortable-table thead th.break-at-space {
+  word-spacing: 100vw; /* Forces a break at each space */
+  hyphens: manual; /* Prevents automatic hyphenation */
+  overflow-wrap: break-word;
+}
+
+/* ===== Sort Controls ===== */
+/* Container for header content and button */
+.th-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem;
+}
+
+.th-content {
+  flex: 1;
+  text-align: left;
+}
+
+/* Sort button styles - meets WCAG minimum touch target size */
+.sort-button {
+  background: none;
+  color: #00131d;
+  padding: 0px 5px 15px 5px;
+  border: 0.2rem solid transparent !important;
+  margin: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 4px;
+}
+
+.sort-button:hover {
+  background: transparent !important;
+  box-shadow: 0 0 0 0.4rem transparent !important;
+}
+
+/* Sort icon styles */
+.sort-icon {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  position: relative;
+}
+
+/* Sort direction indicators */
+.sort-button[data-sort-direction="none"] .sort-icon::before {
+  content: "⇵";
+}
+
+.sort-button[data-sort-direction="ascending"] .sort-icon::before {
+  content: "↑";
+}
+
+.sort-button[data-sort-direction="descending"] .sort-icon::before {
+  content: "↓";
+}
+
+/* ===== List Styles within Cells ===== */
+.table-cell-list {
+  margin: 0;
+  padding: 0;
+}
+
+.table-list-item {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: baseline;
+}
+
+.table-list-item:last-child {
+  margin-bottom: 0;
+}
+
+/* ===== Mobile Responsive Styles (max-width: 956px) ===== */
+@media (max-width: 956px) {
+
+
+  /* Data labels for accessibility */
+  .sortable-table td::before,
+  .sortable-table th::before {
+      content: attr(data-label) ": ";
+  }
+}
+
+
+
+/* ===== Medium Screen Styles (min-width: 600px and max-width: 956px) ===== */
+@media (min-width: 600px) and (max-width: 956px) {
+  .sortable-table {
+      white-space: normal;
+      overflow-x: hidden;
+  }
+  /* Row header styling */
+  .sortable-table th[scope="row"] {
+      font-size: 1.1em;
+      margin-bottom: 0.5rem;
+      background-color: #9FB1BD;
+      color: #231F20;
+  }
+  .sortable-table thead {
+      display: none;
+  }
+
+  /* Create a two-column layout for medium screens */
+  .sortable-table tr {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 0.5rem;
+      border: 1px solid transparent;
+  }
+
+  /* Full-width header for each row */
+  .sortable-table tr::before {
+      content: attr(data-city);
+      grid-column: 1 / -1;
+      font-size: 1.2em;
+      font-weight: bold;
+      background-color: #AEC7D6;
+      color: #231F20;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+  }
+
+  /* Cell styling */
+  .sortable-table td {
+      text-align: left;
+      min-height: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      padding-top: 2rem;
+      /* Space for the label */
+      border: none;
+  }
+
+  /* Data labels */
+  .sortable-table td::before {
+      content: attr(data-label) ": ";
+      position: absolute;
+      top: 0.5rem;
+      left: 0.5rem;
+      width: 100%;
+      font-weight: bold;
+      text-align: left;
+      white-space: normal;
+  }
+}
+
+/* ===== Desktop Specific Styles (min-width: 957px) ===== */
+@media (min-width: 957px) {
+  /* Only apply nowrap to the header */
+  .sortable-table thead th {
+      white-space: normal;
+  }
+}
+
+/* ===== Small Screen Responsive Styles (max-width: 599px) ===== */
+@media (max-width: 599px) {
+  /* Table structure changes */
+  .sortable-table {
+      white-space: normal;
+      overflow-x: hidden;
+  }
+
+  .sortable-table thead {
+      display: none;
+  }
+
+  .sortable-table,
+  .sortable-table tbody,
+  .sortable-table tr,
+  .sortable-table td,
+  .sortable-table th {
+      display: block;
+      width: 100%;
+  }
+
+  /* Row styling */
+  .sortable-table tr {
+      margin-bottom: 1.5rem;
+      display: block;
+      padding: 0.5rem;
+      border: 1px solid transparent;
+  }
+
+  /* Cell styling and accessibility improvements */
+  .sortable-table td {
+      text-align: left;
+      min-height: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      padding-top: 2rem;
+      /* Space for the label */
+      border: none;
+  }
+
+  /* Data labels for accessibility */
+  .sortable-table td::before,
+  .sortable-table th::before {
+      content: attr(data-label) ": ";
+      width: 100%;
+      font-weight: bold;
+      text-align: left;
+      white-space: normal;
+  }
+
+  /* Row header styling */
+  .sortable-table th[scope="row"] {
+      font-size: 1.1em;
+      margin-bottom: 0.5rem;
+      background-color: #9FB1BD;
+      color: #231F20;
+  }
+
+  /* Cell text handling */
+  .sortable-table td,
+  .sortable-table th {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      hyphens: auto;
+  }
+
+  /* Additional list padding for small screens */
+  .sortable-table .table-cell-list {
+      padding-left: 0.5rem;
+  }
+}
+
+/* ===== Small Screen Adjustments ===== */
+@media (max-width: 40rem) {
+  .sortable-table .table-cell-list {
+      padding-left: 0.5rem;
+  }
+}
+
+/**
+ * Sortable Table CSS
+ * 
+ * Styles for sortable tables with accessibility features.
+ * WCAG 2.2 AA compliant
+ */
+
+/* ===== Base Table Styles ===== */
+.sortable-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1rem 0;
+  border-radius: 4px;
+  overflow-x: auto;
+  display: block;
+}
+
+/* ===== Table Structure ===== */
+.sortable-table thead th {
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  white-space: normal;
+}
+
+.sortable-table th,
+.sortable-table td {
+  padding: 0.5rem;
+  text-align: left;
+}
+
+/* For specific columns where you want to enforce breaks at spaces */
+.sortable-table thead th.break-at-space {
+  word-spacing: 100vw; /* Forces a break at each space */
+  hyphens: manual; /* Prevents automatic hyphenation */
+  overflow-wrap: break-word;
+}
+
+/* ===== Sort Controls ===== */
+/* Container for header content and button */
+.th-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem;
+}
+
+.th-content {
+  flex: 1;
+  text-align: left;
+}
+
+/* Sort button styles - meets WCAG minimum touch target size */
+.sort-button {
+  background: none;
+  color: #00131d;
+  padding: 0px 5px 15px 5px;
+  border: 0.2rem solid transparent !important;
+  margin: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 4px;
+}
+
+.sort-button:hover {
+  background: transparent !important;
+  box-shadow: 0 0 0 0.4rem transparent !important;
+}
+
+/* Sort icon styles */
+.sort-icon {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  position: relative;
+}
+
+/* Sort direction indicators */
+.sort-button[data-sort-direction="none"] .sort-icon::before {
+  content: "⇵";
+}
+
+.sort-button[data-sort-direction="ascending"] .sort-icon::before {
+  content: "↑";
+}
+
+.sort-button[data-sort-direction="descending"] .sort-icon::before {
+  content: "↓";
+}
+
+/* ===== List Styles within Cells ===== */
+.table-cell-list {
+  margin: 0;
+  padding: 0;
+}
+
+.table-list-item {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: baseline;
+}
+
+.table-list-item:last-child {
+  margin-bottom: 0;
+}
+
+/* ===== Medium Screen Styles (min-width: 600px and max-width: 956px) ===== */
+@media (min-width: 600px) and (max-width: 956px) {
+  .sortable-table {
+    white-space: normal;
+    overflow-x: hidden;
+  }
+  
+  .sortable-table thead {
+    display: none;
+  }
+  
+  /* Create a two-column layout for medium screens */
+  .sortable-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+    border: 1px solid transparent;
+  }
+  
+  /* Full-width header for each row */
+  .sortable-table tr::before {
+    content: attr(data-city);
+    grid-column: 1 / -1;
+    font-size: 1.2em;
+    font-weight: bold;
+    background-color: #AEC7D6;
+    color: #231F20;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Cell styling */
+  .sortable-table td {
+    text-align: left;
+    min-height: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    padding-top: 2rem; /* Space for the label */
+    border: none;
+  }
+  
+  /* Data labels */
+  .sortable-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    width: 100%;
+    font-weight: bold;
+    text-align: left;
+    white-space: normal;
+  }
+}
+
+/* ===== Desktop Specific Styles (min-width: 957px) ===== */
+@media (min-width: 957px) {
+  /* Only apply nowrap to the header */
+  .sortable-table thead th {
+    white-space: normal;
+  }
+}
+
+/* ===== Small Screen Responsive Styles (max-width: 599px) ===== */
+@media (max-width: 599px) {
+  /* Table structure changes */
+  .sortable-table {
+    white-space: normal;
+    overflow-x: hidden;
+  }
+  
+  .sortable-table thead {
+    display: none;
+  }
+  
+  .sortable-table,
+  .sortable-table tbody,
+  .sortable-table tr,
+  .sortable-table td,
+  .sortable-table th {
+    display: block;
+    width: 100%;
+  }
+  
+  /* Row styling */
+  .sortable-table tr {
+    margin-bottom: 1.5rem;
+    display: block;
+    padding: 0.5rem;
+    border: 1px solid transparent;
+  }
+  
+  /* Cell styling and accessibility improvements */
+  .sortable-table td {
+    text-align: left;
+    min-height: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    padding-top: 2rem; /* Space for the label */
+    border: none;
+  }
+  
+  /* Data labels for accessibility */
+  .sortable-table td::before,
+  .sortable-table th::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    width: 100%;
+    font-weight: bold;
+    text-align: left;
+    white-space: normal;
+  }
+  
+  /* Row header styling */
+  .sortable-table th[scope="row"] {
+    font-size: 1.1em;
+    margin-bottom: 0.5rem;
+    background-color: #9FB1BD;
+    color: #231F20;
+  }
+  
+  /* Cell text handling */
+  .sortable-table td,
+  .sortable-table th {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* Additional list padding for small screens */
+  .sortable-table .table-cell-list {
+    padding-left: 0.5rem;
+  }
+}
+
+/* ===== Small Screen Adjustments ===== */
+@media (max-width: 40rem) {
+  .sortable-table .table-cell-list {
+    padding-left: 0.5rem;
+  }
+}

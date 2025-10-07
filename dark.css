@@ -1,4 +1,274 @@
 /* Dark mode */
+/* ===== MODAL COLOUR SECTION ===== */
+
+dialog {
+  color: #e1e8ec;
+}
+
+.universal-modal,
+.universal-modal-container {
+  border: 2px solid #e1e8ec;
+}
+
+universal-modal-input {
+  outline: 0.2rem solid #e1e8ec !important;
+}
+
+universal-modal-input:focus-visible,
+universal-modal-input:focus {
+  outline: 0.2rem solid #e1e8ec !important;
+  border: 0.2rem solid #e1e8ec !important;
+}
+
+universal-modal-input:focus:not(:focus-visible) {
+  outline: 0.2rem solid #e1e8ec !important;
+}
+
+universal-modal-button-primary {
+  border: 0.2rem solid #e1e8ec !important;
+}
+
+.universal-modal::backdrop {
+  background: rgba(0, 0, 0, 0.37);
+}
+
+/* Set default icon colour */
+.universal-modal-icon svg {
+  color: #e1e8ec;
+}
+
+/* Type-specific colours */
+.universal-modal-icon svg[role="img"] {
+  transition: color 0.2s ease;
+}
+
+/* Error modals - ensure sufficient contrast */
+.universal-modal:has([class*="error"]) .universal-modal-icon svg {
+  color: #d5007f;
+}
+
+/* Success modals - the trophy looks brilliant in green */
+.universal-modal:has([class*="success"]) .universal-modal-icon svg {
+  color: #005051;
+}
+
+/* Warning modals - the trophy looks brilliant in green */
+.universal-modal:has([class*="warning"]) .universal-modal-icon svg {
+  color: #8d3970;
+}
+
+.universal-modal-container {
+  background: #00131d;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.universal-modal-close {
+  color: #e1e8ec;
+}
+
+.universal-modal-button {
+  outline: 0.2rem solid transparent;
+  border: 0.2rem solid transparent;
+}
+
+.universal-modal-button-secondary {
+  background: #495961;
+  color: #fffff4;
+}
+
+.universal-modal-status {
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid #e0e0e0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.universal-modal-status.status-success {
+  background: #005051;
+  color: #fffff4;
+  border-top-color: #005051;
+}
+
+.universal-modal-status.status-success .universal-modal-status-dismiss {
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid transparent !important;
+}
+
+.universal-modal-status.status-error {
+  background: #d5007f;
+  border-top-color: #d5007f;
+  color: #fffff4;
+}
+
+.universal-modal-status.status-error .universal-modal-status-dismiss {
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid transparent !important;
+}
+
+.universal-modal-status.status-warning {
+  background: #fcbc00;
+  color: #00131d;
+  border-top-color: #231f20;
+}
+
+.universal-modal-status.status-warning .universal-modal-status-dismiss {
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid transparent !important;
+}
+
+.universal-modal-status.status-info {
+  background: #005c84;
+  color: #fffff4;
+  border-top-color: #005c84;
+}
+
+.universal-modal-status.status-info .universal-modal-status-dismiss {
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid transparent !important;
+}
+
+.universal-modal-status.status-loading {
+  background: #495961;
+  color: #fffff4;
+  border-top-color: #495961;
+}
+
+.universal-modal-status.status-loading .universal-modal-status-dismiss {
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid transparent !important;
+}
+
+.universal-modal-status-dismiss {
+  color: inherit;
+}
+
+.universal-modal-status-dismiss:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.universal-modal-status-dismiss:focus {
+  outline: 2px solid currentColor;
+}
+
+.universal-modal-spinner {
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+}
+
+/* advanced models */
+.active-filters {
+  color: #fcbc00;
+}
+/* Filter Controls colors */
+.filter-group {
+  border: 1px solid #e1e8ec;
+}
+/* Tasks */
+
+/* Completed tasks - colours */
+.task-list-item.task-completed {
+  border-left-color: #ecff0a;
+  background-color: #a5b207;
+}
+
+.task-list-item.task-completed .task-content {
+  color: #00131d;
+}
+
+/* Incomplete tasks - colours */
+.task-list-item:not(.task-completed) {
+  border-left-color: #fcbc00;
+  background-color: rgba(255, 193, 7, 0.05);
+}
+
+/* Empty tasks - colours */
+.task-list-item.task-empty {
+  border-left-color: #e1e8ec;
+  background-color: rgba(108, 117, 125, 0.05);
+}
+
+.task-list-item.task-empty .task-content:empty::after {
+  color: #e1e8ec;
+}
+
+/* Tasks ends */
+
+/* Streaming options */
+/* COLOUR SECTION */
+.streaming-options {
+  border: 1px solid #e1e8ec;
+}
+
+.streaming-choice:hover {
+  box-shadow: 4px 4px 5px 2px rgba(234, 237, 239, 0.2);
+}
+
+.streaming-choice:has(:checked) {
+  border: 2px solid #c1d100;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.15);
+}
+
+.streaming-choice:has(:focus-visible) {
+  outline: 2px solid #c1d100;
+}
+
+/* Streaming options ends */
+
+/* ===========================================
+   TOAST COLOURS
+   =========================================== */
+
+/* Toast base colours */
+.gb-toast {
+  background-color: #00131d;
+  border: 2px solid #e1e8ec;
+  box-shadow: 0 4px 12px rgba(255, 252, 252, 0.4);
+}
+
+/* Toast content colours */
+.gb-toast-content {
+  color: #e1e8ec;
+}
+
+/* Toast close button colours */
+.gb-toast-close {
+  color: #e1e8ec;
+}
+
+/* Toast type colour variations */
+.gb-toast.gb-toast-success,
+.gb-toast-success .gb-toast-icon {
+  border-color: #c1d100;
+  color: #c1d100;
+}
+
+.gb-toast.gb-toast-error,
+.gb-toast-error .gb-toast-icon {
+  border-color: #ef7d00;
+  color: #ef7d00;
+}
+
+.gb-toast.gb-toast-info,
+.gb-toast-info .gb-toast-icon {
+  border-color: #74c9e5;
+  color: #74c9e5;
+}
+
+.gb-toast.gb-toast-warning,
+.gb-toast-warning .gb-toast-icon {
+  border-color: #fcbc00;
+  color: #fcbc00;
+}
+
+.gb-toast-close {
+  outline: 0.2rem solid #00131d !important;
+  border: 0.2rem solid #00131d !important;
+}
+
+.gb-toast-close:hover,
+.gb-toast-close:focus {
+  outline: 0.2rem solid transparent;
+  border: 0.2rem solid transparent;
+}
 
 /* Sortable buttons */
 /**
@@ -8,6 +278,75 @@
 * Uses mdSortableTable- prefix to avoid conflicts with existing styles.
 */
 /* ===== COLOURS & THEMING ===== */
+
+/* Base styles for row display controls - colours */
+.mdSortableTable-preview-control-row {
+  border-top: 2px solid #e1e8ec;
+  background-color: rgba(0, 92, 132, 0.05);
+}
+
+.mdSortableTable-preview-status {
+  color: #e1e8ec;
+}
+
+/* Base button styles - colours */
+.mdSortableTable-show-more-button,
+.mdSortableTable-show-less-button,
+.mdSortableTable-show-all-button {
+  background: none;
+  color: #e1e8ec;
+  outline: 0.2rem solid #00131d !important;
+  border: 0.2rem solid #00131d;
+}
+
+.mdSortableTable-show-all-button {
+  background-color: rgba(0, 92, 132, 0.1);
+}
+
+/* Interactive states - colours */
+.mdSortableTable-show-more-button:hover,
+.mdSortableTable-show-less-button:hover,
+.mdSortableTable-show-all-button:hover,
+.mdSortableTable-show-more-button:focus,
+.mdSortableTable-show-less-button:focus,
+.mdSortableTable-show-all-button:focus {
+  background-color: #e1e8ec;
+  color: #231f20;
+  box-shadow: 0 0 0 0.4rem #00131d;
+  outline: 0.2rem solid #231f20 !important;
+  border: 0.2rem solid #fffff4;
+}
+
+/* Large tablets and small desktops - colours */
+@media (max-width: 900px) {
+  /* Keep footer controls as normal table layout - colours */
+  .mdSortableTable-data-table tfoot td {
+    border: none;
+    background-color: rgba(21, 180, 248, 0);
+  }
+
+  /* Ensure footer row doesn't break into mobile card layout - colours */
+  .mdSortableTable-data-table tfoot tr {
+    border: none;
+    background: none;
+    box-shadow: none;
+  }
+}
+
+/* Tablets - colours */
+@media (max-width: 768px) {
+  /* Enhanced styling for "Show all" button - colours */
+  .mdSortableTable-show-all-button {
+    background-color: rgba(0, 92, 132, 0.15);
+  }
+
+  .mdSortableTable-show-less-button {
+    background-color: rgba(73, 89, 97, 0.1);
+    color: #495961;
+    border-color: #495961;
+  }
+}
+
 /* Container Structure */
 .mdSortableTable-table-container {
   background: #002e3b;
@@ -532,16 +871,20 @@ input[type="file"] {
 
 /* Chart controls */
 
-.chart-description {
+.chart-description,
+.mermaid-description {
   background-color: #00131d;
 }
 
 .chart-short-description-heading,
-h3.chart-details-heading {
+h3.chart-details-heading,
+.mermaid-short-description-heading,
+h3.mermaid-details-heading {
   border-bottom: 2px solid #9fb1bd;
 }
 
-.chart-short-description {
+.chart-short-description,
+.mermaid-short-description {
   border-left: 3px solid #9fb1bd;
 }
 
@@ -605,11 +948,6 @@ h3.chart-details-heading {
 
 .break-condition-header {
   color: #fcbc00;
-}
-
-.mermaid-export-controls {
-  border: 1px solid #e1e8ec;
-  background-color: #00131d;
 }
 
 .btn.mermaidZoomControl {
@@ -933,7 +1271,8 @@ input[type="checkbox"]:focus-visible {
 
 /* Suggester ends */
 
-input[type="text"] {
+input[type="text"],
+input[type="number"] {
   border: 0.2rem solid #231f20 !important;
   outline: 0.2rem solid #e1e8ec !important;
   background-color: #231f20;
@@ -941,7 +1280,8 @@ input[type="text"] {
 }
 
 input[type="text"]:hover,
-input[type="text"]:focus {
+input[type="text"]:focus-visible input[type="number"]:hover,
+input[type="number"]:focus-visible {
   box-shadow: 0 0 0 0.3rem #231f20 !important;
   outline: 0.2rem solid #c1d100 !important;
   background-color: #e1e8ec;
