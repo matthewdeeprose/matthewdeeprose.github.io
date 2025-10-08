@@ -269,18 +269,101 @@ class MathPixStrokesAPIClient {
         progressCallback.nextStep();
       }
 
-      // Prepare request payload with privacy-first defaults
+      // ENHANCED: Get user preferences from UI Manager (shared with Text API)
+      let userPrefs = {
+        // 🎯 PRIORITY: Table extraction (default TRUE for better UX)
+        includeTableHtml: true,
+        includeTsv: true,
+
+        // Delimiter preferences
+        delimiterFormat: "latex",
+        equationNumbering: false,
+
+        // Processing options
+        rmSpaces: true,
+        rmFonts: false,
+        idiomaticEqnArrays: false,
+        idiomaticBraces: false,
+      };
+
+      // Try to get preferences from UI Manager if available
+      if (typeof window !== "undefined" && window.getMathPixController) {
+        try {
+          const controller = window.getMathPixController();
+          if (controller?.uiManager?.getCurrentPreferences) {
+            const loadedPrefs = controller.uiManager.getCurrentPreferences();
+            userPrefs = { ...userPrefs, ...loadedPrefs };
+            logDebug(
+              "[Strokes API] User preferences loaded from UI Manager",
+              userPrefs
+            );
+          }
+        } catch (e) {
+          logWarn(
+            "[Strokes API] Could not load user preferences, using defaults",
+            e
+          );
+        }
+      }
+
+      // ENHANCED: Delimiter configurations
+      const DELIMITER_CONFIG = {
+        latex: {
+          inline: ["\\(", "\\)"],
+          display: ["\\[", "\\]"],
+        },
+        markdown: {
+          inline: ["$", "$"],
+          display: ["$$", "$$"],
+        },
+      };
+
+      const selectedDelimiters =
+        DELIMITER_CONFIG[userPrefs.delimiterFormat] || DELIMITER_CONFIG.latex;
+
+      // ENHANCED: Prepare comprehensive request payload with user preferences
       const requestPayload = {
         ...strokesData,
         formats: options.formats || MATHPIX_CONFIG.DEFAULT_REQUEST.formats,
         metadata: options.metadata || MATHPIX_CONFIG.DEFAULT_REQUEST.metadata,
+
+        // ENHANCED: Data options with table extraction (Priority #1)
         data_options: {
           include_latex: true,
           include_asciimath: true,
           include_mathml: true,
+          // 🎯 PRIORITY: Table extraction options (default TRUE)
+          include_table_html:
+            userPrefs.includeTableHtml !== undefined
+              ? userPrefs.includeTableHtml
+              : true,
+          include_tsv:
+            userPrefs.includeTsv !== undefined ? userPrefs.includeTsv : true,
           ...options.data_options,
         },
+
+        // ENHANCED: Enable advanced table processing for complex hand-drawn tables
+        enable_tables_fallback: true,
+
+        // ENHANCED: User-configurable delimiter format
+        math_inline_delimiters: selectedDelimiters.inline,
+        math_display_delimiters: selectedDelimiters.display,
+
+        // ENHANCED: Processing options
+        rm_spaces: userPrefs.rmSpaces !== undefined ? userPrefs.rmSpaces : true,
+        rm_fonts: userPrefs.rmFonts || false,
+        include_equation_tags: userPrefs.equationNumbering || false,
+        idiomatic_eqn_arrays: userPrefs.idiomaticEqnArrays || false,
+        idiomatic_braces: userPrefs.idiomaticBraces || false,
       };
+
+      logInfo("[Strokes API] Processing with enhanced parameters", {
+        tableHtml: requestPayload.data_options.include_table_html,
+        tableTsv: requestPayload.data_options.include_tsv,
+        delimiterFormat: userPrefs.delimiterFormat,
+        rmSpaces: requestPayload.rm_spaces,
+        equationNumbering: requestPayload.include_equation_tags,
+      });
 
       logDebug("Strokes API request payload", {
         strokeCount: strokesData.strokes.strokes.x.length,
@@ -289,6 +372,11 @@ class MathPixStrokesAPIClient {
           0
         ),
         formats: requestPayload.formats,
+        tableExtractionEnabled: requestPayload.data_options.include_table_html,
+        delimiters: {
+          inline: requestPayload.math_inline_delimiters,
+          display: requestPayload.math_display_delimiters,
+        },
       });
 
       // Notify progress: Sending to API
@@ -493,6 +581,18 @@ class MathPixStrokesAPIClient {
    * @since 1.0.0
    */
   normaliseStrokesResponse(apiResponse) {
+    // Extract all formats from data array
+    const htmlValue = this.extractDataValue(apiResponse.data, "html");
+    const tsvValue = this.extractDataValue(apiResponse.data, "tsv");
+
+    // Detect if response contains table data
+    const containsTable = !!(htmlValue || tsvValue);
+
+    // ✅ Generate markdown table from TSV if available
+    const markdownTableValue = tsvValue
+      ? this.convertTsvToMarkdown(tsvValue)
+      : "";
+
     const result = {
       // Primary LaTeX output
       latex: apiResponse.text || apiResponse.latex_styled || "",
@@ -500,6 +600,16 @@ class MathPixStrokesAPIClient {
       // Extract additional formats from data array
       asciimath: this.extractDataValue(apiResponse.data, "asciimath"),
       mathml: this.extractDataValue(apiResponse.data, "mathml"),
+
+      // ✅ FIXED: Table formats with correct property names
+      // Note: API returns "html" in data array for tables, we store as both html and tableHtml
+      html: htmlValue || "", // For general HTML output container
+      tableHtml: htmlValue || "", // For table-specific HTML container
+      tsv: tsvValue || "",
+      tableMarkdown: markdownTableValue, // ✅ Generated from TSV
+
+      // Table detection flag
+      containsTable: containsTable,
 
       // Recognition metadata
       confidence: apiResponse.confidence || 0,
@@ -514,6 +624,11 @@ class MathPixStrokesAPIClient {
       hasLatex: !!result.latex,
       hasAsciimath: !!result.asciimath,
       hasMathml: !!result.mathml,
+      hasHtml: !!result.html,
+      hasTableHtml: !!result.tableHtml,
+      hasTsv: !!result.tsv,
+      hasTableMarkdown: !!result.tableMarkdown,
+      containsTable: result.containsTable,
       confidence: result.confidence,
     });
 
@@ -598,6 +713,76 @@ class MathPixStrokesAPIClient {
       hasAppId: !!this.appId,
       hasApiKey: !!this.apiKey,
     };
+  }
+  /**
+   * Convert TSV (Tab-Separated Values) to Markdown table format
+   *
+   * @description
+   * Generates a Markdown table from TSV data for display in the table-markdown format.
+   * First row is treated as headers, subsequent rows as data.
+   *
+   * @param {string} tsv - Tab-separated values string
+   * @returns {string} Markdown formatted table
+   *
+   * @example
+   * const tsv = "Name\tAge\nAlice\t25\nBob\t30";
+   * const markdown = client.convertTsvToMarkdown(tsv);
+   * // Returns:
+   * // | Name | Age |
+   * // |------|-----|
+   * // | Alice | 25 |
+   * // | Bob | 30 |
+   *
+   * @accessibility Generated tables maintain semantic structure for screen readers
+   * @since 1.0.0
+   */
+  convertTsvToMarkdown(tsv) {
+    if (!tsv || typeof tsv !== "string" || tsv.trim() === "") {
+      return "";
+    }
+
+    try {
+      // Split into rows
+      const rows = tsv.trim().split("\n");
+
+      if (rows.length === 0) {
+        return "";
+      }
+
+      // Process each row
+      const processedRows = rows.map((row) => {
+        // Split on tabs and trim each cell
+        const cells = row.split("\t").map((cell) => cell.trim());
+        // Join cells with markdown table separators
+        return `| ${cells.join(" | ")} |`;
+      });
+
+      // If we have at least one row, add separator after first row (headers)
+      if (processedRows.length >= 1) {
+        const headerRow = processedRows[0];
+        // Count columns from header row
+        const columnCount = headerRow.split("|").filter((s) => s.trim()).length;
+
+        // Create separator row with correct number of columns
+        const separatorRow = "|" + " --- |".repeat(columnCount);
+
+        // Insert separator after header
+        processedRows.splice(1, 0, separatorRow);
+      }
+
+      const markdownTable = processedRows.join("\n");
+
+      logDebug("Converted TSV to Markdown table", {
+        rowCount: rows.length,
+        columnCount: rows[0]?.split("\t").length || 0,
+        markdownLength: markdownTable.length,
+      });
+
+      return markdownTable;
+    } catch (error) {
+      logError("Failed to convert TSV to Markdown", error);
+      return ""; // Return empty string on error
+    }
   }
 }
 

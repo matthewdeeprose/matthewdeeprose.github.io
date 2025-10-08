@@ -1170,6 +1170,11 @@ class MathPixController {
       formats.push("data");
     }
 
+    // ✅ CRITICAL: Always include html for table extraction and markdown generation
+    if (!formats.includes("html")) {
+      formats.push("html");
+    }
+
     logDebug("Final format selection", { formats });
     return formats;
   }
@@ -1438,37 +1443,69 @@ class MathPixController {
       });
     }
 
-    // Step 3: Render MathJax preview using existing infrastructure
-    // Use normalized field names (latex, not latex_styled)
-    const latexContent = result.latex || result.latex_styled || result.text;
-
-    if (latexContent) {
-      logDebug("Rendering MathJax preview with existing renderer", {
-        content: latexContent,
-        length: latexContent.length,
-        source: result.latex
-          ? "normalized latex"
-          : result.latex_styled
-          ? "latex_styled"
-          : "text",
-      });
+    // Step 3: Render preview with table-aware logic
+    // CRITICAL: Check for tables FIRST before attempting MathJax rendering
+    if (result.containsTable && result.tableHtml) {
+      logDebug("Displaying table HTML in strokes comparison preview");
 
       // Clear previous content
       renderedOutput.innerHTML = "";
 
-      // Use existing renderContentWithMathJax method which handles all the complexity
-      this.renderContentWithMathJax(latexContent, "latex", renderedOutput);
+      // Insert table HTML directly
+      renderedOutput.innerHTML = result.tableHtml;
+      renderedOutput.style.overflow = "auto";
+      renderedOutput.style.maxHeight = "400px";
+      renderedOutput.classList.add("mathjax-rendered");
 
-      logInfo("MathJax preview rendered via result renderer");
+      // Process any mathematics within table cells (fire-and-forget)
+      if (window.mathJaxManager) {
+        window.mathJaxManager
+          .queueTypeset(renderedOutput)
+          .then(() => logDebug("MathJax processed equations in table cells"))
+          .catch((error) =>
+            logWarn("Failed to process math in table cells", error)
+          );
+      } else if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([renderedOutput])
+          .then(() => logDebug("MathJax processed table cells (direct)"))
+          .catch((error) =>
+            logWarn("Failed to process math in table cells", error)
+          );
+      }
+
+      logInfo("Table preview rendered in strokes comparison");
     } else {
-      logWarn("No LaTeX content available for preview", {
-        hasLatex: !!result.latex,
-        hasLatexStyled: !!result.latex_styled,
-        hasText: !!result.text,
-        hasData: !!result.data,
-      });
-      renderedOutput.innerHTML =
-        '<p style="padding: 2rem; text-align: center; color: var(--text-muted);">No preview available</p>';
+      // No table detected - render LaTeX with MathJax
+      const latexContent = result.latex || result.latex_styled || result.text;
+
+      if (latexContent) {
+        logDebug("Rendering MathJax preview with existing renderer", {
+          content: latexContent,
+          length: latexContent.length,
+          source: result.latex
+            ? "normalized latex"
+            : result.latex_styled
+            ? "latex_styled"
+            : "text",
+        });
+
+        // Clear previous content
+        renderedOutput.innerHTML = "";
+
+        // Use existing renderContentWithMathJax method which handles all the complexity
+        this.renderContentWithMathJax(latexContent, "latex", renderedOutput);
+
+        logInfo("MathJax preview rendered via result renderer");
+      } else {
+        logWarn("No LaTeX content available for preview", {
+          hasLatex: !!result.latex,
+          hasLatexStyled: !!result.latex_styled,
+          hasText: !!result.text,
+          hasData: !!result.data,
+        });
+        renderedOutput.innerHTML =
+          '<p style="padding: 2rem; text-align: center; color: var(--text-muted);">No preview available</p>';
+      }
     }
 
     // Step 4: Show comparison container

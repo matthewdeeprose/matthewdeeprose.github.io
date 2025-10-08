@@ -1394,22 +1394,69 @@ class MathPixUIManager extends MathPixBaseModule {
    */
   loadUserPreferences() {
     const defaults = {
+      // Existing Text API preferences
       equationNumbering: true,
       delimiterFormat: "latex",
       includePageInfo: false, // Changed to false - most users don't want page artifacts
+
+      // NEW: Processing options (shared by both Text and Strokes APIs)
+      rmSpaces: true,
+      rmFonts: false,
+      idiomaticEqnArrays: false,
+      idiomaticBraces: false,
+
+      // NEW: Advanced options (for future use)
+      confidenceThreshold: null, // null = use API default
+      includeLineData: false,
     };
 
     try {
       const stored = {
+        // Existing preferences
         equationNumbering: localStorage.getItem("mathpix-equation-numbering"),
         delimiterFormat: localStorage.getItem("mathpix-delimiter-format"),
         includePageInfo: localStorage.getItem("mathpix-page-info"),
+
+        // Processing options
+        rmSpaces: localStorage.getItem("mathpix-rm-spaces"),
+        rmFonts: localStorage.getItem("mathpix-rm-fonts"),
+        idiomaticEqnArrays: localStorage.getItem(
+          "mathpix-idiomatic-eqn-arrays"
+        ),
+        idiomaticBraces: localStorage.getItem("mathpix-idiomatic-braces"),
+
+        // Advanced options
+        confidenceThreshold: localStorage.getItem(
+          "mathpix-confidence-threshold"
+        ),
+        confidenceRateThreshold: localStorage.getItem(
+          "mathpix-confidence-rate-threshold"
+        ),
+        includeLineData: localStorage.getItem("mathpix-include-line-data"),
+        includeWordData: localStorage.getItem("mathpix-include-word-data"),
       };
 
       return {
+        // Existing preferences
         equationNumbering: stored.equationNumbering !== "false", // Default true
         delimiterFormat: stored.delimiterFormat || "latex",
-        includePageInfo: stored.includePageInfo === "true", // Default false (only true if explicitly set)
+        includePageInfo: stored.includePageInfo === "true", // Default false
+
+        // Processing options - sensible defaults
+        rmSpaces: stored.rmSpaces !== "false", // Default true
+        rmFonts: stored.rmFonts === "true", // Default false
+        idiomaticEqnArrays: stored.idiomaticEqnArrays === "true", // Default false
+        idiomaticBraces: stored.idiomaticBraces === "true", // Default false
+
+        // Advanced options
+        confidenceThreshold: stored.confidenceThreshold
+          ? parseFloat(stored.confidenceThreshold)
+          : null,
+        confidenceRateThreshold: stored.confidenceRateThreshold
+          ? parseFloat(stored.confidenceRateThreshold)
+          : null,
+        includeLineData: stored.includeLineData === "true",
+        includeWordData: stored.includeWordData === "true",
       };
     } catch (e) {
       logWarn("[MathPix UI] Failed to load preferences from localStorage:", e);
@@ -1471,38 +1518,78 @@ class MathPixUIManager extends MathPixBaseModule {
    * @since Phase 2
    */
   getCurrentPreferences() {
+    // If UI elements not available yet, return stored preferences
     if (!this.controller.elements.processingOptions) {
-      logWarn(
-        "[MathPix UI] Processing options not available, returning defaults"
+      logDebug(
+        "[MathPix UI] Processing options UI not available, returning stored preferences"
       );
-      return {
-        equationNumbering: true,
-        delimiterFormat: "latex",
-        includePageInfo: true,
-      };
+      return this.loadUserPreferences();
     }
 
     try {
+      // Get delimiter format from radio buttons
       const delimiterRadio = [...this.controller.elements.delimiterRadios].find(
         (r) => r.checked
       );
 
-      return {
+      // Build preferences object from UI elements (with fallbacks)
+      const prefs = {
+        // Existing preferences
         equationNumbering:
-          this.controller.elements.equationNumberingCheckbox.checked,
+          this.controller.elements.equationNumberingCheckbox?.checked ?? true,
         delimiterFormat: delimiterRadio ? delimiterRadio.value : "latex",
-        includePageInfo: this.controller.elements.pageInfoCheckbox.checked,
+        includePageInfo:
+          this.controller.elements.pageInfoCheckbox?.checked ?? false,
       };
+
+      // Processing option checkboxes (may not exist yet)
+      const rmSpacesCheckbox = document.getElementById("mathpix-rm-spaces");
+      const rmFontsCheckbox = document.getElementById("mathpix-rm-fonts");
+      const idiomaticArraysCheckbox = document.getElementById(
+        "mathpix-idiomatic-eqn-arrays"
+      );
+      const idiomaticBracesCheckbox = document.getElementById(
+        "mathpix-idiomatic-braces"
+      );
+
+      prefs.rmSpaces =
+        rmSpacesCheckbox?.checked ??
+        localStorage.getItem("mathpix-rm-spaces") !== "false";
+      prefs.rmFonts =
+        rmFontsCheckbox?.checked ??
+        localStorage.getItem("mathpix-rm-fonts") === "true";
+      prefs.idiomaticEqnArrays =
+        idiomaticArraysCheckbox?.checked ??
+        localStorage.getItem("mathpix-idiomatic-eqn-arrays") === "true";
+      prefs.idiomaticBraces =
+        idiomaticBracesCheckbox?.checked ??
+        localStorage.getItem("mathpix-idiomatic-braces") === "true";
+
+      // Advanced options (may not exist yet)
+      const confidenceThresholdInput = document.getElementById(
+        "mathpix-confidence-threshold"
+      );
+      const includeLineDataCheckbox = document.getElementById(
+        "mathpix-include-line-data"
+      );
+
+      if (confidenceThresholdInput?.value) {
+        prefs.confidenceThreshold = parseFloat(confidenceThresholdInput.value);
+      } else {
+        prefs.confidenceThreshold = null;
+      }
+
+      prefs.includeLineData = includeLineDataCheckbox?.checked ?? false;
+
+      return prefs;
     } catch (e) {
-      logError("[MathPix UI] Failed to get current preferences:", e);
-      return {
-        equationNumbering: true,
-        delimiterFormat: "latex",
-        includePageInfo: true,
-      };
+      logError(
+        "[MathPix UI] Failed to get current preferences, using stored:",
+        e
+      );
+      return this.loadUserPreferences();
     }
   }
-
   /**
    * @method saveUserPreferences
    * @description
@@ -1520,6 +1607,7 @@ class MathPixUIManager extends MathPixBaseModule {
     const prefs = this.getCurrentPreferences();
 
     try {
+      // Existing preferences
       localStorage.setItem(
         "mathpix-equation-numbering",
         prefs.equationNumbering
@@ -1527,7 +1615,41 @@ class MathPixUIManager extends MathPixBaseModule {
       localStorage.setItem("mathpix-delimiter-format", prefs.delimiterFormat);
       localStorage.setItem("mathpix-page-info", prefs.includePageInfo);
 
-      logDebug("[MathPix UI] Preferences saved:", prefs);
+      // Processing options
+      localStorage.setItem("mathpix-rm-spaces", prefs.rmSpaces);
+      localStorage.setItem("mathpix-rm-fonts", prefs.rmFonts);
+      localStorage.setItem(
+        "mathpix-idiomatic-eqn-arrays",
+        prefs.idiomaticEqnArrays
+      );
+      localStorage.setItem("mathpix-idiomatic-braces", prefs.idiomaticBraces);
+
+      // Advanced options (only save if not null)
+      if (prefs.confidenceThreshold !== null) {
+        localStorage.setItem(
+          "mathpix-confidence-threshold",
+          prefs.confidenceThreshold
+        );
+      } else {
+        localStorage.removeItem("mathpix-confidence-threshold");
+      }
+
+      if (prefs.confidenceRateThreshold !== null) {
+        localStorage.setItem(
+          "mathpix-confidence-rate-threshold",
+          prefs.confidenceRateThreshold
+        );
+      } else {
+        localStorage.removeItem("mathpix-confidence-rate-threshold");
+      }
+
+      localStorage.setItem("mathpix-include-line-data", prefs.includeLineData);
+      localStorage.setItem(
+        "mathpix-include-word-data",
+        prefs.includeWordData || false
+      );
+
+      logDebug("[MathPix UI] Enhanced preferences saved:", prefs);
     } catch (e) {
       logWarn("[MathPix UI] Failed to save preferences to localStorage:", e);
     }
