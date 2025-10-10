@@ -251,7 +251,9 @@
 .mathpix-comparison-container {
   border: 1px solid #00131d;
 }
-
+.mathpix-tab-headers {
+  border-bottom: 1px solid #231f20;
+}
 .mathpix-comparison-panel {
   border: 1px solid #00131d;
   background: #e1e8ec;
@@ -631,10 +633,6 @@
   color: #005c84;
 }
 
-.mathpix-results-tabs {
-  border: 1px solid #00131d;
-}
-
 .mathpix-tab-header {
   background: #e1e8ec;
   color: #00131d;
@@ -649,7 +647,7 @@
 .mathpix-tab-header[aria-selected="true"] {
   background: #fffff4;
   color: #005c84;
-  border-bottom: 2px solid #005c84;
+  border-bottom: 2px solid #fffff4;
 }
 
 .mathpix-tab-panel {
@@ -2674,7 +2672,6 @@ input#custom-height {
 }
 
 .mathpix-results-tabs {
-  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -2690,6 +2687,7 @@ input#custom-height {
   font-weight: 500;
   transition: all 0.2s ease;
   border-radius: 0;
+  margin-bottom: 0;
 }
 
 .mathpix-tab-header:first-child {

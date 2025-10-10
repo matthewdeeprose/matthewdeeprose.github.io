@@ -268,6 +268,9 @@ class MathPixModeSwitcher extends MathPixBaseModule {
   switchToUploadMode() {
     logDebug("Switching to upload mode");
 
+    // ✅ Clear any previous results before switching
+    this.clearPreviousResults();
+
     // Update state
     this.currentMode = "upload";
 
@@ -306,6 +309,9 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    */
   switchToDrawMode() {
     logDebug("Switching to draw mode");
+
+    // ✅ Clear any previous results before switching
+    this.clearPreviousResults();
 
     // Update state
     this.currentMode = "draw";
@@ -351,6 +357,54 @@ class MathPixModeSwitcher extends MathPixBaseModule {
         logError("Mode change callback failed", error);
       }
     }
+  }
+
+  /**
+   * Clears all visible results and previews from previous mode
+   *
+   * @private
+   * @returns {void}
+   *
+   * @description
+   * Hides all result containers to provide clean state when switching modes.
+   * Prevents confusion from stale results persisting across mode changes.
+   *
+   * @since 1.0.0
+   */
+  clearPreviousResults() {
+    logDebug("Clearing previous results for mode switch");
+
+    // Hide all result containers
+    const containersToHide = [
+      "mathpix-output", // Image results
+      "mathpix-comparison", // Comparison panel
+      "mathpix-pdf-results", // PDF results
+      "mathpix-image-preview-container", // Image preview
+    ];
+
+    containersToHide.forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.style.display = "none";
+        logDebug(`Hidden result container: ${id}`);
+      }
+    });
+
+    // Call result renderer cleanup if available
+    if (
+      this.controller &&
+      this.controller.resultRenderer &&
+      typeof this.controller.resultRenderer.cleanup === "function"
+    ) {
+      try {
+        this.controller.resultRenderer.cleanup();
+        logDebug("Result renderer cleanup completed");
+      } catch (error) {
+        logWarn("Result renderer cleanup failed", error);
+      }
+    }
+
+    logDebug("Previous results cleared successfully");
   }
 
   /**

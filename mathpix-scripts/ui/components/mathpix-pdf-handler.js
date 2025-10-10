@@ -641,10 +641,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Show the PDF options interface
     pdfOptionsContainer.style.display = "block";
 
-    // Initialize default processing options FIRST
+    // Initialize default processing options FIRST (will be overridden by HTML checkbox states)
     this.currentProcessingOptions = {
       page_range: "all",
-      formats: ["mmd", "html"],
+      formats: ["mmd", "html"], // Fallback defaults
     };
 
     // Update file information in the interface
@@ -653,9 +653,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Set up event listeners for options (including Select All)
     this.attachPDFOptionsListeners();
 
+    // ✅ Feature 3: Sync processing options with actual HTML checkbox states
+    // This ensures HTML defaults (all formats checked) are respected
+    this.updateSelectedFormats();
+
     logDebug("PDF options interface displayed", {
       fileName: pdfFile.name,
-      defaultOptions: this.currentProcessingOptions,
+      initialFormats: this.currentProcessingOptions.formats, // Now reflects actual HTML state
     });
   }
 
@@ -690,7 +694,29 @@ class MathPixPDFHandler extends MathPixBaseModule {
       const instructions = mainDropZone.querySelector("p");
       if (instructions) {
         instructions.innerHTML = `
-        <span aria-hidden="true">📄</span>
+        <svg
+                  aria-hidden="true"
+                  height="40"
+                  width="40"
+                  viewBox="0 0 21 21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(2 4)"
+                  >
+                    <path
+                      d="m15.5 4.5c.000802-1.10737712-.8946285-2.00280762-1.999198-2.00280762l-5.000802.00280762-2-2h-4c-.55228475 0-1 .44771525-1 1v.99719238 2.00280762"
+                    />
+                    <path
+                      d="m.81056316 5.74177845 1.31072322 5.24326075c.22257179.8903496 1.02254541 1.5149608 1.94029301 1.5149608h8.87667761c.9177969 0 1.7178001-.6246768 1.9403251-1.5150889l1.3108108-5.24508337c.1339045-.53580596-.1919011-1.07871356-.727707-1.21261805-.079341-.0198283-.1608148-.02983749-.2425959-.02983749l-13.43852073.00188666c-.55228474.00007754-.99985959.44785564-.99985959 1.00014038 0 .08170931.01003737.16310922.02985348.24237922z"
+                    />
+                  </g>
+                </svg>
         Selected PDF: ${pdfFile.name}
         <br />
         <span class="help-text">Size: ${this.formatFileSize(
@@ -739,6 +765,9 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Set up select all formats functionality (Phase 3.1)
     this.setupSelectAllFormats();
 
+    // Set up delimiter controls (Phase 5, Feature 1)
+    this.initializeDelimiterControls();
+
     // Set up process button listener
     const processButton = document.getElementById("mathpix-pdf-process-btn");
     if (processButton) {
@@ -755,7 +784,264 @@ class MathPixPDFHandler extends MathPixBaseModule {
       });
     }
 
-    logDebug("PDF options event listeners attached");
+    logDebug(
+      "PDF options event listeners attached including delimiter controls"
+    );
+  }
+
+  /**
+   * @method initializeDelimiterControls
+   * @description Initializes delimiter control event listeners and preview functionality
+   *
+   * Sets up radio button listeners for delimiter preset selection and input field
+   * listeners for custom delimiter entry with real-time preview updates.
+   *
+   * @returns {void}
+   * @private
+   * @since 5.0.0
+   */
+  initializeDelimiterControls() {
+    const delimiterRadios = document.querySelectorAll(
+      'input[name="pdf-math-delimiters"]'
+    );
+    const customContainer = document.getElementById("pdf-custom-delimiters");
+
+    if (!delimiterRadios.length || !customContainer) {
+      logWarn("Delimiter controls not found in DOM");
+      return;
+    }
+
+    // Set up radio button change listeners
+    delimiterRadios.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        if (radio.value === "custom") {
+          customContainer.style.display = "block";
+          this.updateDelimiterPreviews();
+        } else {
+          customContainer.style.display = "none";
+        }
+        logDebug("Delimiter preset changed", { preset: radio.value });
+      });
+    });
+
+    // Set up custom delimiter input listeners for real-time preview
+    const delimiterInputs = [
+      "pdf-inline-delim-start",
+      "pdf-inline-delim-end",
+      "pdf-display-delim-start",
+      "pdf-display-delim-end",
+    ];
+
+    delimiterInputs.forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) {
+        input.addEventListener("input", () => {
+          this.updateDelimiterPreviews();
+        });
+      }
+    });
+
+    logDebug("Delimiter controls initialized");
+  }
+
+  /**
+   * @method updateDelimiterPreviews
+   * @description Updates delimiter preview displays with current input values
+   *
+   * Reads custom delimiter input values and updates preview code elements
+   * to show users exactly how their delimiters will appear in output.
+   *
+   * @returns {void}
+   * @private
+   * @since 5.0.0
+   */
+  updateDelimiterPreviews() {
+    const inlineStart =
+      document.getElementById("pdf-inline-delim-start")?.value || "$";
+    const inlineEnd =
+      document.getElementById("pdf-inline-delim-end")?.value || "$";
+    const displayStart =
+      document.getElementById("pdf-display-delim-start")?.value || "$$";
+    const displayEnd =
+      document.getElementById("pdf-display-delim-end")?.value || "$$";
+
+    const inlinePreview = document.getElementById("inline-preview");
+    const displayPreview = document.getElementById("display-preview");
+
+    if (inlinePreview) {
+      inlinePreview.textContent = `${inlineStart}x^2${inlineEnd}`;
+    }
+
+    if (displayPreview) {
+      displayPreview.textContent = `${displayStart}E = mc^2${displayEnd}`;
+    }
+
+    logDebug("Delimiter previews updated", {
+      inline: [inlineStart, inlineEnd],
+      display: [displayStart, displayEnd],
+    });
+  }
+
+  /**
+   * @method collectDelimiterPreferences
+   * @description Collects user's maths delimiter preferences from UI
+   *
+   * Reads the delimiter radio button selection and custom inputs (if applicable),
+   * returning an object ready to be spread into the API request parameters.
+   *
+   * Supports three modes:
+   * 1. Preset (markdown/latex) - Uses MATHPIX_CONFIG presets
+   * 2. Custom - Uses user-specified delimiters from input fields
+   * 3. Default - Falls back to markdown preset if nothing selected
+   *
+   * @returns {Object} Delimiter configuration for API
+   * @returns {Array<string>} returns.math_inline_delimiters - Inline maths delimiters [start, end]
+   * @returns {Array<string>} returns.math_display_delimiters - Display maths delimiters [start, end]
+   *
+   * @example
+   * const delimConfig = this.collectDelimiterPreferences();
+   * // Returns: {
+   * //   math_inline_delimiters: ["$", "$"],
+   * //   math_display_delimiters: ["$$", "$$"]
+   * // }
+   *
+   * @private
+   * @since 5.0.0
+   */
+  collectDelimiterPreferences() {
+    const delimiterChoice =
+      document.querySelector('input[name="pdf-math-delimiters"]:checked')
+        ?.value || "markdown";
+
+    logDebug("Collecting delimiter preferences", { choice: delimiterChoice });
+
+    if (delimiterChoice === "custom") {
+      // Collect custom delimiters from input fields
+      const inlineStart =
+        document.getElementById("pdf-inline-delim-start")?.value?.trim() || "$";
+      const inlineEnd =
+        document.getElementById("pdf-inline-delim-end")?.value?.trim() || "$";
+      const displayStart =
+        document.getElementById("pdf-display-delim-start")?.value?.trim() ||
+        "$$";
+      const displayEnd =
+        document.getElementById("pdf-display-delim-end")?.value?.trim() || "$$";
+
+      const config = {
+        math_inline_delimiters: [inlineStart, inlineEnd],
+        math_display_delimiters: [displayStart, displayEnd],
+      };
+
+      logInfo("Using custom delimiters", config);
+      return config;
+    }
+
+    // Use preset from MATHPIX_CONFIG
+    const preset = MATHPIX_CONFIG.MATH_DELIMITER_PRESETS[delimiterChoice];
+
+    if (!preset) {
+      logWarn("Unknown delimiter preset, using markdown default", {
+        choice: delimiterChoice,
+      });
+      // Fallback to markdown if preset not found
+      const fallback = MATHPIX_CONFIG.MATH_DELIMITER_PRESETS.markdown;
+      return {
+        math_inline_delimiters: fallback.inline,
+        math_display_delimiters: fallback.display,
+      };
+    }
+
+    const config = {
+      math_inline_delimiters: preset.inline,
+      math_display_delimiters: preset.display,
+    };
+
+    logInfo("Using delimiter preset", { preset: delimiterChoice, config });
+    return config;
+  }
+
+  /**
+   * @method collectNumberingPreferences
+   * @description Collects user's equation and section numbering preferences from UI
+   *
+   * Implements two key behaviours:
+   * 1. Auto-enables idiomatic arrays when equation tags are enabled
+   * 2. Ensures section numbering options are mutually exclusive
+   *
+   * Supports three section numbering modes:
+   * - Preserve: Keep existing section numbers (default)
+   * - Auto: Generate sequential section numbering
+   * - Remove: Strip all section numbering
+   *
+   * @returns {Object} Numbering configuration for API
+   * @returns {boolean} [returns.include_equation_tags] - Include equation numbering
+   * @returns {boolean} [returns.idiomatic_eqn_arrays] - Use idiomatic environments
+   * @returns {boolean} [returns.auto_number_sections] - Auto-number sections
+   * @returns {boolean} [returns.remove_section_numbering] - Remove section numbers
+   * @returns {boolean} [returns.preserve_section_numbering] - Keep existing numbers
+   *
+   * @example
+   * const config = handler.collectNumberingPreferences();
+   * // Returns: {
+   * //   include_equation_tags: true,
+   * //   idiomatic_eqn_arrays: true,  // Auto-enabled
+   * //   preserve_section_numbering: true
+   * // }
+   *
+   * @private
+   * @since 5.0.0 (Phase 5, Feature 2)
+   */
+  collectNumberingPreferences() {
+    const config = {};
+
+    // Equation numbering checkboxes
+    const includeEquationTags =
+      document.getElementById("pdf-equation-tags")?.checked || false;
+    const idiomaticArrays =
+      document.getElementById("pdf-idiomatic-arrays")?.checked || false;
+
+    if (includeEquationTags) {
+      config.include_equation_tags = true;
+      // Auto-enable idiomatic arrays for better equation numbering
+      config.idiomatic_eqn_arrays = true;
+      logDebug("Equation tags enabled, auto-enabling idiomatic arrays");
+    } else if (idiomaticArrays) {
+      // User wants idiomatic arrays without equation tags
+      config.idiomatic_eqn_arrays = true;
+      logDebug("Idiomatic arrays enabled without equation tags");
+    }
+
+    // Section numbering (mutually exclusive radio buttons)
+    const sectionChoice =
+      document.querySelector('input[name="pdf-section-numbering"]:checked')
+        ?.value || "preserve";
+
+    switch (sectionChoice) {
+      case "auto":
+        config.auto_number_sections = true;
+        config.preserve_section_numbering = false;
+        config.remove_section_numbering = false;
+        logDebug("Section numbering: auto-generate");
+        break;
+
+      case "remove":
+        config.auto_number_sections = false;
+        config.preserve_section_numbering = false;
+        config.remove_section_numbering = true;
+        logDebug("Section numbering: remove existing");
+        break;
+
+      case "preserve":
+      default:
+        config.auto_number_sections = false;
+        config.preserve_section_numbering = true;
+        config.remove_section_numbering = false;
+        logDebug("Section numbering: preserve existing");
+        break;
+    }
+
+    logInfo("Collected numbering preferences", config);
+    return config;
   }
 
   /**
@@ -944,9 +1230,24 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @method buildFinalProcessingOptions
    * @description Builds final processing options for API request
    *
+   * Combines page range, format selection, delimiter preferences,
+   * and numbering preferences into a complete API request configuration object.
+   *
    * @returns {Object} Complete processing options object
+   * @returns {string} returns.page_range - Page range to process
+   * @returns {Array<string>} returns.formats - Output formats requested
+   * @returns {Array<string>} returns.math_inline_delimiters - Inline maths delimiters
+   * @returns {Array<string>} returns.math_display_delimiters - Display maths delimiters
+   * @returns {boolean} [returns.include_equation_tags] - Include equation numbering
+   * @returns {boolean} [returns.idiomatic_eqn_arrays] - Use idiomatic environments
+   * @returns {boolean} [returns.auto_number_sections] - Auto-number sections
+   * @returns {boolean} [returns.remove_section_numbering] - Remove section numbers
+   * @returns {boolean} [returns.preserve_section_numbering] - Keep existing numbers
+   *
    * @private
    * @since 2.1.0
+   * @updated 5.0.0 - Feature 1: Added delimiter preference integration
+   * @updated 5.0.0 - Feature 2: Added numbering preference integration
    */
   buildFinalProcessingOptions() {
     let pageRange = this.currentProcessingOptions.page_range;
@@ -959,10 +1260,38 @@ class MathPixPDFHandler extends MathPixBaseModule {
       pageRange = "1-10";
     }
 
-    return {
+    // Collect delimiter preferences (Phase 5, Feature 1)
+    const delimiterConfig = this.collectDelimiterPreferences();
+
+    // Collect numbering preferences (Phase 5, Feature 2)
+    const numberingConfig = this.collectNumberingPreferences();
+
+    // Combine all processing options
+    const finalOptions = {
       page_range: pageRange,
       formats: this.currentProcessingOptions.formats,
+      ...delimiterConfig, // Spread delimiter configuration (Feature 1)
+      ...numberingConfig, // Spread numbering configuration (Feature 2)
     };
+
+    logDebug("Final processing options built", finalOptions);
+
+    // DEBUG: Log all configurations explicitly
+    console.log("🔍 DEBUG [PDF Handler]: Final options for API:", {
+      page_range: finalOptions.page_range,
+      formats: finalOptions.formats,
+      // Feature 1: Delimiters
+      math_inline_delimiters: finalOptions.math_inline_delimiters,
+      math_display_delimiters: finalOptions.math_display_delimiters,
+      // Feature 2: Numbering
+      include_equation_tags: finalOptions.include_equation_tags,
+      idiomatic_eqn_arrays: finalOptions.idiomatic_eqn_arrays,
+      auto_number_sections: finalOptions.auto_number_sections,
+      remove_section_numbering: finalOptions.remove_section_numbering,
+      preserve_section_numbering: finalOptions.preserve_section_numbering,
+    });
+
+    return finalOptions;
   }
 
   /**
@@ -2574,6 +2903,27 @@ class MathPixPDFHandler extends MathPixBaseModule {
       resultsContainer.style.display = "none";
     }
 
+    // ✅ FIX: Hide PDF-specific interface to return to unified upload state
+    const pdfInterface = document.getElementById("mathpix-pdf-interface");
+    if (pdfInterface) {
+      pdfInterface.style.display = "none";
+      logDebug("PDF interface hidden for unified upload state");
+    }
+
+    // Hide PDF options interface
+    const pdfOptions = document.getElementById("mathpix-pdf-options");
+    if (pdfOptions) {
+      pdfOptions.style.display = "none";
+      logDebug("PDF options hidden");
+    }
+
+    // ✅ FIX: Show main image interface for unified upload
+    const imageInterface = document.getElementById("mathpix-main-interface");
+    if (imageInterface) {
+      imageInterface.style.display = "block";
+      logDebug("Main image interface shown for unified uploads");
+    }
+
     // Reset state
     this.currentPDFFile = null;
     this.currentProcessingOptions = null;
@@ -2583,8 +2933,8 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // UNIFIED DROP ZONE: Reset main drop zone to initial state
     this.resetDropZoneToInitial();
 
-    this.showNotification("Ready for new PDF processing", "info");
-    logInfo("PDF interface reset for new document");
+    this.showNotification("Ready for new upload", "info");
+    logInfo("Interface reset to unified upload state");
   }
 
   /**
@@ -2614,8 +2964,8 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (mainDropZone) {
       const instructions = mainDropZone.querySelector("p");
       if (instructions) {
+        // FIXED: No outer <p> wrapper - we're already setting innerHTML of the <p> element
         instructions.innerHTML = `
-              <p id="upload-instructions">
                 <svg
                   aria-hidden="true"
                   height="40"
@@ -2641,9 +2991,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
                 </svg>
                 Drop image or PDF here, or click to select
                 <br />
-                <span class="help-text"
-                  >Supports: JPEG, PNG, WebP, PDF (max 10MB)</span
-                >
+                <span class="help-text">Supports: JPEG, PNG, WebP, PDF (max 10MB)</span>
       `;
         logDebug("Main drop zone reset to initial state");
       }
@@ -2651,7 +2999,6 @@ class MathPixPDFHandler extends MathPixBaseModule {
       logWarn("Main drop zone not found for reset");
     }
   }
-
   /**
    * @method clearPDFResults
    * @description Clears current PDF results and shows options

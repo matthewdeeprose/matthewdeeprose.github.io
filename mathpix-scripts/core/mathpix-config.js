@@ -302,12 +302,12 @@ const MATHPIX_CONFIG = {
       docx: false, // Microsoft Word format
       html: true, // HTML format (valid conversion format)
     },
-    ocr_settings: {
-      math_inline_delimiters: ["$", "$"],
-      math_display_delimiters: ["$$", "$$"],
-      rm_spaces: true,
-      rm_fonts: true,
-    },
+    // Phase 5: Delimiter defaults at ROOT level (not in ocr_settings)
+    // These will be overridden by user preferences from buildFinalProcessingOptions()
+    math_inline_delimiters: ["$", "$"],
+    math_display_delimiters: ["$$", "$$"],
+    rm_spaces: true,
+    rm_fonts: true,
   },
 
   /**
@@ -460,6 +460,94 @@ const MATHPIX_CONFIG = {
     ENABLE_COMPLEX_TABLES: true,
     MAX_TABLE_CELLS: 1000,
   },
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {Object}
+   * @description Maths delimiter preset configurations for different LaTeX/Markdown ecosystems
+   *
+   * Provides standard delimiter formats optimised for various documentation systems
+   * and mathematics rendering engines. Users can choose between Markdown-friendly,
+   * traditional LaTeX, or MathJax-compatible delimiter styles.
+   *
+   * Each preset includes:
+   * - Inline delimiters (for inline maths expressions like $x = 5$)
+   * - Display delimiters (for display maths blocks like $$E = mc^2$$)
+   * - Human-readable name for UI display
+   * - Description explaining ecosystem compatibility
+   *
+   * @property {Object} markdown - Markdown-style delimiters using $ and $$
+   * @property {Array<string>} markdown.inline - Inline maths delimiters ["$", "$"]
+   * @property {Array<string>} markdown.display - Display maths delimiters ["$$", "$$"]
+   * @property {string} markdown.name - Display name for UI
+   * @property {string} markdown.description - Ecosystem compatibility information
+   *
+   * @property {Object} latex - Traditional LaTeX-style delimiters
+   * @property {Array<string>} latex.inline - Inline maths delimiters ["\\(", "\\)"]
+   * @property {Array<string>} latex.display - Display maths delimiters ["\\[", "\\]"]
+   * @property {string} latex.name - Display name for UI
+   * @property {string} latex.description - Traditional LaTeX notation information
+   *
+   * @property {Object} mathjax - MathJax-compatible delimiters
+   * @property {Array<string>} mathjax.inline - Inline maths delimiters ["\\(", "\\)"]
+   * @property {Array<string>} mathjax.display - Display maths delimiters ["\\[", "\\]"]
+   * @property {string} mathjax.name - Display name for UI
+   * @property {string} mathjax.description - MathJax compatibility information
+   *
+   * @example
+   * // Access Markdown preset
+   * const preset = MATHPIX_CONFIG.MATH_DELIMITER_PRESETS.markdown;
+   * console.log(preset.inline); // ["$", "$"]
+   * console.log(preset.display); // ["$$", "$$"]
+   *
+   * @example
+   * // Use in API request
+   * const apiRequest = {
+   *   ...MATHPIX_CONFIG.DEFAULT_PDF_REQUEST,
+   *   math_inline_delimiters: MATHPIX_CONFIG.MATH_DELIMITER_PRESETS.markdown.inline,
+   *   math_display_delimiters: MATHPIX_CONFIG.MATH_DELIMITER_PRESETS.markdown.display
+   * };
+   *
+   * @accessibility Delimiter choice affects output compatibility with assistive technology
+   * @since 5.0.0
+   */
+  MATH_DELIMITER_PRESETS: {
+    markdown: {
+      inline: ["$", "$"],
+      display: ["$$", "$$"],
+      name: "Markdown Style",
+      description: "Best for Markdown processors (Hugo, Jekyll, Pandoc)",
+    },
+    latex: {
+      inline: ["\\(", "\\)"],
+      display: ["\\[", "\\]"],
+      name: "LaTeX Style",
+      description: "Traditional LaTeX notation",
+    },
+    mathjax: {
+      inline: ["\\(", "\\)"],
+      display: ["\\[", "\\]"],
+      name: "MathJax Compatible",
+      description: "Compatible with MathJax rendering",
+    },
+  },
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {string}
+   * @description Default delimiter preset for new users and initial configuration
+   *
+   * Set to 'markdown' for broadest ecosystem compatibility with modern static
+   * site generators, documentation systems, and Markdown processors. The Markdown
+   * style using $ and $$ delimiters is widely supported and requires less escaping
+   * than traditional LaTeX backslash notation.
+   *
+   * Valid values: 'markdown', 'latex', 'mathjax'
+   *
+   * @default 'markdown'
+   * @since 5.0.0
+   */
+  DEFAULT_DELIMITER_PRESET: "markdown",
 };
 
 export default MATHPIX_CONFIG;

@@ -1018,6 +1018,58 @@ class MathPixAPIClient {
       conversion_formats: {},
     };
 
+    // Phase 5, Feature 1: Merge user-provided delimiter preferences (overrides defaults)
+    // These come from buildFinalProcessingOptions() in PDF handler
+    if (options.math_inline_delimiters) {
+      requestOptions.math_inline_delimiters = options.math_inline_delimiters;
+      logDebug("Using custom inline delimiters", {
+        delimiters: options.math_inline_delimiters,
+      });
+    }
+    if (options.math_display_delimiters) {
+      requestOptions.math_display_delimiters = options.math_display_delimiters;
+      logDebug("Using custom display delimiters", {
+        delimiters: options.math_display_delimiters,
+      });
+    }
+
+    // Phase 5, Feature 2: Merge user-provided numbering preferences (overrides defaults)
+    // These come from buildFinalProcessingOptions() in PDF handler
+    if (options.include_equation_tags !== undefined) {
+      requestOptions.include_equation_tags = options.include_equation_tags;
+      logDebug("Setting equation tags", {
+        enabled: options.include_equation_tags,
+      });
+    }
+    if (options.idiomatic_eqn_arrays !== undefined) {
+      requestOptions.idiomatic_eqn_arrays = options.idiomatic_eqn_arrays;
+      logDebug("Setting idiomatic arrays", {
+        enabled: options.idiomatic_eqn_arrays,
+      });
+    }
+
+    // Section numbering options (mutually exclusive)
+    if (options.auto_number_sections !== undefined) {
+      requestOptions.auto_number_sections = options.auto_number_sections;
+      logDebug("Setting auto section numbering", {
+        enabled: options.auto_number_sections,
+      });
+    }
+    if (options.remove_section_numbering !== undefined) {
+      requestOptions.remove_section_numbering =
+        options.remove_section_numbering;
+      logDebug("Setting remove section numbering", {
+        enabled: options.remove_section_numbering,
+      });
+    }
+    if (options.preserve_section_numbering !== undefined) {
+      requestOptions.preserve_section_numbering =
+        options.preserve_section_numbering;
+      logDebug("Setting preserve section numbering", {
+        enabled: options.preserve_section_numbering,
+      });
+    }
+
     // Only add page_ranges if not processing all pages
     if (options.page_range && options.page_range !== "all") {
       requestOptions.page_ranges = options.page_range;
@@ -1031,11 +1083,12 @@ class MathPixAPIClient {
       MATHPIX_CONFIG.PDF_PROCESSING.DEFAULT_PDF_OPTIONS.formats;
 
     // Build conversion formats: MMD is default output, only add actual conversion formats
-    const VALID_CONVERSION_FORMATS = ["html", "docx", "tex.zip"];
+    const VALID_CONVERSION_FORMATS = ["md", "html", "docx", "tex.zip"]; // Feature 3: Added "md"
 
     // Map UI format names to API format names
     const UI_TO_API_FORMAT_MAPPING = {
       mmd: "mmd", // Default output, not a conversion format
+      md: "md", // Feature 3: Plain Markdown (direct mapping)
       html: "html", // Direct mapping
       latex: "tex.zip", // UI uses "latex", API expects "tex.zip"
       docx: "docx", // Direct mapping
@@ -1311,6 +1364,8 @@ class MathPixAPIClient {
     if (format === "latex") {
       apiFormat = "tex"; // API endpoint is .tex, not .tex.zip
     }
+    // Feature 3: MD format maps directly to .md endpoint
+    // (no special handling needed, but documented for clarity)
 
     logDebug("Downloading PDF format", { pdfId, format, apiFormat });
 

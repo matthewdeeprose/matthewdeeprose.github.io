@@ -1391,6 +1391,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
     const formatConfig = {
       mmd: { extension: ".md", mimeType: "text/markdown" },
+      md: { extension: ".md", mimeType: "text/markdown" }, // Feature 3: Plain Markdown (same extension as MMD)
       html: { extension: ".html", mimeType: "text/html" },
       latex: { extension: ".zip", mimeType: "application/zip" }, // ✅ FIXED: LaTeX is ZIP
       docx: {
@@ -1717,12 +1718,13 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     // Map UI formats to result keys
     const formatMapping = {
       mmd: "mmd",
+      md: "md", // Feature 3: Plain Markdown
       html: "html",
       latex: "tex.zip", // LaTeX comes as ZIP file
       docx: "docx",
     };
 
-    const formats = ["mmd", "html", "latex", "docx"];
+    const formats = ["mmd", "md", "html", "latex", "docx"];
     const formatPromises = formats.map(async (format) => {
       const resultKey = formatMapping[format];
       const content = results[resultKey];
@@ -1748,7 +1750,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
    * @private
    */
   cacheFormatElements() {
-    const formats = ["mmd", "html", "latex", "docx"];
+    const formats = ["mmd", "md", "html", "latex", "docx"]; // Feature 3: Added "md"
 
     formats.forEach((format) => {
       // Use direct DOM queries instead of cached elements to ensure we find existing elements
@@ -1769,7 +1771,6 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       ),
     });
   }
-
   /**
    * @method showResultsContainer
    * @description Shows the PDF results container
@@ -1806,6 +1807,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
   getLanguageClassForFormat(format) {
     const languageMap = {
       mmd: "language-latex", // MMD from MathPix is actually LaTeX content
+      md: "language-markdown", // Feature 3: Plain Markdown with proper syntax highlighting
       html: "language-markup",
       latex: "language-latex",
     };
@@ -1945,12 +1947,13 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     // Map UI formats to result keys for proper content checking
     const formatMapping = {
       mmd: "mmd",
+      md: "md", // Feature 3: Plain Markdown
       html: "html",
       latex: "tex.zip",
       docx: "docx",
     };
 
-    const formats = ["mmd", "html", "latex", "docx"];
+    const formats = ["mmd", "md", "html", "latex", "docx"];
 
     formats.forEach((format) => {
       const tabElement = this.formatElements.tabs[format];
@@ -2422,7 +2425,16 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     this.activeFormat = "mmd";
     this.resetDisplayStates();
 
-    this.showNotification("Ready to process another document", "info");
+    // ✅ CRITICAL FIX: Delegate to PDF handler to reset drop zone and clear file state
+    if (this.controller && this.controller.pdfHandler) {
+      // Call PDF handler's processAnotherPDF to properly reset drop zone
+      this.controller.pdfHandler.processAnotherPDF();
+      logDebug("Delegated reset to PDF handler for drop zone cleanup");
+    } else {
+      logWarn("PDF handler not available for complete reset");
+      // Fallback notification if handler unavailable
+      this.showNotification("Ready to process another document", "info");
+    }
   }
 
   /**
