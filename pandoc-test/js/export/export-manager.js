@@ -1033,8 +1033,9 @@ ${previousBase64}
 
     // Check for real base64 font data patterns
     // Real base64 font data should be long strings starting with typical font headers
+    // Support woff2, woff, truetype, opentype with optional charset parameter
     const realFontMatches = css.match(
-      /data:font\/woff2;base64,([A-Za-z0-9+/]{100,})/g
+      /data:font\/[^;]+;[^,]*base64,([A-Za-z0-9+/]{100,})/g
     );
     validation.realFontCount = realFontMatches ? realFontMatches.length : 0;
     validation.hasRealFontData = validation.realFontCount > 0;

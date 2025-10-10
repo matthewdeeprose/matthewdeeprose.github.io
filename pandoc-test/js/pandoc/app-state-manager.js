@@ -1196,9 +1196,9 @@ const AppStateManager = (function () {
       results.tests.push({ name: "No placeholders", status: "PASS" });
     }
 
-    // Check for real base64 font data (good)
+    // Check for real base64 font data (good) - support woff2, woff, truetype, opentype
     const realFontMatches = fontCSS.match(
-      /data:font\/woff2;base64,([A-Za-z0-9+/]{100,})/g
+      /data:font\/[^;]+;[^,]*base64,([A-Za-z0-9+/]{100,})/g
     );
     const realFontCount = realFontMatches ? realFontMatches.length : 0;
 
