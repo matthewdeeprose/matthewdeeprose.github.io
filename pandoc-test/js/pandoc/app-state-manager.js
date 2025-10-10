@@ -1321,7 +1321,6 @@ const AppStateManager = (function () {
 
     return results;
   }
-
   /**
    * Test application state management functionality
    */
