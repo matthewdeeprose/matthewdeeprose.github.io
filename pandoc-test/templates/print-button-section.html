@@ -1,0 +1,66 @@
+<div class="tool-group">
+  <h3>Actions</h3>
+  <button
+    class="action-button save-button"
+    onclick="try { if (window.saveCompleteDocument) { window.saveCompleteDocument(); } else { alert('Save function not ready. Please try again in a moment.'); } } catch(e) { console.error('Save error:', e); alert('Save failed: ' + e.message); }"
+    aria-label="Save this document as an HTML file"
+  >
+    <svg
+      class="action-icon save-icon"
+      aria-hidden="true"
+      height="25"
+      viewBox="0 0 21 21"
+      width="25"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g
+        fill="none"
+        fill-rule="evenodd"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        transform="translate(4 4)"
+      >
+        <path
+          d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"
+        />
+        <path
+          d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"
+        />
+        <path d="m3.5 3.5h2v2h-2z" />
+      </g>
+    </svg>
+    Save Document
+  </button>
+  <button
+    class="action-button print-button"
+    onclick="window.print()"
+    aria-label="Print this document"
+  >
+    <svg
+      height="24"
+      width="24"
+      viewBox="0 0 21 21"
+      class="action-icon print-icon"
+      aria-hidden="true"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g fill="none" fill-rule="evenodd" transform="matrix(0 -1 1 0 2 19)">
+        <path
+          d="m3.5 4.38378906v-1.89752528c0-1.1045695.8954305-2 2-2h4c1.1045695 0 2 .8954305 2 2v12.01373622c0 1.1045695-.8954305 2-2 2h-4c-1.1045695 0-2-.8954305-2-2v-2"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="m1.5 4.5h5.0013251v8h-5.0013251c-.55228475 0-1-.4477153-1-1v-6c0-.55228475.44771525-1 1-1zm12 0h2c.5522847 0 1 .44771525 1 1v6c0 .5522847-.4477153 1-1 1h-2"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <circle cx="9" cy="14" fill="currentColor" r="1" />
+      </g>
+    </svg>
+    Print Document
+  </button>
+</div>
