@@ -126,6 +126,28 @@ const AppStateManager = (function () {
     }
 
     /**
+     * Pre-load fonts during initialization to prevent export delays
+     */
+    async preloadFonts() {
+      logInfo("🎨 Pre-loading fonts for export readiness...");
+
+      try {
+        if (window.TemplateSystem) {
+          const generator = window.TemplateSystem.createGenerator();
+          await generator.generateEmbeddedFontsCSS();
+          logInfo("✅ Fonts pre-loaded successfully");
+        } else {
+          logWarn("⚠️ TemplateSystem not available for font pre-loading");
+        }
+      } catch (error) {
+        logWarn(
+          "⚠️ Font pre-loading failed (will retry on export):",
+          error.message
+        );
+      }
+    }
+
+    /**
      * FIXED: Enhanced module validation including optional modules
      */
     validateModuleDependencies() {
@@ -504,6 +526,10 @@ const AppStateManager = (function () {
         } else {
           logDebug("ℹ️ Live LaTeX Editor not available (optional feature)");
         }
+
+        // 🎨 NEW: Pre-load fonts for export readiness
+        // This prevents timeout errors on first export attempt
+        await this.preloadFonts();
 
         logInfo("✅ Module integrations setup complete");
       } catch (error) {
@@ -1095,6 +1121,208 @@ const AppStateManager = (function () {
   // ===========================================================================================
 
   /**
+   * 🎨 Test font pre-loading functionality
+   * This verifies fonts are loaded and ready for export
+   */
+  async function testFontPreLoading() {
+    console.log("🧪 Testing Font Pre-Loading System...");
+    console.log("=".repeat(60));
+
+    const results = {
+      tests: [],
+      passed: 0,
+      failed: 0,
+      warnings: 0,
+    };
+
+    // Test 1: Check if TemplateSystem exists
+    console.log("\n📋 Test 1: TemplateSystem Availability");
+    if (window.TemplateSystem) {
+      console.log("✅ TemplateSystem is available");
+      results.passed++;
+      results.tests.push({ name: "TemplateSystem exists", status: "PASS" });
+    } else {
+      console.error("❌ TemplateSystem not found");
+      results.failed++;
+      results.tests.push({ name: "TemplateSystem exists", status: "FAIL" });
+      return results;
+    }
+
+    // Test 2: Generate font CSS
+    console.log("\n🎨 Test 2: Font CSS Generation");
+    const startTime = Date.now();
+    let fontCSS = "";
+
+    try {
+      const generator = window.TemplateSystem.createGenerator();
+      fontCSS = await generator.generateEmbeddedFontsCSS();
+      const loadTime = Date.now() - startTime;
+
+      console.log(`✅ Font CSS generated in ${loadTime}ms`);
+      console.log(`📊 Font CSS length: ${fontCSS.length} characters`);
+      results.passed++;
+      results.tests.push({
+        name: "Font CSS generation",
+        status: "PASS",
+        time: loadTime,
+      });
+    } catch (error) {
+      console.error("❌ Font CSS generation failed:", error.message);
+      results.failed++;
+      results.tests.push({ name: "Font CSS generation", status: "FAIL" });
+      return results;
+    }
+
+    // Test 3: Validate font CSS content
+    console.log("\n🔍 Test 3: Font CSS Validation");
+
+    // Check for placeholders (bad)
+    const placeholderMatches = fontCSS.match(/YOUR_BASE64_PLACEHOLDER/g);
+    const placeholderCount = placeholderMatches ? placeholderMatches.length : 0;
+
+    if (placeholderCount > 0) {
+      console.error(
+        `❌ Found ${placeholderCount} placeholder(s) - fonts not loaded`
+      );
+      results.failed++;
+      results.tests.push({
+        name: "No placeholders",
+        status: "FAIL",
+        details: `${placeholderCount} placeholders found`,
+      });
+    } else {
+      console.log("✅ No placeholders found");
+      results.passed++;
+      results.tests.push({ name: "No placeholders", status: "PASS" });
+    }
+
+    // Check for real base64 font data (good)
+    const realFontMatches = fontCSS.match(
+      /data:font\/woff2;base64,([A-Za-z0-9+/]{100,})/g
+    );
+    const realFontCount = realFontMatches ? realFontMatches.length : 0;
+
+    if (realFontCount > 0) {
+      console.log(`✅ Found ${realFontCount} real font data section(s)`);
+      results.passed++;
+      results.tests.push({
+        name: "Real font data present",
+        status: "PASS",
+        details: `${realFontCount} fonts detected`,
+      });
+    } else {
+      console.error("❌ No real font data detected");
+      results.failed++;
+      results.tests.push({ name: "Real font data present", status: "FAIL" });
+    }
+
+    // Check for font signatures
+    const fontSignatures = ["d09G", "wOF2", "OTTO", "true", "0001"];
+    let validSignatureCount = 0;
+
+    console.log("\n🔬 Font Signature Analysis:");
+    for (const signature of fontSignatures) {
+      if (fontCSS.includes(signature)) {
+        validSignatureCount++;
+        console.log(`  ✅ Found signature: ${signature}`);
+      }
+    }
+
+    if (validSignatureCount > 0) {
+      console.log(`✅ Valid font signatures: ${validSignatureCount}/5`);
+      results.passed++;
+      results.tests.push({
+        name: "Font signatures valid",
+        status: "PASS",
+        details: `${validSignatureCount} signatures found`,
+      });
+    } else {
+      console.error("❌ No valid font signatures found");
+      results.failed++;
+      results.tests.push({ name: "Font signatures valid", status: "FAIL" });
+    }
+
+    // Test 4: Check font CSS size (should be substantial)
+    console.log("\n📏 Test 4: Font CSS Size Check");
+    if (fontCSS.length > 1000) {
+      console.log(`✅ Font CSS size adequate: ${fontCSS.length} characters`);
+      results.passed++;
+      results.tests.push({
+        name: "Font CSS size adequate",
+        status: "PASS",
+        details: `${fontCSS.length} chars`,
+      });
+    } else {
+      console.error(`❌ Font CSS too short: ${fontCSS.length} characters`);
+      results.failed++;
+      results.tests.push({
+        name: "Font CSS size adequate",
+        status: "FAIL",
+        details: `Only ${fontCSS.length} chars`,
+      });
+    }
+
+    // Test 5: Simulate export validation
+    console.log("\n🎯 Test 5: Export Validation Simulation");
+    const validation = {
+      isValid:
+        !placeholderCount &&
+        realFontCount > 0 &&
+        validSignatureCount > 0 &&
+        fontCSS.length > 1000,
+    };
+
+    if (validation.isValid) {
+      console.log("✅ Fonts would pass export validation");
+      results.passed++;
+      results.tests.push({ name: "Export validation", status: "PASS" });
+    } else {
+      console.error("❌ Fonts would FAIL export validation");
+      results.failed++;
+      results.tests.push({ name: "Export validation", status: "FAIL" });
+    }
+
+    // Test 6: Check if fonts were pre-loaded during app init
+    console.log("\n⏱️ Test 6: Pre-Loading Status Check");
+    if (window.AppStateManager && window.AppStateManager.isReady()) {
+      console.log(
+        "✅ Application is ready (fonts should have been pre-loaded)"
+      );
+      results.passed++;
+      results.tests.push({ name: "App ready state", status: "PASS" });
+    } else {
+      console.warn("⚠️ Application not fully ready yet");
+      results.warnings++;
+      results.tests.push({ name: "App ready state", status: "WARN" });
+    }
+
+    // Summary
+    console.log("\n" + "=".repeat(60));
+    console.log("📊 FONT PRE-LOADING TEST SUMMARY");
+    console.log("=".repeat(60));
+    console.log(`✅ Passed: ${results.passed}`);
+    console.log(`❌ Failed: ${results.failed}`);
+    console.log(`⚠️ Warnings: ${results.warnings}`);
+    console.log(`📈 Total Tests: ${results.tests.length}`);
+
+    const successRate = ((results.passed / results.tests.length) * 100).toFixed(
+      1
+    );
+    console.log(`🎯 Success Rate: ${successRate}%`);
+
+    if (results.failed === 0) {
+      console.log("\n🎉 ALL TESTS PASSED - Fonts are ready for export!");
+    } else {
+      console.log("\n⚠️ SOME TESTS FAILED - Export may have issues");
+      console.log(
+        "💡 Try running: await window.AppStateManager.manager.preloadFonts()"
+      );
+    }
+
+    return results;
+  }
+
+  /**
    * Test application state management functionality
    */
   function testAppStateManager() {
@@ -1215,6 +1443,7 @@ const AppStateManager = (function () {
 
     // Testing
     testAppStateManager,
+    testFontPreLoading,
 
     // Logging
     logError,
