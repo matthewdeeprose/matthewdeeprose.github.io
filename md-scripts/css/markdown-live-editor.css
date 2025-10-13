@@ -1,0 +1,264 @@
+/**
+ * Live Markdown Editor Styles
+ * Theme-aware styling for contenteditable markdown highlighting
+ * WCAG 2.2 AA compliant
+ * Integrates with existing Prism.js token styling
+ */
+
+/* ===================================
+   COLOUR PROPERTIES
+   =================================== */
+
+/* Print colours */
+@media print {
+  .markdown-live-contenteditable {
+    border: 1px solid #00131d;
+    background: white;
+    color: black;
+  }
+}
+
+/* ===================================
+   TOGGLE BUTTON STATES (SVG Version) - COLORS
+   =================================== */
+
+/* State 1: Not disabled + Pressed (Live highlighting ON) */
+#toggle-highlighting-btn:not([disabled])[aria-pressed="true"]
+  #highlight-toggle
+  circle {
+  stroke: #4bb694;
+  fill: #4bb694;
+}
+
+#toggle-highlighting-btn:not([disabled])[aria-pressed="true"]:hover
+  #highlight-toggle
+  circle {
+  stroke: #00131d;
+  fill: #4bb694;
+}
+
+/* State 2: Not disabled + Unpressed (Live highlighting OFF) */
+#toggle-highlighting-btn:not([disabled])[aria-pressed="false"]
+  #highlight-toggle
+  circle {
+  stroke: #d5007f;
+  fill: #d5007f;
+}
+
+/* State 3: Disabled + Pressed (Was ON, now locked due to content length) */
+#toggle-highlighting-btn[disabled][aria-pressed="true"],
+#toggle-highlighting-btn[aria-disabled="true"][aria-pressed="true"] {
+  opacity: 0.7;
+}
+
+#toggle-highlighting-btn[disabled][aria-pressed="true"]
+  #highlight-toggle
+  circle,
+#toggle-highlighting-btn[aria-disabled="true"][aria-pressed="true"]
+  #highlight-toggle
+  circle {
+  stroke: #758d9a;
+  fill: #758d9a;
+}
+
+#toggle-highlighting-btn[disabled][aria-pressed="true"] #highlighting-state,
+#toggle-highlighting-btn[aria-disabled="true"][aria-pressed="true"]
+  #highlighting-state {
+  color: #758d9a;
+}
+
+/* State 4: Disabled + Unpressed (OFF and locked due to content length) */
+#toggle-highlighting-btn[disabled][aria-pressed="false"],
+#toggle-highlighting-btn[aria-disabled="true"][aria-pressed="false"] {
+  opacity: 0.7;
+}
+
+#toggle-highlighting-btn[disabled][aria-pressed="false"]
+  #highlight-toggle
+  circle,
+#toggle-highlighting-btn[aria-disabled="true"][aria-pressed="false"]
+  #highlight-toggle
+  circle {
+  stroke: #758d9a;
+  fill: none;
+}
+
+/* Disabled states: No hover effects - color inheritance */
+#toggle-highlighting-btn[disabled]:hover,
+#toggle-highlighting-btn[aria-disabled="true"]:hover {
+  background-color: inherit;
+  border-color: inherit;
+}
+
+#toggle-highlighting-btn[disabled]:hover #highlight-toggle circle,
+#toggle-highlighting-btn[aria-disabled="true"]:hover #highlight-toggle circle {
+  stroke: inherit;
+  fill: inherit;
+}
+
+#toggle-highlighting-btn[disabled]:hover #highlighting-state,
+#toggle-highlighting-btn[aria-disabled="true"]:hover #highlighting-state {
+  color: inherit;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  #toggle-highlighting-btn:not([disabled])[aria-pressed="true"] {
+    border-width: 3px;
+  }
+
+  #toggle-highlighting-btn[disabled],
+  #toggle-highlighting-btn[aria-disabled="true"] {
+    border-width: 3px;
+    border-style: dashed;
+  }
+
+  #highlight-toggle circle {
+    stroke-width: 2;
+  }
+}
+
+/* ===================================
+   STRUCTURAL & LAYOUT PROPERTIES
+   =================================== */
+
+/* Contenteditable base structure */
+.markdown-live-contenteditable {
+  display: block;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  /* font-family: "Courier New", "Monaco", "Consolas", monospace;*/
+  font-size: 0.8rem;
+  line-height: 1.6;
+  padding: 1rem;
+  border-radius: 4px;
+  height: 200px;
+
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical; /* Allow user to manually resize */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Focus indicator structure */
+.markdown-live-contenteditable:focus {
+  outline-offset: 2px;
+}
+
+/* Loading/busy state */
+.markdown-live-contenteditable[aria-busy="true"] {
+  opacity: 0.7;
+  cursor: wait;
+  pointer-events: none;
+}
+
+/* Disabled state structure */
+.markdown-live-contenteditable[aria-disabled="true"],
+.markdown-live-contenteditable:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#markdownExampleSelect,
+.examples-controls {
+  font-size: 1rem;
+}
+
+/* Print structure */
+@media print {
+  .markdown-live-contenteditable {
+    page-break-inside: avoid;
+  }
+
+  .sr-only,
+  #markdown-live-announcements,
+  #markdown-live-help {
+    display: none !important;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .markdown-live-contenteditable {
+    font-size: 16px;
+    padding: 0.75rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .markdown-live-contenteditable {
+    border-width: 2px;
+  }
+
+  .markdown-live-contenteditable:focus {
+    outline-width: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .markdown-live-contenteditable {
+    transition: none;
+  }
+}
+
+/* ===================================
+   TOGGLE BUTTON STATES (SVG Version) - STRUCTURE
+   =================================== */
+
+/* Base button structure */
+#toggle-highlighting-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* SVG circle base styling - transitions */
+#highlight-toggle circle {
+  transition: stroke 0.2s ease, fill 0.2s ease;
+}
+
+#highlight-toggle {
+  flex-shrink: 0;
+}
+
+/* Span text styling */
+#toggle-highlighting-btn #highlighting-state {
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+/* Disabled states: cursor control */
+#toggle-highlighting-btn[disabled][aria-pressed="true"],
+#toggle-highlighting-btn[aria-disabled="true"][aria-pressed="true"] {
+  cursor: not-allowed;
+}
+
+#toggle-highlighting-btn[disabled][aria-pressed="false"],
+#toggle-highlighting-btn[aria-disabled="true"][aria-pressed="false"] {
+  cursor: not-allowed;
+}
+
+#toggle-highlighting-btn[disabled]:hover,
+#toggle-highlighting-btn[aria-disabled="true"]:hover {
+  cursor: not-allowed;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  #toggle-highlighting-btn,
+  #highlight-toggle circle,
+  #highlighting-state {
+    transition: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  #toggle-highlighting-btn {
+    display: none;
+  }
+}

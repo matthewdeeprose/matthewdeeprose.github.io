@@ -1083,13 +1083,26 @@ class MathPixAPIClient {
       MATHPIX_CONFIG.PDF_PROCESSING.DEFAULT_PDF_OPTIONS.formats;
 
     // Build conversion formats: MMD is default output, only add actual conversion formats
-    const VALID_CONVERSION_FORMATS = ["md", "html", "docx", "tex.zip"]; // Feature 3: Added "md"
+    const VALID_CONVERSION_FORMATS = [
+      "md",
+      "html",
+      "pdf",
+      "latex.pdf",
+      "docx",
+      "pptx",
+      "tex.zip",
+      "mmd.zip",
+      "md.zip",
+      "html.zip",
+    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latex.pdf" | Phase 2: Added "pptx" | Phase 2b: Added archive formats
 
     // Map UI format names to API format names
     const UI_TO_API_FORMAT_MAPPING = {
       mmd: "mmd", // Default output, not a conversion format
       md: "md", // Feature 3: Plain Markdown (direct mapping)
       html: "html", // Direct mapping
+      pdf: "pdf", // Phase 1: PDF (HTML Rendering) - direct mapping
+      latexpdf: "latex.pdf", // Phase 1: PDF (LaTeX Rendering) - UI "latexpdf" maps to API "latex.pdf"
       latex: "tex.zip", // UI uses "latex", API expects "tex.zip"
       docx: "docx", // Direct mapping
     };
@@ -1394,9 +1407,19 @@ class MathPixAPIClient {
           `Download failed: ${downloadResponse.status} ${downloadResponse.statusText}`
         );
       }
-
-      // Define binary formats - ✅ FIXED: Now correctly identifies tex.zip as binary
-      const binaryFormats = ["docx", "latex", "tex.zip"];
+      // Define binary formats - ✅ PHASE 1 FIXED: Added PDF formats | Phase 2: Added PPTX | Phase 2b: Added archive formats
+      const binaryFormats = [
+        "docx",
+        "pptx",
+        "pdf",
+        "latex.pdf",
+        "latexpdf",
+        "latex",
+        "tex.zip",
+        "mmd.zip",
+        "md.zip",
+        "html.zip",
+      ];
       const isBinaryFormat =
         binaryFormats.includes(format) ||
         binaryFormats.includes(apiFormat) ||

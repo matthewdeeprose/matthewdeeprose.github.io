@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="md-scripts/css/modal.css" />
     <link rel="stylesheet" href="file-upload.css" />
     <link rel="stylesheet" href="error-handler.css" />
+    <link rel="stylesheet" href="md-scripts/css/markdown-live-editor.css" />
 
     <link
       rel="stylesheet"
@@ -1648,6 +1649,7 @@
           </code></pre>
             </div>
           </details>
+
           <div class="editor-section">
             <label for="markdown-input"
               >Enter Markdown text. LaTeX math, charts and mermaid
@@ -1685,6 +1687,32 @@
               Clear
             </button>
             <button
+              id="toggle-highlighting-btn"
+              type="button"
+              aria-label="Toggle live syntax highlighting"
+              aria-pressed="false"
+              title="Enable or disable live markdown syntax highlighting"
+            >
+              <svg
+                id="highlight-toggle"
+                aria-hidden="true"
+                height="21"
+                viewBox="0 0 21 21"
+                width="21"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  cx="10.5"
+                  cy="10.5"
+                  r="8"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Highlighting: <span id="highlighting-state">off</span>
+            </button>
+            <button
               id="help-btn"
               type="button"
               aria-label="Show keyboard shortcuts"
@@ -1692,7 +1720,38 @@
               Keyboard Shortcuts
             </button>
           </div>
-
+          <!-- Markdown Examples Selector -->
+          <section
+            class="examples-section"
+            role="region"
+            aria-label="Markdown examples"
+          >
+            <div class="examples-controls">
+              <div class="form-group">
+                <label for="markdownExampleSelect">Load an example:</label>
+                <select
+                  id="markdownExampleSelect"
+                  aria-describedby="exampleSelectHelp"
+                >
+                  <option value="">-- Choose an example --</option></select
+                ><br />
+                <span id="exampleSelectHelp" class="help-text">
+                  Examples demonstrate various markdown features including
+                  tables, charts, and diagrams.
+                </span>
+              </div>
+              <div class="button-group">
+                <button
+                  id="loadExampleButton"
+                  type="button"
+                  disabled
+                  aria-label="Load selected example into editor"
+                >
+                  Load Example
+                </button>
+              </div>
+            </div>
+          </section>
           <div
             class="loading"
             id="loading-indicator"
@@ -3773,6 +3832,90 @@ Science,91</pre
                       >
                     </span>
                   </label>
+
+                  <label class="mathpix-format-checkbox">
+                    <input
+                      type="checkbox"
+                      id="pdf-format-pptx"
+                      value="pptx"
+                      checked
+                    />
+                    <span class="format-content">
+                      <span class="format-label">PowerPoint (PPTX)</span>
+                      <span class="format-description"
+                        >Presentation slides compatible with PowerPoint
+                        2007+</span
+                      >
+                    </span>
+                  </label>
+
+                  <label class="mathpix-format-checkbox">
+                    <input type="checkbox" id="pdf-format-pdf" value="pdf" />
+                    <span class="format-content">
+                      <span class="format-label">PDF (HTML Rendering)</span>
+                      <span class="format-description"
+                        >Portable document with rendered mathematics</span
+                      >
+                    </span>
+                  </label>
+
+                  <label class="mathpix-format-checkbox">
+                    <input
+                      type="checkbox"
+                      id="pdf-format-latexpdf"
+                      value="latexpdf"
+                    />
+                    <span class="format-content">
+                      <span class="format-label">PDF (LaTeX Rendering)</span>
+                      <span class="format-description"
+                        >PDF with selectable LaTeX equations</span
+                      >
+                    </span>
+                  </label>
+
+                  <label class="mathpix-format-checkbox">
+                    <input
+                      type="checkbox"
+                      id="pdf-format-mmdzip"
+                      value="mmd.zip"
+                    />
+                    <span class="format-content">
+                      <span class="format-label">MMD Archive (ZIP)</span>
+                      <span class="format-description"
+                        >MMD file with all images packaged in ZIP archive</span
+                      >
+                    </span>
+                  </label>
+
+                  <label class="mathpix-format-checkbox">
+                    <input
+                      type="checkbox"
+                      id="pdf-format-mdzip"
+                      value="md.zip"
+                    />
+                    <span class="format-content">
+                      <span class="format-label">Markdown Archive (ZIP)</span>
+                      <span class="format-description"
+                        >Markdown file with all images packaged in ZIP
+                        archive</span
+                      >
+                    </span>
+                  </label>
+
+                  <label class="mathpix-format-checkbox">
+                    <input
+                      type="checkbox"
+                      id="pdf-format-htmlzip"
+                      value="html.zip"
+                    />
+                    <span class="format-content">
+                      <span class="format-label">HTML Archive (ZIP)</span>
+                      <span class="format-description"
+                        >HTML file with images and CSS packaged in ZIP
+                        archive</span
+                      >
+                    </span>
+                  </label>
                 </div>
               </fieldset>
 
@@ -4368,6 +4511,84 @@ Science,91</pre
                   >
                     DOCX
                   </button>
+                  <button
+                    type="button"
+                    id="tab-pptx"
+                    class="mathpix-tab-header"
+                    role="tab"
+                    aria-controls="panel-pptx"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-format="pptx"
+                    style="display: none"
+                  >
+                    PowerPoint
+                  </button>
+                  <button
+                    type="button"
+                    id="tab-pdf"
+                    class="mathpix-tab-header"
+                    role="tab"
+                    aria-controls="panel-pdf"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-format="pdf"
+                    style="display: none"
+                  >
+                    PDF (HTML)
+                  </button>
+                  <button
+                    type="button"
+                    id="tab-latexpdf"
+                    class="mathpix-tab-header"
+                    role="tab"
+                    aria-controls="panel-latexpdf"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-format="latexpdf"
+                    style="display: none"
+                  >
+                    PDF (LaTeX)
+                  </button>
+                  <button
+                    type="button"
+                    id="tab-mmdzip"
+                    class="mathpix-tab-header"
+                    role="tab"
+                    aria-controls="panel-mmdzip"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-format="mmdzip"
+                    style="display: none"
+                  >
+                    MMD Archive
+                  </button>
+                  <button
+                    type="button"
+                    id="tab-mdzip"
+                    class="mathpix-tab-header"
+                    role="tab"
+                    aria-controls="panel-mdzip"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-format="mdzip"
+                    style="display: none"
+                  >
+                    MD Archive
+                  </button>
+                  <button
+                    type="button"
+                    id="tab-htmlzip"
+                    class="mathpix-tab-header"
+                    role="tab"
+                    aria-controls="panel-htmlzip"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-format="htmlzip"
+                    style="display: none"
+                  >
+                    HTML Archive
+                  </button>
                 </div>
 
                 <!-- MMD Results Panel -->
@@ -4673,6 +4894,136 @@ Science,91</pre
                     </p>
                   </div>
                 </div>
+
+                <!-- PowerPoint (PPTX) Results Panel -->
+                <div
+                  id="panel-pptx"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="tab-pptx"
+                >
+                  <div class="mathpix-format-header">
+                    <h4>PowerPoint (PPTX) Output</h4>
+                    <div class="mathpix-format-actions">
+                      <button
+                        type="button"
+                        class="mathpix-download-btn"
+                        data-format="pptx"
+                      >
+                        <span aria-hidden="true">📥</span> Download PPTX
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mathpix-binary-format-message">
+                    <p>
+                      <strong>Binary Format:</strong> PowerPoint files cannot be
+                      previewed here. Click "Download PPTX" to save the file to
+                      your device.
+                    </p>
+                    <p class="format-description">
+                      This presentation format is compatible with Microsoft
+                      PowerPoint 2007 and later. Each page becomes a slide with
+                      preserved mathematics and formatting.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- PDF (HTML) Results Panel -->
+                <div
+                  id="panel-pdf"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="tab-pdf"
+                >
+                  <div class="mathpix-format-header">
+                    <h4>PDF (HTML Rendering) Output</h4>
+                    <div class="mathpix-format-actions">
+                      <button
+                        type="button"
+                        class="mathpix-download-btn"
+                        data-format="pdf"
+                        aria-label="Download PDF with HTML rendering"
+                      >
+                        <span aria-hidden="true">📥</span> Download PDF
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mathpix-binary-format-message">
+                    <p>
+                      <strong>Binary Format:</strong> PDF files cannot be
+                      previewed here. Click "Download PDF" to save the file to
+                      your device.
+                    </p>
+                    <p class="format-description">
+                      This PDF contains HTML-rendered mathematics suitable for
+                      printing and sharing. Compatible with all PDF viewers.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- PDF (LaTeX) Results Panel -->
+                <div
+                  id="panel-latexpdf"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="tab-latexpdf"
+                >
+                  <div class="mathpix-format-header">
+                    <h4>PDF (LaTeX Rendering) Output</h4>
+                    <div class="mathpix-format-actions">
+                      <button
+                        type="button"
+                        class="mathpix-download-btn"
+                        data-format="latexpdf"
+                        aria-label="Download PDF with LaTeX rendering"
+                      >
+                        <span aria-hidden="true">📥</span> Download PDF
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mathpix-binary-format-message">
+                    <p>
+                      <strong>Binary Format:</strong> PDF files cannot be
+                      previewed here. Click "Download PDF" to save the file to
+                      your device.
+                    </p>
+                    <p class="format-description">
+                      This PDF contains LaTeX-rendered mathematics with
+                      <strong>selectable equations</strong>. Superior typography
+                      for academic papers and technical documents.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- MMD Archive (ZIP) Results Panel -->
+                <div
+                  id="panel-mmdzip"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="tab-mmdzip"
+                >
+                  <!-- Content populated by populateMmdZipContent() -->
+                </div>
+
+                <!-- MD Archive (ZIP) Results Panel -->
+                <div
+                  id="panel-mdzip"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="tab-mdzip"
+                >
+                  <!-- Content populated by populateMdZipContent() -->
+                </div>
+
+                <!-- HTML Archive (ZIP) Results Panel -->
+                <div
+                  id="panel-htmlzip"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="tab-htmlzip"
+                >
+                  <!-- Content populated by populateHtmlZipContent() -->
+                </div>
               </div>
               <!-- Page Navigation with Integrated Statistics -->
               <div
@@ -4723,6 +5074,100 @@ Science,91</pre
                   </dl>
                 </div>
               </div>
+              <!-- Feature 4: Diagram Text Extraction Section -->
+              <div
+                id="mathpix-diagram-text-section"
+                class="mathpix-diagram-text-section"
+                style="display: none"
+                role="region"
+                aria-label="Extracted diagram text content"
+              >
+                <button
+                  type="button"
+                  id="mathpix-diagram-text-toggle"
+                  class="mathpix-diagram-text-toggle"
+                  aria-expanded="false"
+                  aria-controls="mathpix-diagram-text-content"
+                >
+                  <span class="toggle-icon" aria-hidden="true">▼</span>
+                  <span class="toggle-text">Show Diagram Text</span>
+                  <span class="diagram-count" id="mathpix-diagram-count"></span>
+                </button>
+
+                <div
+                  id="mathpix-diagram-text-content"
+                  class="mathpix-diagram-text-content"
+                  role="region"
+                  aria-labelledby="mathpix-diagram-text-toggle"
+                  hidden
+                >
+                  <div class="diagram-text-intro">
+                    <p class="help-text">
+                      <svg
+                        height="21"
+                        viewBox="0 0 21 21"
+                        width="21"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <g
+                          fill="none"
+                          fill-rule="evenodd"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          transform="translate(2 2)"
+                        >
+                          <circle cx="8.5" cy="8.5" r="8" />
+                          <path d="m8.5 12.5v-4" />
+                          <path d="m8.5 5.5v-.01" />
+                        </g>
+                      </svg>
+                      Text elements extracted from within diagrams, including
+                      labels, annotations, and embedded text.
+                    </p>
+                  </div>
+
+                  <div
+                    id="mathpix-diagram-text-list"
+                    class="mathpix-diagram-text-list"
+                  >
+                    <!-- Diagram cards will be populated by JavaScript -->
+                  </div>
+
+                  <!-- Empty State Message -->
+                  <div
+                    id="mathpix-diagram-text-empty"
+                    class="mathpix-diagram-text-empty"
+                    style="display: none"
+                  >
+                    <p>
+                      <svg
+                        height="40"
+                        viewBox="0 0 21 21"
+                        width="40"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <g
+                          fill="none"
+                          fill-rule="evenodd"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          transform="translate(2 2)"
+                        >
+                          <circle cx="8.5" cy="8.5" r="8" />
+                          <path d="m8.5 12.5v-4" />
+                          <path d="m8.5 5.5v-.01" />
+                        </g>
+                      </svg>
+                      No text found within diagrams in this document.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <!-- Processing Actions -->
               <div class="mathpix-pdf-final-actions">
                 <button
@@ -4919,6 +5364,7 @@ Science,91</pre
     ></script>
     <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-tab-handler.js"></script>
     <script src="https://matthewdeeprose.github.io/markdownit/chart.min.js"></script>
+
     <script src="md-scripts/charts/chart-data-manager.js"></script>
     <script src="md-scripts/charts/chart-template-manager.js"></script>
     <script src="md-scripts/charts/chart-suggestion-engine.js"></script>
@@ -4946,6 +5392,13 @@ Science,91</pre
 
     <!-- Load our markdown editor implementation -->
     <script src="md-scripts/markdown-utils/markdown-editor.js"></script>
+    <script src="md-scripts/markdown-utils/markdown-live-editor.js"></script>
+    <script src="md-scripts/markdown-utils/markdown-live-editor-tests.js"></script>
+
+    <script
+      src="md-scripts/markdown-utils/markdown-examples-loader.js"
+      defer
+    ></script>
     <script src="md-scripts/mermaid/mermaid-theme.js"></script>
     <link rel="stylesheet" href="md-scripts/css/mermaid-theme.css" />
     <script src="md-scripts/charts/chart-view-controls.js"></script>
@@ -5552,6 +6005,11 @@ Science,91</pre
     </script>
     <script>
       function showOpenRouter(isUserInitiated = true) {
+        // Cleanup live editor when switching away from Markdown Editor
+        if (typeof window.markdownEditorCleanup === "function") {
+          window.markdownEditorCleanup();
+        }
+
         const graphBuilder = document.getElementById("graph-builder");
         const markdownConverter = document.getElementById("markdown-converter");
         const openrouterApp = document.getElementById("openrouter-app");
@@ -5571,6 +6029,11 @@ Science,91</pre
       }
 
       function showMkdEd(isUserInitiated = true) {
+        // Restore live editor when switching back to Markdown Editor
+        if (typeof window.markdownEditorRestore === "function") {
+          window.markdownEditorRestore();
+        }
+
         const graphBuilder = document.getElementById("graph-builder");
         const markdownConverter = document.getElementById("markdown-converter");
         const openrouterApp = document.getElementById("openrouter-app");
@@ -5593,6 +6056,30 @@ Science,91</pre
               window.AppLogging.logError(
                 "Markdown Editor initialisation failed"
               );
+            } else {
+              // Initialize examples loader after editor is ready
+              if (
+                window.MarkdownExamplesLoader &&
+                typeof window.MarkdownExamplesLoader.initialise ===
+                  "function" &&
+                !window.MarkdownExamplesLoader.isInitialised()
+              ) {
+                setTimeout(() => {
+                  window.MarkdownExamplesLoader.initialise()
+                    .then((success) => {
+                      if (success) {
+                        console.log("Markdown Examples Loader initialised");
+                      } else {
+                        console.warn(
+                          "Markdown Examples Loader failed to initialise"
+                        );
+                      }
+                    })
+                    .catch((error) => {
+                      console.error("Markdown Examples Loader error:", error);
+                    });
+                }, 100);
+              }
             }
           }, 200);
         }
@@ -5604,6 +6091,11 @@ Science,91</pre
       }
 
       function showGrhBld(isUserInitiated = true) {
+        // Cleanup live editor when switching away from Markdown Editor
+        if (typeof window.markdownEditorCleanup === "function") {
+          window.markdownEditorCleanup();
+        }
+
         const graphBuilder = document.getElementById("graph-builder");
         const openrouterApp = document.getElementById("openrouter-app");
         const markdownConverter = document.getElementById("markdown-converter");
@@ -5647,6 +6139,11 @@ Science,91</pre
       }
 
       async function showMathPix(isUserInitiated = true) {
+        // Cleanup live editor when switching away from Markdown Editor
+        if (typeof window.markdownEditorCleanup === "function") {
+          window.markdownEditorCleanup();
+        }
+
         const graphBuilder = document.getElementById("graph-builder");
         const markdownConverter = document.getElementById("markdown-converter");
         const openrouterApp = document.getElementById("openrouter-app");
@@ -5731,6 +6228,29 @@ Science,91</pre
       window.showMkdEd = showMkdEd;
       window.showGrhBld = showGrhBld;
       window.showMathPix = showMathPix;
+
+      // Helper functions for Markdown Examples Loader
+      window.loadMarkdownContent = function (markdownText) {
+        if (
+          window.MarkdownEditor &&
+          typeof window.MarkdownEditor.loadContent === "function"
+        ) {
+          window.MarkdownEditor.loadContent(markdownText);
+        } else {
+          console.error("MarkdownEditor.loadContent not available");
+        }
+      };
+
+      window.clearMarkdownEditor = function () {
+        if (
+          window.MarkdownEditor &&
+          typeof window.MarkdownEditor.clear === "function"
+        ) {
+          window.MarkdownEditor.clear();
+        } else {
+          console.error("MarkdownEditor.clear not available");
+        }
+      };
 
       function initializeToolVisibility() {
         const checkedRadio = document.querySelector(
@@ -5991,14 +6511,22 @@ Science,91</pre
               const testResult = window.MarkdownEditor.render(
                 "- [x] Test task\n\n| Col1 | Col2 |\n|------|------|\n| A | B |"
               );
-              window.AppLogging.logDebug(
-                "🔍 [BRIDGE DEBUG] ✅ Existing MarkdownEditor test successful:",
-                {
-                  resultLength: testResult.length,
-                  containsTable: testResult.includes("<table>"),
-                  containsTaskList: testResult.includes("checkbox"),
-                }
-              );
+
+              // Add null check for testResult
+              if (testResult) {
+                window.AppLogging.logDebug(
+                  "🔍 [BRIDGE DEBUG] ✅ Existing MarkdownEditor test successful:",
+                  {
+                    resultLength: testResult.length,
+                    containsTable: testResult.includes("<table>"),
+                    containsTaskList: testResult.includes("checkbox"),
+                  }
+                );
+              } else {
+                window.AppLogging.logWarn(
+                  "🔍 [BRIDGE DEBUG] ⚠️ MarkdownEditor.render() returned undefined - may not be fully initialised yet"
+                );
+              }
             } catch (error) {
               window.AppLogging.logError(
                 "🔍 [BRIDGE DEBUG] ❌ Existing MarkdownEditor test failed:",

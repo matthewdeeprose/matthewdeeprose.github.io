@@ -19,7 +19,7 @@ const LOG_LEVELS = {
 };
 
 const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
-const ENABLE_ALL_LOGGING = true;
+const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
 function shouldLog(level) {

@@ -389,8 +389,35 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       // Step 4: Populate content for each available format
       await this.populateAllFormatContent(results);
 
+      // ✅ PHASE 2B: Populate archive formats
+      if (results["mmd.zip"]) {
+        await this.populateMmdZipContent(results);
+      }
+      if (results["md.zip"]) {
+        await this.populateMdZipContent(results);
+      }
+      if (results["html.zip"]) {
+        await this.populateHtmlZipContent(results);
+      }
+
       // Step 5: Setup accessible tab switching
       this.setupTabSwitching();
+
+      // Step 5a: Display diagram text if available (Feature 4)
+      if (this.linesAnalysis && this.linesAnalysis.diagramText) {
+        this.displayDiagramTextContent(this.linesAnalysis);
+        logInfo("Diagram text section displayed", {
+          diagramsWithText:
+            this.linesAnalysis.diagramTextSummary?.totalDiagrams || 0,
+        });
+      } else {
+        logDebug("No diagram text to display", {
+          hasLinesAnalysis: !!this.linesAnalysis,
+          hasDiagramText: !!(
+            this.linesAnalysis && this.linesAnalysis.diagramText
+          ),
+        });
+      }
 
       // Step 6: Export functionality already configured by createFormatExportActions()
       // ✅ PHASE 4 FIX: Removed setupExportFunctionality() call that was overwriting working buttons
@@ -527,6 +554,20 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       // Handle DOCX format specially (download-only)
       if (format === "docx") {
         this.populateDocxContent(panelElement, !!content);
+        this.displayStates[format] = { populated: true, available: !!content };
+        return;
+      }
+
+      // Handle PPTX format specially (binary download-only)
+      if (format === "pptx") {
+        this.populatePptxContent(panelElement, !!content);
+        this.displayStates[format] = { populated: true, available: !!content };
+        return;
+      }
+
+      // ✅ PHASE 1: Handle PDF formats (binary download-only)
+      if (format === "pdf" || format === "latexpdf") {
+        this.populatePdfContent(panelElement, format, !!content);
         this.displayStates[format] = { populated: true, available: !!content };
         return;
       }
@@ -1153,7 +1194,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       ' <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/><path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/><path d="m3.5 3.5h2v2h-2z"/></g></svg> Download ZIP';
     downloadButton.setAttribute("aria-label", "Download LaTeX ZIP file");
     downloadButton.addEventListener("click", () => {
-      this.handleFormatExport("latex", "download");
+      const baseFilename =
+        this.documentInfo?.name?.replace(/\.[^/.]+$/, "") || "document";
+      const filename = `${baseFilename}.md.zip`;
+      this.handleBinaryDownload(content, filename, "md.zip");
     });
     actionsContainer.appendChild(downloadButton);
 
@@ -1219,6 +1263,16 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       logWarn("No tab elements found for tab switching setup");
       return;
     }
+
+    // ✅ PHASE 2B: Add archive format tab listeners
+    const archiveFormats = ["mmdzip", "mdzip", "htmlzip"];
+    archiveFormats.forEach((format) => {
+      const tabElement = document.getElementById(`tab-${format}`);
+      if (tabElement) {
+        tabElement.addEventListener("click", () => this.switchToFormat(format));
+        logDebug(`Archive format tab listener added: ${format}`);
+      }
+    });
 
     // Setup ARIA attributes for accessibility
     tabElements.forEach((tabElement, index) => {
@@ -1393,12 +1447,25 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       mmd: { extension: ".md", mimeType: "text/markdown" },
       md: { extension: ".md", mimeType: "text/markdown" }, // Feature 3: Plain Markdown (same extension as MMD)
       html: { extension: ".html", mimeType: "text/html" },
+      pdf: {
+        extension: ".pdf",
+        mimeType: "application/pdf",
+      }, // Phase 1: PDF (HTML Rendering)
+      latexpdf: {
+        extension: ".latex.pdf",
+        mimeType: "application/pdf",
+      }, // Phase 1: PDF (LaTeX Rendering) - different extension to distinguish
       latex: { extension: ".zip", mimeType: "application/zip" }, // ✅ FIXED: LaTeX is ZIP
       docx: {
         extension: ".docx",
         mimeType:
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       },
+      pptx: {
+        extension: ".pptx",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      }, // Phase 2: PowerPoint
     };
 
     const config = formatConfig[format];
@@ -1720,11 +1787,23 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       mmd: "mmd",
       md: "md", // Feature 3: Plain Markdown
       html: "html",
+      pdf: "pdf", // Phase 1: PDF (HTML Rendering)
+      latexpdf: "latex.pdf", // Phase 1: PDF (LaTeX Rendering)
       latex: "tex.zip", // LaTeX comes as ZIP file
       docx: "docx",
+      pptx: "pptx", // Phase 2: PowerPoint
     };
 
-    const formats = ["mmd", "md", "html", "latex", "docx"];
+    const formats = [
+      "mmd",
+      "md",
+      "html",
+      "pdf",
+      "latexpdf",
+      "latex",
+      "docx",
+      "pptx",
+    ];
     const formatPromises = formats.map(async (format) => {
       const resultKey = formatMapping[format];
       const content = results[resultKey];
@@ -1750,7 +1829,19 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
    * @private
    */
   cacheFormatElements() {
-    const formats = ["mmd", "md", "html", "latex", "docx"]; // Feature 3: Added "md"
+    const formats = [
+      "mmd",
+      "md",
+      "html",
+      "pdf",
+      "latexpdf",
+      "latex",
+      "docx",
+      "pptx",
+      "mmdzip",
+      "mdzip",
+      "htmlzip",
+    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latexpdf" | Phase 2: Added "pptx" | Phase 2B: Added archive formats
 
     formats.forEach((format) => {
       // Use direct DOM queries instead of cached elements to ensure we find existing elements
@@ -1809,7 +1900,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       mmd: "language-latex", // MMD from MathPix is actually LaTeX content
       md: "language-markdown", // Feature 3: Plain Markdown with proper syntax highlighting
       html: "language-markup",
+      pdf: "language-text", // Phase 1: PDF (binary format, no syntax highlighting)
+      latexpdf: "language-text", // Phase 1: PDF (binary format, no syntax highlighting)
       latex: "language-latex",
+      pptx: "language-text", // Phase 2: PowerPoint (binary format, no syntax highlighting)
     };
 
     return languageMap[format] || "language-text";
@@ -1932,6 +2026,438 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
   }
 
   /**
+   * @method populatePptxContent
+   * @description Populates PPTX format content (binary download-only)
+   * @param {HTMLElement} panelElement - Panel element to populate
+   * @param {boolean} available - Whether PPTX is available
+   * @returns {void}
+   * @private
+   * @since 2.0.0 (Phase 2)
+   */
+  populatePptxContent(panelElement, available) {
+    if (available) {
+      // Create content structure using DOM creation to preserve event context
+      const pptxContent = document.createElement("div");
+      pptxContent.className = "mathpix-pptx-content";
+
+      // Create info section
+      const pptxInfo = document.createElement("div");
+      pptxInfo.className = "mathpix-pptx-info";
+      pptxInfo.innerHTML = `
+        <h3>Microsoft PowerPoint Presentation</h3>
+        <p><strong>Binary Format:</strong> PPTX files cannot be previewed here. Click "Download PPTX" below to save the file to your device.</p>
+        <p class="format-description">PowerPoint format preserves slides, layouts, and formatting. Compatible with Microsoft PowerPoint, Google Slides, and other presentation software.</p>
+      `;
+
+      // Create export actions container
+      const exportActions = document.createElement("div");
+      exportActions.className = "mathpix-export-actions";
+
+      // Create download button with proper event listener (preserves context)
+      const downloadButton = document.createElement("button");
+      downloadButton.className =
+        "mathpix-action-button mathpix-download-button";
+      downloadButton.innerHTML = `
+        <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
+          <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
+            <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
+            <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
+            <path d="m3.5 3.5h2v2h-2z"/>
+          </g>
+        </svg> Download PPTX
+      `;
+      downloadButton.setAttribute("aria-label", "Download PPTX file");
+
+      // ✅ CRITICAL FIX: Use addEventListener with arrow function to preserve 'this' context
+      downloadButton.addEventListener("click", () => {
+        this.handleFormatExport("pptx", "download");
+      });
+
+      // Assemble the structure
+      exportActions.appendChild(downloadButton);
+      pptxContent.appendChild(pptxInfo);
+      pptxContent.appendChild(exportActions);
+
+      // Clear and populate panel
+      panelElement.innerHTML = "";
+      panelElement.appendChild(pptxContent);
+
+      logDebug("PPTX content populated with proper event binding");
+    } else {
+      panelElement.innerHTML = `
+        <div class="mathpix-no-content">
+          <p>PPTX format not available</p>
+          <p>This format was not requested or could not be generated during processing.</p>
+        </div>
+      `;
+    }
+  }
+
+  /**
+   * @method populatePdfContent
+   * @description Populates PDF format content (binary download-only)
+   * @param {HTMLElement} panelElement - Panel element to populate
+   * @param {string} format - PDF format type (pdf or latexpdf)
+   * @param {boolean} available - Whether PDF is available
+   * @returns {void}
+   * @private
+   * @since 1.0.0 (Phase 1)
+   */
+  populatePdfContent(panelElement, format, available) {
+    if (available) {
+      const formatLabel =
+        format === "pdf" ? "PDF (HTML Rendering)" : "PDF (LaTeX Rendering)";
+      const formatDescription =
+        format === "pdf"
+          ? "PDF with HTML-rendered mathematics suitable for printing and sharing. Compatible with all PDF viewers."
+          : "PDF with LaTeX-rendered mathematics featuring selectable equations. Superior typography for academic papers.";
+
+      // Create content structure using DOM to preserve event context
+      const pdfContent = document.createElement("div");
+      pdfContent.className = "mathpix-pdf-content";
+
+      // Create info section
+      const pdfInfo = document.createElement("div");
+      pdfInfo.className = "mathpix-pdf-info";
+      pdfInfo.innerHTML = `
+        <h3>${formatLabel}</h3>
+        <p><strong>Binary Format:</strong> PDF files cannot be previewed here. Click "Download PDF" below to save the file to your device.</p>
+        <p class="format-description">${formatDescription}</p>
+      `;
+
+      // Create export actions container
+      const exportActions = document.createElement("div");
+      exportActions.className = "mathpix-export-actions";
+
+      // Create download button with proper event listener
+      const downloadButton = document.createElement("button");
+      downloadButton.className =
+        "mathpix-action-button mathpix-download-button";
+      downloadButton.innerHTML = `
+        <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
+          <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
+            <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
+            <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
+            <path d="m3.5 3.5h2v2h-2z"/>
+          </g>
+        </svg> Download PDF
+      `;
+      downloadButton.setAttribute("aria-label", `Download ${formatLabel}`);
+      downloadButton.addEventListener("click", () => {
+        this.handleFormatExport(format, "download");
+      });
+
+      // Assemble structure
+      exportActions.appendChild(downloadButton);
+      pdfContent.appendChild(pdfInfo);
+      pdfContent.appendChild(exportActions);
+
+      // Clear and populate panel
+      panelElement.innerHTML = "";
+      panelElement.appendChild(pdfContent);
+
+      logDebug(`${formatLabel} content populated with proper event binding`);
+    } else {
+      panelElement.innerHTML = `
+        <div class="mathpix-no-content">
+          <p>${
+            format === "pdf" ? "PDF (HTML)" : "PDF (LaTeX)"
+          } format not available</p>
+          <p>This format was not requested or could not be generated during processing.</p>
+        </div>
+      `;
+    }
+  }
+
+  /**
+   * @method populateMmdZipContent
+   * @description Populates MMD archive format panel with download interface
+   * @param {Object} resultData - Processing results containing mmd.zip blob
+   * @returns {void}
+   * @private
+   * @since 2.2.0 (Phase 2B)
+   */
+  populateMmdZipContent(resultData) {
+    const panel = document.getElementById("panel-mmdzip");
+    if (!panel) {
+      logWarn("MMD ZIP panel not found");
+      return;
+    }
+
+    const content = resultData["mmd.zip"];
+    if (!content) {
+      panel.innerHTML = `
+        <div class="mathpix-no-content">
+          <p>MMD Archive format not available</p>
+          <p>This format was not requested or could not be generated during processing.</p>
+        </div>
+      `;
+      this.displayStates.mmdzip = { populated: false, available: false };
+      return;
+    }
+
+    // Create content structure using DOM to preserve event context
+    const mmdZipContent = document.createElement("div");
+    mmdZipContent.className = "mathpix-binary-format-content";
+
+    // Create info section
+    const formatInfo = document.createElement("div");
+    formatInfo.className = "mathpix-format-header";
+    formatInfo.innerHTML = `
+      <h4>MMD Archive (ZIP) Output</h4>
+      <div class="mathpix-binary-format-message">
+        <p><strong>Archive Format:</strong> This ZIP archive contains multiple files and cannot be previewed here. Click "Download Archive" below to save to your device.</p>
+        <p class="format-description">
+          This archive includes the MathPix Markdown (.mmd) file with all embedded images extracted from your PDF document, preserving mathematical notation and document structure.
+        </p>
+      </div>
+    `;
+
+    // Create export actions container
+    const exportActions = document.createElement("div");
+    exportActions.className = "mathpix-export-actions";
+
+    // Create download button with proper event listener
+    const downloadButton = document.createElement("button");
+    downloadButton.className = "mathpix-action-button mathpix-download-button";
+    downloadButton.innerHTML = `
+      <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
+          <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
+          <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
+          <path d="m3.5 3.5h2v2h-2z"/>
+        </g>
+      </svg> Download Archive
+    `;
+    downloadButton.setAttribute("aria-label", "Download MMD ZIP archive");
+    downloadButton.addEventListener("click", () => {
+      const baseFilename =
+        this.documentInfo?.name?.replace(/\.[^/.]+$/, "") || "document";
+      const filename = `${baseFilename}.mmd.zip`;
+      this.handleBinaryDownload(content, filename, "mmd.zip");
+    });
+
+    // Assemble structure
+    exportActions.appendChild(downloadButton);
+    mmdZipContent.appendChild(formatInfo);
+    mmdZipContent.appendChild(exportActions);
+
+    // Clear and populate panel
+    panel.innerHTML = "";
+    panel.appendChild(mmdZipContent);
+
+    this.displayStates.mmdzip = { populated: true, available: true };
+    logDebug("MMD ZIP content populated with proper event binding");
+  }
+
+  /**
+   * @method populateMdZipContent
+   * @description Populates MD archive format panel with download interface
+   * @param {Object} resultData - Processing results containing md.zip blob
+   * @returns {void}
+   * @private
+   * @since 2.2.0 (Phase 2B)
+   */
+  populateMdZipContent(resultData) {
+    const panel = document.getElementById("panel-mdzip");
+    if (!panel) {
+      logWarn("MD ZIP panel not found");
+      return;
+    }
+
+    const content = resultData["md.zip"];
+    if (!content) {
+      panel.innerHTML = `
+        <div class="mathpix-no-content">
+          <p>MD Archive format not available</p>
+          <p>This format was not requested or could not be generated during processing.</p>
+        </div>
+      `;
+      this.displayStates.mdzip = { populated: false, available: false };
+      return;
+    }
+
+    // Create content structure using DOM to preserve event context
+    const mdZipContent = document.createElement("div");
+    mdZipContent.className = "mathpix-binary-format-content";
+
+    // Create info section
+    const formatInfo = document.createElement("div");
+    formatInfo.className = "mathpix-format-header";
+    formatInfo.innerHTML = `
+      <h4>Markdown Archive (ZIP) Output</h4>
+      <div class="mathpix-binary-format-message">
+        <p><strong>Archive Format:</strong> This ZIP archive contains multiple files and cannot be previewed here. Click "Download Archive" below to save to your device.</p>
+        <p class="format-description">
+          This archive includes the plain Markdown (.md) file with all embedded images extracted from your PDF document, suitable for standard Markdown processors.
+        </p>
+      </div>
+    `;
+
+    // Create export actions container
+    const exportActions = document.createElement("div");
+    exportActions.className = "mathpix-export-actions";
+
+    // Create download button with proper event listener
+    const downloadButton = document.createElement("button");
+    downloadButton.className = "mathpix-action-button mathpix-download-button";
+    downloadButton.innerHTML = `
+      <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
+          <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
+          <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
+          <path d="m3.5 3.5h2v2h-2z"/>
+        </g>
+      </svg> Download Archive
+    `;
+    downloadButton.setAttribute("aria-label", "Download MD ZIP archive");
+    downloadButton.addEventListener("click", () => {
+      this.handleBinaryDownload(content, "document.md.zip", "md.zip");
+    });
+
+    // Assemble structure
+    exportActions.appendChild(downloadButton);
+    mdZipContent.appendChild(formatInfo);
+    mdZipContent.appendChild(exportActions);
+
+    // Clear and populate panel
+    panel.innerHTML = "";
+    panel.appendChild(mdZipContent);
+
+    this.displayStates.mdzip = { populated: true, available: true };
+    logDebug("MD ZIP content populated with proper event binding");
+  }
+
+  /**
+   * @method populateHtmlZipContent
+   * @description Populates HTML archive format panel with download interface
+   * @param {Object} resultData - Processing results containing html.zip blob
+   * @returns {void}
+   * @private
+   * @since 2.2.0 (Phase 2B)
+   */
+  populateHtmlZipContent(resultData) {
+    const panel = document.getElementById("panel-htmlzip");
+    if (!panel) {
+      logWarn("HTML ZIP panel not found");
+      return;
+    }
+
+    const content = resultData["html.zip"];
+    if (!content) {
+      panel.innerHTML = `
+        <div class="mathpix-no-content">
+          <p>HTML Archive format not available</p>
+          <p>This format was not requested or could not be generated during processing.</p>
+        </div>
+      `;
+      this.displayStates.htmlzip = { populated: false, available: false };
+      return;
+    }
+
+    // Create content structure using DOM to preserve event context
+    const htmlZipContent = document.createElement("div");
+    htmlZipContent.className = "mathpix-binary-format-content";
+
+    // Create info section
+    const formatInfo = document.createElement("div");
+    formatInfo.className = "mathpix-format-header";
+    formatInfo.innerHTML = `
+      <h4>HTML Archive (ZIP) Output</h4>
+      <div class="mathpix-binary-format-message">
+        <p><strong>Archive Format:</strong> This ZIP archive contains multiple files and cannot be previewed here. Click "Download Archive" below to save to your device.</p>
+        <p class="format-description">
+          This archive includes the HTML file with embedded images and CSS styling extracted from your PDF document, ready for web deployment or viewing in any browser.
+        </p>
+      </div>
+    `;
+
+    // Create export actions container
+    const exportActions = document.createElement("div");
+    exportActions.className = "mathpix-export-actions";
+
+    // Create download button with proper event listener
+    const downloadButton = document.createElement("button");
+    downloadButton.className = "mathpix-action-button mathpix-download-button";
+    downloadButton.innerHTML = `
+      <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
+          <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
+          <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
+          <path d="m3.5 3.5h2v2h-2z"/>
+        </g>
+      </svg> Download Archive
+    `;
+    downloadButton.setAttribute("aria-label", "Download HTML ZIP archive");
+    downloadButton.addEventListener("click", () => {
+      const baseFilename =
+        this.documentInfo?.name?.replace(/\.[^/.]+$/, "") || "document";
+      const filename = `${baseFilename}.html.zip`;
+      this.handleBinaryDownload(content, filename, "html.zip");
+    });
+
+    // Assemble structure
+    exportActions.appendChild(downloadButton);
+    htmlZipContent.appendChild(formatInfo);
+    htmlZipContent.appendChild(exportActions);
+
+    // Clear and populate panel
+    panel.innerHTML = "";
+    panel.appendChild(htmlZipContent);
+
+    this.displayStates.htmlzip = { populated: true, available: true };
+    logDebug("HTML ZIP content populated with proper event binding");
+  }
+
+  /**
+   * @method handleBinaryDownload
+   * @description Handles download of binary formats (used by archive formats)
+   * @param {Blob} blob - Binary content to download
+   * @param {string} filename - Filename for download
+   * @param {string} format - Format identifier for logging
+   * @returns {void}
+   * @private
+   * @since 2.2.0 (Phase 2B)
+   */
+  handleBinaryDownload(blob, filename, format) {
+    if (!blob || !(blob instanceof Blob)) {
+      logError("Invalid blob provided for binary download", {
+        format,
+        filename,
+      });
+      this.showNotification("Download failed: Invalid file data", "error");
+      return;
+    }
+
+    try {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Cleanup blob URL
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      this.showNotification(`${filename} downloaded successfully!`, "success");
+      logInfo("Binary format downloaded", {
+        format,
+        filename,
+        size: blob.size,
+      });
+    } catch (error) {
+      logError("Binary download failed", {
+        format,
+        filename,
+        error: error.message,
+      });
+      this.showNotification(`Download failed: ${error.message}`, "error");
+    }
+  }
+
+  /**
    * @method setInitialActiveFormat
    * @description Sets the initial active format based on available content
    * @param {Object} results - Processing results
@@ -1949,11 +2475,29 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       mmd: "mmd",
       md: "md", // Feature 3: Plain Markdown
       html: "html",
+      pdf: "pdf", // Phase 1: PDF (HTML Rendering)
+      latexpdf: "latex.pdf", // Phase 1: PDF (LaTeX Rendering)
       latex: "tex.zip",
       docx: "docx",
+      pptx: "pptx", // Phase 2: PowerPoint
+      mmdzip: "mmd.zip", // Phase 2B: MMD Archive
+      mdzip: "md.zip", // Phase 2B: MD Archive
+      htmlzip: "html.zip", // Phase 2B: HTML Archive
     };
 
-    const formats = ["mmd", "md", "html", "latex", "docx"];
+    const formats = [
+      "mmd",
+      "md",
+      "html",
+      "pdf",
+      "latexpdf",
+      "latex",
+      "docx",
+      "pptx",
+      "mmdzip",
+      "mdzip",
+      "htmlzip",
+    ];
 
     formats.forEach((format) => {
       const tabElement = this.formatElements.tabs[format];
@@ -3196,6 +3740,313 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     } catch (error) {
       logError("Failed to enhance table accessibility", error);
       return false;
+    }
+  }
+  /**
+   * @method displayDiagramTextContent
+   * @description Displays extracted diagram text in collapsible UI section (Feature 4)
+   *
+   * Shows text elements found within diagrams, organized by diagram and page.
+   * Provides copy functionality and accessible collapsible interface.
+   *
+   * @param {Object} linesAnalysis - Lines analysis data containing diagram text
+   * @returns {void}
+   *
+   * @example
+   * renderer.displayDiagramTextContent(linesAnalysis);
+   *
+   * @accessibility Full keyboard navigation and screen reader support
+   * @since 3.1.0 (Feature 4)
+   */
+  displayDiagramTextContent(linesAnalysis) {
+    logDebug("Displaying diagram text content", {
+      hasAnalysis: !!linesAnalysis,
+      hasDiagramText: !!(linesAnalysis && linesAnalysis.diagramText),
+      hasSummary: !!(linesAnalysis && linesAnalysis.diagramTextSummary),
+    });
+
+    // Get UI elements
+    const section = document.getElementById("mathpix-diagram-text-section");
+    const countDisplay = document.getElementById("mathpix-diagram-count");
+    const listContainer = document.getElementById("mathpix-diagram-text-list");
+    const emptyState = document.getElementById("mathpix-diagram-text-empty");
+    const toggleText = document.querySelector(
+      "#mathpix-diagram-text-toggle .toggle-text"
+    );
+
+    if (!section || !listContainer) {
+      logWarn("Diagram text UI elements not found");
+      return;
+    }
+
+    // Check if we have diagram text
+    const diagramText = linesAnalysis.diagramText || {};
+    const summary = linesAnalysis.diagramTextSummary || {};
+    const hasDiagrams =
+      summary.hasDiagrams && Object.keys(diagramText).length > 0;
+
+    if (!hasDiagrams) {
+      // Show empty state
+      if (emptyState) {
+        emptyState.style.display = "block";
+      }
+      listContainer.innerHTML = "";
+      section.style.display = "none";
+      logDebug("No diagrams with text to display");
+      return;
+    }
+
+    // Show section
+    section.style.display = "block";
+
+    // Update count display
+    const totalDiagrams = summary.totalDiagrams || 0;
+    const totalTextElements = summary.totalTextElements || 0;
+
+    if (countDisplay) {
+      countDisplay.textContent = `(${totalDiagrams} ${
+        totalDiagrams === 1 ? "diagram" : "diagrams"
+      })`;
+    }
+
+    if (toggleText) {
+      toggleText.textContent = `Show Diagram Text (${totalDiagrams} ${
+        totalDiagrams === 1 ? "diagram" : "diagrams"
+      })`;
+    }
+
+    // Hide empty state
+    if (emptyState) {
+      emptyState.style.display = "none";
+    }
+
+    // Generate diagram cards
+    const diagramCards = this.formatDiagramTextForDisplay(diagramText);
+    listContainer.innerHTML = diagramCards;
+
+    // Setup toggle functionality
+    this.setupDiagramTextToggle();
+
+    // Setup copy buttons for each diagram
+    const copyButtons = listContainer.querySelectorAll(".diagram-copy-btn");
+    copyButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const diagramId = button.dataset.diagramId;
+        const diagram = diagramText[diagramId];
+        if (diagram) {
+          const text = diagram.textElements.map((el) => el.text).join("\n");
+          this.copyDiagramText(text, diagram.pageNumber);
+        }
+      });
+    });
+
+    logInfo("Diagram text content displayed successfully", {
+      totalDiagrams,
+      totalTextElements,
+      diagramIds: Object.keys(diagramText),
+    });
+  }
+
+  /**
+   * @method formatDiagramTextForDisplay
+   * @description Formats diagram text data into HTML for display (Feature 4)
+   *
+   * Creates accessible card-based layout for diagram text with copy functionality.
+   *
+   * @param {Object} diagramData - Diagram text data from Lines API
+   * @returns {string} HTML string for diagram cards
+   *
+   * @private
+   * @since 3.1.0 (Feature 4)
+   */
+  formatDiagramTextForDisplay(diagramData) {
+    if (!diagramData || Object.keys(diagramData).length === 0) {
+      return '<p class="no-diagrams">No diagram text found.</p>';
+    }
+
+    const diagrams = Object.values(diagramData);
+
+    return diagrams
+      .map((diagram, index) => {
+        const diagramNumber = index + 1;
+        const textElementsList = diagram.textElements
+          .map(
+            (element) =>
+              `<li class="text-element">${this.escapeHtml(element.text)}</li>`
+          )
+          .join("");
+
+        return `
+      <article class="diagram-card" role="article" aria-labelledby="diagram-title-${diagramNumber}">
+        <header class="diagram-card-header">
+          <h4 id="diagram-title-${diagramNumber}" class="diagram-card-title">
+            <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)">
+                <path d="m14.5 6.5v-4h-4"/>
+                <path d="m14.5 2.5-5 5"/>
+                <path d="m.5 8.5v-6c0-1.1045695.8954305-2 2-2h3"/>
+                <path d="m8.5 14.5h6c1.1045695 0 2-.8954305 2-2v-3"/>
+              </g>
+            </svg>
+            Diagram ${diagramNumber} <span class="diagram-page">(Page ${diagram.pageNumber})</span>
+          </h4>
+          <p class="diagram-stats">
+            <span class="stat-label">Text elements:</span>
+            <span class="stat-value">${diagram.totalText}</span>
+          </p>
+        </header>
+        
+        <div class="diagram-card-content">
+          <ul class="text-elements-list" role="list">
+            ${textElementsList}
+          </ul>
+        </div>
+        
+        <footer class="diagram-card-footer">
+          <button 
+            type="button" 
+            class="diagram-copy-btn"
+            data-diagram-id="${diagram.diagramId}"
+            aria-label="Copy text from diagram ${diagramNumber}"
+          >
+            <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)">
+                <path d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"/>
+                <path d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"/>
+                <path d="m2.5 5.5h5"/>
+                <path d="m2.5 7.5h7"/>
+                <path d="m2.5 9.5h3"/>
+                <path d="m2.5 11.5h6"/>
+              </g>
+            </svg>
+            Copy Text
+          </button>
+        </footer>
+      </article>
+    `;
+      })
+      .join("");
+  }
+
+  /**
+   * @method setupDiagramTextToggle
+   * @description Sets up collapsible toggle for diagram text section (Feature 4)
+   *
+   * Provides accessible expand/collapse functionality with proper ARIA states.
+   *
+   * @returns {void}
+   *
+   * @private
+   * @since 3.1.0 (Feature 4)
+   */
+  setupDiagramTextToggle() {
+    const toggleButton = document.getElementById("mathpix-diagram-text-toggle");
+    const content = document.getElementById("mathpix-diagram-text-content");
+    const toggleIcon = toggleButton?.querySelector(".toggle-icon");
+    const toggleText = toggleButton?.querySelector(".toggle-text");
+
+    if (!toggleButton || !content) {
+      logWarn("Diagram text toggle elements not found");
+      return;
+    }
+
+    // Remove any existing listener to prevent duplicates
+    if (toggleButton._diagramToggleHandler) {
+      toggleButton.removeEventListener(
+        "click",
+        toggleButton._diagramToggleHandler
+      );
+    }
+
+    const toggleHandler = () => {
+      const isExpanded = toggleButton.getAttribute("aria-expanded") === "true";
+      const newState = !isExpanded;
+
+      // Update ARIA state
+      toggleButton.setAttribute("aria-expanded", newState.toString());
+      content.hidden = !newState;
+
+      // Update icon
+      if (toggleIcon) {
+        toggleIcon.textContent = newState ? "▲" : "▼";
+      }
+
+      // Update text
+      if (toggleText) {
+        const countText =
+          document.getElementById("mathpix-diagram-count")?.textContent || "";
+        toggleText.textContent = newState
+          ? "Hide Diagram Text"
+          : `Show Diagram Text ${countText}`;
+      }
+
+      logDebug("Diagram text toggle clicked", {
+        expanded: newState,
+      });
+    };
+
+    toggleButton._diagramToggleHandler = toggleHandler;
+    toggleButton.addEventListener("click", toggleHandler);
+
+    logDebug("Diagram text toggle setup complete");
+  }
+
+  /**
+   * @method copyDiagramText
+   * @description Copies diagram text to clipboard (Feature 4)
+   *
+   * Provides accessible clipboard operation with user feedback.
+   *
+   * @param {string} text - Text to copy
+   * @param {number} pageNumber - Page number for feedback message
+   * @returns {Promise<void>}
+   *
+   * @private
+   * @since 3.1.0 (Feature 4)
+   */
+  async copyDiagramText(text, pageNumber) {
+    if (!text) {
+      this.showNotification("No text to copy", "warning");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      this.showNotification(
+        `Diagram text from page ${pageNumber} copied to clipboard!`,
+        "success"
+      );
+      logInfo("Diagram text copied to clipboard", {
+        pageNumber,
+        textLength: text.length,
+      });
+    } catch (error) {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.select();
+
+      try {
+        document.execCommand("copy");
+        this.showNotification(
+          `Diagram text from page ${pageNumber} copied to clipboard!`,
+          "success"
+        );
+        logInfo("Diagram text copied via fallback", {
+          pageNumber,
+          textLength: text.length,
+        });
+      } catch (fallbackError) {
+        this.showNotification("Failed to copy diagram text", "error");
+        logError("Failed to copy diagram text", {
+          error: fallbackError.message,
+        });
+      } finally {
+        document.body.removeChild(textArea);
+      }
     }
   }
 

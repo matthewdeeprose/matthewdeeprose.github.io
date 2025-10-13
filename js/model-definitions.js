@@ -25722,6 +25722,392 @@ modelRegistry.registerModel("openai/gpt-5-pro", {
     errorMessage: null,
   },
 });
+// Insert this into model-definitions.js
+
+modelRegistry.registerModel("google/gemini-2.5-flash-image", {
+  provider: "google",
+  name: "Gemini 2.5 Flash Image (Nano Banana)",
+  category: "Vision",
+  disabled: false,
+  description:
+    "State-of-the-art image generation model with contextual understanding, capable of image generation, edits, and multi-turn conversations. Features advanced aspect ratio control and optimised performance for visual tasks.",
+  costs: {
+    input: 0.3, // Per million tokens
+    output: 2.5, // Per million tokens
+    image: 1.238, // Per thousand input images
+  },
+  capabilities: ["text", "dialogue", "vision"],
+  maxContext: 32768,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced image generation with conversational capabilities",
+    releaseDate: "2025-10-07",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "multimodal-generation",
+      specialFeatures: [
+        "image_generation",
+        "aspect_ratio_control",
+        "contextual_understanding",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://policies.google.com/privacy",
+      acceptableUse: "https://policies.google.com/terms",
+      termsOfService: "https://policies.google.com/terms",
+      lastUpdated: "2025-10-07",
+    },
+    imageSupport: {
+      inputCost: 1.238, // Per thousand images
+      outputCost: 0.03, // Per thousand images
+      aspectRatioControl: true,
+      supportedFormats: ["standard_image_formats"],
+    },
+    bestFor: [
+      "image generation",
+      "image editing",
+      "visual conversations",
+      "contextual image creation",
+      "multi-turn visual dialogue",
+    ],
+    accessibility: {
+      imageAltTextGeneration: true,
+      visualDescriptionCapable: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "seed",
+      "response_format",
+      "structured_outputs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["image_generation", "aspect_ratio_control", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "visual-content-creation",
+      "accessible-image-generation",
+      "descriptive-visual-dialogue",
+    ],
+    warnings: [
+      "Generated images may require manual accessibility review",
+      "Consider providing alternative text descriptions for generated content",
+      "Visual outputs may need additional context for screen reader users",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Gemini 2.5 Flash Image - Advanced image generation model with 32K context window",
+      parameterSection:
+        "Parameter controls for Gemini 2.5 Flash Image generation",
+      statusMessages: {
+        processing: "Generating visual content with Gemini 2.5 Flash Image",
+        complete: "Visual response ready from Gemini 2.5 Flash Image",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this registration entry for Baidu ERNIE 4.5 21B A3B Thinking model
+modelRegistry.registerModel("baidu/ernie-4.5-21b-a3b-thinking", {
+  provider: "baidu",
+  name: "ERNIE 4.5 21B A3B Thinking",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "Baidu's upgraded lightweight MoE model with enhanced reasoning capabilities. Optimised for logical puzzles, mathematics, science, coding, text generation, and expert-level academic benchmarks with efficient tool usage and 128K context understanding.",
+  costs: {
+    input: 0.07, // Per million tokens
+    output: 0.28, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "reasoning",
+    "mathematics",
+    "code",
+    "tool_calling",
+    "multilingual",
+  ],
+  maxContext: 131072,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced reasoning model with specialised thinking capabilities",
+    releaseDate: "2025-10-09",
+    modelArchitecture: {
+      parameters: "21B",
+      type: "instruction-tuned",
+      architecture: "MoE (Mixture of Experts)",
+      specialFeatures: ["thinking_capability", "long_context"],
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.baidu.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.baidu.com/terms",
+      lastUpdated: "2025-10-09",
+    },
+    languageSupport: [
+      "English",
+      "Chinese (Simplified)",
+      "Chinese (Traditional)",
+    ],
+    domainExpertise: {
+      reasoning: 9,
+      mathematics: 9,
+      coding: 8,
+      science: 8,
+      textGeneration: 8,
+      academicWork: 9,
+    },
+    bestFor: [
+      "logical puzzles",
+      "mathematical reasoning",
+      "scientific analysis",
+      "coding tasks",
+      "academic benchmarks",
+      "complex reasoning tasks",
+    ],
+    accessibility: {
+      reasoningTransparency: "Enhanced with thinking capability output",
+      contextHandling: "Optimised for long-form academic content",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "seed",
+      "top_k",
+      "min_p",
+      "repetition_penalty",
+      "logit_bias",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "reasoning_transparency",
+      "thinking_capability",
+      "tool_integration",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "academic-research",
+      "mathematical-analysis",
+      "logical-reasoning",
+      "scientific-computation",
+      "complex-problem-solving",
+    ],
+    warnings: [
+      "Reasoning output may be verbose for simple queries",
+      "Include reasoning parameter may affect response times",
+      "Complex mathematical notation may require careful formatting",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "ERNIE 4.5 21B A3B Thinking - Advanced reasoning model with 131K context window",
+      parameterSection:
+        "Parameter controls for ERNIE 4.5 21B A3B Thinking model",
+      statusMessages: {
+        processing: "Processing request with ERNIE 4.5 21B A3B Thinking model",
+        complete: "Response ready from ERNIE 4.5 21B A3B Thinking model",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Add this model registration entry to model-definitions.js
+
+modelRegistry.registerModel("nvidia/llama-3.3-nemotron-super-49b-v1.5", {
+  provider: "nvidia",
+  name: "Llama 3.3 Nemotron Super 49B V1.5",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "A 49B-parameter, English-centric reasoning and chat model optimised for agentic workflows. Features advanced tool calling, mathematical reasoning, and code generation capabilities with 128K context support. Employs distillation-driven Neural Architecture Search for efficient single-GPU deployment whilst preserving instruction following and chain-of-thought quality.",
+  costs: {
+    input: 0.1,
+    output: 0.4,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "multilingual",
+  ],
+  maxContext: 131072,
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced reasoning model optimised for agentic workflows and tool calling",
+    releaseDate: "2024-10-10",
+    modelArchitecture: {
+      parameters: "49B",
+      type: "instruction-tuned",
+      baseModel: "Llama-3.3-70B-Instruct",
+      optimisations:
+        "Neural Architecture Search with distillation for efficiency",
+      deployment: "Single-GPU optimised (H100/H200)",
+    },
+    policyLinks: {
+      privacyPolicy:
+        "https://www.nvidia.com/en-us/about-nvidia/privacy-policy/",
+      acceptableUse: "",
+      termsOfService:
+        "https://www.nvidia.com/en-us/about-nvidia/terms-of-service/",
+      lastUpdated: "2024-10-10",
+    },
+    trainingData: {
+      postTraining: [
+        "SFT across mathematics, code, science, and multi-turn chat",
+      ],
+      reinforcementLearning: [
+        "RPO for alignment",
+        "RLVR for step-wise reasoning",
+        "iterative DPO for tool-use refinement",
+      ],
+      specialisation: "Agentic workflows, RAG, tool calling",
+    },
+    domainExpertise: {
+      mathematics: 9,
+      coding: 9,
+      reasoning: 9,
+      toolUse: 9,
+      science: 8,
+    },
+    benchmarkResults: {
+      MATH500: "97.4% pass@1",
+      "AIME-2024": "87.5%",
+      "AIME-2025": "82.71%",
+      GPQA: "71.97%",
+      LiveCodeBench: "73.58%",
+      "MMLU-Pro (CoT)": "79.53%",
+    },
+    bestFor: [
+      "agentic workflows",
+      "mathematical reasoning",
+      "code generation",
+      "tool calling applications",
+      "RAG systems",
+      "long-context analysis",
+      "step-wise reasoning tasks",
+    ],
+    accessibility: {
+      reasoningModes: "Explicit reasoning on/off controls available",
+      inferenceEfficiency: "Optimised for high tokens/second with reduced VRAM",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "tools",
+      "tool_choice",
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "repetition_penalty",
+      "top_k",
+      "seed",
+      "min_p",
+      "response_format",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "tool_calling",
+      "reasoning_control",
+      "agentic_workflows",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "mathematical-reasoning",
+      "code-generation",
+      "tool-calling-applications",
+      "agentic-workflows",
+      "long-context-analysis",
+    ],
+    warnings: [
+      "Reasoning mode complexity may require careful parameter tuning",
+      "Tool calling features require proper validation for accessibility",
+      "High-performance model may have longer response times for complex reasoning",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Llama 3.3 Nemotron Super 49B V1.5 - Advanced reasoning model with 128K context and tool calling",
+      parameterSection:
+        "Parameter controls for Llama 3.3 Nemotron Super 49B V1.5",
+      statusMessages: {
+        processing: "Processing request with Llama 3.3 Nemotron Super 49B V1.5",
+        complete: "Response ready from Llama 3.3 Nemotron Super 49B V1.5",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;

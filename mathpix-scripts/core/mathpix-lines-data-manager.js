@@ -416,17 +416,65 @@ class MathPixLinesDataManager extends MathPixBaseModule {
       analysis.averageConfidence = confidenceSum / confidenceCount;
     }
 
+    // Feature 4: Extract diagram text if diagrams are present
+    let diagramTextData = null;
+    let diagramTextSummary = null;
+
+    if (analysis.diagrams > 0) {
+      logInfo("🎨 Extracting diagram text (Feature 4)", {
+        diagramCount: analysis.diagrams,
+      });
+
+      try {
+        diagramTextData = this.extractDiagramText(linesData);
+        diagramTextSummary = this.getDiagramTextSummary(diagramTextData);
+
+        // Add diagram text to analysis results
+        analysis.diagramText = diagramTextData;
+        analysis.diagramTextSummary = diagramTextSummary;
+
+        logInfo("✅ Diagram text extraction complete", {
+          diagramsWithText: diagramTextSummary.totalDiagrams,
+          textElements: diagramTextSummary.totalTextElements,
+        });
+      } catch (error) {
+        logError("⚠️ Diagram text extraction failed", {
+          error: error.message,
+        });
+        // Don't fail the entire analysis if diagram text extraction fails
+        analysis.diagramText = {};
+        analysis.diagramTextSummary = {
+          hasDiagrams: false,
+          description: "Diagram text extraction failed",
+        };
+      }
+    } else {
+      // No diagrams in document
+      analysis.diagramText = {};
+      analysis.diagramTextSummary = {
+        hasDiagrams: false,
+        description: "No diagrams found in document",
+      };
+    }
+
     // Generate summary for displayPDFResults
     analysis.summary =
       `Analyzed ${analysis.totalPages} pages with ${analysis.totalLines} lines. ` +
       `Tables: ${analysis.tableStructures.count}, Math: ${analysis.mathElements.count}, ` +
       `Avg confidence: ${analysis.averageConfidence.toFixed(3)}`;
 
+    // Add diagram text to summary if present
+    if (diagramTextSummary && diagramTextSummary.hasDiagrams) {
+      analysis.summary += `. ${diagramTextSummary.description}`;
+    }
+
     logInfo("📈 Document analysis complete", {
       pages: analysis.totalPages,
       lines: analysis.totalLines,
       math: analysis.mathElements.count,
       tables: analysis.tableStructures.count,
+      diagrams: analysis.diagrams,
+      diagramsWithText: diagramTextSummary?.totalDiagrams || 0,
       confidence: analysis.averageConfidence.toFixed(3),
     });
 
@@ -634,6 +682,194 @@ class MathPixLinesDataManager extends MathPixBaseModule {
     return summaryParts.length > 0
       ? summaryParts.join(", ")
       : "Document structure analyzed";
+  }
+
+  /**
+   * @method extractDiagramText
+   * @description Extracts text elements found within diagrams
+   *
+   * Analyzes the lines data to find text elements that have a parent_id pointing
+   * to a diagram element, indicating the text is embedded within that diagram.
+   * This enables extraction of labels, annotations, and embedded text from diagrams.
+   *
+   * @param {Object} linesData - Lines data from MathPix API
+   * @returns {Object} Diagram text data organized by diagram ID
+   *
+   * @example
+   * const diagramText = linesDataManager.extractDiagramText(linesData);
+   * // Returns: {
+   * //   "diagram-id-1": {
+   * //     diagramId: "diagram-id-1",
+   * //     pageNumber: 1,
+   * //     textElements: [
+   * //       { text: "Label A", confidence: 0.95, type: "text" }
+   * //     ],
+   * //     totalText: 1
+   * //   }
+   * // }
+   *
+   * @since 3.1.0 (Feature 4)
+   */
+  extractDiagramText(linesData) {
+    logDebug("📊 Extracting diagram text from lines data");
+
+    // Validate input
+    if (!linesData || !linesData.pages || !Array.isArray(linesData.pages)) {
+      logWarn("Invalid lines data for diagram text extraction");
+      return {};
+    }
+
+    const diagrams = {};
+
+    // Step 1: Find all diagram elements and initialize storage
+    linesData.pages.forEach((page) => {
+      const pageNumber = page.page || 0;
+
+      page.lines.forEach((line) => {
+        if (line.type === "diagram" && line.id) {
+          diagrams[line.id] = {
+            diagramId: line.id,
+            pageNumber: pageNumber + 1, // Convert to 1-based page numbering
+            textElements: [],
+            totalText: 0,
+            diagramType: line.subtype || "diagram",
+            region: line.region || null,
+          };
+
+          logDebug("Found diagram", {
+            id: line.id,
+            page: pageNumber + 1,
+            subtype: line.subtype,
+          });
+        }
+      });
+    });
+
+    // Step 2: Find text elements that belong to diagrams
+    linesData.pages.forEach((page) => {
+      page.lines.forEach((line) => {
+        // Check if this line has a parent_id pointing to a diagram
+        if (line.parent_id && diagrams[line.parent_id]) {
+          const textElement = {
+            text: line.text || "",
+            textDisplay: line.text_display || "",
+            confidence: line.confidence || 0,
+            confidenceRate: line.confidence_rate || 0,
+            type: line.type || "unknown",
+            lineId: line.id,
+            isPrinted: line.is_printed || false,
+            isHandwritten: line.is_handwritten || false,
+          };
+
+          diagrams[line.parent_id].textElements.push(textElement);
+          diagrams[line.parent_id].totalText++;
+
+          logDebug("Found text in diagram", {
+            diagramId: line.parent_id,
+            text: textElement.text.substring(0, 50), // Log first 50 chars
+            confidence: textElement.confidence,
+          });
+        }
+      });
+    });
+
+    // Step 3: Filter out diagrams with no text
+    const diagramsWithText = {};
+    Object.entries(diagrams).forEach(([id, diagram]) => {
+      if (diagram.totalText > 0) {
+        diagramsWithText[id] = diagram;
+      }
+    });
+
+    logInfo("✅ Diagram text extraction complete", {
+      totalDiagrams: Object.keys(diagrams).length,
+      diagramsWithText: Object.keys(diagramsWithText).length,
+      totalTextElements: Object.values(diagramsWithText).reduce(
+        (sum, d) => sum + d.totalText,
+        0
+      ),
+    });
+
+    return diagramsWithText;
+  }
+
+  /**
+   * @method getDiagramTextSummary
+   * @description Generates statistics and summary about extracted diagram text
+   *
+   * Provides a comprehensive summary of diagram text extraction results,
+   * including counts, confidence statistics, and distribution information.
+   *
+   * @param {Object} diagramData - Diagram text data from extractDiagramText()
+   * @returns {Object} Summary statistics about diagram text
+   *
+   * @example
+   * const summary = linesDataManager.getDiagramTextSummary(diagramData);
+   * console.log(summary.description); // "Found 3 diagrams with 12 text elements"
+   *
+   * @since 3.1.0 (Feature 4)
+   */
+  getDiagramTextSummary(diagramData) {
+    if (!diagramData || Object.keys(diagramData).length === 0) {
+      return {
+        hasDiagrams: false,
+        totalDiagrams: 0,
+        totalTextElements: 0,
+        averageTextPerDiagram: 0,
+        averageConfidence: 0,
+        pageDistribution: {},
+        description: "No diagrams with text found",
+      };
+    }
+
+    const diagrams = Object.values(diagramData);
+    const totalDiagrams = diagrams.length;
+    const totalTextElements = diagrams.reduce((sum, d) => sum + d.totalText, 0);
+
+    // Calculate confidence statistics
+    let confidenceSum = 0;
+    let confidenceCount = 0;
+
+    diagrams.forEach((diagram) => {
+      diagram.textElements.forEach((element) => {
+        if (element.confidence > 0) {
+          confidenceSum += element.confidence;
+          confidenceCount++;
+        }
+      });
+    });
+
+    const averageConfidence =
+      confidenceCount > 0 ? confidenceSum / confidenceCount : 0;
+
+    // Calculate page distribution
+    const pageDistribution = {};
+    diagrams.forEach((diagram) => {
+      const page = diagram.pageNumber;
+      pageDistribution[page] = (pageDistribution[page] || 0) + 1;
+    });
+
+    // Generate description
+    const description =
+      totalDiagrams === 1
+        ? `Found 1 diagram with ${totalTextElements} text ${
+            totalTextElements === 1 ? "element" : "elements"
+          }`
+        : `Found ${totalDiagrams} diagrams with ${totalTextElements} text elements`;
+
+    const summary = {
+      hasDiagrams: true,
+      totalDiagrams,
+      totalTextElements,
+      averageTextPerDiagram: Math.round(totalTextElements / totalDiagrams),
+      averageConfidence,
+      pageDistribution,
+      description,
+    };
+
+    logDebug("Diagram text summary generated", summary);
+
+    return summary;
   }
 
   /**

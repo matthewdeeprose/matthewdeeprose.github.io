@@ -1,5 +1,60 @@
 /*Light mode */
 
+/* Markdown texteditable mode */
+/* Base contenteditable colours */
+.markdown-live-contenteditable {
+  border: 2px solid #00131d;
+  background: #fffdf9;
+  color: #00131d;
+}
+
+/* Focus indicator colours (WCAG 2.2 AA) */
+.markdown-live-contenteditable:focus-visible {
+  outline: 2px solid #005c84;
+  border-color: #005c84;
+}
+
+/* Hover state colours */
+.markdown-live-contenteditable:hover:not(:focus):not([aria-disabled="true"]) {
+  border-color: #005051;
+}
+
+/* Selection colours */
+.markdown-live-contenteditable::selection {
+  background: rgba(0, 92, 132, 0.3);
+  color: #00131d;
+}
+
+/* File upload */
+
+.file-upload-section {
+  border-color: #00131d;
+  background-color: #e1e8ec;
+}
+
+.file-upload-section:hover,
+.file-upload-section:focus-visible {
+  border-color: #005c84;
+  border: solid;
+  background-color: #fffdf9;
+}
+
+.file-upload-section.drag-over {
+  border-color: #005051;
+}
+
+.file-upload-section.has-file {
+  border-color: #005051;
+}
+
+.file-upload-label:hover {
+  border-color: #005c84;
+}
+
+.file-upload-label:focus-within {
+  outline-color: #005c84;
+}
+
 /* ===== Modal COLOUR SECTION ===== */
 
 dialog {

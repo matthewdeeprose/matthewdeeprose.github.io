@@ -82,40 +82,6 @@
   border-color: #f5c6cb;
 }
 
-/* File Upload Section - Colours */
-.file-upload-section {
-  border-color: #00131d;
-  background-color: #e1e8ec;
-}
-
-.file-upload-section:hover {
-  border-color: #005c84;
-  background-color: #fffdf9;
-}
-
-.file-upload-section.drag-over {
-  border-color: #005051;
-  background-color: #fffdf9;
-}
-
-.file-upload-section.has-file {
-  border-color: #005051;
-  background-color: #fffdf9;
-}
-
-.file-upload-label:hover {
-  background-color: #f0f8ff;
-  border-color: #005c84;
-}
-
-.file-upload-label:focus-within {
-  outline-color: #005c84;
-}
-
-.file-upload-icon {
-  color: #666;
-}
-
 .file-upload-text {
   color: currentcolor;
 }
@@ -706,7 +672,6 @@
   line-height: 1.4;
   margin: 0;
   margin-top: 0.75rem;
-  text-align: center;
 }
 
 /* File Preview Area - Structure */

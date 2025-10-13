@@ -1,4 +1,30 @@
 /* Dark mode */
+
+/* Markdown content editable */
+/* Base contenteditable colours */
+.markdown-live-contenteditable {
+  border: 2px solid #fffff4;
+  background: #00131d;
+  color: #fffff4;
+}
+
+/* Focus indicator colours (WCAG 2.2 AA) */
+.markdown-live-contenteditable:focus-visible {
+  outline: 2px solid #c1d100;
+  border-color: #c1d100;
+}
+
+/* Hover state colours */
+.markdown-live-contenteditable:hover:not(:focus):not([aria-disabled="true"]) {
+  border-color: #c1d100;
+}
+
+/* Selection colours */
+.markdown-live-contenteditable::selection {
+  background: rgba(255, 255, 255, 0.3);
+  color: #fffff4;
+}
+
 /* Math pix */
 
 .file-upload-section {
@@ -10,7 +36,23 @@
 .file-upload-section:focus-visible {
   border-color: #fffdf9;
   border: solid;
-  background-color: #005c84;
+  background-color: #002e3b;
+}
+
+.file-upload-section.drag-over {
+  border-color: #c1d100;
+}
+
+.file-upload-section.has-file {
+  border-color: #c1d100;
+}
+
+.file-upload-label:hover {
+  border-color: #c1d100;
+}
+
+.file-upload-label:focus-within {
+  outline-color: #c1d100;
 }
 
 .mathpix-image-preview-container {
@@ -30,6 +72,26 @@
 .mathpix-rendered-output {
   background: #231f20;
   border: 1px solid #e1e8ec;
+}
+
+.mathpix-format-selection {
+  border: 1px solid #e1e8ec;
+}
+
+.mathpix-format-option {
+  border: 2px solid #e1e8ec;
+  background: #00131d;
+}
+
+.mathpix-format-option input[type="radio"]:checked + .format-content {
+  color: #fcbc00;
+}
+
+mathpix-format-option
+  input[type="radio"]:checked
+  + .format-content
+  .format-label {
+  color: #fcbc00;
 }
 
 /* ===== MODAL COLOUR SECTION ===== */

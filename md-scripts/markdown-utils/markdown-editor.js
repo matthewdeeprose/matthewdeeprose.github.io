@@ -102,10 +102,14 @@ const MarkdownEditor = (function () {
     lastSavedContent: "",
     pluginsLoaded: false,
     mathJaxLoaded: false,
+    isInitialized: false,
   };
 
   // DOM element references
   let elements = {};
+
+  // Live editor instance
+  let liveMarkdownEditor = null;
 
   // Notification utilities using UniversalNotifications
   const NotificationHandler = {
@@ -212,13 +216,21 @@ const MarkdownEditor = (function () {
   // Loading indicator management
   const LoadingManager = {
     show: function () {
-      elements.loading.classList.add("visible");
-      elements.renderBtn.disabled = true;
+      if (elements.loading) {
+        elements.loading.classList.add("visible");
+      }
+      if (elements.renderBtn) {
+        elements.renderBtn.disabled = true;
+      }
     },
 
     hide: function () {
-      elements.loading.classList.remove("visible");
-      elements.renderBtn.disabled = false;
+      if (elements.loading) {
+        elements.loading.classList.remove("visible");
+      }
+      if (elements.renderBtn) {
+        elements.renderBtn.disabled = false;
+      }
     },
   };
 
@@ -1013,6 +1025,12 @@ const MarkdownEditor = (function () {
 
   // Main render function
   const renderMarkdown = debounce(async function () {
+    // Guard: Check if editor is initialized
+    if (!state.isInitialized || !elements.markdownInput) {
+      Logger.debug("Render called before initialization complete - skipping");
+      return;
+    }
+
     if (state.isRendering) return;
 
     state.isRendering = true;
@@ -1132,6 +1150,13 @@ const MarkdownEditor = (function () {
     } else if (event.key === "?") {
       event.preventDefault();
       elements.shortcuts.classList.toggle("visible");
+    } else if (event.ctrlKey && event.key === "l") {
+      event.preventDefault();
+      if (liveMarkdownEditor && liveMarkdownEditor.isReady()) {
+        liveMarkdownEditor.toggle();
+        const status = liveMarkdownEditor.isEnabled ? "enabled" : "disabled";
+        NotificationHandler.showInfo(`Live highlighting ${status}`);
+      }
     }
   }
 
@@ -1158,8 +1183,173 @@ const MarkdownEditor = (function () {
     return doc.body.innerHTML;
   }
 
+  /**
+   * Cleanup live editor for mode switching
+   * Called when user switches away from Markdown Editor mode
+   */
+  function cleanupLiveEditor() {
+    if (liveMarkdownEditor && liveMarkdownEditor.isInitialised) {
+      Logger.debug("Cleaning up live editor for mode switch");
+
+      try {
+        // Sync final content to ensure no data loss
+        if (typeof liveMarkdownEditor.syncHiddenInput === "function") {
+          liveMarkdownEditor.syncHiddenInput("mode-switch");
+        }
+
+        // Clear any pending timeouts to prevent memory leaks
+        if (liveMarkdownEditor.updateTimeout) {
+          clearTimeout(liveMarkdownEditor.updateTimeout);
+          liveMarkdownEditor.updateTimeout = null;
+        }
+        if (liveMarkdownEditor.blurSyncTimeout) {
+          clearTimeout(liveMarkdownEditor.blurSyncTimeout);
+          liveMarkdownEditor.blurSyncTimeout = null;
+        }
+
+        // Don't destroy the editor, just mark as paused
+        Logger.info("Live editor paused for mode switch");
+      } catch (error) {
+        Logger.error("Error during live editor cleanup:", error);
+      }
+    } else {
+      Logger.debug("No live editor to clean up");
+    }
+  }
+
+  /**
+   * Restore live editor after mode switching
+   * Called when user switches back to Markdown Editor mode
+   */
+  function restoreLiveEditor() {
+    if (liveMarkdownEditor && liveMarkdownEditor.isInitialised) {
+      Logger.debug("Restoring live editor after mode switch");
+
+      try {
+        // Refresh highlighting if enabled
+        if (
+          liveMarkdownEditor.isEnabled &&
+          typeof liveMarkdownEditor.updateHighlighting === "function"
+        ) {
+          liveMarkdownEditor.updateHighlighting();
+        }
+
+        // Re-focus if appropriate
+        if (
+          liveMarkdownEditor.isEnabled &&
+          liveMarkdownEditor.contentEditableElement
+        ) {
+          // Only focus if markdown editor is visible
+          const markdownRadio = document.getElementById("MarkdownEditorRadio");
+          if (markdownRadio && markdownRadio.checked) {
+            Logger.debug("Restoring focus to live editor");
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+              if (liveMarkdownEditor.contentEditableElement) {
+                liveMarkdownEditor.contentEditableElement.focus();
+              }
+            }, 50);
+          }
+        }
+
+        Logger.info("Live editor restored successfully");
+      } catch (error) {
+        Logger.error("Error during live editor restore:", error);
+      }
+    } else {
+      Logger.debug("No live editor to restore");
+    }
+  }
+
+  /**
+   * Setup live highlighting toggle button
+   */
+  function setupLiveHighlightingToggleButton() {
+    const toggleBtn = document.getElementById("toggle-highlighting-btn");
+    if (!toggleBtn) {
+      Logger.warn("Toggle highlighting button not found");
+      return;
+    }
+
+    // Guard: Check if already setup
+    if (toggleBtn.dataset.liveHighlightingSetup === "true") {
+      Logger.debug(
+        "Toggle button already configured, skipping duplicate setup"
+      );
+
+      // Just update the button state
+      function updateButtonState() {
+        const stateSpan = document.getElementById("highlighting-state");
+
+        if (liveMarkdownEditor && liveMarkdownEditor.isEnabled) {
+          toggleBtn.setAttribute("aria-pressed", "true");
+          toggleBtn.classList.add("active");
+          if (stateSpan) {
+            stateSpan.textContent = "on";
+          }
+        } else {
+          toggleBtn.setAttribute("aria-pressed", "false");
+          toggleBtn.classList.remove("active");
+          if (stateSpan) {
+            stateSpan.textContent = "off";
+          }
+        }
+      }
+      updateButtonState();
+      return;
+    }
+
+    // Mark as setup
+    toggleBtn.dataset.liveHighlightingSetup = "true";
+
+    // Update button state and span text
+    function updateButtonState() {
+      const stateSpan = document.getElementById("highlighting-state");
+
+      if (liveMarkdownEditor && liveMarkdownEditor.isEnabled) {
+        toggleBtn.setAttribute("aria-pressed", "true");
+        toggleBtn.classList.add("active");
+        if (stateSpan) {
+          stateSpan.textContent = "on";
+        }
+      } else {
+        toggleBtn.setAttribute("aria-pressed", "false");
+        toggleBtn.classList.remove("active");
+        if (stateSpan) {
+          stateSpan.textContent = "off";
+        }
+      }
+    }
+
+    // Initial state
+    updateButtonState();
+
+    // Click handler
+    toggleBtn.addEventListener("click", () => {
+      if (liveMarkdownEditor && liveMarkdownEditor.isReady()) {
+        liveMarkdownEditor.toggle();
+        updateButtonState();
+
+        const status = liveMarkdownEditor.isEnabled ? "enabled" : "disabled";
+        NotificationHandler.showInfo(`Live highlighting ${status}`);
+      } else {
+        NotificationHandler.showWarning("Live highlighting not ready yet");
+      }
+    });
+
+    Logger.debug("Live highlighting toggle button configured");
+  }
+
   // Initialize the application
   function initialize() {
+    // Guard against double initialization
+    if (state.isInitialized) {
+      Logger.debug(
+        "Markdown Editor already initialized, skipping duplicate initialization"
+      );
+      return true;
+    }
+
     // Cache DOM elements
     elements = {
       markdownInput: document.getElementById("markdown-input"),
@@ -1204,6 +1394,82 @@ const MarkdownEditor = (function () {
     initializeMathJax();
     initializeMermaid();
 
+    // Initialize live markdown editor if available
+    if (window.ContentEditableMarkdownEditor) {
+      // Guard: Check if already initialized
+      if (
+        !window.markdownLiveEditor ||
+        !window.markdownLiveEditor.isInitialised
+      ) {
+        setTimeout(async () => {
+          // Double-check after timeout (in case of race condition)
+          if (
+            window.markdownLiveEditor &&
+            window.markdownLiveEditor.isInitialised
+          ) {
+            Logger.debug(
+              "Live editor already initialised, skipping duplicate initialization"
+            );
+            return;
+          }
+
+          // Clean up any existing contenteditable elements (from previous initialization attempts)
+          const existingContentEditable = document.getElementById(
+            "markdown-input-contenteditable"
+          );
+          if (existingContentEditable) {
+            Logger.debug("Removing existing contenteditable element");
+            existingContentEditable.remove();
+          }
+          const existingHiddenInput = document.getElementById(
+            "markdown-input-hidden-sync"
+          );
+          if (existingHiddenInput) {
+            existingHiddenInput.remove();
+          }
+
+          liveMarkdownEditor = new window.ContentEditableMarkdownEditor();
+
+          // ⚙️ CONFIGURABLE: Adjust these values as needed
+          const success = await liveMarkdownEditor.initialise(
+            "markdown-input",
+            {
+              syncDelay: 150, // Debounce delay (ms)
+              maxContentLength: 50000, // Auto-disable threshold (chars) - EASILY ADJUSTABLE
+              announceChanges: true, // Screen reader announcements
+              enableByDefault: true, // Enabled by default for new users
+            }
+          );
+
+          if (success) {
+            Logger.info("Live markdown syntax highlighting enabled");
+
+            // Setup toggle button
+            setupLiveHighlightingToggleButton();
+
+            // Expose for testing
+            window.markdownLiveEditor = liveMarkdownEditor;
+          } else {
+            Logger.warn("Live markdown highlighting initialisation failed");
+
+            // Notify user if initialization fails
+            if (window.UniversalNotifications) {
+              window.UniversalNotifications.warning(
+                "Live syntax highlighting could not be initialised. Editor will function normally without it.",
+                { duration: 5000, dismissible: true }
+              );
+            }
+          }
+        }, 100); // Small delay to ensure Prism.js fully loaded
+      } else {
+        Logger.debug("Live markdown editor already initialised");
+      }
+    } else {
+      Logger.warn(
+        "ContentEditableMarkdownEditor not available - live highlighting disabled"
+      );
+    }
+
     // Event listeners
     elements.renderBtn.addEventListener("click", renderMarkdown);
     elements.clearBtn.addEventListener("click", async () => {
@@ -1215,20 +1481,44 @@ const MarkdownEditor = (function () {
 
         if (confirmed) {
           elements.markdownInput.value = "";
+
+          // Also clear live editor if it exists
+          if (liveMarkdownEditor && liveMarkdownEditor.isInitialised) {
+            liveMarkdownEditor.setContent("");
+          }
+
           AutoSave.clear();
           elements.output.innerHTML = "";
           NotificationHandler.showInfo("Content cleared");
-          elements.markdownInput.focus();
+
+          // Focus the appropriate element
+          if (liveMarkdownEditor && liveMarkdownEditor.isEnabled) {
+            liveMarkdownEditor.contentEditableElement.focus();
+          } else {
+            elements.markdownInput.focus();
+          }
         }
       } catch (error) {
         console.error("Modal confirm failed:", error);
         // Fallback maintains existing functionality
         if (confirm("Clear all content?")) {
           elements.markdownInput.value = "";
+
+          // Also clear live editor if it exists
+          if (liveMarkdownEditor && liveMarkdownEditor.isInitialised) {
+            liveMarkdownEditor.setContent("");
+          }
+
           AutoSave.clear();
           elements.output.innerHTML = "";
           NotificationHandler.showInfo("Content cleared");
-          elements.markdownInput.focus();
+
+          // Focus the appropriate element
+          if (liveMarkdownEditor && liveMarkdownEditor.isEnabled) {
+            liveMarkdownEditor.contentEditableElement.focus();
+          } else {
+            elements.markdownInput.focus();
+          }
         }
       }
     });
@@ -1260,6 +1550,9 @@ const MarkdownEditor = (function () {
       renderMarkdown();
     }
 
+    // Mark as initialized
+    state.isInitialized = true;
+
     Logger.info("Markdown Editor initialised successfully");
     NotificationHandler.showSuccess("Markdown Editor loaded successfully");
     return true;
@@ -1277,6 +1570,54 @@ const MarkdownEditor = (function () {
         NotificationHandler.showInfo("Content cleared");
       }
     },
+    // Load markdown content into editor (for examples loader)
+    loadContent: function (markdownText) {
+      if (elements.markdownInput) {
+        elements.markdownInput.value = markdownText;
+        renderMarkdown();
+        Logger.info("Content loaded into editor");
+      } else {
+        Logger.error("Cannot load content - editor not initialised");
+      }
+    },
+    // Live highlighting controls
+    toggleLiveHighlighting: function () {
+      if (liveMarkdownEditor && liveMarkdownEditor.isReady()) {
+        return liveMarkdownEditor.toggle();
+      }
+      Logger.warn("Live editor not ready");
+      return false;
+    },
+
+    enableLiveHighlighting: function () {
+      if (liveMarkdownEditor && liveMarkdownEditor.isReady()) {
+        liveMarkdownEditor.enable();
+        return true;
+      }
+      Logger.warn("Live editor not ready");
+      return false;
+    },
+
+    disableLiveHighlighting: function () {
+      if (liveMarkdownEditor && liveMarkdownEditor.isReady()) {
+        liveMarkdownEditor.disable();
+        return true;
+      }
+      Logger.warn("Live editor not ready");
+      return false;
+    },
+
+    getLiveHighlightingStatus: function () {
+      if (liveMarkdownEditor) {
+        return liveMarkdownEditor.getStatus();
+      }
+      return { available: false };
+    },
+
+    // Mode switching lifecycle hooks
+    cleanup: cleanupLiveEditor,
+    restore: restoreLiveEditor,
+
     // Expose logger controls for runtime configuration
     setLogLevel: Logger.setLevel,
     getLogLevel: Logger.getCurrentLevel,
@@ -1285,3 +1626,27 @@ const MarkdownEditor = (function () {
     NotificationHandler: NotificationHandler,
   };
 })();
+// Make MarkdownEditor globally available
+window.MarkdownEditor = MarkdownEditor;
+
+// Expose mode switching functions globally for boilerplate.html integration
+window.markdownEditorCleanup = function () {
+  if (
+    window.MarkdownEditor &&
+    typeof window.MarkdownEditor.cleanup === "function"
+  ) {
+    window.MarkdownEditor.cleanup();
+  }
+};
+
+window.markdownEditorRestore = function () {
+  if (
+    window.MarkdownEditor &&
+    typeof window.MarkdownEditor.restore === "function"
+  ) {
+    window.MarkdownEditor.restore();
+  }
+};
+
+// Expose live editor for testing (set in initialize function)
+// Access via: window.markdownLiveEditor

@@ -8,6 +8,121 @@
    COLOR DEFINITIONS
    ======================================== */
 
+/* Feature 4: Diagram Text Extraction Colours */
+.mathpix-diagram-text-section {
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+}
+
+.mathpix-diagram-text-toggle {
+  background: #fffff4;
+  color: #00131d;
+  border: 2px solid #00131d;
+}
+
+.mathpix-diagram-text-toggle:hover {
+  background: #005c84;
+  color: #fffff4;
+  border-color: #005c84;
+}
+
+.mathpix-diagram-text-content {
+  background: #fffff4;
+}
+
+.diagram-text-intro {
+  background: rgba(0, 92, 132, 0.08);
+  border-left: 3px solid #005c84;
+}
+
+.diagram-text-intro .help-text {
+  color: #00131d;
+}
+
+.diagram-card {
+  background: #fffff4;
+  border: 1px solid #00131d;
+  box-shadow: 0 2px 8px rgba(0, 19, 29, 0.1);
+}
+
+.diagram-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
+  border-color: #005c84;
+}
+
+.diagram-card-header {
+  background: #e8f4f8;
+  border-bottom: 1px solid #00131d;
+}
+
+.diagram-card-title {
+  color: #00131d;
+}
+
+.diagram-page {
+  color: #005c84;
+}
+
+.diagram-stats {
+  color: #666;
+}
+
+.stat-value {
+  color: #005c84;
+  font-weight: 700;
+}
+
+.diagram-card-footer {
+  background: #fffff4;
+  border-top: 1px solid #e1e8ec;
+}
+
+.diagram-copy-btn {
+  background: #fffff4;
+  color: #00131d;
+  border: 2px solid #00131d;
+}
+
+.diagram-copy-btn:hover {
+  background: #005c84;
+  color: #fffff4;
+  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.2);
+}
+
+.text-elements-list {
+  border: 1px solid #e1e8ec;
+  background: #fffff4;
+}
+
+.text-element {
+  border-bottom: 1px solid #e1e8ec;
+}
+
+.text-element:last-child {
+  border-bottom: none;
+}
+
+.diagram-count {
+  color: #005c84;
+}
+
+.mathpix-diagram-text-empty {
+  background: #fffff4;
+  border: 2px dashed #e1e8ec;
+  color: #6c757d;
+}
+
+@media (prefers-contrast: high) {
+  .mathpix-diagram-text-section,
+  .diagram-card {
+    border-width: 2px;
+  }
+
+  .diagram-copy-btn {
+    border-width: 3px;
+  }
+}
+
 .mathpix-processing-options {
   border: 1px solid currentcolor;
 }
@@ -3152,5 +3267,300 @@ input#custom-height {
   .mathpix-option-description {
     margin-left: 1.5rem;
     font-size: 0.75rem;
+  }
+}
+
+/* ===========================================
+   FEATURE 4: DIAGRAM TEXT EXTRACTION LAYOUT
+   =========================================== */
+
+/* Main Section */
+.mathpix-diagram-text-section {
+  margin: 2rem 0;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+/* Toggle Button */
+.mathpix-diagram-text-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.mathpix-diagram-text-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.mathpix-diagram-text-toggle:active {
+  transform: translateY(0);
+}
+
+.mathpix-diagram-text-toggle .toggle-icon {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.mathpix-diagram-text-toggle[aria-expanded="true"] .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.mathpix-diagram-text-toggle .toggle-text {
+  flex: 1;
+}
+
+.diagram-count {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-left: 0.25rem;
+}
+
+/* Collapsible Content */
+.mathpix-diagram-text-content {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+/* Intro Section */
+.diagram-text-intro {
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.diagram-text-intro .help-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.diagram-text-intro svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+/* Diagram List */
+.mathpix-diagram-text-list {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Diagram Card */
+.diagram-card {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.diagram-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Card Header */
+.diagram-card-header {
+  padding: 1rem;
+}
+
+.diagram-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.diagram-card-title svg {
+  flex-shrink: 0;
+}
+
+.diagram-page {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.diagram-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.stat-label {
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1rem;
+}
+
+/* Card Content */
+.diagram-card-content {
+  padding: 0 1rem 1rem 1rem;
+}
+
+.text-elements-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-radius: 4px;
+}
+
+.text-element {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Card Footer */
+.diagram-card-footer {
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Copy Button */
+.diagram-copy-btn {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.diagram-copy-btn:hover {
+  transform: translateY(-1px);
+}
+
+.diagram-copy-btn svg {
+  flex-shrink: 0;
+}
+
+/* Empty State */
+.mathpix-diagram-text-empty {
+  padding: 2rem;
+  text-align: center;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.mathpix-diagram-text-empty p {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin: 0;
+  font-size: 1rem;
+  font-style: italic;
+}
+
+.mathpix-diagram-text-empty svg {
+  opacity: 0.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mathpix-diagram-text-section {
+    padding: 0.75rem;
+    margin: 1rem 0;
+  }
+
+  .mathpix-diagram-text-toggle {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+
+  .mathpix-diagram-text-content {
+    padding: 0.85rem;
+  }
+
+  .diagram-card-header,
+  .diagram-card-content,
+  .diagram-card-footer {
+    padding: 0.75rem;
+  }
+
+  .text-element {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.85rem;
+  }
+
+  .diagram-copy-btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .diagram-text-intro {
+    padding: 0.75rem;
+  }
+
+  .diagram-text-intro .help-text {
+    font-size: 0.85rem;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-diagram-text-toggle,
+  .diagram-card,
+  .diagram-copy-btn {
+    transition: none;
+  }
+
+  .mathpix-diagram-text-toggle:hover,
+  .diagram-card:hover,
+  .diagram-copy-btn:hover {
+    transform: none;
+  }
+
+  .mathpix-diagram-text-toggle .toggle-icon {
+    transition: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .mathpix-diagram-text-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .mathpix-diagram-text-toggle {
+    display: none;
+  }
+
+  .mathpix-diagram-text-content {
+    display: block !important;
+  }
+
+  .diagram-copy-btn {
+    display: none;
+  }
+
+  .diagram-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none;
   }
 }
