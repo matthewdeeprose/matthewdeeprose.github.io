@@ -34,7 +34,7 @@
 
 // Logging configuration (module level)
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
@@ -96,7 +96,11 @@ function logDebug(message, ...args) {
 }
 
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
-import MATHPIX_CONFIG from "../../core/mathpix-config.js";
+import MATHPIX_CONFIG, {
+  getEndpointConfig,
+  getEndpointFeatures,
+  isFeatureAvailable,
+} from "../../core/mathpix-config.js";
 // Phase 3.4: PDF Preview imports
 import { PDFUploadVerification } from "../../pdf-preview/pdf-preview-upload-verification.js";
 import { PDFPreviewAccessibility } from "../../pdf-preview/pdf-preview-accessibility.js";
@@ -233,7 +237,18 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (!this.currentProcessingOptions) {
       this.currentProcessingOptions = {
         page_range: "all",
-        formats: ["mmd", "html"],
+        formats: [
+          "mmd",
+          "md",
+          "html",
+          "tex.zip",
+          "docx",
+          "pptx",
+          "pdf",
+          "mmd.zip",
+          "md.zip",
+          "html.zip",
+        ],
       };
       console.log(
         "🎯 Initialized currentProcessingOptions:",
@@ -614,6 +629,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
    *
    * @accessibility Ensures all options maintain keyboard navigation
    * @since 2.1.0
+   * @updated Phase 1 Step 5 - Added format availability checking
    */
   displayPDFOptions(pdfFile) {
     const pdfOptionsContainer = document.getElementById("mathpix-pdf-options");
@@ -644,11 +660,25 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Initialize default processing options FIRST (will be overridden by HTML checkbox states)
     this.currentProcessingOptions = {
       page_range: "all",
-      formats: ["mmd", "html"], // Fallback defaults
+      formats: [
+        "mmd",
+        "md",
+        "html",
+        "tex.zip",
+        "docx",
+        "pptx",
+        "pdf",
+        "mmd.zip",
+        "md.zip",
+        "html.zip",
+      ], // All available formats by default
     };
 
     // Update file information in the interface
     this.updatePDFFileInfo(pdfFile);
+
+    // PHASE 1 STEP 5: Update format availability based on current endpoint
+    this.updateFormatAvailability();
 
     // Set up event listeners for options (including Select All)
     this.attachPDFOptionsListeners();
@@ -657,9 +687,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // This ensures HTML defaults (all formats checked) are respected
     this.updateSelectedFormats();
 
-    logDebug("PDF options interface displayed", {
+    logDebug("PDF options interface displayed with format availability", {
       fileName: pdfFile.name,
-      initialFormats: this.currentProcessingOptions.formats, // Now reflects actual HTML state
+      initialFormats: this.currentProcessingOptions.formats,
+      currentEndpoint: this.controller.apiClient?.currentEndpoint || "unknown",
     });
   }
 
@@ -1100,7 +1131,18 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (!this.currentProcessingOptions) {
       this.currentProcessingOptions = {
         page_range: "all",
-        formats: [],
+        formats: [
+          "mmd",
+          "md",
+          "html",
+          "tex.zip",
+          "docx",
+          "pptx",
+          "pdf",
+          "mmd.zip",
+          "md.zip",
+          "html.zip",
+        ],
       };
       console.log(
         "🆘 Emergency init of processing options in updateSelectedFormats"
@@ -1178,6 +1220,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @returns {Object} Validation result with valid flag and message
    * @private
    * @since 2.1.0
+   * @updated Phase 1 Step 5 - Added format availability validation
    */
   validateProcessingOptions() {
     // Check if processing options exist
@@ -1198,6 +1241,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
         valid: false,
         message: "Please select at least one output format",
       };
+    }
+
+    // PHASE 1 STEP 5: Validate format availability on current endpoint
+    const availabilityCheck = this.validateFormatAvailability();
+    if (!availabilityCheck.valid) {
+      return availabilityCheck;
     }
 
     // Validate custom page range if selected
@@ -3027,6 +3076,235 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     this.showNotification("Results cleared", "info");
     logInfo("PDF results cleared");
+  }
+
+  /**
+   * @method updateFormatAvailability
+   * @description Updates format checkbox states based on endpoint feature availability
+   *
+   * Disables format checkboxes for features not available on current endpoint
+   * and adds helpful tooltips explaining why formats are unavailable.
+   *
+   * @returns {void}
+   * @since Phase 1 Step 5
+   * @accessibility Maintains keyboard navigation and screen reader support
+   */
+  updateFormatAvailability() {
+    if (!this.controller.apiClient) {
+      logWarn("API client not available for format availability check");
+      return;
+    }
+
+    const currentEndpoint = this.controller.apiClient.currentEndpoint || "EU";
+    const endpointConfig = this.controller.apiClient.getEndpointConfig();
+
+    logDebug("Updating format availability", {
+      endpoint: currentEndpoint,
+      config: endpointConfig,
+    });
+
+    // Format mapping: checkbox ID suffix -> API feature name
+    // Maps all PDF format checkboxes to their required API features
+    const formatFeatureMap = {
+      // Basic formats (require only 'pdf' feature - available on all endpoints)
+      mmd: "pdf", // Markdown Math Document
+      md: "pdf", // Markdown
+      html: "pdf", // HTML
+      mmdzip: "pdf", // MMD ZIP archive
+      mdzip: "pdf", // Markdown ZIP archive
+      htmlzip: "pdf", // HTML ZIP archive
+      latex: "pdf", // LaTeX source ZIP - basic PDF processing
+      pdf: "pdf", // PDF with HTML rendering - basic PDF processing
+
+      // Advanced formats (require specific features - may be endpoint-restricted)
+      latexpdf: "latex_pdf", // PDF with LaTeX rendering - ONLY this requires latex_pdf
+      docx: "docx", // Microsoft Word
+      pptx: "docx", // Microsoft PowerPoint (uses same feature gate as DOCX)
+    };
+
+    Object.entries(formatFeatureMap).forEach(([format, featureName]) => {
+      const checkbox = document.getElementById(`pdf-format-${format}`);
+      if (!checkbox) {
+        logWarn(`Format checkbox not found: pdf-format-${format}`);
+        return;
+      }
+
+      const isAvailable =
+        this.controller.apiClient.isFeatureAvailable(featureName);
+
+      // Don't disable MMD (always required)
+      if (format === "mmd") {
+        checkbox.disabled = false;
+        checkbox.checked = true;
+        logDebug("MMD format always enabled (required)");
+        return;
+      }
+
+      if (!isAvailable) {
+        // Disable unavailable formats
+        checkbox.disabled = true;
+        checkbox.checked = false;
+
+        // Add visual indicator with styled message span
+        const label = checkbox.closest(".mathpix-format-checkbox");
+        if (label) {
+          label.classList.add("format-unavailable");
+
+          // Create explanatory message text
+          const messageText = `Not available on ${endpointConfig.name}. Switch to US endpoint to enable.`;
+
+          // Check if message span already exists
+          let messageSpan = label.querySelector(".format-unavailable-message");
+          if (!messageSpan) {
+            // Create new message span
+            messageSpan = document.createElement("span");
+            messageSpan.className = "format-unavailable-message";
+
+            // Insert after format-description within format-content
+            const formatContent = label.querySelector(".format-content");
+            if (formatContent) {
+              formatContent.appendChild(messageSpan);
+            }
+          }
+
+          // Update message text
+          messageSpan.textContent = messageText;
+
+          // Add ARIA label for screen readers (keep for accessibility)
+          checkbox.setAttribute(
+            "aria-label",
+            `${format.toUpperCase()} format (unavailable on ${
+              endpointConfig.name
+            } endpoint)`
+          );
+        }
+
+        logDebug(
+          `Format ${format} disabled (unavailable on ${currentEndpoint})`,
+          {
+            featureName,
+            endpoint: currentEndpoint,
+          }
+        );
+      } else {
+        // Enable available formats
+        checkbox.disabled = false;
+
+        // Remove unavailable indicator and message
+        const label = checkbox.closest(".mathpix-format-checkbox");
+        if (label) {
+          label.classList.remove("format-unavailable");
+
+          // Remove any unavailability message span
+          const existingMessage = label.querySelector(
+            ".format-unavailable-message"
+          );
+          if (existingMessage) {
+            existingMessage.remove();
+          }
+
+          // Update ARIA label
+          checkbox.setAttribute("aria-label", `${format.toUpperCase()} format`);
+        }
+
+        logDebug(`Format ${format} enabled (available on ${currentEndpoint})`);
+      }
+    });
+
+    // Update selected formats to reflect availability changes
+    this.updateSelectedFormats();
+
+    // ✅ STEP 3 ENHANCEMENT: Immediately synchronize Select All state after availability changes
+    this.updateSelectAllState();
+
+    // Show informational message if any formats are unavailable
+    const unavailableFormats = Object.entries(formatFeatureMap)
+      .filter(
+        ([format, feature]) =>
+          format !== "mmd" &&
+          !this.controller.apiClient.isFeatureAvailable(feature)
+      )
+      .map(([format]) => format.toUpperCase());
+
+    if (unavailableFormats.length > 0 && endpointConfig) {
+      logInfo("Some formats unavailable on current endpoint", {
+        unavailableFormats,
+        endpoint: endpointConfig.name,
+        suggestion: "Switch to US endpoint for full format support",
+      });
+    }
+  }
+
+  /**
+   * @method validateFormatAvailability
+   * @description Validates that selected formats are available on current endpoint
+   *
+   * Called during processing options validation to prevent submission of
+   * requests for unavailable features.
+   *
+   * @returns {Object} Validation result with valid flag and message
+   * @returns {boolean} returns.valid - Whether all selected formats are available
+   * @returns {string} returns.message - Error message if validation fails
+   * @private
+   * @since Phase 1 Step 5
+   */
+  validateFormatAvailability() {
+    if (!this.controller.apiClient || !this.currentProcessingOptions) {
+      return { valid: true }; // Skip validation if controller not ready
+    }
+
+    const selectedFormats = this.currentProcessingOptions.formats || [];
+    const currentEndpoint = this.controller.apiClient.currentEndpoint || "EU";
+    const endpointConfig = this.controller.apiClient.getEndpointConfig();
+
+    // Format mapping: API format name -> feature name for availability check
+    const formatFeatureMap = {
+      mmd: "pdf",
+      html: "pdf",
+      latex: "latex_pdf",
+      docx: "docx",
+    };
+
+    const unavailableFormats = [];
+
+    for (const format of selectedFormats) {
+      const featureName = formatFeatureMap[format];
+      if (!featureName) {
+        logWarn(`Unknown format in validation: ${format}`);
+        continue;
+      }
+
+      // MMD and HTML are always available (basic PDF processing)
+      if (format === "mmd" || format === "html") {
+        continue;
+      }
+
+      const isAvailable =
+        this.controller.apiClient.isFeatureAvailable(featureName);
+      if (!isAvailable) {
+        unavailableFormats.push(format.toUpperCase());
+        logWarn(`Selected format not available: ${format}`, {
+          featureName,
+          endpoint: currentEndpoint,
+        });
+      }
+    }
+
+    if (unavailableFormats.length > 0) {
+      const formatList = unavailableFormats.join(", ");
+      const endpointName = endpointConfig
+        ? endpointConfig.name
+        : currentEndpoint;
+
+      return {
+        valid: false,
+        message:
+          `The following formats are not available on the ${endpointName} endpoint: ${formatList}. ` +
+          `Please switch to the US endpoint or deselect these formats.`,
+      };
+    }
+
+    return { valid: true };
   }
 
   /**

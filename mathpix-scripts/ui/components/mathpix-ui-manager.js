@@ -211,8 +211,16 @@ class MathPixUIManager extends MathPixBaseModule {
     this.controller.elements.pageInfoCheckbox =
       document.getElementById("mathpix-page-info");
 
+    // Phase 2.0: Cache endpoint selection elements
+    this.controller.elements.endpointRadios = document.querySelectorAll(
+      'input[name="mathpix-endpoint"]'
+    );
+
     // Track if preference listeners attached (prevent duplicates)
     this._preferencesListenersAttached = false;
+
+    // Track if endpoint listeners attached (prevent duplicates) - Phase 1 Step 6
+    this._endpointListenersAttached = false;
 
     logDebug("Elements cached", Object.keys(this.controller.elements));
   }
@@ -502,6 +510,9 @@ class MathPixUIManager extends MathPixBaseModule {
       "Copy button functionality delegated to existing MarkdownCodeCopy system"
     );
 
+    // Phase 2.0: Endpoint selection handlers
+    this.setupEndpointSelection();
+
     // Configuration save handler
     if (this.controller.elements["save-config"]) {
       const saveConfigHandler = () => {
@@ -670,6 +681,11 @@ class MathPixUIManager extends MathPixBaseModule {
     // Mode switcher radio buttons
     if (this.controller.elements["upload-mode-radio"]) {
       const uploadModeHandler = () => {
+        // ✅ PHASE 3.2: Clear debug panel when switching modes
+        if (this.controller.clearDebugPanel) {
+          this.controller.clearDebugPanel();
+        }
+
         if (this.controller.modeSwitcher) {
           this.controller.modeSwitcher.switchToUploadMode();
           logDebug("Switched to upload mode via UI");
@@ -689,6 +705,11 @@ class MathPixUIManager extends MathPixBaseModule {
 
     if (this.controller.elements["draw-mode-radio"]) {
       const drawModeHandler = async () => {
+        // ✅ PHASE 3.2: Clear debug panel when switching modes
+        if (this.controller.clearDebugPanel) {
+          this.controller.clearDebugPanel();
+        }
+
         // Initialize strokes system FIRST if needed (creates modeSwitcher)
         if (
           !this.controller.strokesCanvas &&
@@ -1708,6 +1729,458 @@ class MathPixUIManager extends MathPixBaseModule {
       this.controller.elements.processingOptions.style.display = "none";
       logDebug("[MathPix UI] Processing options hidden");
     }
+  }
+
+  // =============================================================================
+  // PHASE 2.0: REGIONAL ENDPOINT MANAGEMENT
+  // =============================================================================
+
+  /**
+   * @method setupEndpointSelection
+   * @description
+   * Sets up event listeners for endpoint selection radio buttons.
+   * Handles endpoint changes, GDPR warnings, and feature availability updates.
+   * Phase 2.0: Regional endpoint selection integration.
+   *
+   * @returns {void}
+   * @private
+   *
+   * @accessibility
+   * - Native radio button keyboard navigation
+   * - ARIA attributes for descriptions
+   * - Clear visual feedback for selection
+   * @since 2.0.0
+   * @updated Phase 1 Step 6 - Added duplicate prevention
+   */
+  setupEndpointSelection() {
+    // PHASE 1 STEP 6: Prevent duplicate listener attachment
+    if (this._endpointListenersAttached) {
+      logDebug("Endpoint listeners already attached, skipping duplicate setup");
+      return;
+    }
+
+    const endpointRadios = this.controller.elements.endpointRadios;
+
+    if (!endpointRadios || endpointRadios.length === 0) {
+      logWarn("Endpoint selection radios not found in DOM");
+      return;
+    }
+
+    endpointRadios.forEach((radio) => {
+      const radioChangeHandler = (e) => {
+        if (e.target.checked) {
+          this.handleEndpointChange(e.target.value);
+        }
+      };
+
+      radio.addEventListener("change", radioChangeHandler);
+      this.trackEventListener(radio, "change", radioChangeHandler);
+    });
+
+    // Set initial state from localStorage or API client
+    this.loadEndpointSelection();
+
+    // PHASE 1 STEP 6: Mark as attached
+    this._endpointListenersAttached = true;
+
+    logDebug("Endpoint selection handlers attached", {
+      radioCount: endpointRadios.length,
+    });
+  }
+
+  /**
+   * @method loadEndpointSelection
+   * @description
+   * Loads saved endpoint selection and updates radio button state.
+   * Synchronizes UI with API client's current endpoint.
+   *
+   * @returns {void}
+   * @private
+   * @since 2.0.0
+   */
+  loadEndpointSelection() {
+    try {
+      const currentEndpoint = this.controller.apiClient?.currentEndpoint;
+      if (!currentEndpoint) {
+        logWarn("API client endpoint not available");
+        return;
+      }
+
+      const radio = document.getElementById(
+        `endpoint-${currentEndpoint.toLowerCase()}`
+      );
+      if (radio) {
+        radio.checked = true;
+        logDebug("Endpoint selection loaded", { endpoint: currentEndpoint });
+      }
+
+      // PHASE 1 STEP 6: Initialize status indicator with current endpoint
+      this.updateStatusIndicator(currentEndpoint);
+    } catch (error) {
+      logWarn("Failed to load endpoint selection", error);
+    }
+  }
+
+  /**
+   * @method handleEndpointChange
+   * @description
+   * Handles endpoint change events with GDPR warning modal when appropriate.
+   * Shows warning when switching from EU to non-EU endpoints.
+   *
+   * @param {string} newEndpoint - New endpoint key (US, EU, ASIA)
+   *
+   * @returns {void}
+   * @private
+   * @since 2.0.0
+   */
+  handleEndpointChange(newEndpoint) {
+    const currentEndpoint = this.controller.apiClient?.currentEndpoint;
+
+    logInfo("Endpoint change requested", {
+      from: currentEndpoint,
+      to: newEndpoint,
+    });
+
+    // Check if leaving EU endpoint (GDPR warning)
+    const isLeavingEU = currentEndpoint === "EU" && newEndpoint !== "EU";
+
+    // Import MATHPIX_CONFIG to check GDPR warning dismissed flag
+    const hasSeenWarning = localStorage.getItem(
+      "mathpix-gdpr-warning-dismissed"
+    );
+
+    if (isLeavingEU && !hasSeenWarning) {
+      // Show GDPR warning modal
+      this.showGDPRWarningModal(
+        newEndpoint,
+        () => {
+          // User confirmed
+          this.applyEndpointChange(newEndpoint);
+        },
+        () => {
+          // User cancelled - revert selection
+          this.revertEndpointSelection(currentEndpoint);
+        }
+      );
+    } else {
+      // No warning needed
+      this.applyEndpointChange(newEndpoint);
+    }
+  }
+
+  /**
+   * @method applyEndpointChange
+   * @description
+   * Applies the endpoint change to API client and updates UI state.
+   * Updates feature availability and provides user feedback.
+   *
+   * @param {string} endpoint - Endpoint key to switch to
+   *
+   * @returns {void}
+   * @private
+   * @since 2.0.0
+   */
+  applyEndpointChange(endpoint) {
+    // Switch endpoint in API client
+    const success = this.controller.apiClient.switchEndpoint(endpoint);
+
+    if (success) {
+      // Update feature availability UI
+      this.updateFeatureAvailability(endpoint);
+
+      // PHASE 1 STEP 6 FIX: Update PDF format availability if PDF options are visible
+      const pdfOptions = document.getElementById("mathpix-pdf-options");
+      if (
+        pdfOptions &&
+        pdfOptions.style.display !== "none" &&
+        !pdfOptions.hidden
+      ) {
+        logDebug("PDF options visible - updating format availability");
+        if (
+          this.controller.pdfHandler &&
+          this.controller.pdfHandler.updateFormatAvailability
+        ) {
+          this.controller.pdfHandler.updateFormatAvailability();
+          logDebug("PDF format availability updated after endpoint change");
+        }
+      }
+
+      // PHASE 1 STEP 6: Update status indicator
+      this.updateStatusIndicator(endpoint);
+
+      // Show success notification
+      const config = this.controller.apiClient.getEndpointConfig();
+      this.showNotification(
+        `Switched to ${config.name} endpoint (${config.location})`,
+        "success"
+      );
+
+      logInfo("Endpoint switched successfully", {
+        endpoint,
+        apiBase: this.controller.apiClient.apiBase,
+      });
+    } else {
+      this.showNotification("Failed to switch endpoint", "error");
+      logError("Endpoint switch failed", { endpoint });
+    }
+  }
+
+  /**
+   * @method revertEndpointSelection
+   * @description
+   * Reverts radio button selection to previous endpoint.
+   * Called when user cancels GDPR warning modal.
+   *
+   * @param {string} endpoint - Endpoint to revert to
+   *
+   * @returns {void}
+   * @private
+   * @since 2.0.0
+   */
+  revertEndpointSelection(endpoint) {
+    const radio = document.getElementById(`endpoint-${endpoint.toLowerCase()}`);
+    if (radio) {
+      radio.checked = true;
+      logDebug("Endpoint selection reverted", { endpoint });
+    }
+  }
+
+  /**
+   * @method showGDPRWarningModal
+   * @description
+   * Displays GDPR compliance warning when leaving EU endpoint.
+   * Uses UniversalModal system for accessible modal dialog.
+   *
+   * @param {string} targetEndpoint - Endpoint user is switching to
+   * @param {Function} onConfirm - Callback when user confirms
+   * @param {Function} onCancel - Callback when user cancels
+   *
+   * @returns {void}
+   * @private
+   *
+   * @accessibility
+   * - Full keyboard navigation via UniversalModal
+   * - Screen reader compatible
+   * - Focus management
+   * @since 2.0.0
+   */
+  async showGDPRWarningModal(targetEndpoint, onConfirm, onCancel) {
+    const endpointConfig = this.controller.apiClient.getEndpointConfig();
+    const targetConfig = MATHPIX_CONFIG.ENDPOINTS[targetEndpoint];
+
+    const modalContent = `
+      <div class="mathpix-gdpr-warning">
+        <p>
+          You are switching from the <strong>EU endpoint</strong> to the 
+          <strong>${targetConfig.name} endpoint</strong> (${targetConfig.location}).
+        </p>
+        <div class="warning-box" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; margin: 1rem 0;">
+          <p style="margin: 0 0 0.5rem 0;"><strong>⚠️ Important:</strong></p>
+          <p style="margin: 0;">
+            Data processed on non-EU servers may not comply with GDPR requirements. 
+            Your mathematical content will be processed in <strong>${targetConfig.dataLocality}</strong>.
+          </p>
+        </div>
+        <ul style="list-style: none; padding: 0; margin: 1rem 0;">
+          <li style="margin: 0.5rem 0;">✅ <strong>EU endpoint:</strong> GDPR-compliant, data processed in EU</li>
+          <li style="margin: 0.5rem 0;">⚠️ <strong>${targetConfig.name} endpoint:</strong> Data processed in ${targetConfig.dataLocality}</li>
+        </ul>
+        <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+          <input type="checkbox" id="gdpr-dont-show-again" style="margin: 0;">
+          <span>Don't show this warning again</span>
+        </label>
+      </div>
+    `;
+
+    // Show modal using UniversalModal if available
+    if (window.UniversalModal) {
+      try {
+        const result = await window.UniversalModal.custom(modalContent, {
+          title: "Privacy Settings",
+          size: "medium",
+          buttons: [
+            {
+              text: "Stay on EU Endpoint",
+              type: "secondary",
+              action: "cancel",
+            },
+            {
+              text: `Continue to ${targetConfig.name}`,
+              type: "primary",
+              action: "confirm",
+            },
+          ],
+        });
+
+        // Check if user selected "don't show again"
+        const dontShowAgain = document.getElementById(
+          "gdpr-dont-show-again"
+        )?.checked;
+        if (dontShowAgain && result === true) {
+          localStorage.setItem("mathpix-gdpr-warning-dismissed", "true");
+          logDebug("GDPR warning dismissed permanently");
+        }
+
+        if (result === true) {
+          onConfirm();
+        } else {
+          onCancel();
+        }
+      } catch (error) {
+        logError("GDPR modal error", error);
+        // Fallback to confirm if modal fails
+        this.showGDPRWarningFallback(targetConfig, onConfirm, onCancel);
+      }
+    } else {
+      // Fallback to native confirm if UniversalModal not available
+      this.showGDPRWarningFallback(targetConfig, onConfirm, onCancel);
+    }
+  }
+
+  /**
+   * @method showGDPRWarningFallback
+   * @description
+   * Fallback GDPR warning using native confirm dialog.
+   * Used when UniversalModal is not available.
+   *
+   * @param {Object} targetConfig - Target endpoint configuration
+   * @param {Function} onConfirm - Callback when user confirms
+   * @param {Function} onCancel - Callback when user cancels
+   *
+   * @returns {void}
+   * @private
+   * @since 2.0.0
+   */
+  showGDPRWarningFallback(targetConfig, onConfirm, onCancel) {
+    const confirmed = confirm(
+      `You are switching from EU to ${targetConfig.name} endpoint.\n\n` +
+        `Data will be processed in ${targetConfig.dataLocality}.\n\n` +
+        `This may not comply with GDPR requirements. Continue?`
+    );
+
+    if (confirmed) {
+      onConfirm();
+    } else {
+      onCancel();
+    }
+  }
+
+  /**
+   * @method updateFeatureAvailability
+   * @description
+   * Updates UI to reflect feature availability for selected endpoint.
+   * Disables unavailable features with appropriate tooltips and ARIA labels.
+   *
+   * @param {string} endpoint - Current endpoint key
+   *
+   * @returns {void}
+   * @private
+   *
+   * @accessibility
+   * - Disabled state communicated via native disabled attribute
+   * - Tooltips explain why features are unavailable
+   * - ARIA labels provide screen reader context
+   * @since 2.0.0
+   */
+  updateFeatureAvailability(endpoint) {
+    const features = this.controller.apiClient.getEndpointFeatures();
+    const endpointConfig = this.controller.apiClient.getEndpointConfig();
+    const endpointName = endpointConfig.name;
+
+    logDebug("Updating feature availability UI", { endpoint, features });
+
+    // Map of format elements to their feature keys (PDF formats only)
+    const formatElements = {
+      "format-latex-pdf": "latex_pdf",
+    };
+
+    Object.entries(formatElements).forEach(([elementId, featureKey]) => {
+      const element = document.getElementById(elementId);
+      if (!element) return;
+
+      const available = features[featureKey];
+
+      // Use native disabled attribute
+      element.disabled = !available;
+
+      if (!available) {
+        // Uncheck disabled options
+        if (element.type === "checkbox") {
+          element.checked = false;
+        }
+
+        // Update ARIA label with explanation
+        const label = element.labels?.[0]?.textContent || featureKey;
+        element.setAttribute(
+          "aria-label",
+          `${label} (unavailable on ${endpointName} servers)`
+        );
+
+        // Add title for tooltip
+        element.setAttribute(
+          "title",
+          `This format is not available on the ${endpointName} endpoint. ` +
+            `Switch to US endpoint for full feature support.`
+        );
+
+        logDebug("Feature disabled in UI", { featureKey, endpoint });
+      } else {
+        // Remove explanatory attributes when available
+        element.removeAttribute("aria-label");
+        element.removeAttribute("title");
+
+        logDebug("Feature enabled in UI", { featureKey, endpoint });
+      }
+    });
+
+    logInfo("Feature availability UI updated", {
+      endpoint,
+      disabledFeatures: Object.entries(features)
+        .filter(([_, available]) => !available)
+        .map(([feature]) => feature),
+    });
+  }
+
+  /**
+   * @method updateStatusIndicator
+   * @description Updates the status indicator with current endpoint information.
+   *
+   * Updates the visible status display showing current server location and
+   * privacy settings. Provides real-time feedback when endpoint changes.
+   *
+   * @param {string} endpoint - Current endpoint key (US, EU, ASIA)
+   *
+   * @returns {void}
+   *
+   * @accessibility
+   * - Uses aria-live region for dynamic updates
+   * - Screen readers announce changes automatically
+   * - Visual indicators support high contrast mode
+   * @since Phase 1 Step 6
+   */
+  updateStatusIndicator(endpoint) {
+    const statusElement = document.getElementById("mathpix-server-location");
+
+    if (!statusElement) {
+      logWarn("Status indicator element not found in DOM");
+      return;
+    }
+
+    const config = this.controller.apiClient.getEndpointConfig();
+
+    if (!config) {
+      logError("Could not get endpoint config for status update", { endpoint });
+      return;
+    }
+
+    // Update the displayed server location
+    statusElement.textContent = config.name;
+
+    logDebug("Status indicator updated", {
+      endpoint,
+      displayName: config.name,
+      location: config.location,
+    });
   }
 
   /**

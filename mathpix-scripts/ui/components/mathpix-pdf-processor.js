@@ -164,6 +164,13 @@ class MathPixPDFProcessor extends MathPixBaseModule {
     this.pollCount = 0;
     this.processingAbortController = null;
 
+    // Phase 3.3: Debug data capture for debug panel
+    this.lastDebugData = null;
+
+    // Phase 3.4: Status polling metadata storage
+    this.lastProcessingModel = null;
+    this.lastPageCount = null;
+
     this.isInitialised = true;
 
     logInfo("MathPix PDF Processor initialised", {
@@ -252,6 +259,36 @@ class MathPixPDFProcessor extends MathPixBaseModule {
 
       // Step 3: Handle successful completion
       await this.handleProcessingCompletion(results);
+
+      // Step 3.5: Capture debug data for debug panel (Phase 3.3)
+      this.captureDebugData({
+        pdfId: this.currentPdfId,
+        options: this.processingOptions,
+        results: results,
+        totalTime: Date.now() - this.processingStartTime,
+        pollCount: this.pollCount,
+        status: "completed",
+        fileName: pdfFile.name,
+        fileSize: pdfFile.size,
+      });
+
+      logDebug("PDF debug data captured after successful completion", {
+        pdfId: this.currentPdfId,
+        hasDebugData: !!this.lastDebugData,
+      });
+
+      // Step 3.6: Update debug panel with PDF transaction data (Phase 3.3)
+      if (
+        this.controller &&
+        typeof this.controller.updateDebugPanel === "function"
+      ) {
+        this.controller.updateDebugPanel();
+        logDebug("Debug panel updated with PDF processing data");
+      } else {
+        logWarn(
+          "Unable to update debug panel - controller method not available"
+        );
+      }
 
       // Step 4: Connect processor completion to UI display
       console.log("Triggering PDF results display with:", Object.keys(results));
@@ -387,6 +424,20 @@ class MathPixPDFProcessor extends MathPixBaseModule {
             elapsedTime
           ),
         });
+
+        // Phase 3.4: Capture status polling metadata for debug panel
+        if (statusResult.version && !this.lastProcessingModel) {
+          this.lastProcessingModel = statusResult.version;
+          logDebug("Captured processing model from status", {
+            model: this.lastProcessingModel,
+          });
+        }
+        if (statusResult.num_pages && !this.lastPageCount) {
+          this.lastPageCount = statusResult.num_pages;
+          logDebug("Captured page count from status", {
+            pages: this.lastPageCount,
+          });
+        }
 
         // Provide progress updates to callback
         if (
@@ -887,6 +938,10 @@ class MathPixPDFProcessor extends MathPixBaseModule {
     this.processingStartTime = 0;
     this.pollCount = 0;
 
+    // Phase 3.4: Reset status polling metadata
+    this.lastProcessingModel = null;
+    this.lastPageCount = null;
+
     if (this.processingAbortController) {
       this.processingAbortController.abort();
       this.processingAbortController = null;
@@ -1022,6 +1077,220 @@ class MathPixPDFProcessor extends MathPixBaseModule {
         timeout: MATHPIX_CONFIG.PDF_PROCESSING?.PDF_TIMEOUT,
       },
     };
+  }
+
+  /**
+   * @method captureDebugData
+   * @description Captures debug data from PDF processing workflow for debug panel
+   *
+   * Records comprehensive transaction information including request details,
+   * response data, timing metrics, and processing metadata. Supports the debug
+   * panel's visibility into PDF processing operations.
+   *
+   * @param {Object} processingData - Processing workflow data to capture
+   * @param {string} processingData.pdfId - PDF processing ID
+   * @param {Object} processingData.options - Processing options used
+   * @param {Object} processingData.results - Final processing results
+   * @param {number} processingData.totalTime - Total processing time in milliseconds
+   * @param {number} processingData.pollCount - Number of status polls performed
+   * @param {string} processingData.status - Final processing status
+   *
+   * @returns {void}
+   *
+   * @example
+   * this.captureDebugData({
+   *   pdfId: "abc123",
+   *   options: { page_range: "1-10", formats: ["mmd", "html"] },
+   *   results: { mmd: "...", html: "..." },
+   *   totalTime: 45000,
+   *   pollCount: 23,
+   *   status: "completed"
+   * });
+   *
+   * @private
+   * @since Phase 3.3
+   */
+  captureDebugData(processingData) {
+    try {
+      const endpoint = this.controller.apiClient?.apiBase
+        ? `${this.controller.apiClient.apiBase}/pdf`
+        : "https://api.mathpix.com/v3/pdf";
+
+      // Mask API credentials for security
+      const maskedAppKey = this.controller.apiClient?.apiKey
+        ? `****${this.controller.apiClient.apiKey.slice(-4)}`
+        : "Not configured";
+
+      this.lastDebugData = {
+        timestamp: new Date().toISOString(),
+        operation: "processPDF",
+        endpoint: endpoint,
+
+        request: {
+          headers: {
+            app_id: this.controller.apiClient?.appId || "Not configured",
+            app_key: maskedAppKey,
+          },
+          pdfId: processingData.pdfId,
+          options: processingData.options || {},
+          fileName: processingData.fileName || "Unknown",
+          fileSize: processingData.fileSize || 0,
+        },
+
+        response: {
+          status: processingData.status === "completed" ? 200 : 500,
+          statusText:
+            processingData.status === "completed" ? "OK" : "Processing Error",
+          pdfId: processingData.pdfId,
+          finalStatus: processingData.status,
+          availableFormats: processingData.results
+            ? Object.keys(processingData.results).filter(
+                (key) =>
+                  key !== "processingMetadata" && processingData.results[key]
+              )
+            : [],
+          contentType: "pdf-document",
+          confidence: null, // Will be updated by Lines API callback (Phase 3.4)
+          data: {
+            request_id: processingData.pdfId,
+            version: this.lastProcessingModel || "v3", // Phase 3.4: Use captured model
+            confidence_rate: null, // Will be updated by Lines API callback (Phase 3.4)
+            results: processingData.results || {},
+          },
+        },
+
+        timing: {
+          total: processingData.totalTime || 0,
+          api: processingData.totalTime || 0, // PDF is mostly API time
+          processing: 0, // No client-side processing for PDFs
+        },
+
+        metadata: {
+          pollCount: processingData.pollCount || 0,
+          processingState: processingData.status,
+          pageRange: processingData.options?.page_range || "all",
+          requestedFormats: processingData.options?.formats || [],
+          completedFormats: processingData.results
+            ? Object.keys(processingData.results).filter(
+                (key) =>
+                  key !== "processingMetadata" && processingData.results[key]
+              )
+            : [],
+          // Phase 3.4: Include status polling metadata
+          processingModel: this.lastProcessingModel,
+          pageCount: this.lastPageCount,
+        },
+      };
+
+      logDebug("PDF debug data captured", {
+        pdfId: processingData.pdfId,
+        timestamp: this.lastDebugData.timestamp,
+        totalTime: processingData.totalTime,
+        formats: this.lastDebugData.metadata.completedFormats,
+      });
+    } catch (error) {
+      logError("Failed to capture PDF debug data", {
+        error: error.message,
+        processingData,
+      });
+    }
+  }
+
+  /**
+   * @method updateDebugDataWithLinesAPI
+   * @description Updates debug data with Lines API confidence data
+   *
+   * Called after Lines API data is fetched to enrich debug information with
+   * average confidence data. This is a two-stage capture process since Lines
+   * API data is fetched after initial processing completion.
+   *
+   * @param {Object} linesData - Lines API analysis data
+   * @param {number} [linesData.averageConfidence] - Average confidence (0-1)
+   * @param {number} [linesData.totalPages] - Total pages analyzed
+   * @param {number} [linesData.mathElements] - Math elements found
+   * @param {number} [linesData.tableCount] - Tables found
+   *
+   * @returns {void}
+   *
+   * @example
+   * processor.updateDebugDataWithLinesAPI({
+   *   averageConfidence: 0.95,
+   *   totalPages: 10,
+   *   mathElements: 45
+   * });
+   *
+   * @since Phase 3.4
+   */
+  updateDebugDataWithLinesAPI(linesData) {
+    if (!this.lastDebugData) {
+      logWarn("Cannot update debug data - no existing debug data found");
+      return;
+    }
+
+    try {
+      // Update confidence data from Lines API
+      if (linesData.averageConfidence !== undefined) {
+        this.lastDebugData.response.confidence = linesData.averageConfidence;
+        this.lastDebugData.response.data.confidence_rate =
+          linesData.averageConfidence;
+      }
+
+      // Add Lines API metadata
+      if (!this.lastDebugData.metadata.linesAPI) {
+        this.lastDebugData.metadata.linesAPI = {};
+      }
+
+      this.lastDebugData.metadata.linesAPI = {
+        averageConfidence: linesData.averageConfidence,
+        totalPages: linesData.totalPages,
+        mathElements: linesData.mathElements,
+        tableCount: linesData.tableCount,
+        updatedAt: new Date().toISOString(),
+      };
+
+      logDebug("Debug data updated with Lines API data", {
+        confidence: linesData.averageConfidence,
+        pages: linesData.totalPages,
+        mathElements: linesData.mathElements,
+      });
+
+      // Trigger debug panel refresh if controller method available
+      if (
+        this.controller &&
+        typeof this.controller.updateDebugPanel === "function"
+      ) {
+        this.controller.updateDebugPanel();
+        logDebug("Debug panel refreshed after Lines API update");
+      }
+    } catch (error) {
+      logError("Failed to update debug data with Lines API data", {
+        error: error.message,
+        linesData,
+      });
+    }
+  }
+
+  /**
+   * @method getLastDebugData
+   * @description Retrieves last captured debug data for debug panel display
+   *
+   * Returns the most recent PDF processing transaction data in a format
+   * compatible with the debug panel's display requirements. Matches the
+   * structure used by image and strokes API clients for consistency.
+   *
+   * @returns {Object|null} Last debug data or null if no data captured
+   *
+   * @example
+   * const debugData = processor.getLastDebugData();
+   * if (debugData) {
+   *   console.log('Last PDF operation:', debugData.operation);
+   *   console.log('Processing time:', debugData.timing.total);
+   * }
+   *
+   * @since Phase 3.3
+   */
+  getLastDebugData() {
+    return this.lastDebugData;
   }
 }
 

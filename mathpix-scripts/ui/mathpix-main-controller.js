@@ -75,7 +75,11 @@ function logDebug(message, ...args) {
 }
 
 import MathPixAPIClient from "../core/mathpix-api-client.js";
-import MATHPIX_CONFIG from "../core/mathpix-config.js";
+import MATHPIX_CONFIG, {
+  getEndpointConfig,
+  getEndpointFeatures,
+  isFeatureAvailable,
+} from "../core/mathpix-config.js";
 import MathPixProgressDisplay from "./mathpix-progress-display.js";
 import MathPixPrismBridge from "../integrations/mathpix-prism-bridge.js";
 import MathPixPrivacyManager from "../core/mathpix-privacy-manager.js";
@@ -98,6 +102,9 @@ import MathPixLinesDataManager from "../core/mathpix-lines-data-manager.js";
 
 // Phase 3.4.2: PDF preview system components
 import { PDFPreviewCore } from "../pdf-preview/pdf-preview-core.js";
+
+// Phase 5: Total Downloader system
+import MathPixDownloadManager from "./components/mathpix-download-manager.js";
 
 // Phase 1C: Strokes system components (handwriting recognition)
 import MathPixStrokesCanvas from "../core/mathpix-strokes-canvas.js";
@@ -171,12 +178,15 @@ class MathPixController {
     this.strokesAPIClient = new MathPixStrokesAPIClient();
     this.modeSwitcher = null; // Initialized when HTML elements are ready
 
+    // Phase 5: Total Downloader system
+    this.downloadManager = null; // Initialized in init() method
+
     // Legacy compatibility properties
     this.elements = {};
     this.isInitialised = false;
 
     logInfo(
-      "MathPixController created with modular architecture including Phase 3.1 content analysis and Phase 1C strokes system"
+      "MathPixController created with modular architecture including Phase 3.1 content analysis, Phase 1C strokes system, and Phase 5 download system"
     );
   }
 
@@ -211,19 +221,228 @@ class MathPixController {
    *
    * @accessibility Ensures all interactive elements have proper ARIA labels and keyboard support
    * @since 1.0.0
+   * @updated Phase 1 Step 6 - Added endpoint selection setup
    */
   init() {
     try {
       this.uiManager.cacheElements();
       this.uiManager.attachEventListeners();
       this.uiManager.loadStoredConfig();
+
+      // PHASE 1 STEP 6: Setup endpoint selection (if UI manager handles this)
+      if (this.uiManager && this.uiManager.setupEndpointSelection) {
+        this.uiManager.setupEndpointSelection();
+        logDebug("Endpoint selection setup completed");
+      }
+
+      // PHASE 1 STEP 6: Initial feature availability update
+      this.updateFeatureAvailability();
+
+      // PHASE 5: Initialize download manager
+      if (typeof MathPixDownloadManager !== "undefined") {
+        this.downloadManager = new MathPixDownloadManager(this);
+        const initSuccess = this.downloadManager.initialize();
+        if (initSuccess) {
+          logInfo("✓ Download Manager initialised");
+        } else {
+          logWarn("⚠ Download Manager initialisation failed");
+        }
+      } else {
+        logWarn("⚠ MathPixDownloadManager not available");
+      }
+
       this.isInitialised = true;
-      logInfo("MathPixController initialised successfully");
+      logInfo(
+        "MathPixController initialised successfully with endpoint management and download system"
+      );
       return true;
     } catch (error) {
       logError("Failed to initialise MathPixController", error);
       return false;
     }
+  }
+
+  // =============================================================================
+  // ENDPOINT MANAGEMENT METHODS (PHASE 1)
+  // =============================================================================
+
+  /**
+   * @method getCurrentEndpoint
+   * @description Gets current endpoint configuration information
+   *
+   * Returns comprehensive information about the currently active API endpoint
+   * including name, location, available features, and GDPR compliance status.
+   *
+   * @returns {Object|null} Current endpoint configuration or null if API client unavailable
+   * @returns {string} returns.name - Endpoint name (e.g., "Europe (EU)")
+   * @returns {string} returns.location - Endpoint location identifier
+   * @returns {string} returns.apiBase - API base URL
+   * @returns {Array<string>} returns.features - Available features on this endpoint
+   *
+   * @example
+   * const endpoint = controller.getCurrentEndpoint();
+   * console.log(`Current endpoint: ${endpoint.name} (${endpoint.location})`);
+   * console.log(`Features: ${endpoint.features.join(', ')}`);
+   *
+   * @since Phase 1 Step 6
+   */
+  getCurrentEndpoint() {
+    if (!this.apiClient) {
+      logWarn("API client not available for endpoint info");
+      return null;
+    }
+
+    const config = this.apiClient.getEndpointConfig();
+    logDebug("Retrieved current endpoint configuration", {
+      endpoint: config?.name,
+      features: config?.features,
+    });
+
+    return config;
+  }
+
+  /**
+   * @method updateFeatureAvailability
+   * @description Updates feature availability across all UI components
+   *
+   * Propagates endpoint feature availability information to all components
+   * that need to update their UI state based on current endpoint capabilities.
+   * Currently updates PDF handler format availability.
+   *
+   * @returns {void}
+   *
+   * @example
+   * // Called automatically after endpoint change
+   * controller.updateFeatureAvailability();
+   *
+   * @since Phase 1 Step 6
+   */
+  updateFeatureAvailability() {
+    if (!this.apiClient) {
+      logDebug("API client not available for feature availability update");
+      return;
+    }
+
+    const currentEndpoint = this.apiClient.currentEndpoint;
+    logDebug("Updating feature availability across components", {
+      endpoint: currentEndpoint,
+    });
+
+    // Update UI Manager feature availability display
+    if (this.uiManager && this.uiManager.updateFeatureAvailability) {
+      this.uiManager.updateFeatureAvailability(currentEndpoint);
+      logDebug("UI Manager feature availability updated");
+    }
+
+    // Update PDF Handler format availability
+    if (this.pdfHandler && this.pdfHandler.updateFormatAvailability) {
+      this.pdfHandler.updateFormatAvailability();
+      logDebug("PDF Handler format availability updated");
+    }
+
+    logInfo("Feature availability update completed", {
+      endpoint: currentEndpoint,
+      updatedComponents: [
+        this.uiManager ? "UIManager" : null,
+        this.pdfHandler ? "PDFHandler" : null,
+      ].filter(Boolean),
+    });
+  }
+
+  /**
+   * @method isFeatureAvailable
+   * @description Checks if a specific feature is available on current endpoint
+   *
+   * Convenience method for checking feature availability without direct
+   * API client access. Useful for conditional UI logic and feature gating.
+   *
+   * @param {string} featureName - Feature name to check (e.g., 'latex_pdf', 'docx')
+   * @returns {boolean} True if feature is available on current endpoint
+   *
+   * @example
+   * if (controller.isFeatureAvailable('latex_pdf')) {
+   *   // Enable LaTeX PDF download option
+   * } else {
+   *   // Show upgrade message or alternative options
+   * }
+   *
+   * @since Phase 1 Step 6
+   */
+  isFeatureAvailable(featureName) {
+    if (!this.apiClient) {
+      logWarn("API client not available for feature check", { featureName });
+      return false;
+    }
+
+    const isAvailable = this.apiClient.isFeatureAvailable(featureName);
+
+    logDebug("Feature availability checked", {
+      feature: featureName,
+      available: isAvailable,
+      endpoint: this.apiClient.currentEndpoint,
+    });
+
+    return isAvailable;
+  }
+
+  /**
+   * @method switchEndpoint
+   * @description Switches to a different API endpoint with feature update
+   *
+   * Convenience method that switches endpoints and automatically updates
+   * feature availability across all components. Wraps API client's
+   * switchEndpoint with controller-level coordination.
+   *
+   * @param {string} endpointKey - Endpoint key ('US', 'EU', 'ASIA')
+   * @returns {boolean} True if switch successful
+   *
+   * @example
+   * // Switch to US endpoint for full features
+   * if (controller.switchEndpoint('US')) {
+   *   console.log('Switched to US endpoint successfully');
+   *   // All UI components automatically updated
+   * }
+   *
+   * @since Phase 1 Step 6
+   */
+  switchEndpoint(endpointKey) {
+    if (!this.apiClient) {
+      logError("API client not available for endpoint switch");
+      return false;
+    }
+
+    logInfo("Switching endpoint", {
+      from: this.apiClient.currentEndpoint,
+      to: endpointKey,
+    });
+
+    const success = this.apiClient.switchEndpoint(endpointKey);
+
+    if (success) {
+      // Update feature availability across all components
+      this.updateFeatureAvailability();
+
+      // ✅ CRITICAL: Update strokes API client endpoint if initialized
+      if (this.strokesAPIClient && this.strokesAPIClient.apiBase !== null) {
+        this.strokesAPIClient.apiBase = this.apiClient.apiBase;
+        logDebug("Strokes API client endpoint updated", {
+          newApiBase: this.strokesAPIClient.apiBase,
+          endpoint: endpointKey,
+        });
+      }
+
+      logInfo("Endpoint switched successfully", {
+        newEndpoint: endpointKey,
+        featuresUpdated: true,
+        strokesUpdated: !!this.strokesAPIClient?.apiBase,
+      });
+    } else {
+      logError("Failed to switch endpoint", {
+        attempted: endpointKey,
+      });
+    }
+
+    return success;
   }
 
   // =============================================================================
@@ -337,11 +556,11 @@ class MathPixController {
     });
 
     try {
-      // Clear any previous results before processing new file
-      if (this.resultRenderer) {
-        logDebug("Cleaning up previous results before new file processing");
-        this.resultRenderer.cleanup();
-      }
+      // ✅ PHASE 5.5 STEP 1: Clear ALL session data before new operation
+      // This prevents data contamination from previous operations
+      this.clearAllSessionData();
+
+      logDebug("Session data cleared, ready for new file processing");
 
       // Route based on file type
       if (file.type === "application/pdf") {
@@ -518,16 +737,65 @@ class MathPixController {
   // =============================================================================
 
   /**
+   * @method detectApiType
+   * @description Detect which API was used based on response structure
+   * @param {Object} response - API response object
+   * @returns {string} 'pdf' | 'text' | 'strokes'
+   * @since Phase 5
+   */
+  detectApiType(response) {
+    // PDF API indicators - check for actual PDF response properties
+    if (
+      response.pdf_id ||
+      response.conversion_formats ||
+      response.conversionResults ||
+      response.mmd ||
+      response["tex.zip"] ||
+      response.processingMetadata ||
+      response.docx ||
+      response.pptx ||
+      response["mmd.zip"] ||
+      response["md.zip"] ||
+      response["html.zip"]
+    ) {
+      return "pdf";
+    }
+
+    // Strokes API indicators
+    if (
+      response.strokes ||
+      response.stroke_data ||
+      this.strokesCanvas?.hasStrokes()
+    ) {
+      return "strokes";
+    }
+
+    // Default to Text API
+    return "text";
+  }
+
+  /**
    * @method displayResult
-   * @description Delegates result display to result renderer
+   * @description Delegates result display to result renderer and shows download button
    *
    * @param {Object} result - Processing result from MathPix API
    * @returns {void}
    * @see {@link MathPixResultRenderer#displayResult}
    * @since 1.0.0
+   * @updated Phase 5 - Added download button integration
    */
   displayResult(result) {
-    return this.resultRenderer.displayResult(result);
+    // Delegate to result renderer
+    const renderResult = this.resultRenderer.displayResult(result);
+
+    // Show download button (Phase 5)
+    if (this.downloadManager && result) {
+      const apiType = this.detectApiType(result);
+      this.downloadManager.showDownloadButton(apiType);
+      logDebug("Download button shown for API type:", apiType);
+    }
+
+    return renderResult;
   }
 
   /**
@@ -677,6 +945,129 @@ class MathPixController {
   }
 
   /**
+   * @method clearAllSessionData
+   * @description Clears all session data from all API clients and components
+   *
+   * Ensures clean state between operations by clearing:
+   * - Text API (image processing) data
+   * - Strokes API (handwriting) data
+   * - PDF API processing data
+   * - File handler state
+   * - Result renderer state
+   * - Debug panel data
+   *
+   * CRITICAL: Call this at the START of each new operation to prevent
+   * data contamination between sessions.
+   *
+   * @returns {void}
+   * @since Phase 5.5 Step 1
+   *
+   * @example
+   * // Before starting new file processing
+   * this.clearAllSessionData();
+   * await this.processFile(newFile);
+   */
+  clearAllSessionData() {
+    logInfo("[Controller] Clearing all session data for fresh operation");
+
+    // Clear Text API data (image processing)
+    // ✅ FIXED: Clear lastDebugData, not lastResponse/lastRequest
+    if (this.apiClient) {
+      if (this.apiClient.lastDebugData !== undefined) {
+        this.apiClient.lastDebugData = null;
+      }
+      logDebug("[Controller] ✓ Text API data cleared");
+    }
+
+    // Clear Strokes API data (handwriting recognition)
+    // ✅ FIXED: Clear lastDebugData, not lastResponse/lastRequest
+    if (this.strokesAPIClient) {
+      if (this.strokesAPIClient.lastDebugData !== undefined) {
+        this.strokesAPIClient.lastDebugData = null;
+      }
+      logDebug("[Controller] ✓ Strokes API data cleared");
+    }
+
+    // Clear PDF processing data
+    if (this.pdfResultRenderer) {
+      if (this.pdfResultRenderer.currentResults !== undefined) {
+        this.pdfResultRenderer.currentResults = null;
+      }
+      logDebug("[Controller] ✓ PDF results data cleared");
+    }
+
+    if (this.pdfProcessor) {
+      // Clear any cached PDF processing state if it exists
+      if (this.pdfProcessor.lastDebugData !== undefined) {
+        this.pdfProcessor.lastDebugData = null;
+      }
+      logDebug("[Controller] ✓ PDF processor data cleared");
+    }
+
+    // Clear file handler state
+    if (this.fileHandler) {
+      if (this.fileHandler.currentFile !== undefined) {
+        this.fileHandler.currentFile = null;
+      }
+      if (this.fileHandler.currentUploadedFile !== undefined) {
+        this.fileHandler.currentUploadedFile = null;
+      }
+      if (this.fileHandler.sourceType !== undefined) {
+        this.fileHandler.sourceType = null;
+      }
+      // Revoke any blob URLs to prevent memory leaks
+      if (this.fileHandler.currentFileBlob) {
+        URL.revokeObjectURL(this.fileHandler.currentFileBlob);
+        this.fileHandler.currentFileBlob = null;
+      }
+      logDebug("[Controller] ✓ File handler data cleared");
+    }
+
+    // Clear result renderer state
+    if (this.resultRenderer) {
+      // Use cleanup method if available, otherwise just log
+      if (this.resultRenderer.cleanup) {
+        this.resultRenderer.cleanup();
+        logDebug("[Controller] ✓ Result renderer cleaned up");
+      }
+    }
+
+    // Clear debug panel display
+    this.clearDebugPanel();
+    logDebug("[Controller] ✓ Debug panel cleared");
+
+    logInfo("[Controller] ✅ All session data cleared successfully", {
+      textAPICleared: !!this.apiClient,
+      strokesAPICleared: !!this.strokesAPIClient,
+      pdfDataCleared: !!this.pdfResultRenderer || !!this.pdfProcessor,
+      fileHandlerCleared: !!this.fileHandler,
+      resultRendererCleared: !!this.resultRenderer,
+    });
+  }
+
+  /**
+   * @method clearResults
+   * @description Clears results and hides download button
+   * @returns {void}
+   * @since Phase 5
+   * @updated Phase 5.5 Step 1 - Added session data clearing
+   */
+  clearResults() {
+    logInfo("[Controller] Clearing results display and session data");
+
+    // PHASE 5.5: Clear ALL session data for fresh state
+    this.clearAllSessionData();
+
+    // Hide download button (Phase 5)
+    if (this.downloadManager) {
+      this.downloadManager.hideDownloadButton();
+      logDebug("Download button hidden during results clear");
+    }
+
+    logInfo("[Controller] ✅ Results cleared and session reset");
+  }
+
+  /**
    * @method relocateOpenOriginalButton
    * @description Delegates button relocation to result renderer
    * @returns {void}
@@ -758,6 +1149,419 @@ class MathPixController {
    */
   displayLineData(lineData) {
     return this.resultRenderer.displayLineData(lineData);
+  }
+
+  // =============================================================================
+  // DEBUG PANEL METHODS (PHASE 3)
+  // =============================================================================
+
+  /**
+   * @method updateDebugPanel
+   * @description Populates debug panel with data from last API operation
+   *
+   * Retrieves debug data from any API client (image, strokes, or PDF) and populates
+   * all debug panel HTML elements with formatted information including request/response
+   * data, timing metrics, and API metadata. Automatically detects which client
+   * performed the last operation.
+   *
+   * @returns {void}
+   *
+   * @example
+   * // Called automatically after API operations
+   * this.updateDebugPanel();
+   *
+   * @since Phase 3
+   * @updated Phase 3.1 - Multi-endpoint support (image, strokes, PDF)
+   */
+  updateDebugPanel() {
+    // Collect ALL debug data with timestamps from all API clients
+    const candidates = [];
+
+    // Check strokes API client
+    if (this.strokesAPIClient?.getLastDebugData) {
+      const strokesData = this.strokesAPIClient.getLastDebugData();
+      if (strokesData?.timestamp) {
+        candidates.push({
+          data: strokesData,
+          source: "strokes",
+          timestamp: new Date(strokesData.timestamp),
+        });
+        logDebug("Found strokes debug data", {
+          timestamp: strokesData.timestamp,
+          operation: strokesData.operation,
+        });
+      }
+    }
+
+    // Check main API client (image processing)
+    if (this.apiClient?.getLastDebugData) {
+      const imageData = this.apiClient.getLastDebugData();
+      if (imageData?.timestamp) {
+        candidates.push({
+          data: imageData,
+          source: "image",
+          timestamp: new Date(imageData.timestamp),
+        });
+        logDebug("Found image debug data", {
+          timestamp: imageData.timestamp,
+          operation: imageData.operation,
+        });
+      }
+    }
+
+    // Check PDF processor (future support)
+    if (this.pdfProcessor?.getLastDebugData) {
+      const pdfData = this.pdfProcessor.getLastDebugData();
+      if (pdfData?.timestamp) {
+        candidates.push({
+          data: pdfData,
+          source: "pdf",
+          timestamp: new Date(pdfData.timestamp),
+        });
+        logDebug("Found PDF debug data", {
+          timestamp: pdfData.timestamp,
+          operation: pdfData.operation,
+        });
+      }
+    }
+
+    // No debug data available from any client
+    if (candidates.length === 0) {
+      logDebug("No debug data available from any API client");
+      return;
+    }
+
+    // Sort by timestamp (most recent first)
+    candidates.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Use the most recent operation
+    const mostRecent = candidates[0];
+    const debugData = mostRecent.data;
+    const dataSource = mostRecent.source;
+
+    logInfo("Using most recent debug data based on timestamp", {
+      source: dataSource,
+      timestamp: debugData.timestamp,
+      operation: debugData.operation,
+      totalCandidates: candidates.length,
+      allSources: candidates
+        .map((c) => `${c.source} (${c.data.timestamp})`)
+        .join(", "),
+    });
+
+    logDebug("Updating debug panel with API data", {
+      source: dataSource,
+      operation: debugData.operation,
+      endpoint: debugData.endpoint,
+      hasRequest: !!debugData.request,
+      hasResponse: !!debugData.response,
+    });
+
+    logDebug("Updating debug panel with API data", {
+      operation: debugData.operation,
+      endpoint: debugData.endpoint,
+      hasRequest: !!debugData.request,
+      hasResponse: !!debugData.response,
+    });
+
+    // Update transaction summary section
+    this.updateDebugElement(
+      "debug-endpoint",
+      debugData.endpoint || "Not available"
+    );
+    this.updateDebugElement(
+      "debug-operation",
+      debugData.operation || "Unknown"
+    );
+    this.updateDebugElement(
+      "debug-timing",
+      this.formatTimingDisplay(debugData.timing)
+    );
+    this.updateDebugElement(
+      "debug-confidence",
+      this.formatConfidenceDisplay(debugData.response?.confidence)
+    );
+
+    // Content type from response (already formatted by API client)
+    const contentType = debugData.response?.contentType || "Unknown";
+    this.updateDebugElement(
+      "debug-content-type",
+      contentType.charAt(0).toUpperCase() + contentType.slice(1)
+    );
+
+    // Update request data section
+    const requestElement = document.getElementById("debug-request-data");
+    if (requestElement && debugData.request) {
+      requestElement.textContent = this.formatJsonForDisplay(debugData.request);
+      requestElement.className = "language-json";
+
+      // Apply Prism syntax highlighting if available
+      if (window.Prism) {
+        window.Prism.highlightElement(requestElement);
+      }
+    }
+
+    // Update response data section
+    const responseElement = document.getElementById("debug-response-data");
+    if (responseElement && debugData.response) {
+      responseElement.textContent = this.formatJsonForDisplay(
+        debugData.response
+      );
+      responseElement.className = "language-json";
+
+      // Apply Prism syntax highlighting if available
+      if (window.Prism) {
+        window.Prism.highlightElement(responseElement);
+      }
+    }
+
+    // Update metadata section from raw API response data
+    const apiData = debugData.response?.data;
+    const isPDF = dataSource === "pdf" || debugData.operation === "processPDF";
+
+    if (apiData) {
+      this.updateDebugElement(
+        "debug-request-id",
+        apiData.request_id || "Not available"
+      );
+
+      // ✅ PHASE 3.4: API version - use processing model for PDFs
+      if (isPDF && apiData.version && apiData.version !== "v3") {
+        // For PDFs, version field contains processing model (e.g., "SuperNet-107")
+        this.updateDebugElement("debug-api-version", "v3");
+      } else {
+        this.updateDebugElement(
+          "debug-api-version",
+          apiData.version || "Not available"
+        );
+      }
+
+      // ✅ PHASE 3.4: Processing model - enhanced for PDF with metadata fallback
+      let processingModel = "Default";
+
+      if (isPDF) {
+        // For PDFs, check multiple sources for processing model
+        if (debugData.metadata?.processingModel) {
+          processingModel = debugData.metadata.processingModel;
+        } else if (apiData.version && apiData.version !== "v3") {
+          processingModel = apiData.version; // Status polling data
+        }
+      } else if (apiData.model) {
+        processingModel = apiData.model; // Standard API model field
+      }
+
+      this.updateDebugElement("debug-processing-model", processingModel);
+
+      // ✅ PHASE 3.4: Image dimensions - conditional for PDFs
+      if (isPDF) {
+        // PDFs don't have single dimensions - show page count instead
+        const pageCount = debugData.metadata?.pageCount;
+        if (pageCount) {
+          this.updateDebugElement(
+            "debug-image-dimensions",
+            `${pageCount} page${pageCount === 1 ? "" : "s"}`
+          );
+        } else {
+          this.updateDebugElement("debug-image-dimensions", "Not available");
+        }
+      } else {
+        // Images have dimensions
+        this.updateDebugElement(
+          "debug-image-dimensions",
+          apiData.image_width && apiData.image_height
+            ? `${apiData.image_width} × ${apiData.image_height}`
+            : "Not available"
+        );
+      }
+
+      // Auto-rotation (not applicable for PDFs)
+      if (isPDF) {
+        this.updateDebugElement("debug-auto-rotation", "Not applicable");
+      } else {
+        const autoRotate =
+          apiData.auto_rotate_confidence !== undefined &&
+          apiData.auto_rotate_confidence > 0;
+        this.updateDebugElement(
+          "debug-auto-rotation",
+          autoRotate
+            ? `Yes (${apiData.auto_rotate_degrees || 0}°, confidence: ${(
+                apiData.auto_rotate_confidence * 100
+              ).toFixed(1)}%)`
+            : "No"
+        );
+      }
+
+      // ✅ PHASE 3.4: Confidence rate - enhanced for PDFs with Lines API data
+      let confidenceRate = "Not available";
+
+      if (
+        apiData.confidence_rate !== undefined &&
+        apiData.confidence_rate !== null
+      ) {
+        confidenceRate = `${(apiData.confidence_rate * 100).toFixed(1)}%`;
+      } else if (
+        isPDF &&
+        debugData.metadata?.linesAPI?.averageConfidence !== undefined
+      ) {
+        // Fallback to Lines API data for PDFs
+        confidenceRate = `${(
+          debugData.metadata.linesAPI.averageConfidence * 100
+        ).toFixed(1)}%`;
+      }
+
+      this.updateDebugElement("debug-confidence-rate", confidenceRate);
+
+      logDebug("Metadata section updated with enhanced PDF support", {
+        isPDF,
+        processingModel,
+        pageCount: debugData.metadata?.pageCount,
+        hasLinesAPI: !!debugData.metadata?.linesAPI,
+        confidenceRate,
+      });
+    } else {
+      logWarn("API data not available in response for metadata display");
+    }
+
+    logInfo("Debug panel updated successfully", {
+      operation: debugData.operation,
+      dataSource,
+      timestamp: debugData.timestamp,
+      hasMetadata: !!debugData.metadata,
+      isPDF,
+    });
+  }
+
+  /**
+   * @method updateDebugElement
+   * @description Safely updates a debug panel element's text content
+   *
+   * @param {string} elementId - ID of element to update
+   * @param {string} value - Value to set
+   * @returns {void}
+   * @private
+   */
+  updateDebugElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.textContent = value || "Not available";
+    } else {
+      logWarn("Debug panel element not found", { elementId });
+    }
+  }
+
+  /**
+   * @method formatJsonForDisplay
+   * @description Formats JSON object for pretty-printed display
+   *
+   * @param {Object} obj - Object to format
+   * @returns {string} Formatted JSON string
+   */
+  formatJsonForDisplay(obj) {
+    if (!obj) {
+      return "No data available";
+    }
+
+    try {
+      return JSON.stringify(obj, null, 2);
+    } catch (error) {
+      logError("JSON formatting failed", { error: error.message });
+      return "Unable to format data";
+    }
+  }
+
+  /**
+   * @method formatTimingDisplay
+   * @description Formats timing data for human-readable display
+   *
+   * @param {Object} timing - Timing object from debug data
+   * @returns {string} Formatted timing string
+   */
+  formatTimingDisplay(timing) {
+    if (!timing) {
+      return "Not available";
+    }
+
+    const parts = [];
+
+    if (timing.total) {
+      parts.push(`Total: ${(timing.total / 1000).toFixed(2)}s`);
+    }
+
+    if (timing.api) {
+      parts.push(`API: ${(timing.api / 1000).toFixed(2)}s`);
+    }
+
+    if (timing.processing) {
+      parts.push(`Processing: ${(timing.processing / 1000).toFixed(2)}s`);
+    }
+
+    return parts.length > 0 ? parts.join(" | ") : "Not available";
+  }
+
+  /**
+   * @method formatConfidenceDisplay
+   * @description Formats confidence value as percentage
+   *
+   * @param {number} confidence - Confidence value (0-1)
+   * @returns {string} Formatted confidence string
+   */
+  formatConfidenceDisplay(confidence) {
+    if (confidence === undefined || confidence === null) {
+      return "Not available";
+    }
+
+    return `${(confidence * 100).toFixed(1)}%`;
+  }
+
+  /**
+   * @method clearDebugPanel
+   * @description Clears all debug panel data and resets to initial state
+   *
+   * Resets all debug panel HTML elements to "Not yet processed" state.
+   * Called when switching modes or starting new file processing to ensure
+   * debug data is always fresh and relevant to current operation.
+   *
+   * @returns {void}
+   *
+   * @example
+   * // Before starting new operation
+   * this.clearDebugPanel();
+   *
+   * @since Phase 3.2
+   */
+  clearDebugPanel() {
+    logDebug("Clearing debug panel for fresh operation");
+
+    // Clear transaction summary elements
+    this.updateDebugElement("debug-endpoint", "Not yet processed");
+    this.updateDebugElement("debug-operation", "Not yet processed");
+    this.updateDebugElement("debug-timing", "Not yet processed");
+    this.updateDebugElement("debug-confidence", "Not yet processed");
+    this.updateDebugElement("debug-content-type", "Not yet processed");
+
+    // Clear request data section
+    const requestElement = document.getElementById("debug-request-data");
+    if (requestElement) {
+      requestElement.textContent = "No request data available yet";
+      requestElement.className = "language-json";
+    }
+
+    // Clear response data section
+    const responseElement = document.getElementById("debug-response-data");
+    if (responseElement) {
+      responseElement.textContent = "No response data available yet";
+      responseElement.className = "language-json";
+    }
+
+    // Clear metadata section
+    this.updateDebugElement("debug-request-id", "Not yet processed");
+    this.updateDebugElement("debug-api-version", "v3");
+    this.updateDebugElement("debug-processing-model", "Not yet processed");
+    this.updateDebugElement("debug-image-dimensions", "Not yet processed");
+    this.updateDebugElement("debug-auto-rotation", "Not yet processed");
+    this.updateDebugElement("debug-confidence-rate", "Not yet processed");
+
+    logInfo("Debug panel cleared successfully");
   }
 
   // =============================================================================
@@ -1008,7 +1812,10 @@ class MathPixController {
       // Step 4: Display result with cleanup
       this.displayResult(result);
 
-      // Step 5: Complete progress display with success
+      // Step 5: Update debug panel with API transaction data
+      this.updateDebugPanel();
+
+      // Step 6: Complete progress display with success
       this.progressDisplay.complete(true, result);
 
       logInfo("Confirmed file processing completed successfully", {
@@ -1021,6 +1828,9 @@ class MathPixController {
       });
     } catch (error) {
       logError("Confirmed file processing failed", error);
+
+      // Update debug panel with error state
+      this.updateDebugPanel();
 
       // Complete progress display with error
       this.progressDisplay.complete(false, { error: error.message });
@@ -1088,19 +1898,30 @@ class MathPixController {
         logInfo("Mode switcher initialised successfully");
       }
 
-      // Share API credentials with strokes API client
+      // Share API credentials AND endpoint with strokes API client
       if (this.apiClient.appId && this.apiClient.apiKey) {
         this.strokesAPIClient.setCredentials(
           this.apiClient.appId,
           this.apiClient.apiKey
         );
-        logDebug("API credentials shared with strokes API client");
+
+        // ✅ CRITICAL: Share current API base URL for endpoint management
+        this.strokesAPIClient.apiBase = this.apiClient.apiBase;
+
+        logDebug(
+          "API credentials and endpoint shared with strokes API client",
+          {
+            apiBase: this.strokesAPIClient.apiBase,
+            endpoint: this.apiClient.currentEndpoint,
+          }
+        );
       }
 
       logInfo("Strokes system initialisation complete", {
         canvasReady: this.strokesCanvas?.isInitialised,
         modeSwitcherReady: this.modeSwitcher?.isInitialised,
         hasCredentials: this.strokesAPIClient?.hasCredentials(),
+        apiBaseSet: !!this.strokesAPIClient?.apiBase,
       });
 
       return true;
@@ -1213,6 +2034,12 @@ class MathPixController {
       return;
     }
 
+    // ✅ PHASE 5.5 STEP 1: Clear ALL session data before new operation
+    // This prevents data contamination from previous operations
+    this.clearAllSessionData();
+
+    logDebug("Session data cleared, ready for strokes processing");
+
     try {
       // CRITICAL: Capture canvas as image BEFORE any clearing or processing
       logDebug("Capturing canvas image for comparison view");
@@ -1307,6 +2134,9 @@ class MathPixController {
       // Display result (reuses existing renderer)
       this.displayResult(result);
 
+      // Update debug panel with strokes API transaction data
+      this.updateDebugPanel();
+
       // CRITICAL: Display comparison view for strokes with canvas image
       if (canvasImage) {
         logDebug("Setting up strokes comparison view with canvas image");
@@ -1331,6 +2161,9 @@ class MathPixController {
         stack: error.stack,
         strokeCount: this.strokesCanvas?.getStrokeCount(),
       });
+
+      // Update debug panel with error state
+      this.updateDebugPanel();
 
       // Complete progress with error
       this.progressDisplay.complete(false, { error: error.message });
@@ -1722,6 +2555,145 @@ window.mathPixEnhanceMathJax = function () {
   document.head.appendChild(style);
   console.log("✅ Global MathPix MathJax enhancements applied");
 };
+
+// =============================================================================
+// GLOBAL DEBUG PANEL FUNCTIONS (PHASE 3)
+// =============================================================================
+
+/**
+ * @function copyMathPixDebugData
+ * @description Copies debug panel data to clipboard from any API client
+ * @global
+ *
+ * Checks all API clients (image, strokes, PDF) to find the most recent
+ * operation's debug data and copies the specified section to clipboard.
+ *
+ * @param {string} section - Section to copy ('request' or 'response')
+ * @returns {void}
+ *
+ * @example
+ * // Called by onclick handlers in HTML
+ * copyMathPixDebugData('request');
+ *
+ * @since Phase 3
+ * @updated Phase 3.1 - Multi-endpoint support
+ */
+window.copyMathPixDebugData = function (section) {
+  const controller = getMathPixController();
+  if (!controller) {
+    console.error("MathPix controller not available");
+    return;
+  }
+
+  // Collect ALL debug data with timestamps (same logic as updateDebugPanel)
+  const candidates = [];
+
+  // Check strokes API client
+  if (controller.strokesAPIClient?.getLastDebugData) {
+    const strokesData = controller.strokesAPIClient.getLastDebugData();
+    if (strokesData?.timestamp) {
+      candidates.push({
+        data: strokesData,
+        source: "strokes",
+        timestamp: new Date(strokesData.timestamp),
+      });
+    }
+  }
+
+  // Check main API client (image processing)
+  if (controller.apiClient?.getLastDebugData) {
+    const imageData = controller.apiClient.getLastDebugData();
+    if (imageData?.timestamp) {
+      candidates.push({
+        data: imageData,
+        source: "image",
+        timestamp: new Date(imageData.timestamp),
+      });
+    }
+  }
+
+  // Check PDF processor (future support)
+  if (controller.pdfProcessor?.getLastDebugData) {
+    const pdfData = controller.pdfProcessor.getLastDebugData();
+    if (pdfData?.timestamp) {
+      candidates.push({
+        data: pdfData,
+        source: "pdf",
+        timestamp: new Date(pdfData.timestamp),
+      });
+    }
+  }
+
+  // No debug data available from any client
+  if (candidates.length === 0) {
+    controller.showNotification("No debug data available to copy", "warning");
+    console.warn("No debug data found in any API client");
+    return;
+  }
+
+  // Sort by timestamp (most recent first)
+  candidates.sort((a, b) => b.timestamp - a.timestamp);
+
+  // Use the most recent operation
+  const mostRecent = candidates[0];
+  const debugData = mostRecent.data;
+  const dataSource = mostRecent.source;
+
+  console.log(
+    `Copying ${section} data from most recent operation (${dataSource} at ${debugData.timestamp})`
+  );
+
+  if (!debugData) {
+    controller.showNotification("No debug data available to copy", "warning");
+    console.warn("No debug data found in any API client");
+    return;
+  }
+
+  console.log(`Copying ${section} data from ${dataSource} API client`);
+
+  let dataToCopy = null;
+
+  if (section === "request") {
+    dataToCopy = debugData.request;
+  } else if (section === "response") {
+    dataToCopy = debugData.response;
+  } else {
+    controller.showNotification("Invalid debug section specified", "error");
+    return;
+  }
+
+  if (!dataToCopy) {
+    controller.showNotification(`No ${section} data available`, "warning");
+    return;
+  }
+
+  try {
+    const jsonString = JSON.stringify(dataToCopy, null, 2);
+
+    navigator.clipboard
+      .writeText(jsonString)
+      .then(() => {
+        controller.showNotification(
+          `${
+            section.charAt(0).toUpperCase() + section.slice(1)
+          } data copied to clipboard! (Source: ${dataSource})`,
+          "success"
+        );
+        console.log(`✅ ${section} data copied from ${dataSource} API client`);
+      })
+      .catch((error) => {
+        console.error("Clipboard copy failed:", error);
+        controller.showNotification("Failed to copy to clipboard", "error");
+      });
+  } catch (error) {
+    console.error("JSON formatting failed:", error);
+    controller.showNotification("Failed to format data for copying", "error");
+  }
+};
+
+// =============================================================================
+// GLOBAL PDF TESTING FUNCTIONS
+// =============================================================================
 
 // Global PDF testing functions
 window.testPDFComponents = () => {

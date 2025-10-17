@@ -1,5 +1,10 @@
 /*Light mode */
 
+/* Mathpix debug code */
+.code-block-container {
+  background-color: #ffffff !important;
+}
+
 /* Markdown texteditable mode */
 /* Base contenteditable colours */
 .markdown-live-contenteditable {

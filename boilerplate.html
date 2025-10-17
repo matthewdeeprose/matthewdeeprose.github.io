@@ -2486,25 +2486,125 @@ Science,91</pre
 
         <article class="standard" id="mathpix-app" style="display: none">
           <h1>MathPix Mathematics OCR</h1>
+          <div class="mathpix-header-row">
+            <fieldset class="mathpix-mode-switcher">
+              <legend class="sr-only">Input Method</legend>
+              <div class="mathpix-mode-options">
+                <label class="mathpix-mode-option">
+                  <input
+                    type="radio"
+                    name="mathpix-input-mode"
+                    value="upload"
+                    id="mathpix-upload-mode-radio"
+                    checked
+                  />
 
-          <fieldset class="mathpix-mode-switcher">
-            <legend>Input Method</legend>
-            <div class="mathpix-mode-options">
-              <label class="mathpix-mode-option">
-                <input
-                  type="radio"
-                  name="mathpix-input-mode"
-                  value="upload"
-                  id="mathpix-upload-mode-radio"
-                  checked
-                />
+                  <svg
+                    height="21"
+                    class="mode-icon"
+                    aria-hidden="true"
+                    viewBox="0 0 21 21"
+                    width="21"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(3 3)"
+                    >
+                      <path d="m11.5 4.5-3.978-4-4.022 4" />
+                      <path d="m7.522.521v11.979" />
+                      <path
+                        d="m.5 9v4.5c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2v-4.5"
+                      />
+                    </g>
+                  </svg>
+                  <span class="mode-label">Upload File</span>
+                </label>
 
+                <label class="mathpix-mode-option">
+                  <input
+                    type="radio"
+                    name="mathpix-input-mode"
+                    value="draw"
+                    id="mathpix-draw-mode-radio"
+                  />
+                  <svg
+                    class="mode-icon"
+                    aria-hidden="true"
+                    height="21"
+                    viewBox="0 0 21 21"
+                    width="21"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(3 3)"
+                    >
+                      <path
+                        d="m14 1c.8284271.82842712.8284271 2.17157288 0 3l-9.5 9.5-4 1 1-3.9436508 9.5038371-9.55252193c.7829896-.78700064 2.0312313-.82943964 2.864366-.12506788z"
+                      />
+                      <path d="m6.5 14.5h8" />
+                      <path d="m12.5 3.5 1 1" />
+                    </g>
+                  </svg>
+                  <span class="mode-label">Draw Mathematics</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- MathPix Status Indicator -->
+            <div
+              class="mathpix-status-indicator"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <div class="status-item-mp">
                 <svg
-                  height="21"
-                  class="mode-icon"
+                  class="status-icon"
                   aria-hidden="true"
+                  height="16"
                   viewBox="0 0 21 21"
-                  width="21"
+                  width="16"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(2 2)"
+                  >
+                    <circle cx="8.5" cy="8.5" r="8"></circle>
+                    <path d="m8.5 12.5v-4"></path>
+                    <circle
+                      cx="8.5"
+                      cy="4.5"
+                      r=".5"
+                      fill="currentColor"
+                    ></circle>
+                  </g>
+                </svg>
+                <span class="status-label">MathPix Server:</span>
+                <strong class="status-value" id="mathpix-server-location"
+                  >European Union</strong
+                >
+              </div>
+              <div class="status-item-mp">
+                <svg
+                  class="status-icon"
+                  aria-hidden="true"
+                  height="16"
+                  viewBox="0 0 21 21"
+                  width="16"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <g
@@ -2515,50 +2615,17 @@ Science,91</pre
                     stroke-linejoin="round"
                     transform="translate(3 3)"
                   >
-                    <path d="m11.5 4.5-3.978-4-4.022 4" />
-                    <path d="m7.522.521v11.979" />
                     <path
-                      d="m.5 9v4.5c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2v-4.5"
-                    />
+                      d="m7.5.5c-3.86599325 0-7 3.13400675-7 7 0 3.8659932 3.13400675 7 7 7 3.8659932 0 7-3.1340068 7-7 0-3.86599325-3.1340068-7-7-7z"
+                    ></path>
+                    <path d="m4.5 7.5 2 2 5-5"></path>
                   </g>
                 </svg>
-                <span class="mode-label">Upload File</span>
-              </label>
-
-              <label class="mathpix-mode-option">
-                <input
-                  type="radio"
-                  name="mathpix-input-mode"
-                  value="draw"
-                  id="mathpix-draw-mode-radio"
-                />
-                <svg
-                  class="mode-icon"
-                  aria-hidden="true"
-                  height="21"
-                  viewBox="0 0 21 21"
-                  width="21"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(3 3)"
-                  >
-                    <path
-                      d="m14 1c.8284271.82842712.8284271 2.17157288 0 3l-9.5 9.5-4 1 1-3.9436508 9.5038371-9.55252193c.7829896-.78700064 2.0312313-.82943964 2.864366-.12506788z"
-                    />
-                    <path d="m6.5 14.5h8" />
-                    <path d="m12.5 3.5 1 1" />
-                  </g>
-                </svg>
-                <span class="mode-label">Draw Mathematics</span>
-              </label>
+                <span class="status-label">Use content for training:</span>
+                <strong class="status-value status-value-privacy">No</strong>
+              </div>
             </div>
-          </fieldset>
+          </div>
 
           <!-- Upload Container (wraps existing upload zone) -->
           <div id="mathpix-upload-container" class="mathpix-upload-container">
@@ -2691,6 +2758,7 @@ Science,91</pre
                 <div class="size-button-group">
                   <button
                     type="button"
+                    id="mathpix-draw-small-canvas-btn"
                     class="mathpix-size-btn"
                     data-size="small"
                     aria-pressed="false"
@@ -2699,6 +2767,7 @@ Science,91</pre
                   </button>
                   <button
                     type="button"
+                    id="mathpix-draw-medium-canvas-btn"
                     class="mathpix-size-btn"
                     data-size="medium"
                     aria-pressed="false"
@@ -2707,6 +2776,7 @@ Science,91</pre
                   </button>
                   <button
                     type="button"
+                    id="mathpix-draw-large-canvas-btn"
                     class="mathpix-size-btn active"
                     data-size="large"
                     aria-pressed="true"
@@ -2715,6 +2785,7 @@ Science,91</pre
                   </button>
                   <button
                     type="button"
+                    id="mathpix-draw-xlarge-canvas-btn"
                     class="mathpix-size-btn"
                     data-size="xlarge"
                     aria-pressed="false"
@@ -3227,6 +3298,55 @@ Science,91</pre
                 <!-- Line data summary and details will be populated by JavaScript -->
               </div>
             </div>
+            <!-- LOCATION 2: Text/Strokes Results Download Button -->
+
+            <div
+              id="mathpix-download-section-text"
+              class="mathpix-download-section"
+              style="display: none"
+              role="region"
+              aria-label="Download all results"
+            >
+              <button
+                type="button"
+                id="mathpix-download-all-btn-text"
+                class="mathpix-download-all-btn"
+                aria-label="Download all MathPix results as ZIP archive"
+              >
+                <svg
+                  aria-hidden="true"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  width="20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M10 3v10m0 0l-4-4m4 4l4-4M3 17h14"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    fill="none"
+                  />
+                </svg>
+                <span>Download All Results</span>
+              </button>
+
+              <div
+                id="mathpix-download-progress-text"
+                class="mathpix-download-progress"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                style="display: none"
+              >
+                <span
+                  id="mathpix-download-status-text"
+                  class="mathpix-download-status"
+                ></span>
+              </div>
+            </div>
+
             <!-- Format Selection Radio Buttons -->
             <fieldset class="mathpix-format-selection">
               <legend>Choose output format:</legend>
@@ -3745,7 +3865,7 @@ Science,91</pre
                 <div class="mathpix-format-options">
                   <!-- Select All Formats Option -->
                   <label class="mathpix-format-checkbox select-all-option">
-                    <input type="checkbox" id="select-all-formats" checked />
+                    <input type="checkbox" id="select-all-formats" />
                     <span class="format-content">
                       <span class="format-label"
                         >Select All Available Formats</span
@@ -3850,7 +3970,12 @@ Science,91</pre
                   </label>
 
                   <label class="mathpix-format-checkbox">
-                    <input type="checkbox" id="pdf-format-pdf" value="pdf" />
+                    <input
+                      type="checkbox"
+                      id="pdf-format-pdf"
+                      value="pdf"
+                      checked
+                    />
                     <span class="format-content">
                       <span class="format-label">PDF (HTML Rendering)</span>
                       <span class="format-description"
@@ -3878,6 +4003,7 @@ Science,91</pre
                       type="checkbox"
                       id="pdf-format-mmdzip"
                       value="mmd.zip"
+                      checked
                     />
                     <span class="format-content">
                       <span class="format-label">MMD Archive (ZIP)</span>
@@ -3892,6 +4018,7 @@ Science,91</pre
                       type="checkbox"
                       id="pdf-format-mdzip"
                       value="md.zip"
+                      checked
                     />
                     <span class="format-content">
                       <span class="format-label">Markdown Archive (ZIP)</span>
@@ -3907,6 +4034,7 @@ Science,91</pre
                       type="checkbox"
                       id="pdf-format-htmlzip"
                       value="html.zip"
+                      checked
                     />
                     <span class="format-content">
                       <span class="format-label">HTML Archive (ZIP)</span>
@@ -4444,7 +4572,146 @@ Science,91</pre
                   </dl>
                 </div>
               </div>
+              <!-- Feature 4: Diagram Text Extraction Section -->
+              <div
+                id="mathpix-diagram-text-section"
+                class="mathpix-diagram-text-section"
+                style="display: none"
+                role="region"
+                aria-label="Extracted diagram text content"
+              >
+                <button
+                  type="button"
+                  id="mathpix-diagram-text-toggle"
+                  class="mathpix-diagram-text-toggle"
+                  aria-expanded="false"
+                  aria-controls="mathpix-diagram-text-content"
+                >
+                  <span class="toggle-icon" aria-hidden="true">▼</span>
+                  <span class="toggle-text">Show Diagram Text</span>
+                  <span class="diagram-count" id="mathpix-diagram-count"></span>
+                </button>
 
+                <div
+                  id="mathpix-diagram-text-content"
+                  class="mathpix-diagram-text-content"
+                  role="region"
+                  aria-labelledby="mathpix-diagram-text-toggle"
+                  hidden
+                >
+                  <div class="diagram-text-intro">
+                    <p class="help-text">
+                      <svg
+                        height="21"
+                        viewBox="0 0 21 21"
+                        width="21"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <g
+                          fill="none"
+                          fill-rule="evenodd"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          transform="translate(2 2)"
+                        >
+                          <circle cx="8.5" cy="8.5" r="8" />
+                          <path d="m8.5 12.5v-4" />
+                          <path d="m8.5 5.5v-.01" />
+                        </g>
+                      </svg>
+                      Text elements extracted from within diagrams, including
+                      labels, annotations, and embedded text.
+                    </p>
+                  </div>
+
+                  <div
+                    id="mathpix-diagram-text-list"
+                    class="mathpix-diagram-text-list"
+                  >
+                    <!-- Diagram cards will be populated by JavaScript -->
+                  </div>
+
+                  <!-- Empty State Message -->
+                  <div
+                    id="mathpix-diagram-text-empty"
+                    class="mathpix-diagram-text-empty"
+                    style="display: none"
+                  >
+                    <p>
+                      <svg
+                        height="40"
+                        viewBox="0 0 21 21"
+                        width="40"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <g
+                          fill="none"
+                          fill-rule="evenodd"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          transform="translate(2 2)"
+                        >
+                          <circle cx="8.5" cy="8.5" r="8" />
+                          <path d="m8.5 12.5v-4" />
+                          <path d="m8.5 5.5v-.01" />
+                        </g>
+                      </svg>
+                      No text found within diagrams in this document.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <!-- LOCATION 1: PDF Results Download Button -->
+              <div
+                id="mathpix-download-section-pdf"
+                class="mathpix-download-section"
+                style="display: none"
+                role="region"
+                aria-label="Download all results"
+              >
+                <button
+                  type="button"
+                  id="mathpix-download-all-btn-pdf"
+                  class="mathpix-download-all-btn"
+                  aria-label="Download all MathPix results as ZIP archive"
+                >
+                  <svg
+                    aria-hidden="true"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    width="20"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M10 3v10m0 0l-4-4m4 4l4-4M3 17h14"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      fill="none"
+                    />
+                  </svg>
+                  <span>Download All Results</span>
+                </button>
+
+                <div
+                  id="mathpix-download-progress-pdf"
+                  class="mathpix-download-progress"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  style="display: none"
+                >
+                  <span
+                    id="mathpix-download-status-pdf"
+                    class="mathpix-download-status"
+                  ></span>
+                </div>
+              </div>
               <!-- Format Tabs for Results -->
               <div class="mathpix-results-tabs">
                 <div class="mathpix-tab-headers" role="tablist">
@@ -5074,99 +5341,6 @@ Science,91</pre
                   </dl>
                 </div>
               </div>
-              <!-- Feature 4: Diagram Text Extraction Section -->
-              <div
-                id="mathpix-diagram-text-section"
-                class="mathpix-diagram-text-section"
-                style="display: none"
-                role="region"
-                aria-label="Extracted diagram text content"
-              >
-                <button
-                  type="button"
-                  id="mathpix-diagram-text-toggle"
-                  class="mathpix-diagram-text-toggle"
-                  aria-expanded="false"
-                  aria-controls="mathpix-diagram-text-content"
-                >
-                  <span class="toggle-icon" aria-hidden="true">▼</span>
-                  <span class="toggle-text">Show Diagram Text</span>
-                  <span class="diagram-count" id="mathpix-diagram-count"></span>
-                </button>
-
-                <div
-                  id="mathpix-diagram-text-content"
-                  class="mathpix-diagram-text-content"
-                  role="region"
-                  aria-labelledby="mathpix-diagram-text-toggle"
-                  hidden
-                >
-                  <div class="diagram-text-intro">
-                    <p class="help-text">
-                      <svg
-                        height="21"
-                        viewBox="0 0 21 21"
-                        width="21"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <g
-                          fill="none"
-                          fill-rule="evenodd"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          transform="translate(2 2)"
-                        >
-                          <circle cx="8.5" cy="8.5" r="8" />
-                          <path d="m8.5 12.5v-4" />
-                          <path d="m8.5 5.5v-.01" />
-                        </g>
-                      </svg>
-                      Text elements extracted from within diagrams, including
-                      labels, annotations, and embedded text.
-                    </p>
-                  </div>
-
-                  <div
-                    id="mathpix-diagram-text-list"
-                    class="mathpix-diagram-text-list"
-                  >
-                    <!-- Diagram cards will be populated by JavaScript -->
-                  </div>
-
-                  <!-- Empty State Message -->
-                  <div
-                    id="mathpix-diagram-text-empty"
-                    class="mathpix-diagram-text-empty"
-                    style="display: none"
-                  >
-                    <p>
-                      <svg
-                        height="40"
-                        viewBox="0 0 21 21"
-                        width="40"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <g
-                          fill="none"
-                          fill-rule="evenodd"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          transform="translate(2 2)"
-                        >
-                          <circle cx="8.5" cy="8.5" r="8" />
-                          <path d="m8.5 12.5v-4" />
-                          <path d="m8.5 5.5v-.01" />
-                        </g>
-                      </svg>
-                      No text found within diagrams in this document.
-                    </p>
-                  </div>
-                </div>
-              </div>
 
               <!-- Processing Actions -->
               <div class="mathpix-pdf-final-actions">
@@ -5210,6 +5384,152 @@ Science,91</pre
               </div>
             </div>
           </div>
+          <!-- Debug Information Panel - Below results section -->
+          <details class="mathpix-debug-panel" id="mathpix-debug-panel">
+            <summary class="debug-panel-summary">Developer Information</summary>
+
+            <div class="debug-panel-content">
+              <!-- Transaction Summary -->
+              <section
+                class="debug-section"
+                aria-labelledby="debug-summary-heading"
+              >
+                <h4 id="debug-summary-heading">Transaction Summary</h4>
+                <dl class="debug-stats">
+                  <dt>Endpoint:</dt>
+                  <dd id="debug-endpoint" aria-live="polite">
+                    Not yet processed
+                  </dd>
+
+                  <dt>Operation Type:</dt>
+                  <dd id="debug-operation">Not yet processed</dd>
+
+                  <dt>Request Timing:</dt>
+                  <dd id="debug-timing">Not yet processed</dd>
+
+                  <dt>Confidence:</dt>
+                  <dd id="debug-confidence">Not yet processed</dd>
+
+                  <dt>Content Type:</dt>
+                  <dd id="debug-content-type">Not yet processed</dd>
+                </dl>
+              </section>
+
+              <!-- Request Data -->
+              <section
+                class="debug-section"
+                aria-labelledby="debug-request-heading"
+              >
+                <h4 id="debug-request-heading">Request Data</h4>
+                <div class="debug-code-container">
+                  <button
+                    class="code-copy-button"
+                    aria-label="Copy request to clipboard"
+                    onclick="copyMathPixDebugData('request')"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <rect
+                        x="2"
+                        y="2"
+                        width="9"
+                        height="9"
+                        rx="1"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M5 5V3a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-2"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    Copy
+                  </button>
+                  <pre
+                    class="language-json code-block-container"
+                    tabindex="0"
+                  ><code id="debug-request-data" class="language-json">No request data available yet</code></pre>
+                </div>
+              </section>
+
+              <!-- Response Data -->
+              <section
+                class="debug-section"
+                aria-labelledby="debug-response-heading"
+              >
+                <h4 id="debug-response-heading">Response Data</h4>
+                <div class="debug-code-container">
+                  <button
+                    class="code-copy-button"
+                    aria-label="Copy response to clipboard"
+                    onclick="copyMathPixDebugData('response')"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <rect
+                        x="2"
+                        y="2"
+                        width="9"
+                        height="9"
+                        rx="1"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M5 5V3a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-2"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    Copy
+                  </button>
+                  <pre
+                    class="language-json code-block-container"
+                    tabindex="0"
+                  ><code id="debug-response-data" class="language-json">No response data available yet</code></pre>
+                </div>
+              </section>
+
+              <!-- API Metadata -->
+              <section
+                class="debug-section"
+                aria-labelledby="debug-metadata-heading"
+              >
+                <h4 id="debug-metadata-heading">API Metadata</h4>
+                <dl class="debug-stats">
+                  <dt>Request ID:</dt>
+                  <dd id="debug-request-id">Not yet processed</dd>
+
+                  <dt>Processing Model:</dt>
+                  <dd id="debug-processing-model">Not yet processed</dd>
+
+                  <dt>API Version:</dt>
+                  <dd id="debug-api-version">v3</dd>
+
+                  <dt>Image Dimensions:</dt>
+                  <dd id="debug-image-dimensions">Not yet processed</dd>
+
+                  <dt>Auto-Rotation:</dt>
+                  <dd id="debug-auto-rotation">Not yet processed</dd>
+
+                  <dt>Confidence Rate:</dt>
+                  <dd id="debug-confidence-rate">Not yet processed</dd>
+                </dl>
+              </section>
+            </div>
+          </details>
+
           <!-- API Configuration (Development Only) -->
           <details class="mathpix-config">
             <summary>API Configuration</summary>
@@ -5233,6 +5553,78 @@ Science,91</pre
                 Save Configuration
               </button>
             </form>
+          </details>
+
+          <!-- Regional Endpoint Selection -->
+          <details class="mathpix-config">
+            <summary>MathPix Server Location</summary>
+            <fieldset id="mathpix-endpoint-selection" class="endpoint-selector">
+              <legend class="sr-only">Select API Server Region</legend>
+
+              <div class="endpoint-options">
+                <div class="endpoint-option">
+                  <input
+                    type="radio"
+                    id="endpoint-us"
+                    name="mathpix-endpoint"
+                    value="US"
+                    aria-describedby="endpoint-us-info"
+                  />
+                  <label for="endpoint-us" class="radio">
+                    <strong>United States</strong>
+                    <span class="endpoint-location"
+                      >US East 1 (N. Virginia)</span
+                    >
+                  </label>
+                  <p id="endpoint-us-info" class="endpoint-description">
+                    Full feature support. Best for users in Americas. Data
+                    processed in US.
+                  </p>
+                </div>
+
+                <div class="endpoint-option">
+                  <input
+                    type="radio"
+                    id="endpoint-eu"
+                    name="mathpix-endpoint"
+                    value="EU"
+                    checked
+                    aria-describedby="endpoint-eu-info"
+                  />
+                  <label for="endpoint-eu" class="radio">
+                    <strong>European Union</strong>
+                    <span class="endpoint-location"
+                      >EU Central 1 (Frankfurt)</span
+                    >
+                  </label>
+                  <p id="endpoint-eu-info" class="endpoint-description">
+                    <strong>GDPR Compliant.</strong> Best for EU/UK users.
+                    <span class="feature-note"
+                      >Note: Some features limited (e.g., LaTeX PDF
+                      rendering)</span
+                    >
+                  </p>
+                </div>
+
+                <div class="endpoint-option">
+                  <input
+                    type="radio"
+                    id="endpoint-asia"
+                    name="mathpix-endpoint"
+                    value="ASIA"
+                    aria-describedby="endpoint-asia-info"
+                  />
+                  <label for="endpoint-asia" class="radio">
+                    <strong>Asia Pacific</strong>
+                    <span class="endpoint-location">SE Asia (Singapore)</span>
+                  </label>
+                  <p id="endpoint-asia-info" class="endpoint-description">
+                    Best for users in Asia Pacific region. Data processed in
+                    Singapore.
+                  </p>
+                </div>
+              </div>
+            </fieldset>
           </details>
         </article>
 
@@ -5419,6 +5811,9 @@ Science,91</pre
       type="module"
       src="mathpix-scripts/testing/mathpix-phase2-tests.js"
     ></script>
+
+    <script src="mathpix-scripts/testing/mathpix-pdf-output-selection-tests.js"></script>
+
     <script
       type="module"
       src="mathpix-scripts/core/mathpix-latex-transformer.js"
@@ -5434,6 +5829,19 @@ Science,91</pre
     <script
       type="module"
       src="mathpix-scripts/ui/components/mathpix-mode-switcher.js"
+    ></script>
+
+    <!-- JSZip Library for Total Downloader -->
+    <script src="https://matthewdeeprose.github.io/scripts/jszip.min.js"></script>
+
+    <!-- MathPix Total Downloader (Phase 1) -->
+    <script
+      type="module"
+      src="mathpix-scripts/core/mathpix-total-downloader.js"
+    ></script>
+    <script
+      type="module"
+      src="mathpix-scripts/ui/components/mathpix-download-manager.js"
     ></script>
 
     <script
@@ -5911,7 +6319,6 @@ Science,91</pre
     </script>
 
     <script src="https://matthewdeeprose.github.io/prism/prism.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <script src="md-scripts/markdown-utils/markdown-code-copy.js"></script>
     <script src="md-scripts/mermaid/mermaid-controls.js"></script>

@@ -120,21 +120,44 @@ const CANVAS_SIZES = {
 };
 
 /**
- * Gets default canvas size based on viewport width
+ * Gets default canvas size based on viewport dimensions
+ *
  * @returns {string} Default size name
+ *
+ * @description
+ * Provides viewport-based fallback when DOM buttons aren't available.
+ * Considers both width and height to ensure canvas fits comfortably.
+ *
+ * Size Selection Logic:
+ * - xlarge (1000×500): Viewport ≥1400px wide AND ≥700px tall
+ * - large (800×400): Viewport ≥1100px wide AND ≥600px tall
+ * - medium (600×300): Viewport ≥700px wide AND ≥500px tall
+ * - small (400×200): All other cases
+ *
+ * @since 1.0.0
+ * @updated Phase 2A - Added height constraints
  */
 function getDefaultSize() {
   const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
 
-  if (viewportWidth < 768) {
-    return "small"; // Mobile: 400×200
-  } else if (viewportWidth < 1024) {
-    return "medium"; // Tablet: 600×300
-  } else if (viewportWidth < 1400) {
-    return "large"; // Desktop: 800×400
-  } else {
-    return "xlarge"; // Large desktop: 1000×500
+  // xlarge: 1000×500 needs ~1400px width and ~700px height
+  if (viewportWidth >= 1400 && viewportHeight >= 700) {
+    return "xlarge";
   }
+
+  // large: 800×400 needs ~1100px width and ~600px height
+  if (viewportWidth >= 1100 && viewportHeight >= 600) {
+    return "large";
+  }
+
+  // medium: 600×300 needs ~700px width and ~500px height
+  if (viewportWidth >= 700 && viewportHeight >= 500) {
+    return "medium";
+  }
+
+  // small: 400×200 - fallback for all other cases
+  return "small";
 }
 
 /**
@@ -255,6 +278,7 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
    * @description
    * Sets up the canvas for drawing by obtaining the 2D context, configuring
    * drawing style, and preparing for event listener attachment.
+   * Intelligently selects largest visible canvas size based on CSS media queries.
    *
    * @example
    * const canvasElement = document.getElementById('mathDrawCanvas');
@@ -279,19 +303,19 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
 
       this.configureDrawingStyle();
 
-      // Apply responsive default size based on current viewport
-      const responsiveSize = getDefaultSize();
-      this.resizeCanvas(responsiveSize, false);
+      // Intelligently select largest visible canvas size
+      const intelligentSize = this.selectLargestVisibleSize();
+      this.resizeCanvas(intelligentSize, false);
       logInfo(
-        `Canvas initialized with responsive size: ${responsiveSize} (${window.innerWidth}px viewport)`
+        `Canvas initialised with intelligent size selection: ${intelligentSize} (${window.innerWidth}×${window.innerHeight}px viewport)`
       );
 
       // Set up resize observer to detect when user resizes container
       this.setupResizeObserver();
 
-      // Enable container resizing now that initialization is complete
+      // Enable container resizing now that initialisation is complete
       this.allowContainerResize = true;
-      logDebug("Container resize enabled after initialization");
+      logDebug("Container resize enabled after initialisation");
 
       this.isInitialised = true;
 
@@ -306,7 +330,6 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
       throw error;
     }
   }
-
   /**
    * Configures the 2D context drawing style
    *
@@ -1045,6 +1068,73 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
    */
   getAvailableSizes() {
     return CANVAS_SIZES;
+  }
+
+  /**
+   * Intelligently selects the largest visible canvas size option
+   *
+   * @returns {string} Size name of largest visible option
+   *
+   * @description
+   * Queries all canvas size buttons and determines which are visible
+   * based on CSS media queries. Returns the largest visible size to
+   * ensure users always get an appropriate default for their viewport.
+   *
+   * Falls back through size hierarchy if no buttons are visible:
+   * xlarge → large → medium → small
+   *
+   * @example
+   * const bestSize = canvas.selectLargestVisibleSize();
+   * // Returns: 'large' (if xlarge is hidden by media query)
+   *
+   * @since Phase 2A
+   */
+  selectLargestVisibleSize() {
+    // Size priority order (largest to smallest)
+    const sizeHierarchy = ["xlarge", "large", "medium", "small"];
+
+    // Query all canvas size buttons
+    const sizeButtons = document.querySelectorAll(
+      ".mathpix-size-btn[data-size]"
+    );
+
+    if (sizeButtons.length === 0) {
+      logWarn("No canvas size buttons found in DOM - using fallback hierarchy");
+      // Fallback: use viewport-based selection
+      return getDefaultSize();
+    }
+
+    // Find all visible buttons (not hidden by CSS media queries)
+    const visibleSizes = Array.from(sizeButtons)
+      .filter((button) => {
+        const computed = window.getComputedStyle(button);
+        return computed.display !== "none" && computed.visibility !== "hidden";
+      })
+      .map((button) => button.dataset.size);
+
+    if (visibleSizes.length === 0) {
+      logWarn(
+        "No visible canvas size buttons - viewport may be extremely small"
+      );
+      // Ultimate fallback: smallest size that should always work
+      return "small";
+    }
+
+    // Find largest size that's both in hierarchy and visible
+    for (const size of sizeHierarchy) {
+      if (visibleSizes.includes(size)) {
+        logInfo(
+          `Selected largest visible canvas size: ${size} (visible options: ${visibleSizes.join(
+            ", "
+          )})`
+        );
+        return size;
+      }
+    }
+
+    // Should never reach here, but provide safe fallback
+    logWarn(`Fallback: Using first visible size ${visibleSizes[0]}`);
+    return visibleSizes[0];
   }
 
   /**

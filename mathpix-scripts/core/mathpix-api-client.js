@@ -95,7 +95,11 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
-import MATHPIX_CONFIG from "./mathpix-config.js";
+import MATHPIX_CONFIG, {
+  getEndpointConfig,
+  getEndpointFeatures,
+  isFeatureAvailable,
+} from "./mathpix-config.js";
 
 /**
  * @class MathPixAPIClient
@@ -124,19 +128,27 @@ import MATHPIX_CONFIG from "./mathpix-config.js";
 class MathPixAPIClient {
   /**
    * @constructor
-   * @description Creates a new MathPix API client instance with default configuration.
+   * @description Creates a new MathPix API client instance with regional endpoint support.
    *
    * The client is initialised without credentials and must have credentials set
-   * using setCredentials() before processing any files.
+   * using setCredentials() before processing any files. Endpoint can be specified
+   * or will be loaded from localStorage preference.
+   *
+   * @param {string} [endpoint=null] - Optional endpoint key (US, EU, ASIA)
    *
    * @example
    * const client = new MathPixAPIClient();
-   * // Client ready for credential configuration
+   * // Uses saved endpoint preference or EU default
+   *
+   * @example
+   * const client = new MathPixAPIClient('US');
+   * // Uses US endpoint explicitly
    *
    * @accessibility Ensures all error messages are screen reader compatible
    * @since 1.0.0
+   * @updated 2.0.0 - Added regional endpoint support
    */
-  constructor() {
+  constructor(endpoint = null) {
     /**
      * @member {string|null} apiKey
      * @description MathPix API key for authentication
@@ -152,13 +164,32 @@ class MathPixAPIClient {
     this.appId = null;
 
     /**
-     * @member {string} apiBase
-     * @description MathPix API base URL for all requests
+     * @member {string} currentEndpoint
+     * @description Current endpoint key (US, EU, ASIA)
      * @private
      */
-    this.apiBase = MATHPIX_CONFIG.API_BASE;
+    this.currentEndpoint = endpoint || this.loadEndpointPreference();
 
-    logInfo("MathPixAPIClient initialised", { apiBase: this.apiBase });
+    /**
+     * @member {string} apiBase
+     * @description MathPix API base URL for all requests (dynamically set by endpoint)
+     * @private
+     */
+    this.updateApiBase(this.currentEndpoint);
+
+    /**
+     * @member {Object|null} lastDebugData
+     * @description Debug data from last API operation for developer inspection
+     * @private
+     * @since 1.2.0 (Phase 2: Debug Panel Integration)
+     */
+    this.lastDebugData = null;
+
+    logInfo("MathPixAPIClient initialised", {
+      endpoint: this.currentEndpoint,
+      apiBase: this.apiBase,
+      gdprCompliant: this.isGDPRCompliant(),
+    });
   }
 
   /**
@@ -184,6 +215,188 @@ class MathPixAPIClient {
     this.appId = appId;
     this.apiKey = apiKey;
     logDebug("MathPix credentials configured");
+  }
+
+  // =============================================================================
+  // PHASE 2.0: REGIONAL ENDPOINT MANAGEMENT
+  // =============================================================================
+
+  /**
+   * @method loadEndpointPreference
+   * @description Loads endpoint preference from localStorage
+   *
+   * Attempts to retrieve saved endpoint preference. Falls back to default
+   * EU endpoint if no preference saved or preference is invalid.
+   *
+   * @returns {string} Endpoint key (US, EU, ASIA)
+   *
+   * @private
+   * @since 2.0.0
+   */
+  loadEndpointPreference() {
+    try {
+      const stored = localStorage.getItem(
+        MATHPIX_CONFIG.ENDPOINT_PREFERENCE_KEY
+      );
+      if (stored && MATHPIX_CONFIG.ENDPOINTS[stored]) {
+        logDebug("Loaded endpoint preference from localStorage", { stored });
+        return stored;
+      }
+    } catch (error) {
+      logWarn("Failed to load endpoint preference", error);
+    }
+    return MATHPIX_CONFIG.DEFAULT_ENDPOINT;
+  }
+
+  /**
+   * @method updateApiBase
+   * @description Updates API base URL for specified endpoint
+   *
+   * Sets the apiBase property to match the selected regional endpoint.
+   * Falls back to default endpoint if invalid endpoint specified.
+   *
+   * @param {string} endpoint - Endpoint key (US, EU, ASIA)
+   *
+   * @private
+   * @since 2.0.0
+   */
+  updateApiBase(endpoint) {
+    const config = getEndpointConfig(endpoint);
+    if (!config) {
+      logError("Invalid endpoint, using default", { endpoint });
+      endpoint = MATHPIX_CONFIG.DEFAULT_ENDPOINT;
+    }
+
+    this.apiBase = config.baseUrl;
+    this.currentEndpoint = endpoint;
+
+    logInfo("API endpoint updated", {
+      endpoint,
+      baseUrl: this.apiBase,
+      gdprCompliant: config.gdprCompliant,
+    });
+  }
+
+  /**
+   * @method getEndpointConfig
+   * @description Gets current endpoint configuration
+   *
+   * @returns {Object} Current endpoint configuration object
+   * @returns {string} returns.name - Endpoint name
+   * @returns {string} returns.baseUrl - API base URL
+   * @returns {string} returns.location - Geographic location
+   * @returns {Object} returns.features - Feature availability
+   * @returns {boolean} returns.gdprCompliant - GDPR compliance status
+   *
+   * @example
+   * const config = client.getEndpointConfig();
+   * console.log(`Using ${config.name} endpoint`);
+   *
+   * @since 2.0.0
+   */
+  getEndpointConfig() {
+    return getEndpointConfig(this.currentEndpoint);
+  }
+
+  /**
+   * @method getEndpointFeatures
+   * @description Gets available features for current endpoint
+   *
+   * @returns {Object} Feature availability object
+   * @returns {boolean} returns.text - Image OCR availability
+   * @returns {boolean} returns.strokes - Handwriting recognition availability
+   * @returns {boolean} returns.pdf - PDF processing availability
+   * @returns {boolean} returns.latex_pdf - LaTeX PDF rendering availability
+   * @returns {boolean} returns.html - HTML export availability
+   * @returns {boolean} returns.docx - DOCX export availability
+   *
+   * @example
+   * const features = client.getEndpointFeatures();
+   * if (features.latex_pdf) {
+   *   console.log("LaTeX PDF rendering available");
+   * }
+   *
+   * @since 2.0.0
+   */
+  getEndpointFeatures() {
+    return getEndpointFeatures(this.currentEndpoint);
+  }
+
+  /**
+   * @method isFeatureAvailable
+   * @description Checks if specific feature is available on current endpoint
+   *
+   * @param {string} featureName - Feature to check (e.g., 'latex_pdf', 'docx')
+   *
+   * @returns {boolean} True if feature is available on current endpoint
+   *
+   * @example
+   * if (client.isFeatureAvailable('latex_pdf')) {
+   *   // Enable LaTeX PDF option in UI
+   * } else {
+   *   // Disable option and show tooltip
+   * }
+   *
+   * @since 2.0.0
+   */
+  isFeatureAvailable(featureName) {
+    return isFeatureAvailable(this.currentEndpoint, featureName);
+  }
+
+  /**
+   * @method isGDPRCompliant
+   * @description Checks if current endpoint is GDPR compliant
+   *
+   * @returns {boolean} True if current endpoint is GDPR compliant
+   *
+   * @example
+   * if (!client.isGDPRCompliant()) {
+   *   console.warn("Data will be processed outside EU");
+   * }
+   *
+   * @since 2.0.0
+   */
+  isGDPRCompliant() {
+    const config = this.getEndpointConfig();
+    return config.gdprCompliant === true;
+  }
+
+  /**
+   * @method switchEndpoint
+   * @description Switches to different regional endpoint
+   *
+   * Updates API base URL and saves preference to localStorage.
+   * All subsequent requests will use the new endpoint.
+   *
+   * @param {string} endpoint - New endpoint key (US, EU, ASIA)
+   *
+   * @returns {boolean} True if switched successfully, false if invalid endpoint
+   *
+   * @example
+   * const success = client.switchEndpoint('US');
+   * if (success) {
+   *   console.log('Switched to US endpoint');
+   * }
+   *
+   * @since 2.0.0
+   */
+  switchEndpoint(endpoint) {
+    if (!MATHPIX_CONFIG.ENDPOINTS[endpoint]) {
+      logError("Invalid endpoint", { endpoint });
+      return false;
+    }
+
+    this.updateApiBase(endpoint);
+
+    // Save preference to localStorage
+    try {
+      localStorage.setItem(MATHPIX_CONFIG.ENDPOINT_PREFERENCE_KEY, endpoint);
+      logDebug("Endpoint preference saved", { endpoint });
+    } catch (error) {
+      logWarn("Failed to save endpoint preference", error);
+    }
+
+    return true;
   }
 
   /**
@@ -370,7 +583,7 @@ class MathPixAPIClient {
 
       // Make API request with timing measurement
       const requestStartTime = Date.now();
-      const response = await fetch(`${MATHPIX_CONFIG.API_BASE}/text`, {
+      const response = await fetch(`${this.apiBase}/text`, {
         method: "POST",
         headers: {
           app_id: this.appId,
@@ -408,7 +621,6 @@ class MathPixAPIClient {
       if (progressCallback && typeof progressCallback.nextStep === "function") {
         progressCallback.nextStep();
       }
-
       const totalProcessingTime = Date.now() - processingStartTime;
       logInfo("MathPix processing completed successfully", {
         totalTime: `${totalProcessingTime}ms`,
@@ -427,9 +639,111 @@ class MathPixAPIClient {
         processing: totalProcessingTime - requestDuration,
       };
 
+      // Phase 2: Capture debug data for developer panel
+      this.lastDebugData = {
+        timestamp: new Date().toISOString(),
+        operation: "processImage",
+        endpoint: `${this.apiBase}/text`,
+        method: "POST",
+
+        // Request information
+        request: {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          options: requestOptions,
+          headers: {
+            app_id: this.appId,
+            app_key: this.maskApiKey(this.apiKey),
+          },
+        },
+
+        // Response information
+        response: {
+          status: 200,
+          statusText: "OK",
+          confidence: result.confidence,
+          contentType: result.is_handwritten
+            ? "handwritten"
+            : result.is_printed
+            ? "printed"
+            : "mixed",
+          containsTable: normalisedResult.containsTable,
+          data: result,
+        },
+
+        // Timing information
+        timing: {
+          total: totalProcessingTime,
+          apiRequest: requestDuration,
+          processing: totalProcessingTime - requestDuration,
+          startTime: processingStartTime,
+          endTime: Date.now(),
+        },
+
+        // Metadata
+        metadata: {
+          confidence: result.confidence,
+          isHandwritten: result.is_handwritten || false,
+          isPrinted: result.is_printed || false,
+          imageDimensions: result.image_dimensions || "Not provided",
+          autoRotation: result.auto_rotate_confidence || "Not provided",
+          confidenceRate: result.confidence_rate || "Not provided",
+        },
+      };
+
+      logDebug("Debug data captured for processImage", {
+        hasDebugData: !!this.lastDebugData,
+        operation: this.lastDebugData.operation,
+      });
+
       return normalisedResult;
     } catch (error) {
       logError("MathPix API request failed", error);
+
+      // Phase 2: Capture error debug data
+      this.lastDebugData = {
+        timestamp: new Date().toISOString(),
+        operation: "processImage",
+        endpoint: `${this.apiBase}/text`,
+        method: "POST",
+
+        // Request information
+        request: {
+          fileName: file?.name || "Unknown",
+          fileSize: file?.size || 0,
+          fileType: file?.type || "Unknown",
+          options: requestOptions || {},
+          headers: {
+            app_id: this.appId,
+            app_key: this.maskApiKey(this.apiKey),
+          },
+        },
+
+        // Error response information
+        response: {
+          status: "error",
+          error: error.message,
+          data: null,
+        },
+
+        // Timing information
+        timing: {
+          total: Date.now() - processingStartTime,
+          failed: true,
+        },
+
+        // Error metadata
+        metadata: {
+          errorType: error.name || "Error",
+          errorMessage: error.message,
+        },
+      };
+
+      logDebug("Debug data captured for failed processImage", {
+        hasDebugData: !!this.lastDebugData,
+        error: error.message,
+      });
 
       // Notify progress callback of error
       if (
@@ -644,6 +958,39 @@ class MathPixAPIClient {
 
     const dataItem = dataArray.find((item) => item.type === type);
     return dataItem ? dataItem.value || "" : "";
+  }
+
+  /**
+   * @method maskApiKey
+   * @description Masks API key for security in debug output
+   *
+   * Replaces most of the API key with asterisks, showing only the last 4 characters.
+   * This prevents credential exposure while allowing developers to verify which key is in use.
+   *
+   * @param {string} apiKey - Full API key to mask
+   *
+   * @returns {string} Masked API key (e.g., "************abc123")
+   *
+   * @example
+   * const masked = this.maskApiKey('my-super-secret-api-key-12345');
+   * // Returns: "****************************2345"
+   *
+   * @security CRITICAL - Always mask credentials in debug output
+   * @private
+   * @since 1.2.0 (Phase 2: Debug Panel Integration)
+   */
+  maskApiKey(apiKey) {
+    if (!apiKey || typeof apiKey !== "string") return "************";
+
+    if (apiKey.length <= 4) {
+      return "****";
+    }
+
+    const visibleChars = 4;
+    const maskedPortion = "*".repeat(apiKey.length - visibleChars);
+    const visiblePortion = apiKey.slice(-visibleChars);
+
+    return maskedPortion + visiblePortion;
   }
 
   /**
@@ -1142,7 +1489,7 @@ class MathPixAPIClient {
       logDebug("PDF processing request options", requestOptions);
 
       // Upload PDF to processing queue
-      const uploadResponse = await fetch(`${MATHPIX_CONFIG.API_BASE}/pdf`, {
+      const uploadResponse = await fetch(`${this.apiBase}/pdf`, {
         method: "POST",
         headers: {
           app_id: this.appId,
@@ -1216,6 +1563,60 @@ class MathPixAPIClient {
         uploadTime: `${uploadDuration}ms`,
       });
 
+      // Phase 2: Capture debug data for developer panel
+      this.lastDebugData = {
+        timestamp: new Date().toISOString(),
+        operation: "processPDF",
+        endpoint: `${this.apiBase}/pdf`,
+        method: "POST",
+
+        // Request information
+        request: {
+          fileName: pdfFile.name,
+          fileSize: pdfFile.size,
+          fileType: pdfFile.type,
+          pageRange: options.page_range || "all",
+          formats: requestOptions.conversion_formats,
+          options: requestOptions,
+          headers: {
+            app_id: this.appId,
+            app_key: this.maskApiKey(this.apiKey),
+          },
+        },
+
+        // Response information
+        response: {
+          status: 200,
+          statusText: "OK",
+          pdfId: pdfId,
+          data: uploadResult,
+        },
+
+        // Timing information
+        timing: {
+          total: uploadDuration,
+          apiRequest: uploadDuration,
+          startTime: processingStartTime,
+          endTime: Date.now(),
+        },
+
+        // Metadata
+        metadata: {
+          pdfId: pdfId,
+          processingMode: "PDF Document",
+          pageRange: options.page_range || "all",
+          requestedFormats: Object.keys(
+            requestOptions.conversion_formats || {}
+          ).join(", "),
+        },
+      };
+
+      logDebug("Debug data captured for processPDF", {
+        hasDebugData: !!this.lastDebugData,
+        operation: this.lastDebugData.operation,
+        pdfId: pdfId,
+      });
+
       // Notify progress: Upload complete, processing started
       if (
         progressCallback &&
@@ -1229,6 +1630,52 @@ class MathPixAPIClient {
       return pdfId;
     } catch (error) {
       logError("PDF processing initiation failed", error);
+
+      // Phase 2: Capture error debug data
+      this.lastDebugData = {
+        timestamp: new Date().toISOString(),
+        operation: "processPDF",
+        endpoint: `${this.apiBase}/pdf`,
+        method: "POST",
+
+        // Request information
+        request: {
+          fileName: pdfFile?.name || "Unknown",
+          fileSize: pdfFile?.size || 0,
+          fileType: pdfFile?.type || "Unknown",
+          pageRange: options.page_range || "all",
+          formats: requestOptions?.conversion_formats || {},
+          options: requestOptions || {},
+          headers: {
+            app_id: this.appId,
+            app_key: this.maskApiKey(this.apiKey),
+          },
+        },
+
+        // Error response information
+        response: {
+          status: "error",
+          error: error.message,
+          data: null,
+        },
+
+        // Timing information
+        timing: {
+          total: Date.now() - processingStartTime,
+          failed: true,
+        },
+
+        // Error metadata
+        metadata: {
+          errorType: error.name || "Error",
+          errorMessage: error.message,
+        },
+      };
+
+      logDebug("Debug data captured for failed processPDF", {
+        hasDebugData: !!this.lastDebugData,
+        error: error.message,
+      });
 
       // Notify progress callback of error
       if (
@@ -1276,17 +1723,14 @@ class MathPixAPIClient {
     logDebug("Checking PDF processing status", { pdfId });
 
     try {
-      const statusResponse = await fetch(
-        `${MATHPIX_CONFIG.API_BASE}/pdf/${pdfId}`,
-        {
-          method: "GET",
-          headers: {
-            app_id: this.appId,
-            app_key: this.apiKey,
-          },
-          timeout: MATHPIX_CONFIG.TIMEOUT, // Use standard timeout for status checks
-        }
-      );
+      const statusResponse = await fetch(`${this.apiBase}/pdf/${pdfId}`, {
+        method: "GET",
+        headers: {
+          app_id: this.appId,
+          app_key: this.apiKey,
+        },
+        timeout: MATHPIX_CONFIG.TIMEOUT, // Use standard timeout for status checks
+      });
 
       if (!statusResponse.ok) {
         const errorText = await statusResponse.text();
@@ -1384,7 +1828,7 @@ class MathPixAPIClient {
 
     try {
       // Correct URL pattern: /pdf/{pdf_id}.{format}
-      const downloadUrl = `${MATHPIX_CONFIG.API_BASE}/pdf/${pdfId}.${apiFormat}`;
+      const downloadUrl = `${this.apiBase}/pdf/${pdfId}.${apiFormat}`;
 
       logDebug("Making download request", { downloadUrl });
 
@@ -1895,6 +2339,68 @@ class MathPixAPIClient {
     }
 
     return true;
+  }
+
+  // =============================================================================
+  // PHASE 2: DEBUG DATA ACCESS
+  // =============================================================================
+
+  /**
+   * @method getLastDebugData
+   * @description Retrieves debug data from the most recent API operation
+   *
+   * Returns comprehensive debugging information including request details,
+   * response data, timing metrics, and metadata. Used by the debug panel
+   * to provide developers with detailed transaction information.
+   *
+   * Data is captured for both successful operations and errors, enabling
+   * thorough debugging of API interactions.
+   *
+   * @returns {Object|null} Debug data object or null if no operations performed
+   * @returns {string} returns.timestamp - ISO timestamp of operation
+   * @returns {string} returns.operation - Operation type (processImage, processPDF)
+   * @returns {string} returns.endpoint - API endpoint URL used
+   * @returns {string} returns.method - HTTP method used
+   * @returns {Object} returns.request - Request details including file info and options
+   * @returns {Object} returns.response - Response details including status and data
+   * @returns {Object} returns.timing - Timing information for performance analysis
+   * @returns {Object} returns.metadata - Additional metadata about the operation
+   *
+   * @example
+   * // After processing an image
+   * const debugData = apiClient.getLastDebugData();
+   * if (debugData) {
+   *   console.log('Operation:', debugData.operation);
+   *   console.log('Duration:', debugData.timing.total + 'ms');
+   *   console.log('Confidence:', debugData.metadata.confidence);
+   * }
+   *
+   * @example
+   * // Check for errors
+   * const debugData = apiClient.getLastDebugData();
+   * if (debugData && debugData.response.status === 'error') {
+   *   console.error('Last operation failed:', debugData.response.error);
+   * }
+   *
+   * @accessibility Debug data supports developer tools for improving accessibility
+   * @security API keys are automatically masked in the returned data
+   * @since 1.2.0 (Phase 2: Debug Panel Integration)
+   */
+  getLastDebugData() {
+    if (!this.lastDebugData) {
+      logDebug("No debug data available - no operations performed yet");
+      return null;
+    }
+
+    logDebug("Returning debug data", {
+      operation: this.lastDebugData.operation,
+      timestamp: this.lastDebugData.timestamp,
+      hasRequest: !!this.lastDebugData.request,
+      hasResponse: !!this.lastDebugData.response,
+    });
+
+    // Return a copy to prevent external modification
+    return { ...this.lastDebugData };
   }
 }
 

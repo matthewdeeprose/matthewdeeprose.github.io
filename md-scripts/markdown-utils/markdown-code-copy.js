@@ -117,6 +117,16 @@ const MarkdownCodeCopy = (function () {
       return;
     }
 
+    // Skip if this code block is inside the MathPix debug panel
+    // Debug panel has its own specialized copy functionality
+    const debugPanel = preElement.closest("#mathpix-debug-panel");
+    if (debugPanel) {
+      logDebug(
+        `Skipping code block at index ${index} - inside MathPix debug panel`
+      );
+      return;
+    }
+
     // Skip if already processed
     if (preElement.querySelector(`.${config.buttonClass}`)) {
       logDebug(`Skipping code block at index ${index} - already processed`);

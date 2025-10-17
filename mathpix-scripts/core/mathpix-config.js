@@ -130,11 +130,104 @@ function logDebug(message, ...args) {
 const MATHPIX_CONFIG = {
   /**
    * @memberof MATHPIX_CONFIG
-   * @type {string}
-   * @description EU-specific API endpoint ensuring all processing occurs within European Union jurisdiction for GDPR compliance
-   * @default "https://eu-central-1.api.mathpix.com/v3"
+   * @type {Object}
+   * @description Regional API endpoint configurations with feature availability matrix
+   *
+   * Three endpoints available:
+   * - US: Full feature support, best latency for Americas
+   * - EU: GDPR-compliant, some features limited (latex.pdf unavailable)
+   * - Asia: Best latency for APAC (currently shares US infrastructure)
+   *
+   * @property {Object} US - United States endpoint configuration
+   * @property {Object} EU - European Union endpoint configuration
+   * @property {Object} ASIA - Asia Pacific endpoint configuration
+   *
+   * @since 2.0.0
    */
-  API_BASE: "https://eu-central-1.api.mathpix.com/v3",
+  ENDPOINTS: {
+    US: {
+      name: "United States",
+      baseUrl: " https://api.mathpix.com/v3",
+      location: "US East 1 (N. Virginia)",
+      features: {
+        text: true, // Image/Draw OCR
+        strokes: true, // Handwriting recognition
+        pdf: true, // PDF processing
+        latex_pdf: true, // ✅ Available
+        html: true, // HTML export
+        docx: true, // DOCX export
+        tex_zip: true, // LaTeX zip export
+        pptx: true, // PowerPoint export
+        lines_data: true, // Line-level data
+      },
+      dataLocality: "United States",
+      gdprCompliant: false,
+      recommendedFor: ["americas", "default"],
+    },
+    EU: {
+      name: "European Union",
+      baseUrl: "https://eu-central-1.api.mathpix.com/v3",
+      location: "EU Central 1 (Frankfurt)",
+      features: {
+        text: true, // Image/Draw OCR
+        strokes: true, // Handwriting recognition
+        pdf: true, // PDF processing
+        latex_pdf: false, // ❌ NOT available (confirmed by support)
+        html: true, // HTML export
+        docx: true, // DOCX export
+        tex_zip: true, // LaTeX zip export
+        pptx: true, // PowerPoint export
+        lines_data: true, // Line-level data
+      },
+      dataLocality: "European Union",
+      gdprCompliant: true,
+      recommendedFor: ["eu", "uk", "gdpr"],
+    },
+    ASIA: {
+      name: "Asia Pacific",
+      baseUrl: "https://ap-southeast-1.api.mathpix.com/v3", 
+      location: "SE Asia (Singapore)",
+      features: {
+        text: true,
+        strokes: true,
+        pdf: true,
+        latex_pdf: true, // Assumed available 
+        html: true,
+        docx: true,
+        tex_zip: true,
+        pptx: true,
+        lines_data: true,
+      },
+      dataLocality: "Singapore",
+      gdprCompliant: false,
+      recommendedFor: ["asia", "apac"],
+    },
+  },
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {string}
+   * @description Default endpoint for new users (GDPR-safe default)
+   * @default "EU"
+   * @since 2.0.0
+   */
+  DEFAULT_ENDPOINT: "EU",
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {string}
+   * @description localStorage key for endpoint preference
+   * @since 2.0.0
+   */
+  ENDPOINT_PREFERENCE_KEY: "mathpix-selected-endpoint",
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {string}
+   * @description localStorage key for GDPR warning dismissal
+   * @since 2.0.0
+   */
+  GDPR_WARNING_DISMISSED_KEY: "mathpix-gdpr-warning-dismissed",
 
   /**
    * @memberof MATHPIX_CONFIG
@@ -464,6 +557,70 @@ const MATHPIX_CONFIG = {
   /**
    * @memberof MATHPIX_CONFIG
    * @type {Object}
+   * @description Total Downloader configuration for comprehensive ZIP archive creation
+   *
+   * Provides configuration for creating complete archives of MathPix processing results,
+   * including source files, conversion formats, API data, and auto-generated documentation.
+   * Designed for archival, quality assurance, and document remediation workflows.
+   *
+   * @property {string} FILENAME_TEMPLATE - Template for generated ZIP filenames with timestamp placeholder
+   * @property {string} FILENAME_SUFFIX - Suffix appended to custom filenames
+   * @property {string} METADATA_ONLY_SUFFIX - Suffix for metadata-only archives (partial failure mode)
+   * @property {Object} DIRECTORIES - ZIP archive folder structure
+   * @property {string} DIRECTORIES.SOURCE - Folder for original source files (images, PDFs, etc.)
+   * @property {string} DIRECTORIES.RESULTS - Folder for conversion results (LaTeX, MathML, HTML, etc.)
+   * @property {string} DIRECTORIES.DATA - Folder for metadata and API request/response data
+   * @property {Object} MESSAGES - User-facing progress and status messages with British spelling
+   * @property {RegExp} FILENAME_ALLOWED_CHARS - Regex for allowed filename characters
+   * @property {string} FILENAME_REPLACEMENT - Replacement character for disallowed filename characters
+   * @property {number} CLIPBOARD_JPG_QUALITY - JPEG quality for clipboard images (0.0-1.0)
+   * @property {string} CANVAS_PNG_FORMAT - Format for canvas snapshots
+   *
+   * @example
+   * // Access configuration
+   * const config = MATHPIX_CONFIG.TOTAL_DOWNLOADER;
+   * const filename = config.FILENAME_TEMPLATE.replace('{timestamp}', '2025-10-14-143022');
+   *
+   * @accessibility All generated archives maintain full accessibility with semantic structure
+   * @since 1.0.0
+   */
+  TOTAL_DOWNLOADER: {
+    // Filename configuration
+    FILENAME_TEMPLATE: "mathpix-results-{timestamp}",
+    FILENAME_SUFFIX: "-mathpix",
+    METADATA_ONLY_SUFFIX: "-metadata",
+
+    // ZIP structure
+    DIRECTORIES: {
+      SOURCE: "source",
+      RESULTS: "results",
+      DATA: "data",
+    },
+
+    // Progress messages (British spelling)
+    MESSAGES: {
+      START: "Preparing download...",
+      COLLECT_SOURCE: "Collecting source files...",
+      COLLECT_RESULTS: "Collecting conversion results...",
+      COLLECT_DATA: "Collecting metadata...",
+      GENERATE_README: "Generating documentation...",
+      CREATE_ZIP: "Creating ZIP archive...",
+      COMPLETE: "Download ready!",
+      ERROR: "Download failed. See console for details.",
+    },
+
+    // File sanitisation (British spelling in comment)
+    FILENAME_ALLOWED_CHARS: /[^a-zA-Z0-9\-_\.]/g,
+    FILENAME_REPLACEMENT: "-",
+
+    // Image quality (Phase 2)
+    CLIPBOARD_JPG_QUALITY: 0.85,
+    CANVAS_PNG_FORMAT: "image/png",
+  },
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {Object}
    * @description Maths delimiter preset configurations for different LaTeX/Markdown ecosystems
    *
    * Provides standard delimiter formats optimised for various documentation systems
@@ -550,5 +707,49 @@ const MATHPIX_CONFIG = {
   DEFAULT_DELIMITER_PRESET: "markdown",
 };
 
+/**
+ * Get endpoint configuration by key
+ * @param {string} endpointKey - Endpoint key (US, EU, ASIA)
+ * @returns {Object} Endpoint configuration
+ * @since 2.0.0
+ */
+function getEndpointConfig(endpointKey) {
+  return (
+    MATHPIX_CONFIG.ENDPOINTS[endpointKey] ||
+    MATHPIX_CONFIG.ENDPOINTS[MATHPIX_CONFIG.DEFAULT_ENDPOINT]
+  );
+}
+
+/**
+ * Get available features for endpoint
+ * @param {string} endpointKey - Endpoint key
+ * @returns {Object} Feature availability object
+ * @since 2.0.0
+ */
+function getEndpointFeatures(endpointKey) {
+  const config = getEndpointConfig(endpointKey);
+  return config.features;
+}
+
+/**
+ * Check if feature is available on endpoint
+ * @param {string} endpointKey - Endpoint key
+ * @param {string} featureName - Feature to check
+ * @returns {boolean} True if feature available
+ * @since 2.0.0
+ */
+function isFeatureAvailable(endpointKey, featureName) {
+  const features = getEndpointFeatures(endpointKey);
+  return features[featureName] === true;
+}
+
 export default MATHPIX_CONFIG;
-export { logError, logWarn, logInfo, logDebug };
+export {
+  logError,
+  logWarn,
+  logInfo,
+  logDebug,
+  getEndpointConfig,
+  getEndpointFeatures,
+  isFeatureAvailable,
+};

@@ -270,7 +270,7 @@ modelRegistry.registerModel("anthropic/claude-3.5-haiku", {
   name: "Claude 3.5 Haiku",
   category: "GeneralPurpose",
   disabled: false,
-  isDefault: true,
+  isDefault: false,
   description:
     "Claude 3.5 Haiku features rapid response times and improved capabilities across coding, tool use, and reasoning. Optimized for high interactivity and low latency applications.",
   costs: {
@@ -26098,6 +26098,401 @@ modelRegistry.registerModel("nvidia/llama-3.3-nemotron-super-49b-v1.5", {
       statusMessages: {
         processing: "Processing request with Llama 3.3 Nemotron Super 49B V1.5",
         complete: "Response ready from Llama 3.3 Nemotron Super 49B V1.5",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert Qwen3 VL 8B Instruct model registration
+modelRegistry.registerModel("qwen/qwen3-vl-8b-instruct", {
+  provider: "qwen",
+  name: "Qwen3 VL 8B Instruct",
+  category: "Vision",
+  disabled: false,
+  description:
+    "Advanced multimodal vision-language model optimised for high-fidelity understanding across text, images, and video. Features Interleaved-MRoPE for long-horizon temporal reasoning, DeepStack for fine-grained visual-text alignment, and text-timestamp alignment for precise event localisation. Supports native 256K context extensible to 1M tokens, with robust OCR coverage across 32 languages and enhanced performance under varied visual conditions.",
+  costs: {
+    input: 0.18, // Per million tokens
+    output: 0.69, // Per million tokens
+    image: 0.18, // Vision processing uses input rate
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "vision",
+    "multilingual",
+    "reasoning",
+    "tool_calling",
+  ],
+  maxContext: 262144,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Multimodal vision-language model for advanced visual understanding",
+    releaseDate: "2025-10-14",
+    modelArchitecture: {
+      parameters: "8B",
+      type: "instruction-tuned",
+      multimodal: true,
+      contextExtensible: "1M tokens",
+      specialFeatures: [
+        "Interleaved-MRoPE",
+        "DeepStack alignment",
+        "Text-timestamp alignment",
+        "Dynamic media processing",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy:
+        "https://www.alibabacloud.com/help/en/model-studio/privacy-policy",
+      acceptableUse: "",
+      termsOfService:
+        "https://www.alibabacloud.com/help/en/model-studio/terms-of-service",
+      lastUpdated: "2025-10-14",
+    },
+    languageSupport: ["english", "chinese", "multilingual-ocr"],
+    domainExpertise: {
+      visualReasoning: 9,
+      documentAnalysis: 9,
+      spatialUnderstanding: 8,
+      temporalReasoning: 9,
+      guiControl: 8,
+      ocrAccuracy: 9,
+    },
+    bestFor: [
+      "document parsing",
+      "visual question answering",
+      "spatial reasoning",
+      "GUI control",
+      "video analysis",
+      "multimodal understanding",
+      "temporal reasoning",
+      "multilingual OCR",
+    ],
+    accessibility: {
+      visionModelNotice:
+        "Requires image descriptions for visually impaired users",
+      ocrSupport: "Supports text extraction from images in 32 languages",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "repetition_penalty",
+      "top_k",
+      "seed",
+      "min_p",
+      "response_format",
+      "tools",
+      "tool_choice",
+      "structured_outputs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "multimodal_fusion",
+      "temporal_reasoning",
+      "visual_text_alignment",
+      "structured_outputs",
+      "tool_calling",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "visual-content-analysis",
+      "document-accessibility",
+      "gui-automation",
+      "multilingual-ocr",
+      "spatial-reasoning-tasks",
+    ],
+    warnings: [
+      "Vision models require alternative text descriptions for accessibility",
+      "GUI control features may need keyboard navigation alternatives",
+      "Image content should be described for screen reader users",
+      "Video analysis output should include timestamp descriptions",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Qwen3 VL 8B Instruct - Multimodal vision model with 262K context window",
+      parameterSection:
+        "Parameter controls for Qwen3 VL 8B Instruct multimodal model",
+      statusMessages: {
+        processing: "Processing multimodal request with Qwen3 VL 8B Instruct",
+        complete: "Multimodal analysis ready from Qwen3 VL 8B Instruct",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Add this entry to model-definitions.js
+
+modelRegistry.registerModel("qwen/qwen3-vl-8b-thinking", {
+  provider: "qwen",
+  name: "Qwen3 VL 8B Thinking",
+  category: "Vision",
+  disabled: false,
+  description:
+    "Advanced reasoning-optimised multimodal model specialising in visual and textual reasoning across complex scenes, documents, and temporal sequences. Features enhanced multimodal alignment, long-context processing up to 256K tokens (expandable to 1M), and deliberate reasoning pathways for complex visual analysis, STEM problem-solving, and multi-step video understanding.",
+  costs: {
+    input: 0.18,
+    output: 2.1,
+    image: 0.18,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "vision",
+    "mathematics",
+    "reasoning",
+    "multilingual",
+    "tool_calling",
+  ],
+  maxContext: 256000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced multimodal reasoning model with enhanced visual-language fusion",
+    releaseDate: "2025-10-14",
+    modelArchitecture: {
+      parameters: "8B",
+      type: "reasoning-optimised multimodal",
+      specialFeatures: [
+        "Interleaved-MRoPE",
+        "timestamp-aware embeddings",
+        "enhanced multimodal alignment",
+        "deliberate reasoning pathways",
+      ],
+      contextExpansion: "1M tokens",
+    },
+    policyLinks: {
+      privacyPolicy: "https://qwen.ai/privacy",
+      acceptableUse: "",
+      termsOfService: "https://qwen.ai/terms",
+      lastUpdated: "2025-10-14",
+    },
+    languageSupport: ["english", "chinese", "multilingual"],
+    domainExpertise: {
+      visualReasoning: 9,
+      scientificAnalysis: 8,
+      mathematicalReasoning: 8,
+      videoUnderstanding: 9,
+      documentAnalysis: 8,
+      temporalGrounding: 9,
+    },
+    bestFor: [
+      "visual reasoning tasks",
+      "STEM problem solving",
+      "scientific visual analysis",
+      "video understanding",
+      "document analysis with OCR",
+      "multimodal research",
+      "complex scene interpretation",
+    ],
+    accessibility: {
+      visualContentSupport: true,
+      ocrCapabilities: true,
+      multimodalAccessibility: "enhanced",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "tools",
+      "tool_choice",
+      "reasoning",
+      "include_reasoning",
+      "structured_outputs",
+      "response_format",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "seed",
+      "presence_penalty",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "advanced_reasoning",
+      "multimodal_fusion",
+      "temporal_grounding",
+      "visual_analysis",
+      "tool_calling",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "visual-reasoning-tasks",
+      "multimodal-analysis",
+      "stem-education",
+      "research-applications",
+      "document-accessibility",
+    ],
+    warnings: [
+      "Visual content processing may require detailed descriptions for screen reader users",
+      "Complex reasoning outputs may need structured presentation for cognitive accessibility",
+      "Video analysis features require alternative text descriptions for accessibility compliance",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Qwen3 VL 8B Thinking - Advanced multimodal reasoning model with 256K context window",
+      parameterSection:
+        "Parameter controls for Qwen3 VL 8B Thinking multimodal model",
+      statusMessages: {
+        processing: "Processing multimodal request with Qwen3 VL 8B Thinking",
+        complete: "Multimodal analysis complete from Qwen3 VL 8B Thinking",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Add Claude Haiku 4.5 model registration
+modelRegistry.registerModel("anthropic/claude-haiku-4.5", {
+  provider: "anthropic",
+  name: "Claude Haiku 4.5",
+  category: "GeneralPurpose",
+  isDefault: true,
+  disabled: false,
+  description:
+    "Anthropic's fastest and most efficient model, delivering near-frontier intelligence at a fraction of the cost and latency of larger Claude models. Excels at reasoning, coding, and tool-assisted workflows with extended thinking capabilities and exceptional responsiveness for real-time applications.",
+  costs: {
+    input: 1.0, // Per million tokens
+    output: 5.0, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "reasoning",
+    "tool_calling",
+    "mathematics",
+  ],
+  maxContext: 200000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "High-performance general purpose model optimised for speed and efficiency",
+    releaseDate: "2025-10-15",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "instruction-tuned",
+      specialFeatures: [
+        "extended-thinking",
+        "controllable-reasoning-depth",
+        "tool-assisted-workflows",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.anthropic.com/privacy",
+      acceptableUse: "https://www.anthropic.com/acceptable-use-policy",
+      termsOfService: "https://www.anthropic.com/terms",
+      lastUpdated: "2025-10-15",
+    },
+    domainExpertise: {
+      coding: 9,
+      reasoning: 9,
+      toolUse: 10,
+      realTimeApplications: 10,
+    },
+    bestFor: [
+      "real-time applications",
+      "high-volume processing",
+      "coding and development",
+      "tool-assisted workflows",
+      "sub-agent deployment",
+      "parallelised execution",
+    ],
+    accessibility: {
+      fastResponse: true,
+      suitableForRealTime: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "stop",
+      "reasoning",
+      "include_reasoning",
+      "tools",
+      "tool_choice",
+      "top_p",
+      "top_k",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "extended-thinking",
+      "controllable-reasoning",
+      "tool-integration",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "real-time-applications",
+      "high-volume-processing",
+      "rapid-prototyping",
+      "interactive-coding",
+    ],
+    warnings: [
+      "Optimised for speed - may have different reasoning patterns than larger models",
+      "Consider latency requirements when selecting reasoning depth",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Claude Haiku 4.5 - Fast, efficient frontier-level model with 200K context",
+      parameterSection: "Parameter controls for Claude Haiku 4.5",
+      statusMessages: {
+        processing: "Processing request with Claude Haiku 4.5",
+        complete: "Response ready from Claude Haiku 4.5",
       },
     },
   },

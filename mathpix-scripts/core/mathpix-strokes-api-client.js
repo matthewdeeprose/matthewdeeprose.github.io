@@ -150,12 +150,23 @@ class MathPixStrokesAPIClient {
 
     /**
      * MathPix API base URL for all requests
-     * @type {string}
+     * @type {string|null}
      * @private
+     * @description Set by main controller to match current endpoint
      */
-    this.apiBase = MATHPIX_CONFIG.API_BASE;
+    this.apiBase = null;
 
-    logInfo("MathPixStrokesAPIClient initialised", { apiBase: this.apiBase });
+    /**
+     * Stores debug data from last API operation
+     * @type {Object|null}
+     * @private
+     * @description Used by developer debug panel for transaction visibility
+     */
+    this.lastDebugData = null;
+
+    logInfo("MathPixStrokesAPIClient initialised", {
+      apiBase: "Will be set by main controller",
+    });
   }
 
   /**
@@ -446,9 +457,93 @@ class MathPixStrokesAPIClient {
         processing: totalProcessingTime - requestDuration,
       };
 
+      // ✅ CRITICAL: Capture debug data for developer panel
+      this.lastDebugData = {
+        timestamp: new Date().toISOString(),
+        operation: "processStrokes",
+        endpoint: `${this.apiBase}/strokes`,
+        request: {
+          headers: {
+            app_id: this.appId,
+            app_key: this.maskApiKey(this.apiKey),
+          },
+          strokesData: {
+            strokeCount: strokesData?.strokes?.strokes?.x?.length || 0,
+            totalPoints:
+              strokesData?.strokes?.strokes?.x?.reduce(
+                (sum, arr) => sum + arr.length,
+                0
+              ) || 0,
+          },
+          formats: requestPayload.formats,
+          options: {
+            tableExtractionEnabled:
+              requestPayload.data_options.include_table_html,
+            delimiterFormat: userPrefs.delimiterFormat,
+            rmSpaces: requestPayload.rm_spaces,
+          },
+        },
+        response: {
+          status: 200,
+          statusText: "OK",
+          confidence: result.confidence,
+          contentType:
+            result.is_handwritten !== false ? "handwritten" : "printed", // ✅ ADDED
+          isHandwritten: result.is_handwritten,
+          containsTable: normalisedResult.containsTable,
+          data: result,
+        },
+        timing: {
+          total: totalProcessingTime,
+          api: requestDuration,
+          processing: totalProcessingTime - requestDuration,
+        },
+        metadata: {
+          confidence: result.confidence || 0,
+          isHandwritten: result.is_handwritten !== false,
+          containsTable: normalisedResult.containsTable,
+          strokeCount: strokesData?.strokes?.strokes?.x?.length || 0,
+        },
+      };
+
+      logDebug("Debug data captured for strokes operation", {
+        operation: this.lastDebugData.operation,
+        timing: this.lastDebugData.timing,
+      });
+
       return normalisedResult;
     } catch (error) {
       logError("MathPix Strokes API request failed", error);
+
+      // ✅ CRITICAL: Capture debug data even on error
+      const totalProcessingTime = Date.now() - processingStartTime;
+      this.lastDebugData = {
+        timestamp: new Date().toISOString(),
+        operation: "processStrokes",
+        endpoint: `${this.apiBase}/strokes`,
+        error: {
+          message: error.message,
+          stack: error.stack,
+        },
+        request: {
+          headers: {
+            app_id: this.appId,
+            app_key: this.maskApiKey(this.apiKey),
+          },
+          strokesData: {
+            strokeCount: strokesData?.strokes?.strokes?.x?.length || 0,
+          },
+        },
+        timing: {
+          total: totalProcessingTime,
+          api: null,
+          processing: null,
+        },
+      };
+
+      logDebug("Debug data captured for failed strokes operation", {
+        error: error.message,
+      });
 
       // Notify progress callback of error
       if (
@@ -783,6 +878,58 @@ class MathPixStrokesAPIClient {
       logError("Failed to convert TSV to Markdown", error);
       return ""; // Return empty string on error
     }
+  }
+
+  /**
+   * Masks API key for secure logging and display
+   *
+   * @description
+   * Protects API key by showing only last 4 characters, masking the rest.
+   * Used in debug panel to prevent credential exposure.
+   *
+   * @param {string} apiKey - API key to mask
+   * @returns {string} Masked API key (e.g., "****************************ddcb")
+   *
+   * @example
+   * const masked = client.maskApiKey("abcdef1234567890");
+   * console.log(masked); // "************7890"
+   *
+   * @security CRITICAL for preventing credential leakage
+   * @since 1.0.0
+   */
+  maskApiKey(apiKey) {
+    if (!apiKey || apiKey.length < 8) {
+      return "****";
+    }
+    const visibleChars = 4;
+    const maskedLength = apiKey.length - visibleChars;
+    return "*".repeat(maskedLength) + apiKey.slice(-visibleChars);
+  }
+
+  /**
+   * Gets debug data from last API operation
+   *
+   * @description
+   * Returns detailed transaction data from the most recent processStrokes()
+   * call. Used by developer debug panel for comprehensive API visibility.
+   *
+   * @returns {Object|null} Debug data object or null if no operations performed
+   * @returns {string} returns.timestamp - ISO 8601 timestamp
+   * @returns {string} returns.operation - Operation type ('processStrokes')
+   * @returns {string} returns.endpoint - API endpoint URL
+   * @returns {Object} returns.request - Request details (masked credentials)
+   * @returns {Object} returns.response - Response data and metadata
+   * @returns {Object} returns.timing - Performance timing metrics
+   *
+   * @example
+   * await client.processStrokes(strokesData);
+   * const debugData = client.getLastDebugData();
+   * console.log(debugData.timing.total); // 1450 (ms)
+   *
+   * @since 1.0.0
+   */
+  getLastDebugData() {
+    return this.lastDebugData;
   }
 }
 

@@ -38,7 +38,7 @@
 
 // Logging configuration (module level)
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
@@ -342,6 +342,29 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
             });
           }
 
+          // ✅ PHASE 3.4: Update PDF processor debug data with Lines API confidence
+          if (this.controller.pdfProcessor) {
+            const linesDebugData = {
+              averageConfidence: this.linesAnalysis.averageConfidence,
+              totalPages: this.linesAnalysis.totalPages,
+              mathElements: this.linesAnalysis.mathElements?.count || 0,
+              tableCount: this.linesAnalysis.tableStructures?.count || 0,
+            };
+
+            this.controller.pdfProcessor.updateDebugDataWithLinesAPI(
+              linesDebugData
+            );
+
+            logInfo("PDF processor debug data updated with Lines API data", {
+              confidence: linesDebugData.averageConfidence,
+              pages: linesDebugData.totalPages,
+            });
+          } else {
+            logWarn(
+              "PDF processor not available for debug data update with Lines API"
+            );
+          }
+
           // ✅ PHASE 3.3 FIX: Set totalPages from Lines API (authoritative source)
           this.totalPages = this.linesAnalysis.totalPages;
           this.currentPage = 1; // Initialize current page
@@ -452,6 +475,12 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         } formats.`,
         "success"
       );
+
+      // Phase 5: Show download button after successful PDF processing
+      if (this.controller.downloadManager) {
+        this.controller.downloadManager.showDownloadButton("pdf");
+        logInfo("✓ Download button shown for PDF results");
+      }
     } catch (error) {
       logError("Failed to display PDF results", {
         error: error.message,
@@ -2121,8 +2150,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       pdfInfo.className = "mathpix-pdf-info";
       pdfInfo.innerHTML = `
         <h3>${formatLabel}</h3>
-        <p><strong>Binary Format:</strong> PDF files cannot be previewed here. Click "Download PDF" below to save the file to your device.</p>
-        <p class="format-description">${formatDescription}</p>
+
       `;
 
       // Create export actions container

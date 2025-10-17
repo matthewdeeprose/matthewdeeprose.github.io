@@ -3,27 +3,137 @@
    =========================================== */
 
 /*temp*/
+/* ============================================
+   Download Button Styles
+   ============================================ */
+
+/* Structure (color-agnostic) */
+.mathpix-download-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+}
+
+.mathpix-download-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mathpix-download-all-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mathpix-download-progress {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.mathpix-download-status {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Colors (separate section for easy customization) */
+.mathpix-download-section {
+  background: #fffff4;
+  border-color: #00131d;
+}
+
+.mathpix-download-all-btn {
+  background: #fffff4;
+  border-color: #00131d;
+  color: #00131d;
+}
+
+.mathpix-download-all-btn:hover {
+  border-color: #005c84;
+}
+
+.mathpix-download-progress {
+  background: #e1e8ec;
+  border-color: #00131d;
+}
+
+.mathpix-download-status {
+  color: #00131d;
+}
+
+/* ============================================
+   Debug Panel Styling
+   ============================================ */
+
+/* Color Properties */
+.mathpix-debug-panel {
+  border: 1px solid currentcolor;
+}
+
+.confidence-high {
+  color: #005051;
+}
+
+.confidence-medium {
+  color: #d5007f;
+}
+
+.confidence-low {
+  color: #8b0000;
+}
+
+.debug-code-container pre {
+  border: 1px solid currentcolor;
+}
 
 /* ========================================
    COLOR DEFINITIONS
    ======================================== */
 
-/* Feature 4: Diagram Text Extraction Colours */
-.mathpix-diagram-text-section {
-  background: #e3f2fd;
-  border: 1px solid #90caf9;
+.status-value-privacy {
+  color: #005051;
 }
 
-.mathpix-diagram-text-toggle {
-  background: #fffff4;
-  color: #00131d;
-  border: 2px solid #00131d;
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .mathpix-status-indicator {
+    border-width: 2px;
+    border-color: currentColor;
+  }
 }
 
-.mathpix-diagram-text-toggle:hover {
-  background: #005c84;
-  color: #fffff4;
+/* ============================================
+   COLOURS - Regional Endpoint Selection
+   ============================================ */
+
+/* Format unavailable message - replaces title tooltip for better styling */
+.format-unavailable-message {
+  color: #d5007f;
+}
+
+.endpoint-option {
+  border: 1px solid #00131d;
+  background: #e1e8ec;
+}
+
+.endpoint-option:hover {
   border-color: #005c84;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.endpoint-option:has(input:checked) {
+  border-color: #005c84;
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.feature-note {
+  color: #d5007f;
 }
 
 .mathpix-diagram-text-content {
@@ -36,35 +146,29 @@
 }
 
 .diagram-text-intro .help-text {
-  color: #00131d;
+  color: currentcolor;
 }
 
 .diagram-card {
-  background: #fffff4;
-  border: 1px solid #00131d;
+  border: 1px solid currentcolor;
   box-shadow: 0 2px 8px rgba(0, 19, 29, 0.1);
 }
 
-.diagram-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
-  border-color: #005c84;
-}
-
 .diagram-card-header {
-  background: #e8f4f8;
-  border-bottom: 1px solid #00131d;
+  background: #e1e8ec;
+  border-bottom: 1px solid currentcolor;
 }
 
 .diagram-card-title {
-  color: #00131d;
+  color: currentcolor;
 }
 
 .diagram-page {
-  color: #005c84;
+  color: currentcolor;
 }
 
 .diagram-stats {
-  color: #666;
+  color: currentcolor;
 }
 
 .stat-value {
@@ -74,23 +178,10 @@
 
 .diagram-card-footer {
   background: #fffff4;
-  border-top: 1px solid #e1e8ec;
-}
-
-.diagram-copy-btn {
-  background: #fffff4;
-  color: #00131d;
-  border: 2px solid #00131d;
-}
-
-.diagram-copy-btn:hover {
-  background: #005c84;
-  color: #fffff4;
-  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.2);
+  border-top: 0px solid #e1e8ec;
 }
 
 .text-elements-list {
-  border: 1px solid #e1e8ec;
   background: #fffff4;
 }
 
@@ -103,13 +194,12 @@
 }
 
 .diagram-count {
-  color: #005c84;
+  color: currentcolor;
 }
 
 .mathpix-diagram-text-empty {
   background: #fffff4;
-  border: 2px dashed #e1e8ec;
-  color: #6c757d;
+  color: #495961;
 }
 
 @media (prefers-contrast: high) {
@@ -3078,10 +3168,6 @@ input#custom-height {
   transition: all 0.2s ease;
 }
 
-.mathpix-nav-button:hover:not(:disabled) {
-  /* hover effects handled by colour section */
-}
-
 .mathpix-nav-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
@@ -3365,10 +3451,6 @@ input#custom-height {
   transition: all 0.2s ease;
 }
 
-.diagram-card:hover {
-  transform: translateY(-2px);
-}
-
 /* Card Header */
 .diagram-card-header {
   padding: 1rem;
@@ -3562,5 +3644,366 @@ input#custom-height {
     break-inside: avoid;
     page-break-inside: avoid;
     box-shadow: none;
+  }
+}
+
+/* ============================================
+   LAYOUT - Regional Endpoint Selection
+   ============================================ */
+
+.endpoint-selector {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.endpoint-options {
+  display: flex;
+  gap: 1rem;
+}
+
+.endpoint-option {
+  padding: 1rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.endpoint-option input[type="radio"] {
+  margin-right: 0.5rem;
+}
+
+.endpoint-option label {
+  display: block;
+  cursor: pointer;
+}
+
+.endpoint-location {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: normal;
+  margin-top: 0.25rem;
+}
+
+.endpoint-description {
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+/* Format unavailable message - replaces title tooltip for better styling */
+.format-unavailable-message {
+  display: block;
+  font-size: 0.75rem;
+  font-style: italic;
+  margin-top: 0.25rem;
+  line-height: 1.2;
+}
+
+/* Ensure unavailable formats are visually distinct */
+.format-unavailable {
+  opacity: 0.6;
+}
+
+.format-unavailable .format-label {
+  text-decoration: line-through;
+}
+
+.mathpix-status-indicator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 1rem 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding-block: 0.35em 0.625em;
+  padding-inline: 0.75em;
+  border: 1px solid #495961;
+}
+
+.status-item-mp {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0; /* Allow text truncation if needed */
+}
+
+/* Responsive layout - stack items on small screens */
+@media (max-width: 600px) {
+  .mathpix-status-indicator {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .status-item-mp {
+    width: 100%;
+  }
+}
+
+/* Print styles - hide status indicator */
+@media print {
+  .mathpix-status-indicator {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   MATHPIX HEADER ROW
+   Container for mode switcher and status indicator
+   ============================================================================ */
+
+.mathpix-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+
+  margin-bottom: 1rem;
+}
+
+/* Mode switcher takes available space */
+.mathpix-header-row .mathpix-mode-switcher {
+  flex: 1 1 auto;
+  min-width: 280px; /* Ensure it doesn't get too narrow */
+  margin: 0; /* Remove default margin since container handles spacing */
+}
+
+/* Status indicator aligns to the right when space allows */
+.mathpix-header-row .mathpix-status-indicator {
+  flex: 0 1 auto;
+  margin: 0; /* Remove default margin since container handles spacing */
+}
+
+/* Stack vertically on smaller screens */
+@media (max-width: 768px) {
+  .mathpix-header-row {
+    flex-direction: column;
+  }
+
+  .mathpix-header-row .mathpix-mode-switcher,
+  .mathpix-header-row .mathpix-status-indicator {
+    width: 100%;
+  }
+}
+/* Debug panel */
+
+@media (prefers-contrast: high) {
+  .mathpix-debug-panel {
+    border-width: 2px;
+  }
+
+  .debug-code-container .code-copy-button {
+    border-width: 2px;
+  }
+}
+
+/* Structural/Layout Properties */
+.mathpix-debug-panel {
+  margin-top: 2rem;
+  border-radius: 8px;
+}
+
+.debug-panel-summary {
+  padding: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.debug-panel-summary:focus {
+  outline-offset: -2px;
+}
+
+.debug-panel-content {
+  padding: 1.5rem;
+}
+
+.debug-section {
+  margin-bottom: 2rem;
+}
+
+.debug-section:last-child {
+  margin-bottom: 0;
+}
+
+.debug-section h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.debug-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.debug-stats dt {
+  font-weight: 600;
+}
+
+.debug-stats dd {
+  margin: 0;
+  font-family: "Courier New", monospace;
+}
+
+.confidence-high {
+  font-weight: 600;
+}
+
+.confidence-medium {
+  font-weight: 600;
+}
+
+.confidence-low {
+  font-weight: 600;
+}
+
+.debug-code-container {
+  position: relative;
+  margin-top: 0.75rem;
+}
+
+.debug-code-container .code-copy-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 1.5rem;
+  z-index: 10;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.debug-code-container .code-copy-button:focus {
+  outline-offset: 2px;
+}
+
+.debug-code-container pre {
+  max-height: 400px;
+  overflow: auto;
+  margin: 0;
+  padding: 1rem;
+  padding-top: 3rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.debug-code-container code {
+  font-family: "Courier New", monospace;
+}
+
+@media (max-width: 768px) {
+  .debug-stats {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .debug-stats dt {
+    margin-top: 0.75rem;
+  }
+
+  .debug-stats dt:first-child {
+    margin-top: 0;
+  }
+
+  .debug-code-container pre {
+    max-height: 300px;
+    font-size: 0.8rem;
+  }
+
+  .debug-panel-content {
+    padding: 1rem;
+  }
+
+  .debug-section {
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .debug-panel-summary {
+    font-weight: 700;
+  }
+}
+
+@media print {
+  .mathpix-debug-panel {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .debug-panel-summary {
+    display: none;
+  }
+
+  .debug-panel-content {
+    display: block !important;
+  }
+
+  .debug-code-container .code-copy-button {
+    display: none;
+  }
+
+  .debug-code-container pre {
+    max-height: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .debug-panel-summary:hover,
+  .debug-code-container .code-copy-button {
+    transition: none;
+  }
+}
+
+/* Hide canvas size buttons when viewport is too small */
+
+/* Hide Extra Large (1000×500) below 1100px width */
+@media (max-width: 1099px) {
+  #mathpix-draw-xlarge-canvas-btn {
+    display: none;
+  }
+}
+
+/* Hide Large (800×400) below 900px width */
+@media (max-width: 899px) {
+  #mathpix-draw-large-canvas-btn {
+    display: none;
+  }
+}
+
+/* Hide Medium (600×300) below 700px width */
+@media (max-width: 699px) {
+  #mathpix-draw-medium-canvas-btn {
+    display: none;
+  }
+}
+
+/* Hide Small (400×200) below 500px width */
+@media (max-width: 499px) {
+  #mathpix-draw-small-canvas-btn {
+    display: none;
+  }
+}
+
+/* Custom Size button handling */
+@media (max-width: 499px) {
+  #mathpix-custom-size-btn {
+    /* Keep visible but consider adding warning in the custom size modal */
+    display: block;
+  }
+}
+
+/* Optional: Add visual indicator for viewport constraints */
+@media (max-width: 899px) {
+  .mathpix-canvas-size-controls::after {
+    content: "Size options limited by viewport width";
+    display: block;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    font-style: italic;
   }
 }
