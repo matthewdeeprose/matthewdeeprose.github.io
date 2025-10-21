@@ -178,6 +178,24 @@ class MathPixUIManager extends MathPixBaseModule {
       "mathpix-clear-canvas-btn",
       "mathpix-undo-stroke-btn",
       "mathpix-submit-strokes-btn",
+      // Phase 1D: Camera Capture Elements
+      "mathpix-camera-container",
+      "mathpix-camera-mode-radio",
+      "mathpix-camera-video",
+      // Phase 1E: Camera Control Buttons
+      "mathpix-start-camera-btn",
+      "mathpix-capture-photo-btn",
+      "mathpix-switch-camera-btn",
+      "mathpix-rotate-capture-btn",
+      "mathpix-camera-status",
+      // Phase 1F: Mirror Toggle Button
+      "mathpix-mirror-toggle-btn",
+      // Phase 1F.2: Preview Transform Controls
+      "mathpix-transform-controls",
+      "mathpix-rotate-preview-btn",
+      "mathpix-flip-preview-btn",
+      "mathpix-transform-state",
+      "mathpix-image-preview",
     ];
 
     // Cache basic elements with standardised naming
@@ -751,12 +769,62 @@ class MathPixUIManager extends MathPixBaseModule {
       );
     }
 
+    // Phase 1D: Camera mode radio button handler
+    if (this.controller.elements["camera-mode-radio"]) {
+      const cameraModeHandler = async () => {
+        // Clear debug panel when switching modes
+        if (this.controller.clearDebugPanel) {
+          this.controller.clearDebugPanel();
+        }
+
+        // Initialize camera system FIRST if needed (creates modeSwitcher)
+        if (
+          !this.controller.cameraCapture &&
+          this.controller.initCameraSystem
+        ) {
+          try {
+            await this.controller.initCameraSystem();
+            logDebug(
+              "Camera system initialised on first camera mode activation"
+            );
+          } catch (err) {
+            logError("Failed to initialise camera system:", err);
+            this.showNotification(
+              "Failed to initialise camera system",
+              "error"
+            );
+            return; // Don't continue if initialization failed
+          }
+        }
+
+        // NOW switch to camera mode (modeSwitcher exists now)
+        if (this.controller.modeSwitcher) {
+          this.controller.modeSwitcher.switchToCameraMode();
+          logDebug("Switched to camera mode via UI");
+        } else {
+          logError("Mode switcher not available after initialization");
+          this.showNotification("Camera mode unavailable", "error");
+        }
+      };
+
+      this.controller.elements["camera-mode-radio"].addEventListener(
+        "change",
+        cameraModeHandler
+      );
+      this.trackEventListener(
+        this.controller.elements["camera-mode-radio"],
+        "change",
+        cameraModeHandler
+      );
+    }
+
     logDebug("Canvas control handlers attached", {
       clearBtn: !!this.controller.elements["clear-canvas-btn"],
       undoBtn: !!this.controller.elements["undo-stroke-btn"],
       submitBtn: !!this.controller.elements["submit-strokes-btn"],
       uploadRadio: !!this.controller.elements["upload-mode-radio"],
       drawRadio: !!this.controller.elements["draw-mode-radio"],
+      cameraRadio: !!this.controller.elements["camera-mode-radio"],
     });
   }
 
@@ -766,6 +834,8 @@ class MathPixUIManager extends MathPixBaseModule {
    * Attaches event listeners for canvas size control buttons (Small, Medium, Large, Extra Large).
    * Delegates resize operations to the strokes canvas instance via the controller.
    * Phase 2A: Canvas resize system integration.
+   * Phase 2B.1: Enhanced with "Fit to Width" intelligent sizing support.
+   * Phase 2B.2: Enhanced with "Fit to Viewport" maximum space utilisation.
    *
    * @returns {void}
    * @private
@@ -776,6 +846,8 @@ class MathPixUIManager extends MathPixBaseModule {
    * - Active state communicated via aria-pressed attribute
    * - User feedback via notification system
    * @since Phase 2A
+   * @updated Phase 2B.1 - Added fit-to-width functionality
+   * @updated Phase 2B.2 - Added fit-to-viewport functionality
    */
   attachCanvasSizeButtonListeners() {
     const sizeButtons = document.querySelectorAll(".mathpix-size-btn");
@@ -794,6 +866,67 @@ class MathPixUIManager extends MathPixBaseModule {
           return;
         }
 
+        // Handle fit-to-width button (Phase 2B.1)
+        if (button.id === "mathpix-fit-to-width-btn") {
+          if (!this.controller.strokesCanvas) {
+            this.showNotification("Canvas not initialised", "error");
+            logError("Attempted fit-to-width but canvas not initialised");
+            return;
+          }
+
+          logDebug("Fit to width button clicked - calling fitToWidth()");
+
+          const success = this.controller.strokesCanvas.fitToWidth();
+
+          if (success) {
+            this.showNotification(
+              "Canvas fitted to available width",
+              "success"
+            );
+            logDebug("Canvas successfully fitted to width via UI button");
+          } else {
+            this.showNotification(
+              "Fit to width not needed - already optimal",
+              "info"
+            );
+            logDebug("Fit to width skipped - canvas already near-optimal size");
+          }
+
+          return;
+        }
+
+        // Handle fit-to-viewport button (Phase 2B.2)
+        if (button.id === "mathpix-fit-to-viewport-btn") {
+          if (!this.controller.strokesCanvas) {
+            this.showNotification("Canvas not initialised", "error");
+            logError("Attempted fit-to-viewport but canvas not initialised");
+            return;
+          }
+
+          logDebug("Fit to viewport button clicked - calling fitToViewport()");
+
+          const success = this.controller.strokesCanvas.fitToViewport();
+
+          if (success) {
+            this.showNotification(
+              "Canvas fitted to maximum viewport space",
+              "success"
+            );
+            logDebug("Canvas successfully fitted to viewport via UI button");
+          } else {
+            this.showNotification(
+              "Fit to viewport not needed - already maximised",
+              "info"
+            );
+            logDebug(
+              "Fit to viewport skipped - canvas already near-optimal size"
+            );
+          }
+
+          return;
+        }
+
+        // Handle preset size buttons (small, medium, large, xlarge)
         if (!this.controller.strokesCanvas) {
           this.showNotification("Canvas not initialised", "error");
           logError("Attempted resize but canvas not initialised");
@@ -816,7 +949,7 @@ class MathPixUIManager extends MathPixBaseModule {
     });
 
     logDebug(
-      `Canvas size button listeners attached: ${sizeButtons.length} buttons`
+      `Canvas size button listeners attached: ${sizeButtons.length} buttons (including fit buttons)`
     );
   }
 
@@ -1974,7 +2107,7 @@ class MathPixUIManager extends MathPixBaseModule {
           You are switching from the <strong>EU endpoint</strong> to the 
           <strong>${targetConfig.name} endpoint</strong> (${targetConfig.location}).
         </p>
-        <div class="warning-box" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; margin: 1rem 0;">
+        <div class="warning-box">
           <p style="margin: 0 0 0.5rem 0;"><strong>⚠️ Important:</strong></p>
           <p style="margin: 0;">
             Data processed on non-EU servers may not comply with GDPR requirements. 

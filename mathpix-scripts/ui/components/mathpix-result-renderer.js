@@ -64,8 +64,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
   /**
    * Display multi-format processing result
    * @param {Object} result - Processing result from MathPix API
+   * @param {File} [originalFile] - Original/transformed file for comparison view (Phase 1F.2)
    */
-  displayResult(result) {
+  displayResult(result, originalFile) {
     logInfo("=== displayResult CALLED ===", {
       resultExists: !!result,
       resultKeys: result ? Object.keys(result) : [],
@@ -194,13 +195,27 @@ class MathPixResultRenderer extends MathPixBaseModule {
       this.elements.htmlPreview.innerHTML = result.html;
     }
 
-    // Phase 3 MVP: Display responsive visual comparison
-    if (
+    // Phase 1F.2: Display responsive visual comparison with transformed file
+    // Use passed originalFile parameter (which may be transformed) for comparison
+    if (originalFile) {
+      logInfo("Creating responsive visual comparison", {
+        originalFile:
+          originalFile instanceof File
+            ? originalFile.name
+            : typeof originalFile,
+        hasLatex: !!result.latex,
+        confidence: result.confidence,
+        resultFormats: Object.keys(result).filter((key) => result[key]),
+      });
+      this.displayResponsiveComparison(originalFile, result);
+    } else if (
       this.controller.fileHandler &&
-      this.controller.fileHandler.getCurrentFile()
+      this.controller.fileHandler.currentUploadedFile
     ) {
+      // Fallback: Use current uploaded file directly (synchronous access)
+      logWarn("No originalFile provided, using currentUploadedFile directly");
       this.displayResponsiveComparison(
-        this.controller.fileHandler.getCurrentFile(),
+        this.controller.fileHandler.currentUploadedFile,
         result
       );
     }

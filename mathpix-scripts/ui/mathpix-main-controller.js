@@ -111,6 +111,9 @@ import MathPixStrokesCanvas from "../core/mathpix-strokes-canvas.js";
 import MathPixStrokesAPIClient from "../core/mathpix-strokes-api-client.js";
 import MathPixModeSwitcher from "./components/mathpix-mode-switcher.js";
 
+// Phase 1D: Camera capture system
+import MathPixCameraCapture from "../core/mathpix-camera-capture.js";
+
 /**
  * @class MathPixController
  * @description Central controller for MathPix mathematics OCR system
@@ -178,6 +181,9 @@ class MathPixController {
     this.strokesAPIClient = new MathPixStrokesAPIClient();
     this.modeSwitcher = null; // Initialized when HTML elements are ready
 
+    // Phase 1D: Camera capture system
+    this.cameraCapture = null; // Initialized on demand when user switches to camera mode
+
     // Phase 5: Total Downloader system
     this.downloadManager = null; // Initialized in init() method
 
@@ -186,7 +192,7 @@ class MathPixController {
     this.isInitialised = false;
 
     logInfo(
-      "MathPixController created with modular architecture including Phase 3.1 content analysis, Phase 1C strokes system, and Phase 5 download system"
+      "MathPixController created with modular architecture including Phase 3.1 content analysis, Phase 1C strokes system, Phase 1D camera system, and Phase 5 download system"
     );
   }
 
@@ -251,9 +257,35 @@ class MathPixController {
         logWarn("⚠ MathPixDownloadManager not available");
       }
 
+      // Phase 1D: Initialize mode switcher for upload/draw/camera toggle
+      if (
+        this.elements["upload-container"] &&
+        this.elements["draw-container"] &&
+        this.elements["camera-container"]
+      ) {
+        this.modeSwitcher = new MathPixModeSwitcher(this);
+        this.modeSwitcher
+          .initialise({
+            uploadContainer: this.elements["upload-container"],
+            drawContainer: this.elements["draw-container"],
+            cameraContainer: this.elements["camera-container"],
+            uploadRadio: this.elements["upload-mode-radio"],
+            drawRadio: this.elements["draw-mode-radio"],
+            cameraRadio: this.elements["camera-mode-radio"],
+          })
+          .then(() => {
+            logInfo("✓ Mode switcher initialised with three-mode support");
+          })
+          .catch((err) => {
+            logError("Mode switcher initialisation failed", err);
+          });
+      } else {
+        logWarn("⚠ Mode switcher not initialised - missing container elements");
+      }
+
       this.isInitialised = true;
       logInfo(
-        "MathPixController initialised successfully with endpoint management and download system"
+        "MathPixController initialised successfully with endpoint management, download system, and mode switcher"
       );
       return true;
     } catch (error) {
@@ -779,14 +811,19 @@ class MathPixController {
    * @description Delegates result display to result renderer and shows download button
    *
    * @param {Object} result - Processing result from MathPix API
+   * @param {File} [originalFile] - Original file for comparison view (Phase 1F.2)
    * @returns {void}
    * @see {@link MathPixResultRenderer#displayResult}
    * @since 1.0.0
    * @updated Phase 5 - Added download button integration
+   * @updated Phase 1F.2 - Added originalFile parameter for comparison view
    */
-  displayResult(result) {
-    // Delegate to result renderer
-    const renderResult = this.resultRenderer.displayResult(result);
+  displayResult(result, originalFile) {
+    // Delegate to result renderer with file for comparison
+    const renderResult = this.resultRenderer.displayResult(
+      result,
+      originalFile
+    );
 
     // Show download button (Phase 5)
     if (this.downloadManager && result) {
@@ -1769,19 +1806,36 @@ class MathPixController {
     }
 
     try {
+      // Step 4C: Get file with transforms applied (if any)
+      // This ensures WYSIWYG - what user sees in preview is what gets processed
+      logInfo("Retrieving file for processing (with transforms if applicable)");
+      const fileToProcess = await this.fileHandler.getCurrentFile();
+
+      if (!fileToProcess) {
+        logError("No file available for processing");
+        this.showNotification("No file available for processing", "error");
+        return;
+      }
+
+      logInfo("File retrieved for processing", {
+        originalName: file?.name,
+        processName: fileToProcess.name,
+        hasTransforms: fileToProcess.name.includes("-transformed"),
+      });
+
       // Step 1: Request privacy consent with configuration toggle support
       logInfo("Requesting privacy consent for confirmed file processing");
       const consentGranted = await this.privacyManager.requestProcessingConsent(
         {
-          name: file.name,
-          size: file.size,
-          type: file.type,
+          name: fileToProcess.name,
+          size: fileToProcess.size,
+          type: fileToProcess.type,
         }
       );
 
       if (!consentGranted) {
         logInfo("Processing cancelled - user declined consent", {
-          fileName: file.name,
+          fileName: fileToProcess.name,
         });
         this.showNotification(
           "Processing cancelled. Your file was not uploaded or processed.",
@@ -1791,26 +1845,26 @@ class MathPixController {
       }
 
       logInfo("Privacy consent granted, proceeding with processing", {
-        fileName: file.name,
+        fileName: fileToProcess.name,
         consentStatus: this.privacyManager.getConsentStatus(),
       });
 
       // Step 2: Start progress display
       this.progressDisplay.startProgress({
-        name: file.name,
-        size: file.size,
-        type: file.type,
+        name: fileToProcess.name,
+        size: fileToProcess.size,
+        type: fileToProcess.type,
       });
 
-      // Step 3: Process file with progress callbacks
+      // Step 3: Process file with progress callbacks (using transformed file if applicable)
       const result = await this.apiClient.processImage(
-        file,
+        fileToProcess,
         {},
         this.progressDisplay
       );
 
-      // Step 4: Display result with cleanup
-      this.displayResult(result);
+      // Step 4: Display result with cleanup (pass processed file for comparison view)
+      this.displayResult(result, fileToProcess);
 
       // Step 5: Update debug panel with API transaction data
       this.updateDebugPanel();
@@ -1819,7 +1873,7 @@ class MathPixController {
       this.progressDisplay.complete(true, result);
 
       logInfo("Confirmed file processing completed successfully", {
-        fileName: file.name,
+        fileName: fileToProcess.name,
         availableFormats: Object.keys(result).filter(
           (key) =>
             result[key] && typeof result[key] === "string" && result[key].trim()
@@ -1929,6 +1983,121 @@ class MathPixController {
       logError("Failed to initialise strokes system", error);
       this.showNotification(
         "Failed to initialise drawing canvas. Please refresh the page.",
+        "error"
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Initialize Camera Capture System
+   * Lazy initialization when user switches to camera mode for first time
+   * @returns {Promise<boolean>} True if initialization successful
+   * @since Phase 1E
+   */
+  async initCameraSystem() {
+    logInfo("Initializing Camera Capture System...");
+
+    if (this.cameraCapture) {
+      logDebug("Camera system already initialized");
+      return true;
+    }
+
+    try {
+      // Get video element
+      const videoElement = this.elements["camera-video"];
+      if (!videoElement) {
+        throw new Error("Camera video element not found");
+      }
+
+      // Create camera capture instance
+      this.cameraCapture = new MathPixCameraCapture(this);
+
+      // Initialize with video element
+      const success = await this.cameraCapture.initialise(videoElement);
+
+      if (success) {
+        logInfo("Camera system initialized successfully");
+        return true;
+      } else {
+        throw new Error("Camera initialization returned false");
+      }
+    } catch (error) {
+      logError("Failed to initialize camera system", {
+        error: error.message,
+        stack: error.stack,
+      });
+      this.showNotification(
+        "Failed to initialize camera. Please check browser permissions or use file upload instead.",
+        "error"
+      );
+      return false;
+    }
+  }
+
+  /**
+   * @method initCameraSystem
+   * @description Initialises the camera capture system for photography input
+   *
+   * Called when user switches to camera mode for the first time. Sets up camera
+   * capture, attaches event listeners, and initialises mode switcher
+   * for upload/draw/camera toggle functionality.
+   *
+   * @returns {Promise<boolean>} True if initialisation successful
+   * @throws {Error} If camera elements not found or initialisation fails
+   *
+   * @example
+   * const success = await controller.initCameraSystem();
+   * if (success) {
+   *   console.log('Camera system ready for photo capture');
+   * }
+   *
+   * @accessibility Camera includes alternative upload mode for keyboard users
+   * @since Phase 1D
+   */
+  async initCameraSystem() {
+    logInfo("Initialising camera system for photo capture");
+
+    try {
+      // Find camera video element
+      const videoElement = this.elements["camera-video"];
+      if (!videoElement) {
+        logError("Camera video element not found in DOM - HTML not yet added");
+        return false;
+      }
+
+      // Initialize camera capture if not already done
+      if (!this.cameraCapture) {
+        this.cameraCapture = new MathPixCameraCapture(this);
+        await this.cameraCapture.initialise(videoElement);
+        logInfo("Camera capture initialised successfully");
+      }
+
+      // Initialize mode switcher if not already done
+      if (!this.modeSwitcher) {
+        this.modeSwitcher = new MathPixModeSwitcher(this);
+        await this.modeSwitcher.initialise({
+          uploadContainer: this.elements["upload-container"],
+          drawContainer: this.elements["draw-container"],
+          cameraContainer: this.elements["camera-container"],
+          uploadRadio: this.elements["upload-mode-radio"],
+          drawRadio: this.elements["draw-mode-radio"],
+          cameraRadio: this.elements["camera-mode-radio"],
+        });
+        logInfo("Mode switcher initialised with camera support");
+      }
+
+      logInfo("Camera system initialisation complete", {
+        cameraReady: this.cameraCapture?.isInitialised,
+        modeSwitcherReady: this.modeSwitcher?.isInitialised,
+        videoElementFound: !!videoElement,
+      });
+
+      return true;
+    } catch (error) {
+      logError("Failed to initialise camera system", error);
+      this.showNotification(
+        "Failed to initialise camera. Please refresh the page.",
         "error"
       );
       return false;
@@ -2360,24 +2529,26 @@ class MathPixController {
 
   /**
    * @method onModeChange
-   * @description Callback for mode switcher changes (upload/draw toggle)
+   * @description Callback for mode switcher changes (upload/draw/camera toggle)
    *
-   * Called when user switches between upload and draw modes. Handles lazy
-   * initialisation of strokes system when draw mode is activated.
+   * Called when user switches between modes. Handles lazy initialisation of
+   * strokes system (draw mode) and camera system (camera mode).
    *
-   * @param {string} newMode - New mode ('upload' or 'draw')
+   * @param {string} newMode - New mode ('upload', 'draw', or 'camera')
    * @returns {void}
    *
    * @example
    * // Called automatically by mode switcher
-   * controller.onModeChange('draw');
+   * controller.onModeChange('camera');
    *
    * @since Phase 1C
+   * @updated Phase 1D - Added camera mode support
    */
   onModeChange(newMode) {
     logInfo("Input mode changed", {
       newMode,
       strokesSystemReady: !!this.strokesCanvas,
+      cameraSystemReady: !!this.cameraCapture,
     });
 
     if (newMode === "draw") {
@@ -2396,6 +2567,29 @@ class MathPixController {
           .catch((err) => {
             logError("Strokes system initialisation error on mode change", err);
           });
+      }
+    } else if (newMode === "camera") {
+      // Initialize camera system if switching to camera mode for first time
+      if (!this.cameraCapture && this.elements["camera-video"]) {
+        this.initCameraSystem()
+          .then((success) => {
+            if (success) {
+              logInfo(
+                "Camera system initialised on first camera mode activation"
+              );
+            } else {
+              logError("Failed to initialise camera system on mode change");
+            }
+          })
+          .catch((err) => {
+            logError("Camera system initialisation error on mode change", err);
+          });
+      }
+    } else if (newMode === "upload") {
+      // Stop camera if returning to upload mode
+      if (this.cameraCapture && this.cameraCapture.isCameraActive) {
+        this.cameraCapture.stopCamera();
+        logInfo("Camera stopped when switching to upload mode");
       }
     }
   }
@@ -2689,6 +2883,161 @@ window.copyMathPixDebugData = function (section) {
     console.error("JSON formatting failed:", error);
     controller.showNotification("Failed to format data for copying", "error");
   }
+};
+
+// =============================================================================
+// PHASE 1D: GLOBAL CAMERA FUNCTIONS (FOR HTML EVENT HANDLERS)
+// =============================================================================
+
+/**
+ * Toggles the camera between start and stop states (Phase 1F)
+ * Called by "Start Camera" / "Stop Camera" button onclick handler
+ * Smart toggle: starts camera if inactive, stops camera if active
+ * @global
+ */
+window.startMathPixCamera = async function () {
+  const controller = window.getMathPixController();
+  if (!controller) {
+    console.error("MathPix controller not initialised");
+    return;
+  }
+
+  if (!controller.cameraCapture) {
+    console.error("Camera system not initialised");
+    controller.showNotification("Camera system not ready", "error");
+    return;
+  }
+
+  // Phase 1F: Toggle between start and stop based on current state
+  if (controller.cameraCapture.isCameraActive) {
+    // Camera is active → Stop it
+    controller.cameraCapture.stopCamera();
+  } else {
+    // Camera is inactive → Start it
+    await controller.cameraCapture.startCamera();
+  }
+};
+
+/**
+ * Captures a photo from the camera and routes to upload workflow
+ * Called by "Capture Photo" button onclick handler
+ * @global
+ */
+window.handleMathPixCameraCapture = async function () {
+  const controller = window.getMathPixController();
+  if (!controller) {
+    console.error("MathPix controller not initialised");
+    return;
+  }
+
+  if (!controller.cameraCapture) {
+    console.error("Camera system not initialised");
+    return;
+  }
+
+  try {
+    // Capture photo as File object
+    const photoFile = await controller.cameraCapture.capturePhoto();
+
+    // Switch to upload mode to show preview
+    if (controller.modeSwitcher) {
+      controller.modeSwitcher.switchToUploadMode();
+    }
+
+    // Route through standard upload workflow
+    await controller.fileHandler.handleUpload(photoFile);
+
+    controller.showNotification("Photo captured successfully!", "success");
+  } catch (error) {
+    console.error("Camera capture failed:", error);
+    controller.showNotification(
+      `Photo capture failed: ${error.message}`,
+      "error"
+    );
+  }
+};
+
+/**
+ * Switches between front and rear cameras (mobile)
+ * Called by "Switch Camera" button onclick handler
+ * @global
+ */
+window.switchMathPixCamera = async function () {
+  const controller = window.getMathPixController();
+  if (!controller || !controller.cameraCapture) {
+    return;
+  }
+
+  await controller.cameraCapture.switchCamera();
+};
+
+/**
+ * Rotates the camera capture orientation
+ * Called by "Rotate" button onclick handler
+ * @global
+ */
+window.rotateMathPixCapture = function () {
+  const controller = window.getMathPixController();
+  if (!controller || !controller.cameraCapture) {
+    return;
+  }
+
+  controller.cameraCapture.rotateCapture();
+};
+
+/**
+ * Toggles the camera preview mirroring (Phase 1F)
+ * Called by "Mirror Preview" button onclick handler
+ * @global
+ */
+window.toggleMathPixCameraMirror = function () {
+  const controller = window.getMathPixController();
+  if (!controller || !controller.cameraCapture) {
+    console.warn(
+      "[MathPix Camera] Mirror toggle unavailable - camera not initialised"
+    );
+    return;
+  }
+
+  controller.cameraCapture.toggleMirror();
+};
+
+/**
+ * Rotates the captured image preview 90° clockwise (Phase 1F.2)
+ * Called by "Rotate Preview" button onclick handler
+ * Applies CSS transform for instant visual feedback
+ * Actual canvas rotation occurs during processing
+ * @global
+ */
+window.rotateMathPixPreview = function () {
+  const controller = window.getMathPixController();
+  if (!controller || !controller.fileHandler) {
+    console.warn(
+      "[MathPix Preview] Rotate unavailable - file handler not initialised"
+    );
+    return;
+  }
+
+  controller.fileHandler.rotatePreview();
+};
+
+/**
+ * Flips the captured image preview horizontally (Phase 1F.2)
+ * Called by "Flip Preview" button onclick handler
+ * Applies CSS transform for instant visual feedback
+ * Actual canvas flip occurs during processing
+ * @global
+ */
+window.flipMathPixPreview = function () {
+  const controller = window.getMathPixController();
+  if (!controller || !controller.fileHandler) {
+    console.warn(
+      "[MathPix Preview] Flip unavailable - file handler not initialised"
+    );
+    return;
+  }
+
+  controller.fileHandler.flipPreview();
 };
 
 // =============================================================================

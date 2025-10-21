@@ -97,6 +97,7 @@ function logDebug(message, ...args) {
 
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
+import MathPixImageTransformer from "../../core/mathpix-image-transformer.js";
 
 /**
  * @class MathPixFileHandler
@@ -162,6 +163,27 @@ class MathPixFileHandler extends MathPixBaseModule {
      */
     this.currentFileBlob = null;
 
+    /**
+     * @member {Object} previewTransforms
+     * @description Tracks preview transform state for camera-captured images
+     * @property {number} rotation - Current rotation in degrees (0, 90, 180, 270)
+     * @property {boolean} flipped - Whether image is horizontally flipped
+     * @property {boolean} hasTransforms - Whether any transforms are pending application
+     * @property {File|null} transformedFile - Regenerated file after canvas transforms (null until processing)
+     */
+    this.previewTransforms = {
+      rotation: 0,
+      flipped: false,
+      hasTransforms: false,
+      transformedFile: null,
+    };
+
+    /**
+     * @member {MathPixImageTransformer} imageTransformer
+     * @description Image transformer for applying canvas-based transforms
+     */
+    this.imageTransformer = new MathPixImageTransformer(this.controller);
+
     this.isInitialised = true;
 
     logInfo("MathPix File Handler initialised", {
@@ -208,12 +230,21 @@ class MathPixFileHandler extends MathPixBaseModule {
       // Store current file for preview and processing
       this.currentUploadedFile = file;
 
+      // Reset transform state for new file
+      this.resetTransformState();
+
       // UNIFIED DROP ZONE: Hide PDF interface when switching to image processing
       this.hidePDFInterfaceForImageUpload();
 
       // Generate responsive image preview for visual files
       if (file.type.startsWith("image/")) {
         this.displayResponsiveImagePreview(file);
+
+        // Show transform controls for camera-captured images
+        this.updateTransformControlsVisibility();
+
+        // Apply initial mirror state if from camera
+        this.applyInitialMirrorState();
       }
 
       // Verify API credentials are configured before offering processing
@@ -390,12 +421,15 @@ class MathPixFileHandler extends MathPixBaseModule {
         );
       }
 
-// Display preview container with responsive layout
+      // Display preview container with responsive layout
       previewContainer.style.display = "block";
       this.controller.elements.imagePreviewContainer = previewContainer;
 
       // Phase 2: Show processing options panel with saved preferences
-      if (this.controller.uiManager && this.controller.uiManager.showProcessingOptions) {
+      if (
+        this.controller.uiManager &&
+        this.controller.uiManager.showProcessingOptions
+      ) {
         this.controller.uiManager.showProcessingOptions();
         logDebug("Processing options panel shown with image preview");
       }
@@ -633,7 +667,7 @@ Process with MathPix
    *
    * @since 1.0.0
    */
-cleanup() {
+  cleanup() {
     // Release blob URLs to prevent memory leaks
     if (this.currentFileBlob) {
       URL.revokeObjectURL(this.currentFileBlob);
@@ -652,7 +686,10 @@ cleanup() {
     }
 
     // Phase 2: Hide processing options panel when cleaning up
-    if (this.controller.uiManager && this.controller.uiManager.hideProcessingOptions) {
+    if (
+      this.controller.uiManager &&
+      this.controller.uiManager.hideProcessingOptions
+    ) {
       this.controller.uiManager.hideProcessingOptions();
       logDebug("Processing options panel hidden during cleanup");
     }
@@ -664,19 +701,75 @@ cleanup() {
 
   /**
    * @method getCurrentFile
-   * @description Retrieves currently loaded file reference
+   * @description Retrieves currently loaded file reference with transform application
    *
-   * @returns {File|null} Current uploaded file or null if none loaded
+   * WYSIWYG Principle: If user has applied transforms to the preview (rotate/flip),
+   * this method applies those transforms to the actual file using canvas operations.
+   * The transformed file is cached to avoid redundant processing.
+   *
+   * @returns {Promise<File|null>} Current uploaded file (transformed if applicable) or null
    *
    * @example
-   * const currentFile = fileHandler.getCurrentFile();
+   * const currentFile = await fileHandler.getCurrentFile();
    * if (currentFile) {
    *   console.log('File loaded:', currentFile.name);
    * }
    *
    * @since 1.0.0
+   * @since 1.0.1 - Added async transform application for WYSIWYG behavior
    */
-  getCurrentFile() {
+  async getCurrentFile() {
+    // Return null if no file loaded
+    if (!this.currentUploadedFile) {
+      return null;
+    }
+
+    // Step 4C: Apply transforms if user has adjusted preview
+    if (this.previewTransforms.hasTransforms) {
+      // Use cached transformed file if already generated
+      if (this.previewTransforms.transformedFile) {
+        logDebug("Returning cached transformed file");
+        return this.previewTransforms.transformedFile;
+      }
+
+      // Apply canvas-based transforms to match preview
+      logInfo("Applying canvas transforms to file before processing", {
+        rotation: this.previewTransforms.rotation,
+        flipped: this.previewTransforms.flipped,
+      });
+
+      try {
+        const transformedFile = await this.imageTransformer.applyTransforms(
+          this.currentUploadedFile,
+          this.previewTransforms
+        );
+
+        // Cache transformed file to avoid redundant processing
+        this.previewTransforms.transformedFile = transformedFile;
+
+        logInfo("Canvas transforms applied successfully", {
+          originalName: this.currentUploadedFile.name,
+          transformedName: transformedFile.name,
+          originalSize: this.currentUploadedFile.size,
+          transformedSize: transformedFile.size,
+        });
+
+        this.showNotification("Preview transforms applied to file", "success");
+
+        return transformedFile;
+      } catch (error) {
+        logError("Failed to apply transforms to file", error);
+        this.showNotification(
+          `Transform application failed: ${error.message}. Using original file.`,
+          "warning"
+        );
+
+        // Fallback: return original file if transform fails
+        return this.currentUploadedFile;
+      }
+    }
+
+    // No transforms needed - return original file
     return this.currentUploadedFile;
   }
 
@@ -888,6 +981,215 @@ cleanup() {
     }, 1000);
 
     logDebug(`[MathPixFileHandler] Screen reader announcement: ${message}`);
+  }
+
+  /**
+   * @method resetTransformState
+   * @description Resets transform state to default values for new file
+   * @returns {void}
+   * @private
+   * @since 1.0.0
+   */
+  resetTransformState() {
+    this.previewTransforms = {
+      rotation: 0,
+      flipped: false,
+      hasTransforms: false,
+      transformedFile: null,
+    };
+    logDebug("Transform state reset");
+  }
+
+  /**
+   * @method updateTransformControlsVisibility
+   * @description Shows or hides transform controls based on file source
+   *
+   * Transform controls are only shown for camera-captured images to allow
+   * users to adjust orientation before processing. Uploaded files don't
+   * typically need these controls as users can rotate them before upload.
+   *
+   * @returns {void}
+   * @private
+   * @since 1.0.0
+   */
+  updateTransformControlsVisibility() {
+    const transformControls = this.controller.elements["transform-controls"];
+    if (!transformControls) {
+      logWarn("Transform controls element not found");
+      return;
+    }
+
+    const isCameraCapture =
+      this.currentUploadedFile?.captureMetadata?.source === "camera";
+
+    if (isCameraCapture) {
+      transformControls.style.display = "flex";
+      logDebug("Transform controls shown for camera capture");
+    } else {
+      transformControls.style.display = "none";
+      logDebug("Transform controls hidden for uploaded file");
+    }
+  }
+
+  /**
+   * @method applyInitialMirrorState
+   * @description Applies initial CSS transform if image was captured with mirrored preview
+   *
+   * When camera captures with mirrored preview (selfie mode), the captured image
+   * is un-mirrored by default. This method re-applies the mirror state so the
+   * preview matches what the user saw in the camera, maintaining WYSIWYG principle.
+   *
+   * @returns {void}
+   * @private
+   * @since 1.0.0
+   */
+  applyInitialMirrorState() {
+    const preview = this.controller.elements["image-preview"];
+    if (!preview || !this.currentUploadedFile?.captureMetadata) {
+      return;
+    }
+
+    const wasMirrored = this.currentUploadedFile.captureMetadata.wasMirrored;
+    if (wasMirrored) {
+      // Apply horizontal flip to match camera preview
+      this.previewTransforms.flipped = true;
+      this.previewTransforms.hasTransforms = true;
+      this.updatePreviewTransform();
+      this.updateTransformStateDisplay();
+      logInfo("Applied initial mirror state to preview");
+    }
+  }
+
+  /**
+   * @method rotatePreview
+   * @description Rotates preview image 90° clockwise using CSS transform
+   *
+   * Provides instant visual feedback by applying CSS transforms only.
+   * Actual canvas-based rotation is deferred until user clicks "Process".
+   * Rotation cycles through 0° → 90° → 180° → 270° → 0°.
+   *
+   * @returns {void}
+   * @public
+   * @since 1.0.0
+   */
+  rotatePreview() {
+    // Increment rotation by 90°, wrapping at 360°
+    this.previewTransforms.rotation =
+      (this.previewTransforms.rotation + 90) % 360;
+    this.previewTransforms.hasTransforms =
+      this.previewTransforms.rotation !== 0 || this.previewTransforms.flipped;
+
+    this.updatePreviewTransform();
+    this.updateTransformStateDisplay();
+
+    logInfo(`Preview rotated to ${this.previewTransforms.rotation}°`);
+    this.showNotification(
+      `Preview rotated to ${this.previewTransforms.rotation}°`,
+      "info"
+    );
+  }
+
+  /**
+   * @method flipPreview
+   * @description Flips preview image horizontally using CSS transform
+   *
+   * Provides instant visual feedback by applying CSS transforms only.
+   * Actual canvas-based flip is deferred until user clicks "Process".
+   * Flipping is a toggle operation (flip → unflip → flip).
+   *
+   * @returns {void}
+   * @public
+   * @since 1.0.0
+   */
+  flipPreview() {
+    // Toggle flip state
+    this.previewTransforms.flipped = !this.previewTransforms.flipped;
+    this.previewTransforms.hasTransforms =
+      this.previewTransforms.rotation !== 0 || this.previewTransforms.flipped;
+
+    this.updatePreviewTransform();
+    this.updateTransformStateDisplay();
+
+    const state = this.previewTransforms.flipped ? "flipped" : "unflipped";
+    logInfo(`Preview ${state} horizontally`);
+    this.showNotification(`Preview ${state} horizontally`, "info");
+  }
+
+  /**
+   * @method updatePreviewTransform
+   * @description Updates CSS transform on preview image element
+   *
+   * Combines rotation and flip transforms into a single CSS transform string.
+   * Order matters: rotation is applied before flip for correct visual result.
+   *
+   * @returns {void}
+   * @private
+   * @since 1.0.0
+   */
+  updatePreviewTransform() {
+    const preview = this.controller.elements["image-preview"];
+    if (!preview) {
+      logWarn("Image preview element not found");
+      return;
+    }
+
+    const cssTransform = this.imageTransformer.getCSSTransform(
+      this.previewTransforms.rotation,
+      this.previewTransforms.flipped
+    );
+
+    preview.style.transform = cssTransform;
+
+    // Phase 1F.2: Adjust image constraints for 90°/270° rotations
+    // When rotated 90° or 270°, the image dimensions are swapped
+    // We need to reduce max-width to prevent vertical overflow
+    const isRotatedVertical =
+      this.previewTransforms.rotation === 90 ||
+      this.previewTransforms.rotation === 270;
+
+    if (isRotatedVertical) {
+      // Swap dimensions: limit width more strictly for portrait orientation
+      preview.style.maxWidth = "250px";
+      preview.style.maxHeight = "400px";
+    } else {
+      // Normal landscape orientation
+      preview.style.maxWidth = "400px";
+      preview.style.maxHeight = "300px";
+    }
+
+    logDebug(`Applied CSS transform: ${cssTransform}`, {
+      rotation: this.previewTransforms.rotation,
+      isRotatedVertical,
+      maxWidth: preview.style.maxWidth,
+      maxHeight: preview.style.maxHeight,
+    });
+  }
+
+  /**
+   * @method updateTransformStateDisplay
+   * @description Updates transform state text display for user feedback
+   *
+   * Provides human-readable description of current transforms applied to preview.
+   * This helps users understand what adjustments have been made before processing.
+   *
+   * @returns {void}
+   * @private
+   * @since 1.0.0
+   */
+  updateTransformStateDisplay() {
+    const stateDisplay = this.controller.elements["transform-state"];
+    if (!stateDisplay) {
+      logWarn("Transform state display element not found");
+      return;
+    }
+
+    const description = this.imageTransformer.getTransformDescription(
+      this.previewTransforms.rotation,
+      this.previewTransforms.flipped
+    );
+
+    stateDisplay.textContent = description;
+    logDebug(`Transform state display updated: ${description}`);
   }
 }
 

@@ -305,10 +305,46 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
 
       // Intelligently select largest visible canvas size
       const intelligentSize = this.selectLargestVisibleSize();
-      this.resizeCanvas(intelligentSize, false);
-      logInfo(
-        `Canvas initialised with intelligent size selection: ${intelligentSize} (${window.innerWidth}×${window.innerHeight}px viewport)`
-      );
+
+      if (intelligentSize === null) {
+        // Viewport too small for presets - use auto-fit instead
+        logInfo(
+          `Canvas initialising with auto-fit mode (${window.innerWidth}×${window.innerHeight}px viewport too small for presets)`
+        );
+
+        // Use fitToViewport if available, otherwise fallback to smallest preset
+        if (typeof this.fitToViewport === "function") {
+          // Temporarily set a minimal size first, then fit to viewport
+          this.canvas.width = 300;
+          this.canvas.height = 150;
+          this.configureDrawingStyle();
+
+          // Use setTimeout to ensure DOM is ready
+          setTimeout(() => {
+            const fitSuccess = this.fitToViewport();
+            if (fitSuccess) {
+              logInfo(
+                "Auto-fit successful - canvas optimised for constrained viewport"
+              );
+            } else {
+              logWarn("Auto-fit failed - using minimal fallback size");
+              this.resizeCanvas("small", false);
+            }
+          }, 50);
+        } else {
+          // fitToViewport not available - use smallest preset
+          logWarn(
+            "fitToViewport method not available - using small preset as fallback"
+          );
+          this.resizeCanvas("small", false);
+        }
+      } else {
+        // Normal preset-based sizing
+        this.resizeCanvas(intelligentSize, false);
+        logInfo(
+          `Canvas initialised with intelligent size selection: ${intelligentSize} (${window.innerWidth}×${window.innerHeight}px viewport)`
+        );
+      }
 
       // Set up resize observer to detect when user resizes container
       this.setupResizeObserver();
@@ -978,6 +1014,482 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
   }
 
   /**
+   * Fits canvas to available container width whilst maintaining aspect ratio
+   *
+   * @returns {boolean} True if resize successful, false if constraints prevent resize
+   *
+   * @description
+   * Calculates maximum available width in canvas container, determines proportional
+   * height based on current canvas aspect ratio, applies intelligent height constraints
+   * to prevent vertical overflow, and resizes canvas whilst preserving all existing strokes.
+   *
+   * Particularly valuable for:
+   * - Ultrawide monitors (21:9, 32:9 aspect ratios)
+   * - Split-screen browser configurations
+   * - Custom window sizes in tiling window managers
+   * - Maximising workspace for complex mathematical expressions
+   *
+   * Height Constraint Logic:
+   * - Calculates available viewport height minus controls (400px buffer)
+   * - If proportional height exceeds safe maximum, caps height and recalculates width
+   * - Ensures canvas never pushes essential controls below viewport
+   *
+   * @example
+   * // User clicks "Fit to Width" button
+   * canvas.fitToWidth();
+   * // Canvas expands from 800×400 to 2400×1200 on ultrawide monitor
+   *
+   * @since Phase 2B.1
+   */
+  fitToWidth() {
+    if (!this.canvas) {
+      logError("Cannot fit to width - canvas not initialised");
+      return false;
+    }
+
+    logInfo("Calculating fit-to-width dimensions...");
+
+    try {
+      // Get wrapper boundaries for enforcement
+      const wrapper = this.canvas.closest(".mathpix-canvas-wrapper");
+      const wrapperRect = wrapper ? wrapper.getBoundingClientRect() : null;
+      const wrapperMaxWidth = wrapperRect
+        ? Math.floor(wrapperRect.width - 50)
+        : null;
+
+      // Get available container width (accounting for padding/margins)
+      const availableWidth = this.calculateAvailableWidth();
+
+      if (availableWidth < 200) {
+        logWarn("Available width too small for fit-to-width operation");
+        this.showNotification(
+          "Canvas cannot be expanded - container width insufficient",
+          "warning"
+        );
+        return false;
+      }
+
+      // STRATEGY: Maximize width whilst preserving current height
+      // CRITICAL: Cap width to wrapper boundaries
+      let targetWidth = Math.round(availableWidth); // Safety margin already included in calculation
+
+      // Enforce wrapper boundary constraint
+      if (wrapperMaxWidth && targetWidth > wrapperMaxWidth) {
+        logWarn(
+          `Calculated width ${targetWidth}px exceeds wrapper maximum ${wrapperMaxWidth}px - capping to safe value`
+        );
+        targetWidth = wrapperMaxWidth;
+      }
+
+      const targetHeight = this.canvas.height; // Keep current height unchanged
+
+      logDebug(
+        `Fit-to-width strategy: maximize width (${targetWidth}px), preserve height at ${targetHeight}px`
+      );
+
+      // Validate final dimensions
+      if (targetWidth < 200 || targetHeight < 100) {
+        logWarn(
+          `Calculated dimensions too small: ${targetWidth}×${targetHeight}`
+        );
+        this.showNotification(
+          "Canvas cannot be resized - viewport too small",
+          "warning"
+        );
+        return false;
+      }
+
+      // Check if width is meaningfully different from current
+      const widthDiff = Math.abs(targetWidth - this.canvas.width);
+
+      if (widthDiff < 10) {
+        logInfo("Canvas already near optimal fit-to-width size");
+        this.showNotification(
+          "Canvas is already maximised for available width",
+          "info"
+        );
+        return true; // Not an error, just already optimal
+      }
+
+      logInfo(
+        `Applying fit-to-width: ${this.canvas.width}×${this.canvas.height} → ${targetWidth}×${targetHeight} (width expanded, height preserved, wrapper boundary enforced)`
+      );
+
+      // Use helper method to apply custom dimensions with stroke preservation
+      const success = this.resizeToCustomDimensions(targetWidth, targetHeight);
+
+      if (success) {
+        // Post-resize validation
+        const canvasRect = this.canvas.getBoundingClientRect();
+        if (wrapperRect && canvasRect.right > wrapperRect.right) {
+          logWarn(
+            `Canvas overflow detected after resize: canvas right=${canvasRect.right.toFixed(
+              1
+            )}px exceeds wrapper right=${wrapperRect.right.toFixed(1)}px`
+          );
+        }
+
+        this.showNotification(
+          `Canvas fitted to width: ${targetWidth}×${targetHeight}px`,
+          "success"
+        );
+      }
+
+      return success;
+    } catch (error) {
+      logError("Fit-to-width operation failed:", error);
+      this.showNotification(
+        "Canvas resize failed. Please try a preset size.",
+        "error"
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Fits canvas to maximum browser viewport space whilst maintaining aspect ratio
+   *
+   * @returns {boolean} True if resize successful
+   *
+   * @description
+   * Maximises canvas size using full browser viewport width rather than being
+   * constrained by container limitations. Provides significantly larger canvas
+   * area compared to fit-to-width operation.
+   *
+   * Features:
+   * - Uses viewport width instead of container width (850px vs 304px typical)
+   * - Maintains current aspect ratio (height/width)
+   * - Applies intelligent height constraint (viewport - 400px buffer)
+   * - Validates dimensions before applying
+   * - Checks if already near-optimal (< 10px difference)
+   * - Preserves all existing strokes via coordinate scaling
+   * - Provides user feedback via notifications
+   *
+   * Comparison with fitToWidth():
+   * - fitToWidth(): Constrained by container (typically ~304px)
+   * - fitToViewport(): Uses full viewport (typically ~850px)
+   * - Provides 2.8× more width for drawing
+   *
+   * @example
+   * // Maximise canvas to viewport
+   * canvas.fitToViewport();
+   *
+   * @since Phase 2B.2
+   */
+  fitToViewport() {
+    if (!this.canvas) {
+      logError("Cannot fit to viewport - canvas not initialised");
+      return false;
+    }
+
+    logInfo("Calculating fit-to-viewport dimensions...");
+
+    try {
+      // CRITICAL: Viewport fit must respect wrapper boundaries
+      // Get wrapper boundaries for enforcement
+      const wrapper = this.canvas.closest(".mathpix-canvas-wrapper");
+      const wrapperRect = wrapper ? wrapper.getBoundingClientRect() : null;
+      const wrapperMaxWidth = wrapperRect
+        ? Math.floor(wrapperRect.width - 50)
+        : null;
+
+      // Get maximum usable viewport space (accounting for margins/padding)
+      const viewportSpace = this.calculateViewportSpace();
+
+      if (viewportSpace.width < 200) {
+        logWarn("Viewport width too small for fit-to-viewport operation");
+        this.showNotification(
+          "Canvas cannot be expanded - viewport too small",
+          "warning"
+        );
+        return false;
+      }
+
+      // STRATEGY: Maximize width using available space, but cap to wrapper boundaries
+      // This prevents overflow whilst providing maximum drawing space
+      let targetWidth = Math.round(viewportSpace.width); // Safety margin already included in calculation
+
+      // CRITICAL: Enforce wrapper boundary constraint
+      if (wrapperMaxWidth && targetWidth > wrapperMaxWidth) {
+        logWarn(
+          `Calculated width ${targetWidth}px exceeds wrapper maximum ${wrapperMaxWidth}px - capping to wrapper boundary`
+        );
+        targetWidth = wrapperMaxWidth;
+      }
+
+      const targetHeight = this.canvas.height; // Keep current height unchanged
+
+      logDebug(
+        `Fit-to-viewport strategy: maximize width (${targetWidth}px, capped to wrapper), preserve height at ${targetHeight}px`
+      );
+
+      // Validate final dimensions
+      if (targetWidth < 200 || targetHeight < 100) {
+        logWarn(
+          `Calculated dimensions too small: ${targetWidth}×${targetHeight}`
+        );
+        this.showNotification(
+          "Canvas cannot be resized - viewport too small",
+          "warning"
+        );
+        return false;
+      }
+
+      // Check if width is meaningfully different from current
+      const widthDiff = Math.abs(targetWidth - this.canvas.width);
+
+      if (widthDiff < 10) {
+        logInfo("Canvas already near optimal fit-to-viewport size");
+        this.showNotification(
+          "Canvas is already maximised for available space",
+          "info"
+        );
+        return true; // Not an error, just already optimal
+      }
+
+      logInfo(
+        `Applying fit-to-viewport: ${this.canvas.width}×${this.canvas.height} → ${targetWidth}×${targetHeight} (width maximised to available space, height preserved, wrapper boundary enforced)`
+      );
+      logDebug(
+        `Space utilisation: ${targetWidth}px (viewport max: ${viewportSpace.width}px, wrapper max: ${wrapperMaxWidth}px)`
+      );
+
+      // Use helper method to apply custom dimensions with stroke preservation
+      const success = this.resizeToCustomDimensions(targetWidth, targetHeight);
+
+      if (success) {
+        // Post-resize validation
+        const canvasRect = this.canvas.getBoundingClientRect();
+        if (wrapperRect && canvasRect.right > wrapperRect.right) {
+          logWarn(
+            `Canvas overflow detected after resize: canvas right=${canvasRect.right.toFixed(
+              1
+            )}px exceeds wrapper right=${wrapperRect.right.toFixed(1)}px`
+          );
+        }
+
+        this.showNotification(
+          `Canvas fitted to maximum available space: ${targetWidth}×${targetHeight}px`,
+          "success"
+        );
+      }
+
+      return success;
+    } catch (error) {
+      logError("Fit-to-viewport operation failed:", error);
+      this.showNotification(
+        "Canvas resize failed. Please try a preset size.",
+        "error"
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Calculates usable viewport space for canvas expansion
+   *
+   * @private
+   * @returns {{width: number, height: number}} Usable viewport dimensions in pixels
+   *
+   * @description
+   * Determines maximum available space in the browser viewport for canvas expansion.
+   * Accounts for typical page margins, padding, and layout constraints to calculate
+   * safe maximum dimensions.
+   *
+   * Calculation Strategy:
+   * - Width: viewport width - conservative margin (50px)
+   * - Height: viewport height - controls buffer (400px)
+   *
+   * This provides significantly more space than container-based calculations
+   * (typically 850px vs 304px width), enabling larger drawing areas.
+   *
+   * @example
+   * const space = canvas.calculateViewportSpace();
+   * console.log(`Available: ${space.width}×${space.height}px`);
+   *
+   * @since Phase 2B.2
+   */
+  calculateViewportSpace() {
+    // Get raw viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Get wrapper dimensions for boundary enforcement
+    const wrapper = this.canvas
+      ? this.canvas.closest(".mathpix-canvas-wrapper")
+      : null;
+    const wrapperRect = wrapper ? wrapper.getBoundingClientRect() : null;
+    const wrapperWidth = wrapperRect ? wrapperRect.width : viewportWidth;
+
+    // Apply conservative margins to prevent edge overflow
+    const marginBuffer = 80; // Horizontal margins/padding across page layout
+    const controlsBuffer = 400; // Vertical space for controls, buttons, UI elements
+
+    // Calculate usable space from viewport
+    const viewportUsableWidth = Math.max(200, viewportWidth - marginBuffer);
+    const usableHeight = Math.max(100, viewportHeight - controlsBuffer);
+
+    // CRITICAL: Cap to wrapper width to prevent overflow
+    // The viewport calculation can exceed wrapper boundaries
+    const usableWidth = Math.min(viewportUsableWidth, wrapperWidth - 50);
+
+    logDebug(
+      `Viewport space calculation: viewport=${viewportWidth}×${viewportHeight}px, ` +
+        `wrapper=${wrapperWidth.toFixed(1)}px, ` +
+        `viewportUsable=${viewportUsableWidth}px, ` +
+        `finalUsable=${usableWidth.toFixed(1)}×${usableHeight}px ` +
+        `(capped to wrapper boundary for overflow prevention)`
+    );
+
+    return {
+      width: usableWidth,
+      height: usableHeight,
+    };
+  }
+
+  /**
+   * Calculates available width in canvas container
+   *
+   * @private
+   * @returns {number} Available width in pixels (accounting for padding/margins)
+   *
+   * @description
+   * Measures the canvas container's client width and subtracts horizontal padding
+   * to determine actual usable space for canvas expansion.
+   *
+   * Calculation: clientWidth - (paddingLeft + paddingRight)
+   *
+   * @since Phase 2B.1
+   */
+  calculateAvailableWidth() {
+    // Target the wrapper element (wider container) instead of immediate parent
+    // This allows expansion beyond the canvas-container's artificial constraints
+    const wrapper = this.canvas.closest(".mathpix-canvas-wrapper");
+    const container = wrapper || this.canvas.parentElement;
+
+    if (!container) {
+      logError("Canvas container not found");
+      return 0;
+    }
+
+    // Use getBoundingClientRect() for accurate rendered dimensions
+    const containerRect = container.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+
+    // Get computed styles to read padding, border, and margin values
+    const containerStyle = window.getComputedStyle(container);
+    const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+    const paddingRight = parseFloat(containerStyle.paddingRight) || 0;
+    const borderLeft = parseFloat(containerStyle.borderLeftWidth) || 0;
+    const borderRight = parseFloat(containerStyle.borderRightWidth) || 0;
+
+    // Calculate total horizontal space used by padding and borders
+    const horizontalSpace =
+      paddingLeft + paddingRight + borderLeft + borderRight;
+
+    // Increased safety margin to prevent overflow (was 30px, now 50px)
+    const safetyMargin = 50; // Extra space to ensure canvas stays within bounds
+
+    // Calculate available width using accurate boundary
+    const calculatedWidth = containerWidth - horizontalSpace - safetyMargin;
+
+    // Ensure result doesn't exceed wrapper boundaries
+    const maxSafeWidth = Math.floor(containerWidth - safetyMargin);
+    const availableWidth = Math.min(calculatedWidth, maxSafeWidth);
+
+    logDebug(
+      `Available width calculation: element=${container.className}, ` +
+        `boundingWidth=${containerWidth.toFixed(1)}px, ` +
+        `padding=${paddingLeft + paddingRight}px, ` +
+        `borders=${borderLeft + borderRight}px, ` +
+        `safety=${safetyMargin}px, ` +
+        `calculated=${calculatedWidth.toFixed(1)}px, ` +
+        `maxSafe=${maxSafeWidth}px, ` +
+        `available=${availableWidth.toFixed(1)}px`
+    );
+
+    return Math.max(200, Math.floor(availableWidth)); // Ensure minimum usable width and integer result
+  }
+
+  /**
+   * Resizes canvas to arbitrary custom dimensions
+   *
+   * @param {number} width - Target width in pixels
+   * @param {number} height - Target height in pixels
+   * @returns {boolean} True if resize successful
+   *
+   * @description
+   * Applies custom dimensions to canvas whilst preserving existing strokes
+   * through proportional coordinate scaling. Similar to preset size resizing
+   * but accepts arbitrary dimensions rather than named presets.
+   *
+   * Process:
+   * 1. Calculate scaling factors (newDimension / oldDimension)
+   * 2. Scale all existing stroke coordinates
+   * 3. Apply new canvas dimensions
+   * 4. Reconfigure drawing style (reset by dimension change)
+   * 5. Redraw all strokes at scaled coordinates
+   *
+   * @example
+   * // Resize to specific dimensions
+   * canvas.resizeToCustomDimensions(1200, 600);
+   *
+   * @since Phase 2B.1
+   */
+  resizeToCustomDimensions(width, height) {
+    if (!this.canvas || !this.context) {
+      logError("Cannot resize - canvas not initialised");
+      return false;
+    }
+
+    // Validate dimensions
+    if (width < 100 || height < 50 || width > 5000 || height > 5000) {
+      logError(`Invalid dimensions: ${width}×${height}`);
+      return false;
+    }
+
+    const oldWidth = this.canvas.width;
+    const oldHeight = this.canvas.height;
+
+    logInfo(
+      `Resizing canvas from ${oldWidth}×${oldHeight} to ${width}×${height}`
+    );
+
+    // Calculate scaling factors for stroke coordinate transformation
+    const scaleX = width / oldWidth;
+    const scaleY = height / oldHeight;
+
+    logDebug(`Scaling factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
+
+    // Scale existing strokes if any present
+    if (this.strokes.length > 0) {
+      this.scaleStrokes(scaleX, scaleY);
+      logDebug(`Scaled ${this.strokes.length} strokes to new dimensions`);
+    }
+
+    // Apply new canvas dimensions
+    this.canvas.width = width;
+    this.canvas.height = height;
+
+    // Reconfigure drawing style (canvas context resets after dimension change)
+    this.configureDrawingStyle();
+
+    // Redraw all strokes with scaled coordinates
+    if (this.strokes.length > 0) {
+      this.redrawAllStrokes();
+    }
+
+    // Update current size tracking (no longer matches preset)
+    this.currentSize = "custom"; // Indicates non-preset dimensions
+
+    // Update size button states (deactivate all presets)
+    this.updateSizeButtonStates();
+
+    logInfo(`Canvas resized successfully to ${width}×${height}`);
+    return true;
+  }
+
+  /**
    * Scales all stroke coordinates by given factors
    *
    * @private
@@ -1011,26 +1523,77 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
    *
    * @description
    * Marks the currently active size button and ensures proper
-   * visual feedback for users.
+   * visual feedback for users. Enhanced to handle custom dimensions
+   * from fit-to-width and manual resize operations.
    *
    * @accessibility Updates aria-pressed state for screen readers
    *
    * @since 1.0.0
+   * @updated Phase 2B.1 - Added custom size support & fit-to-width button
+   * @updated Phase 2B.2 - Added fit-to-viewport button support
    */
   updateSizeButtonStates() {
+    // Handle preset size buttons (small, medium, large, xlarge)
     const sizeButtons = document.querySelectorAll(".mathpix-size-btn");
+    const isCustomSize = this.currentSize === "custom";
 
     sizeButtons.forEach((button) => {
       const buttonSize = button.dataset.size;
-      const isActive = buttonSize === this.currentSize;
+
+      // Skip fit buttons - they're handled separately below
+      if (
+        button.id === "mathpix-fit-to-width-btn" ||
+        button.id === "mathpix-fit-to-viewport-btn"
+      ) {
+        return;
+      }
+
+      // Only activate preset buttons if we're not in custom mode
+      const isActive = !isCustomSize && buttonSize === this.currentSize;
 
       button.classList.toggle("active", isActive);
       button.setAttribute("aria-pressed", isActive.toString());
     });
 
-    logDebug(`Size button states updated: active=${this.currentSize}`);
-  }
+    // Handle fit buttons (Phase 2B.1 & 2B.2)
+    // Note: We cannot distinguish between fit-to-width and fit-to-viewport results
+    // since both create custom dimensions. For now, keep both inactive when
+    // not immediately after a fit operation, or make both active in custom mode.
+    // Better UX: Only the most recently clicked fit button should be active.
 
+    const fitToWidthButton = document.getElementById(
+      "mathpix-fit-to-width-btn"
+    );
+    const fitToViewportButton = document.getElementById(
+      "mathpix-fit-to-viewport-btn"
+    );
+
+    if (fitToWidthButton) {
+      // Fit buttons are "active" when in custom mode (fit operations create custom sizes)
+      const isFitActive = isCustomSize;
+      fitToWidthButton.classList.toggle("active", isFitActive);
+      fitToWidthButton.setAttribute("aria-pressed", isFitActive.toString());
+
+      logDebug(
+        `Fit to width button state: ${isFitActive ? "active" : "inactive"}`
+      );
+    }
+
+    if (fitToViewportButton) {
+      // Fit buttons are "active" when in custom mode (fit operations create custom sizes)
+      const isFitActive = isCustomSize;
+      fitToViewportButton.classList.toggle("active", isFitActive);
+      fitToViewportButton.setAttribute("aria-pressed", isFitActive.toString());
+
+      logDebug(
+        `Fit to viewport button state: ${isFitActive ? "active" : "inactive"}`
+      );
+    }
+
+    logDebug(
+      `Size button states updated: active=${this.currentSize}, custom=${isCustomSize}`
+    );
+  }
   /**
    * Gets current canvas size preset name
    *
@@ -1068,6 +1631,96 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
    */
   getAvailableSizes() {
     return CANVAS_SIZES;
+  }
+
+  /**
+   * Intelligently selects the largest visible canvas size option
+   *
+   * @returns {string|null} Size name of largest visible option, or null if auto-fit needed
+   *
+   * @description
+   * Queries all canvas size buttons and determines which are visible
+   * based on CSS media queries. Returns the largest visible size to
+   * ensure users always get an appropriate default for their viewport.
+   *
+   * **Auto-Fit Activation:**
+   * If viewport is too small for even the 400×200 preset (< 500px width or < 400px height),
+   * returns null to signal that fitToViewport() should be used instead.
+   *
+   * Falls back through size hierarchy if no buttons are visible:
+   * xlarge → large → medium → small → auto-fit
+   *
+   * @example
+   * const bestSize = canvas.selectLargestVisibleSize();
+   * if (bestSize === null) {
+   *   // Viewport too small - use fitToViewport()
+   * }
+   *
+   * @since Phase 2A
+   * @updated Phase 2B - Added auto-fit detection for extremely small viewports
+   */
+  selectLargestVisibleSize() {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Check if viewport is too small for even the smallest preset (400×200)
+    // Thresholds: 500px width (allows 400px + chrome), 400px height (allows 200px + controls)
+    if (viewportWidth < 500 || viewportHeight < 400) {
+      logInfo(
+        `Viewport extremely constrained (${viewportWidth}×${viewportHeight}px) - ` +
+          `will use auto-fit instead of presets`
+      );
+      return null; // Signal to use fitToViewport() instead
+    }
+
+    // Size priority order (largest to smallest)
+    const sizeHierarchy = ["xlarge", "large", "medium", "small"];
+
+    // Query all canvas size buttons
+    const sizeButtons = document.querySelectorAll(
+      ".mathpix-size-btn[data-size]"
+    );
+
+    if (sizeButtons.length === 0) {
+      logWarn("No canvas size buttons found in DOM - using fallback hierarchy");
+      // Fallback: use viewport-based selection
+      return getDefaultSize();
+    }
+
+    // Find all visible buttons (not hidden by CSS media queries)
+    const visibleSizes = Array.from(sizeButtons)
+      .filter((button) => {
+        const computed = window.getComputedStyle(button);
+        return computed.display !== "none" && computed.visibility !== "hidden";
+      })
+      .map((button) => button.dataset.size);
+
+    if (visibleSizes.length === 0) {
+      logWarn("No visible canvas size buttons - checking if auto-fit needed");
+      // Check viewport constraints again before falling back
+      if (viewportWidth < 500 || viewportHeight < 400) {
+        logInfo("Auto-fit mode activated due to no visible size options");
+        return null; // Use fitToViewport()
+      }
+      // Ultimate fallback: smallest size
+      return "small";
+    }
+
+    // Find largest size that's both in hierarchy and visible
+    for (const size of sizeHierarchy) {
+      if (visibleSizes.includes(size)) {
+        logInfo(
+          `Selected largest visible canvas size: ${size} (visible options: ${visibleSizes.join(
+            ", "
+          )})`
+        );
+        return size;
+      }
+    }
+
+    // Should never reach here, but provide safe fallback
+    logWarn(`Fallback: Using first visible size ${visibleSizes[0]}`);
+    return visibleSizes[0];
   }
 
   /**

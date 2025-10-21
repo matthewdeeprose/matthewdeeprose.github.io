@@ -75,7 +75,7 @@
       href="https://matthewdeeprose.github.io/feed.rss"
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <meta name="twitter:card" content="summary_large_image" />
+
     <meta name="twitter:title" content="Boilerplate - Matthew Deeprose" />
     <meta name="twitter:description" content="" />
     <meta name="twitter:creator" content="@VLEguru" />
@@ -85,7 +85,7 @@
       content="https://matthewdeeprose.github.io/image.png"
     />
     <meta name="twitter:image:alt" content="" />
-    <meta name="twitter:card" content="summary_large_image" />
+
     <style>
       .page-wrap > * {
         grid-column: 1/-1 !important;
@@ -2557,6 +2557,39 @@ Science,91</pre
                   </svg>
                   <span class="mode-label">Draw Mathematics</span>
                 </label>
+
+                <label class="mathpix-mode-option">
+                  <input
+                    type="radio"
+                    name="mathpix-input-mode"
+                    value="camera"
+                    id="mathpix-camera-mode-radio"
+                  />
+                  <svg
+                    class="mode-icon"
+                    aria-hidden="true"
+                    height="21"
+                    viewBox="0 0 21 21"
+                    width="21"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(3 3)"
+                    >
+                      <path
+                        d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"
+                      />
+                      <circle cx="7.5" cy="7.5" r="3" />
+                      <path d="m.5 4.5 2-2h2.5" />
+                    </g>
+                  </svg>
+                  <span class="mode-label">Camera Capture</span>
+                </label>
               </div>
             </fieldset>
 
@@ -2792,6 +2825,27 @@ Science,91</pre
                   >
                     <span aria-hidden="true">📐</span> Extra Large (1000×500)
                   </button>
+                  <button
+                    type="button"
+                    id="mathpix-fit-to-width-btn"
+                    class="mathpix-size-btn mathpix-fit-btn"
+                    aria-pressed="false"
+                    aria-label="Fit canvas to available width whilst maintaining aspect ratio"
+                    title="Maximises horizontal space whilst preventing vertical overflow"
+                  >
+                    <span aria-hidden="true">↔️</span> Fit to Width
+                  </button>
+
+                  <button
+                    type="button"
+                    id="mathpix-fit-to-viewport-btn"
+                    class="mathpix-size-btn mathpix-fit-viewport-btn"
+                    aria-pressed="false"
+                    aria-label="Fit canvas to maximum viewport space whilst maintaining aspect ratio"
+                    title="Maximises canvas to full browser viewport (larger than fit-to-width)"
+                  >
+                    <span aria-hidden="true">⬌</span> Fit to Viewport
+                  </button>
 
                   <button
                     type="button"
@@ -2919,6 +2973,230 @@ Science,91</pre
           </div>
           <!-- End Draw Container -->
 
+          <!-- Camera Capture Container (NEW - Phase 1D) -->
+          <div
+            id="mathpix-camera-container"
+            class="mathpix-input-section"
+            style="display: none"
+          >
+            <div class="mathpix-camera-wrapper">
+              <div class="mathpix-camera-preview">
+                <!-- Mirror wrapper for CSS transform (browser compatibility) -->
+                <div class="mathpix-camera-mirror-wrapper">
+                  <video
+                    id="mathpix-camera-video"
+                    autoplay
+                    playsinline
+                    aria-label="Camera preview for mathematics capture"
+                  ></video>
+                </div>
+                <div
+                  class="mathpix-camera-status"
+                  id="mathpix-camera-status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <span id="mathpix-camera-status-text">Camera inactive</span>
+                </div>
+              </div>
+
+              <div class="mathpix-camera-controls">
+                <button
+                  type="button"
+                  class="mathpix-button mathpix-button-primary"
+                  id="mathpix-start-camera-btn"
+                  onclick="startMathPixCamera()"
+                  aria-label="Start camera to capture mathematics"
+                >
+                  <svg
+                    class="button-icon"
+                    aria-hidden="true"
+                    height="18"
+                    viewBox="0 0 21 21"
+                    width="18"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(2 2)"
+                    >
+                      <circle cx="8.5" cy="8.5" r="8" />
+                      <path d="m6.5 5.5 5 3-5 3z" />
+                    </g>
+                  </svg>
+                  <span id="mathpix-start-btn-text">Start Camera</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="mathpix-button mathpix-button-secondary"
+                  id="mathpix-capture-photo-btn"
+                  onclick="handleMathPixCameraCapture()"
+                  disabled
+                  aria-label="Capture photo of mathematics"
+                >
+                  <svg
+                    class="button-icon"
+                    aria-hidden="true"
+                    height="18"
+                    viewBox="0 0 21 21"
+                    width="18"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(2 3)"
+                    >
+                      <circle cx="8.5" cy="7.5" r="3" />
+                      <path
+                        d="m14.5.5h-10c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2v-10c0-1.1045695-.8954305-2-2-2z"
+                      />
+                    </g>
+                  </svg>
+                  <span>Capture Photo</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="mathpix-button mathpix-button-secondary"
+                  id="mathpix-mirror-toggle-btn"
+                  onclick="toggleMathPixCameraMirror()"
+                  disabled
+                  aria-label="Toggle preview mirroring"
+                >
+                  <svg
+                    class="button-icon"
+                    aria-hidden="true"
+                    height="18"
+                    viewBox="0 0 21 21"
+                    width="18"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(2 2)"
+                    >
+                      <path d="m8.5.5v16" />
+                      <path d="m.5 8.5h7v-7h-7z" />
+                      <path d="m9.5 8.5h7v7h-7z" />
+                    </g>
+                  </svg>
+                  <span>Mirror Preview</span>
+                </button>
+                <button
+                  type="button"
+                  class="mathpix-button mathpix-button-secondary"
+                  id="mathpix-switch-camera-btn"
+                  onclick="switchMathPixCamera()"
+                  disabled
+                  aria-label="Switch between front and rear cameras"
+                >
+                  <svg
+                    class="button-icon"
+                    aria-hidden="true"
+                    height="18"
+                    viewBox="0 0 21 21"
+                    width="18"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(3 3)"
+                    >
+                      <path
+                        d="m3.5 5.5c0-1.1045695.8954305-2 2-2h4c1.1045695 0 2 .8954305 2 2v6c0 1.1045695-.8954305 2-2 2h-4c-1.1045695 0-2-.8954305-2-2z"
+                      />
+                      <path d="m7.5 1.5v-1" />
+                      <path d="m.5 8.5 2-2 2 2" />
+                      <path d="m14.5 6.5-2 2-2-2" />
+                    </g>
+                  </svg>
+                  <span>Switch Camera</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="mathpix-button mathpix-button-secondary"
+                  id="mathpix-rotate-capture-btn"
+                  onclick="rotateMathPixCapture()"
+                  disabled=""
+                  aria-label="Rotate captured image"
+                >
+                  <svg
+                    class="button-icon"
+                    aria-hidden="true"
+                    height="18"
+                    viewBox="0 0 21 21"
+                    width="18"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(1 2)"
+                    >
+                      <path
+                        d="m17.5 12.5v-10c0-1.1045695-.8954305-2-2-2h-10c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2z"
+                      />
+                      <path
+                        d="m15.5 15.5-2 2h-9.00029982c-.5519615 0-.99970018-.4477153-.99970018-1v-9l2-2"
+                      />
+                    </g>
+                  </svg>
+                  <span>Rotate</span>
+                </button>
+              </div>
+
+              <div class="mathpix-camera-info">
+                <p class="info-text">
+                  <svg
+                    class="info-icon"
+                    aria-hidden="true"
+                    height="16"
+                    viewBox="0 0 21 21"
+                    width="16"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(2 2)"
+                    >
+                      <circle cx="8.5" cy="8.5" r="8" />
+                      <path d="m8.5 12.5v-4" />
+                      <circle cx="8.5" cy="4.5" r=".5" fill="currentColor" />
+                    </g>
+                  </svg>
+                  Position mathematics clearly in view. Captured photos will be
+                  processed using the same options as uploaded files.
+                </p>
+              </div>
+            </div>
+          </div>
+          <!-- End Camera Container -->
+
           <!-- Upload Verification Preview (NEW - Phase 3.4) -->
           <div
             id="mathpix-upload-preview"
@@ -2981,6 +3259,114 @@ Science,91</pre
               alt="Preview of uploaded mathematics"
               style="display: none"
             />
+            <!-- Phase 1F.2: Transform Controls for Camera Captures -->
+            <div
+              id="mathpix-transform-controls"
+              class="mathpix-transform-controls"
+              style="display: none"
+              role="group"
+              aria-label="Image transform controls"
+            >
+              <button
+                id="mathpix-rotate-preview-btn"
+                class="mathpix-transform-btn"
+                type="button"
+                onclick="rotateMathPixPreview()"
+                aria-label="Rotate preview 90 degrees clockwise"
+              >
+                <span aria-hidden="true">🔄</span> Rotate
+              </button>
+              <button
+                id="mathpix-flip-preview-btn"
+                class="mathpix-transform-btn"
+                type="button"
+                onclick="flipMathPixPreview()"
+                aria-label="Flip preview horizontally"
+              >
+                <span aria-hidden="true">↔️</span> Flip
+              </button>
+              <span
+                id="mathpix-transform-state"
+                class="mathpix-transform-state"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <!-- Transform state will be populated by JavaScript -->
+              </span>
+            </div>
+
+            <!-- Phase 1F.2: Transform Controls for Camera Captures -->
+            <div
+              id="mathpix-transform-controls"
+              class="mathpix-transform-controls"
+              style="display: none"
+              role="group"
+              aria-label="Image transform controls"
+            >
+              <button
+                id="mathpix-rotate-preview-btn"
+                class="mathpix-transform-btn"
+                type="button"
+                onclick="rotateMathPixPreview()"
+                aria-label="Rotate preview 90 degrees clockwise"
+              >
+                <span aria-hidden="true">🔄</span> Rotate
+              </button>
+              <button
+                id="mathpix-flip-preview-btn"
+                class="mathpix-transform-btn"
+                type="button"
+                onclick="flipMathPixPreview()"
+                aria-label="Flip preview horizontally"
+              >
+                <span aria-hidden="true">↔️</span> Flip
+              </button>
+              <span
+                id="mathpix-transform-state"
+                class="mathpix-transform-state"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <!-- Transform state will be populated by JavaScript -->
+              </span>
+            </div>
+
+            <!-- Phase 1F.2: Transform Controls for Camera Captures -->
+            <div
+              id="mathpix-transform-controls"
+              class="mathpix-transform-controls"
+              style="display: none"
+              role="group"
+              aria-label="Image transform controls"
+            >
+              <button
+                id="mathpix-rotate-preview-btn"
+                class="mathpix-transform-btn"
+                type="button"
+                onclick="rotateMathPixPreview()"
+                aria-label="Rotate preview 90 degrees clockwise"
+              >
+                <span aria-hidden="true">🔄</span> Rotate
+              </button>
+              <button
+                id="mathpix-flip-preview-btn"
+                class="mathpix-transform-btn"
+                type="button"
+                onclick="flipMathPixPreview()"
+                aria-label="Flip preview horizontally"
+              >
+                <span aria-hidden="true">↔️</span> Flip
+              </button>
+              <span
+                id="mathpix-transform-state"
+                class="mathpix-transform-state"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <!-- Transform state will be populated by JavaScript -->
+              </span>
+            </div>
+
             <div id="mathpix-file-info" class="mathpix-file-info">
               <!-- File information will be populated by JavaScript -->
             </div>
@@ -3077,35 +3463,7 @@ Science,91</pre
               </p>
             </fieldset>
 
-            <div class="mathpix-preview-actions">
-              <button
-                id="mathpix-open-original-btn"
-                class="mathpix-open-original-btn"
-                aria-hidden="true"
-                type="button"
-                aria-label="Open original file in new window"
-                style="display: none"
-              >
-                <svg
-                  height="21"
-                  viewBox="0 0 21 21"
-                  width="21"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="8.5" cy="8.5" r="5" />
-                    <path d="m17.571 17.5-5.571-5.5" />
-                  </g>
-                </svg>
-                Open Original in New Window
-              </button>
-            </div>
+            <!-- Duplicate removed in Phase 1F.2 Step 1 -->
             <div class="mathpix-preview-actions">
               <button
                 id="mathpix-open-original-btn"
@@ -5821,6 +6179,14 @@ Science,91</pre
     <script
       type="module"
       src="mathpix-scripts/core/mathpix-strokes-canvas.js"
+    ></script>
+    <script
+      type="module"
+      src="mathpix-scripts/core/mathpix-camera-capture.js"
+    ></script>
+    <script
+      type="module"
+      src="mathpix-scripts/core/mathpix-image-transformer.js"
     ></script>
     <script
       type="module"

@@ -118,7 +118,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     super(controller);
 
     /**
-     * Current active mode ('upload' or 'draw')
+     * Current active mode ('upload', 'draw', or 'camera')
      * @type {string}
      */
     this.currentMode = "upload"; // Default to upload mode
@@ -136,6 +136,12 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     this.drawContainer = null;
 
     /**
+     * Camera container element
+     * @type {HTMLElement|null}
+     */
+    this.cameraContainer = null;
+
+    /**
      * Upload mode radio button
      * @type {HTMLInputElement|null}
      */
@@ -146,6 +152,12 @@ class MathPixModeSwitcher extends MathPixBaseModule {
      * @type {HTMLInputElement|null}
      */
     this.drawRadio = null;
+
+    /**
+     * Camera mode radio button
+     * @type {HTMLInputElement|null}
+     */
+    this.cameraRadio = null;
 
     /**
      * Flag indicating if event listeners are attached
@@ -162,8 +174,10 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    * @param {Object} uiElements - UI element references
    * @param {HTMLElement} uiElements.uploadContainer - Upload mode container
    * @param {HTMLElement} uiElements.drawContainer - Draw mode container
+   * @param {HTMLElement} uiElements.cameraContainer - Camera mode container
    * @param {HTMLInputElement} uiElements.uploadRadio - Upload radio button
    * @param {HTMLInputElement} uiElements.drawRadio - Draw radio button
+   * @param {HTMLInputElement} uiElements.cameraRadio - Camera radio button
    *
    * @returns {Promise<boolean>} True if initialisation successful
    *
@@ -173,8 +187,10 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    * const elements = {
    *   uploadContainer: document.getElementById('mathpixUploadContainer'),
    *   drawContainer: document.getElementById('mathpixDrawContainer'),
+   *   cameraContainer: document.getElementById('mathpixCameraContainer'),
    *   uploadRadio: document.getElementById('mathpixUploadMode'),
-   *   drawRadio: document.getElementById('mathpixDrawMode')
+   *   drawRadio: document.getElementById('mathpixDrawMode'),
+   *   cameraRadio: document.getElementById('mathpixCameraMode')
    * };
    * await modeSwitcher.initialise(elements);
    *
@@ -191,8 +207,10 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     const required = [
       "uploadContainer",
       "drawContainer",
+      "cameraContainer",
       "uploadRadio",
       "drawRadio",
+      "cameraRadio",
     ];
     const missing = required.filter((key) => !uiElements[key]);
 
@@ -203,8 +221,10 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     // Store element references
     this.uploadContainer = uiElements.uploadContainer;
     this.drawContainer = uiElements.drawContainer;
+    this.cameraContainer = uiElements.cameraContainer;
     this.uploadRadio = uiElements.uploadRadio;
     this.drawRadio = uiElements.drawRadio;
+    this.cameraRadio = uiElements.cameraRadio;
 
     // Attach event listeners
     this.attachEventListeners();
@@ -277,10 +297,12 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     // Update UI visibility (using style.display to override inline styles)
     if (this.uploadContainer) this.uploadContainer.style.display = "";
     if (this.drawContainer) this.drawContainer.style.display = "none";
+    if (this.cameraContainer) this.cameraContainer.style.display = "none";
 
     // Update radio button state
     if (this.uploadRadio) this.uploadRadio.checked = true;
     if (this.drawRadio) this.drawRadio.checked = false;
+    if (this.cameraRadio) this.cameraRadio.checked = false;
 
     // Notify user
     this.showNotification("Upload mode active", "info");
@@ -319,10 +341,12 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     // Update UI visibility (using style.display to override inline styles)
     if (this.uploadContainer) this.uploadContainer.style.display = "none";
     if (this.drawContainer) this.drawContainer.style.display = "";
+    if (this.cameraContainer) this.cameraContainer.style.display = "none";
 
     // Update radio button state
     if (this.uploadRadio) this.uploadRadio.checked = false;
     if (this.drawRadio) this.drawRadio.checked = true;
+    if (this.cameraRadio) this.cameraRadio.checked = false;
 
     // Notify user
     this.showNotification(
@@ -334,6 +358,53 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     this.triggerModeChangeCallback("draw");
 
     logInfo("Switched to draw mode");
+  }
+
+  /**
+   * Switches to camera mode
+   *
+   * @returns {void}
+   *
+   * @description
+   * Transitions interface to camera mode, showing camera controls and
+   * hiding upload/draw interfaces. Initialises camera if needed.
+   *
+   * @example
+   * modeSwitcher.switchToCameraMode();
+   *
+   * @accessibility Announces mode change and provides camera instructions
+   *
+   * @since Phase 1D
+   */
+  switchToCameraMode() {
+    logDebug("Switching to camera mode");
+
+    // ✅ Clear any previous results before switching
+    this.clearPreviousResults();
+
+    // Update state
+    this.currentMode = "camera";
+
+    // Update UI visibility (using style.display to override inline styles)
+    if (this.uploadContainer) this.uploadContainer.style.display = "none";
+    if (this.drawContainer) this.drawContainer.style.display = "none";
+    if (this.cameraContainer) this.cameraContainer.style.display = "";
+
+    // Update radio button state
+    if (this.uploadRadio) this.uploadRadio.checked = false;
+    if (this.drawRadio) this.drawRadio.checked = false;
+    if (this.cameraRadio) this.cameraRadio.checked = true;
+
+    // Notify user
+    this.showNotification(
+      "Camera mode active. Click 'Start Camera' to begin.",
+      "info"
+    );
+
+    // Trigger mode change callback if available
+    this.triggerModeChangeCallback("camera");
+
+    logInfo("Switched to camera mode");
   }
 
   /**
@@ -455,21 +526,39 @@ class MathPixModeSwitcher extends MathPixBaseModule {
   }
 
   /**
+   * Checks if currently in camera mode
+   *
+   * @returns {boolean} True if in camera mode
+   *
+   * @example
+   * if (modeSwitcher.isCameraMode()) {
+   *   console.log('Currently in camera mode');
+   * }
+   *
+   * @since Phase 1D
+   */
+  isCameraMode() {
+    return this.currentMode === "camera";
+  }
+
+  /**
    * Sets mode programmatically
    *
-   * @param {string} mode - Mode to set ('upload' or 'draw')
+   * @param {string} mode - Mode to set ('upload', 'draw', or 'camera')
    * @returns {boolean} True if mode was changed
    *
    * @throws {Error} When invalid mode specified
    *
    * @example
-   * modeSwitcher.setMode('draw');
+   * modeSwitcher.setMode('camera');
    *
    * @since 1.0.0
    */
   setMode(mode) {
-    if (mode !== "upload" && mode !== "draw") {
-      throw new Error(`Invalid mode: ${mode}. Must be 'upload' or 'draw'`);
+    if (mode !== "upload" && mode !== "draw" && mode !== "camera") {
+      throw new Error(
+        `Invalid mode: ${mode}. Must be 'upload', 'draw', or 'camera'`
+      );
     }
 
     if (mode === this.currentMode) {
@@ -479,8 +568,10 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     if (mode === "upload") {
       this.switchToUploadMode();
-    } else {
+    } else if (mode === "draw") {
       this.switchToDrawMode();
+    } else {
+      this.switchToCameraMode();
     }
 
     return true;
@@ -502,8 +593,10 @@ class MathPixModeSwitcher extends MathPixBaseModule {
       !!(
         this.uploadContainer &&
         this.drawContainer &&
+        this.cameraContainer &&
         this.uploadRadio &&
         this.drawRadio &&
+        this.cameraRadio &&
         this.isInitialised
       )
     );
@@ -541,10 +634,13 @@ class MathPixModeSwitcher extends MathPixBaseModule {
       currentMode: this.currentMode,
       hasUploadContainer: !!this.uploadContainer,
       hasDrawContainer: !!this.drawContainer,
+      hasCameraContainer: !!this.cameraContainer,
       hasUploadRadio: !!this.uploadRadio,
       hasDrawRadio: !!this.drawRadio,
+      hasCameraRadio: !!this.cameraRadio,
       uploadRadioChecked: this.uploadRadio?.checked || false,
       drawRadioChecked: this.drawRadio?.checked || false,
+      cameraRadioChecked: this.cameraRadio?.checked || false,
       hasEventListeners: this.hasEventListeners,
     };
   }

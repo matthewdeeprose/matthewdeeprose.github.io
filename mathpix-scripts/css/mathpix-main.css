@@ -3,59 +3,47 @@
    =========================================== */
 
 /*temp*/
+
+/* ============================================================================
+   Phase 1D: Camera Capture Styling
+   ============================================================================ */
+
+/* Video Element */
+#mathpix-camera-video {
+  background: #000;
+}
+
+/* Video Preview Container */
+.mathpix-camera-preview {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Camera Status Indicator */
+.mathpix-camera-status {
+  background: rgba(0, 0, 0, 0.75);
+  color: #fffff4;
+}
+
+/* Active camera indicator */
+#mathpix-camera-video:not([src=""]) ~ .mathpix-camera-status {
+  background: #005051; /* Green when active */
+}
+
+.mathpix-camera-controls .mathpix-button-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.mathpix-camera-controls .mathpix-button-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 /* ============================================
    Download Button Styles
    ============================================ */
 
-/* Structure (color-agnostic) */
-.mathpix-download-section {
-  margin: 1.5rem 0;
-  padding: 1rem;
-  border-radius: 6px;
-  border: 1px solid;
-}
-
-.mathpix-download-all-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.mathpix-download-all-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.mathpix-download-progress {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  border-radius: 4px;
-  border: 1px solid;
-}
-
-.mathpix-download-status {
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
 /* Colors (separate section for easy customization) */
-.mathpix-download-section {
-  background: #fffff4;
-  border-color: #00131d;
-}
-
-.mathpix-download-all-btn {
-  background: #fffff4;
-  border-color: #00131d;
-  color: #00131d;
-}
-
-.mathpix-download-all-btn:hover {
-  border-color: #005c84;
-}
 
 .mathpix-download-progress {
   background: #e1e8ec;
@@ -971,6 +959,40 @@
   /* space between icon and text */
 }
 
+/* Structure (color-agnostic) */
+.mathpix-download-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+}
+
+.mathpix-download-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mathpix-download-all-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mathpix-download-progress {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.mathpix-download-status {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
 /* Modal */
 .mathpix-zoom-button {
   padding: 3px !important;
@@ -1793,8 +1815,10 @@ input#custom-height {
   border-radius: 8px;
   max-width: 450px;
   width: 100%;
+  overflow: visible; /* Phase 1F.2: Allow some overflow for rotated images */
+  position: relative; /* Phase 1F.2: Positioning context for transforms */
+  min-height: 550px; /* Phase 1F.2: Increased space for rotated images */
 }
-
 .mathpix-image-preview {
   max-width: 400px;
   max-height: 300px;
@@ -1802,7 +1826,14 @@ input#custom-height {
   height: auto;
   object-fit: contain;
   border-radius: 6px;
-  transition: transform 0.2s ease;
+  transition: transform 0.3s ease, max-width 0.3s ease, max-height 0.3s ease;
+  transform-origin: center center; /* Phase 1F.2: Transform from center */
+  margin: 2rem auto 3rem auto; /* Phase 1F.2: Extra bottom spacing, centered */
+  flex-shrink: 0; /* Phase 1F.2: Prevent image from shrinking */
+}
+
+#mathpix-rotate-capture-btn {
+  display: none;
 }
 
 .mathpix-image-preview:hover {
@@ -1992,6 +2023,123 @@ input#custom-height {
   min-width: 4rem;
   text-align: center;
 }
+
+/* =============================================================================
+   PHASE 1F.2: TRANSFORM CONTROLS STYLING
+   ============================================================================= */
+
+/**
+ * Transform Controls Container
+ * Houses rotate and flip buttons with transform state display
+ */
+.mathpix-transform-controls {
+  display: none; /* Hidden by default, shown for camera captures */
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1rem 0; /* Phase 1F.2: More spacing from image */
+  padding: 0.75rem;
+  border-radius: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0; /* Phase 1F.2: Prevent controls from shrinking */
+}
+
+/**
+ * Transform Buttons (Rotate & Flip)
+ * Styled to match existing MathPix button design
+ */
+.mathpix-transform-btn {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.mathpix-transform-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
+}
+
+.mathpix-transform-btn:active {
+  transform: translateY(0);
+}
+
+.mathpix-transform-btn:focus {
+  outline: 2px solid;
+  outline-offset: 2px;
+}
+
+/**
+ * Transform State Display
+ * Shows current transform description (e.g., "Rotated 90° • Flipped")
+ */
+.mathpix-transform-state {
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  min-width: 180px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .mathpix-transform-btn {
+    border-width: 3px;
+  }
+
+  .mathpix-transform-btn:focus {
+    outline-width: 3px;
+  }
+
+  .mathpix-transform-state {
+    border-width: 2px;
+  }
+}
+
+/* Responsive Design for Transform Controls */
+@media (max-width: 768px) {
+  .mathpix-transform-controls {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .mathpix-transform-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    min-width: 100px;
+  }
+
+  .mathpix-transform-state {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mathpix-transform-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .mathpix-transform-btn,
+  .mathpix-transform-state {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* =============================================================================
+   END PHASE 1F.2 STYLES
+   ============================================================================= */
 
 @media (max-width: 768px) {
   .mathpix-comparison-container {
@@ -3961,6 +4109,10 @@ input#custom-height {
 
 /* Hide canvas size buttons when viewport is too small */
 
+#mathpix-fit-to-width-btn {
+  display: none;
+}
+
 /* Hide Extra Large (1000×500) below 1100px width */
 @media (max-width: 1099px) {
   #mathpix-draw-xlarge-canvas-btn {
@@ -3996,14 +4148,327 @@ input#custom-height {
     display: block;
   }
 }
+/* ============================================
+   CANVAS SIZE CONTROLS - RESPONSIVE VISIBILITY
+   ============================================ */
 
-/* Optional: Add visual indicator for viewport constraints */
-@media (max-width: 899px) {
-  .mathpix-canvas-size-controls::after {
-    content: "Size options limited by viewport width";
-    display: block;
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
-    font-style: italic;
+/* Hide individual size buttons based on viewport constraints */
+/* (Your existing media queries for hiding xlarge, large, medium, small) */
+
+/* Hide the entire canvas size control fieldset when only one option remains visible */
+
+/* When only Small (400×200) is visible (viewport < 700px width) */
+@media (max-width: 699px) {
+  #mathpix-draw-small-canvas-btn {
+    display: none;
   }
+}
+
+/* Tool Selection Radio Buttons - Shared Styles */
+#toolSelection,
+.mathpix-mode-switcher,
+.mathpix-status-indicator {
+  border-radius: 4px;
+}
+
+#toolSelection legend,
+.mathpix-mode-switcher legend {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Default layout: inline radio buttons for #toolSelection */
+#toolSelection input[type="radio"] {
+  margin-right: 0.5rem;
+  margin-left: 1rem;
+}
+
+#toolSelection input[type="radio"]:first-of-type {
+  margin-left: 0;
+}
+
+#toolSelection label.radio {
+  margin-right: 1rem;
+  display: inline;
+}
+
+/* Default layout for .mathpix-mode-options (horizontal) */
+.mathpix-mode-options {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mathpix-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.mathpix-mode-option input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.mathpix-mode-option .mode-icon {
+  flex-shrink: 0;
+}
+
+.mathpix-mode-option .mode-label {
+  white-space: nowrap;
+}
+
+/* Mobile/Small viewport: stack radio buttons vertically */
+@media (max-width: 640px) {
+  /* #toolSelection styles */
+  #toolSelection {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  #toolSelection legend {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  #toolSelection input[type="radio"] {
+    margin: 0;
+    justify-self: start;
+  }
+
+  #toolSelection label.radio {
+    margin: 0;
+    justify-self: start;
+  }
+
+  /* .mathpix-mode-switcher styles */
+  .mathpix-mode-options {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .mathpix-mode-option {
+    justify-content: flex-start;
+  }
+}
+
+/* ============================================================================
+   Phase 1D: Camera Capture Styling
+   ============================================================================ */
+
+/* Camera Container */
+.mathpix-camera-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Disabled Button State */
+.mathpix-camera-controls .mathpix-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Button Icons */
+.mathpix-camera-controls .button-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Camera Info Text */
+.mathpix-camera-info {
+  margin-top: 0.5rem;
+}
+
+.mathpix-camera-info .info-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+
+  border: 1px solid currentcolor;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+
+  margin: 0;
+}
+
+.mathpix-camera-info .info-icon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+/* Responsive Design - Mobile Optimizations */
+@media (max-width: 640px) {
+  .mathpix-camera-wrapper {
+    gap: 1rem;
+  }
+
+  .mathpix-camera-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .mathpix-camera-controls .mathpix-button {
+    width: 100%;
+    justify-content: center;
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  #mathpix-camera-video {
+    min-height: 240px;
+  }
+
+  .mathpix-camera-status {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.75rem;
+  }
+
+  .mathpix-camera-info .info-text {
+    font-size: 0.8125rem;
+    padding: 0.75rem;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .mathpix-camera-controls {
+    justify-content: space-between;
+  }
+
+  .mathpix-camera-controls .mathpix-button {
+    flex: 1 1 auto;
+    min-width: 140px;
+  }
+}
+
+/* Animation for camera activation */
+@keyframes camera-activate {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+#mathpix-camera-video[src]:not([src=""]) {
+  animation: camera-activate 0.3s ease-out;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .mathpix-camera-controls .mathpix-button {
+    border-width: 2px;
+  }
+
+  .mathpix-camera-info .info-text {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-camera-controls .mathpix-button,
+  #mathpix-camera-video {
+    transition: none;
+    animation: none;
+  }
+
+  .mathpix-camera-controls .mathpix-button:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Camera Controls Layout */
+.mathpix-camera-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+/* Camera Buttons - Match existing MathPix button styles */
+.mathpix-camera-controls .mathpix-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+#mathpix-camera-status-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Camera Status Indicator */
+.mathpix-camera-status {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 10;
+}
+
+/* Mirror Wrapper - CRITICAL: CSS Mirroring for Natural UX */
+.mathpix-camera-mirror-wrapper {
+  width: 100%;
+  height: 100%;
+
+  /* Phase 1E: Default mirrored for natural front-facing camera UX */
+  /* Phase 1F: Transform controlled by toggleMirror() method */
+  /* Applied to wrapper instead of video for browser compatibility */
+  transform: scaleX(-1);
+}
+
+/* Video Element */
+#mathpix-camera-video {
+  width: 100%;
+  height: auto;
+  display: block;
+  min-height: 300px;
+  max-height: 600px;
+  object-fit: contain;
+
+  /* CRITICAL: Hardware acceleration for smooth video performance */
+  will-change: transform, contents;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+
+  /* Optimize rendering performance */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Video Preview Container */
+.mathpix-camera-preview {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
 }
