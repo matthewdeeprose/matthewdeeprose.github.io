@@ -1,689 +1,878 @@
-
 <!DOCTYPE html>
 <html lang="en-GB">
-   <head>
-      <meta charset="utf-8" />
-      <meta name="description" content="Contrast Cards">
-      <meta name="keywords" content="accessibility, contrast, tool, palette">
-      <meta name="author" content="Matthew Deeprose">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Contrast Cards</title>
-      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
-      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
-      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
-      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-      <meta property="og:title" content="Contrast Cards - Matthew Deeprose">
-      <meta property="og:description" content="">
-      <meta property="og:image" content="https://matthewdeeprose.github.io/concards43.png">
-	  <meta property="og:image:width" content="2500" />
-	  <meta property="og:image:height" content="1306" />
-      <meta property="og:image:alt" content="">
-      <meta property="og:locale" content="en_GB">
-      <meta property="og:type" content="website">
-      <meta property="og:url" content="https://matthewdeeprose.github.io/contrastCards.html">
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
-      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-      <link rel="icon" href="favicon.ico">
-      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
-      <link rel="icon" href="favicon.svg" type="image/svg+xml">
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Contrast Cards - Matthew Deeprose" />
-      <meta name="twitter:description" content=""/>
-      <meta name="twitter:creator" content="@VLEguru"/>
-      <meta name="twitter:site" content="@VLEguru"/>
-      <meta name="twitter:image" content="https://matthewdeeprose.github.io/concards43.png"/>
-      <meta name="twitter:image:alt" content=""/>
-      <meta name="twitter:card" content="summary_large_image"/>
-   </head>
-       <style>
-      .page-wrap > * {
-        grid-column: 1/-1 !important;
-        grid-row: auto !important;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Contrast Cards" />
+    <meta name="keywords" content="accessibility, contrast, tool, palette" />
+    <meta name="author" content="Matthew Deeprose" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contrast Cards</title>
+    <link
+      rel="stylesheet"
+      id="lightCSS"
+      href="light.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all" />
+    <link
+      rel="stylesheet"
+      id="darkCSS"
+      href="dark.css"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print" />
+    <meta property="og:title" content="Contrast Cards - Matthew Deeprose" />
+    <meta property="og:description" content="" />
+    <meta
+      property="og:image"
+      content="https://matthewdeeprose.github.io/concards43.png"
+    />
+    <meta property="og:image:width" content="2500" />
+    <meta property="og:image:height" content="1306" />
+    <meta property="og:image:alt" content="" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://matthewdeeprose.github.io/contrastCards.html"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="theme-color"
+      content="#231F20"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#FFFFF4"
+      media="(prefers-color-scheme: light)"
+    />
+    <link rel="icon" href="favicon.ico" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="RSS Feed for matthewdeeprose.github.io"
+      href="https://matthewdeeprose.github.io/feed.rss"
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Contrast Cards - Matthew Deeprose" />
+    <meta name="twitter:description" content="" />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta
+      name="twitter:image"
+      content="https://matthewdeeprose.github.io/concards43.png"
+    />
+    <meta name="twitter:image:alt" content="" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <style>
+    .page-wrap > * {
+      grid-column: 1/-1 !important;
+      grid-row: auto !important;
+    }
+
+    /* Visually hidden utility class */
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+    /* Header styles */
+    .main-header {
+      margin-bottom: 2rem;
+    }
+
+    /* Details/Summary styles */
+    .colour-input-details {
+      margin-bottom: 2rem;
+      border-radius: 0.5rem;
+    }
+    .colour-input-summary {
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      font-size: 1.125rem;
+      font-weight: 600;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: background-color 0.15s ease-in-out;
+      outline: none !important;
+      text-decoration: none !important;
+    }
+
+    .colour-input-summary:focus-visible {
+      outline-offset: -2px;
+    }
+    /* Hide default details marker */
+    .colour-input-details summary::-webkit-details-marker {
+      display: none;
+    }
+    .colour-input-details summary::marker {
+      display: none;
+    }
+    .summary-icon {
+      transition: transform 0.2s ease-in-out;
+      font-size: 0.875rem;
+    }
+    .colour-input-details[open] .summary-icon {
+      transform: rotate(90deg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .colour-input-summary,
+      .summary-icon {
+        transition: none;
       }
-	  
+    }
+    /* Input section styles */
+    .input-section {
+      padding: 1.5rem;
+      padding-top: 1rem;
+    }
+    .input-section h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+    /* Form styles */
+    .colour-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .textarea-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .textarea-label {
+      font-weight: 500;
+    }
+    .colour-input {
+      width: 100%;
+      min-height: 8rem;
+      padding: 0.75rem;
+      border: 2px solid currentcolor;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      resize: vertical;
+      transition: border-color 0.15s ease-in-out;
+    }
+    .colour-input:focus-visible {
+      outline: 2px solid;
+      outline-offset: 2px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .colour-input {
+        transition: none;
+      }
+    }
+    /* Button styles */
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
 
-  /* Visually hidden utility class */
-  .visually-hidden {
-  	position: absolute !important;
-  	width: 1px !important;
-  	height: 1px !important;
-  	padding: 0 !important;
-  	margin: -1px !important;
-  	overflow: hidden !important;
-  	clip: rect(0, 0, 0, 0) !important;
-  	white-space: nowrap !important;
-  	border: 0 !important;
-  }
-  /* Header styles */
-  .main-header {
-  	margin-bottom: 2rem;
-  }
+    @media (prefers-reduced-motion: reduce) {
+      .btn {
+        transition: none;
+      }
+    }
+    /* Checkbox styles */
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .checkbox-input {
+      width: 1rem;
+      height: 1rem;
+    }
 
-  /* Details/Summary styles */
-  .colour-input-details {
-  	margin-bottom: 2rem;
-  	border-radius: 0.5rem;
+    .checkbox-label {
+      font-weight: 500;
+      cursor: pointer;
+    }
+    /* Results section styles */
+    .results-section {
+      margin-top: 2rem;
+    }
 
-  }
-  .colour-input-summary {
-  	padding: 1rem 1.5rem;
-  	cursor: pointer;
-  	font-size: 1.125rem;
-  	font-weight: 600;
-  	list-style: none;
-  	display: flex;
-  	align-items: center;
-  	justify-content: space-between;
-  	user-select: none;
-  	transition: background-color 0.15s ease-in-out;
-	  outline:none !important;
-	text-decoration: none !important;
-  }
+    /* Cards grid */
+    .cards-container {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .colour-card {
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px currentcolor;
+      min-height: 20rem;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid currentcolor;
+    }
+    .card-header {
+      padding: 1rem;
+      font-weight: 600;
+      font-size: 1.125rem;
+      text-align: center;
+      min-height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-body {
+      padding: 1rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .contrast-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .contrast-item:last-child {
+      border-bottom: none;
+    }
+    .contrast-text {
+      font-weight: 500;
+      word-break: break-word;
+      line-height: 1.3;
+    }
+    .colour-name {
+      color: inherit;
+    }
+    .contrast-ratio {
+      white-space: nowrap;
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+      display: inline-block;
+    }
+    .contrast-badges {
+      display: flex;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
 
-  .colour-input-summary:focus-visible {
-  	outline-offset: -2px;
-  }
-  /* Hide default details marker */
-  .colour-input-details summary::-webkit-details-marker {
-  	display: none;
-  }
-  .colour-input-details summary::marker {
-  	display: none;
-  }
-  .summary-icon {
-  	transition: transform 0.2s ease-in-out;
-  	font-size: 0.875rem;
-  }
-  .colour-input-details[open] .summary-icon {
-  	transform: rotate(90deg);
-  }
-  @media (prefers-reduced-motion: reduce) {
-  	.colour-input-summary,
-  	.summary-icon {
-  		transition: none;
-  	}
-  }
-  /* Input section styles */
-  .input-section {
-  	padding: 1.5rem;
-  	padding-top: 1rem;
+    /* Responsive adjustment for smaller cards */
+    @media (max-width: 400px) {
+      .contrast-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
+      .contrast-badges {
+        align-self: flex-end;
+      }
+    }
 
-  }
-  .input-section h2 {
-  	font-size: 1rem;
-  	font-weight: 500;
-  	margin-bottom: 1rem;
-	  
-  }
-  /* Form styles */
-  .colour-form {
-  	display: flex;
-  	flex-direction: column;
-  	gap: 1rem;
-  }
-  .textarea-container {
-  	display: flex;
-  	flex-direction: column;
-  	gap: 0.5rem;
-  }
-  .textarea-label {
-  	font-weight: 500;
-	  
-  }
-  .colour-input {
-  	width: 100%;
-  	min-height: 8rem;
-  	padding: 0.75rem;
-  	border: 2px solid currentcolor;
-  	border-radius: 0.375rem;
-  	font-size: 0.875rem;
-  	line-height: 1.4;
-  	resize: vertical;
-  	transition: border-color 0.15s ease-in-out;
-  }
-  .colour-input:focus-visible {
-  	outline: 2px solid ;
-  	outline-offset: 2px;
-  }
-  @media (prefers-reduced-motion: reduce) {
-  	.colour-input {
-  		transition: none;
-  	}
-  }
-  /* Button styles */
-  .button-group {
-  	display: flex;
-  	flex-wrap: wrap;
-  	gap: 0.75rem;
-  }
+    .contrast-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background-color: #fffff4;
+      border: 1px solid currentcolor;
+      box-shadow: 0 1px 2px rgba(0, 19, 29, 0.1);
+    }
+    .badge-aa {
+      color: #0a5d3a;
+      border-color: #0a5d3a;
+    }
+    .badge-aaa {
+      color: #002e3b;
+      border-color: #002e3b;
+    }
+    .badge-graphics {
+      color: #7c2d12;
+      border-color: #7c2d12;
+    }
 
-  @media (prefers-reduced-motion: reduce) {
-  	.btn {
-  		transition: none;
-  	}
-  }
-  /* Checkbox styles */
-  .checkbox-container {
-  	display: flex;
-  	align-items: center;
-  	gap: 0.5rem;
-  	margin-bottom: 1rem;
-  }
-  .checkbox-input {
-  	width: 1rem;
-  	height: 1rem;
-  }
+    /* Graphics section styling */
+    .graphics-section {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 2px dashed;
+    }
+    .graphics-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .graphics-warning {
+      font-size: 0.75rem;
+      margin-bottom: 0.75rem;
+      font-style: italic;
+      font-weight: 500;
+    }
 
-  .checkbox-label {
-  	font-weight: 500;
-  	cursor: pointer;
-  }
-  /* Results section styles */
-  .results-section {
-  	margin-top: 2rem;
-  }
-
-  /* Cards grid */
-  .cards-container {
-  	list-style: none;
-  	display: grid;
-  	grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  	gap: 1.5rem;
-  	margin-bottom: 2rem;
-  }
-  .colour-card {
-  	border-radius: 0.5rem;
-  	overflow: hidden;
-  	box-shadow: 0 4px 6px -1px currentcolor;
-  	min-height: 20rem;
-  	display: flex;
-  	flex-direction: column;
-  	border: 1px solid currentcolor;
-  }
-  .card-header {
-  	padding: 1rem;
-  	font-weight: 600;
-  	font-size: 1.125rem;
-  	text-align: center;
-  	min-height: 3rem;
-  	display: flex;
-  	align-items: center;
-  	justify-content: center;
-  }
-  .card-body {
-  	padding: 1rem;
-  	flex: 1;
-  	display: flex;
-  	flex-direction: column;
-  	gap: 0.75rem;
-  }
-.contrast-item {
-  	display: flex;
-  	align-items: center;
-  	justify-content: space-between;
-  	padding: 0.5rem 0;
-  	border-bottom: 1px solid;
-  	gap: 0.5rem;
-  	flex-wrap: wrap;
-  }
-  .contrast-item:last-child {
-  	border-bottom: none;
-  }
-  .contrast-text {
-  	font-weight: 500;
-  	word-break: break-word;
-  	line-height: 1.3;
-  }
-  .colour-name {
-  	color: inherit;
-  }
-  .contrast-ratio {
-  	white-space: nowrap;
-  	font-size: 0.75rem;
-  	margin-left: 0.5rem;
-  	display: inline-block;
-  }
-  .contrast-badges {
-  	display: flex;
-  	gap: 0.25rem;
-  	flex-shrink: 0;
-  }
-  
-  /* Responsive adjustment for smaller cards */
-  @media (max-width: 400px) {
-  	.contrast-item {
-  		flex-direction: column;
-  		align-items: flex-start;
-  		gap: 0.25rem;
-  	}
-  	.contrast-badges {
-  		align-self: flex-end;
-  	}
-  }
-
-
-  .contrast-badge {
-  	font-size: 0.75rem;
-  	font-weight: 600;
-  	padding: 0.25rem 0.5rem;
-  	border-radius: 0.375rem;
-  	text-transform: uppercase;
-  	letter-spacing: 0.05em;
-  	background-color: #fffff4;
-  	border: 1px solid currentcolor;
-  	box-shadow: 0 1px 2px rgba(0, 19, 29, 0.1);
-  }
-  .badge-aa {
-  	color: #0a5d3a;
-  	border-color: #0a5d3a;
-  }
-  .badge-aaa {
-  	color: #002e3b;
-  	border-color: #002e3b;
-  }
-  .badge-graphics {
-  	color: #7c2d12;
-  	border-color: #7c2d12;
-  }
-  
-/* Graphics section styling */
-.graphics-section {
-  	margin-top: 1rem;
-  	padding-top: 0.75rem;
-  	border-top: 2px dashed;
-  }
-  .graphics-title {
-  	font-size: 0.875rem;
-  	font-weight: 600;
-  	margin-bottom: 0.5rem;
-  }
-  .graphics-warning {
-  	font-size: 0.75rem;
-  	margin-bottom: 0.75rem;
-  	font-style: italic;
-  	font-weight: 500;
-  }
-  
-  /* Colour swatch styling */
-  .colour-swatch-small {
-  	width: 100%;
-  	height: 0.5rem;
-  	border: 1px solid rgba(0, 0, 0, 0.2);
-  	border-radius: 0.25rem;
-  	margin-top: 0.25rem;
-  	flex-shrink: 0;
-  }
-  .contrast-text-container {
-  	display: flex;
-  	flex-direction: column;
-  	flex: 1 1 0;
-  	min-width: 0;
-  }
-  .contrast-ratio {
-  	font-size: 0.75rem;
-  	margin-left: 0.5rem;
-  }
-  /* Unusable backgrounds section */
-  .unusable-section {
-  	display: none;
-  	margin-top: 2rem;
-  	padding: 1.5rem;
-  	border: 1px solid currentcolor;
-  	border-radius: 0.5rem;
-  }
-  .unusable-section.visible {
-  	display: block;
-  }
-  .unusable-title {
-  	font-size: 1.25rem;
-  	font-weight: 600;
-  	margin-bottom: 1rem;
-  }
-  .unusable-colours {
-  	display: flex;
-  	flex-wrap: wrap;
-  	gap: 0.75rem;
-  }
-  .unusable-colour {
-  	display: flex;
-  	align-items: center;
-  	gap: 0.5rem;
-  	padding: 0.5rem;
-  	border-radius: 0.375rem;
-  	border: 1px solid currentcolor;
-  	background-color: #fffff4;
-  }
-  .colour-swatch {
-  	width: 2rem;
-  	height: 2rem;
-  	border-radius: 0.25rem;
-  	border: 1px solid currentcolor;
-  }
-  .colour-details {
-  	font-size: 0.875rem;
-  }
-  .colour-name {
-  	font-weight: 500;
-  	color: #231F20;
-  }
-  .colour-hex {
-  	color: #231F20;
-
-  }
-  /* Error messages */
-  .error-message {
-
-
-  	padding: 0.75rem;
-  	border-radius: 0.375rem;
-  	margin-top: 1rem;
-  	font-size: 0.875rem;
-  }
-  /* Mobile responsive */
-  @media (max-width: 768px) {
-  	.cards-container {
-  		grid-template-columns: 1fr;
-  	}
-  	.button-group {
-  		flex-direction: column;
-  	}
-  	.btn {
-  		width: 100%;
-  	}
-  }
-
-	  </style>
-   <body>
-      <div class="page-wrap" id="start">
-         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
-         <header class="page-header">
-            <div id="banner">
-               <div id="logo">
-                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
-                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
-                        <title id="svgTitle">Change theme</title>
-                        <desc id="svgDesc">Select to switch to light theme</desc>
-                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
-                           <path d="m6.5 17.5h4"/>
-                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
-                           <path d="m8.5 1.5v-1"/>
-                           <path d="m13.5 3.5 1-1"/>
-                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
-                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
-                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
-                           <path d="m1.5 7.5h-1"/>
-                           <path d="m16.5 7.5h-1"/>
-                        </g>
-                     </svg>
-                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
-                        <title id="svgTitleX">Change theme</title>
-                        <desc id="svgDescX">Select to switch to dark theme</desc>
-                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
-                           <path d="m2.5 13.5h4"/>
-                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
-                        </g>
-                     </svg>
-                  </button>
-               </div>
-               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
-               <div id="titleLink">Matthew Deeprose</div>
-            </div>
-         </header>
-         <div id="main-navigation" class="page-nav">
-            <nav aria-label="Main menu" class="topnav" id="myTopnav">
-               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
-                  <span id="hamburger">
-                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
-                        <title id="hamSVGTitle">Menu</title>
-                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
-                        <rect width="100" height="20"></rect>
-                        <rect y="30" width="100" height="20"></rect>
-                        <rect y="60" width="100" height="20"></rect>
-                     </svg>
-                  </span>
-                  <span id="arrow">
-                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
-                        <title id="arrowSVGTitle">Menu</title>
-                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
-                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
-                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
-                           <path  d="m16.5,10.5l-13,0"/>
-                        </g>
-                     </svg>
-                  </span>
-               </button>
-               <a id="homeMenu" href="index.html">Home</a>
-               <a href="presentations.html" >Presentations</a>
-               <a href="posts.html">Blog Posts</a>
-               <a href="projects.html" aria-current="page" class="active">Projects</a>
-               <a href="about.html">About</a>
-            </nav>
-         </div>
-         <main class="page-main" id="main">
-            <article class="standard">
-<h1 class="main-title">Colour Contrast Cards</h1>
-        <p class="main-description">
-Generate cards where each cards background is a palette colour. Within each card view which colours within your palette have sufficient contrast for text. Default colourset is University of Southampton brand, but you can upload your own.
-        </p>
-		<details class="colour-input-details" id="colourInputDetails">
-            <summary class="colour-input-summary" id="colourInputSummary" aria-expanded="false">
-                <span>
-                    <span aria-hidden="true">🎨</span> Colour Input Options
-                </span>
-                <span class="summary-icon" aria-hidden="true">▶</span>
+    /* Colour swatch styling */
+    .colour-swatch-small {
+      width: 100%;
+      height: 0.5rem;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: 0.25rem;
+      margin-top: 0.25rem;
+      flex-shrink: 0;
+    }
+    .contrast-text-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .contrast-ratio {
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+    }
+    /* Unusable backgrounds section */
+    .unusable-section {
+      display: none;
+      margin-top: 2rem;
+      padding: 1.5rem;
+      border: 1px solid currentcolor;
+      border-radius: 0.5rem;
+    }
+    .unusable-section.visible {
+      display: block;
+    }
+    .unusable-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .unusable-colours {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .unusable-colour {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      border: 1px solid currentcolor;
+      background-color: #fffff4;
+    }
+    .colour-swatch {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.25rem;
+      border: 1px solid currentcolor;
+    }
+    .colour-details {
+      font-size: 0.875rem;
+    }
+    .colour-name {
+      font-weight: 500;
+      color: #231f20;
+    }
+    .colour-hex {
+      color: #231f20;
+    }
+    /* Error messages */
+    .error-message {
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+    }
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      .cards-container {
+        grid-template-columns: 1fr;
+      }
+      .button-group {
+        flex-direction: column;
+      }
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href="#main">Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button
+              id="modeToggle"
+              aria-label="Change between light and dark theme"
+              aria-pressed="false"
+              onclick="toggle(this.id);"
+            >
+              <svg
+                id="logoSVG"
+                height="45"
+                viewBox="0 0 21 21"
+                width="45"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-labelledby="svgTitle svgDesc"
+                role="img"
+              >
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g
+                  fill="none"
+                  fill-rule="evenodd"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  transform="translate(2 1)"
+                >
+                  <path d="m6.5 17.5h4" />
+                  <path
+                    d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"
+                  />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg
+                id="logoSVG-Off"
+                height="45"
+                viewBox="0 0 21 21"
+                width="45"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-labelledby="svgTitleX svgDescX"
+              >
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g
+                  fill="none"
+                  fill-rule="evenodd"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  transform="translate(6 5)"
+                >
+                  <path d="m2.5 13.5h4" />
+                  <path
+                    d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"
+                  />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span
+            role="alert"
+            class="hidden"
+            aria-live="polite"
+            id="lightDark"
+          ></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button
+            id="menu"
+            aria-controls="myTopnav"
+            aria-labelledby="myTopnav"
+            aria-expanded="false"
+            class="icon"
+            aria-haspopup="menu"
+            onclick="menuAction()"
+          >
+            <span id="hamburger">
+              <svg
+                id="hamSVG"
+                viewBox="0 0 100 80"
+                width="20"
+                height="20"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                focusable="false"
+                role="img"
+              >
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">
+                  Select to expand or collapse the menu
+                </desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg
+                width="20"
+                height="20"
+                xmlns="http://www.w3.org/2000/svg"
+                role="img"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">
+                  Select to expand or collapse the menu
+                </desc>
+                <g
+                  stroke-width="4"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                  stroke="currentColor"
+                  fill-rule="evenodd"
+                  fill="none"
+                >
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html" aria-current="page" class="active"
+            >Projects</a
+          >
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 class="main-title">Colour Contrast Cards</h1>
+          <p class="main-description">
+            Generate cards where each cards background is a palette colour.
+            Within each card view which colours within your palette have
+            sufficient contrast for text. Default colourset is University of
+            Southampton brand, but you can upload your own.
+          </p>
+          <details class="colour-input-details" id="colourInputDetails">
+            <summary
+              class="colour-input-summary"
+              id="colourInputSummary"
+              aria-expanded="false"
+            >
+              <span>
+                <span aria-hidden="true">🎨</span> Colour Input Options
+              </span>
+              <span class="summary-icon" aria-hidden="true">▶</span>
             </summary>
-            
-            <section class="input-section" aria-labelledby="input-section-title">
 
-                
-                <form class="colour-form" id="colourForm" aria-label="Colour input form">
-                    <div class="textarea-container">
-                        <label for="colourInput" class="textarea-label">
-                            Enter hex colours and names:
-                        </label>
-                        <textarea 
-                            id="colourInput" 
-                            class="colour-input" 
-                            rows="6"
-                            placeholder="Enter hex colours and names (one per line or comma-separated), e.g:&#10;#FFFFFF, white&#10;black, 000000&#10;cccccc light grey&#10;`#FCB00C` yellow"
-                            aria-describedby="input-help"
-                        ></textarea>
-                        <div id="input-help" class="visually-hidden">
-                            Enter colours in various formats: hex codes with or without hash symbols, 
-                            names can be before or after hex codes, use new lines or commas to separate colours
-                        </div>
-                    </div>
+            <section
+              class="input-section"
+              aria-labelledby="input-section-title"
+            >
+              <form
+                class="colour-form"
+                id="colourForm"
+                aria-label="Colour input form"
+              >
+                <div class="textarea-container">
+                  <label for="colourInput" class="textarea-label">
+                    Enter hex colours and names:
+                  </label>
+                  <textarea
+                    id="colourInput"
+                    class="colour-input"
+                    rows="6"
+                    placeholder="Enter hex colours and names (one per line or comma-separated), e.g:&#10;#FFFFFF, white&#10;black, 000000&#10;cccccc light grey&#10;`#FCB00C` yellow"
+                    aria-describedby="input-help"
+                  ></textarea>
+                  <div id="input-help" class="visually-hidden">
+                    Enter colours in various formats: hex codes with or without
+                    hash symbols, names can be before or after hex codes, use
+                    new lines or commas to separate colours
+                  </div>
+                </div>
 
-                    <div class="button-group">
-                        <button type="button" class="btn btn-primary" id="generateBtn">
-                            <span aria-hidden="true">🎨</span> Generate Cards
-                        </button>
-                        <button type="button" class="btn btn-secondary" id="loadDefaultBtn">
-                            <span aria-hidden="true">📋</span> Load Default Colours
-                        </button>
-                        <button type="button" class="btn btn-outline" id="clearBtn">
-                            <span aria-hidden="true">🗑️</span> Clear All
-                        </button>
-                    </div>
-
-                   
-                </form>
+                <div class="button-group">
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    id="generateBtn"
+                  >
+                    <span aria-hidden="true">🎨</span> Generate Cards
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="loadDefaultBtn"
+                  >
+                    <span aria-hidden="true">📋</span> Load Default Colours
+                  </button>
+                  <button type="button" class="btn btn-outline" id="clearBtn">
+                    <span aria-hidden="true">🗑️</span> Clear All
+                  </button>
+                </div>
+              </form>
             </section>
-        </details>
+          </details>
 
-        <section class="results-section" aria-labelledby="results-title">
-            <h2 id="results-title" class="results-title">Contrast Analysis Results</h2>
-<div class="checkbox-container">
-                        <input 
-                            type="checkbox" 
-                            id="showRatios" 
-                            class="checkbox-input"
-                            aria-describedby="ratios-help"
-                        >
-                        <label for="showRatios" class="checkbox-label">
-                            Show contrast ratios
-                        </label>
-                        <div id="ratios-help" class="visually-hidden">
-                            When checked, displays numerical contrast ratios alongside AA and AAA badges
-                        </div>
-                    </div>
-                    
-                    <div class="checkbox-container">
-                        <input 
-                            type="checkbox" 
-                            id="showHexCodes" 
-                            class="checkbox-input"
-                            aria-describedby="hex-help"
-                        >
-                        <label for="showHexCodes" class="checkbox-label">
-                            Show hex codes
-                        </label>
-                        <div id="hex-help" class="visually-hidden">
-                            When checked, displays hex colour codes alongside colour names
-                        </div>
-                    </div>
-            <ul class="cards-container" id="cardsContainer" role="list" aria-label="Colour contrast cards">
-                <!-- Generated cards will appear here -->
+          <section class="results-section" aria-labelledby="results-title">
+            <h2 id="results-title" class="results-title">
+              Contrast Analysis Results
+            </h2>
+            <div class="checkbox-container">
+              <input
+                type="checkbox"
+                id="showRatios"
+                class="checkbox-input"
+                aria-describedby="ratios-help"
+              />
+              <label for="showRatios" class="checkbox-label">
+                Show contrast ratios
+              </label>
+              <div id="ratios-help" class="visually-hidden">
+                When checked, displays numerical contrast ratios alongside AA
+                and AAA badges
+              </div>
+            </div>
+
+            <div class="checkbox-container">
+              <input
+                type="checkbox"
+                id="showHexCodes"
+                class="checkbox-input"
+                aria-describedby="hex-help"
+              />
+              <label for="showHexCodes" class="checkbox-label">
+                Show hex codes
+              </label>
+              <div id="hex-help" class="visually-hidden">
+                When checked, displays hex colour codes alongside colour names
+              </div>
+            </div>
+            <ul
+              class="cards-container"
+              id="cardsContainer"
+              role="list"
+              aria-label="Colour contrast cards"
+            >
+              <!-- Generated cards will appear here -->
             </ul>
 
-            <div class="unusable-section" id="unusableSection" aria-labelledby="unusable-title">
-                <h3 id="unusable-title" class="unusable-title">
-                    <span aria-hidden="true">⚠️</span> Unusable Background Colours
-                </h3>
-                <p style="margin-bottom: 1rem;">
-                    These colours cannot be used as backgrounds because they don't provide sufficient 
-                    contrast with any text colour for WCAG AA compliance.
-                </p>
-                <div class="unusable-colours" id="unusableColours" role="list" aria-label="Unusable background colours">
-                    <!-- Unusable colours will appear here -->
-                </div>
+            <div
+              class="unusable-section"
+              id="unusableSection"
+              aria-labelledby="unusable-title"
+            >
+              <h3 id="unusable-title" class="unusable-title">
+                <span aria-hidden="true">⚠️</span> Unusable Background Colours
+              </h3>
+              <p style="margin-bottom: 1rem">
+                These colours cannot be used as backgrounds because they don't
+                provide sufficient contrast with any text colour for WCAG AA
+                compliance.
+              </p>
+              <div
+                class="unusable-colours"
+                id="unusableColours"
+                role="list"
+                aria-label="Unusable background colours"
+              >
+                <!-- Unusable colours will appear here -->
+              </div>
             </div>
-        </section>
-            </article>
-			      <div id="panel">
-         <button class="panelButton" onclick="topFunction()" id="myBtn">
-            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
-               <title id="svgTitle2">Top.</title>
-               <desc id="svgDesc2">Move to the top of the page.</desc>
-               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
-                  <circle cx="8.5" cy="8.5" r="8"/>
-                  <path d="m11.5 7.5-3-3-3 3"/>
-                  <path d="m8.5 4.5v8"/>
-               </g>
+          </section>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg
+              id="svgUP"
+              height="50"
+              viewBox="0 0 21 21"
+              width="50"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-labelledby="svgTitle2 svgDesc2"
+            >
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g
+                fill="none"
+                fill-rule="evenodd"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(2 2)"
+              >
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
             </svg>
             <br />
             <span id="myBtnTop" class="panelLabel">Top</span>
-         </button>
-         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
-            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
-               <title id="svgTitle3">Bottom.</title>
-               <desc id="svgDesc3">Move to the bottom of the page.</desc>
-               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
-                  <circle cx="8.5" cy="8.5" r="8"/>
-                  <path d="m5.5 9.5 3 3 3-3"/>
-                  <path d="m8.5 12.5v-8"/>
-               </g>
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg
+              id="svgDOWN"
+              height="50"
+              viewBox="0 0 21 21"
+              width="50"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-labelledby="svgTitle3 svgDesc3"
+            >
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g
+                fill="none"
+                fill-rule="evenodd"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(3 2)"
+              >
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
             </svg>
             <br />
             <span id="myBtnBottom" class="panelLabel">Bottom</span>
-         </button>
-      </div>
-         </main>
-         <aside class="page-sidebar related">
-            <section class="related">
-			<h2>Related content</h2>
-			</section>
-            <section class="related">
-               <ul class="relUL">
-                  <li><a href="a11y-brand-colour-contrast-suggest.html">Brand Accessible Colour Contrast Suggester</a></li>
-                  <li><a href="https://matthewdeeprose.github.io/matrix/matrix.html">Accessibility Matrix for University of Southampton Brand Colour Palette</a></li>
-                  <li><a href="contrastCompanion">Contrast Companion</a></li>
-				                    <li><a href="imageCVD">Colour Vision Deficiency Image Tester</a></li>
-									<li><a href="CVDP.html">Colour vision deficiency friendly palettes</a></li>
-									
-               </ul>
-            </section>
-         </aside>
-         <footer class="page-footer">
-            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
-            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
-            <div id="AccessibilityFoot">
-               <a href="Accessibility_Statement.html">Accessibility Statement</a>
-            </div>
-            <div id="twitterFoot">
-               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
-            </div>
-            <div id="YouTubeChannelFoot">
-               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
-            </div>
-            <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
-               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
-            </div>
-         </p></footer>
-      </div>
-<script src="https://matthewdeeprose.github.io/scripts/chroma.min.js"></script>
-    
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related content</h2>
+        </section>
+        <section class="related">
+          <ul class="relUL">
+            <li>
+              <a href="a11y-brand-colour-contrast-suggest.html"
+                >Brand Accessible Colour Contrast Suggester</a
+              >
+            </li>
+            <li>
+              <a href="https://matthewdeeprose.github.io/matrix/matrix.html"
+                >Accessibility Matrix for University of Southampton Brand Colour
+                Palette</a
+              >
+            </li>
+            <li><a href="contrastCompanion">Contrast Companion</a></li>
+            <li>
+              <a href="imageCVD">Colour Vision Deficiency Image Tester</a>
+            </li>
+            <li>
+              <a href="CVDP.html">Colour vision deficiency friendly palettes</a>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+        <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw"
+            >Follow on Twitter</a
+          >
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ"
+            >YouTube Channel</a
+          >
+        </div>
+        <div id="aboutCodePen">
+          <a href="https://codepen.io/matthewdeeprose/">CodePen</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/"
+            >&#169; Matthew Deeprose</a
+          >
+        </div>
+      </footer>
+    </div>
+    <script src="https://matthewdeeprose.github.io/scripts/chroma.min.js"></script>
+
     <script>
-const ColourContrastAnalyser = (function () {
-    // Logging configuration (inside IIFE scope)
-    const LOG_LEVELS = {
-        ERROR: 0,
-        WARN: 1, 
-        INFO: 2,
-        DEBUG: 3
-    };
-    
-    const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
-    const ENABLE_ALL_LOGGING = false;
-    const DISABLE_ALL_LOGGING = false;
-    
-    function shouldLog(level) {
-        if (DISABLE_ALL_LOGGING) return false;
-        if (ENABLE_ALL_LOGGING) return true;
-        return level <= DEFAULT_LOG_LEVEL;
-    }
+      const ColourContrastAnalyser = (function () {
+        // Logging configuration (inside IIFE scope)
+        const LOG_LEVELS = {
+          ERROR: 0,
+          WARN: 1,
+          INFO: 2,
+          DEBUG: 3,
+        };
 
-    function logError(message, ...args) {
-        if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
-    }
+        const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+        const ENABLE_ALL_LOGGING = false;
+        const DISABLE_ALL_LOGGING = false;
 
-    function logWarn(message, ...args) {
-        if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
-    }
+        function shouldLog(level) {
+          if (DISABLE_ALL_LOGGING) return false;
+          if (ENABLE_ALL_LOGGING) return true;
+          return level <= DEFAULT_LOG_LEVEL;
+        }
 
-    function logInfo(message, ...args) {
-        if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
-    }
+        function logError(message, ...args) {
+          if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+        }
 
-    function logDebug(message, ...args) {
-        if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
-    }
+        function logWarn(message, ...args) {
+          if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+        }
 
-    // Default colour set
-    const DEFAULT_COLOURS = [
-        { name: 'White', hex: '#FFFFFF' },
-        { name: 'Plain Black', hex: '#231F20' },
-        { name: 'Rich Black', hex: '#00131D' },
-        { name: 'Neutral 1', hex: '#495961' },
-        { name: 'Neutral 2', hex: '#758D9A' },
-        { name: 'Neutral 3', hex: '#9EB1BD' },
-        { name: 'Neutral 4', hex: '#E1E8EC' },
-        { name: 'Marine 1', hex: '#002F4C' },
-        { name: 'University Blue', hex: '#005C84' },
-        { name: 'Marine 2', hex: '#0C838C' },
-        { name: 'Marine 3', hex: '#74C9E5' },
-        { name: 'Marine 4', hex: '#83DBD2' },
-        { name: 'Marine 5', hex: '#4BB694' },
-        { name: 'Marine 6', hex: '#C1D100' },
-        { name: 'Horizon 1', hex: '#FCBC00' },
-        { name: 'Horizon 2', hex: '#EF7D00' },
-        { name: 'Horizon 3', hex: '#E63037' },
-        { name: 'Horizon 4', hex: '#D5007F' },
-        { name: 'Horizon 5', hex: '#8D3970' }
-    ];
+        function logInfo(message, ...args) {
+          if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+        }
 
-// DOM elements
+        function logDebug(message, ...args) {
+          if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+        }
+
+        // Default colour set
+        const DEFAULT_COLOURS = [
+          { name: "White", hex: "#FFFFFF" },
+          { name: "Plain Black", hex: "#231F20" },
+          { name: "Rich Black", hex: "#00131D" },
+          { name: "Neutral 1", hex: "#495961" },
+          { name: "Neutral 2", hex: "#758D9A" },
+          { name: "Neutral 3", hex: "#9EB1BD" },
+          { name: "Neutral 4", hex: "#E1E8EC" },
+          { name: "Marine 1", hex: "#002F4C" },
+          { name: "University Blue", hex: "#005C84" },
+          { name: "Marine 2", hex: "#0C838C" },
+          { name: "Marine 3", hex: "#74C9E5" },
+          { name: "Marine 4", hex: "#83DBD2" },
+          { name: "Marine 5", hex: "#4BB694" },
+          { name: "Marine 6", hex: "#C1D100" },
+          { name: "Horizon 1", hex: "#FCBC00" },
+          { name: "Horizon 2", hex: "#EF7D00" },
+          { name: "Horizon 3", hex: "#E63037" },
+          { name: "Horizon 4", hex: "#D5007F" },
+          { name: "Horizon 5", hex: "#8D3970" },
+        ];
+
+        // DOM elements
         let elements = {};
 
         // Application state
@@ -692,453 +881,577 @@ const ColourContrastAnalyser = (function () {
         let showHexCodes = false;
         let hasColoursWithNames = false;
 
-    /**
-     * Initialise the application
-     */
-    function initialise() {
-        logInfo('Colour Contrast Analyser initialising...');
-        
-        // Cache DOM elements
-elements = {
-            colourInput: document.getElementById('colourInput'),
-            generateBtn: document.getElementById('generateBtn'),
-            loadDefaultBtn: document.getElementById('loadDefaultBtn'),
-            clearBtn: document.getElementById('clearBtn'),
-            showRatios: document.getElementById('showRatios'),
-            showHexCodes: document.getElementById('showHexCodes'),
-            cardsContainer: document.getElementById('cardsContainer'),
-            unusableSection: document.getElementById('unusableSection'),
-            unusableColours: document.getElementById('unusableColours'),
-            colourInputDetails: document.getElementById('colourInputDetails'),
-            colourInputSummary: document.getElementById('colourInputSummary')
-        };
+        /**
+         * Initialise the application
+         */
+        function initialise() {
+          logInfo("Colour Contrast Analyser initialising...");
 
-        // Bind event listeners
-        bindEventListeners();
-        
-        // Auto-generate cards with default colours on load
-        autoGenerateDefaultCards();
-        
-        logInfo('Colour Contrast Analyser initialised successfully');
-    }
+          // Cache DOM elements
+          elements = {
+            colourInput: document.getElementById("colourInput"),
+            generateBtn: document.getElementById("generateBtn"),
+            loadDefaultBtn: document.getElementById("loadDefaultBtn"),
+            clearBtn: document.getElementById("clearBtn"),
+            showRatios: document.getElementById("showRatios"),
+            showHexCodes: document.getElementById("showHexCodes"),
+            cardsContainer: document.getElementById("cardsContainer"),
+            unusableSection: document.getElementById("unusableSection"),
+            unusableColours: document.getElementById("unusableColours"),
+            colourInputDetails: document.getElementById("colourInputDetails"),
+            colourInputSummary: document.getElementById("colourInputSummary"),
+          };
 
-    /**
-     * Bind event listeners to interactive elements
-     */
-function bindEventListeners() {
-        elements.generateBtn.addEventListener('click', handleGenerateCards);
-        elements.loadDefaultBtn.addEventListener('click', handleLoadDefault);
-        elements.clearBtn.addEventListener('click', handleClearAll);
-        elements.showRatios.addEventListener('change', handleShowRatiosChange);
-        elements.showHexCodes.addEventListener('change', handleShowHexCodesChange);
-        
-        // Details/summary accessibility handling
-        elements.colourInputDetails.addEventListener('toggle', handleDetailsToggle);
-        
-        // Prevent form submission on Enter key in textarea
-        elements.colourInput.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' && event.ctrlKey) {
-                event.preventDefault();
-                handleGenerateCards();
+          // Bind event listeners
+          bindEventListeners();
+
+          // Auto-generate cards with default colours on load
+          autoGenerateDefaultCards();
+
+          logInfo("Colour Contrast Analyser initialised successfully");
+        }
+
+        /**
+         * Bind event listeners to interactive elements
+         */
+        function bindEventListeners() {
+          elements.generateBtn.addEventListener("click", handleGenerateCards);
+          elements.loadDefaultBtn.addEventListener("click", handleLoadDefault);
+          elements.clearBtn.addEventListener("click", handleClearAll);
+          elements.showRatios.addEventListener(
+            "change",
+            handleShowRatiosChange
+          );
+          elements.showHexCodes.addEventListener(
+            "change",
+            handleShowHexCodesChange
+          );
+
+          // Details/summary accessibility handling
+          elements.colourInputDetails.addEventListener(
+            "toggle",
+            handleDetailsToggle
+          );
+
+          // Prevent form submission on Enter key in textarea
+          elements.colourInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" && event.ctrlKey) {
+              event.preventDefault();
+              handleGenerateCards();
             }
-        });
+          });
 
-        logDebug('Event listeners bound successfully');
-    }
+          logDebug("Event listeners bound successfully");
+        }
 
-    /**
-     * Handle details element toggle for accessibility
-     */
-    function handleDetailsToggle() {
-        const isOpen = elements.colourInputDetails.hasAttribute('open');
-        elements.colourInputSummary.setAttribute('aria-expanded', isOpen.toString());
-        logDebug('Details toggle:', isOpen ? 'opened' : 'closed');
-    }
+        /**
+         * Handle details element toggle for accessibility
+         */
+        function handleDetailsToggle() {
+          const isOpen = elements.colourInputDetails.hasAttribute("open");
+          elements.colourInputSummary.setAttribute(
+            "aria-expanded",
+            isOpen.toString()
+          );
+          logDebug("Details toggle:", isOpen ? "opened" : "closed");
+        }
 
-/**
-     * Auto-generate cards with default colours on page load
-     */
-    function autoGenerateDefaultCards() {
-        logInfo('Auto-generating cards with default colours');
-        
-        try {
+        /**
+         * Auto-generate cards with default colours on page load
+         */
+        function autoGenerateDefaultCards() {
+          logInfo("Auto-generating cards with default colours");
+
+          try {
             // Use the default colours directly
             parsedColours = [...DEFAULT_COLOURS];
             updateHexCodesCheckboxState();
             generateContrastCards();
-            logInfo(`Auto-generated contrast cards for ${parsedColours.length} default colours`);
-        } catch (error) {
-            logError('Error auto-generating default cards:', error);
-            showErrorMessage('An error occurred while loading default colours.');
+            logInfo(
+              `Auto-generated contrast cards for ${parsedColours.length} default colours`
+            );
+          } catch (error) {
+            logError("Error auto-generating default cards:", error);
+            showErrorMessage(
+              "An error occurred while loading default colours."
+            );
+          }
         }
-    }
 
-/**
-     * Handle generate cards button click
-     */
-    function handleGenerateCards() {
-        logInfo('Generate cards initiated');
-        clearErrorMessages();
-        
-        const inputValue = elements.colourInput.value.trim();
-        if (!inputValue) {
-            showErrorMessage('Please enter some colours to analyse.');
+        /**
+         * Handle generate cards button click
+         */
+        function handleGenerateCards() {
+          logInfo("Generate cards initiated");
+          clearErrorMessages();
+
+          const inputValue = elements.colourInput.value.trim();
+          if (!inputValue) {
+            showErrorMessage("Please enter some colours to analyse.");
             return;
-        }
+          }
 
-        try {
+          try {
             parsedColours = parseColourInput(inputValue);
             if (parsedColours.length === 0) {
-                showErrorMessage('No valid colours found in input. Please check your formatting.');
-                return;
+              showErrorMessage(
+                "No valid colours found in input. Please check your formatting."
+              );
+              return;
             }
 
             updateHexCodesCheckboxState();
             generateContrastCards();
-            logInfo(`Generated contrast cards for ${parsedColours.length} colours`);
-        } catch (error) {
-            logError('Error generating cards:', error);
-            showErrorMessage('An error occurred while processing colours. Please check your input format.');
+            logInfo(
+              `Generated contrast cards for ${parsedColours.length} colours`
+            );
+          } catch (error) {
+            logError("Error generating cards:", error);
+            showErrorMessage(
+              "An error occurred while processing colours. Please check your input format."
+            );
+          }
         }
-    }
 
-    /**
-     * Handle load default colours button click
-     */
-    function handleLoadDefault() {
-        logInfo('Loading default colours');
-        const defaultInput = DEFAULT_COLOURS.map(colour => `${colour.hex}, ${colour.name}`).join('\n');
-        elements.colourInput.value = defaultInput;
-        
-        // Automatically generate cards with default colours
-        handleGenerateCards();
-    }
+        /**
+         * Handle load default colours button click
+         */
+        function handleLoadDefault() {
+          logInfo("Loading default colours");
+          const defaultInput = DEFAULT_COLOURS.map(
+            (colour) => `${colour.hex}, ${colour.name}`
+          ).join("\n");
+          elements.colourInput.value = defaultInput;
 
-    /**
-     * Handle clear all button click
-     */
-    function handleClearAll() {
-        logInfo('Clearing all content');
-        elements.colourInput.value = '';
-        elements.cardsContainer.innerHTML = '';
-        elements.unusableSection.classList.remove('visible');
-        clearErrorMessages();
-        parsedColours = [];
-    }
+          // Automatically generate cards with default colours
+          handleGenerateCards();
+        }
 
-    /**
-     * Handle show ratios checkbox change
-     */
-    function handleShowRatiosChange() {
-        showContrastRatios = elements.showRatios.checked;
-        logDebug('Show contrast ratios:', showContrastRatios);
-        
-        // Re-generate cards if colours are already parsed
-        if (parsedColours.length > 0) {
+        /**
+         * Handle clear all button click
+         */
+        function handleClearAll() {
+          logInfo("Clearing all content");
+          elements.colourInput.value = "";
+          elements.cardsContainer.innerHTML = "";
+          elements.unusableSection.classList.remove("visible");
+          clearErrorMessages();
+          parsedColours = [];
+        }
+
+        /**
+         * Handle show ratios checkbox change
+         */
+        function handleShowRatiosChange() {
+          showContrastRatios = elements.showRatios.checked;
+          logDebug("Show contrast ratios:", showContrastRatios);
+
+          // Re-generate cards if colours are already parsed
+          if (parsedColours.length > 0) {
             generateContrastCards();
+          }
         }
-    }
 
-/**
-     * Handle show hex codes checkbox change
-     */
-    function handleShowHexCodesChange() {
-        showHexCodes = elements.showHexCodes.checked;
-        logDebug('Show hex codes:', showHexCodes);
-        
-        // Re-generate cards if colours are already parsed
-        if (parsedColours.length > 0) {
+        /**
+         * Handle show hex codes checkbox change
+         */
+        function handleShowHexCodesChange() {
+          showHexCodes = elements.showHexCodes.checked;
+          logDebug("Show hex codes:", showHexCodes);
+
+          // Re-generate cards if colours are already parsed
+          if (parsedColours.length > 0) {
             generateContrastCards();
+          }
         }
-    }
 
-    /**
-     * Update hex codes checkbox state based on available data
-     */
-    function updateHexCodesCheckboxState() {
-        // Determine if we have colours with actual names (not just hex codes as names)
-        hasColoursWithNames = parsedColours.some(colour => 
-            colour.name && colour.name !== colour.hex
-        );
-        
-        if (hasColoursWithNames) {
+        /**
+         * Update hex codes checkbox state based on available data
+         */
+        function updateHexCodesCheckboxState() {
+          // Determine if we have colours with actual names (not just hex codes as names)
+          hasColoursWithNames = parsedColours.some(
+            (colour) => colour.name && colour.name !== colour.hex
+          );
+
+          if (hasColoursWithNames) {
             // We have both names and hex codes - enable checkbox, uncheck by default
             elements.showHexCodes.disabled = false;
             elements.showHexCodes.checked = false;
             showHexCodes = false;
-            logDebug('Hex codes checkbox enabled - colours have names');
-        } else {
+            logDebug("Hex codes checkbox enabled - colours have names");
+          } else {
             // We only have hex codes - enable checkbox and check it
             elements.showHexCodes.disabled = true;
             elements.showHexCodes.checked = true;
             showHexCodes = true;
-            logDebug('Hex codes checkbox disabled and checked - colours only have hex codes');
+            logDebug(
+              "Hex codes checkbox disabled and checked - colours only have hex codes"
+            );
+          }
         }
-    }
 
-    /**
-     * Parse colour input with priority: newlines > commas > spaces
-     * @param {string} input - Raw input string
-     * @returns {Array} Array of parsed colour objects
-     */
-    function parseColourInput(input) {
-        logDebug('Parsing colour input:', input.substring(0, 100) + '...');
-        
-        let entries = [];
-        const errors = [];
+        /**
+         * Parse colour input with priority: newlines > commas > spaces
+         * @param {string} input - Raw input string
+         * @returns {Array} Array of parsed colour objects
+         */
+        function parseColourInput(input) {
+          logDebug("Parsing colour input:", input.substring(0, 100) + "...");
 
-        // Priority parsing: newlines first, then commas, then spaces
-        if (input.includes('\n')) {
-            entries = input.split('\n').filter(line => line.trim());
-            logDebug('Parsing by newlines, found', entries.length, 'entries');
-        } else if (input.includes(',')) {
-            entries = input.split(',').filter(part => part.trim());
-            logDebug('Parsing by commas, found', entries.length, 'entries');
-        } else {
+          let entries = [];
+          const errors = [];
+
+          // Priority parsing: newlines first, then commas, then spaces
+          if (input.includes("\n")) {
+            entries = input.split("\n").filter((line) => line.trim());
+            logDebug("Parsing by newlines, found", entries.length, "entries");
+          } else if (input.includes(",")) {
+            entries = input.split(",").filter((part) => part.trim());
+            logDebug("Parsing by commas, found", entries.length, "entries");
+          } else {
             // Split by spaces but be careful with colour names that contain spaces
-            entries = input.split(/\s+/).filter(part => part.trim());
-            logDebug('Parsing by spaces, found', entries.length, 'entries');
-        }
+            entries = input.split(/\s+/).filter((part) => part.trim());
+            logDebug("Parsing by spaces, found", entries.length, "entries");
+          }
 
-        const colours = [];
-        
-        for (let i = 0; i < entries.length; i++) {
+          const colours = [];
+
+          for (let i = 0; i < entries.length; i++) {
             try {
-                const parsed = parseColourEntry(entries[i].trim());
-                if (parsed) {
-                    colours.push(parsed);
-                } else {
-                    errors.push(`Line ${i + 1}: Could not parse "${entries[i].trim()}"`);
-                }
+              const parsed = parseColourEntry(entries[i].trim());
+              if (parsed) {
+                colours.push(parsed);
+              } else {
+                errors.push(
+                  `Line ${i + 1}: Could not parse "${entries[i].trim()}"`
+                );
+              }
             } catch (error) {
-                logWarn('Error parsing colour entry:', entries[i], error.message);
-                errors.push(`Line ${i + 1}: ${error.message}`);
+              logWarn("Error parsing colour entry:", entries[i], error.message);
+              errors.push(`Line ${i + 1}: ${error.message}`);
             }
+          }
+
+          if (errors.length > 0) {
+            showErrorMessage("Parsing warnings:\n" + errors.join("\n"));
+          }
+
+          logInfo(
+            `Successfully parsed ${colours.length} colours from ${entries.length} entries`
+          );
+          return colours;
         }
 
-        if (errors.length > 0) {
-            showErrorMessage('Parsing warnings:\n' + errors.join('\n'));
-        }
+        /**
+         * Parse a single colour entry
+         * @param {string} entry - Single colour entry
+         * @returns {Object|null} Parsed colour object or null if invalid
+         */
+        function parseColourEntry(entry) {
+          if (!entry) return null;
 
-        logInfo(`Successfully parsed ${colours.length} colours from ${entries.length} entries`);
-        return colours;
-    }
+          // Remove backticks if present
+          entry = entry.replace(/`/g, "");
 
-    /**
-     * Parse a single colour entry
-     * @param {string} entry - Single colour entry
-     * @returns {Object|null} Parsed colour object or null if invalid
-     */
-    function parseColourEntry(entry) {
-        if (!entry) return null;
+          // Split by comma if present (for "hex, name" format)
+          const parts = entry.includes(",")
+            ? entry.split(",").map((p) => p.trim())
+            : [entry];
 
-        // Remove backticks if present
-        entry = entry.replace(/`/g, '');
-        
-        // Split by comma if present (for "hex, name" format)
-        const parts = entry.includes(',') ? entry.split(',').map(p => p.trim()) : [entry];
-        
-        let hex = null;
-        let name = null;
+          let hex = null;
+          let name = null;
 
-        for (const part of parts) {
+          for (const part of parts) {
             if (isHexColour(part)) {
-                hex = normaliseHex(part);
+              hex = normaliseHex(part);
             } else if (part && !hex) {
-                // If we haven't found a hex yet, this might be a colour name followed by hex
-                const words = part.split(/\s+/);
-                for (const word of words) {
-                    if (isHexColour(word)) {
-                        hex = normaliseHex(word);
-                        name = part.replace(word, '').trim() || null;
-                        break;
-                    }
+              // If we haven't found a hex yet, this might be a colour name followed by hex
+              const words = part.split(/\s+/);
+              for (const word of words) {
+                if (isHexColour(word)) {
+                  hex = normaliseHex(word);
+                  name = part.replace(word, "").trim() || null;
+                  break;
                 }
-                if (!hex) {
-                    name = part;
-                }
-            } else if (part && hex) {
+              }
+              if (!hex) {
                 name = part;
+              }
+            } else if (part && hex) {
+              name = part;
             }
-        }
+          }
 
-        // If no hex found, try to extract from the whole entry
-        if (!hex) {
-            const hexMatch = entry.match(/#?[0-9a-fA-F]{6}\b|#?[0-9a-fA-F]{3}\b/);
+          // If no hex found, try to extract from the whole entry
+          if (!hex) {
+            const hexMatch = entry.match(
+              /#?[0-9a-fA-F]{6}\b|#?[0-9a-fA-F]{3}\b/
+            );
             if (hexMatch) {
-                hex = normaliseHex(hexMatch[0]);
-                name = entry.replace(hexMatch[0], '').replace(/,/g, '').trim() || null;
+              hex = normaliseHex(hexMatch[0]);
+              name =
+                entry.replace(hexMatch[0], "").replace(/,/g, "").trim() || null;
             }
-        }
+          }
 
-        if (!hex) {
+          if (!hex) {
             throw new Error(`No valid hex colour found in "${entry}"`);
-        }
+          }
 
-        // Validate hex colour with chroma.js
-        try {
+          // Validate hex colour with chroma.js
+          try {
             chroma(hex);
-        } catch (error) {
+          } catch (error) {
             throw new Error(`Invalid hex colour "${hex}" in "${entry}"`);
-        }
+          }
 
-        return {
+          return {
             hex: hex,
             name: name || hex,
-            originalEntry: entry
-        };
-    }
-
-    /**
-     * Check if a string is a valid hex colour
-     * @param {string} str - String to check
-     * @returns {boolean} True if valid hex colour
-     */
-    function isHexColour(str) {
-        return /^#?[0-9a-fA-F]{3}$|^#?[0-9a-fA-F]{6}$/.test(str);
-    }
-
-    /**
-     * Normalise hex colour format
-     * @param {string} hex - Hex colour string
-     * @returns {string} Normalised hex colour with #
-     */
-    function normaliseHex(hex) {
-        hex = hex.replace('#', '').toUpperCase();
-        
-        // Expand 3-digit hex to 6-digit
-        if (hex.length === 3) {
-            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+            originalEntry: entry,
+          };
         }
-        
-        return '#' + hex;
-    }
 
-    /**
-     * Generate contrast cards for all parsed colours
-     */
-     function generateContrastCards() {
-        logDebug('Generating contrast cards for', parsedColours.length, 'colours');
-        
-        const cardsHTML = [];
-        const unusableColours = [];
+        /**
+         * Check if a string is a valid hex colour
+         * @param {string} str - String to check
+         * @returns {boolean} True if valid hex colour
+         */
+        function isHexColour(str) {
+          return /^#?[0-9a-fA-F]{3}$|^#?[0-9a-fA-F]{6}$/.test(str);
+        }
 
-        for (const backgroundColour of parsedColours) {
+        /**
+         * Normalise hex colour format
+         * @param {string} hex - Hex colour string
+         * @returns {string} Normalised hex colour with #
+         */
+        function normaliseHex(hex) {
+          hex = hex.replace("#", "").toUpperCase();
+
+          // Expand 3-digit hex to 6-digit
+          if (hex.length === 3) {
+            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+          }
+
+          return "#" + hex;
+        }
+
+        /**
+         * Generate contrast cards for all parsed colours
+         */
+        function generateContrastCards() {
+          logDebug(
+            "Generating contrast cards for",
+            parsedColours.length,
+            "colours"
+          );
+
+          const cardsHTML = [];
+          const unusableColours = [];
+
+          for (const backgroundColour of parsedColours) {
             const contrastingColours = [];
             const graphicsOnlyColours = [];
-            
+
             for (const textColour of parsedColours) {
-                if (backgroundColour.hex === textColour.hex) continue;
-                
-                const contrastRatio = chroma.contrast(backgroundColour.hex, textColour.hex);
-                
-                if (contrastRatio >= 4.5) { // AA standard for normal text
-                    const isAAA = contrastRatio >= 7.0;
-                    contrastingColours.push({
-                        colour: textColour,
-                        ratio: contrastRatio,
-                        isAA: true,
-                        isAAA: isAAA,
-                        type: 'normal'
-                    });
-                } else if (contrastRatio >= 3.0) { // Graphics and large text only
-                    graphicsOnlyColours.push({
-                        colour: textColour,
-                        ratio: contrastRatio,
-                        isGraphics: true,
-                        type: 'graphics'
-                    });
-                }
+              if (backgroundColour.hex === textColour.hex) continue;
+
+              const contrastRatio = chroma.contrast(
+                backgroundColour.hex,
+                textColour.hex
+              );
+
+              if (contrastRatio >= 4.5) {
+                // AA standard for normal text
+                const isAAA = contrastRatio >= 7.0;
+                contrastingColours.push({
+                  colour: textColour,
+                  ratio: contrastRatio,
+                  isAA: true,
+                  isAAA: isAAA,
+                  type: "normal",
+                });
+              } else if (contrastRatio >= 3.0) {
+                // Graphics and large text only
+                graphicsOnlyColours.push({
+                  colour: textColour,
+                  ratio: contrastRatio,
+                  isGraphics: true,
+                  type: "graphics",
+                });
+              }
             }
 
-            if (contrastingColours.length > 0 || graphicsOnlyColours.length > 0) {
-                cardsHTML.push(generateCardHTML(backgroundColour, contrastingColours, graphicsOnlyColours));
+            if (
+              contrastingColours.length > 0 ||
+              graphicsOnlyColours.length > 0
+            ) {
+              cardsHTML.push(
+                generateCardHTML(
+                  backgroundColour,
+                  contrastingColours,
+                  graphicsOnlyColours
+                )
+              );
             } else {
-                unusableColours.push(backgroundColour);
+              unusableColours.push(backgroundColour);
             }
+          }
+
+          // Update cards container
+          elements.cardsContainer.innerHTML = cardsHTML.join("");
+
+          // Update unusable colours section
+          updateUnusableSection(unusableColours);
+
+          logInfo(
+            `Generated ${cardsHTML.length} cards, ${unusableColours.length} unusable colours`
+          );
         }
+        /**
+         * Generate HTML for a single contrast card
+         * @param {Object} backgroundColour - Background colour object
+         * @param {Array} contrastingColours - Array of contrasting colour objects for normal text
+         * @param {Array} graphicsOnlyColours - Array of colours suitable only for graphics/large text
+         * @returns {string} HTML string for the card
+         */
+        function generateCardHTML(
+          backgroundColour,
+          contrastingColours,
+          graphicsOnlyColours = []
+        ) {
+          // Determine best text colour for card header
+          const whiteContrast = chroma.contrast(
+            "#FFFFFF",
+            backgroundColour.hex
+          );
+          const blackContrast = chroma.contrast(
+            "#000000",
+            backgroundColour.hex
+          );
+          const headerTextColour = whiteContrast >= 4.5 ? "#FFFFFF" : "#000000";
 
-        // Update cards container
-        elements.cardsContainer.innerHTML = cardsHTML.join('');
-        
-        // Update unusable colours section
-        updateUnusableSection(unusableColours);
+          // Get the most contrasting colour for borders (first in sorted array)
+          const mostContrastingColour =
+            contrastingColours[0]?.colour.hex || headerTextColour;
 
-        logInfo(`Generated ${cardsHTML.length} cards, ${unusableColours.length} unusable colours`);
-    }
-/**
-     * Generate HTML for a single contrast card
-     * @param {Object} backgroundColour - Background colour object
-     * @param {Array} contrastingColours - Array of contrasting colour objects for normal text
-     * @param {Array} graphicsOnlyColours - Array of colours suitable only for graphics/large text
-     * @returns {string} HTML string for the card
-     */
-     function generateCardHTML(backgroundColour, contrastingColours, graphicsOnlyColours = []) {
-        // Determine best text colour for card header
-        const whiteContrast = chroma.contrast('#FFFFFF', backgroundColour.hex);
-        const blackContrast = chroma.contrast('#000000', backgroundColour.hex);
-        const headerTextColour = whiteContrast >= 4.5 ? '#FFFFFF' : '#000000';
+          // Build background colour header with conditional hex code for screen readers
+          const backgroundHexForSR = showHexCodes
+            ? `<span class="visually-hidden">, hex code ${backgroundColour.hex}</span>`
+            : "";
 
-        // Get the most contrasting colour for borders (first in sorted array)
-        const mostContrastingColour = contrastingColours[0]?.colour.hex || headerTextColour;
-
-        let cardHTML = `
-            <li class="colour-card" style="background-color: ${backgroundColour.hex};">
+          let cardHTML = `
+            <li class="colour-card" style="background-color: ${
+              backgroundColour.hex
+            };">
                 <div class="card-header" style="color: ${headerTextColour};">
-                    ${escapeHTML(backgroundColour.name)}
+                    <span class="visually-hidden">Background colour: </span>${escapeHTML(
+                      backgroundColour.name
+                    )}${backgroundHexForSR}
                 </div>
                 <div class="card-body">
         `;
 
-        // Sort contrasting colours by contrast ratio (highest first)
-        contrastingColours.sort((a, b) => b.ratio - a.ratio);
+          // Sort contrasting colours by contrast ratio (highest first)
+          contrastingColours.sort((a, b) => b.ratio - a.ratio);
 
-        // Generate normal text section
-        if (contrastingColours.length > 0) {
+          // Generate normal text section
+          if (contrastingColours.length > 0) {
             for (let i = 0; i < contrastingColours.length; i++) {
-                const contrast = contrastingColours[i];
-                const badges = [];
-                if (contrast.isAAA) {
-                    badges.push('<span class="contrast-badge badge-aaa">AAA</span>');
-                }
-                if (contrast.isAA) {
-                    badges.push('<span class="contrast-badge badge-aa">AA</span>');
-                }
+              const contrast = contrastingColours[i];
+              const badges = [];
+              const badgeScreenReaderText = [];
 
-                // Determine what text to display based on settings
-                let displayText = escapeHTML(contrast.colour.name);
-                if (showHexCodes && contrast.colour.name !== contrast.colour.hex) {
-                    displayText += ` (${contrast.colour.hex})`;
-                }
+              if (contrast.isAAA) {
+                badges.push(
+                  '<span class="contrast-badge badge-aaa" aria-hidden="true">AAA</span>'
+                );
+                badgeScreenReaderText.push(
+                  "has contrast above 7 to 1 satisfying WCAG triple A"
+                );
+              }
+              if (contrast.isAA) {
+                badges.push(
+                  '<span class="contrast-badge badge-aa" aria-hidden="true">AA</span>'
+                );
+                badgeScreenReaderText.push(
+                  "has contrast above 4.5 to 1 satisfying WCAG double A"
+                );
+              }
 
-                const ratioDisplay = showContrastRatios ? 
-                    `<span class="contrast-ratio" style="color: ${contrast.colour.hex};">${contrast.ratio.toFixed(1)}:1</span>` : '';
+              // Build screen reader announcement for badges
+              const badgesScreenReaderSpan =
+                badgeScreenReaderText.length > 0
+                  ? `<span class="visually-hidden">${badgeScreenReaderText.join(
+                      ", "
+                    )}</span>`
+                  : "";
 
-                // Apply border colour using the most contrasting colour, except for the last item
-                const borderStyle = (i < contrastingColours.length - 1 || graphicsOnlyColours.length > 0) ? 
-                    `border-bottom-color: ${mostContrastingColour};` : '';
+              // Build text colour display with conditional information based on checkbox settings
+              let displayText = `<span class="visually-hidden">Text colour: </span>${escapeHTML(
+                contrast.colour.name
+              )}`;
 
-                    cardHTML += `
+              // Add hex code for screen readers if checkbox is checked
+              if (showHexCodes) {
+                displayText += `<span class="visually-hidden">, hex code ${contrast.colour.hex}</span>`;
+              }
+
+              // Add contrast ratio for screen readers if checkbox is checked
+              if (showContrastRatios) {
+                displayText += `<span class="visually-hidden">, contrast ratio ${contrast.ratio.toFixed(
+                  1
+                )} to 1</span>`;
+              }
+
+              // Show hex code visually if checkbox is checked
+              if (
+                showHexCodes &&
+                contrast.colour.name !== contrast.colour.hex
+              ) {
+                displayText += ` <span aria-hidden="true">(${contrast.colour.hex})</span>`;
+              }
+
+              const ratioDisplay = showContrastRatios
+                ? `<span class="contrast-ratio" style="color: ${
+                    contrast.colour.hex
+                  };" aria-hidden="true">${contrast.ratio.toFixed(1)}:1</span>`
+                : "";
+
+              // Apply border colour using the most contrasting colour, except for the last item
+              const borderStyle =
+                i < contrastingColours.length - 1 ||
+                graphicsOnlyColours.length > 0
+                  ? `border-bottom-color: ${mostContrastingColour};`
+                  : "";
+
+              cardHTML += `
                     <div class="contrast-item" style="${borderStyle}">
                         <div class="contrast-text-container">
                             <div class="contrast-text">
-                                <span class="colour-name" style="color: ${contrast.colour.hex};">${displayText}</span>${ratioDisplay}
+                                <span class="colour-name" style="color: ${
+                                  contrast.colour.hex
+                                };">${displayText}</span>${ratioDisplay}
                             </div>
-                            <div class="colour-swatch-small" style="background-color: ${contrast.colour.hex};" aria-hidden="true"></div>
+                            <div class="colour-swatch-small" style="background-color: ${
+                              contrast.colour.hex
+                            };" aria-hidden="true"></div>
                         </div>
-                        <div class="contrast-badges">
-                            ${badges.join('')}
+<div class="contrast-badges">
+                            ${badgesScreenReaderSpan}${badges.join("")}
                         </div>
                     </div>
                 `;
             }
-        }
+          }
 
-        // Generate graphics-only section
-        if (graphicsOnlyColours.length > 0) {
+          // Generate graphics-only section
+          if (graphicsOnlyColours.length > 0) {
             // Sort graphics colours by contrast ratio (highest first)
             graphicsOnlyColours.sort((a, b) => b.ratio - a.ratio);
-            
+
             cardHTML += `
                 <div class="graphics-section" style="border-top-color: ${mostContrastingColour};">
                     <div class="graphics-title" style="color: ${headerTextColour};">
@@ -1150,286 +1463,381 @@ function bindEventListeners() {
             `;
 
             for (let i = 0; i < graphicsOnlyColours.length; i++) {
-                const contrast = graphicsOnlyColours[i];
-                const badges = ['<span class="contrast-badge badge-graphics">G / AA18</span>'];
+              const contrast = graphicsOnlyColours[i];
+              const badges = [
+                '<span class="contrast-badge badge-graphics" aria-hidden="true">G / AA18</span>',
+              ];
+              const badgesScreenReaderSpan =
+                '<span class="visually-hidden">has contrast above 3 to 1, suitable for graphics and large text only, satisfying WCAG double A for 18 point or higher</span>';
 
-                // Determine what text to display based on settings
-                let displayText = escapeHTML(contrast.colour.name);
-                if (showHexCodes && contrast.colour.name !== contrast.colour.hex) {
-                    displayText += ` (${contrast.colour.hex})`;
-                }
+              // Build graphics colour display with conditional information based on checkbox settings
+              let displayText = `<span class="visually-hidden">Graphics colour: </span>${escapeHTML(
+                contrast.colour.name
+              )}`;
 
-                const ratioDisplay = showContrastRatios ? 
-                    `<span class="contrast-ratio" style="color: ${headerTextColour};">${contrast.ratio.toFixed(1)}:1</span>` : '';
+              // Add hex code for screen readers if checkbox is checked
+              if (showHexCodes) {
+                displayText += `<span class="visually-hidden">, hex code ${contrast.colour.hex}</span>`;
+              }
 
-                // Apply border colour using the most contrasting colour, except for the last item
-                const borderStyle = i < graphicsOnlyColours.length - 1 ? 
-                    `border-bottom-color: ${mostContrastingColour};` : '';
+              // Add contrast ratio for screen readers if checkbox is checked
+              if (showContrastRatios) {
+                displayText += `<span class="visually-hidden">, contrast ratio ${contrast.ratio.toFixed(
+                  1
+                )} to 1</span>`;
+              }
 
-                    cardHTML += `
+              // Show hex code visually if checkbox is checked
+              if (
+                showHexCodes &&
+                contrast.colour.name !== contrast.colour.hex
+              ) {
+                displayText += ` <span aria-hidden="true">(${contrast.colour.hex})</span>`;
+              }
+
+              const ratioDisplay = showContrastRatios
+                ? `<span class="contrast-ratio" style="color: ${headerTextColour};" aria-hidden="true">${contrast.ratio.toFixed(
+                    1
+                  )}:1</span>`
+                : "";
+
+              // Apply border colour using the most contrasting colour, except for the last item
+              const borderStyle =
+                i < graphicsOnlyColours.length - 1
+                  ? `border-bottom-color: ${mostContrastingColour};`
+                  : "";
+
+              cardHTML += `
                     <div class="contrast-item" style="${borderStyle}">
                         <div class="contrast-text-container">
                             <div class="contrast-text">
                                 <span class="colour-name" style="color: ${headerTextColour};">${displayText}</span>${ratioDisplay}
                             </div>
-                            <div class="colour-swatch-small" style="background-color: ${contrast.colour.hex};" aria-hidden="true"></div>
+                            <div class="colour-swatch-small" style="background-color: ${
+                              contrast.colour.hex
+                            };" aria-hidden="true"></div>
                         </div>
-                        <div class="contrast-badges">
-                            ${badges.join('')}
+<div class="contrast-badges">
+                            ${badgesScreenReaderSpan}${badges.join("")}
                         </div>
                     </div>
                 `;
             }
-            
-            cardHTML += `</div>`;
-        }
 
-        cardHTML += `
+            cardHTML += `</div>`;
+          }
+
+          cardHTML += `
                 </div>
             </li>
         `;
 
-        return cardHTML;
-    }
-
-    /**
-     * Update the unusable colours section
-     * @param {Array} unusableColours - Array of unusable colour objects
-     */
-    function updateUnusableSection(unusableColours) {
-        if (unusableColours.length === 0) {
-            elements.unusableSection.classList.remove('visible');
-            return;
+          return cardHTML;
         }
 
-        const coloursHTML = unusableColours.map(colour => `
+        /**
+         * Update the unusable colours section
+         * @param {Array} unusableColours - Array of unusable colour objects
+         */
+        function updateUnusableSection(unusableColours) {
+          if (unusableColours.length === 0) {
+            elements.unusableSection.classList.remove("visible");
+            return;
+          }
+
+          const coloursHTML = unusableColours
+            .map(
+              (colour) => `
             <div class="unusable-colour" role="listitem">
-                <div class="colour-swatch" style="background-color: ${colour.hex};" aria-hidden="true"></div>
+                <div class="colour-swatch" style="background-color: ${
+                  colour.hex
+                };" aria-hidden="true"></div>
                 <div class="colour-details">
                     <div class="colour-name">${escapeHTML(colour.name)}</div>
                     <div class="colour-hex">${colour.hex}</div>
                 </div>
             </div>
-        `).join('');
+        `
+            )
+            .join("");
 
-        elements.unusableColours.innerHTML = coloursHTML;
-        elements.unusableSection.classList.add('visible');
-    }
+          elements.unusableColours.innerHTML = coloursHTML;
+          elements.unusableSection.classList.add("visible");
+        }
 
-    /**
-     * Show error message
-     * @param {string} message - Error message to display
-     */
-    function showErrorMessage(message) {
-        clearErrorMessages();
-        
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
-        errorDiv.textContent = message;
-        errorDiv.setAttribute('role', 'alert');
-        errorDiv.setAttribute('aria-live', 'polite');
-        
-        elements.colourInput.parentNode.appendChild(errorDiv);
-        
-        logWarn('Error message displayed:', message);
-    }
+        /**
+         * Show error message
+         * @param {string} message - Error message to display
+         */
+        function showErrorMessage(message) {
+          clearErrorMessages();
 
-    /**
-     * Clear all error messages
-     */
-    function clearErrorMessages() {
-        const errorMessages = document.querySelectorAll('.error-message');
-        errorMessages.forEach(msg => msg.remove());
-    }
+          const errorDiv = document.createElement("div");
+          errorDiv.className = "error-message";
+          errorDiv.textContent = message;
+          errorDiv.setAttribute("role", "alert");
+          errorDiv.setAttribute("aria-live", "polite");
 
-    /**
-     * Escape HTML characters in strings
-     * @param {string} str - String to escape
-     * @returns {string} Escaped string
-     */
-    function escapeHTML(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
+          elements.colourInput.parentNode.appendChild(errorDiv);
 
-    // Public API
-    return {
-        initialise: initialise
-    };
-})();
+          logWarn("Error message displayed:", message);
+        }
 
-// Initialise when DOM is loaded
-document.addEventListener('DOMContentLoaded', ColourContrastAnalyser.initialise);
+        /**
+         * Clear all error messages
+         */
+        function clearErrorMessages() {
+          const errorMessages = document.querySelectorAll(".error-message");
+          errorMessages.forEach((msg) => msg.remove());
+        }
+
+        /**
+         * Escape HTML characters in strings
+         * @param {string} str - String to escape
+         * @returns {string} Escaped string
+         */
+        function escapeHTML(str) {
+          const div = document.createElement("div");
+          div.textContent = str;
+          return div.innerHTML;
+        }
+
+        /**
+         * Console testing function to verify checkbox states and screen reader output
+         */
+        function testScreenReaderOutput() {
+          console.log("=== CHECKBOX STATE TEST ===");
+          console.log("Show Hex Codes:", showHexCodes);
+          console.log("Show Contrast Ratios:", showContrastRatios);
+          console.log("");
+
+          console.log("=== SAMPLE SCREEN READER OUTPUT ===");
+
+          // Background colour example
+          const bgColour = { name: "White", hex: "#FFFFFF" };
+          const bgHexForSR = showHexCodes ? `, hex code ${bgColour.hex}` : "";
+          console.log(
+            "Background:",
+            `Background colour: ${bgColour.name}${bgHexForSR}`
+          );
+
+          // Text colour example
+          const textColour = { name: "Rich Black", hex: "#00131D" };
+          const ratio = 18.9;
+
+          let srText = `Text colour: ${textColour.name}`;
+          if (showHexCodes) {
+            srText += `, hex code ${textColour.hex}`;
+          }
+          if (showContrastRatios) {
+            srText += `, contrast ratio ${ratio.toFixed(1)} to 1`;
+          }
+          console.log("Text colour:", srText);
+          console.log(
+            "WCAG badge:",
+            "has contrast above 7 to 1 satisfying WCAG triple A, has contrast above 4.5 to 1 satisfying WCAG double A"
+          );
+
+          // Graphics colour example
+          const graphicsColour = { name: "Horizon 3", hex: "#E63037" };
+          const graphicsRatio = 3.5;
+
+          let srGraphicsText = `Graphics colour: ${graphicsColour.name}`;
+          if (showHexCodes) {
+            srGraphicsText += `, hex code ${graphicsColour.hex}`;
+          }
+          if (showContrastRatios) {
+            srGraphicsText += `, contrast ratio ${graphicsRatio.toFixed(
+              1
+            )} to 1`;
+          }
+          console.log("Graphics colour:", srGraphicsText);
+          console.log(
+            "Graphics badge:",
+            "has contrast above 3 to 1, suitable for graphics and large text only, satisfying WCAG double A for 18 point or higher"
+          );
+          console.log("");
+        }
+
+        // Public API
+        return {
+          initialise: initialise,
+          testScreenReaderOutput: testScreenReaderOutput,
+        };
+      })();
+
+      // Initialise when DOM is loaded
+      document.addEventListener(
+        "DOMContentLoaded",
+        ColourContrastAnalyser.initialise
+      );
     </script>
-      <script>
-         function menuAction() {
-             let menuSwitch = document.getElementById("myTopnav");
-             if (menuSwitch.className === "topnav") {
-                 menuSwitch.className += " responsive";
-                 
-             } else {
-                 menuSwitch.className = "topnav";
-             }
-             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-             if (menuAriaAttrib === "true") {
-                 menuAriaAttrib = "false"
-             } else {
-                 menuAriaAttrib = "true"
-             }
-             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-         }
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document
+          .getElementById("menu")
+          .getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false";
+        } else {
+          menuAriaAttrib = "true";
+        }
+        document
+          .getElementById("menu")
+          .setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
 
+      window.onscroll = function () {
+        scrollFunction();
+      };
 
+      function scrollFunction() {
+        if (
+          document.body.scrollTop > 660 ||
+          document.documentElement.scrollTop > 660
+        ) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
 
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById("skipToContent").focus();
+      }
 
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById("rssA").focus();
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
 
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia("(prefers-color-scheme: dark)");
+        let dt;
+        if (d.matches) {
+          dt = "dark";
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = "light";
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == "dark" && themePref == "Dark") {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == "light" && themePref == "Dark") {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == "dark" && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
 
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById("lightCSS").href = "light.css";
+          document.getElementById("darkCSS").href = "light.css";
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById("lightDark").innerHTML =
+            "Light theme enabled, the button is now";
+          let toggleButton = document.getElementById("modeToggle");
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById("lightCSS").href = "dark.css";
+          document.getElementById("darkCSS").href = "dark.css";
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById("lightDark").innerHTML =
+            "Dark theme enabled, the button is now";
+          let toggleButton = document.getElementById("modeToggle");
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
 
-
-
-
-
-
-
-
-
-
-
-      </script>
-      <script>
-         let mybutton = document.getElementById("myBtn");
-         let mybutton2 = document.getElementById("myBtn2");
-         
-         
-         window.onscroll = function() {
-             scrollFunction()
-         };
-         
-         function scrollFunction() {
-             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
-                 mybutton.style.display = "block";
-         		mybutton2.style.display = "block";
-             } else {
-                 mybutton.style.display = "none";
-         		mybutton2.style.display = "none";
-             }
-         }
-         
-         
-         
-         function topFunction() {
-             document.body.scrollTop = 0;
-             document.documentElement.scrollTop = 0; 
-         document.getElementById('skipToContent').focus();
-         }
-         
-         function bottomFunction() {
-         window.scrollTo(0,document.body.scrollHeight);
-         document.getElementById('rssA').focus();
-         }
-      </script>
-      <script>
-         let themePref = localStorage.getItem("theme");
-         console.log("Has a theme preference been saved?", themePref);        
-         
-         
-         function setLight() {
-             let buttonStatus = document.getElementById("lightDark");
-             let theButton = document.getElementById("modeToggle");
-             const d = matchMedia('(prefers-color-scheme: dark)');
-             let dt;
-             if (d.matches) {
-                 dt = 'dark';
-                 console.log("Prefers dark theme in OS");
-             } else {
-                 dt = 'light'
-                 console.log("Prefers light theme in OS");
-             }
-             if (dt == 'dark' && themePref == 'Dark') {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else if (dt == 'light' && themePref == 'Dark') {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else if (dt == 'dark' && !themePref) {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else {
-                 theButton.setAttribute("aria-pressed", "false");
-             }
-         }
-         setLight();
-         
-         function toggle(btnID) {
-             let buttonStatus = document.getElementById("lightDark");
-             let theButton = document.getElementById(btnID);
-             if (theButton.getAttribute("aria-pressed") == "true") {
-                 theButton.setAttribute("aria-pressed", "false");
-                 document.getElementById('lightCSS').href = 'light.css';
-                 document.getElementById('darkCSS').href = 'light.css';
-                 console.log("Turned on light mode");
-                 localStorage.setItem("theme", "Light");
-                 let themePref = localStorage.getItem("theme");
-                 console.log("Site theme preference to ", themePref);
-                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
-                 let toggleButton = document.getElementById('modeToggle');
-                 toggleButton.removeAttribute("aria-pressed");
-                 toggleButton.setAttribute("aria-pressed", "false");
-             } else {
-                 theButton.setAttribute("aria-pressed", "true");
-                 document.getElementById('lightCSS').href = 'dark.css';
-                 document.getElementById('darkCSS').href = 'dark.css';
-                 console.log("Turned on dark mode");
-                 localStorage.setItem("theme", "Dark");
-                 let themePref = localStorage.getItem("theme");
-                 console.log("Site theme preference set to ", themePref);
-                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
-                 let toggleButton = document.getElementById('modeToggle');
-                 toggleButton.removeAttribute("aria-pressed");
-                 toggleButton.setAttribute("aria-pressed", "true");
-             }
-         }
-         
-         function applyThemePreference() {
-             if (themePref == 'Dark') {
-                 let theButton = document.getElementById('modeToggle');
-                 document.getElementById('lightCSS').href = 'dark.css';
-                 document.getElementById('darkCSS').href = 'dark.css';
-                 theButton.setAttribute("aria-pressed", "true");
-                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
-             } else if (themePref == 'Light') {
-                 let theButton = document.getElementById('modeToggle');
-                 document.getElementById('lightCSS').href = 'light.css';
-                 document.getElementById('darkCSS').href = 'light.css';
-                 theButton.setAttribute("aria-pressed", "false");
-                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
-             }
-         }
-         applyThemePreference();                
-      </script>
-	  <script src="scripts/lite-yt-embed.js"></script>
-	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
-	  	    <script src="scripts/jquery-3.7.1.min.js"></script>
+      function applyThemePreference() {
+        if (themePref == "Dark") {
+          let theButton = document.getElementById("modeToggle");
+          document.getElementById("lightCSS").href = "dark.css";
+          document.getElementById("darkCSS").href = "dark.css";
+          theButton.setAttribute("aria-pressed", "true");
+          console.log(
+            "Applied",
+            themePref,
+            "theme because site theme preference is set to",
+            themePref
+          );
+        } else if (themePref == "Light") {
+          let theButton = document.getElementById("modeToggle");
+          document.getElementById("lightCSS").href = "light.css";
+          document.getElementById("darkCSS").href = "light.css";
+          theButton.setAttribute("aria-pressed", "false");
+          console.log(
+            "Applied",
+            themePref,
+            "theme because site theme preference is set to",
+            themePref
+          );
+        }
+      }
+      applyThemePreference();
+    </script>
+    <script src="scripts/lite-yt-embed.js"></script>
+    <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
+    <script src="scripts/jquery-3.7.1.min.js"></script>
     <script src="scripts/details.js"></script>
     <script>
-      window.console || (window.console = {
-        'log': alert
-      });
-      $(function() {
-        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
-        $('details').details();
-        $('details').on({
-          'open.details': function() {
-            console.log('opened')
+      window.console ||
+        (window.console = {
+          log: alert,
+        });
+      $(function () {
+        $("html").addClass($.fn.details.support ? "details" : "no-details");
+        $("details").details();
+        $("details").on({
+          "open.details": function () {
+            console.log("opened");
           },
-          'close.details': function() {
-            console.log('closed')
-          }
-        })
+          "close.details": function () {
+            console.log("closed");
+          },
+        });
       });
     </script>
-	    <script>
+    <script>
       // Expand details / summary when printing
       // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
-      window.matchMedia("print").addEventListener("change", evt => {
+      window.matchMedia("print").addEventListener("change", (evt) => {
         if (evt.matches) {
           elms = document.body.querySelectorAll("details:not([open])");
           for (e of elms) {
@@ -1443,7 +1851,7 @@ document.addEventListener('DOMContentLoaded', ColourContrastAnalyser.initialise)
             delete e.dataset.wasclosed;
           }
         }
-      })
+      });
     </script>
-   </body>
+  </body>
 </html>

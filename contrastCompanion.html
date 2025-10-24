@@ -1,1029 +1,1254 @@
 <!DOCTYPE html>
 <html lang="en-GB">
-   <head>
-      <meta charset="utf-8" />
-      <meta name="description" content="Contrast Companion">
-      <meta name="keywords" content="accessibility, presentation, blog">
-      <meta name="author" content="Matthew Deeprose">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Contrast Companion
-</title>
-      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
-      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
-      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
-      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
-      <meta property="og:title" content="Contrast Companion - Matthew Deeprose">
-      <meta property="og:description" content="Find a colour that has sufficient contrast to all colours within a colour palette.">
-      <meta property="og:image" content="https://matthewdeeprose.github.io/contrastCompanion43.png">
-	  <meta property="og:image:width" content="2500" />
-	  <meta property="og:image:height" content="1306" />
-      <meta property="og:image:alt" content="">
-      <meta property="og:locale" content="en_GB">
-      <meta property="og:type" content="website">
-      <meta property="og:url" content="https://matthewdeeprose.github.io/contrastCompanion.html">
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
-      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
-      <link rel="icon" href="favicon.ico">
-      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
-      <link rel="icon" href="favicon.svg" type="image/svg+xml">
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Contrast Companion
- - Matthew Deeprose" />
-      <meta name="twitter:description" content="Find a colour that has sufficient contrast to all colours within a colour palette."/>
-      <meta name="twitter:creator" content="@VLEguru"/>
-      <meta name="twitter:site" content="@VLEguru"/>
-      <meta name="twitter:image" content="https://matthewdeeprose.github.io/contrastCompanion43.png"/>
-      <meta name="twitter:image:alt" content=""/>
-      <meta name="twitter:card" content="summary_large_image"/>
-      <style>
-        /* wider border just for this page */
-@media (min-width: 60rem) {
-	.page-wrap {
-		margin: 0 5% 0 5%;
-	}
-}
-.page-wrap>* {
-	grid-column: 1/-1 !important;
-	grid-row: auto !important;
-}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="Contrast Companion" />
+    <meta name="keywords" content="accessibility, presentation, blog" />
+    <meta name="author" content="Matthew Deeprose" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contrast Companion</title>
+    <link
+      rel="stylesheet"
+      id="lightCSS"
+      href="light.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all" />
+    <link
+      rel="stylesheet"
+      id="darkCSS"
+      href="dark.css"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print" />
+    <meta property="og:title" content="Contrast Companion - Matthew Deeprose" />
+    <meta
+      property="og:description"
+      content="Find a colour that has sufficient contrast to all colours within a colour palette."
+    />
+    <meta
+      property="og:image"
+      content="https://matthewdeeprose.github.io/contrastCompanion43.png"
+    />
+    <meta property="og:image:width" content="2500" />
+    <meta property="og:image:height" content="1306" />
+    <meta property="og:image:alt" content="" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://matthewdeeprose.github.io/contrastCompanion.html"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="theme-color"
+      content="#231F20"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#FFFFF4"
+      media="(prefers-color-scheme: light)"
+    />
+    <link rel="icon" href="favicon.ico" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="RSS Feed for matthewdeeprose.github.io"
+      href="https://matthewdeeprose.github.io/feed.rss"
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Contrast Companion
+ - Matthew Deeprose"
+    />
+    <meta
+      name="twitter:description"
+      content="Find a colour that has sufficient contrast to all colours within a colour palette."
+    />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta
+      name="twitter:image"
+      content="https://matthewdeeprose.github.io/contrastCompanion43.png"
+    />
+    <meta name="twitter:image:alt" content="" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <style>
+      /* wider border just for this page */
+      @media (min-width: 60rem) {
+        .page-wrap {
+          margin: 0 5% 0 5%;
+        }
+      }
+      .page-wrap > * {
+        grid-column: 1/-1 !important;
+        grid-row: auto !important;
+      }
 
-
-
-
-/* Responsive fieldset layout */
-#contrast-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    width: 100%;
-}
-
-/* When enough screen width is available (768px and above) */
-@media screen and (min-width: 768px) {
-    #contrast-form {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        /* Two equal columns */
-        grid-template-rows: auto auto;
-        grid-template-areas: "inputArea contrastArea" "buttonArea buttonArea";
+      /* Responsive fieldset layout */
+      #contrast-form {
+        display: flex;
+        flex-direction: column;
         gap: 1.5rem;
         width: 100%;
-    }
+      }
 
-    #inputColours {
-        grid-area: inputArea;
-    }
+      /* When enough screen width is available (768px and above) */
+      @media screen and (min-width: 768px) {
+        #contrast-form {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          /* Two equal columns */
+          grid-template-rows: auto auto;
+          grid-template-areas: "inputArea contrastArea" "buttonArea buttonArea";
+          gap: 1.5rem;
+          width: 100%;
+        }
 
-    #contrastRatioFieldset {
-        grid-area: contrastArea;
-    }
+        #inputColours {
+          grid-area: inputArea;
+        }
 
-    #find-button {
-        grid-area: buttonArea;
-        width: auto;
-        justify-self: start;
-    }
-}
+        #contrastRatioFieldset {
+          grid-area: contrastArea;
+        }
 
-/* General fieldset styling */
-fieldset {
-    border-radius: 4px;
-    padding: 1rem;
-    margin: 0;
-    box-sizing: border-box;
-    width: 100%;
-    height: 100%;
-    /* Ensure full height is used */
-}
+        #find-button {
+          grid-area: buttonArea;
+          width: auto;
+          justify-self: start;
+        }
+      }
 
-legend {
-    font-weight: bold;
-    padding: 0 0.5rem;
-}
+      /* General fieldset styling */
+      fieldset {
+        border-radius: 4px;
+        padding: 1rem;
+        margin: 0;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        /* Ensure full height is used */
+      }
 
-/* Make sure elements inside fieldsets don't overflow */
-#colour-input,
-.file-upload-container,
-.radio-group {
-    width: 100%;
-}
+      legend {
+        font-weight: bold;
+        padding: 0 0.5rem;
+      }
 
-/* Style for the button */
-#find-button {
-    padding: 0.75rem 1.5rem;
-    margin-top: 0.5rem;
-}
+      /* Make sure elements inside fieldsets don't overflow */
+      #colour-input,
+      .file-upload-container,
+      .radio-group {
+        width: 100%;
+      }
 
-/* Ensure the form itself takes up the maximum available width */
-#input-section {
-    width: 100%;
-    max-width: 100%;
-}
+      /* Style for the button */
+      #find-button {
+        padding: 0.75rem 1.5rem;
+        margin-top: 0.5rem;
+      }
 
-/* Additional styles to make the fieldsets take up more space */
-@media screen and (min-width: 768px) {
-    #contrast-form {
+      /* Ensure the form itself takes up the maximum available width */
+      #input-section {
+        width: 100%;
         max-width: 100%;
-    }
-
-    /* Reduce any potential extra padding/margins */
-    #input-section {
-        padding: 0;
-    }
-}
-
-.radio-group {
-    margin-bottom: 1rem;
-}
-
-.radio-option {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.radio-option input[type="radio"] {
-    margin-right: 0.5rem;
-}
-
-.radio-option label {
-    font-weight: normal;
-    margin-bottom: 0;
-}
-
-
-
-.input-method-tabs {
-    display: flex;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid currentcolor;
-}
-
-.tab-button {
-    border-radius: 4px 4px 0 0;
-    padding: 0.5rem 1rem;
-    margin-right: 1rem;
-    cursor: pointer;
-}
-
-.tab-button.active {
-    margin-bottom: -1px;
-    font-weight: bold;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-.file-upload-container {
-    margin-bottom: 1rem;
-}
-
-fieldset#inputColours {
-    margin-bottom: 15px;
-}
-
-
-
-
-input[type="file"] {
-    display: block;
-    margin: 0.5rem 0 1rem;
-    padding: 0.5rem;
-    border-radius: 4px;
-    width: 100%;
-}
-
-.file-preview {
-    margin-top: 1rem;
-    padding: 20px 20px 50px 20px;
-    border-radius: 4px;
-}
-
-h4#FilePreview {
-    display: block;
-    margin-block-start: 0px;
-    margin-block-end: 10px;
-}
-
-.preview-colours {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.preview-colour {
-    width: 40px;
-    height: 40px;
-    border-radius: 4px;
-    position: relative;
-    margin-left: 10px;
-}
-
-.colour-count {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    border-radius: 4px;
-    padding: 0.5rem;
-    height: 40px;
-}
-
-#error-message {
-    margin-bottom: 1rem;
-    display: none;
-}
-
-#results {
-    margin-top: 2rem;
-}
-
-#result-heading {
-    margin-bottom: 1rem;
-}
-
-.colour-group {
-    margin-bottom: 2rem;
-    scroll-margin-top: 1rem;
-}
-
-.group-heading {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.group-swatch {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    margin-right: 0.5rem;
-}
-
-#matching-colours {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.toc {
-    margin-bottom: 2rem;
-    padding: 1rem;
-    border-radius: 4px;
-}
-
-.back-to-groups-link {
-    display: block;
-    /* Change from inline-block to block */
-    margin-top: 1rem;
-    margin-bottom: 1.5rem;
-    clear: both;
-    /* Ensures it appears below floated elements */
-}
-
-.toc-title {
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-}
-
-.toc-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.5rem;
-}
-
-.toc-item {
-    display: flex;
-    align-items: center;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-}
-
-.toc-item.active {
-    font-weight: bold;
-}
-
-.toc-swatch {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-right: 0.5rem;
-}
-
-.colour-preview-row {
-    display: flex;
-    margin-bottom: 0.5rem;
-}
-
-.preview-swatch {
-    height: 30px;
-    flex: 1;
-    border-radius: 4px;
-    margin-right: 0.25rem;
-}
-
-.preview-swatch:last-child {
-    margin-right: 0;
-}
-
-.colour-card {
-    border-radius: 4px;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-}
-
-.colour-card:hover,
-.colour-card:focus {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.colour-card.selected {
-    border-width: 2px;
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.colour-swatch {
-    height: 100px;
-    width: 100%;
-    position: relative;
-}
-
-.colour-info {
-    padding: 0.5rem;
-    text-align: center;
-}
-
-.color-type {
-    font-size: 0.8rem;
-    margin-bottom: 0.3rem;
-}
-
-.action-buttons {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 0.5rem;
-}
-
-.action-buttons button {
-    flex: 1;
-    margin: 0 0.25rem;
-    font-size: 0.85rem;
-    padding: 0.3rem 0.5rem;
-}
-
-.pagination {
-    display: flex;
-    justify-content: center;
-    margin-top: 1rem;
-    margin-bottom: 2rem;
-}
-
-.pagination button {
-    margin: 0 0.25rem;
-}
-
-#contrast-details {
-    margin-top: 2rem;
-    padding: 1rem;
-    border-radius: 4px;
-}
-
-.selected-colour-heading {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.selected-colour-swatch {
-    width: 30px;
-    height: 30px;
-    margin-left: 10px;
-    border-radius: 4px;
-}
-
-.details-separator {
-    margin: 1rem 0;
-    border: 0;
-}
-
-.pairs-heading {
-    margin-bottom: 1rem;
-}
-
-.contrast-pair {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    border-radius: 4px;
-}
-
-.contrast-swatches {
-    display: flex;
-    margin-right: 1rem;
-}
-
-.sample-swatch {
-    width: 50px;
-    height: 50px;
-    margin-right: 5px;
-    border-radius: 4px;
-}
-
-.contrast-info {
-    flex-grow: 1;
-}
-
-.contrast-pass {
-    font-weight: bold;
-}
-
-.contrast-fail {
-    font-weight: bold;
-}
-
-.text-sample {
-    padding: 0.5rem;
-    margin-top: 0.5rem;
-    border-radius: 4px;
-}
-
-.hidden {
-    display: none !important;
-}
-
-
-.similar-colours-container {
-    margin-top: 1rem;
-}
-
-.back-to-results {
-    margin-bottom: 1rem;
-}
-
-.similar-colours-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.matching-colours {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-/* Form hint styles */
-.form-hint {
-    font-size: 0.85rem;
-    margin-bottom: 1rem;
-}
-
-.form-hint p {
-    margin-bottom: 0.25rem;
-}
-
-/* Styles for partial match banner */
-.partial-match-banner {
-    border-radius: 4px;
-    padding: 0px 20px 20px 20px;
-    margin-bottom: 1.5rem;
-}
-
-.partial-match-banner p {
-    margin-bottom: 0.5rem;
-}
-
-.partial-match-banner p:last-child {
-    margin-bottom: 0;
-}
-
-/* Styles for match summary in colour cards */
-.match-summary {
-    font-size: 0.8rem;
-    margin: 0.2rem 0;
-    font-weight: bold;
-}
-
-/* Styles for partial summary in contrast details */
-.partial-summary {
-    padding: 0.75rem;
-    border-radius: 4px;
-    margin: 0px 0px 0px 0px;
-    font-size: 1rem;
-}
-
-
-
-/* Styles for contrast recommendation */
-.contrast-recommendation {
-    padding: 0.5rem;
-    border-radius: 4px;
-    margin-top: 1rem;
-    font-size: 0.85rem;
-}
-
-.contrast-recommendation p,
-.partial-summary p {
-    margin-bottom: 1em;
-}
-
-/* No matches help styles */
-.no-match-help {
-    padding: 1.5rem;
-    border-radius: 4px;
-    margin-top: 1rem;
-}
-
-.no-match-help ul {
-    margin-top: 0.5rem;
-    margin-left: 1.5rem;
-}
-
-.no-match-help li {
-    margin-bottom: 0.5rem;
-}
-
-/* Reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
-    /* Remove all animations and transitions */
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.001s !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.001s !important;
-        scroll-behavior: auto !important;
-    }
-
-    /* Override specific transitions on colour cards */
-    .colour-card {
-        transition: none;
-    }
-
-    .colour-card:hover,
-    .colour-card:focus {
-        transform: none;
-        box-shadow: none;
-        /* Maintain a visible focus state without animation */
-        outline: 2px solid currentcolor;
-    }
-
-    .colour-card.selected {
-        transform: none;
-        box-shadow: none;
-        /* Maintain visibility of selected state without animation */
-        border-color: currentcolor;
-        border-width: 2px;
-    }
-
-    /* Ensure any scroll-margin behaviour is respected without smooth scrolling */
-    .colour-group {
-        scroll-margin-top: 1rem;
-    }
-}
-
-/* Responsive adjustments */
-@media (max-width: 767px) {
-    .matching-colours,
-    .similar-colours-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .contrast-pair {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .contrast-swatches {
-        margin-right: 0;
+      }
+
+      /* Additional styles to make the fieldsets take up more space */
+      @media screen and (min-width: 768px) {
+        #contrast-form {
+          max-width: 100%;
+        }
+
+        /* Reduce any potential extra padding/margins */
+        #input-section {
+          padding: 0;
+        }
+      }
+
+      .radio-group {
         margin-bottom: 1rem;
-    }
-}
+      }
 
-@media (max-width: 480px) {
-    .matching-colours,
-    .similar-colours-grid {
-        grid-template-columns: repeat(1, 1fr);
-    }
+      .radio-option {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
 
-    .colour-swatch {
-        height: 80px;
-    }
-}
+      .radio-option input[type="radio"] {
+        margin-right: 0.5rem;
+      }
 
-@media (min-width: 768px) {
-    .similar-colours-grid,
-    .matching-colours {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
+      .radio-option label {
+        font-weight: normal;
+        margin-bottom: 0;
+      }
 
-      </style>
-   </head>
-   <body>
+      .input-method-tabs {
+        display: flex;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid currentcolor;
+      }
 
-      <div class="page-wrap" id="start">
-         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
-         <header class="page-header">
-            <div id="banner">
-               <div id="logo">
-                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
-                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
-                        <title id="svgTitle">Change theme</title>
-                        <desc id="svgDesc">Select to switch to light theme</desc>
-                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
-                           <path d="m6.5 17.5h4"/>
-                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
-                           <path d="m8.5 1.5v-1"/>
-                           <path d="m13.5 3.5 1-1"/>
-                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
-                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
-                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
-                           <path d="m1.5 7.5h-1"/>
-                           <path d="m16.5 7.5h-1"/>
-                        </g>
-                     </svg>
-                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
-                        <title id="svgTitleX">Change theme</title>
-                        <desc id="svgDescX">Select to switch to dark theme</desc>
-                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
-                           <path d="m2.5 13.5h4"/>
-                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
-                        </g>
-                     </svg>
-                  </button>
-               </div>
-               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
-               <div id="titleLink">Matthew Deeprose</div>
-            </div>
-         </header>
-         <div id="main-navigation" class="page-nav">
-            <nav aria-label="Main menu" class="topnav" id="myTopnav">
-               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
-                  <span id="hamburger">
-                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
-                        <title id="hamSVGTitle">Menu</title>
-                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
-                        <rect width="100" height="20"></rect>
-                        <rect y="30" width="100" height="20"></rect>
-                        <rect y="60" width="100" height="20"></rect>
-                     </svg>
-                  </span>
-                  <span id="arrow">
-                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
-                        <title id="arrowSVGTitle">Menu</title>
-                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
-                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
-                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
-                           <path  d="m16.5,10.5l-13,0"/>
-                        </g>
-                     </svg>
-                  </span>
-               </button>
-               <a id="homeMenu" href="index.html">Home</a>
-               <a href="presentations.html" >Presentations</a>
-               <a href="posts.html">Blog Posts</a>
-               <a href="projects.html" aria-current="page" class="active">Projects</a>
-               <a href="about.html">About</a>
-            </nav>
-         </div>
-         <main class="page-main" id="main">
-            <article class="standard">
-               <h1 id="top">Contrast Companion</h1>
-               <details id="introdcutionDetails">
-                <summary>
-<h2>What is this tool?</h2>
-   </summary>
-<p>This tool helps you find colours that have sufficient contrast when paired with your existing palette. Simply input your current colour set, and the tool will identify complementary colours that meet accessibility standards across your entire palette.</p>
+      .tab-button {
+        border-radius: 4px 4px 0 0;
+        padding: 0.5rem 1rem;
+        margin-right: 1rem;
+        cursor: pointer;
+      }
 
+      .tab-button.active {
+        margin-bottom: -1px;
+        font-weight: bold;
+      }
 
+      .tab-content {
+        display: none;
+      }
 
-</details>
-			    <section id="input-section">
+      .tab-content.active {
+        display: block;
+      }
+
+      .file-upload-container {
+        margin-bottom: 1rem;
+      }
+
+      fieldset#inputColours {
+        margin-bottom: 15px;
+      }
+
+      input[type="file"] {
+        display: block;
+        margin: 0.5rem 0 1rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+        width: 100%;
+      }
+
+      .file-preview {
+        margin-top: 1rem;
+        padding: 20px 20px 50px 20px;
+        border-radius: 4px;
+      }
+
+      h4#FilePreview {
+        display: block;
+        margin-block-start: 0px;
+        margin-block-end: 10px;
+      }
+
+      .preview-colours {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+
+      .preview-colour {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        position: relative;
+        margin-left: 10px;
+      }
+
+      .colour-count {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        border-radius: 4px;
+        padding: 0.5rem;
+        height: 40px;
+      }
+
+      #error-message {
+        margin-bottom: 1rem;
+        display: none;
+      }
+
+      #results {
+        margin-top: 2rem;
+      }
+
+      #result-heading {
+        margin-bottom: 1rem;
+      }
+
+      .colour-group {
+        margin-bottom: 2rem;
+        scroll-margin-top: 1rem;
+      }
+
+      .group-heading {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+
+      .group-swatch {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+      }
+
+      #matching-colours {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .toc {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        border-radius: 4px;
+      }
+
+      .back-to-groups-link {
+        display: block;
+        /* Change from inline-block to block */
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+        clear: both;
+        /* Ensures it appears below floated elements */
+      }
+
+      .toc-title {
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+      }
+
+      .toc-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+      }
+
+      .toc-item {
+        display: flex;
+        align-items: center;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .toc-item.active {
+        font-weight: bold;
+      }
+
+      .toc-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+      }
+
+      .colour-preview-row {
+        display: flex;
+        margin-bottom: 0.5rem;
+      }
+
+      .preview-swatch {
+        height: 30px;
+        flex: 1;
+        border-radius: 4px;
+        margin-right: 0.25rem;
+      }
+
+      .preview-swatch:last-child {
+        margin-right: 0;
+      }
+
+      .colour-card {
+        border-radius: 4px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      }
+
+      .colour-card:hover,
+      .colour-card:focus {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .colour-card.selected {
+        border-width: 2px;
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .colour-swatch {
+        height: 100px;
+        width: 100%;
+        position: relative;
+      }
+
+      .colour-info {
+        padding: 0.5rem;
+        text-align: center;
+      }
+
+      .color-type {
+        font-size: 0.8rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .action-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 0.5rem;
+      }
+
+      .action-buttons button {
+        flex: 1;
+        margin: 0 0.25rem;
+        font-size: 0.85rem;
+        padding: 0.3rem 0.5rem;
+      }
+
+      .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .pagination button {
+        margin: 0 0.25rem;
+      }
+
+      #contrast-details {
+        margin-top: 2rem;
+        padding: 1rem;
+        border-radius: 4px;
+      }
+
+      .selected-colour-heading {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+
+      .selected-colour-swatch {
+        width: 30px;
+        height: 30px;
+        margin-left: 10px;
+        border-radius: 4px;
+      }
+
+      .details-separator {
+        margin: 1rem 0;
+        border: 0;
+      }
+
+      .pairs-heading {
+        margin-bottom: 1rem;
+      }
+
+      .contrast-pair {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border-radius: 4px;
+      }
+
+      .contrast-swatches {
+        display: flex;
+        margin-right: 1rem;
+      }
+
+      .sample-swatch {
+        width: 50px;
+        height: 50px;
+        margin-right: 5px;
+        border-radius: 4px;
+      }
+
+      .contrast-info {
+        flex-grow: 1;
+      }
+
+      .contrast-pass {
+        font-weight: bold;
+      }
+
+      .contrast-fail {
+        font-weight: bold;
+      }
+
+      .text-sample {
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        border-radius: 4px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .similar-colours-container {
+        margin-top: 1rem;
+      }
+
+      .back-to-results {
+        margin-bottom: 1rem;
+      }
+
+      .similar-colours-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .matching-colours {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      /* Form hint styles */
+      .form-hint {
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+      }
+
+      .form-hint p {
+        margin-bottom: 0.25rem;
+      }
+
+      /* Styles for partial match banner */
+      .partial-match-banner {
+        border-radius: 4px;
+        padding: 0px 20px 20px 20px;
+        margin-bottom: 1.5rem;
+      }
+
+      .partial-match-banner p {
+        margin-bottom: 0.5rem;
+      }
+
+      .partial-match-banner p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* Styles for match summary in colour cards */
+      .match-summary {
+        font-size: 0.8rem;
+        margin: 0.2rem 0;
+        font-weight: bold;
+      }
+
+      /* Styles for partial summary in contrast details */
+      .partial-summary {
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin: 0px 0px 0px 0px;
+        font-size: 1rem;
+      }
+
+      /* Styles for contrast recommendation */
+      .contrast-recommendation {
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+      }
+
+      .contrast-recommendation p,
+      .partial-summary p {
+        margin-bottom: 1em;
+      }
+
+      /* No matches help styles */
+      .no-match-help {
+        padding: 1.5rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+      }
+
+      .no-match-help ul {
+        margin-top: 0.5rem;
+        margin-left: 1.5rem;
+      }
+
+      .no-match-help li {
+        margin-bottom: 0.5rem;
+      }
+
+      /* Reduced motion preferences */
+      @media (prefers-reduced-motion: reduce) {
+        /* Remove all animations and transitions */
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001s !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001s !important;
+          scroll-behavior: auto !important;
+        }
+
+        /* Override specific transitions on colour cards */
+        .colour-card {
+          transition: none;
+        }
+
+        .colour-card:hover,
+        .colour-card:focus {
+          transform: none;
+          box-shadow: none;
+          /* Maintain a visible focus state without animation */
+          outline: 2px solid currentcolor;
+        }
+
+        .colour-card.selected {
+          transform: none;
+          box-shadow: none;
+          /* Maintain visibility of selected state without animation */
+          border-color: currentcolor;
+          border-width: 2px;
+        }
+
+        /* Ensure any scroll-margin behaviour is respected without smooth scrolling */
+        .colour-group {
+          scroll-margin-top: 1rem;
+        }
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 767px) {
+        .matching-colours,
+        .similar-colours-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .contrast-pair {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .contrast-swatches {
+          margin-right: 0;
+          margin-bottom: 1rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .matching-colours,
+        .similar-colours-grid {
+          grid-template-columns: repeat(1, 1fr);
+        }
+
+        .colour-swatch {
+          height: 80px;
+        }
+      }
+
+      @media (min-width: 768px) {
+        .similar-colours-grid,
+        .matching-colours {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href="#main">Skip to content</a>
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button
+              id="modeToggle"
+              aria-label="Change between light and dark theme"
+              aria-pressed="false"
+              onclick="toggle(this.id);"
+            >
+              <svg
+                id="logoSVG"
+                height="45"
+                viewBox="0 0 21 21"
+                width="45"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-labelledby="svgTitle svgDesc"
+                role="img"
+              >
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g
+                  fill="none"
+                  fill-rule="evenodd"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  transform="translate(2 1)"
+                >
+                  <path d="m6.5 17.5h4" />
+                  <path
+                    d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"
+                  />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg
+                id="logoSVG-Off"
+                height="45"
+                viewBox="0 0 21 21"
+                width="45"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-labelledby="svgTitleX svgDescX"
+              >
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g
+                  fill="none"
+                  fill-rule="evenodd"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  transform="translate(6 5)"
+                >
+                  <path d="m2.5 13.5h4" />
+                  <path
+                    d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"
+                  />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span
+            role="alert"
+            class="hidden"
+            aria-live="polite"
+            id="lightDark"
+          ></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button
+            id="menu"
+            aria-controls="myTopnav"
+            aria-labelledby="myTopnav"
+            aria-expanded="false"
+            class="icon"
+            aria-haspopup="menu"
+            onclick="menuAction()"
+          >
+            <span id="hamburger">
+              <svg
+                id="hamSVG"
+                viewBox="0 0 100 80"
+                width="20"
+                height="20"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                focusable="false"
+                role="img"
+              >
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">
+                  Select to expand or collapse the menu
+                </desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg
+                width="20"
+                height="20"
+                xmlns="http://www.w3.org/2000/svg"
+                role="img"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">
+                  Select to expand or collapse the menu
+                </desc>
+                <g
+                  stroke-width="4"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                  stroke="currentColor"
+                  fill-rule="evenodd"
+                  fill="none"
+                >
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html" aria-current="page" class="active"
+            >Projects</a
+          >
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+      <main class="page-main" id="main">
+        <article class="standard">
+          <h1 id="top">Contrast Companion</h1>
+          <details id="introdcutionDetails">
+            <summary>
+              <h2>What is this tool?</h2>
+            </summary>
+            <p>
+              This tool helps you find colours that have sufficient contrast
+              when paired with your existing palette. Simply input your current
+              colour set, and the tool will identify complementary colours that
+              meet accessibility standards across your entire palette.
+            </p>
+          </details>
+          <section id="input-section">
             <form id="contrast-form">
-                <fieldset id="inputColours">
-                    <legend>Input Colours</legend>
-                    <div class="input-methods">
-                        <div class="input-method-tabs">
-                            <button type="button" class="tab-button active" data-tab="manual-input">Manual Input</button>
-                            <button type="button" class="tab-button" data-tab="file-input">Load from File</button>
-                        </div>
-                        
-                        <div id="manual-input" class="tab-content active">
-                            <label for="colour-input">Enter hex colour codes (one per line or comma separated):</label>
-                            <textarea id="colour-input" rows="5" placeholder="Example:
+              <fieldset id="inputColours">
+                <legend>Input Colours</legend>
+                <div class="input-methods">
+                  <div class="input-method-tabs">
+                    <button
+                      type="button"
+                      class="tab-button active"
+                      data-tab="manual-input"
+                    >
+                      Manual Input
+                    </button>
+                    <button
+                      type="button"
+                      class="tab-button"
+                      data-tab="file-input"
+                    >
+                      Load from File
+                    </button>
+                  </div>
+
+                  <div id="manual-input" class="tab-content active">
+                    <label for="colour-input"
+                      >Enter hex colour codes (one per line or comma
+                      separated):</label
+                    >
+                    <textarea
+                      id="colour-input"
+                      rows="5"
+                      placeholder="Example:
 #333333
 #FFFFFF
 or
-#333333, #FFFFFF" aria-describedby="colour-instructions" required></textarea>
-                            <div id="colour-instructions" class="form-hint">Enter 6-character hex colour codes (with or without # prefix)</div>
-                        </div>
-                        
-                        <div id="file-input" class="tab-content">
-                            <div class="file-upload-container">
-                                <label for="colour-file">Upload a CSV or JSON file:</label>
-                                <input type="file" id="colour-file" accept=".csv,.json" aria-describedby="file-instructions">
-                                <div id="file-instructions" class="form-hint">
-                                    <p>CSV format: One colour per line or comma-separated</p>
-                                    <p>JSON format: {"paletteName": ["#colour1", "#colour2", ...]} </p>
-                                </div>
-                                <div id="file-preview" class="file-preview hidden">
-                                    <h4 id="FilePreview">Colour Preview:</h4>
-                                    <div id="preview-colours" class="preview-colours"></div>
-                                </div>
-                            </div>
-                        </div>
+#333333, #FFFFFF"
+                      aria-describedby="colour-instructions"
+                      required
+                    ></textarea>
+                    <div id="colour-instructions" class="form-hint">
+                      Enter 6-character hex colour codes (with or without #
+                      prefix)
                     </div>
-                    <div id="error-message" role="alert"></div>
-                </fieldset>
-                
-                <fieldset id="contrastRatioFieldset">
-                    <legend>Contrast Ratio</legend>
-                    <div class="radio-group">
-                        <p>Select your required contrast ratio:</p>
-                        <div class="radio-option">
-                            <input type="radio" id="contrast-3" name="contrast-level" value="3" checked>
-                            <label for="contrast-3">Equal to or greater than 3:1 (minimum for UI components and graphical objects)</label>
-                        </div>
-                        <div class="radio-option">
-                            <input type="radio" id="contrast-4.5" name="contrast-level" value="4.5">
-                            <label for="contrast-4.5">Equal to or greater than 4.5:1 (minimum level for regular text at WCAG AA)</label>
-                        </div>
-                        <div class="radio-option">
-                            <input type="radio" id="contrast-7" name="contrast-level" value="7">
-                            <label for="contrast-7">Equal to or greater than 7:1 (enhanced level for regular text - WCAG AAA)</label>
-                        </div>
-                    </div>
-                </fieldset>
-                
-                <button type="submit" id="find-button">Find Colours</button>
-            </form>
-        </section>
+                  </div>
 
-        <section id="results" class="hidden">
+                  <div id="file-input" class="tab-content">
+                    <div class="file-upload-container">
+                      <label for="colour-file"
+                        >Upload a CSV or JSON file:</label
+                      >
+                      <input
+                        type="file"
+                        id="colour-file"
+                        accept=".csv,.json"
+                        aria-describedby="file-instructions"
+                      />
+                      <div id="file-instructions" class="form-hint">
+                        <p>
+                          CSV format: One colour per line or comma-separated
+                        </p>
+                        <p>
+                          JSON format: {"paletteName": ["#colour1", "#colour2",
+                          ...]}
+                        </p>
+                      </div>
+                      <div id="file-preview" class="file-preview hidden">
+                        <h4 id="FilePreview">Colour Preview:</h4>
+                        <div id="preview-colours" class="preview-colours"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="error-message" role="alert"></div>
+              </fieldset>
+
+              <fieldset id="contrastRatioFieldset">
+                <legend>Contrast Ratio</legend>
+                <div class="radio-group">
+                  <p>Select your required contrast ratio:</p>
+                  <div class="radio-option">
+                    <input
+                      type="radio"
+                      id="contrast-3"
+                      name="contrast-level"
+                      value="3"
+                      checked
+                    />
+                    <label for="contrast-3"
+                      >Equal to or greater than 3:1 (minimum for UI components
+                      and graphical objects)</label
+                    >
+                  </div>
+                  <div class="radio-option">
+                    <input
+                      type="radio"
+                      id="contrast-4.5"
+                      name="contrast-level"
+                      value="4.5"
+                    />
+                    <label for="contrast-4.5"
+                      >Equal to or greater than 4.5:1 (minimum level for regular
+                      text at WCAG AA)</label
+                    >
+                  </div>
+                  <div class="radio-option">
+                    <input
+                      type="radio"
+                      id="contrast-7"
+                      name="contrast-level"
+                      value="7"
+                    />
+                    <label for="contrast-7"
+                      >Equal to or greater than 7:1 (enhanced level for regular
+                      text - WCAG AAA)</label
+                    >
+                  </div>
+                </div>
+              </fieldset>
+
+              <button type="submit" id="find-button">Find Colours</button>
+            </form>
+          </section>
+
+          <section id="results" class="hidden">
             <h2 id="result-heading">Matching Colours</h2>
             <div id="colour-groups"></div>
-        </section>
+          </section>
 
-        <section id="similar-colours-section" class="hidden">
-            <button id="back-to-results" class="back-to-results">← Back to all results</button>
+          <section id="similar-colours-section" class="hidden">
+            <button id="back-to-results" class="back-to-results">
+              ← Back to all results
+            </button>
             <h2 id="similar-colours-heading">Similar Colours</h2>
             <div id="similar-colours" class="similar-colours-container">
-                <div class="similar-colours-grid"></div>
-                <div class="pagination" id="similar-pagination"></div>
+              <div class="similar-colours-grid"></div>
+              <div class="pagination" id="similar-pagination"></div>
             </div>
-        </section>
+          </section>
 
-        <section id="contrast-details" class="hidden">
+          <section id="contrast-details" class="hidden">
             <h2>Contrast Details</h2>
             <div id="contrast-pairs"></div>
-        </section>
-			             <script src="scripts/chroma.min.js"></script>
-						     <script src="scripts/backgroundContrast.js"></script>
-            </article>
-			      <div id="panel">
-         <button class="panelButton" onclick="topFunction()" id="myBtn">
-            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
-               <title id="svgTitle2">Top.</title>
-               <desc id="svgDesc2">Move to the top of the page.</desc>
-               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
-                  <circle cx="8.5" cy="8.5" r="8"/>
-                  <path d="m11.5 7.5-3-3-3 3"/>
-                  <path d="m8.5 4.5v8"/>
-               </g>
+          </section>
+          <script src="scripts/chroma.min.js"></script>
+          <script src="scripts/backgroundContrast.js"></script>
+        </article>
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg
+              id="svgUP"
+              height="50"
+              viewBox="0 0 21 21"
+              width="50"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-labelledby="svgTitle2 svgDesc2"
+            >
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g
+                fill="none"
+                fill-rule="evenodd"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(2 2)"
+              >
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
             </svg>
             <br />
             <span id="myBtnTop" class="panelLabel">Top</span>
-         </button>
-         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
-            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
-               <title id="svgTitle3">Bottom.</title>
-               <desc id="svgDesc3">Move to the bottom of the page.</desc>
-               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
-                  <circle cx="8.5" cy="8.5" r="8"/>
-                  <path d="m5.5 9.5 3 3 3-3"/>
-                  <path d="m8.5 12.5v-8"/>
-               </g>
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg
+              id="svgDOWN"
+              height="50"
+              viewBox="0 0 21 21"
+              width="50"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-labelledby="svgTitle3 svgDesc3"
+            >
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g
+                fill="none"
+                fill-rule="evenodd"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(3 2)"
+              >
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
             </svg>
             <br />
             <span id="myBtnBottom" class="panelLabel">Bottom</span>
-         </button>
-      </div>
-         </main>
-         <aside class="page-sidebar related">
-            <section class="related">
-			<h2>Related</h2>
-			</section>
+          </button>
+        </div>
+      </main>
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related</h2>
+        </section>
 
-               <section class="related">
-                <h3>Related tools</h3>
-                <ul class="relUL">
-                    <li><a href="svgCVD">SVG Palette Adjuster for Colour Vision Deficiency</a></li>
-                    <li><a href="imageCVD">Colour Vision Deficiency Image Tester</a></li>
-                    <li><a href="CVDP">Colour vision deficiency friendly palettes</a></li>
-                    <li><a href="a11y-brand-colour-contrast-suggest">Brand Accessible Colour Contrast Suggester</a></li>
-                    <li><a href="matrix/matrix.html">Accessibility Matrix for University of Southampton Brand Colour Palette</a></li>
-                 </ul>
-             </section>
+        <section class="related">
+          <h3>Related tools</h3>
+          <ul class="relUL">
+            <li>
+              <a href="svgCVD"
+                >SVG Palette Adjuster for Colour Vision Deficiency</a
+              >
+            </li>
+            <li>
+              <a href="imageCVD">Colour Vision Deficiency Image Tester</a>
+            </li>
+            <li>
+              <a href="CVDP">Colour vision deficiency friendly palettes</a>
+            </li>
+            <li>
+              <a href="a11y-brand-colour-contrast-suggest"
+                >Brand Accessible Colour Contrast Suggester</a
+              >
+            </li>
+            <li>
+              <a href="matrix/matrix.html"
+                >Accessibility Matrix for University of Southampton Brand Colour
+                Palette</a
+              >
+            </li>
+          </ul>
+        </section>
+      </aside>
+      <footer class="page-footer">
+        <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+        <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw"
+            >Follow on Twitter</a
+          >
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ"
+            >YouTube Channel</a
+          >
+        </div>
+        <div id="aboutCodePen">
+          <a href="https://codepen.io/matthewdeeprose/">CodePen</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/"
+            >&#169; Matthew Deeprose</a
+          >
+        </div>
+      </footer>
+    </div>
 
-         </aside>
-         <footer class="page-footer">
-            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
-            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
-            <div id="AccessibilityFoot">
-               <a href="Accessibility_Statement.html">Accessibility Statement</a>
-            </div>
-            <div id="twitterFoot">
-               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
-            </div>
-            <div id="YouTubeChannelFoot">
-               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
-            </div>
-            <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
-               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
-            </div>
-         </p></footer>
-      </div>
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document
+          .getElementById("menu")
+          .getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false";
+        } else {
+          menuAriaAttrib = "true";
+        }
+        document
+          .getElementById("menu")
+          .setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
 
-      <script>
-         function menuAction() {
-             let menuSwitch = document.getElementById("myTopnav");
-             if (menuSwitch.className === "topnav") {
-                 menuSwitch.className += " responsive";
-                 
-             } else {
-                 menuSwitch.className = "topnav";
-             }
-             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
-             if (menuAriaAttrib === "true") {
-                 menuAriaAttrib = "false"
-             } else {
-                 menuAriaAttrib = "true"
-             }
-             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
-         }
+      window.onscroll = function () {
+        scrollFunction();
+      };
 
+      function scrollFunction() {
+        if (
+          document.body.scrollTop > 660 ||
+          document.documentElement.scrollTop > 660
+        ) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
 
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById("skipToContent").focus();
+      }
 
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById("rssA").focus();
+      }
+    </script>
+    <script>
+      let themePref = localStorage.getItem("theme");
+      console.log("Has a theme preference been saved?", themePref);
 
+      function setLight() {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia("(prefers-color-scheme: dark)");
+        let dt;
+        if (d.matches) {
+          dt = "dark";
+          console.log("Prefers dark theme in OS");
+        } else {
+          dt = "light";
+          console.log("Prefers light theme in OS");
+        }
+        if (dt == "dark" && themePref == "Dark") {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == "light" && themePref == "Dark") {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == "dark" && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
 
+      function toggle(btnID) {
+        let buttonStatus = document.getElementById("lightDark");
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById("lightCSS").href = "light.css";
+          document.getElementById("darkCSS").href = "light.css";
+          console.log("Turned on light mode");
+          localStorage.setItem("theme", "Light");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference to ", themePref);
+          document.getElementById("lightDark").innerHTML =
+            "Light theme enabled, the button is now";
+          let toggleButton = document.getElementById("modeToggle");
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById("lightCSS").href = "dark.css";
+          document.getElementById("darkCSS").href = "dark.css";
+          console.log("Turned on dark mode");
+          localStorage.setItem("theme", "Dark");
+          let themePref = localStorage.getItem("theme");
+          console.log("Site theme preference set to ", themePref);
+          document.getElementById("lightDark").innerHTML =
+            "Dark theme enabled, the button is now";
+          let toggleButton = document.getElementById("modeToggle");
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+        }
+      }
 
-
-
-
-
-
-
-
-
-
-
-
-      </script>
-      <script>
-         let mybutton = document.getElementById("myBtn");
-         let mybutton2 = document.getElementById("myBtn2");
-         
-         
-         window.onscroll = function() {
-             scrollFunction()
-         };
-         
-         function scrollFunction() {
-             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
-                 mybutton.style.display = "block";
-         		mybutton2.style.display = "block";
-             } else {
-                 mybutton.style.display = "none";
-         		mybutton2.style.display = "none";
-             }
-         }
-         
-         
-         
-         function topFunction() {
-             document.body.scrollTop = 0;
-             document.documentElement.scrollTop = 0; 
-         document.getElementById('skipToContent').focus();
-         }
-         
-         function bottomFunction() {
-         window.scrollTo(0,document.body.scrollHeight);
-         document.getElementById('rssA').focus();
-         }
-      </script>
-      <script>
-         let themePref = localStorage.getItem("theme");
-         console.log("Has a theme preference been saved?", themePref);        
-         
-         
-         function setLight() {
-             let buttonStatus = document.getElementById("lightDark");
-             let theButton = document.getElementById("modeToggle");
-             const d = matchMedia('(prefers-color-scheme: dark)');
-             let dt;
-             if (d.matches) {
-                 dt = 'dark';
-                 console.log("Prefers dark theme in OS");
-             } else {
-                 dt = 'light'
-                 console.log("Prefers light theme in OS");
-             }
-             if (dt == 'dark' && themePref == 'Dark') {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else if (dt == 'light' && themePref == 'Dark') {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else if (dt == 'dark' && !themePref) {
-                 theButton.setAttribute("aria-pressed", "true");
-             } else {
-                 theButton.setAttribute("aria-pressed", "false");
-             }
-         }
-         setLight();
-         
-         function toggle(btnID) {
-             let buttonStatus = document.getElementById("lightDark");
-             let theButton = document.getElementById(btnID);
-             if (theButton.getAttribute("aria-pressed") == "true") {
-                 theButton.setAttribute("aria-pressed", "false");
-                 document.getElementById('lightCSS').href = 'light.css';
-                 document.getElementById('darkCSS').href = 'light.css';
-                 console.log("Turned on light mode");
-                 localStorage.setItem("theme", "Light");
-                 let themePref = localStorage.getItem("theme");
-                 console.log("Site theme preference to ", themePref);
-                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
-                 let toggleButton = document.getElementById('modeToggle');
-                 toggleButton.removeAttribute("aria-pressed");
-                 toggleButton.setAttribute("aria-pressed", "false");
-             } else {
-                 theButton.setAttribute("aria-pressed", "true");
-                 document.getElementById('lightCSS').href = 'dark.css';
-                 document.getElementById('darkCSS').href = 'dark.css';
-                 console.log("Turned on dark mode");
-                 localStorage.setItem("theme", "Dark");
-                 let themePref = localStorage.getItem("theme");
-                 console.log("Site theme preference set to ", themePref);
-                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
-                 let toggleButton = document.getElementById('modeToggle');
-                 toggleButton.removeAttribute("aria-pressed");
-                 toggleButton.setAttribute("aria-pressed", "true");
-             }
-         }
-         
-         function applyThemePreference() {
-             if (themePref == 'Dark') {
-                 let theButton = document.getElementById('modeToggle');
-                 document.getElementById('lightCSS').href = 'dark.css';
-                 document.getElementById('darkCSS').href = 'dark.css';
-                 theButton.setAttribute("aria-pressed", "true");
-                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
-             } else if (themePref == 'Light') {
-                 let theButton = document.getElementById('modeToggle');
-                 document.getElementById('lightCSS').href = 'light.css';
-                 document.getElementById('darkCSS').href = 'light.css';
-                 theButton.setAttribute("aria-pressed", "false");
-                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
-             }
-         }
-         applyThemePreference();                
-      </script>
-	  	    <script src="scripts/jquery-3.7.1.min.js"></script>
+      function applyThemePreference() {
+        if (themePref == "Dark") {
+          let theButton = document.getElementById("modeToggle");
+          document.getElementById("lightCSS").href = "dark.css";
+          document.getElementById("darkCSS").href = "dark.css";
+          theButton.setAttribute("aria-pressed", "true");
+          console.log(
+            "Applied",
+            themePref,
+            "theme because site theme preference is set to",
+            themePref
+          );
+        } else if (themePref == "Light") {
+          let theButton = document.getElementById("modeToggle");
+          document.getElementById("lightCSS").href = "light.css";
+          document.getElementById("darkCSS").href = "light.css";
+          theButton.setAttribute("aria-pressed", "false");
+          console.log(
+            "Applied",
+            themePref,
+            "theme because site theme preference is set to",
+            themePref
+          );
+        }
+      }
+      applyThemePreference();
+    </script>
+    <script src="scripts/jquery-3.7.1.min.js"></script>
     <script src="scripts/details.js"></script>
     <script>
-      window.console || (window.console = {
-        'log': alert
-      });
-      $(function() {
-        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
-        $('details').details();
-        $('details').on({
-          'open.details': function() {
-            console.log('opened')
+      window.console ||
+        (window.console = {
+          log: alert,
+        });
+      $(function () {
+        $("html").addClass($.fn.details.support ? "details" : "no-details");
+        $("details").details();
+        $("details").on({
+          "open.details": function () {
+            console.log("opened");
           },
-          'close.details': function() {
-            console.log('closed')
-          }
-        })
+          "close.details": function () {
+            console.log("closed");
+          },
+        });
       });
     </script>
-	    <script>
+    <script>
       // Expand details / summary when printing
       // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
-      window.matchMedia("print").addEventListener("change", evt => {
+      window.matchMedia("print").addEventListener("change", (evt) => {
         if (evt.matches) {
           elms = document.body.querySelectorAll("details:not([open])");
           for (e of elms) {
@@ -1037,7 +1262,7 @@ or
             delete e.dataset.wasclosed;
           }
         }
-      })
+      });
     </script>
-   </body>
+  </body>
 </html>
