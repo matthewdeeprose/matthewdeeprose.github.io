@@ -2,7 +2,34 @@
    COLOUR-ONLY DECLARATIONS (TOP)
    =========================================== */
 
-/*temp*/
+/* Phase 4: File Confirmation Card Styling */
+.file-info-card {
+  background-color: #00131d;
+}
+.file-meta {
+  color: #9fb1bd;
+}
+
+/* Canvas Element */
+.mathpix-draw-canvas {
+  background: #00131d;
+  /* No border on canvas itself - use wrapper instead */
+}
+
+/* Canvas container colours */
+.mathpix-canvas-container {
+  border: 2px solid #e1e8ec;
+  box-shadow: 0 2px 8px rgba(72, 136, 171, 0.35);
+}
+
+.mathpix-canvas-container:hover {
+  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
+  border-color: #c1d100;
+}
+
+.mathpix-canvas-wrapper:hover {
+  border-color: rgba(252, 252, 252, 0.2);
+}
 
 /* ============================================================================
    Phase 1D: Camera Capture Styling
@@ -10,17 +37,18 @@
 
 /* Video Element */
 #mathpix-camera-video {
-  background: #000;
+  background: rgb(0, 19, 29);
 }
 
 /* Video Preview Container */
 .mathpix-camera-preview {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e1e8ec;
+  box-shadow: 0 2px 8px rgba(149, 238, 160, 0.35);
 }
 
 /* Camera Status Indicator */
 .mathpix-camera-status {
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 19, 29, 0.75);
   color: #fffff4;
 }
 
@@ -44,7 +72,7 @@
    ============================================ */
 
 .mathpix-download-progress {
-  background: #e1e8ec;
+  background: #00131d;
   border-color: currentcolor;
 }
 
@@ -103,7 +131,7 @@
 
 /* Format unavailable message - replaces title tooltip for better styling */
 .format-unavailable-message {
-  color: #d5007f;
+  color: #ef7d00;
 }
 
 .endpoint-option {
@@ -132,7 +160,7 @@
 
 .diagram-text-intro {
   background: rgba(0, 92, 132, 0.08);
-  border-left: 3px solid #005c84;
+  border-left: 3px solid #b3dbd2;
 }
 
 .diagram-text-intro .help-text {
@@ -145,7 +173,7 @@
 }
 
 .diagram-card-header {
-  background: #e1e8ec;
+  background: #00131d;
   border-bottom: 1px solid currentcolor;
 }
 
@@ -162,7 +190,7 @@
 }
 
 .stat-value {
-  color: #005c84;
+  color: #b3dbd2;
   font-weight: 700;
 }
 
@@ -330,7 +358,7 @@
 
 /* Privacy Consent Modal – colour */
 .consent-file-info {
-  border-left: 4px solid #005c84;
+  border-left: 4px solid #b3dbd2;
 }
 
 .consent-section h3 {
@@ -352,11 +380,11 @@
 
 .gdpr-compliance {
   background: #e3f2fd;
-  border-left: 4px solid #005c84;
+  border-left: 4px solid #b3dbd2;
 }
 
 .gdpr-compliance h3 {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .data-rights {
@@ -390,11 +418,11 @@
 }
 
 .consent-checkbox {
-  accent-color: #005c84;
+  accent-color: #b3dbd2;
 }
 
 .checkbox-label strong {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .checkbox-label small {
@@ -411,7 +439,7 @@
 /* Phase 3 MVP: Responsive Preview Colours */
 .mathpix-image-preview-container {
   border: 1px solid currentcolor;
-  background: #e1e8ec;
+  background: #00131d;
 }
 
 .mathpix-image-preview {
@@ -420,14 +448,14 @@
 }
 
 .mathpix-open-original-btn:hover {
-  box-shadow: 0 0 0 0.4rem #005c84;
+  box-shadow: 0 0 0 0.4rem #b3dbd2;
   outline: 0.2rem solid transparent !important;
   border: 0.2rem solid #00131d;
 }
 
 .mathpix-progress-container {
   border: 1px solid currentcolor;
-  background: #e1e8ec;
+  background: #00131d;
 }
 
 .mathpix-progress-bar {
@@ -436,7 +464,7 @@
 }
 
 .mathpix-progress-fill {
-  background: #005c84;
+  background: #b3dbd2;
 }
 
 .mathpix-progress-label {
@@ -447,7 +475,7 @@
   border: 1px solid currentcolor;
 }
 .mathpix-tab-headers {
-  border-bottom: 1px solid #231f20;
+  border-bottom: 2px solid #e1e8ec;
 }
 .mathpix-comparison-panel {
   border: 1px solid currentcolor;
@@ -504,26 +532,26 @@
 
 /* Phase 3.1: Enhanced Progress Bar & HTML Preview Colours */
 .html-preview-controls {
-  border: 1px solid #005c84;
+  border: 1px solid #b3dbd2;
   background: #e8f4f8;
 }
 
 .preview-control-header {
-  background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%);
+  background: #00131d;
 }
 
 .preview-stats {
-  color: #00131d;
+  color: #e1e8ec;
 }
 
 .line-count {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .preview-summary {
   background: rgba(0, 92, 132, 0.05);
   border-top: 1px solid rgba(0, 92, 132, 0.1);
-  color: #666;
+  color: #e1e8ec;
 }
 
 .html-content-collapsed::after {
@@ -536,7 +564,7 @@
 
 .progress-container-enhanced {
   background: #00131d;
-  border: 2px solid #005c84;
+  border: 2px solid #b3dbd2;
   box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
 }
 
@@ -545,7 +573,7 @@
 }
 
 .progress-subtitle {
-  color: #666;
+  color: #e1e8ec;
 }
 
 .cancel-btn {
@@ -577,29 +605,32 @@
 }
 
 .progress-percentage {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .progress-container-enhanced .progress-text {
-  color: #00131d;
+  color: #b3dbd2;
 }
 
 .detailed-status {
-  color: #666;
+  color: #74c9e5;
   background: rgba(0, 92, 132, 0.08);
-  border-left: 3px solid #005c84;
+  border-left: 6px solid #b3dbd2;
+  border-top: 1px solid #b3dbd2;
+  border-right: 1px solid #b3dbd2;
+  border-bottom: 1px solid #b3dbd2;
 }
 
 .current-stage {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .stage-separator {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .time-label {
-  color: #231f20;
+  color: #b3dbd2;
 }
 
 .progress-stages::before {
@@ -616,43 +647,52 @@
 }
 
 .stage-indicator.active .stage-dot {
-  background: #005c84;
-  border-color: #74c9e5;
+  background: #fcbc00;
+  border-color: #fcbc00;
 }
 
 .stage-indicator.completed .stage-dot {
-  background: #005051;
-  border-color: #005051;
+  background: #c1d100;
+  border-color: #c1d100;
 }
 
 .stage-indicator.completed .stage-dot::after {
-  color: white;
+  color: #00131d;
 }
 
 .stage-label {
-  color: #666;
+  color: #e1e8ec;
 }
 
-.stage-indicator.active .stage-label,
+.stage-indicator.active .stage-label {
+  color: #fcbc00;
+}
+
 .stage-indicator.completed .stage-label {
-  color: #00131d;
+  color: #c1d100;
 }
 
 .content-summary-container {
-  background: #e3f2fd;
-  border: 1px solid #90caf9;
+  background: #00131d;
+  border: 1px solid #b3dbd2;
 }
 
 .content-summary h4 {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .content-summary p {
-  color: #00131d;
+  color: currentcolor;
 }
 
 .content-details {
-  color: #666;
+  color: #e1e8ec;
+}
+
+.processing-time {
+  background: #231f20;
+  outline: 1px solid currentcolor;
+  color: #e1e8ec;
 }
 
 @media (prefers-contrast: high) {
@@ -679,7 +719,7 @@
 
 .mathpix-pdf-drop-zone {
   border: 2px dashed #00131d;
-  background: #e1e8ec;
+  background: #00131d;
 }
 
 .mathpix-pdf-drop-zone:hover {
@@ -701,7 +741,7 @@
 
 .mathpix-pdf-options {
   border: 1px solid currentcolor;
-  background: #e1e8ec;
+  background: #00131d;
 }
 
 .mathpix-option-group {
@@ -709,7 +749,7 @@
 }
 
 .mathpix-option {
-  border: 2px solid #00131d;
+  border: 2px solid currentcolor;
   background: #00131d;
 }
 
@@ -720,11 +760,11 @@
 }
 
 .mathpix-option input[type="radio"]:checked + .option-content {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .mathpix-option input[type="radio"]:checked + .option-content .option-label {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .mathpix-custom-range {
@@ -743,7 +783,7 @@
 }
 
 .mathpix-format-checkbox {
-  border: 2px solid #00131d;
+  border: 2px solid currentcolor;
   background: #00131d;
 }
 
@@ -754,14 +794,14 @@
 }
 
 .mathpix-format-checkbox input[type="checkbox"]:checked + .format-content {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .mathpix-format-checkbox
   input[type="checkbox"]:checked
   + .format-content
   .format-label {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .mathpix-process-btn {
@@ -770,7 +810,7 @@
 
 .mathpix-pdf-progress {
   border: 1px solid currentcolor;
-  background: #e1e8ec;
+  background: #00131d;
 }
 
 .mathpix-progress-bar-container {
@@ -792,16 +832,16 @@
 
 .mathpix-pdf-results {
   border: 1px solid currentcolor;
-  background: #e1e8ec;
+  background: #00131d;
 }
 
 .mathpix-document-info {
-  background: #00131d;
+  background: #231f20;
   border: 1px solid currentcolor;
 }
 
 .mathpix-doc-details dd {
-  color: #005c84;
+  color: #b3dbd2;
   font-weight: bold;
 }
 
@@ -821,33 +861,33 @@
 }
 
 .mathpix-view-option input[type="radio"]:checked + .view-content {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .mathpix-view-option input[type="radio"]:checked + .view-content .view-label {
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .mathpix-tab-header {
-  background: #e1e8ec;
-  color: #00131d;
+  background: #231f20;
+  color: #e1e8ec !important;
   outline: 0.2rem solid transparent !important;
 }
 
 .mathpix-tab-header:hover {
   background: #00131d;
-  color: #005c84;
+  color: #b3dbd2;
 }
 
 .mathpix-tab-header[aria-selected="true"] {
   background: #00131d;
-  color: #005c84;
+  color: #b3dbd2;
   border-bottom: 2px solid #fffff4;
 }
 
 .mathpix-tab-panel {
-  background: #00131d;
-  border: 1px solid currentcolor;
+  background: #231f20;
+  border: 4px solid currentcolor;
   border-top: none;
 }
 
@@ -866,7 +906,7 @@
 .mathpix-copy-btn:hover,
 .mathpix-download-btn:hover,
 .mathpix-preview-btn:hover {
-  background: #005c84;
+  background: #b3dbd2;
   color: #fffff4;
   box-shadow: 0 2px 8px rgba(0, 92, 132, 0.2);
 }
@@ -883,7 +923,7 @@
 
 .mathpix-docx-info {
   background: #e3f2fd;
-  border: 1px solid #005c84;
+  border: 1px solid #b3dbd2;
   color: #00131d;
 }
 
@@ -891,25 +931,9 @@
   color: #00131d;
 }
 
-@media (prefers-contrast: high) {
-  .mathpix-pdf-drop-zone,
-  .mathpix-option,
-  .mathpix-format-checkbox,
-  .mathpix-view-option {
-    border-width: 3px;
-  }
-
-  .mathpix-process-btn,
-  .mathpix-cancel-btn,
-  .mathpix-copy-btn,
-  .mathpix-download-btn,
-  .mathpix-preview-btn {
-    border-width: 3px;
-  }
-
-  .mathpix-tab-header[aria-selected="true"] {
-    border-bottom-width: 3px;
-  }
+.stat-item {
+  background: #495961;
+  border: 1px solid currentcolor;
 }
 
 /* Page Navigation Colours */
@@ -942,4 +966,162 @@
   background-color: #f8f9fa;
   border: 2px dashed #dee2e6;
   color: #6c757d;
+}
+
+.mathpix-option-group {
+  background: #231f20;
+}
+
+/* Upload Preview Colours */
+.mathpix-upload-preview {
+  background: #00131d;
+  border: 2px dashed currentcolor;
+}
+
+.upload-preview-display {
+  border: 1px solid #e1e8ec;
+  background: #231f20;
+}
+
+#upload-preview-canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Main PDF Preview Colours */
+.mathpix-pdf-preview {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.pdf-preview-display {
+  border: 1px solid #dee2e6;
+  background: #ffffff;
+}
+
+#pdf-preview-canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Statistics Panel Colours */
+.pdf-preview-stats {
+  background: rgba(255, 255, 255, 0.8);
+  border-left: 4px solid #0d6efd;
+}
+
+.pdf-preview-stats h3 {
+  color: #212529;
+}
+
+.pdf-content-summary dt {
+  color: #6c757d;
+}
+
+.pdf-content-summary dd {
+  color: #212529;
+}
+
+/* Navigation Controls Colours */
+.pdf-nav-button {
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  color: #212529;
+}
+
+.pdf-nav-button:hover:not(:disabled) {
+  background: #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-nav-button:disabled {
+  background: #f8f9fa;
+}
+
+.pdf-nav-button:focus-visible {
+  outline: 3px solid #0d6efd;
+}
+
+/* Legend Colours */
+.pdf-preview-legend {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.pdf-preview-legend h4 {
+  color: #212529;
+}
+
+.legend-math {
+  color: #3b82f6;
+}
+
+.legend-handwritten {
+  color: #22c55e;
+}
+
+.legend-table {
+  color: #f97316;
+}
+
+.legend-diagram {
+  color: #a855f7;
+}
+
+.legend-low-confidence {
+  color: #eab308;
+}
+
+/* Action Buttons Colours */
+
+/* Page Navigation with Integrated Statistics */
+.mathpix-page-navigation {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.mathpix-nav-button {
+  background: #0066cc;
+  color: white;
+}
+
+.mathpix-nav-button:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+/* Page Statistics Panel */
+.mathpix-page-statistics {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+
+.stats-heading {
+  color: #e1e8ec;
+}
+
+.page-content-summary dt {
+  color: #e1e8ec;
+}
+
+.page-content-summary dd {
+  color: #333;
+  background: white;
+}
+
+/* Simplified PDF Preview */
+.pdf-preview-description {
+  color: #e1e8ec;
+}
+
+.pdf-preview-display {
+  background: #f5f5f5;
+}
+
+#pdf-preview-canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pdf-preview-controls {
+  background: #f8f9fa;
+}
+
+.zoom-indicator {
+  color: #e1e8ec;
 }

@@ -396,12 +396,16 @@ class MathPixFileHandler extends MathPixBaseModule {
       imageElement.alt = `Preview of ${file.name}`;
       imageElement.style.display = "block";
 
-      // Populate file information with formatted details
+      // Populate file information with formatted details and screen reader context
       fileInfoElement.innerHTML = `
-        <strong>${file.name}</strong><br>
-        Size: ${this.formatFileSize(
+        <strong>
+          <span class="sr-only">Filename: </span>${file.name}
+        </strong><br>
+        <span class="sr-only">File size: </span>${this.formatFileSize(
           file.size
-        )} | Type: ${this.getFileTypeDescription(file.type)}
+        )} | <span class="sr-only">File type: </span>${this.getFileTypeDescription(
+        file.type
+      )}
       `;
 
       // Configure buttons based on confirmation workflow settings
@@ -433,6 +437,35 @@ class MathPixFileHandler extends MathPixBaseModule {
         this.controller.uiManager.showProcessingOptions();
         logDebug("Processing options panel shown with image preview");
       }
+
+      // Note: File upload success is already announced by handleUpload() via showNotification()
+      // No need for additional screen reader announcement here to avoid duplicates
+
+      // Scroll to preview container and set focus to image after DOM updates complete
+      // Using instant scroll due to mode switch and layout changes (hide camera, show preview)
+      // Wait for DOM to fully update before scrolling and focusing
+      setTimeout(() => {
+        // Scroll to the preview container (shows top of preview section)
+        previewContainer.scrollIntoView({
+          behavior: "instant",
+          block: "start",
+        });
+
+        // Set focus to the preview image for screen reader navigation
+        // This positions screen reader at the image, so arrow down continues naturally
+        // through file info → button
+        imageElement.setAttribute("tabindex", "-1");
+        imageElement.focus();
+
+        logDebug("Scrolled to preview container and set focus to image", {
+          scrollBehavior: "instant",
+          scrollTarget: "#mathpix-image-preview-container",
+          block: "start",
+          focusTarget: "#mathpix-image-preview",
+          reason: "Mode switch from camera requires instant scroll",
+          screenReaderFlow: "image → file info → button",
+        });
+      }, 150); // 150ms ensures mode switch and DOM updates complete
 
       logDebug("Responsive image preview displayed successfully", {
         previewUrl: imageUrl,

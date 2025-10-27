@@ -185,13 +185,13 @@ const MATHPIX_CONFIG = {
     },
     ASIA: {
       name: "Asia Pacific",
-      baseUrl: "https://ap-southeast-1.api.mathpix.com/v3", 
+      baseUrl: "https://ap-southeast-1.api.mathpix.com/v3",
       location: "SE Asia (Singapore)",
       features: {
         text: true,
         strokes: true,
         pdf: true,
-        latex_pdf: true, // Assumed available 
+        latex_pdf: true, // Assumed available
         html: true,
         docx: true,
         tex_zip: true,
@@ -212,6 +212,59 @@ const MATHPIX_CONFIG = {
    * @since 2.0.0
    */
   DEFAULT_ENDPOINT: "EU",
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {Object}
+   * @description Document format metadata for multi-format support
+   *
+   * Provides format-specific configuration including MIME types, display names,
+   * file size limits, preview capabilities, and UI categorisation. Used by
+   * validation and preview systems to handle different document types appropriately.
+   *
+   * @property {Object} application/pdf - PDF document metadata
+   * @property {string} name - Short format name for logging
+   * @property {string} displayName - Human-readable name for UI display
+   * @property {string} icon - Emoji icon for visual identification
+   * @property {number} maxSize - Maximum file size in bytes
+   * @property {boolean} showPdfPreview - Whether to show full PDF preview
+   * @property {string} category - Format category (document/office)
+   *
+   * @example
+   * const formatInfo = MATHPIX_CONFIG.DOCUMENT_FORMATS['application/pdf'];
+   * console.log(formatInfo.displayName); // "PDF Document"
+   * console.log(formatInfo.maxSize); // 536870912 (512MB)
+   *
+   * @accessibility Format metadata ensures appropriate handling for all users
+   * @since 4.0.0
+   */
+  DOCUMENT_FORMATS: {
+    "application/pdf": {
+      name: "PDF",
+      displayName: "PDF Document",
+      icon: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m12.5 12.5v-7l-5-5h-5c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"/><path d="m2.5 7.5h5"/><path d="m2.5 9.5h7"/><path d="m2.5 11.5h3"/><path d="m7.5.5v3c0 1.1045695.8954305 2 2 2h3"/></g></svg>',
+      maxSize: 512 * 1024 * 1024, // 512MB
+      showPdfPreview: true,
+      category: "document",
+    },
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+      name: "DOCX",
+      displayName: "Word Document",
+      icon: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m12.5 12.5v-7l-5-5h-5c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"/><path d="m2.5 7.5h5"/><path d="m2.5 9.5h7"/><path d="m2.5 11.5h3"/><path d="m7.5.5v3c0 1.1045695.8954305 2 2 2h3"/></g></svg>',
+      maxSize: 100 * 1024 * 1024, // 100MB
+      showPdfPreview: false,
+      category: "office",
+    },
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+      {
+        name: "PPTX",
+        displayName: "PowerPoint Presentation",
+        icon: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"><path d="m16.5 12.5v-10.01471863h-14v10.01471863c0 .5522847.44771525 1 1 1h12c.5522847 0 1-.4477153 1-1z"/><path d="m7.5 13.5-2 3.5"/><path d="m13.5 13.5-2 3" transform="matrix(-1 0 0 1 25 0)"/><path d="m.5 2.5h18"/><path d="m9.49894742.49789429c1.05502148.00261296 1.91822238.81840641 1.99543358 1.85289779l.0056181.1492082-4.00000003-.00210599c-.00105165-1.1045695.89437885-2 1.99894835-2z"/></g></svg>',
+        maxSize: 100 * 1024 * 1024, // 100MB
+        showPdfPreview: false,
+        category: "office",
+      },
+  },
 
   /**
    * @memberof MATHPIX_CONFIG
@@ -310,7 +363,14 @@ const MATHPIX_CONFIG = {
    * @description File MIME types supported for mathematics OCR processing
    * @default ["image/jpeg", "image/png", "image/webp", "application/pdf"]
    */
-  SUPPORTED_TYPES: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+  SUPPORTED_TYPES: [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // DOCX
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation", // PPTX
+  ],
 
   /**
    * @memberof MATHPIX_CONFIG
@@ -705,6 +765,16 @@ const MATHPIX_CONFIG = {
    * @since 5.0.0
    */
   DEFAULT_DELIMITER_PRESET: "markdown",
+
+  /**
+   * Get format information for a given MIME type
+   * @param {string} mimeType - MIME type to look up
+   * @returns {Object|null} Format metadata or null
+   * @since 4.0.0
+   */
+  getFormatInfo(mimeType) {
+    return this.DOCUMENT_FORMATS[mimeType] || null;
+  },
 };
 
 /**
@@ -743,6 +813,21 @@ function isFeatureAvailable(endpointKey, featureName) {
   return features[featureName] === true;
 }
 
+/**
+ * Get format information for a given MIME type
+ * @param {string} mimeType - MIME type to look up (e.g., 'application/pdf')
+ * @returns {Object|null} Format metadata object or null if not found
+ * @since 4.0.0
+ *
+ * @example
+ * const info = getFormatInfo('application/pdf');
+ * console.log(info.displayName); // "PDF Document"
+ * console.log(info.maxSize); // 536870912
+ */
+function getFormatInfo(mimeType) {
+  return MATHPIX_CONFIG.DOCUMENT_FORMATS[mimeType] || null;
+}
+
 export default MATHPIX_CONFIG;
 export {
   logError,
@@ -752,4 +837,5 @@ export {
   getEndpointConfig,
   getEndpointFeatures,
   isFeatureAvailable,
+  getFormatInfo,
 };

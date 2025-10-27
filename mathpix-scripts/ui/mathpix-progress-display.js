@@ -73,14 +73,29 @@ class MathPixProgressDisplay {
     this.totalSteps = this.progressSteps.length;
     this.isActive = false;
 
-    // Visual progress bar elements
+    // Visual progress bar elements (PDF-specific IDs)
     this.progressContainer = null;
     this.progressBar = null;
     this.progressFill = null;
     this.progressLabel = null;
+    this.statusDetailElement = null; // Detail status line
+    this.timingDetailElement = null; // Detail timing line
+
+    // Enhanced progress bar elements (Phase 3.5)
+    this.enhancedContainer = null;
+    this.enhancedProgressText = null; // Main progress text
+    this.enhancedStageProgress = null; // Detailed stage progress
+    this.enhancedCurrentStage = null; // Current stage name
+    this.enhancedElapsedTime = null; // Elapsed time display
+    this.enhancedRemainingTime = null; // Estimated remaining time
+
+    // Download tracking for detailed progress
+    this.downloadedFormats = [];
+    this.totalFormatsExpected = 0;
+    this.downloadStartTime = null;
 
     logInfo(
-      "MathPix Progress Display initialised with visual progress bar support"
+      "MathPix Progress Display initialised with visual progress bar and detail line support"
     );
   }
 
@@ -93,6 +108,14 @@ class MathPixProgressDisplay {
     this.stepStartTime = Date.now();
     this.currentStep = 0;
     this.isActive = true;
+
+    // Clear download tracking for new processing session
+    this.clearDownloadTracking();
+    this.downloadStartTime = Date.now();
+
+    // Clear detail lines for fresh start
+    this.updateStatusDetail("Initialising processing...");
+    this.updateTimingDetail("Estimated time: calculating...");
 
     logInfo("Visual progress display started", {
       fileName: fileInfo.name,
@@ -174,23 +197,51 @@ class MathPixProgressDisplay {
 
   /**
    * Cache visual progress bar DOM elements for performance
+   * Uses correct PDF-specific element IDs matching HTML structure
+   * Phase 3.5: Now caches both simple and enhanced container elements
    */
   cacheProgressElements() {
-    this.progressContainer = document.getElementById(
-      "mathpix-progress-container"
-    );
+    // Main progress container (PDF-specific ID) - Simple container
+    this.progressContainer = document.getElementById("mathpix-pdf-progress");
+
+    // Progress bar elements - Simple container
     this.progressBar = this.progressContainer?.querySelector(
       ".mathpix-progress-bar"
     );
-    this.progressFill = document.getElementById("mathpix-progress-fill");
-    this.progressLabel = document.getElementById("mathpix-progress-label");
+    this.progressFill = document.getElementById("mathpix-pdf-progress-fill");
+    this.progressLabel = document.getElementById("mathpix-pdf-progress-text");
 
-    logDebug("Progress bar elements cached", {
-      container: !!this.progressContainer,
-      bar: !!this.progressBar,
-      fill: !!this.progressFill,
-      label: !!this.progressLabel,
-    });
+    // Detail line elements - Simple container (Phase 1)
+    this.statusDetailElement = document.getElementById("mathpix-pdf-status");
+    this.timingDetailElement = document.getElementById("mathpix-pdf-timing");
+
+    // Enhanced container elements (Phase 3.5)
+    this.enhancedContainer = document.getElementById("pdf-progress-enhanced");
+    this.enhancedProgressText = document.getElementById(
+      "pdf-progress-text-enhanced"
+    );
+    this.enhancedStageProgress = document.getElementById("stage-progress");
+    this.enhancedCurrentStage = document.getElementById("current-stage");
+    this.enhancedElapsedTime = document.getElementById("elapsed-time");
+    this.enhancedRemainingTime = document.getElementById("remaining-time");
+
+    logDebug(
+      "Progress bar elements cached with detail lines and enhanced container",
+      {
+        simpleContainer: !!this.progressContainer,
+        bar: !!this.progressBar,
+        fill: !!this.progressFill,
+        label: !!this.progressLabel,
+        statusDetail: !!this.statusDetailElement,
+        timingDetail: !!this.timingDetailElement,
+        enhancedContainer: !!this.enhancedContainer,
+        enhancedProgressText: !!this.enhancedProgressText,
+        enhancedStageProgress: !!this.enhancedStageProgress,
+        enhancedCurrentStage: !!this.enhancedCurrentStage,
+        enhancedElapsedTime: !!this.enhancedElapsedTime,
+        enhancedRemainingTime: !!this.enhancedRemainingTime,
+      }
+    );
   }
 
   /**
@@ -405,6 +456,123 @@ class MathPixProgressDisplay {
   }
 
   /**
+   * Format file size in bytes to human-readable string
+   * @param {number} bytes - File size in bytes
+   * @returns {string} Formatted size string (e.g., "1.5 KB", "2.3 MB")
+   */
+  formatFileSize(bytes) {
+    if (bytes === 0) return "0 Bytes";
+    if (bytes < 1024) return `${bytes} Bytes`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024)
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  /**
+   * Format time estimate in milliseconds to human-readable string
+   * @param {number} ms - Time in milliseconds
+   * @returns {string} Formatted time string (e.g., "2 seconds", "1 minute")
+   */
+  formatTimeEstimate(ms) {
+    if (ms < 1000) return `${ms}ms`;
+
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) {
+      return seconds === 1 ? "1 second" : `${seconds} seconds`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    if (minutes < 60) {
+      if (remainingSeconds === 0) {
+        return minutes === 1 ? "1 minute" : `${minutes} minutes`;
+      }
+      return `${minutes}m ${remainingSeconds}s`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  }
+
+  /**
+   * Update the status detail line with new information
+   * Phase 3.5: Writes to both simple and enhanced containers
+   * @param {string} text - The status text to display
+   */
+  updateStatusDetail(text) {
+    if (!this.statusDetailElement && !this.enhancedProgressText) {
+      this.cacheProgressElements();
+    }
+
+    let updatedCount = 0;
+
+    // Update enhanced container (primary) - Phase 3.5
+    if (this.enhancedProgressText) {
+      this.enhancedProgressText.textContent = text;
+      updatedCount++;
+      logDebug("Enhanced status detail updated", { text: text });
+    }
+
+    // Update stage progress detail if available
+    if (this.enhancedStageProgress) {
+      this.enhancedStageProgress.textContent = text;
+      updatedCount++;
+    }
+
+    // Update simple container (fallback/backward compatibility)
+    if (this.statusDetailElement) {
+      this.statusDetailElement.textContent = text;
+      updatedCount++;
+      logDebug("Simple status detail updated", { text: text });
+    }
+
+    if (updatedCount > 0) {
+      logInfo(`Status detail updated (${updatedCount} elements)`, {
+        text: text,
+      });
+    } else {
+      logWarn("No status detail elements available", { text: text });
+    }
+  }
+
+  /**
+   * Update the timing detail line with new information
+   * Phase 3.5: Writes to both simple and enhanced containers
+   * @param {string} text - The timing text to display
+   */
+  updateTimingDetail(text) {
+    if (!this.timingDetailElement && !this.enhancedElapsedTime) {
+      this.cacheProgressElements();
+    }
+
+    let updatedCount = 0;
+
+    // Update enhanced elapsed time (primary) - Phase 3.5
+    if (this.enhancedElapsedTime) {
+      this.enhancedElapsedTime.textContent = text;
+      updatedCount++;
+      logDebug("Enhanced timing detail updated", { text: text });
+    }
+
+    // Update simple container timing (fallback/backward compatibility)
+    if (this.timingDetailElement) {
+      this.timingDetailElement.textContent = text;
+      updatedCount++;
+      logDebug("Simple timing detail updated", { text: text });
+    }
+
+    if (updatedCount > 0) {
+      logInfo(`Timing detail updated (${updatedCount} elements)`, {
+        text: text,
+      });
+    } else {
+      logWarn("No timing detail elements available", { text: text });
+    }
+  }
+  /**
    * Extract available formats from processing result
    * @param {Object} result - The processing result
    * @returns {Array} Array of available format names
@@ -536,6 +704,68 @@ class MathPixProgressDisplay {
         warning: typeof this.notifications.warning === "function",
       },
       currentState: this.getProgressState(),
+    };
+  }
+
+  /**
+   * Track a downloaded format with size information
+   * @param {string} formatName - Name of the format (e.g., "HTML", "LaTeX")
+   * @param {number} sizeBytes - Size of the download in bytes
+   */
+  trackDownload(formatName, sizeBytes) {
+    const downloadInfo = {
+      format: formatName,
+      size: sizeBytes,
+      timestamp: Date.now(),
+      formattedSize: this.formatFileSize(sizeBytes),
+    };
+
+    this.downloadedFormats.push(downloadInfo);
+
+    logDebug("Download tracked", {
+      format: formatName,
+      size: sizeBytes,
+      formattedSize: downloadInfo.formattedSize,
+      totalDownloaded: this.downloadedFormats.length,
+    });
+
+    // Update status detail with download progress
+    if (this.totalFormatsExpected > 0) {
+      const progress = `${this.downloadedFormats.length}/${this.totalFormatsExpected}`;
+      this.updateStatusDetail(
+        `Downloaded ${formatName} (${downloadInfo.formattedSize}) - ${progress} formats complete`
+      );
+    }
+  }
+
+  /**
+   * Clear download tracking state (call at start of new processing)
+   */
+  clearDownloadTracking() {
+    this.downloadedFormats = [];
+    this.totalFormatsExpected = 0;
+    this.downloadStartTime = null;
+
+    logDebug("Download tracking cleared");
+  }
+
+  /**
+   * Get download summary information
+   * @returns {Object} Summary of downloads
+   */
+  getDownloadSummary() {
+    const totalSize = this.downloadedFormats.reduce(
+      (sum, download) => sum + download.size,
+      0
+    );
+
+    return {
+      count: this.downloadedFormats.length,
+      expected: this.totalFormatsExpected,
+      totalSize: totalSize,
+      formattedTotalSize: this.formatFileSize(totalSize),
+      formats: this.downloadedFormats.map((d) => d.format),
+      downloads: this.downloadedFormats,
     };
   }
 }

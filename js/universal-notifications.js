@@ -272,7 +272,13 @@ const UniversalNotifications = (function () {
 
       // Create toast using GB structure
       const toastId = `universal-toast-${++this.toastCounter}`;
-      const toast = this.createToast(toastId, message, type, dismissible);
+      const toast = this.createToast(
+        toastId,
+        message,
+        type,
+        dismissible,
+        duration
+      );
 
       // Store reference
       this.toasts.set(toastId, {
@@ -295,8 +301,8 @@ const UniversalNotifications = (function () {
         this.setAutoDisMiss(toastId, duration);
       }
 
-      // Announce to screen readers
-      this.announceToast(message, type);
+      // Note: Screen reader announcement handled by toast's aria-live attribute
+      // No need for separate announcer element (prevents duplicate announcements)
 
       logDebug(`Toast displayed: ${type} - ${message}`);
       return toastId;
@@ -305,7 +311,7 @@ const UniversalNotifications = (function () {
     /**
      * Create toast DOM element using existing GB classes and structure
      */
-    createToast(toastId, message, type, dismissible) {
+    createToast(toastId, message, type, dismissible, duration = 0) {
       const toast = document.createElement("div");
       toast.id = toastId;
       // Use existing Graph Builder classes
@@ -325,13 +331,16 @@ const UniversalNotifications = (function () {
       const icon = this.getIconForType(type);
 
       // Build content using existing GB structure
+      // Note: For auto-dismissing toasts, use simpler close label since they auto-dismiss
+      const closeLabel = duration > 0 ? "Dismiss" : "Close notification";
+
       toast.innerHTML = `
         <div class="gb-toast-icon" aria-hidden="true">${icon}</div>
         <div class="gb-toast-content">${this.escapeHtml(message)}</div>
         ${
           dismissible
             ? `
-          <button type="button" class="gb-toast-close" aria-label="Close notification">
+          <button type="button" class="gb-toast-close" aria-label="${closeLabel}">
             <span aria-hidden="true">×</span>
           </button>
         `
@@ -473,6 +482,8 @@ const UniversalNotifications = (function () {
 
     /**
      * Announce toast to screen readers
+     * @deprecated No longer needed - toast element itself has aria-live attribute
+     * Kept for backward compatibility but not called by default
      */
     announceToast(message, type) {
       const announcement = `${type === "error" ? "Error: " : ""}${message}`;

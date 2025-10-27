@@ -117,17 +117,38 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     // Populate table formats if available
     if (result.containsTable) {
+      // Show and populate table tabs
       if (result.tableHtml) {
         this.populateFormatContent("table-html", result.tableHtml);
+        // Show Table (HTML) tab
+        const tableHtmlTab = document.getElementById("mathpix-tab-table-html");
+        if (tableHtmlTab) {
+          tableHtmlTab.style.display = "";
+          tableHtmlTab.removeAttribute("aria-disabled");
+        }
       }
       if (result.tableMarkdown) {
         this.populateFormatContent("table-markdown", result.tableMarkdown);
+        // Show Table (Markdown) tab
+        const tableMarkdownTab = document.getElementById(
+          "mathpix-tab-table-markdown"
+        );
+        if (tableMarkdownTab) {
+          tableMarkdownTab.style.display = "";
+          tableMarkdownTab.removeAttribute("aria-disabled");
+        }
       }
       if (result.tsv) {
         this.populateFormatContent("table-tsv", result.tsv);
+        // Show Table (TSV) tab
+        const tableTsvTab = document.getElementById("mathpix-tab-table-tsv");
+        if (tableTsvTab) {
+          tableTsvTab.style.display = "";
+          tableTsvTab.removeAttribute("aria-disabled");
+        }
       }
 
-      logInfo("Table formats populated", {
+      logInfo("Table formats populated and tabs shown", {
         hasTableHtml: !!result.tableHtml,
         hasTableMarkdown: !!result.tableMarkdown,
         hasTsv: !!result.tsv,
@@ -165,6 +186,15 @@ class MathPixResultRenderer extends MathPixBaseModule {
           markdownPanel.style.display = "none";
           logDebug("Hidden markdown panel (contains only table LaTeX)");
         }
+
+        // Hide markdown tab button
+        const markdownTab = document.getElementById("mathpix-tab-markdown");
+        if (markdownTab) {
+          markdownTab.style.display = "none";
+          logDebug("Hidden markdown tab (contains only table LaTeX)");
+        }
+
+        // Legacy: Hide radio button if still exists
         if (markdownRadio) {
           const markdownLabel = markdownRadio.closest("label");
           if (markdownLabel) {
@@ -192,7 +222,40 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     // Show HTML preview if HTML content is available
     if (result.html && this.elements.htmlPreview) {
-      this.elements.htmlPreview.innerHTML = result.html;
+      // Unhide asciimath tags for currency/simple math display
+      // Keep mathml and latex hidden to prevent triple display
+      let previewHtml = result.html;
+
+      // Unhide asciimath for clean currency display
+      previewHtml = previewHtml.replace(
+        /<asciimath\s+style="display:\s*none;"/gi,
+        '<asciimath style="display: inline;"'
+      );
+
+      // Parse HTML and hide mathml/latex tags to prevent duplicates
+      const parser = new DOMParser();
+      const previewDoc = parser.parseFromString(previewHtml, "text/html");
+
+      // Hide mathml tags
+      const mathmlTags = previewDoc.querySelectorAll("mathml");
+      mathmlTags.forEach((tag) => {
+        tag.setAttribute("style", "display: none;");
+      });
+
+      // Hide latex tags
+      const latexTags = previewDoc.querySelectorAll("latex");
+      latexTags.forEach((tag) => {
+        tag.setAttribute("style", "display: none;");
+      });
+
+      this.elements.htmlPreview.innerHTML = previewDoc.body.innerHTML;
+
+      logDebug("HTML preview populated with currency visibility fix", {
+        originalLength: result.html.length,
+        asciimathUnhidden: true,
+        mathmlHidden: mathmlTags.length,
+        latexHidden: latexTags.length,
+      });
     }
 
     // Phase 1F.2: Display responsive visual comparison with transformed file
@@ -278,7 +341,15 @@ class MathPixResultRenderer extends MathPixBaseModule {
       contentElement.textContent = `No ${format.toUpperCase()} content available for this image.`;
       contentElement.classList.add("empty-content");
 
-      // Mark format option as unavailable
+      // Hide tab button for unavailable format
+      const tabButton = document.getElementById(`mathpix-tab-${format}`);
+      if (tabButton) {
+        tabButton.style.display = "none";
+        tabButton.setAttribute("aria-disabled", "true");
+        logDebug(`Tab button hidden for unavailable format: ${format}`);
+      }
+
+      // Legacy: Mark format option as unavailable (if radio buttons still exist)
       if (formatOption) {
         formatOption.classList.add("unavailable");
         const radioInput = formatOption.querySelector('input[type="radio"]');
@@ -291,7 +362,15 @@ class MathPixResultRenderer extends MathPixBaseModule {
       return;
     }
 
-    // Mark format option as available
+    // Show tab button for available format
+    const tabButton = document.getElementById(`mathpix-tab-${format}`);
+    if (tabButton) {
+      tabButton.style.display = "";
+      tabButton.removeAttribute("aria-disabled");
+      logDebug(`Tab button shown for available format: ${format}`);
+    }
+
+    // Legacy: Mark format option as available (if radio buttons still exist)
     if (formatOption) {
       formatOption.classList.remove("unavailable");
       const radioInput = formatOption.querySelector('input[type="radio"]');
@@ -774,8 +853,37 @@ class MathPixResultRenderer extends MathPixBaseModule {
     previewContainer.setAttribute("data-table-addition", "true");
 
     // Apply styling preference to preview
-    const processedHtml = this.getProcessedTableHtml(content);
-    previewContainer.innerHTML = processedHtml;
+    let processedHtml = this.getProcessedTableHtml(content);
+
+    // Always unhide asciimath in PREVIEW for visual display
+    // (code block keeps original formatting based on checkbox)
+    const parser = new DOMParser();
+    const previewDoc = parser.parseFromString(processedHtml, "text/html");
+
+    // Unhide asciimath tags for currency display
+    const asciimathTags = previewDoc.querySelectorAll("asciimath");
+    asciimathTags.forEach((tag) => {
+      tag.setAttribute("style", "display: inline;");
+    });
+
+    // Ensure mathml and latex stay hidden
+    const mathmlTags = previewDoc.querySelectorAll("mathml");
+    mathmlTags.forEach((tag) => {
+      tag.setAttribute("style", "display: none;");
+    });
+
+    const latexTags = previewDoc.querySelectorAll("latex");
+    latexTags.forEach((tag) => {
+      tag.setAttribute("style", "display: none;");
+    });
+
+    previewContainer.innerHTML = previewDoc.body.innerHTML;
+
+    logDebug("Table preview prepared with currency visibility", {
+      asciimathUnhidden: asciimathTags.length,
+      mathmlHidden: mathmlTags.length,
+      latexHidden: latexTags.length,
+    });
 
     previewContainer.style.marginBottom = "1rem";
     previewContainer.style.overflow = "auto";
@@ -1000,6 +1108,23 @@ class MathPixResultRenderer extends MathPixBaseModule {
         removedCount++;
       });
 
+      // Re-hide mathml and latex tags to prevent triple display of currency
+      // Only asciimath should be visible when styles are stripped
+      const mathmlElements = table.querySelectorAll("mathml");
+      mathmlElements.forEach((element) => {
+        element.setAttribute("style", "display: none;");
+      });
+
+      const latexElements = table.querySelectorAll("latex");
+      latexElements.forEach((element) => {
+        element.setAttribute("style", "display: none;");
+      });
+
+      logDebug("Re-hidden mathml and latex tags after style stripping", {
+        mathmlCount: mathmlElements.length,
+        latexCount: latexElements.length,
+      });
+
       // Also remove style classes that might contain inline-like styling
       const elementsWithClasses = table.querySelectorAll("[class]");
       elementsWithClasses.forEach((element) => {
@@ -1177,39 +1302,85 @@ class MathPixResultRenderer extends MathPixBaseModule {
    * @param {string} format - Format to show
    */
   showFormat(format) {
-    logDebug(`Switching to format: ${format}`);
+    logInfo(`Switching to format: ${format}`);
 
-    // Hide all format panels
-    Object.values(this.elements.formatPanels || {}).forEach((panel) => {
-      if (panel) panel.classList.remove("active");
+    // Update all tabs - set aria-selected
+    const allTabs = document.querySelectorAll(
+      '.mathpix-format-tab[role="tab"]'
+    );
+    allTabs.forEach((tab) => {
+      const isSelected = tab.dataset.format === format;
+      tab.setAttribute("aria-selected", isSelected.toString());
+      if (isSelected) {
+        tab.classList.add("selected");
+      } else {
+        tab.classList.remove("selected");
+      }
     });
 
-    // Show selected format panel
-    const selectedPanel = this.elements.formatPanels?.[format];
-    if (selectedPanel) {
-      selectedPanel.classList.add("active");
-    }
+    // Update all panels - show/hide and set aria-hidden
+    Object.entries(this.elements.formatPanels || {}).forEach(([fmt, panel]) => {
+      if (panel) {
+        const isVisible = fmt === format;
 
-    // Update radio button selection
-    const selectedRadio = document.getElementById(`mathpix-format-${format}`);
-    if (selectedRadio) {
-      selectedRadio.checked = true;
-    }
+        // Toggle active class for CSS styling
+        if (isVisible) {
+          panel.classList.add("active");
+        } else {
+          panel.classList.remove("active");
+        }
+
+        // Set aria-hidden for screen readers
+        panel.setAttribute("aria-hidden", (!isVisible).toString());
+
+        // Remove tabindex from hidden panels, add to visible panel
+        if (isVisible) {
+          panel.setAttribute("tabindex", "0");
+        } else {
+          panel.removeAttribute("tabindex");
+        }
+      }
+    });
 
     // Update current format
     this.currentFormat = format;
+
+    logDebug(`Format switched to: ${format}`, {
+      panelVisible:
+        this.elements.formatPanels?.[format]?.classList.contains("active"),
+      tabSelected:
+        document
+          .getElementById(`mathpix-tab-${format}`)
+          ?.getAttribute("aria-selected") === "true",
+    });
   }
+
+  // Skip link method removed - arrow key navigation provides direct access to content
 
   /**
    * Reset all format options to available state
    */
   resetFormatOptions() {
-    // Reset all format options to available state
-    document.querySelectorAll(".mathpix-format-option").forEach((option) => {
-      option.classList.remove("unavailable");
-      const radioInput = option.querySelector('input[type="radio"]');
-      if (radioInput) {
-        radioInput.disabled = false;
+    // Reset all format tab buttons to available state and make visible
+    document
+      .querySelectorAll('.mathpix-tab-header[role="tab"]')
+      .forEach((tab) => {
+        tab.classList.remove("unavailable");
+        tab.removeAttribute("aria-disabled");
+        tab.style.display = ""; // Show all tabs initially
+      });
+
+    // Hide table tabs by default (shown only when tables detected)
+    const tableTabs = [
+      "mathpix-tab-table-html",
+      "mathpix-tab-table-markdown",
+      "mathpix-tab-table-tsv",
+    ];
+    tableTabs.forEach((tabId) => {
+      const tab = document.getElementById(tabId);
+      if (tab) {
+        tab.style.display = "none";
+        tab.setAttribute("aria-disabled", "true");
       }
     });
 
@@ -1219,20 +1390,22 @@ class MathPixResultRenderer extends MathPixBaseModule {
         element.classList.remove("empty-content");
       }
     });
+
+    logDebug("Format options reset, table tabs hidden by default");
   }
 
   /**
    * Select first available format and display it
    */
   selectFirstAvailableFormat() {
-    // Find first available format and select it
-    const availableRadio = document.querySelector(
-      'input[name="mathpix-format"]:not(:disabled)'
+    // Find first available format tab and select it
+    const availableTab = document.querySelector(
+      '.mathpix-tab-header[role="tab"]:not([aria-disabled="true"]):not([style*="display: none"])'
     );
-    if (availableRadio) {
-      availableRadio.checked = true;
-      this.showFormat(availableRadio.value);
-      logDebug(`Auto-selected first available format: ${availableRadio.value}`);
+    if (availableTab) {
+      const format = availableTab.dataset.format;
+      this.showFormat(format);
+      logDebug(`Auto-selected first available format: ${format}`);
     } else {
       // Fallback to JSON which should always be available
       this.showFormat("json");
@@ -1267,6 +1440,12 @@ class MathPixResultRenderer extends MathPixBaseModule {
       if (result.asciimath) availableFormats.push("AsciiMath");
       if (result.html) availableFormats.push("HTML");
       if (result.markdown) availableFormats.push("Markdown");
+
+      // Add table formats if available
+      if (result.tableHtml) availableFormats.push("Table (HTML)");
+      if (result.tableMarkdown) availableFormats.push("Table (Markdown)");
+      if (result.tsv) availableFormats.push("Table (TSV)");
+
       availableFormats.push("JSON"); // Always available
 
       this.elements.formats.textContent = availableFormats.join(", ");
@@ -1598,26 +1777,35 @@ class MathPixResultRenderer extends MathPixBaseModule {
    * @param {boolean} visible - Whether to show the chemistry tab
    */
   showChemistryTab(visible) {
-    const formatOption = document.getElementById("mathpix-format-smiles");
-
-    if (!formatOption) {
-      logWarn("SMILES format option not found in DOM");
-      return;
-    }
-
-    const parentLabel = formatOption.closest(".mathpix-format-option");
-
-    if (parentLabel) {
-      parentLabel.style.display = visible ? "flex" : "none";
-      formatOption.disabled = !visible;
-
-      logDebug(`Chemistry tab ${visible ? "shown" : "hidden"}`, {
-        elementFound: true,
-        disabled: !visible,
-      });
+    // Update tab button
+    const tabButton = document.getElementById("mathpix-tab-smiles");
+    if (tabButton) {
+      tabButton.style.display = visible ? "" : "none";
+      if (visible) {
+        tabButton.removeAttribute("aria-disabled");
+      } else {
+        tabButton.setAttribute("aria-disabled", "true");
+      }
+      logDebug(`Chemistry tab button ${visible ? "shown" : "hidden"}`);
     } else {
-      logWarn("Could not find parent label for SMILES format option");
+      logWarn("SMILES tab button not found in DOM");
     }
+
+    // Legacy: Update radio button if it still exists
+    const formatOption = document.getElementById("mathpix-format-smiles");
+    if (formatOption) {
+      const parentLabel = formatOption.closest(".mathpix-format-option");
+      if (parentLabel) {
+        parentLabel.style.display = visible ? "flex" : "none";
+        formatOption.disabled = !visible;
+        logDebug(`Chemistry radio ${visible ? "shown" : "hidden"} (legacy)`);
+      }
+    }
+
+    logDebug(`Chemistry tab ${visible ? "shown" : "hidden"}`, {
+      tabButtonFound: !!tabButton,
+      visible: visible,
+    });
   }
 
   /**
@@ -1781,18 +1969,20 @@ class MathPixResultRenderer extends MathPixBaseModule {
       originalImage.alt = `Original mathematics: ${originalFile.name}`;
       originalImage.style.display = "block";
 
-      // Populate file information - delegate to file handler
+      // Populate file information with screen reader context
       if (this.controller.fileHandler) {
         originalInfo.innerHTML = `
-          <strong>${originalFile.name}</strong><br>
-          Size: ${this.controller.fileHandler.formatFileSize(
-            originalFile.size
-          )} | Type: ${this.controller.fileHandler.getFileTypeDescription(
+    <strong>
+      <span class="sr-only">Filename: </span>${originalFile.name}
+    </strong><br>
+    <span class="sr-only">File size: </span>${this.controller.fileHandler.formatFileSize(
+      originalFile.size
+    )} | <span class="sr-only">File type: </span>${this.controller.fileHandler.getFileTypeDescription(
           originalFile.type
         )}
-        `;
+  `;
       } else {
-        originalInfo.innerHTML = `<strong>${originalFile.name}</strong>`;
+        originalInfo.innerHTML = `<strong><span class="sr-only">Filename: </span>${originalFile.name}</strong>`;
       }
 
       // Store blob URL for cleanup
@@ -1811,9 +2001,32 @@ class MathPixResultRenderer extends MathPixBaseModule {
   }
 
   /**
-   * Populate processed output panel with MathJax-rendered content
-   * @param {Object} result - The processing result with multiple formats
+   * Protect currency dollar signs from MathJax by wrapping them in ignore spans
+   * This allows MathJax to still process real math equations while preserving currency
+   * @param {string} html - The HTML string to process
+   * @returns {string} - HTML with currency values protected
    */
+  protectCurrencyFromMathJax(html) {
+    if (!html || typeof html !== "string") return html;
+
+    // Wrap currency patterns in spans that MathJax will ignore
+    // Pattern matches: $ followed by optional spaces and digits (with optional decimal)
+    // Examples: $300, $20, $1200, $99.99, $ 50
+    // Won't match LaTeX expressions like $x$ or $\frac{1}{2}$ or $x^2$
+    const protectedHtml = html.replace(
+      /\$(\s*\d+(?:\.\d{2})?)/g,
+      '<span class="tex2jax_ignore">$$$1</span>'
+    );
+
+    logDebug("Protected currency dollar signs from MathJax", {
+      originalLength: html.length,
+      protectedLength: protectedHtml.length,
+      changesMade: html !== protectedHtml,
+    });
+
+    return protectedHtml;
+  }
+
   populateProcessedOutputPanel(result) {
     const renderedOutput = document.getElementById("mathpix-rendered-output");
 
@@ -1829,12 +2042,27 @@ class MathPixResultRenderer extends MathPixBaseModule {
       // CRITICAL: Check for tables FIRST before MathJax rendering
       if (result.containsTable && result.tableHtml) {
         logDebug("Displaying table preview in comparison view");
-        renderedOutput.innerHTML = result.tableHtml;
+
+        // Protect currency values from MathJax while allowing real math to be processed
+        let processedTableHtml = this.protectCurrencyFromMathJax(
+          result.tableHtml
+        );
+
+        // Remove display:none from mathml tags only so MathJax renders are visible
+        // MathPix API hides format tags by default, but MathJax inserts rendered SVG inside <mathml>
+        // Keep <latex> and <asciimath> hidden since they contain raw text strings
+        processedTableHtml = processedTableHtml.replace(
+          /<mathml\s+style="display:\s*none;"/gi,
+          '<mathml style="display: inline;"'
+        );
+
+        renderedOutput.innerHTML = processedTableHtml;
         renderedOutput.style.overflow = "auto";
         renderedOutput.style.maxHeight = "400px";
         renderedOutput.classList.add("mathjax-rendered");
 
-        // Process any mathematics within table cells (fire-and-forget)
+        // Process mathematics within table cells - currency values are now protected
+        // MathJax will skip <span class="tex2jax_ignore"> elements
         if (window.mathJaxManager) {
           window.mathJaxManager
             .queueTypeset(renderedOutput)

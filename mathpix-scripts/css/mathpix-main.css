@@ -2,946 +2,6 @@
    COLOUR-ONLY DECLARATIONS (TOP)
    =========================================== */
 
-/*temp*/
-
-/* ============================================================================
-   Phase 1D: Camera Capture Styling
-   ============================================================================ */
-
-/* Video Element */
-#mathpix-camera-video {
-  background: #000;
-}
-
-/* Video Preview Container */
-.mathpix-camera-preview {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Camera Status Indicator */
-.mathpix-camera-status {
-  background: rgba(0, 0, 0, 0.75);
-  color: #fffff4;
-}
-
-/* Active camera indicator */
-#mathpix-camera-video:not([src=""]) ~ .mathpix-camera-status {
-  background: #005051; /* Green when active */
-}
-
-.mathpix-camera-controls .mathpix-button-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.mathpix-camera-controls .mathpix-button-secondary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* ============================================
-   Download Button Styles
-   ============================================ */
-
-/* Colors (separate section for easy customization) */
-
-.mathpix-download-progress {
-  background: #e1e8ec;
-  border-color: #00131d;
-}
-
-.mathpix-download-status {
-  color: #00131d;
-}
-
-/* ============================================
-   Debug Panel Styling
-   ============================================ */
-
-/* Color Properties */
-.mathpix-debug-panel {
-  border: 1px solid currentcolor;
-}
-
-.confidence-high {
-  color: #005051;
-}
-
-.confidence-medium {
-  color: #d5007f;
-}
-
-.confidence-low {
-  color: #8b0000;
-}
-
-.debug-code-container pre {
-  border: 1px solid currentcolor;
-}
-
-/* ========================================
-   COLOR DEFINITIONS
-   ======================================== */
-
-.status-value-privacy {
-  color: #005051;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .mathpix-status-indicator {
-    border-width: 2px;
-    border-color: currentColor;
-  }
-}
-
-/* ============================================
-   COLOURS - Regional Endpoint Selection
-   ============================================ */
-
-/* Format unavailable message - replaces title tooltip for better styling */
-.format-unavailable-message {
-  color: #d5007f;
-}
-
-.endpoint-option {
-  border: 1px solid #00131d;
-  background: #e1e8ec;
-}
-
-.endpoint-option:hover {
-  border-color: #005c84;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.endpoint-option:has(input:checked) {
-  border-color: #005c84;
-  background: rgba(59, 130, 246, 0.05);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
-}
-
-.feature-note {
-  color: #d5007f;
-}
-
-.mathpix-diagram-text-content {
-  background: #fffff4;
-}
-
-.diagram-text-intro {
-  background: rgba(0, 92, 132, 0.08);
-  border-left: 3px solid #005c84;
-}
-
-.diagram-text-intro .help-text {
-  color: currentcolor;
-}
-
-.diagram-card {
-  border: 1px solid currentcolor;
-  box-shadow: 0 2px 8px rgba(0, 19, 29, 0.1);
-}
-
-.diagram-card-header {
-  background: #e1e8ec;
-  border-bottom: 1px solid currentcolor;
-}
-
-.diagram-card-title {
-  color: currentcolor;
-}
-
-.diagram-page {
-  color: currentcolor;
-}
-
-.diagram-stats {
-  color: currentcolor;
-}
-
-.stat-value {
-  color: #005c84;
-  font-weight: 700;
-}
-
-.diagram-card-footer {
-  background: #fffff4;
-  border-top: 0px solid #e1e8ec;
-}
-
-.text-elements-list {
-  background: #fffff4;
-}
-
-.text-element {
-  border-bottom: 1px solid #e1e8ec;
-}
-
-.text-element:last-child {
-  border-bottom: none;
-}
-
-.diagram-count {
-  color: currentcolor;
-}
-
-.mathpix-diagram-text-empty {
-  background: #fffff4;
-  color: #495961;
-}
-
-@media (prefers-contrast: high) {
-  .mathpix-diagram-text-section,
-  .diagram-card {
-    border-width: 2px;
-  }
-
-  .diagram-copy-btn {
-    border-width: 3px;
-  }
-}
-
-.mathpix-processing-options {
-  border: 1px solid currentcolor;
-}
-/* modal*/
-
-.mathpix-fullscreen-backdrop {
-  background: #fffff4;
-}
-
-.mathpix-fullscreen-container {
-  color: #231f20;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.mathpix-fullscreen-header {
-  border-bottom: 1px solid currentcolor;
-}
-
-/* Basic Configuration Colours */
-.mathpix-config {
-  border: 1px solid #00131d;
-}
-
-.config-inputs input {
-  border: 0.2rem solid #00131d !important;
-  outline: 0.2rem solid #fffff4 !important;
-}
-
-/* Multi-Format Output Styling – colour */
-.mathpix-format-selection {
-  border: 1px solid #00131d;
-}
-
-.mathpix-format-option {
-  border: 2px solid #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-format-option:hover {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
-}
-
-.mathpix-format-option:focus-visible {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-}
-
-.mathpix-format-option input[type="radio"]:checked + .format-content {
-  color: #005c84;
-}
-
-.mathpix-format-option
-  input[type="radio"]:checked
-  + .format-content
-  .format-label {
-  color: #005c84;
-}
-
-/* Disabled state for unavailable formats – colour */
-.mathpix-format-option.unavailable {
-  background: #fffff4;
-}
-
-.mathpix-format-option.unavailable:hover {
-  border-color: #fffff4;
-  background: #fffff4;
-  box-shadow: none;
-}
-
-/* HTML Preview – colour */
-.mathpix-html-preview {
-  border: 1px solid #00131d;
-}
-
-.mathpix-html-preview h4 {
-  color: #6c757d;
-}
-
-.preview-content {
-  background: white;
-  border: 1px solid #00131d;
-}
-
-/* Processing Metadata – colour */
-.mathpix-metadata {
-  border: 1px solid #00131d;
-}
-
-.mathpix-info-list dd {
-  font-weight: bold;
-}
-
-/* High contrast support – colour */
-@media (prefers-contrast: high) {
-  .mathpix-copy-btn {
-    border: 2px solid currentColor;
-  }
-}
-
-/* Empty content styling – colour */
-.empty-content {
-  color: #6c757d;
-  background: #fffff4;
-}
-
-.line-data-content {
-  background: #fffff4;
-  border: 1px solid #00131d;
-}
-
-.line-data-summary {
-  border-bottom: 1px solid #e1e8ec;
-}
-
-.line-data-item {
-  border-bottom: 1px solid #e1e8ec;
-}
-
-.line-data-item:last-child {
-  border-bottom: none;
-}
-
-/* Privacy Consent Modal – colour */
-.consent-file-info {
-  border-left: 4px solid #005c84;
-}
-
-.consent-section h3 {
-  color: #00131d;
-}
-
-.consent-section li strong {
-  color: #00131d;
-}
-
-.privacy-protection {
-  background: #e8f5e8;
-  border-left: 4px solid #005051;
-}
-
-.privacy-protection h3 {
-  color: #005051;
-}
-
-.gdpr-compliance {
-  background: #e3f2fd;
-  border-left: 4px solid #005c84;
-}
-
-.gdpr-compliance h3 {
-  color: #005c84;
-}
-
-.data-rights {
-  background: #fff3e0;
-  border-left: 4px solid #d5007f;
-}
-
-.data-rights h3 {
-  color: #d5007f;
-}
-
-.important-notes {
-  background: #ffeaa7;
-  border-left: 4px solid #00131d;
-}
-
-.important-notes h3 {
-  color: #00131d;
-}
-
-/* High contrast mode support – colour */
-@media (prefers-contrast: high) {
-  .consent-section {
-    border: 2px solid currentColor;
-  }
-}
-
-/* Testing Options – colour */
-.consent-testing-options {
-  border: 2px dashed #00131d;
-}
-
-.consent-checkbox {
-  accent-color: #005c84;
-}
-
-.checkbox-label strong {
-  color: #005c84;
-}
-
-.checkbox-label small {
-  color: #00131d;
-}
-
-/* High contrast mode support – colour */
-@media (prefers-contrast: high) {
-  .consent-checkbox {
-    border: 2px solid currentColor;
-  }
-}
-
-/* Phase 3 MVP: Responsive Preview Colours */
-.mathpix-image-preview-container {
-  border: 1px solid #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-image-preview {
-  border: 1px solid #00131d;
-  box-shadow: 0 2px 8px rgba(0, 19, 29, 0.1);
-}
-
-.mathpix-open-original-btn:hover {
-  box-shadow: 0 0 0 0.4rem #005c84;
-  outline: 0.2rem solid transparent !important;
-  border: 0.2rem solid #00131d;
-}
-
-.mathpix-progress-container {
-  border: 1px solid #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-progress-bar {
-  background: #fffff4;
-  border: 1px solid #00131d;
-}
-
-.mathpix-progress-fill {
-  background: #005c84;
-}
-
-.mathpix-progress-label {
-  color: #00131d;
-}
-
-.mathpix-comparison-container {
-  border: 1px solid #00131d;
-}
-.mathpix-tab-headers {
-  border-bottom: 1px solid #231f20;
-}
-.mathpix-comparison-panel {
-  border: 1px solid #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-comparison-title {
-  color: #00131d;
-  border-bottom: 2px solid #005c84;
-}
-
-.mathpix-original-image {
-  border: 1px solid #00131d;
-}
-
-.mathpix-rendered-output {
-  background: #fffff4;
-  border: 1px solid #00131d;
-}
-
-.mathpix-confidence-badge {
-  border: 1px solid #00131d;
-}
-
-.mathpix-confidence-high {
-  background: #e8f5e8;
-  color: #2d5a2d;
-  border-color: #2d5a2d;
-}
-
-.mathpix-confidence-medium {
-  background: #fff3e0;
-  color: #8b5a00;
-  border-color: #8b5a00;
-}
-
-.mathpix-confidence-low {
-  background: #ffeaa7;
-  color: #6d4c00;
-  border-color: #6d4c00;
-}
-
-@media (prefers-contrast: high) {
-  .mathpix-image-preview-container,
-  .mathpix-progress-container,
-  .mathpix-comparison-container {
-    border: 2px solid currentColor;
-  }
-
-  .mathpix-open-original-btn {
-    border: 2px solid currentColor;
-  }
-}
-
-/* Phase 3.1: Enhanced Progress Bar & HTML Preview Colours */
-.html-preview-controls {
-  border: 1px solid #005c84;
-  background: #e8f4f8;
-}
-
-.preview-control-header {
-  background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%);
-}
-
-.preview-stats {
-  color: #00131d;
-}
-
-.line-count {
-  color: #005c84;
-}
-
-.preview-summary {
-  background: rgba(0, 92, 132, 0.05);
-  border-top: 1px solid rgba(0, 92, 132, 0.1);
-  color: #666;
-}
-
-.html-content-collapsed::after {
-  background: linear-gradient(transparent, #fffff4);
-}
-
-.html-fade-overlay {
-  background: linear-gradient(transparent, #fffff4);
-}
-
-.progress-container-enhanced {
-  background: #fffff4;
-  border: 2px solid #005c84;
-  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
-}
-
-.progress-title {
-  color: #00131d;
-}
-
-.progress-subtitle {
-  color: #666;
-}
-
-.cancel-btn {
-  background: #dc3545;
-  color: #ffffff;
-  border: none;
-}
-
-.cancel-btn:hover {
-  background: #c82333;
-}
-
-.progress-container-enhanced .progress-bar {
-  background: #e9ecef;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.progress-fill {
-  background: linear-gradient(135deg, #005c84 0%, #007ba7 100%);
-}
-
-.progress-shine {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-}
-
-.progress-percentage {
-  color: #005c84;
-}
-
-.progress-container-enhanced .progress-text {
-  color: #00131d;
-}
-
-.detailed-status {
-  color: #666;
-  background: rgba(0, 92, 132, 0.08);
-  border-left: 3px solid #005c84;
-}
-
-.current-stage {
-  color: #005c84;
-}
-
-.stage-separator {
-  color: #005c84;
-}
-
-.time-label {
-  color: #231f20;
-}
-
-.progress-stages::before {
-  background: #e9ecef;
-}
-
-.stage-indicator {
-  background: #fffff4;
-}
-
-.stage-dot {
-  background: #e9ecef;
-  border: 3px solid #e9ecef;
-}
-
-.stage-indicator.active .stage-dot {
-  background: #005c84;
-  border-color: #005c84;
-}
-
-.stage-indicator.completed .stage-dot {
-  background: #005051;
-  border-color: #005051;
-}
-
-.stage-indicator.completed .stage-dot::after {
-  color: white;
-}
-
-.stage-label {
-  color: #666;
-}
-
-.stage-indicator.active .stage-label,
-.stage-indicator.completed .stage-label {
-  color: #00131d;
-}
-
-.content-summary-container {
-  background: #e3f2fd;
-  border: 1px solid #90caf9;
-}
-
-.content-summary h4 {
-  color: #005c84;
-}
-
-.content-summary p {
-  color: #00131d;
-}
-
-.content-details {
-  color: #666;
-}
-
-@media (prefers-contrast: high) {
-  .progress-container-enhanced,
-  .html-preview-controls,
-  .content-summary-container {
-    border-width: 3px;
-  }
-
-  .preview-toggle-btn,
-  .cancel-btn {
-    border: 2px solid currentColor;
-  }
-
-  .stage-dot {
-    border-width: 2px;
-  }
-}
-
-/* Phase 2.1: PDF Document Processing Colours */
-.mathpix-pdf-upload-container {
-  border: 1px solid #00131d;
-}
-
-.mathpix-pdf-drop-zone {
-  border: 2px dashed #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-pdf-drop-zone:hover {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.15);
-}
-
-.mathpix-pdf-drop-zone:focus {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-}
-
-.mathpix-pdf-drop-zone.drag-over {
-  border-color: #005c84;
-  background: #fffff4;
-}
-
-.mathpix-pdf-options {
-  border: 1px solid #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-option-group {
-  border: 1px solid #00131d;
-}
-
-.mathpix-option {
-  border: 2px solid #00131d;
-  background: #fffff4;
-}
-
-.mathpix-option:hover {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
-}
-
-.mathpix-option input[type="radio"]:checked + .option-content {
-  color: #005c84;
-}
-
-.mathpix-option input[type="radio"]:checked + .option-content .option-label {
-  color: #005c84;
-}
-
-.mathpix-custom-range {
-  background: #fffff4;
-  border: 1px solid #00131d;
-}
-
-.mathpix-custom-range input {
-  border: 2px solid #00131d;
-  background: #fffff4;
-}
-
-.mathpix-custom-range input:focus {
-  border-color: #005c84;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-}
-
-.mathpix-format-checkbox {
-  border: 2px solid #00131d;
-  background: #fffff4;
-}
-
-.mathpix-format-checkbox:hover {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
-}
-
-.mathpix-format-checkbox input[type="checkbox"]:checked + .format-content {
-  color: #005c84;
-}
-
-.mathpix-format-checkbox
-  input[type="checkbox"]:checked
-  + .format-content
-  .format-label {
-  color: #005c84;
-}
-
-.mathpix-process-btn {
-  border: 0.2rem solid #00131d;
-}
-
-.mathpix-pdf-progress {
-  border: 1px solid #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-progress-bar-container {
-  background: #fffff4;
-  border: 1px solid #00131d;
-}
-
-.mathpix-progress-text {
-  color: #00131d;
-}
-
-.mathpix-status-text {
-  color: #00131d;
-}
-
-.mathpix-timing-text {
-  color: #6c757d;
-}
-
-.mathpix-pdf-results {
-  border: 1px solid #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-document-info {
-  background: #fffff4;
-  border: 1px solid #00131d;
-}
-
-.mathpix-doc-details dd {
-  color: #005c84;
-  font-weight: bold;
-}
-
-.mathpix-view-selection {
-  border: 1px solid #00131d;
-}
-
-.mathpix-view-option {
-  border: 2px solid #00131d;
-  background: #fffff4;
-}
-
-.mathpix-view-option:hover {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
-}
-
-.mathpix-view-option input[type="radio"]:checked + .view-content {
-  color: #005c84;
-}
-
-.mathpix-view-option input[type="radio"]:checked + .view-content .view-label {
-  color: #005c84;
-}
-
-.mathpix-tab-header {
-  background: #e1e8ec;
-  color: #00131d;
-  outline: 0.2rem solid transparent !important;
-}
-
-.mathpix-tab-header:hover {
-  background: #fffff4;
-  color: #005c84;
-}
-
-.mathpix-tab-header[aria-selected="true"] {
-  background: #fffff4;
-  color: #005c84;
-  border-bottom: 2px solid #fffff4;
-}
-
-.mathpix-tab-panel {
-  background: #fffff4;
-  border: 1px solid #00131d;
-  border-top: none;
-}
-
-.mathpix-format-actions {
-  border-bottom: 1px solid #00131d;
-}
-
-.mathpix-copy-btn,
-.mathpix-download-btn,
-.mathpix-preview-btn {
-  background: #fffff4;
-  color: #00131d;
-  border: 2px solid #00131d;
-}
-
-.mathpix-copy-btn:hover,
-.mathpix-download-btn:hover,
-.mathpix-preview-btn:hover {
-  background: #005c84;
-  color: #fffff4;
-  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.2);
-}
-
-.mathpix-html-preview-area {
-  background: #fffff4;
-  border: 1px solid #00131d;
-}
-
-.mathpix-preview-frame {
-  background: white;
-  border: 2px solid #00131d;
-}
-
-.mathpix-docx-info {
-  background: #e3f2fd;
-  border: 1px solid #005c84;
-  color: #00131d;
-}
-
-.mathpix-docx-info p {
-  color: #00131d;
-}
-
-@media (prefers-contrast: high) {
-  .mathpix-pdf-drop-zone,
-  .mathpix-option,
-  .mathpix-format-checkbox,
-  .mathpix-view-option {
-    border-width: 3px;
-  }
-
-  .mathpix-process-btn,
-  .mathpix-cancel-btn,
-  .mathpix-copy-btn,
-  .mathpix-download-btn,
-  .mathpix-preview-btn {
-    border-width: 3px;
-  }
-
-  .mathpix-tab-header[aria-selected="true"] {
-    border-bottom-width: 3px;
-  }
-}
-
-/* Page Navigation Colours */
-.mathpix-page-navigation {
-  background-color: #f8f9fa;
-  border: 1px solid #e1e5e9;
-}
-
-.mathpix-nav-button {
-  background-color: #ffffff;
-  border: 1px solid #d1d5db;
-  color: #374151;
-}
-
-.mathpix-nav-button:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.mathpix-nav-button:disabled {
-  background-color: #f9fafb;
-  color: #9ca3af;
-}
-
-.mathpix-page-info {
-  color: #4b5563;
-}
-
-.mathpix-page-placeholder {
-  background-color: #f8f9fa;
-  border: 2px dashed #dee2e6;
-  color: #6c757d;
-}
-
 /* ===========================================
    LAYOUT AND STRUCTURAL STYLES (NO COLOURS)
    =========================================== */
@@ -1108,41 +168,14 @@
 
 /* Canvas container with border and shadow */
 .mathpix-canvas-container {
-  border: 2px solid #00131d;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 19, 29, 0.1);
   overflow: hidden; /* Ensures border-radius applies to canvas */
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.mathpix-canvas-container:hover {
-  box-shadow: 0 4px 12px rgba(0, 92, 132, 0.15);
-  border-color: #005c84;
 }
 
 /* Ensure canvas doesn't interfere with resize handle */
 .mathpix-draw-canvas {
   pointer-events: auto;
-}
-
-/* Make resize area more obvious on hover */
-.mathpix-canvas-wrapper:hover {
-  border-color: rgba(0, 92, 132, 0.2);
-}
-
-/* Custom draggable resize handle */
-.mathpix-resize-handle {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 20px;
-  height: 20px;
-  background: #005c84;
-  cursor: nwse-resize;
-  z-index: 1001;
-  border-radius: 0 0 8px 0;
-  opacity: 0.5;
-  transition: opacity 0.2s, width 0.2s, height 0.2s;
 }
 
 /* Canvas Size Controls */
@@ -1447,7 +480,7 @@ input#custom-height {
 
 /* Output Display – layout */
 .mathpix-output-display {
-  margin-top: 1rem;
+  /* margin-top: 1rem;*/
 }
 
 .mathpix-format-panel {
@@ -3126,7 +2159,10 @@ input#custom-height {
 .mathpix-docx-info {
   padding: 1.5rem;
   border-radius: 6px;
-  text-align: center;
+}
+
+.delimiter-input-group {
+  margin-top: 1rem;
 }
 
 .mathpix-docx-info p {
@@ -3382,12 +2418,6 @@ input#custom-height {
 /* ===========================================
    MATHPIX STROKES CANVAS - TIER 1 COLOURS
    =========================================== */
-
-/* Canvas Element */
-.mathpix-draw-canvas {
-  background: #fffff4;
-  /* No border on canvas itself - use wrapper instead */
-}
 
 /* High contrast support */
 @media (prefers-contrast: high) {
@@ -3863,7 +2893,6 @@ input#custom-height {
   line-height: 1.5;
   padding-block: 0.35em 0.625em;
   padding-inline: 0.75em;
-  border: 1px solid #495961;
 }
 
 .status-item-mp {
@@ -4471,4 +3500,341 @@ input#custom-height {
   width: 100%;
   border-radius: 8px;
   overflow: hidden;
+}
+
+/* Phase 4: File Confirmation Card Styling */
+.file-info-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid currentcolor;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+.file-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.file-details {
+  flex: 1;
+  min-width: 0;
+  /* Allows text truncation */
+}
+.file-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: currentcolor;
+  word-break: break-word;
+}
+.file-meta {
+  margin: 0;
+  font-size: 0.875rem;
+}
+.file-meta span {
+  white-space: nowrap;
+}
+/* SVG icon styling */
+.file-icon svg {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  stroke: currentColor;
+}
+
+/* Description list layout for status indicators */
+.mathpix-status-indicator .status-list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mathpix-status-indicator .status-item-mp {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.mathpix-status-indicator .status-term {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: normal;
+  margin: 0;
+}
+.mathpix-status-indicator dd.status-value {
+  font-weight: bold;
+  margin: 0;
+}
+.mathpix-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: flex-start;
+}
+.mathpix-header-row .mathpix-mode-switcher {
+  flex: 1 1 auto;
+  min-width: 280px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.mathpix-mode-switcher .mathpix-mode-options {
+  display: flex;
+  vertical-align: middle;
+}
+.mathpix-mode-option {
+  padding-top: 7px;
+}
+.mathpix-header-row .mathpix-status-indicator {
+  flex: 1 1 auto;
+  min-width: 300px;
+  margin: 0;
+}
+/* Description list layout for status indicators */
+.mathpix-status-indicator .status-list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+.mathpix-status-indicator .status-item-mp {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+.mathpix-status-indicator .status-term {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: normal;
+  margin: 0;
+}
+.mathpix-status-indicator dd.status-value {
+  font-weight: bold;
+  margin: 0;
+  margin-left: 0.25rem;
+}
+/* Responsive: stack status items on very small screens */
+@media (max-width: 640px) {
+  .mathpix-status-indicator .status-list {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+.mathpix-header-row .mathpix-mode-switcher,
+.mathpix-header-row .mathpix-status-indicator {
+  min-height: 3.5rem;
+}
+
+/* ============================================
+   MATHPIX FORMAT TABS - ARIA TABS PATTERN
+   ============================================ */
+
+/* Tab list container */
+.mathpix-format-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Tab buttons - base styles */
+.mathpix-format-tab {
+  padding: 0.75rem 1rem;
+  border: 2px solid;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  min-width: 150px;
+}
+
+.mathpix-format-tab .format-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mathpix-format-tab .format-label {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.mathpix-format-tab .format-description {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* Selected tab state */
+.mathpix-format-tab[aria-selected="true"],
+.mathpix-format-tab.selected {
+  border-bottom: 3px solid;
+  font-weight: 600;
+}
+
+/* Focus state */
+.mathpix-format-tab:focus {
+  outline: 3px solid;
+  outline-offset: 2px;
+}
+
+/* Hover state */
+.mathpix-format-tab:hover:not([aria-disabled="true"]) {
+  transform: translateY(-2px);
+}
+
+/* Disabled/unavailable tabs */
+.mathpix-format-tab[aria-disabled="true"],
+.mathpix-format-tab.unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .mathpix-format-tabs {
+    flex-direction: column;
+  }
+
+  .mathpix-format-tab {
+    width: 100%;
+  }
+}
+/* ============================================
+   MATHPIX FORMAT TABS - ARIA TABS PATTERN
+   ============================================ */
+
+/* Navigation wrapper */
+.mathpix-format-selection-nav {
+  /* margin-bottom: 1.5rem;*/
+}
+
+/* Tab list container */
+.mathpix-format-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0;
+  border-bottom: 2px solid currentcolor;
+  margin-bottom: 0;
+}
+
+/* Tab buttons - base styles */
+.mathpix-format-tab {
+  padding: 0.75rem 1rem;
+  border: 2px solid currentcolor;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: currentcolor;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  min-width: 140px;
+  position: relative;
+  margin-bottom: -2px;
+}
+
+.mathpix-format-tab .format-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mathpix-format-tab .format-label {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.mathpix-format-tab .format-description {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* Selected tab state - stands out with bottom border that "connects" to content */
+.mathpix-format-tab[aria-selected="true"],
+.mathpix-format-tab.selected {
+  border-bottom: 3px solid transparent;
+  background: rgba(128, 128, 128, 0.1);
+  z-index: 1;
+}
+
+.mathpix-format-tab[aria-selected="true"] .format-label,
+.mathpix-format-tab.selected .format-label {
+  font-weight: 700;
+}
+
+.mathpix-format-tab[aria-selected="true"] .format-description,
+.mathpix-format-tab.selected .format-description {
+  opacity: 1;
+}
+
+/* Focus state - clear keyboard focus indicator */
+.mathpix-format-tab:focus {
+  outline: 3px solid currentcolor;
+  outline-offset: -3px;
+  z-index: 2;
+}
+
+/* Hover state */
+.mathpix-format-tab:hover:not([aria-disabled="true"]):not(
+    [aria-selected="true"]
+  ) {
+  background: rgba(128, 128, 128, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Disabled/unavailable tabs */
+.mathpix-format-tab[aria-disabled="true"],
+.mathpix-format-tab.unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Hidden tabs (no content available) */
+.mathpix-format-tab[style*="display: none"] {
+  display: none !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .mathpix-format-tabs {
+    flex-direction: column;
+    border-bottom: none;
+  }
+
+  .mathpix-format-tab {
+    width: 100%;
+    border: 2px solid currentcolor;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+  }
+
+  .mathpix-format-tab[aria-selected="true"],
+  .mathpix-format-tab.selected {
+    border: 3px solid currentcolor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-format-tab {
+    transition: none;
+  }
+
+  .mathpix-format-tab:hover:not([aria-disabled="true"]) {
+    transform: none;
+  }
 }

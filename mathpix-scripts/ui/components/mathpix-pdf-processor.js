@@ -229,6 +229,23 @@ class MathPixPDFProcessor extends MathPixBaseModule {
     this.processingAbortController = new AbortController();
 
     try {
+      // PHASE 3: Update progress with upload status
+      const requestedFormatCount = options.formats?.length || 0;
+      const requestedFormatWord =
+        requestedFormatCount === 1 ? "format" : "formats";
+      const fileSize =
+        this.controller.progressDisplay?.formatFileSize(pdfFile.size) ||
+        `${(pdfFile.size / 1024 / 1024).toFixed(1)}MB`;
+
+      if (this.controller?.progressDisplay) {
+        this.controller.progressDisplay.updateStatusDetail(
+          `Uploading PDF document (${fileSize})...`
+        );
+        this.controller.progressDisplay.updateTimingDetail(
+          `Preparing to process ${requestedFormatCount} ${requestedFormatWord}`
+        );
+      }
+
       // Step 1: Initiate PDF processing (upload and queue)
       logInfo("Step 1: Initiating PDF processing upload");
       this.currentPdfId = await this.controller.apiClient.processPDF(
@@ -240,6 +257,19 @@ class MathPixPDFProcessor extends MathPixBaseModule {
       if (!this.currentPdfId) {
         throw new Error(
           "PDF processing initiation failed - no processing ID received"
+        );
+      }
+
+      // PHASE 3: Update progress after successful upload
+      const uploadTime = Date.now() - this.processingStartTime;
+      const uploadSeconds = (uploadTime / 1000).toFixed(1);
+
+      if (this.controller?.progressDisplay) {
+        this.controller.progressDisplay.updateStatusDetail(
+          "✓ PDF uploaded successfully - Processing queued..."
+        );
+        this.controller.progressDisplay.updateTimingDetail(
+          `Upload completed in ${uploadSeconds}s`
         );
       }
 
@@ -260,12 +290,37 @@ class MathPixPDFProcessor extends MathPixBaseModule {
       // Step 3: Handle successful completion
       await this.handleProcessingCompletion(results);
 
+      // PHASE 3: Calculate final statistics
+      const totalProcessingTime = Date.now() - this.processingStartTime;
+      const availableFormats = Object.keys(results).filter(
+        (key) =>
+          results[key] &&
+          typeof results[key] === "string" &&
+          results[key].trim()
+      );
+      const formatCount = availableFormats.length;
+      const formatWord = formatCount === 1 ? "format" : "formats";
+
+      // PHASE 3: Update progress with final completion statistics
+      if (this.controller?.progressDisplay) {
+        this.controller.progressDisplay.updateStatusDetail(
+          `✓ Processing complete - ${formatCount} ${formatWord} ready for download`
+        );
+        this.controller.progressDisplay.updateTimingDetail(
+          `Total time: ${this.controller.progressDisplay.formatTimeEstimate(
+            totalProcessingTime
+          )} (${this.pollCount} status ${
+            this.pollCount === 1 ? "check" : "checks"
+          })`
+        );
+      }
+
       // Step 3.5: Capture debug data for debug panel (Phase 3.3)
       this.captureDebugData({
         pdfId: this.currentPdfId,
         options: this.processingOptions,
         results: results,
-        totalTime: Date.now() - this.processingStartTime,
+        totalTime: totalProcessingTime,
         pollCount: this.pollCount,
         status: "completed",
         fileName: pdfFile.name,
@@ -317,15 +372,13 @@ class MathPixPDFProcessor extends MathPixBaseModule {
 
       logInfo("PDF document processing completed successfully", {
         pdfId: this.currentPdfId,
-        totalTime: Date.now() - this.processingStartTime,
+        totalTime: totalProcessingTime,
         totalPolls: this.pollCount,
-        availableFormats: Object.keys(results).filter(
-          (key) =>
-            results[key] &&
-            typeof results[key] === "string" &&
-            results[key].trim()
-        ),
+        availableFormats: availableFormats,
       });
+
+      // PHASE 3: Brief delay to show final statistics before hiding progress
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       // Hide enhanced progress interface after completion
       if (
@@ -340,6 +393,19 @@ class MathPixPDFProcessor extends MathPixBaseModule {
     } catch (error) {
       // Handle processing errors with comprehensive error management
       this.processingState = "ERROR";
+
+      // PHASE 3: Update progress with error information
+      if (this.controller?.progressDisplay) {
+        this.controller.progressDisplay.updateStatusDetail(
+          `❌ Processing failed: ${error.message}`
+        );
+        const processingTime = Date.now() - this.processingStartTime;
+        this.controller.progressDisplay.updateTimingDetail(
+          `Failed after ${this.controller.progressDisplay.formatTimeEstimate(
+            processingTime
+          )}`
+        );
+      }
 
       logError("PDF document processing failed", {
         pdfId: this.currentPdfId,
@@ -396,6 +462,16 @@ class MathPixPDFProcessor extends MathPixBaseModule {
       estimatedMaxTime: (maxPolls * basePollInterval) / 1000 / 60 + " minutes",
     });
 
+    // PHASE 3: Initial polling status
+    if (this.controller?.progressDisplay) {
+      this.controller.progressDisplay.updateStatusDetail(
+        "Processing document - checking status..."
+      );
+      this.controller.progressDisplay.updateTimingDetail(
+        "Waiting for processing to begin..."
+      );
+    }
+
     while (this.pollCount < maxPolls) {
       try {
         // Check for processing cancellation
@@ -439,6 +515,22 @@ class MathPixPDFProcessor extends MathPixBaseModule {
           });
         }
 
+        // PHASE 3: Update progress with current processing status
+        if (this.controller?.progressDisplay) {
+          const statusMessage = this.getStatusMessage(
+            statusResult.status,
+            statusResult.num_pages
+          );
+          const timingMessage = this.getTimingMessage(
+            elapsedMinutes,
+            elapsedSeconds,
+            this.pollCount
+          );
+
+          this.controller.progressDisplay.updateStatusDetail(statusMessage);
+          this.controller.progressDisplay.updateTimingDetail(timingMessage);
+        }
+
         // Provide progress updates to callback
         if (
           progressCallback &&
@@ -462,15 +554,47 @@ class MathPixPDFProcessor extends MathPixBaseModule {
               totalPolls: this.pollCount,
             });
 
+            // PHASE 3: Update progress - processing complete, starting downloads
+            const requestedFormats = this.processingOptions.formats || [];
+            const totalFormats = requestedFormats.length;
+            const formatWord = totalFormats === 1 ? "format" : "formats";
+
+            if (this.controller?.progressDisplay) {
+              this.controller.progressDisplay.updateStatusDetail(
+                `✓ Processing complete - Downloading ${totalFormats} ${formatWord}...`
+              );
+              this.controller.progressDisplay.updateTimingDetail(
+                `Total processing time: ${this.controller.progressDisplay.formatTimeEstimate(
+                  elapsedTime
+                )}`
+              );
+            }
+
             // Fetch actual results from API endpoints
             const results = {};
+            let downloadedCount = 0;
 
             // Always get MMD (default format - always available)
             try {
+              // PHASE 3: Update progress for MMD download
+              if (this.controller?.progressDisplay) {
+                this.controller.progressDisplay.updateStatusDetail(
+                  `Downloading format 1 of ${totalFormats}: MMD...`
+                );
+              }
+
               results.mmd = await this.controller.apiClient.downloadPDFFormat(
                 pdfId,
                 "mmd"
               );
+              downloadedCount++;
+
+              // PHASE 3: Track download for statistics
+              if (this.controller?.progressDisplay && results.mmd) {
+                const size = results.mmd.length || results.mmd.size || 0;
+                this.controller.progressDisplay.trackDownload("MMD", size);
+              }
+
               logInfo("Successfully fetched MMD results", {
                 pdfId,
                 length: results.mmd.length,
@@ -480,7 +604,6 @@ class MathPixPDFProcessor extends MathPixBaseModule {
             }
 
             // Get requested conversion formats with proper mapping
-            const requestedFormats = this.processingOptions.formats || [];
             const FORMAT_MAPPING = {
               mmd: "mmd",
               html: "html",
@@ -491,13 +614,33 @@ class MathPixPDFProcessor extends MathPixBaseModule {
             for (const uiFormat of requestedFormats) {
               if (uiFormat !== "mmd") {
                 // Skip MMD - already fetched
+                downloadedCount++;
                 const resultKey = FORMAT_MAPPING[uiFormat] || uiFormat;
+
+                // PHASE 3: Update progress for each format download
+                if (this.controller?.progressDisplay) {
+                  this.controller.progressDisplay.updateStatusDetail(
+                    `Downloading format ${downloadedCount} of ${totalFormats}: ${uiFormat.toUpperCase()}...`
+                  );
+                }
+
                 try {
                   results[resultKey] =
                     await this.controller.apiClient.downloadPDFFormat(
                       pdfId,
                       uiFormat
                     );
+
+                  // PHASE 3: Track download for statistics
+                  if (this.controller?.progressDisplay && results[resultKey]) {
+                    const size =
+                      results[resultKey].length || results[resultKey].size || 0;
+                    this.controller.progressDisplay.trackDownload(
+                      uiFormat.toUpperCase(),
+                      size
+                    );
+                  }
+
                   console.log(
                     `✅ Downloaded ${uiFormat}: ${
                       results[resultKey]?.length ||
@@ -520,6 +663,17 @@ class MathPixPDFProcessor extends MathPixBaseModule {
                   logWarn(`Failed to fetch ${uiFormat} format`, error);
                 }
               }
+            }
+
+            // PHASE 3: Final download completion status
+            const downloadSummary =
+              this.controller?.progressDisplay?.getDownloadSummary();
+            if (this.controller?.progressDisplay && downloadSummary) {
+              this.controller.progressDisplay.updateStatusDetail(
+                `✓ All formats downloaded - ${downloadSummary.count} ${
+                  downloadSummary.count === 1 ? "format" : "formats"
+                } ready (${downloadSummary.totalSize})`
+              );
             }
 
             // Ensure we have at least MMD results
@@ -619,6 +773,56 @@ class MathPixPDFProcessor extends MathPixBaseModule {
     });
 
     throw new Error(timeoutMessage);
+  }
+
+  /**
+   * @method getStatusMessage
+   * @description Generates user-friendly status message based on processing state
+   *
+   * @param {string} status - Current processing status from API
+   * @param {number|null} pageCount - Number of pages (if available)
+   * @returns {string} User-friendly status message
+   * @private
+   * @since Phase 3
+   */
+  getStatusMessage(status, pageCount = null) {
+    const pageInfo = pageCount ? ` (${pageCount} pages)` : "";
+
+    switch (status) {
+      case "queued":
+        return `Processing queued${pageInfo}...`;
+      case "received":
+        return `Document received${pageInfo} - preparing...`;
+      case "loaded":
+        return `Document loaded${pageInfo} - starting processing...`;
+      case "split":
+        return `Splitting document${pageInfo} into pages...`;
+      case "processing":
+        return `Processing document${pageInfo}...`;
+      case "completed":
+        return `✓ Processing complete${pageInfo}`;
+      case "error":
+        return "❌ Processing error detected";
+      default:
+        return `Processing status: ${status}${pageInfo}`;
+    }
+  }
+
+  /**
+   * @method getTimingMessage
+   * @description Generates timing information message
+   *
+   * @param {number} minutes - Elapsed minutes
+   * @param {number} seconds - Elapsed seconds
+   * @param {number} pollCount - Number of status polls completed
+   * @returns {string} Timing message
+   * @private
+   * @since Phase 3
+   */
+  getTimingMessage(minutes, seconds, pollCount) {
+    const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+    return `Processing time: ${timeStr} (check ${pollCount})`;
   }
 
   /**
@@ -1293,5 +1497,213 @@ class MathPixPDFProcessor extends MathPixBaseModule {
     return this.lastDebugData;
   }
 }
+
+/**
+ * @function monitorPDFProgressUpdates
+ * @description Real-time monitoring of PDF progress updates during processing
+ * @global
+ * @returns {Object} Monitor control object
+ * @since Phase 3
+ *
+ * @example
+ * // Start monitoring BEFORE uploading a PDF
+ * const monitor = window.monitorPDFProgressUpdates();
+ * // Then upload and process your PDF
+ * // Watch console for real-time progress updates
+ * // Stop monitoring with: monitor.stop()
+ */
+window.monitorPDFProgressUpdates = function () {
+  console.log("🔍 PDF Progress Update Monitor Started");
+  console.log("=====================================");
+  console.log("Monitoring progress detail lines for updates...\n");
+
+  const progressDisplay = window.getMathPixController()?.progressDisplay;
+
+  if (!progressDisplay) {
+    console.error("❌ Progress display not found - cannot monitor");
+    return null;
+  }
+
+  // Get the detail line elements
+  const statusElement = document.getElementById("mathpix-pdf-status");
+  const timingElement = document.getElementById("mathpix-pdf-timing");
+
+  console.log("📍 Monitoring Elements:");
+  console.log(
+    "Status line element:",
+    statusElement ? "✅ Found" : "❌ Not found"
+  );
+  console.log(
+    "Timing line element:",
+    timingElement ? "✅ Found" : "❌ Not found"
+  );
+
+  if (!statusElement || !timingElement) {
+    console.error("❌ Cannot find detail line elements in DOM");
+    console.log("Looking for: #mathpix-pdf-status and #mathpix-pdf-timing");
+    return null;
+  }
+
+  // Store previous values
+  let lastStatus = statusElement.textContent;
+  let lastTiming = timingElement.textContent;
+  let updateCount = 0;
+
+  console.log("\n📊 Initial Values:");
+  console.log("Status:", lastStatus);
+  console.log("Timing:", lastTiming);
+  console.log("\n⏳ Waiting for updates...\n");
+
+  // Monitor for changes
+  const monitorInterval = setInterval(() => {
+    const currentStatus = statusElement.textContent;
+    const currentTiming = timingElement.textContent;
+
+    // Check for status line changes
+    if (currentStatus !== lastStatus) {
+      updateCount++;
+      const timestamp = new Date().toLocaleTimeString();
+      console.log(`[${timestamp}] 📝 Status Update #${updateCount}:`);
+      console.log(`   From: "${lastStatus}"`);
+      console.log(`   To:   "${currentStatus}"`);
+      lastStatus = currentStatus;
+    }
+
+    // Check for timing line changes
+    if (currentTiming !== lastTiming) {
+      const timestamp = new Date().toLocaleTimeString();
+      console.log(`[${timestamp}] ⏱️  Timing Update:`);
+      console.log(`   From: "${lastTiming}"`);
+      console.log(`   To:   "${currentTiming}"`);
+      lastTiming = currentTiming;
+    }
+  }, 100); // Check every 100ms
+
+  // Return control object
+  return {
+    stop: () => {
+      clearInterval(monitorInterval);
+      console.log("\n=====================================");
+      console.log("🛑 Monitor Stopped");
+      console.log(`Total status updates captured: ${updateCount}`);
+      console.log("=====================================");
+    },
+    getStats: () => {
+      return {
+        updateCount,
+        currentStatus: statusElement.textContent,
+        currentTiming: timingElement.textContent,
+      };
+    },
+  };
+};
+
+/**
+ * @function inspectPDFProgressElements
+ * @description Inspects current state of PDF progress elements
+ * @global
+ * @since Phase 3
+ *
+ * @example
+ * window.inspectPDFProgressElements()
+ */
+window.inspectPDFProgressElements = function () {
+  console.log("🔍 PDF Progress Elements Inspector");
+  console.log("===================================\n");
+
+  // Check for progress display system
+  const progressDisplay = window.getMathPixController()?.progressDisplay;
+  console.log("📦 Progress Display System:");
+  console.log("   Available:", !!progressDisplay);
+
+  if (progressDisplay) {
+    console.log("   Methods:");
+    console.log(
+      "   - updateStatusDetail:",
+      typeof progressDisplay.updateStatusDetail === "function" ? "✅" : "❌"
+    );
+    console.log(
+      "   - updateTimingDetail:",
+      typeof progressDisplay.updateTimingDetail === "function" ? "✅" : "❌"
+    );
+    console.log("   - Element cache:", {
+      statusDetailElement: !!progressDisplay.statusDetailElement,
+      timingDetailElement: !!progressDisplay.timingDetailElement,
+    });
+  }
+
+  // Check for DOM elements
+  console.log("\n📍 DOM Elements:");
+
+  const elements = {
+    "Enhanced Progress Container": "pdf-progress-enhanced",
+    "Status Detail Line": "mathpix-pdf-status",
+    "Timing Detail Line": "mathpix-pdf-timing",
+    "Progress Bar": "pdf-progress-bar-enhanced",
+    "Progress Fill": "pdf-progress-fill-enhanced",
+    "Progress Text": "pdf-progress-text-enhanced",
+  };
+
+  Object.entries(elements).forEach(([name, id]) => {
+    const element = document.getElementById(id);
+    console.log(`   ${name}:`, element ? "✅ Found" : "❌ Not found");
+    if (element) {
+      console.log(`      ID: #${id}`);
+      console.log(
+        `      Visible: ${element.offsetParent !== null ? "Yes" : "No"}`
+      );
+      console.log(
+        `      Content: "${element.textContent?.trim()?.substring(0, 50)}${
+          element.textContent?.length > 50 ? "..." : ""
+        }"`
+      );
+    }
+  });
+
+  // Check specifically for detail lines
+  console.log("\n📝 Detail Lines Inspection:");
+  const statusLine = document.getElementById("mathpix-pdf-status");
+  const timingLine = document.getElementById("mathpix-pdf-timing");
+
+  if (statusLine) {
+    console.log("   Status Line (#mathpix-pdf-status):");
+    console.log("      Current text:", `"${statusLine.textContent}"`);
+    console.log(
+      "      Parent:",
+      statusLine.parentElement?.className || "unknown"
+    );
+  } else {
+    console.log("   ❌ Status line not found in DOM");
+  }
+
+  if (timingLine) {
+    console.log("   Timing Line (#mathpix-pdf-timing):");
+    console.log("      Current text:", `"${timingLine.textContent}"`);
+    console.log(
+      "      Parent:",
+      timingLine.parentElement?.className || "unknown"
+    );
+  } else {
+    console.log("   ❌ Timing line not found in DOM");
+  }
+
+  // Manual update test
+  console.log("\n🧪 Manual Update Test:");
+  if (progressDisplay && statusLine && timingLine) {
+    console.log("   Testing updateStatusDetail...");
+    progressDisplay.updateStatusDetail("TEST: This is a status update");
+    console.log("   Status line now shows:", `"${statusLine.textContent}"`);
+
+    console.log("   Testing updateTimingDetail...");
+    progressDisplay.updateTimingDetail("TEST: This is a timing update");
+    console.log("   Timing line now shows:", `"${timingLine.textContent}"`);
+
+    console.log("   ✅ Manual update test complete");
+  } else {
+    console.log("   ❌ Cannot test - missing components");
+  }
+
+  console.log("\n===================================");
+};
 
 export default MathPixPDFProcessor;

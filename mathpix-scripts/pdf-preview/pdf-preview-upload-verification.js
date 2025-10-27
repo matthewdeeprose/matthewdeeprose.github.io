@@ -144,6 +144,22 @@ export class PDFUploadVerification {
       // Set up confirmation handlers
       this.setupConfirmationHandlers();
 
+      // ✅ ACTION POINT 1: Scroll to "Verify Your Upload" section after upload
+      // Respect user's motion preferences for accessibility
+      setTimeout(() => {
+        const prefersReducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)"
+        ).matches;
+        const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
+        this.elements.container.scrollIntoView({
+          behavior: scrollBehavior,
+          block: "start",
+        });
+        logDebug("Scrolled to upload verification section", {
+          reducedMotion: prefersReducedMotion,
+        });
+      }, 150);
+
       logInfo("Upload preview displayed successfully");
       return true;
     } catch (error) {

@@ -264,9 +264,9 @@ class MathPixUIManager extends MathPixBaseModule {
    * @since 1.0.0
    */
   cacheMultiFormatElements() {
-    // Cache format radio buttons for user selection
-    this.controller.elements.formatRadios = document.querySelectorAll(
-      'input[name="mathpix-format"]'
+    // Cache format tab buttons for user selection
+    this.controller.elements.formatTabs = document.querySelectorAll(
+      '.mathpix-tab-header[role="tab"]'
     );
 
     // Cache format-specific content and panel elements
@@ -313,7 +313,7 @@ class MathPixUIManager extends MathPixBaseModule {
     this.controller.currentFileBlob = null;
 
     logDebug("Multi-format elements cached", {
-      radioButtons: this.controller.elements.formatRadios.length,
+      tabButtons: this.controller.elements.formatTabs.length,
       contentElements: Object.keys(this.controller.elements.formatContents)
         .length,
       usingExistingCopySystem: true,
@@ -345,7 +345,7 @@ class MathPixUIManager extends MathPixBaseModule {
    * @since 1.0.0
    */
   attachEventListeners() {
-    // File input change handler
+    // File input change handler with smart routing (Phase 4)
     if (this.controller.elements["file-input"]) {
       const fileInputHandler = (e) => {
         logDebug("File input change event triggered", {
@@ -354,7 +354,26 @@ class MathPixUIManager extends MathPixBaseModule {
         });
 
         if (e.target.files[0]) {
-          this.controller.handleFileUpload(e.target.files[0]);
+          const file = e.target.files[0];
+
+          // Phase 4: Smart routing - document formats vs image formats
+          const formatInfo = MATHPIX_CONFIG.getFormatInfo(file.type);
+
+          if (formatInfo) {
+            // Document format (PDF/DOCX/PPTX) → PDF Handler
+            logDebug("Routing document format to PDF handler", {
+              fileName: file.name,
+              format: formatInfo.displayName,
+            });
+            this.controller.handlePDFFileUpload(file);
+          } else {
+            // Image format (JPEG/PNG/WebP) → File Handler
+            logDebug("Routing image format to file handler", {
+              fileName: file.name,
+              type: file.type,
+            });
+            this.controller.handleFileUpload(file);
+          }
         } else {
           logWarn("No file selected in change event");
         }
@@ -413,7 +432,7 @@ class MathPixUIManager extends MathPixBaseModule {
       );
     }
 
-    // Drag and drop file handling
+    // Drag and drop file handling with smart routing (Phase 4)
     if (this.controller.elements["drop-zone"]) {
       const dragOverHandler = (e) => {
         e.preventDefault();
@@ -428,8 +447,28 @@ class MathPixUIManager extends MathPixBaseModule {
         e.preventDefault();
         e.currentTarget.classList.remove("drag-over");
         const files = e.dataTransfer.files;
+
         if (files[0]) {
-          this.controller.handleFileUpload(files[0]);
+          const file = files[0];
+
+          // Phase 4: Smart routing - document formats vs image formats
+          const formatInfo = MATHPIX_CONFIG.getFormatInfo(file.type);
+
+          if (formatInfo) {
+            // Document format (PDF/DOCX/PPTX) → PDF Handler
+            logDebug("Routing dropped document to PDF handler", {
+              fileName: file.name,
+              format: formatInfo.displayName,
+            });
+            this.controller.handlePDFFileUpload(file);
+          } else {
+            // Image format (JPEG/PNG/WebP) → File Handler
+            logDebug("Routing dropped image to file handler", {
+              fileName: file.name,
+              type: file.type,
+            });
+            this.controller.handleFileUpload(file);
+          }
         }
       };
 
@@ -507,18 +546,72 @@ class MathPixUIManager extends MathPixBaseModule {
 
     logDebug("Clipboard paste handler attached with smart focus detection");
 
-    // Format selection radio button handlers
-    if (this.controller.elements.formatRadios) {
-      this.controller.elements.formatRadios.forEach((radio) => {
-        const radioChangeHandler = (e) => {
-          if (e.target.checked) {
-            this.controller.showFormat(e.target.value);
+    // Format selection tab button handlers
+    if (this.controller.elements.formatTabs) {
+      this.controller.elements.formatTabs.forEach((tab) => {
+        const tabClickHandler = (e) => {
+          // Get format from data-format attribute
+          const format = tab.dataset.format;
+          if (format) {
+            this.controller.showFormat(format);
           }
         };
 
-        radio.addEventListener("change", radioChangeHandler);
-        this.trackEventListener(radio, "change", radioChangeHandler);
+        tab.addEventListener("click", tabClickHandler);
+        this.trackEventListener(tab, "click", tabClickHandler);
+
+        // Arrow key navigation for ARIA tabs pattern (WCAG 2.2 AA requirement)
+        const tabKeyHandler = (e) => {
+          const tabs = Array.from(this.controller.elements.formatTabs).filter(
+            (t) => t.style.display !== "none" // Only navigate visible tabs
+          );
+          const currentIndex = tabs.indexOf(tab);
+          let targetTab = null;
+
+          switch (e.key) {
+            case "ArrowRight":
+            case "ArrowDown":
+              e.preventDefault();
+              // Move to next tab, wrap to first if at end
+              targetTab = tabs[(currentIndex + 1) % tabs.length];
+              break;
+
+            case "ArrowLeft":
+            case "ArrowUp":
+              e.preventDefault();
+              // Move to previous tab, wrap to last if at beginning
+              targetTab = tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+              break;
+
+            case "Home":
+              e.preventDefault();
+              // Move to first tab
+              targetTab = tabs[0];
+              break;
+
+            case "End":
+              e.preventDefault();
+              // Move to last tab
+              targetTab = tabs[tabs.length - 1];
+              break;
+          }
+
+          if (targetTab) {
+            // Switch to the target format
+            const format = targetTab.dataset.format;
+            if (format) {
+              this.controller.showFormat(format);
+            }
+            // Focus the target tab
+            targetTab.focus();
+          }
+        };
+
+        tab.addEventListener("keydown", tabKeyHandler);
+        this.trackEventListener(tab, "keydown", tabKeyHandler);
       });
+
+      logInfo("Format tab handlers attached with arrow key navigation");
     }
 
     // PDF view mode handlers removed (feature deprecated)
@@ -1518,7 +1611,7 @@ class MathPixUIManager extends MathPixBaseModule {
       configLoaded: this.configLoaded,
       elementsCache: Object.keys(this.controller.elements).length,
       eventListeners: this.eventListeners.length,
-      formatRadioButtons: this.controller.elements.formatRadios?.length || 0,
+      formatTabButtons: this.controller.elements.formatTabs?.length || 0,
       hasFileInput: !!this.controller.elements["file-input"],
       hasDropZone: !!this.controller.elements["drop-zone"],
       hasConfigElements: !!(

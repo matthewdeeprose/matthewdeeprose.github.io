@@ -1193,6 +1193,173 @@ class MathPixController {
   // =============================================================================
 
   /**
+   * @method scrollToComparisonView
+   * @description Scrolls to comparison view and sets focus after processing completes
+   *
+   * Uses forced instant scroll (no smooth animation) because multiple layout changes
+   * occur simultaneously (hide preview, show comparison, relocate buttons). Smooth
+   * scroll during these changes appears janky, so instant scroll provides better UX.
+   *
+   * After scrolling, sets focus to the comparison title for screen reader users
+   * and announces processing completion. This ensures keyboard/screen reader focus
+   * moves to the most relevant content area.
+   *
+   * Includes 150ms timeout to ensure all DOM updates complete before scrolling and focusing.
+   *
+   * @returns {void}
+   * @since Workflow Optimization Phase 1
+   * @updated Screen Reader Optimization Phase - Added focus management
+   *
+   * @example
+   * this.scrollToComparisonView(); // After displayResult() completes
+   *
+   * @accessibility
+   * - Sets focus to comparison title for keyboard navigation
+   * - Announces completion to screen readers via global live region
+   * - Makes title focusable with tabindex="-1" for programmatic focus
+   */
+  scrollToComparisonView() {
+    // Wait for DOM updates to complete (hide preview, show comparison, relocate buttons)
+    setTimeout(() => {
+      const comparisonTitle = document.querySelector(
+        ".mathpix-comparison-title"
+      );
+
+      if (comparisonTitle) {
+        // Make title focusable for programmatic focus (doesn't add to tab order)
+        comparisonTitle.setAttribute("tabindex", "-1");
+
+        // Force instant scroll - smooth scroll looks janky during layout changes
+        comparisonTitle.scrollIntoView({
+          behavior: "instant",
+          block: "start",
+        });
+
+        // Set focus to comparison title for screen readers and keyboard users
+        comparisonTitle.focus();
+
+        // Announce processing completion to screen readers
+        // Get format count from visible format panels
+        const formatPanels = document.querySelectorAll(
+          '.mathpix-format-panel:not([style*="display: none"])'
+        );
+        const formatCount = formatPanels.length;
+
+        this.announceToScreenReader(
+          `Processing complete. ${formatCount} format${
+            formatCount !== 1 ? "s" : ""
+          } available. Viewing results comparison.`
+        );
+
+        logDebug("Scrolled to comparison view and set focus", {
+          scrollBehavior: "instant",
+          focusSet: true,
+          reason: "Multiple layout changes require instant scroll",
+          targetElement: ".mathpix-comparison-title",
+          formatCount: formatCount,
+          screenReaderAnnouncement: true,
+        });
+      } else {
+        logWarn("Comparison title not found for scroll and focus", {
+          comparisonContainerExists: !!document.getElementById(
+            "mathpix-comparison-container"
+          ),
+        });
+      }
+    }, 150); // 150ms ensures all DOM updates complete
+  }
+
+  /**
+   * @method announceToScreenReader
+   * @description Announces messages to screen readers using global ARIA live region
+   *
+   * Uses the global #mathpix-sr-announcements region for consistent screen reader
+   * feedback across all workflows. Messages are announced politely without
+   * interrupting current screen reader activity.
+   *
+   * **Smart Deduplication**: Detects if the notification system (toast) already
+   * announced a similar message and skips duplicate announcements. This prevents
+   * screen readers from hearing the same message twice when both the notification
+   * system and ARIA live region would announce.
+   *
+   * Detection method: Checks if a toast notification is currently visible in the
+   * #universal-toast-container. If a toast exists, skips the announcement since
+   * the toast's own ARIA live region already handled it.
+   *
+   * Includes 100ms delay to ensure screen readers properly detect content changes,
+   * and clears after 3 seconds to prevent stale announcements.
+   *
+   * @param {string} message - Message to announce to screen reader users
+   * @param {Object} options - Optional configuration
+   * @param {boolean} options.force - Force announcement even if notification visible
+   * @returns {void}
+   * @since Screen Reader Optimization Phase
+   *
+   * @example
+   * // Normal usage - auto-detects notification conflicts
+   * this.announceToScreenReader('Processing complete. 6 formats available.');
+   *
+   * // Force announcement even if notification shown
+   * this.announceToScreenReader('Custom message', { force: true });
+   *
+   * @accessibility
+   * - WCAG 2.2 AA compliant announcements
+   * - Non-interrupting polite live region
+   * - Automatic cleanup prevents clutter
+   * - Smart deduplication prevents double announcements
+   */
+  announceToScreenReader(message, options = {}) {
+    const liveRegion = document.getElementById("mathpix-sr-announcements");
+
+    if (!liveRegion) {
+      logWarn(
+        "Global ARIA live region not found - announcement skipped",
+        message
+      );
+      return;
+    }
+
+    // Smart deduplication: Check if notification system just showed a toast
+    if (!options.force) {
+      const toastContainer = document.getElementById(
+        "universal-toast-container"
+      );
+      const activeToasts = toastContainer?.querySelectorAll(
+        ".toast-notification"
+      );
+
+      if (activeToasts && activeToasts.length > 0) {
+        logDebug(
+          "Skipping announcement - notification system already announced",
+          {
+            message,
+            activeToastCount: activeToasts.length,
+            reason: "Prevents duplicate screen reader announcements",
+          }
+        );
+        return;
+      }
+    }
+
+    // Clear any existing announcement first
+    liveRegion.textContent = "";
+
+    // Small delay ensures screen readers detect the change
+    setTimeout(() => {
+      liveRegion.textContent = message;
+      logDebug("Screen reader announcement made", {
+        message,
+        forced: options.force,
+      });
+
+      // Clear announcement after 3 seconds to prevent stale content
+      setTimeout(() => {
+        liveRegion.textContent = "";
+      }, 3000);
+    }, 100);
+  }
+
+  /**
    * @method updateDebugPanel
    * @description Populates debug panel with data from last API operation
    *
@@ -1866,6 +2033,10 @@ class MathPixController {
       // Step 4: Display result with cleanup (pass processed file for comparison view)
       this.displayResult(result, fileToProcess);
 
+      // Step 4.5: Scroll to comparison view after DOM updates complete
+      // Using instant scroll due to multiple layout changes (hide preview, show comparison, relocate buttons)
+      this.scrollToComparisonView();
+
       // Step 5: Update debug panel with API transaction data
       this.updateDebugPanel();
 
@@ -2310,6 +2481,10 @@ class MathPixController {
       if (canvasImage) {
         logDebug("Setting up strokes comparison view with canvas image");
         this.displayStrokesComparison(canvasImage, result);
+
+        // Scroll to comparison view after DOM updates complete
+        // Reuses helper method from image workflow - consistent UX
+        this.scrollToComparisonView();
       } else {
         logWarn("Skipping comparison view - canvas image not captured");
       }

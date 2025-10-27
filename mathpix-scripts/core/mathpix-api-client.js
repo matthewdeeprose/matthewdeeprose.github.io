@@ -99,6 +99,7 @@ import MATHPIX_CONFIG, {
   getEndpointConfig,
   getEndpointFeatures,
   isFeatureAvailable,
+  getFormatInfo,
 } from "./mathpix-config.js";
 
 /**
@@ -2136,39 +2137,54 @@ class MathPixAPIClient {
 
   /**
    * @method validatePDFFile
-   * @description Validates PDF files against MathPix PDF processing requirements
+   * @description Validates document files against MathPix PDF processing requirements
    *
-   * Checks file type, size limits, and format requirements specific to PDF processing.
-   * Uses different limits than image processing to accommodate larger documents.
+   * Phase 4: Now validates PDF, DOCX, and PPTX files against format-specific requirements.
+   * Checks file type against supported formats array, size limits, and format requirements
+   * specific to document processing. Uses different limits than image processing to
+   * accommodate larger documents.
    *
-   * @param {File} pdfFile - PDF file to validate
+   * @param {File} pdfFile - Document file to validate (PDF, DOCX, or PPTX)
    *
    * @throws {Error} When file validation fails
    *
    * @private
    * @since 2.1.0
+   * @updated Phase 4 - Multi-format document support
    */
   validatePDFFile(pdfFile) {
-    if (pdfFile.type !== "application/pdf") {
+    // Phase 4: Multi-format support - Check against array of supported document types
+    if (!MATHPIX_CONFIG.SUPPORTED_TYPES.includes(pdfFile.type)) {
+      const supportedNames = MATHPIX_CONFIG.SUPPORTED_TYPES.map(
+        (mime) => getFormatInfo(mime)?.name
+      )
+        .filter((name) => name && !name.startsWith("image"))
+        .join(", ");
+
       throw new Error(
         `Invalid file type: ${pdfFile.type}. Only PDF files are supported for document processing.`
       );
     }
 
-    if (pdfFile.size > MATHPIX_CONFIG.PDF_PROCESSING.MAX_PDF_SIZE) {
+    // Phase 4: Use format-specific size limit
+    const formatInfo = getFormatInfo(pdfFile.type);
+    const maxSize =
+      formatInfo?.maxSize || MATHPIX_CONFIG.PDF_PROCESSING.MAX_PDF_SIZE;
+    const formatName = formatInfo?.displayName || "Document";
+
+    if (pdfFile.size > maxSize) {
       const sizeMB = (pdfFile.size / 1024 / 1024).toFixed(1);
-      const maxSizeMB = (
-        MATHPIX_CONFIG.PDF_PROCESSING.MAX_PDF_SIZE /
-        1024 /
-        1024
-      ).toFixed(0);
-      throw new Error(`PDF too large: ${sizeMB}MB (max ${maxSizeMB}MB)`);
+      const maxSizeMB = (maxSize / 1024 / 1024).toFixed(0);
+      throw new Error(
+        `${formatName} too large: ${sizeMB}MB (max ${maxSizeMB}MB)`
+      );
     }
 
-    logDebug("PDF file validation passed", {
+    logDebug("Document file validation passed", {
       name: pdfFile.name,
       size: pdfFile.size,
       type: pdfFile.type,
+      format: formatName,
     });
   }
 

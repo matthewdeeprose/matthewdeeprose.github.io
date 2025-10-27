@@ -151,7 +151,7 @@
           DEBUG: 3,
         };
 
-        const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+        const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
         const ENABLE_ALL_LOGGING = false;
         const DISABLE_ALL_LOGGING = false;
 
@@ -2486,6 +2486,16 @@ Science,91</pre
 
         <article class="standard" id="mathpix-app" style="display: none">
           <h1>MathPix Mathematics OCR</h1>
+
+          <!-- Global ARIA Live Region for Screen Reader Announcements -->
+          <div
+            id="mathpix-sr-announcements"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            class="sr-only"
+          ></div>
+
           <div class="mathpix-header-row">
             <fieldset class="mathpix-mode-switcher">
               <legend class="sr-only">Input Method</legend>
@@ -2599,64 +2609,71 @@ Science,91</pre
               aria-live="polite"
               aria-atomic="true"
             >
-              <div class="status-item-mp">
-                <svg
-                  class="status-icon"
-                  aria-hidden="true"
-                  height="16"
-                  viewBox="0 0 21 21"
-                  width="16"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(2 2)"
-                  >
-                    <circle cx="8.5" cy="8.5" r="8"></circle>
-                    <path d="m8.5 12.5v-4"></path>
-                    <circle
-                      cx="8.5"
-                      cy="4.5"
-                      r=".5"
-                      fill="currentColor"
-                    ></circle>
-                  </g>
-                </svg>
-                <span class="status-label">MathPix Server:</span>
-                <strong class="status-value" id="mathpix-server-location"
-                  >European Union</strong
-                >
-              </div>
-              <div class="status-item-mp">
-                <svg
-                  class="status-icon"
-                  aria-hidden="true"
-                  height="16"
-                  viewBox="0 0 21 21"
-                  width="16"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(3 3)"
-                  >
-                    <path
-                      d="m7.5.5c-3.86599325 0-7 3.13400675-7 7 0 3.8659932 3.13400675 7 7 7 3.8659932 0 7-3.1340068 7-7 0-3.86599325-3.1340068-7-7-7z"
-                    ></path>
-                    <path d="m4.5 7.5 2 2 5-5"></path>
-                  </g>
-                </svg>
-                <span class="status-label">Use content for training:</span>
-                <strong class="status-value status-value-privacy">No</strong>
-              </div>
+              <dl class="status-list">
+                <div class="status-item-mp">
+                  <dt class="status-term">
+                    <svg
+                      class="status-icon"
+                      aria-hidden="true"
+                      height="16"
+                      viewBox="0 0 21 21"
+                      width="16"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <g
+                        fill="none"
+                        fill-rule="evenodd"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        transform="translate(2 2)"
+                      >
+                        <circle cx="8.5" cy="8.5" r="8"></circle>
+                        <path d="m8.5 12.5v-4"></path>
+                        <circle
+                          cx="8.5"
+                          cy="4.5"
+                          r=".5"
+                          fill="currentColor"
+                        ></circle>
+                      </g>
+                    </svg>
+                    <span class="status-label">MathPix Server:</span>
+                  </dt>
+                  <dd class="status-value" id="mathpix-server-location">
+                    European Union
+                  </dd>
+                </div>
+
+                <div class="status-item-mp">
+                  <dt class="status-term">
+                    <svg
+                      class="status-icon"
+                      aria-hidden="true"
+                      height="16"
+                      viewBox="0 0 21 21"
+                      width="16"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <g
+                        fill="none"
+                        fill-rule="evenodd"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        transform="translate(3 3)"
+                      >
+                        <path
+                          d="m7.5.5c-3.86599325 0-7 3.13400675-7 7 0 3.8659932 3.13400675 7 7 7 3.8659932 0 7-3.1340068 7-7 0-3.86599325-3.1340068-7-7-7z"
+                        ></path>
+                        <path d="m4.5 7.5 2 2 5-5"></path>
+                      </g>
+                    </svg>
+                    <span class="status-label">Use content for training:</span>
+                  </dt>
+                  <dd class="status-value status-value-privacy">No</dd>
+                </div>
+              </dl>
             </div>
           </div>
 
@@ -2694,19 +2711,20 @@ Science,91</pre
                     />
                   </g>
                 </svg>
-                Drop image or PDF here, or click to select.
+                Drop file here, or click to select.
                 <br />
                 <span class="help-text"
-                  >Supports: JPEG, PNG, WebP, PDF (max 10MB)</span
+                  >Supports: Images (JPEG, PNG, WebP), Documents (PDF, DOCX,
+                  PPTX)</span
                 >
               </p>
 
               <input
                 type="file"
                 id="mathpix-file-input"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
+                accept="image/jpeg,image/png,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 style="display: none"
-                aria-label="Select mathematics file to upload"
+                aria-label="Select mathematics file or document to upload"
               />
             </div>
 
@@ -3205,7 +3223,7 @@ Science,91</pre
             aria-label="PDF upload verification preview"
             hidden
           >
-            <h3>Verify Your Upload</h3>
+            <h3 id="verify-mathpix-doc-upload">Verify Your Upload</h3>
 
             <!-- PDF First Page Preview -->
             <div
@@ -3274,7 +3292,26 @@ Science,91</pre
                 onclick="rotateMathPixPreview()"
                 aria-label="Rotate preview 90 degrees clockwise"
               >
-                <span aria-hidden="true">🔄</span> Rotate
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(5.5 6.5)"
+                  >
+                    <path d="m0 8v-2c0-1.65685425 1.34314575-3 3-3h8" />
+                    <path d="m7.999 6 3.001-3-3.001-3" />
+                  </g>
+                </svg>
+                Rotate
               </button>
               <button
                 id="mathpix-flip-preview-btn"
@@ -3283,7 +3320,28 @@ Science,91</pre
                 onclick="flipMathPixPreview()"
                 aria-label="Flip preview horizontally"
               >
-                <span aria-hidden="true">↔️</span> Flip
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(4 3)"
+                  >
+                    <path d="m4.501 8.5-3.001 3 3.001 3" />
+                    <path d="m12.5 6.5v2c0 1.6568542-1.3431458 3-3 3h-8" />
+                    <path d="m8.499 6.5 3.001-3-3.001-3" />
+                    <path d="m.5 8.5v-2c0-1.65685425 1.34314575-3 3-3h8" />
+                  </g>
+                </svg>
+                Flip
               </button>
               <span
                 id="mathpix-transform-state"
@@ -3665,6 +3723,7 @@ Science,91</pre
               role="region"
               aria-label="Download all results"
             >
+              <h3 class="sr-only">Download All Results</h3>
               <button
                 type="button"
                 id="mathpix-download-all-btn-text"
@@ -3706,179 +3765,202 @@ Science,91</pre
             </div>
 
             <!-- Format Selection Radio Buttons -->
-            <fieldset class="mathpix-format-selection">
-              <legend>Choose output format:</legend>
-              <div class="mathpix-format-options">
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="latex"
-                    id="mathpix-format-latex"
-                    checked
-                  />
-                  <div class="format-content">
-                    <span class="format-label">LaTeX</span>
-                    <span class="format-description"
-                      >Mathematical typesetting format</span
-                    >
-                  </div>
-                </label>
+            <h3 class="sr-only">Select Output Format</h3>
 
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="mathml"
-                    id="mathpix-format-mathml"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">MathML</span>
-                    <span class="format-description"
-                      >Web-standard mathematical markup</span
-                    >
-                  </div>
-                </label>
+            <!-- Skip Links for Quick Navigation -->
+            <nav
+              aria-label="Format selection"
+              class="mathpix-format-selection-nav"
+            >
+              <div class="mathpix-results-tabs">
+                <h3 class="sr-only">Choose output format:</h3>
+                <div
+                  role="tablist"
+                  aria-label="Output format selection"
+                  class="mathpix-tab-headers"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-latex"
+                    class="mathpix-tab-header"
+                    aria-selected="true"
+                    aria-controls="mathpix-output-latex"
+                    data-format="latex"
+                    tabindex="0"
+                  >
+                    LaTeX
+                  </button>
 
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="asciimath"
-                    id="mathpix-format-asciimath"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">AsciiMath</span>
-                    <span class="format-description"
-                      >Plain text mathematical notation</span
-                    >
-                  </div>
-                </label>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-mathml"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-mathml"
+                    data-format="mathml"
+                    tabindex="-1"
+                  >
+                    MathML
+                  </button>
 
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="html"
-                    id="mathpix-format-html"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">HTML</span>
-                    <span class="format-description">Web display format</span>
-                  </div>
-                </label>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-asciimath"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-asciimath"
+                    data-format="asciimath"
+                    tabindex="-1"
+                  >
+                    AsciiMath
+                  </button>
 
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="markdown"
-                    id="mathpix-format-markdown"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">Markdown</span>
-                    <span class="format-description"
-                      >Document format with inline maths</span
-                    >
-                  </div>
-                </label>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-html"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-html"
+                    data-format="html"
+                    tabindex="-1"
+                  >
+                    HTML
+                  </button>
 
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="json"
-                    id="mathpix-format-json"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">Raw JSON</span>
-                    <span class="format-description"
-                      >Complete API response data</span
-                    >
-                  </div>
-                </label>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-markdown"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-markdown"
+                    data-format="markdown"
+                    tabindex="-1"
+                  >
+                    Markdown
+                  </button>
 
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="table-html"
-                    id="mathpix-format-table-html"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">Table (HTML)</span>
-                    <span class="format-description">HTML table format</span>
-                  </div>
-                </label>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-json"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-json"
+                    data-format="json"
+                    tabindex="-1"
+                  >
+                    JSON
+                  </button>
 
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="table-markdown"
-                    id="mathpix-format-table-markdown"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">Table (Markdown)</span>
-                    <span class="format-description"
-                      >Markdown table format</span
-                    >
-                  </div>
-                </label>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-table-html"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-table-html"
+                    data-format="table-html"
+                    tabindex="-1"
+                  >
+                    Table (HTML)
+                  </button>
 
-                <label class="mathpix-format-option">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="table-tsv"
-                    id="mathpix-format-table-tsv"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">Table (TSV)</span>
-                    <span class="format-description">Tab-separated values</span>
-                  </div>
-                </label>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-table-markdown"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-table-markdown"
+                    data-format="table-markdown"
+                    tabindex="-1"
+                  >
+                    Table (Markdown)
+                  </button>
 
-                <!-- Phase 4: Chemistry Format Option (initially hidden) -->
-                <label class="mathpix-format-option" style="display: none">
-                  <input
-                    type="radio"
-                    name="mathpix-format"
-                    value="smiles"
-                    id="mathpix-format-smiles"
-                  />
-                  <div class="format-content">
-                    <span class="format-label">SMILES</span>
-                    <span class="format-description"
-                      >Chemistry notation (Simplified Molecular-Input Line-Entry
-                      System)</span
-                    >
-                  </div>
-                </label>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-table-tsv"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-table-tsv"
+                    data-format="table-tsv"
+                    tabindex="-1"
+                  >
+                    Table (TSV)
+                  </button>
+
+                  <!-- Chemistry Format Option (initially hidden) -->
+                  <button
+                    type="button"
+                    role="tab"
+                    id="mathpix-tab-smiles"
+                    class="mathpix-tab-header"
+                    aria-selected="false"
+                    aria-controls="mathpix-output-smiles"
+                    data-format="smiles"
+                    tabindex="-1"
+                    style="display: none"
+                  >
+                    SMILES
+                  </button>
+                </div>
               </div>
-            </fieldset>
+            </nav>
 
             <!-- Output Display Area -->
-            <div class="mathpix-output-display">
+            <div
+              class="mathpix-output-display"
+              role="region"
+              aria-label="Format output content"
+            >
+              <h3 class="sr-only">Output Contents</h3>
               <!-- LaTeX Output -->
               <div
                 id="mathpix-output-latex"
-                class="mathpix-format-panel active"
-                role="region"
-                aria-labelledby="mathpix-format-latex"
+                class="mathpix-tab-panel active"
+                role="tabpanel"
+                aria-labelledby="mathpix-tab-latex"
+                tabindex="0"
               >
+                <h4
+                  id="latex-output-heading"
+                  class="mathpix-format-heading"
+                  tabindex="-1"
+                >
+                  LaTeX Output
+                </h4>
                 <div class="code-block-wrapper">
-                  <pre><code id="mathpix-content-latex" class="language-latex"></code></pre>
+                  <pre
+                    class="code-block-container"
+                    tabindex="0"
+                    aria-label="LaTeX code output"
+                  >
+<code id="mathpix-content-latex" class="language-latex"></code>
+</pre>
                 </div>
               </div>
 
               <!-- MathML Output -->
               <div
                 id="mathpix-output-mathml"
-                class="mathpix-format-panel"
-                role="region"
-                aria-labelledby="mathpix-format-mathml"
+                class="mathpix-tab-panel"
+                role="tabpanel"
+                aria-labelledby="mathpix-tab-mathml"
               >
+                <h4
+                  id="mathml-output-heading"
+                  class="mathpix-format-heading"
+                  tabindex="-1"
+                >
+                  MathML Output
+                </h4>
                 <div class="code-block-wrapper">
                   <pre><code id="mathpix-content-mathml" class="language-xml"></code></pre>
                 </div>
@@ -3887,10 +3969,17 @@ Science,91</pre
               <!-- AsciiMath Output -->
               <div
                 id="mathpix-output-asciimath"
-                class="mathpix-format-panel"
-                role="region"
-                aria-labelledby="mathpix-format-asciimath"
+                class="mathpix-tab-panel"
+                role="tabpanel"
+                aria-labelledby="mathpix-tab-asciimath"
               >
+                <h4
+                  id="asciimath-output-heading"
+                  class="mathpix-format-heading"
+                  tabindex="-1"
+                >
+                  AsciiMath Output
+                </h4>
                 <div class="code-block-wrapper">
                   <pre><code id="mathpix-content-asciimath" class="language-none"></code></pre>
                 </div>
@@ -3899,10 +3988,17 @@ Science,91</pre
               <!-- HTML Output -->
               <div
                 id="mathpix-output-html"
-                class="mathpix-format-panel"
-                role="region"
-                aria-labelledby="mathpix-format-html"
+                class="mathpix-tab-panel"
+                role="tabpanel"
+                aria-labelledby="mathpix-tab-html"
               >
+                <h4
+                  id="html-output-heading"
+                  class="mathpix-format-heading"
+                  tabindex="-1"
+                >
+                  HTML Output
+                </h4>
                 <!-- HTML Preview Controls -->
                 <div class="html-preview-controls" style="display: none">
                   <div class="preview-control-header">
@@ -3963,10 +4059,17 @@ Science,91</pre
               <!-- Markdown Output -->
               <div
                 id="mathpix-output-markdown"
-                class="mathpix-format-panel"
-                role="region"
-                aria-labelledby="mathpix-format-markdown"
+                class="mathpix-tab-panel"
+                role="tabpanel"
+                aria-labelledby="mathpix-tab-markdown"
               >
+                <h4
+                  id="markdown-output-heading"
+                  class="mathpix-format-heading"
+                  tabindex="-1"
+                >
+                  Markdown Output
+                </h4>
                 <div class="code-block-wrapper">
                   <pre><code id="mathpix-content-markdown" class="language-markdown"></code></pre>
                 </div>
@@ -3975,10 +4078,17 @@ Science,91</pre
               <!-- JSON Output -->
               <div
                 id="mathpix-output-json"
-                class="mathpix-format-panel"
-                role="region"
-                aria-labelledby="mathpix-format-json"
+                class="mathpix-tab-panel"
+                role="tabpanel"
+                aria-labelledby="mathpix-tab-json"
               >
+                <h4
+                  id="json-output-heading"
+                  class="mathpix-format-heading"
+                  tabindex="-1"
+                >
+                  JSON Output
+                </h4>
                 <div class="code-block-wrapper">
                   <pre><code id="mathpix-content-json" class="language-json"></code></pre>
                 </div>
@@ -3987,10 +4097,17 @@ Science,91</pre
               <!-- Phase 4: SMILES Chemistry Output -->
               <div
                 id="mathpix-output-smiles"
-                class="mathpix-format-panel"
-                role="region"
-                aria-labelledby="mathpix-format-smiles"
+                class="mathpix-tab-panel"
+                role="tabpanel"
+                aria-labelledby="mathpix-tab-smiles"
               >
+                <h4
+                  id="smiles-output-heading"
+                  class="mathpix-format-heading"
+                  tabindex="-1"
+                >
+                  SMILES Output
+                </h4>
                 <div class="code-block-wrapper">
                   <pre><code id="mathpix-content-smiles" class="language-markup"></code></pre>
                 </div>
@@ -3999,11 +4116,18 @@ Science,91</pre
             <!-- Table HTML Format -->
             <div
               id="mathpix-output-table-html"
-              class="mathpix-format-panel"
-              role="region"
-              aria-labelledby="mathpix-format-table-html"
+              class="mathpix-tab-panel"
+              role="tabpanel"
+              aria-labelledby="mathpix-tab-table-html"
               data-format="table-html"
             >
+              <h4
+                id="table-html-output-heading"
+                class="mathpix-format-heading"
+                tabindex="-1"
+              >
+                Table (HTML) Output
+              </h4>
               <div class="code-block-wrapper">
                 <div
                   class="table-styling-control"
@@ -4050,33 +4174,47 @@ Science,91</pre
             <!-- Table Markdown Format -->
             <div
               id="mathpix-output-table-markdown"
-              class="mathpix-format-panel"
-              role="region"
-              aria-labelledby="mathpix-format-table-markdown"
+              class="mathpix-tab-panel"
+              role="tabpanel"
+              aria-labelledby="mathpix-tab-table-markdown"
               data-format="table-markdown"
             >
+              <h4
+                id="table-markdown-output-heading"
+                class="mathpix-format-heading"
+                tabindex="-1"
+              >
+                Table (Markdown) Output
+              </h4>
               <div class="code-block-wrapper">
                 <pre
                   class="code-block-container language-markdown"
                   tabindex="0"
                 >
-      <code id="mathpix-content-table-markdown" class="language-markdown"></code>
-    </pre>
+<code id="mathpix-content-table-markdown" class="language-markdown"></code>
+</pre>
               </div>
             </div>
 
             <!-- Table TSV Format -->
             <div
               id="mathpix-output-table-tsv"
-              class="mathpix-format-panel"
-              role="region"
-              aria-labelledby="mathpix-format-table-tsv"
+              class="mathpix-tab-panel"
+              role="tabpanel"
+              aria-labelledby="mathpix-tab-table-tsv"
               data-format="table-tsv"
             >
+              <h4
+                id="table-tsv-output-heading"
+                class="mathpix-format-heading"
+                tabindex="-1"
+              >
+                Table (TSV) Output
+              </h4>
               <div class="code-block-wrapper">
                 <pre class="code-block-container" tabindex="0">
-      <code id="mathpix-content-table-tsv"></code>
-    </pre>
+<code id="mathpix-content-table-tsv"></code>
+</pre>
               </div>
             </div>
           </div>
@@ -4088,7 +4226,9 @@ Science,91</pre
             role="region"
             aria-label="PDF document processing"
           >
-            <h2>PDF Document Processing</h2>
+            <h2 id="mathpix-document-processing-results">
+              Document Processing
+            </h2>
 
             <!-- PDF Upload Section -->
             <div class="mathpix-pdf-upload-container">
@@ -4122,10 +4262,11 @@ Science,91</pre
                       <path d="m8.5.5v9" />
                     </g>
                   </svg>
-                  Drop PDF document here, or click to select
+                  Drop document here, or select to open file browser
                   <br />
                   <span class="help-text"
-                    >Supports: PDF documents (max 512MB)</span
+                    >Supports: PDF / Word / PowerPoint documents (max 1
+                    GB)</span
                   >
                 </p>
                 <input
@@ -4135,6 +4276,72 @@ Science,91</pre
                   style="display: none"
                   aria-label="Select PDF document for processing"
                 />
+              </div>
+            </div>
+
+            <!-- Phase 4: Simple File Confirmation Section (for non-PDF formats) -->
+            <div
+              id="mathpix-file-confirmation"
+              class="mathpix-file-confirmation"
+              style="display: none"
+              role="region"
+              aria-label="File confirmation"
+            >
+              <h3>Confirm File Selection</h3>
+              <div class="file-info-card">
+                <div
+                  class="file-icon"
+                  id="confirm-file-icon"
+                  aria-hidden="true"
+                >
+                  <svg
+                    height="21"
+                    viewBox="0 0 21 21"
+                    width="21"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(4 3)"
+                    >
+                      <path
+                        d="m12.5 12.5v-7l-5-5h-5c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"
+                      />
+                      <path d="m2.5 7.5h5" />
+                      <path d="m2.5 9.5h7" />
+                      <path d="m2.5 11.5h3" />
+                      <path d="m7.5.5v3c0 1.1045695.8954305 2 2 2h3" />
+                    </g>
+                  </svg>
+                </div>
+                <div class="file-details">
+                  <p class="file-name" id="confirm-file-name">filename.docx</p>
+                  <p class="file-meta">
+                    <span id="confirm-file-type">Word Document</span> •
+                    <span id="confirm-file-size">2.5 MB</span>
+                  </p>
+                </div>
+              </div>
+              <div class="confirmation-actions">
+                <button
+                  type="button"
+                  id="confirm-proceed-btn"
+                  class="mathpix-button mathpix-button-primary"
+                >
+                  <span aria-hidden="true">✓</span> Proceed with Processing
+                </button>
+                <button
+                  type="button"
+                  id="confirm-cancel-btn"
+                  class="mathpix-button mathpix-button-secondary"
+                >
+                  <span aria-hidden="true">✗</span> Cancel
+                </button>
               </div>
             </div>
 
@@ -4884,7 +5091,7 @@ Science,91</pre
               class="mathpix-pdf-results"
               style="display: none"
             >
-              <h3>Document Processing Results</h3>
+              <h3 id="mathpix-doc-proc-results">Document Processing Results</h3>
 
               <!-- Document Information -->
               <div class="mathpix-document-info">
@@ -6353,6 +6560,29 @@ Science,91</pre
               );
             }
           }
+
+          // Update MathPix canvas stroke colour for theme change
+          window.AppLogging.logDebug(
+            "[Theme Toggle Debug] Switched to Light mode, updating MathPix canvas"
+          );
+          try {
+            const mathpixController = window.getMathPixController?.();
+            if (mathpixController?.strokesCanvas?.updateStrokeColorForTheme) {
+              window.AppLogging.logDebug(
+                "[Theme Toggle Debug] Calling MathPix strokesCanvas updateStrokeColorForTheme"
+              );
+              mathpixController.strokesCanvas.updateStrokeColorForTheme();
+            } else {
+              window.AppLogging.logDebug(
+                "[Theme Toggle Debug] MathPix strokesCanvas not available or not initialised"
+              );
+            }
+          } catch (error) {
+            window.AppLogging.logWarn(
+              "[Theme Toggle Debug] Error updating MathPix strokesCanvas:",
+              error.message
+            );
+          }
         } else {
           theButton.setAttribute("aria-pressed", "true");
           document.getElementById("lightCSS").href = "dark.css";
@@ -6390,6 +6620,29 @@ Science,91</pre
                 Object.keys(window.MermaidThemes)
               );
             }
+          }
+
+          // Update MathPix canvas stroke colour for theme change
+          window.AppLogging.logDebug(
+            "[Theme Toggle Debug] Switched to Dark mode, updating MathPix canvas"
+          );
+          try {
+            const mathpixController = window.getMathPixController?.();
+            if (mathpixController?.strokesCanvas?.updateStrokeColorForTheme) {
+              window.AppLogging.logDebug(
+                "[Theme Toggle Debug] Calling MathPix strokesCanvas updateStrokeColorForTheme"
+              );
+              mathpixController.strokesCanvas.updateStrokeColorForTheme();
+            } else {
+              window.AppLogging.logDebug(
+                "[Theme Toggle Debug] MathPix strokesCanvas not available or not initialised"
+              );
+            }
+          } catch (error) {
+            window.AppLogging.logWarn(
+              "[Theme Toggle Debug] Error updating MathPix strokesCanvas:",
+              error.message
+            );
           }
         }
       }
@@ -6477,8 +6730,8 @@ Science,91</pre
             settings: {
               zoom: "Click",
               zscale: "200%",
-              assistiveMml: false, // Disabled - causes DOM conflicts
-              explorer: false, // Disabled - causes replaceChild errors
+              assistiveMml: true, // ✅ ENABLED for screen reader accessibility
+              explorer: true, // ✅ Phase 2 - Keyboard navigation through expressions
             },
           },
         },

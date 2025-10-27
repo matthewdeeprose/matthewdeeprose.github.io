@@ -1126,7 +1126,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         const zipInfo = document.createElement("div");
         zipInfo.className = "latex-zip-info";
         zipInfo.style.cssText =
-          "margin-bottom: 1rem; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; font-size: 0.9em;";
+          "margin-bottom: 1rem; padding: 0.5rem;  border-radius: 4px; font-size: 0.9em;";
         zipInfo.innerHTML = `
         <p style="margin: 0 0 0.5rem 0;"><strong><svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 4)"><path d="m.5 1.5v9c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2v-6.00280762c.0007656-1.05436179-.8150774-1.91816512-1.8499357-1.99451426l-.1500643-.00468356-5 .00200544-2-2h-4c-.55228475 0-1 .44771525-1 1z"/><path d="m.5 2.5h7"/></g></svg> LaTeX ZIP extracted:</strong> ${
           texFiles.length
@@ -1856,17 +1856,18 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
    * @description Caches references to format-specific DOM elements using direct DOM queries
    * @returns {void}
    * @private
+   * @note Format order matches visual tab order for proper keyboard navigation
    */
   cacheFormatElements() {
     const formats = [
       "mmd",
       "md",
       "html",
-      "pdf",
-      "latexpdf",
-      "latex",
+      "latex", // ✅ Moved before PDF formats to match visual order
       "docx",
       "pptx",
+      "pdf", // ✅ PDF (HTML) now after PowerPoint
+      "latexpdf", // Hidden tab
       "mmdzip",
       "mdzip",
       "htmlzip",
@@ -1891,9 +1892,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       ),
     });
   }
+
   /**
    * @method showResultsContainer
-   * @description Shows the PDF results container
+   * @description Shows the PDF results container and scrolls to results heading
    * @returns {void}
    * @private
    */
@@ -1902,6 +1904,31 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     if (resultsContainer) {
       resultsContainer.style.display = "block";
       resultsContainer.setAttribute("aria-hidden", "false");
+
+      // ✅ Scroll to "Document Processing" results heading after container is shown
+      // Respect user's motion preferences for accessibility
+      setTimeout(() => {
+        const resultsHeading = document.getElementById(
+          "mathpix-doc-proc-results"
+        );
+        if (resultsHeading) {
+          const prefersReducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)"
+          ).matches;
+          const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
+          resultsHeading.scrollIntoView({
+            behavior: scrollBehavior,
+            block: "start",
+          });
+          logDebug("Scrolled to document processing results heading", {
+            reducedMotion: prefersReducedMotion,
+          });
+        } else {
+          logWarn(
+            "Document processing results heading not found (id: mathpix-document-processing-results)"
+          );
+        }
+      }, 150);
     }
   }
 
@@ -2733,29 +2760,84 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
    * @private
    */
   handleTabKeydown(event, tabElements, currentIndex) {
+    /**
+     * Helper function to check if a tab is visible
+     */
+    const isTabVisible = (tabElement) => {
+      const style = window.getComputedStyle(tabElement);
+      return style.display !== "none" && style.visibility !== "hidden";
+    };
+
+    /**
+     * Helper function to find next visible tab in a direction
+     */
+    const findNextVisibleTab = (startIndex, direction) => {
+      const length = tabElements.length;
+      let attempts = 0;
+      let index = startIndex;
+
+      // Keep searching until we find a visible tab or exhaust all options
+      while (attempts < length) {
+        index =
+          direction === "forward"
+            ? (index + 1) % length
+            : (index - 1 + length) % length;
+
+        if (isTabVisible(tabElements[index])) {
+          return index;
+        }
+        attempts++;
+      }
+
+      // Fallback: return current index if no visible tab found
+      return currentIndex;
+    };
+
+    /**
+     * Helper function to find first visible tab
+     */
+    const findFirstVisibleTab = () => {
+      for (let i = 0; i < tabElements.length; i++) {
+        if (isTabVisible(tabElements[i])) {
+          return i;
+        }
+      }
+      return currentIndex;
+    };
+
+    /**
+     * Helper function to find last visible tab
+     */
+    const findLastVisibleTab = () => {
+      for (let i = tabElements.length - 1; i >= 0; i--) {
+        if (isTabVisible(tabElements[i])) {
+          return i;
+        }
+      }
+      return currentIndex;
+    };
+
     let targetIndex = currentIndex;
 
     switch (event.key) {
       case "ArrowLeft":
         event.preventDefault();
-        targetIndex =
-          currentIndex > 0 ? currentIndex - 1 : tabElements.length - 1;
+        targetIndex = findNextVisibleTab(currentIndex, "backward");
         break;
 
       case "ArrowRight":
         event.preventDefault();
-        targetIndex =
-          currentIndex < tabElements.length - 1 ? currentIndex + 1 : 0;
+        targetIndex = findNextVisibleTab(currentIndex, "forward");
         break;
 
       case "Home":
         event.preventDefault();
-        targetIndex = 0;
+        targetIndex = findFirstVisibleTab();
         break;
 
       case "End":
         event.preventDefault();
-        targetIndex = tabElements.length - 1;
+        targetIndex = findLastVisibleTab();
         break;
 
       case "Enter":

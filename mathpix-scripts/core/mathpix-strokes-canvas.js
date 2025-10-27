@@ -90,15 +90,53 @@ function logDebug(message, ...args) {
 }
 
 /**
+ * Theme-based stroke colours
+ * @const {Object}
+ * @property {string} light - Dark pen colour for light backgrounds
+ * @property {string} dark - Light pen colour for dark backgrounds
+ */
+const THEME_STROKE_COLORS = {
+  light: "#00131D", // Dark pen on light background
+  dark: "#E1E8EC", // Light pen on dark background
+};
+
+/**
+ * Gets the appropriate stroke colour based on current theme
+ * @returns {string} Hex colour code for stroke
+ * @description
+ * Reads theme preference from localStorage (set by boilerplate.html theme toggle)
+ * and returns the corresponding stroke colour for optimal visibility.
+ */
+function getThemeAwareStrokeColor() {
+  const themePref = localStorage.getItem("theme");
+
+  // If theme is explicitly set to "Dark", use light pen colour
+  if (themePref === "Dark") {
+    logDebug(
+      "Using light stroke colour for dark theme:",
+      THEME_STROKE_COLORS.dark
+    );
+    return THEME_STROKE_COLORS.dark;
+  }
+
+  // Default to dark pen colour for light theme
+  logDebug(
+    "Using dark stroke colour for light theme:",
+    THEME_STROKE_COLORS.light
+  );
+  return THEME_STROKE_COLORS.light;
+}
+
+/**
  * Drawing configuration constants
  * @const {Object}
- * @property {string} strokeColor - Colour for drawn strokes (always black for visibility)
+ * @property {Function} getStrokeColor - Function returning theme-aware stroke colour
  * @property {number} lineWidth - Width of drawn lines in pixels
  * @property {string} lineCap - Line ending style for smooth appearance
  * @property {string} lineJoin - Line joining style for smooth corners
  */
 const DRAWING_CONFIG = {
-  strokeColor: "#000000",
+  getStrokeColor: getThemeAwareStrokeColor,
   lineWidth: 3,
   lineCap: "round",
   lineJoin: "round",
@@ -378,11 +416,46 @@ class MathPixStrokesCanvas extends MathPixBaseModule {
    * @since 1.0.0
    */
   configureDrawingStyle() {
-    this.context.strokeStyle = DRAWING_CONFIG.strokeColor;
+    this.context.strokeStyle = DRAWING_CONFIG.getStrokeColor();
     this.context.lineWidth = DRAWING_CONFIG.lineWidth;
     this.context.lineCap = DRAWING_CONFIG.lineCap;
     this.context.lineJoin = DRAWING_CONFIG.lineJoin;
-    logDebug("Drawing style configured");
+    logDebug("Drawing style configured with theme-aware stroke colour");
+  }
+
+  /**
+   * Updates stroke colour based on current theme
+   *
+   * @returns {void}
+   *
+   * @description
+   * Call this method if the theme changes whilst the canvas is active.
+   * Updates the stroke colour and redraws all existing strokes with the new colour.
+   *
+   * @example
+   * // After user toggles theme in boilerplate.html
+   * canvasInstance.updateStrokeColorForTheme();
+   *
+   * @since 1.0.0
+   */
+  updateStrokeColorForTheme() {
+    if (!this.context) {
+      logWarn("Cannot update stroke colour - context not available");
+      return;
+    }
+
+    // Reconfigure drawing style with new theme colour
+    this.configureDrawingStyle();
+
+    // Redraw all existing strokes with new colour
+    if (this.strokes.length > 0) {
+      this.redrawAllStrokes();
+      logInfo(
+        `Updated stroke colour for theme change and redrawn ${this.strokes.length} strokes`
+      );
+    } else {
+      logInfo("Updated stroke colour for theme change");
+    }
   }
 
   /**

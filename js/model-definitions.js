@@ -26503,6 +26503,898 @@ modelRegistry.registerModel("anthropic/claude-haiku-4.5", {
     errorMessage: null,
   },
 });
+// Insert this registration entry into model-definitions.js
+
+modelRegistry.registerModel("openai/gpt-5-image-mini", {
+  provider: "openai",
+  name: "GPT-5 Image Mini",
+  category: "Vision",
+  disabled: false,
+  description:
+    "Advanced multimodal model combining GPT-5 Mini language capabilities with GPT Image 1 Mini for efficient image generation. Features superior instruction following, text rendering, and detailed image editing with reduced latency and cost. Excels at high-quality visual creation whilst maintaining strong text understanding, making it ideal for applications requiring both efficient image generation and text processing at scale.",
+  costs: {
+    input: 2.5, // Per million tokens
+    output: 2.0, // Per million tokens
+    image: 3.0, // Per million input images
+    imageOutput: 8.0, // Per million output images
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "vision",
+    "tool_calling",
+    "reasoning",
+    "image_generation",
+    "multimodal",
+  ],
+  maxContext: 400000,
+  fallbackTo: "openai/gpt-4o",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced multimodal model with integrated image generation and vision capabilities",
+    releaseDate: "2025-10-16",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "multimodal-instruct",
+      components: ["GPT-5 Mini", "GPT Image 1 Mini"],
+      nativeMultimodal: true,
+    },
+    policyLinks: {
+      privacyPolicy: "https://openai.com/privacy",
+      acceptableUse: "https://openai.com/usage-policies",
+      termsOfService: "https://openai.com/terms",
+      lastUpdated: "2025-10-16",
+    },
+    bestFor: [
+      "image generation",
+      "visual content creation",
+      "multimodal applications",
+      "text and image processing",
+      "instruction following",
+      "image editing",
+      "scalable visual workflows",
+    ],
+    domainExpertise: {
+      imageGeneration: 9,
+      textUnderstanding: 8,
+      instructionFollowing: 9,
+      imageEditing: 8,
+      multimodalReasoning: 8,
+    },
+    accessibility: {
+      imageAltTextGeneration: true,
+      visualDescriptionSupport: true,
+      structuredOutputs: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "tools",
+      "tool_choice",
+      "reasoning",
+      "include_reasoning",
+      "structured_outputs",
+      "response_format",
+      "seed",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "logit_bias",
+      "logprobs",
+      "top_logprobs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "advanced_reasoning",
+      "structured_outputs",
+      "multimodal_generation",
+      "tool_calling",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "visual-content-creation",
+      "accessible-image-generation",
+      "multimodal-applications",
+      "assistive-technology-integration",
+    ],
+    warnings: [
+      "Image generation may require additional alt text descriptions for accessibility",
+      "Visual content should be reviewed for colour contrast and readability",
+      "Generated images may need manual accessibility validation",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "GPT-5 Image Mini - Advanced multimodal model with 400K context and image generation",
+      parameterSection:
+        "Parameter controls for GPT-5 Image Mini multimodal model",
+      statusMessages: {
+        processing: "Processing multimodal request with GPT-5 Image Mini",
+        complete: "Multimodal response ready from GPT-5 Image Mini",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this registration entry for Deep Cogito Cogito V2 Preview Llama 405B
+modelRegistry.registerModel("deepcogito/cogito-v2-preview-llama-405b", {
+  provider: "deep_cogito",
+  name: "Cogito V2 Preview Llama 405B",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "Dense hybrid reasoning model that combines direct answering capabilities with advanced self-reflection. Represents a significant step toward frontier intelligence with dense architecture delivering performance competitive with leading closed models. Advanced reasoning system optimised for exceptional capabilities through policy improvement and massive scale.",
+  costs: {
+    input: 3.5, // Per million tokens
+    output: 3.5, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "reasoning",
+    "tool_calling",
+    "mathematics",
+    "code",
+  ],
+  maxContext: 32768,
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced reasoning model with frontier intelligence capabilities",
+    releaseDate: "2025-10-17",
+    modelArchitecture: {
+      parameters: "405B",
+      type: "instruction-tuned",
+      architecture: "dense hybrid reasoning",
+      specialFeatures: [
+        "self-reflection",
+        "policy improvement",
+        "advanced reasoning",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://deepcogito.ai/privacy",
+      acceptableUse: "",
+      termsOfService: "https://deepcogito.ai/terms",
+      lastUpdated: "2025-10-17",
+    },
+    bestFor: [
+      "advanced reasoning tasks",
+      "self-reflective analysis",
+      "complex problem solving",
+      "tool-assisted workflows",
+      "frontier intelligence applications",
+    ],
+    domainExpertise: {
+      reasoning: 10,
+      problemSolving: 9,
+      mathematics: 8,
+      analysis: 9,
+    },
+    accessibility: {
+      strengths: [
+        "detailed explanations",
+        "step-by-step reasoning",
+        "self-reflection capabilities",
+      ],
+      considerations: [
+        "large model responses",
+        "advanced reasoning complexity",
+      ],
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "tools",
+      "tool_choice",
+      "reasoning",
+      "include_reasoning",
+      "structured_outputs",
+      "response_format",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "top_k",
+      "repetition_penalty",
+      "logit_bias",
+      "min_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "advanced_reasoning",
+      "self_reflection",
+      "tool_integration",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "detailed-reasoning-tasks",
+      "step-by-step-analysis",
+      "complex-problem-solving",
+      "educational-explanations",
+    ],
+    warnings: [
+      "Large model may produce lengthy responses requiring scrolling",
+      "Advanced reasoning outputs may be complex for some users",
+      "Tool calling features require additional interface considerations",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Cogito V2 Preview Llama 405B - Advanced reasoning model with 32K context and self-reflection capabilities",
+      parameterSection:
+        "Parameter controls for Cogito V2 Preview Llama 405B reasoning model",
+      statusMessages: {
+        processing:
+          "Processing advanced reasoning request with Cogito V2 Preview Llama 405B",
+        complete: "Reasoning response ready from Cogito V2 Preview Llama 405B",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this registration entry into model-definitions.js
+
+modelRegistry.registerModel("ibm-granite/granite-4.0-h-micro", {
+  provider: "ibm-granite",
+  name: "Granite 4.0 Micro",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "A 3B parameter long-context instruction model from IBM's Granite 4 family, specifically optimised for tool calling and enterprise applications. Features improved instruction following capabilities and supports 12 languages including English, German, Spanish, French, Japanese, Portuguese, Arabic, Czech, Italian, Korean, Dutch, and Chinese. Designed for diverse business applications with strong tool-use capabilities.",
+  costs: {
+    input: 0.017,
+    output: 0.11,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "multilingual",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 131000,
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Versatile instruction-following model with enterprise focus",
+    releaseDate: "2025-10-20",
+    modelArchitecture: {
+      parameters: "3B",
+      type: "instruction-tuned",
+      contextLength: 131000,
+      specialisation: "Long context tool calling",
+      trainingTechniques: [
+        "supervised finetuning",
+        "reinforcement learning",
+        "model merging",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.ibm.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.ibm.com/terms",
+      lastUpdated: "2025-10-20",
+    },
+    languageSupport: [
+      "English",
+      "German",
+      "Spanish",
+      "French",
+      "Japanese",
+      "Portuguese",
+      "Arabic",
+      "Czech",
+      "Italian",
+      "Korean",
+      "Dutch",
+      "Chinese",
+    ],
+    trainingData: {
+      sources: ["open source instruction datasets", "synthetic datasets"],
+      license: "Apache 2.0",
+      trainingApproach: "Diverse techniques with structured chat format",
+    },
+    domainExpertise: {
+      enterprise: 9,
+      toolCalling: 9,
+      codeGeneration: 7,
+      multilingual: 8,
+      summarisation: 8,
+    },
+    bestFor: [
+      "enterprise applications",
+      "tool calling tasks",
+      "multilingual dialogue",
+      "code assistance",
+      "text summarisation",
+      "question answering",
+      "retrieval augmented generation",
+      "function calling",
+    ],
+    accessibility: {
+      modelSize: "compact",
+      responseLatency: "fast",
+      multilingualSupport: "extensive",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "top_k",
+      "seed",
+      "repetition_penalty",
+      "frequency_penalty",
+      "presence_penalty",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "enterprise_optimised",
+      "tool_calling",
+      "multilingual",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "enterprise-applications",
+      "tool-calling-tasks",
+      "multilingual-support",
+      "code-assistance",
+      "business-workflows",
+    ],
+    warnings: [
+      "3B parameter model may have limitations with highly complex reasoning tasks compared to larger models",
+      "Tool calling capabilities require proper function definitions and validation",
+      "Performance may vary significantly across the 12 supported languages",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Granite 4.0 Micro - 3B parameter enterprise model with 131K context and tool calling",
+      parameterSection: "Parameter controls for Granite 4.0 Micro model",
+      statusMessages: {
+        processing: "Processing request with Granite 4.0 Micro",
+        complete: "Response ready from Granite 4.0 Micro",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry:
+
+modelRegistry.registerModel("liquid/lfm-2.2-6b", {
+  provider: "liquid",
+  name: "LFM2-2.6B",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "LFM2 is a new generation of hybrid model developed by Liquid AI, specifically designed for edge AI and on-device deployment. It sets a new standard in terms of quality, speed, and memory efficiency, making it ideal for resource-constrained environments.",
+  costs: {
+    input: 0.05, // Per million tokens
+    output: 0.1, // Per million tokens
+  },
+  capabilities: ["text", "dialogue", "efficiency", "edge_deployment"],
+  maxContext: 32768,
+  fallbackTo: "anthropic/claude-3.5-haiku", // Similar efficiency-focused model
+  isFree: false,
+  metadata: {
+    categoryDescription: "Efficient hybrid model optimised for edge deployment",
+    releaseDate: "2025-10-20",
+    modelArchitecture: {
+      parameters: "2.6B",
+      type: "hybrid",
+      optimisedFor: "edge_deployment",
+      memoryEfficient: true,
+    },
+    policyLinks: {
+      privacyPolicy: "https://liquid.ai/privacy",
+      acceptableUse: "",
+      termsOfService: "https://liquid.ai/terms",
+      lastUpdated: "2025-10-20",
+    },
+    bestFor: [
+      "edge AI applications",
+      "on-device deployment",
+      "resource-constrained environments",
+      "mobile applications",
+      "low-latency inference",
+    ],
+    domainExpertise: {
+      efficiency: 9,
+      edgeDeployment: 10,
+      generalPurpose: 7,
+    },
+    accessibility: {
+      lowResourceRequirements: true,
+      mobileOptimised: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "seed",
+      "top_k",
+      "min_p",
+      "repetition_penalty",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["efficiency_optimised", "edge_deployment", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "low-resource-environments",
+      "mobile-applications",
+      "edge-computing",
+      "real-time-processing",
+    ],
+    warnings: [
+      "Smaller parameter count may limit complex reasoning capabilities",
+      "Optimised for efficiency over maximum performance",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "LFM2-2.6B - Efficient hybrid model with 32K context, optimised for edge deployment",
+      parameterSection: "Parameter controls for LFM2-2.6B edge-optimised model",
+      statusMessages: {
+        processing: "Processing request with LFM2-2.6B efficient model",
+        complete: "Response ready from LFM2-2.6B edge model",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry into model-definitions.js
+
+modelRegistry.registerModel("liquid/lfm2-8b-a1b", {
+  provider: "liquid",
+  name: "LFM2-8B-A1B",
+  category: "Specialized",
+  disabled: false,
+  description:
+    "Liquid AI's on-device Mixture-of-Experts model optimised for mobile and embedded systems. Features 8.3B total parameters with only 1.5B active per token, delivering efficient performance under tight memory and latency constraints. Specialised for instruction-following, mathematics, multilingual tasks, and code generation while maintaining competitive quality comparable to 3-4B dense models.",
+  costs: {
+    input: 0.05, // Per million tokens
+    output: 0.1, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "multilingual",
+    "reasoning",
+  ],
+  maxContext: 32768,
+  fallbackTo: "meta-llama/llama-3.2-3b-instruct",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Optimised for on-device and resource-constrained environments",
+    releaseDate: "2025-10-20",
+    modelArchitecture: {
+      parameters: "8.3B",
+      activeParameters: "1.5B",
+      type: "mixture-of-experts",
+      expertCount: 32,
+      activeExperts: 4,
+      backbone: "LFM2 with gated short-convolution and grouped-query attention",
+      contextLength: "32K tokens",
+      vocabularySize: "65,536",
+      pretrainingTokens: "~12T tokens",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.liquid.ai/privacy",
+      acceptableUse: "https://www.liquid.ai/lfm-open-license",
+      termsOfService: "https://www.liquid.ai/terms",
+      lastUpdated: "2025-10-20",
+    },
+    trainingData: {
+      pretrainingTokens: "~12T tokens",
+      architecture: "Sparse MoE with adaptive routing bias",
+      specialOptimisation: "On-device execution with XNNPACK optimization",
+    },
+    languageSupport: ["English", "Multilingual (details not specified)"],
+    domainExpertise: {
+      mathematics: 8,
+      coding: 7,
+      instructionFollowing: 8,
+      multilingualTasks: 7,
+      onDeviceOptimisation: 9,
+    },
+    bestFor: [
+      "On-device applications",
+      "Mobile development",
+      "Embedded systems",
+      "Resource-constrained environments",
+      "Mathematics problems",
+      "Code generation",
+      "Multilingual tasks",
+      "Instruction following",
+    ],
+    accessibility: {
+      deviceRequirements: "Optimised for phones, laptops, and embedded systems",
+      performanceCharacteristics: "Low latency and memory usage",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "seed",
+      "top_k",
+      "min_p",
+      "repetition_penalty",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "mixture-of-experts",
+      "on-device-optimisation",
+      "sparse-routing",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "on-device-applications",
+      "mobile-development",
+      "resource-constrained-environments",
+      "embedded-systems",
+      "edge-computing",
+    ],
+    warnings: [
+      "Performance may vary significantly across different device hardware configurations",
+      "Requires compatible on-device runtime for optimal performance",
+      "Active parameter limitation may affect performance on highly complex tasks",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "LFM2-8B-A1B - On-device Mixture-of-Experts model with 32K context",
+      parameterSection: "Parameter controls for LFM2-8B-A1B on-device model",
+      statusMessages: {
+        processing: "Processing request with LFM2-8B-A1B on-device model",
+        complete: "Response ready from LFM2-8B-A1B",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this registration entry for Qwen3-VL-32B-Instruct
+modelRegistry.registerModel("qwen/qwen3-vl-32b-instruct", {
+  provider: "qwen",
+  name: "Qwen3 VL 32B Instruct",
+  category: "Vision",
+  disabled: false,
+  description:
+    "Large-scale multimodal vision-language model with 32 billion parameters, designed for high-precision understanding and reasoning across text, images, and video. Features robust OCR in 32 languages, fine-grained spatial reasoning, and optimised agentic interaction for complex real-world multimodal tasks.",
+  costs: {
+    input: 0.35,
+    output: 1.1,
+    image: 0.35,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "vision",
+    "multilingual",
+    "reasoning",
+    "tool_calling",
+  ],
+  maxContext: 262144,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced multimodal model for vision-language tasks",
+    releaseDate: "2025-10-23",
+    modelArchitecture: {
+      parameters: "32B",
+      type: "instruction-tuned",
+      specialFeatures: [
+        "Interleaved-MRoPE architecture",
+        "DeepStack architecture",
+        "Multimodal fusion optimisation",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://qwen.ai/privacy",
+      acceptableUse: "",
+      termsOfService: "https://qwen.ai/terms",
+      lastUpdated: "2025-10-23",
+    },
+    languageSupport: ["english", "chinese", "multilingual-ocr"],
+    domainExpertise: {
+      visualReasoning: 9,
+      documentAnalysis: 9,
+      videoUnderstanding: 8,
+      spatialAnalysis: 9,
+      multilingualOCR: 9,
+    },
+    bestFor: [
+      "multimodal analysis",
+      "visual reasoning",
+      "document processing",
+      "video understanding",
+      "multilingual OCR",
+      "spatial analysis",
+      "agentic interaction",
+    ],
+    accessibility: {
+      visualDescriptionSupport: true,
+      multimodalAccessibility: true,
+      documentParsingAid: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "frequency_penalty",
+      "min_p",
+      "presence_penalty",
+      "repetition_penalty",
+      "seed",
+      "stop",
+      "top_k",
+      "logit_bias",
+      "response_format",
+      "structured_outputs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "multimodal_processing",
+      "vision_understanding",
+      "structured_outputs",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "visual-content-analysis",
+      "document-accessibility-enhancement",
+      "multimodal-interaction",
+      "spatial-reasoning-assistance",
+    ],
+    warnings: [
+      "Visual content processing may require alternative text descriptions for screen readers",
+      "OCR accuracy may vary with image quality and resolution",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Qwen3 VL 32B Instruct - Multimodal vision-language model with 262K context",
+      parameterSection:
+        "Parameter controls for Qwen3 VL 32B Instruct multimodal model",
+      statusMessages: {
+        processing: "Processing multimodal request with Qwen3 VL 32B Instruct",
+        complete: "Multimodal response ready from Qwen3 VL 32B Instruct",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Add this MiniMax M2 free tier model entry
+modelRegistry.registerModel("minimax/minimax-m2:free", {
+  provider: "minimax",
+  name: "MiniMax M2 (Free)",
+  category: "FreeTier",
+  disabled: false,
+  description: "Compact, high-efficiency large language model optimised for end-to-end coding and agentic workflows. Delivers near-frontier intelligence across general reasoning, tool use, and multi-step task execution with 10 billion activated parameters and exceptional cost efficiency.",
+  costs: {
+    input: 0.00,
+    output: 0.00,
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "code",
+    "reasoning",
+    "tool_calling",
+    "mathematics",
+    "multilingual"
+  ],
+  maxContext: 204800,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: true,
+  metadata: {
+    categoryDescription: "High-performance model available at no cost",
+    releaseDate: "2025-10-23",
+    modelArchitecture: {
+      parameters: "10B",
+      totalParameters: "230B", 
+      type: "instruction-tuned",
+      activationEfficient: true,
+      optimisedFor: "coding and agentic workflows"
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.minimaxi.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.minimaxi.com/terms",
+      lastUpdated: "2025-10-23"
+    },
+    domainExpertise: {
+      coding: 9,
+      reasoning: 8,
+      mathematics: 8,
+      agenticWorkflows: 9,
+      toolUse: 8
+    },
+    benchmarkResults: {
+      "SWE-Bench Verified": "strong performance",
+      "Multi-SWE-Bench": "strong performance", 
+      "Terminal-Bench": "strong performance",
+      "BrowseComp": "competitive performance",
+      "GAIA": "competitive performance"
+    },
+    bestFor: [
+      "code generation",
+      "multi-file editing",
+      "agentic workflows",
+      "developer assistance",
+      "reasoning-driven applications",
+      "multi-step task execution",
+      "cost-efficient deployment"
+    ],
+    accessibility: {
+      lowLatency: true,
+      highConcurrency: true,
+      costEfficient: true
+    }
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning", 
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "tool_choice",
+      "tools",
+      "system-prompt"
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 }
+    },
+    features: ["reasoning-mode", "tool-calling", "code-optimisation", "system-prompt"]
+  },
+  accessibility: {
+    preferredFor: [
+      "coding-assistance",
+      "agentic-workflows", 
+      "cost-sensitive-applications",
+      "high-throughput-scenarios",
+      "developer-tools"
+    ],
+    warnings: [
+      "Optimised for technical and coding tasks - may require additional context for general conversational use",
+      "Free tier model - performance may vary during high-demand periods"
+    ],
+    ariaLabels: {
+      modelSelect: "MiniMax M2 Free - Coding and agentic workflow model with 204,800 context window",
+      parameterSection: "Parameter controls for MiniMax M2 Free model",
+      statusMessages: {
+        processing: "Processing coding request with MiniMax M2 Free",
+        complete: "Code generation response ready from MiniMax M2 Free"
+      }
+    }
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null
+  }
+});
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;

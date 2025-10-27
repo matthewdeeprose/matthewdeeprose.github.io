@@ -100,6 +100,7 @@ import MATHPIX_CONFIG, {
   getEndpointConfig,
   getEndpointFeatures,
   isFeatureAvailable,
+  getFormatInfo,
 } from "../../core/mathpix-config.js";
 // Phase 3.4: PDF Preview imports
 import { PDFUploadVerification } from "../../pdf-preview/pdf-preview-upload-verification.js";
@@ -453,13 +454,18 @@ class MathPixPDFHandler extends MathPixBaseModule {
       // Step 5: Display PDF processing options interface
       this.displayPDFOptions(pdfFile);
 
-      logInfo("PDF uploaded successfully - options displayed", {
+      // Phase 4: Format-aware logging and notification
+      const formatInfo = getFormatInfo(pdfFile.type);
+      const formatName = formatInfo?.displayName || "Document";
+
+      logInfo("Document uploaded successfully - options displayed", {
         fileName: pdfFile.name,
         fileSize: pdfFile.size,
+        format: formatName,
       });
 
       this.showNotification(
-        `PDF "${pdfFile.name}" loaded. Configure processing options below.`,
+        `${formatName} "${pdfFile.name}" ready. Configure processing options and click "Process ${formatName}".`,
         "success"
       );
 
@@ -492,51 +498,66 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @since 3.4.0
    */
   async showUploadPreviewAndWaitForConfirmation(pdfFile) {
-    logInfo("Showing PDF upload preview for user verification", {
+    // Phase 4: Get format information for conditional preview
+    const formatInfo = getFormatInfo(pdfFile.type);
+    const formatName = formatInfo?.displayName || "Document";
+
+    logInfo("Showing upload preview for user verification", {
       fileName: pdfFile.name,
       size: pdfFile.size,
+      format: formatName,
+      showPdfPreview: formatInfo?.showPdfPreview,
     });
 
     try {
-      // Show upload preview and wait for user decision
-      return new Promise((resolve) => {
-        this.uploadVerification.showUploadPreview(
-          pdfFile,
-          // onConfirm callback - user confirmed file is correct
-          (confirmedFile) => {
-            logInfo("User confirmed PDF upload", {
-              fileName: confirmedFile.name,
-            });
+      // Phase 4: Conditional preview based on format
+      if (formatInfo?.showPdfPreview) {
+        // PDF format - show full PDF preview
+        return new Promise((resolve) => {
+          this.uploadVerification.showUploadPreview(
+            pdfFile,
+            // onConfirm callback - user confirmed file is correct
+            (confirmedFile) => {
+              logInfo("User confirmed document upload", {
+                fileName: confirmedFile.name,
+                format: formatName,
+              });
 
-            // Announce confirmation to screen readers
-            if (this.pdfAccessibility) {
-              this.pdfAccessibility.announce(
-                `PDF ${confirmedFile.name} confirmed. Proceeding to processing options.`
-              );
+              // Announce confirmation to screen readers
+              if (this.pdfAccessibility) {
+                this.pdfAccessibility.announce(
+                  `${formatName} ${confirmedFile.name} confirmed. Proceeding to processing options.`
+                );
+              }
+
+              resolve(true);
+            },
+            // onCancel callback - user cancelled
+            () => {
+              logInfo("User cancelled document upload during preview");
+
+              // Announce cancellation to screen readers
+              if (this.pdfAccessibility) {
+                this.pdfAccessibility.announce(
+                  `${formatName} upload cancelled.`
+                );
+              }
+
+              resolve(false);
             }
-
-            resolve(true);
-          },
-          // onCancel callback - user cancelled
-          () => {
-            logInfo("User cancelled PDF upload during preview");
-
-            // Announce cancellation to screen readers
-            if (this.pdfAccessibility) {
-              this.pdfAccessibility.announce("PDF upload cancelled.");
-            }
-
-            resolve(false);
-          }
-        );
-      });
+          );
+        });
+      } else {
+        // Non-PDF format (DOCX, PPTX) - show simple file info preview
+        return await this.showSimpleFilePreview(pdfFile, formatInfo);
+      }
     } catch (error) {
-      logError("PDF upload preview failed", error);
+      logError("Document upload preview failed", error);
 
       // Notify user of preview failure
       if (window.notifyWarning) {
         window.notifyWarning(
-          "Could not preview PDF. You can still proceed with processing."
+          `Could not preview ${formatName}. You can still proceed with processing.`
         );
       }
 
@@ -589,28 +610,41 @@ class MathPixPDFHandler extends MathPixBaseModule {
    */
   validatePDFFile(pdfFile) {
     if (!pdfFile) {
-      return { valid: false, message: "No PDF file provided" };
+      return { valid: false, message: "No file provided" };
     }
 
-    if (pdfFile.type !== "application/pdf") {
+    // Phase 4: Multi-format support - Check against array of supported types
+    if (!MATHPIX_CONFIG.SUPPORTED_TYPES.includes(pdfFile.type)) {
+      const supportedNames = MATHPIX_CONFIG.SUPPORTED_TYPES.map(
+        (mime) => getFormatInfo(mime)?.name
+      )
+        .filter((name) => name && !name.startsWith("image"))
+        .join(", ");
+
       return {
         valid: false,
-        message: `Invalid file type: ${pdfFile.type}. Only PDF documents are supported for document processing.`,
+        message: `Unsupported file type: ${pdfFile.type}. Supported document formats: ${supportedNames}.`,
       };
     }
 
-    if (pdfFile.size > this.maxPDFSize) {
+    // Phase 4: Use format-specific size limit
+    const formatInfo = getFormatInfo(pdfFile.type);
+    const maxSize = formatInfo?.maxSize || this.maxPDFSize;
+    const formatName = formatInfo?.displayName || "Document";
+
+    if (pdfFile.size > maxSize) {
       const sizeMB = (pdfFile.size / 1024 / 1024).toFixed(1);
-      const maxSizeMB = (this.maxPDFSize / 1024 / 1024).toFixed(0);
+      const maxSizeMB = (maxSize / 1024 / 1024).toFixed(0);
       return {
         valid: false,
-        message: `PDF too large: ${sizeMB}MB (max ${maxSizeMB}MB)`,
+        message: `${formatName} too large: ${sizeMB}MB (max ${maxSizeMB}MB)`,
       };
     }
 
-    logDebug("PDF validation passed", {
+    logDebug("Document validation passed", {
       name: pdfFile.name,
       type: pdfFile.type,
+      format: formatName,
       size: pdfFile.size,
     });
     return { valid: true };
@@ -638,6 +672,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
       return;
     }
 
+    // Phase 4: Get format information for UI updates
+    const formatInfo = getFormatInfo(pdfFile.type);
+    const formatName = formatInfo?.displayName || "Document";
+
     // Show the main PDF interface container
     const pdfInterface = document.getElementById("mathpix-pdf-interface");
     if (pdfInterface) {
@@ -645,6 +683,28 @@ class MathPixPDFHandler extends MathPixBaseModule {
       logDebug("Main PDF interface now visible");
     } else {
       logWarn("Main PDF interface container not found");
+    }
+
+    // Phase 4: Update process button text to be format-aware
+    const processBtn = document.getElementById("mathpix-pdf-process-btn");
+    if (processBtn) {
+      // Clear ALL existing text nodes (prevents duplication)
+      Array.from(processBtn.childNodes)
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .forEach((node) => node.remove());
+
+      // Add new text node with format-aware content
+      const textNode = document.createTextNode(`Process ${formatName}`);
+
+      // Insert text AFTER SVG icon (icon comes first)
+      const svg = processBtn.querySelector("svg");
+      if (svg) {
+        processBtn.insertBefore(textNode, svg.nextSibling);
+      } else {
+        processBtn.appendChild(textNode);
+      }
+
+      logDebug(`Process button text updated to: Process ${formatName}`);
     }
 
     // Hide the main image interface to avoid conflicts
@@ -686,6 +746,15 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // ✅ Feature 3: Sync processing options with actual HTML checkbox states
     // This ensures HTML defaults (all formats checked) are respected
     this.updateSelectedFormats();
+
+    // ✅ ACTION POINT 2: Scroll to start of PDF options after user confirms upload
+    // Force instant scroll due to simultaneous show/hide operations that make smooth scroll look janky
+    setTimeout(() => {
+      pdfOptionsContainer.scrollIntoView({ behavior: "auto", block: "start" });
+      logDebug(
+        "Scrolled to PDF options interface (instant scroll due to layout changes)"
+      );
+    }, 150);
 
     logDebug("PDF options interface displayed with format availability", {
       fileName: pdfFile.name,
@@ -748,13 +817,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
                     />
                   </g>
                 </svg>
-        Selected PDF: ${pdfFile.name}
+        Selected Document: ${pdfFile.name}
         <br />
         <span class="help-text">Size: ${this.formatFileSize(
           pdfFile.size
         )} | Select to choose a different file</span>
       `;
-        logDebug("Main drop zone updated with PDF file information", {
+        logDebug("Main drop zone updated with document file information", {
           fileName: pdfFile.name,
           fileSize: pdfFile.size,
         });
@@ -1223,6 +1292,21 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @updated Phase 1 Step 5 - Added format availability validation
    */
   validateProcessingOptions() {
+    // PHASE 2: Start validation progress
+    const formatCount = this.currentProcessingOptions?.formats?.length || 0;
+    const formatWord = formatCount === 1 ? "format" : "formats";
+
+    if (this.controller?.progressDisplay) {
+      this.controller.progressDisplay.updateStatusDetail(
+        `Validating ${formatCount} output ${formatWord}...`
+      );
+      this.controller.progressDisplay.updateTimingDetail(
+        "Format validation in progress..."
+      );
+    }
+
+    const validationStart = performance.now();
+
     // Check if processing options exist
     if (!this.currentProcessingOptions) {
       return {
@@ -1270,6 +1354,20 @@ class MathPixPDFHandler extends MathPixBaseModule {
             "Invalid page range format. Use numbers, commas, and hyphens only (e.g., 1-5, 7, 10-12)",
         };
       }
+    }
+
+    // PHASE 2: Validation complete - update progress
+    if (this.controller?.progressDisplay) {
+      const validationTime = (
+        (performance.now() - validationStart) /
+        1000
+      ).toFixed(1);
+      this.controller.progressDisplay.updateStatusDetail(
+        `✓ Format validation complete - ${formatCount} ${formatWord} ready`
+      );
+      this.controller.progressDisplay.updateTimingDetail(
+        `Validation completed in ${validationTime}s`
+      );
     }
 
     return { valid: true };
@@ -1642,6 +1740,24 @@ class MathPixPDFHandler extends MathPixBaseModule {
     this.updateCurrentStage(this.progressState.currentStage);
     this.updateProgressIcon(this.getStageIcon(this.progressState.currentStage));
     this.updateStageIndicators();
+
+    // ✅ ACTION POINT 3: Scroll to start of progress section after clicking process
+    // Respect user's motion preferences for accessibility
+    if (enhancedContainer) {
+      setTimeout(() => {
+        const prefersReducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)"
+        ).matches;
+        const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
+        enhancedContainer.scrollIntoView({
+          behavior: scrollBehavior,
+          block: "start",
+        });
+        logDebug("Scrolled to enhanced progress interface", {
+          reducedMotion: prefersReducedMotion,
+        });
+      }, 150);
+    }
   }
 
   /**
@@ -3090,13 +3206,24 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @accessibility Maintains keyboard navigation and screen reader support
    */
   updateFormatAvailability() {
-    if (!this.controller.apiClient) {
-      logWarn("API client not available for format availability check");
+    // Get current endpoint configuration
+    const currentEndpoint = this.controller.apiClient?.currentEndpoint || "EU";
+    const endpointConfig = this.controller.apiClient?.getEndpointConfig();
+
+    if (!endpointConfig) {
+      logWarn("Cannot update format availability: endpoint config unavailable");
       return;
     }
 
-    const currentEndpoint = this.controller.apiClient.currentEndpoint || "EU";
-    const endpointConfig = this.controller.apiClient.getEndpointConfig();
+    // PHASE 2: Start format availability check
+    if (this.controller?.progressDisplay) {
+      this.controller.progressDisplay.updateStatusDetail(
+        `Checking format availability on ${endpointConfig.name} endpoint...`
+      );
+      this.controller.progressDisplay.updateTimingDetail(
+        "Updating format options..."
+      );
+    }
 
     logDebug("Updating format availability", {
       endpoint: currentEndpoint,
@@ -3122,6 +3249,11 @@ class MathPixPDFHandler extends MathPixBaseModule {
       pptx: "docx", // Microsoft PowerPoint (uses same feature gate as DOCX)
     };
 
+    const totalFormats = Object.keys(formatFeatureMap).length;
+    let checkedFormats = 0;
+    let availableCount = 0;
+    let unavailableCount = 0;
+
     Object.entries(formatFeatureMap).forEach(([format, featureName]) => {
       const checkbox = document.getElementById(`pdf-format-${format}`);
       if (!checkbox) {
@@ -3137,6 +3269,8 @@ class MathPixPDFHandler extends MathPixBaseModule {
         checkbox.disabled = false;
         checkbox.checked = true;
         logDebug("MMD format always enabled (required)");
+        availableCount++;
+        checkedFormats++;
         return;
       }
 
@@ -3144,6 +3278,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
         // Disable unavailable formats
         checkbox.disabled = true;
         checkbox.checked = false;
+        unavailableCount++;
 
         // Add visual indicator with styled message span
         const label = checkbox.closest(".mathpix-format-checkbox");
@@ -3189,6 +3324,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       } else {
         // Enable available formats
         checkbox.disabled = false;
+        availableCount++;
 
         // Remove unavailable indicator and message
         const label = checkbox.closest(".mathpix-format-checkbox");
@@ -3209,6 +3345,8 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
         logDebug(`Format ${format} enabled (available on ${currentEndpoint})`);
       }
+
+      checkedFormats++;
     });
 
     // Update selected formats to reflect availability changes
@@ -3225,6 +3363,25 @@ class MathPixPDFHandler extends MathPixBaseModule {
           !this.controller.apiClient.isFeatureAvailable(feature)
       )
       .map(([format]) => format.toUpperCase());
+
+    // PHASE 2: Update progress with final availability status
+    if (this.controller?.progressDisplay) {
+      if (unavailableFormats.length > 0) {
+        this.controller.progressDisplay.updateStatusDetail(
+          `✓ Format check complete: ${availableCount} available, ${unavailableCount} unavailable on ${endpointConfig.name}`
+        );
+        this.controller.progressDisplay.updateTimingDetail(
+          `${unavailableFormats.join(", ")} not supported on this endpoint`
+        );
+      } else {
+        this.controller.progressDisplay.updateStatusDetail(
+          `✓ All ${totalFormats} formats available on ${endpointConfig.name} endpoint`
+        );
+        this.controller.progressDisplay.updateTimingDetail(
+          "Ready to configure processing options"
+        );
+      }
+    }
 
     if (unavailableFormats.length > 0 && endpointConfig) {
       logInfo("Some formats unavailable on current endpoint", {
@@ -3256,6 +3413,14 @@ class MathPixPDFHandler extends MathPixBaseModule {
     const selectedFormats = this.currentProcessingOptions.formats || [];
     const currentEndpoint = this.controller.apiClient.currentEndpoint || "EU";
     const endpointConfig = this.controller.apiClient.getEndpointConfig();
+    const endpointName = endpointConfig ? endpointConfig.name : currentEndpoint;
+
+    // PHASE 2: Update progress with endpoint information
+    if (this.controller?.progressDisplay) {
+      this.controller.progressDisplay.updateStatusDetail(
+        `Checking format availability on ${endpointName} endpoint...`
+      );
+    }
 
     // Format mapping: API format name -> feature name for availability check
     const formatFeatureMap = {
@@ -3292,9 +3457,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     if (unavailableFormats.length > 0) {
       const formatList = unavailableFormats.join(", ");
-      const endpointName = endpointConfig
-        ? endpointConfig.name
-        : currentEndpoint;
+
+      // PHASE 2: Update progress with validation issue
+      if (this.controller?.progressDisplay) {
+        this.controller.progressDisplay.updateStatusDetail(
+          `⚠ Format validation issue: ${formatList} unavailable on ${endpointName}`
+        );
+      }
 
       return {
         valid: false,
@@ -3323,6 +3492,171 @@ class MathPixPDFHandler extends MathPixBaseModule {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  }
+
+  /**
+   * @method escapeHtml
+   * @description Escapes HTML special characters to prevent XSS attacks
+   *
+   * @param {string} text - Text to escape
+   * @returns {string} HTML-safe text
+   * @since 4.0.0
+   */
+  escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  /**
+   * @method showSimpleFilePreview
+   * @description Shows simple file information preview for non-PDF formats (Phase 4)
+   *
+   * Displays a file info card with document icon, filename, format type, and size
+   * for formats that don't support full preview (DOCX, PPTX, etc.). Provides
+   * confirmation workflow similar to PDF preview but without rendering the document.
+   *
+   * Uses inline confirmation section within mathpix-pdf-interface container for
+   * consistent user experience across all document formats.
+   *
+   * @param {File} file - Document file to preview
+   * @param {Object} formatInfo - Format metadata from getFormatInfo()
+   * @returns {Promise<boolean>} Promise resolving to true if confirmed, false if cancelled
+   *
+   * @example
+   * const confirmed = await this.showSimpleFilePreview(docxFile, formatInfo);
+   * if (confirmed) {
+   *   // Proceed with processing
+   * }
+   *
+   * @accessibility File info displayed with proper semantic HTML and ARIA labels
+   * @since 4.0.0
+   */
+  async showSimpleFilePreview(file, formatInfo) {
+    const formatName = formatInfo?.displayName || "Document";
+    const icon = formatInfo?.icon || "📄";
+    const sizeFormatted = this.formatFileSize(file.size);
+
+    logInfo("Showing simple file confirmation", {
+      fileName: file.name,
+      format: formatName,
+      size: sizeFormatted,
+    });
+
+    // Show the PDF interface container
+    const pdfInterface = document.getElementById("mathpix-pdf-interface");
+    if (pdfInterface) {
+      pdfInterface.style.display = "block";
+    }
+
+    // Phase 4: Hide upload container during confirmation (use class selector)
+    const uploadContainer = document.querySelector(
+      ".mathpix-pdf-upload-container"
+    );
+    if (uploadContainer) {
+      uploadContainer.style.display = "none";
+      logDebug("Upload container hidden during confirmation");
+    }
+
+    // Get confirmation section
+    const confirmationSection = document.getElementById(
+      "mathpix-file-confirmation"
+    );
+    if (!confirmationSection) {
+      logWarn("File confirmation section not found in HTML");
+      // Fallback: Auto-proceed without confirmation
+      return true;
+    }
+
+    // Populate confirmation details
+    const iconEl = document.getElementById("confirm-file-icon");
+    const nameEl = document.getElementById("confirm-file-name");
+    const typeEl = document.getElementById("confirm-file-type");
+    const sizeEl = document.getElementById("confirm-file-size");
+
+    // Phase 4: Support both emoji and SVG icons
+    if (iconEl) iconEl.innerHTML = icon;
+    if (nameEl) nameEl.textContent = this.escapeHtml(file.name);
+    if (typeEl) typeEl.textContent = formatName;
+    if (sizeEl) sizeEl.textContent = sizeFormatted;
+
+    // Show confirmation, hide options (will be shown after confirmation)
+    confirmationSection.style.display = "block";
+    const optionsContainer = document.getElementById("mathpix-pdf-options");
+    if (optionsContainer) {
+      optionsContainer.style.display = "none";
+    }
+
+    logInfo("File confirmation displayed", {
+      fileName: file.name,
+      formatName: formatName,
+    });
+
+    // Return promise that resolves based on user action
+    return new Promise((resolve) => {
+      const proceedBtn = document.getElementById("confirm-proceed-btn");
+      const cancelBtn = document.getElementById("confirm-cancel-btn");
+
+      const cleanup = () => {
+        confirmationSection.style.display = "none";
+      };
+
+      if (proceedBtn) {
+        proceedBtn.addEventListener(
+          "click",
+          () => {
+            logInfo("User confirmed file for processing", {
+              fileName: file.name,
+            });
+
+            // Store file after confirmation
+            this.currentPDFFile = file;
+
+            // Announce to screen readers
+            if (this.pdfAccessibility) {
+              this.pdfAccessibility.announce(
+                `${formatName} ${file.name} confirmed. Proceeding to processing options.`
+              );
+            }
+
+            cleanup();
+            resolve(true);
+          },
+          { once: true }
+        );
+      }
+
+      if (cancelBtn) {
+        cancelBtn.addEventListener(
+          "click",
+          () => {
+            logInfo("User cancelled file selection", { fileName: file.name });
+
+            // Announce to screen readers
+            if (this.pdfAccessibility) {
+              this.pdfAccessibility.announce(
+                `${formatName} selection cancelled.`
+              );
+            }
+
+            cleanup();
+
+            // Hide PDF interface on cancel
+            if (pdfInterface) {
+              pdfInterface.style.display = "none";
+            }
+
+            resolve(false);
+          },
+          { once: true }
+        );
+      }
+
+      // Focus on proceed button for accessibility
+      if (proceedBtn) {
+        proceedBtn.focus();
+      }
+    });
   }
 
   /**
