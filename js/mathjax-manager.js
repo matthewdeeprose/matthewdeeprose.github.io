@@ -99,6 +99,11 @@ class MathJaxManager {
       // Quick check: Is MathJax already available?
       if (window.MathJax && window.MathJax.typesetPromise) {
         logInfo("MathJax already available, proceeding with initialization");
+
+        // CRITICAL: Wait for DOM to stabilize before health check
+        // This prevents DOM corruption from premature health checks
+        await this._waitForDOMStability();
+
         const isHealthy = await this.checkHealth();
 
         if (isHealthy) {
@@ -121,6 +126,9 @@ class MathJaxManager {
       // Wait for MathJax to be available (blocking mode)
       logInfo("Waiting for MathJax to become available...");
       await this._waitForMathJax(30000); // Increased timeout to 30 seconds
+
+      // Wait for DOM stability before health check
+      await this._waitForDOMStability();
 
       // Verify MathJax health
       const isHealthy = await this.checkHealth();
@@ -210,55 +218,92 @@ class MathJaxManager {
   }
 
   /**
-   * Check MathJax health status
+   * Wait for DOM to be stable before running health checks
+   * This prevents replaceChild errors from premature health checks
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _waitForDOMStability() {
+    logDebug("Waiting for DOM stability before health check...");
+
+    // Wait for document ready state
+    if (document.readyState !== "complete") {
+      await new Promise((resolve) => {
+        if (document.readyState === "complete") {
+          resolve();
+        } else {
+          window.addEventListener("load", resolve, { once: true });
+        }
+      });
+    }
+
+    // Additional grace period for MathJax to settle its internal state
+    await this._delay(500);
+
+    logDebug("DOM stability achieved, proceeding with health check");
+  }
+
+  /**
+   * Check MathJax health status (non-invasive passive check)
+   * This version checks API availability without DOM manipulation
+   * to prevent replaceChild errors
    */
   async checkHealth() {
     try {
-      // Check basic availability
+      // Phase 1: Check basic availability
       if (!window.MathJax || !window.MathJax.typesetPromise) {
         this.isHealthy = false;
         logWarn("MathJax not available");
         return false;
       }
 
-      // Don't run health checks too soon after initialization
+      // Phase 2: Don't run health checks too soon after initialization
       if (!window.MathJaxEnhancementReady) {
         logWarn("Skipping health check - MathJax not fully ready yet");
         return false;
       }
 
-      // Try a minimal typesetting operation
-      const testElement = document.createElement("div");
-      testElement.style.position = "absolute";
-      testElement.style.left = "-9999px";
-      testElement.style.visibility = "hidden";
-      testElement.innerHTML = "\\(x = 1\\)";
-      document.body.appendChild(testElement);
+      // Phase 3: Passive API availability check (no DOM manipulation)
+      // Check that critical MathJax APIs exist and are functions
+      const hasTypesetPromise =
+        typeof window.MathJax.typesetPromise === "function";
+      const hasStartup = !!window.MathJax.startup;
+      const hasDocument = !!window.MathJax.startup?.document;
+      const hasVersion = !!window.MathJax.version;
 
-      try {
-        // Use longer timeout for health checks
-        await Promise.race([
-          window.MathJax.typesetPromise([testElement]),
-          this._timeout(5000, "Health check timeout"),
-        ]);
+      if (!hasTypesetPromise || !hasStartup || !hasDocument) {
+        this.isHealthy = false;
+        logWarn("MathJax APIs incomplete", {
+          hasTypesetPromise,
+          hasStartup,
+          hasDocument,
+          hasVersion,
+        });
 
-        // Verify the element still exists before removing
-        if (document.body.contains(testElement)) {
-          document.body.removeChild(testElement);
-        }
+        // Track consecutive failures
+        this.consecutiveFailures = (this.consecutiveFailures || 0) + 1;
+        logWarn(`Consecutive API check failures: ${this.consecutiveFailures}`);
 
-        this.isHealthy = true;
-        this.lastHealthCheck = Date.now();
-        this.consecutiveFailures = 0; // Reset failure counter
-        logDebug("✅ MathJax health check passed");
-        return true;
-      } catch (error) {
-        // Safe cleanup
-        if (document.body.contains(testElement)) {
-          document.body.removeChild(testElement);
-        }
-        throw error;
+        return false;
       }
+
+      // Phase 4: Check if MathJax has successfully processed any content on the page
+      // This is a passive check that doesn't create new elements
+      const hasProcessedContent =
+        document.querySelector("mjx-container, .MathJax") !== null;
+
+      // Success - all APIs available
+      this.isHealthy = true;
+      this.lastHealthCheck = Date.now();
+      this.consecutiveFailures = 0; // Reset failure counter
+
+      logDebug("✅ MathJax passive health check passed", {
+        version: window.MathJax.version || "unknown",
+        hasProcessedContent,
+        apis: { hasTypesetPromise, hasStartup, hasDocument },
+      });
+
+      return true;
     } catch (error) {
       this.isHealthy = false;
 
@@ -289,22 +334,28 @@ class MathJaxManager {
    * Show warning when MathJax is disabled due to repeated failures
    */
   _showMathJaxDisabledWarning() {
-    const statusDiv = document.getElementById("mathjax-status");
-    if (statusDiv) {
-      statusDiv.textContent =
-        "MathJax disabled due to errors - mathematical content may not render correctly";
-      statusDiv.style.display = "block";
-      statusDiv.style.background = "#00131D";
-      statusDiv.style.background = "E1E8EC";
+    // Use UniversalNotifications for critical error display
+    if (typeof UniversalNotifications !== "undefined") {
+      UniversalNotifications.show(
+        "MathJax disabled due to repeated errors. Mathematical content may not render correctly. Please reload the page to restore functionality.",
+        "error",
+        {
+          duration: 0, // No auto-dismiss for critical errors
+          dismissible: true,
+        }
+      );
 
-      // Add reload button
-      const reloadBtn = document.createElement("button");
-      reloadBtn.textContent = "Reload Page";
-      reloadBtn.style.marginLeft = "10px";
-      reloadBtn.style.padding = "4px 8px";
-      reloadBtn.style.cursor = "pointer";
-      reloadBtn.onclick = () => window.location.reload();
-      statusDiv.appendChild(reloadBtn);
+      logInfo(
+        "MathJax disabled warning shown via UniversalNotifications system"
+      );
+    } else {
+      // Fallback to console if notifications unavailable
+      logError(
+        "🚨 CRITICAL: MathJax disabled due to repeated failures. Please reload the page."
+      );
+      console.error(
+        "MathJax has been disabled to prevent infinite error loops. Reload the page to restore functionality."
+      );
     }
   }
 

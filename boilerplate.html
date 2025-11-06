@@ -394,42 +394,46 @@
           aria-live="polite"
           aria-label="Notifications"
         ></div>
-        <fieldset id="toolSelection" class="">
-          <legend>Tool in use</legend>
-          <input
-            type="radio"
-            id="OpenRouter"
-            name="presentation"
-            value="OpenRouter"
-            onclick="showOpenRouter()"
-            checked=""
-          />
-          <label for="OpenRouter" class="radio">OpenRouter AI</label>
-          <input
-            type="radio"
-            id="MarkdownEditorRadio"
-            name="presentation"
-            value="Markdown Editor"
-            onclick="showMkdEd()"
-          />
-          <label for="MarkdownEditorRadio" class="radio">Markdown Editor</label>
-          <input
-            type="radio"
-            id="GraphBuilder"
-            name="presentation"
-            value="Graph Builder"
-            onclick="showGrhBld()"
-          />
-          <label for="GraphBuilder" class="radio">Graph Builder</label>
-          <input
-            type="radio"
-            id="MathPix"
-            name="presentation"
-            value="MathPix"
-            onclick="showMathPix()"
-          />
-          <label for="MathPix" class="radio">MathPix</label>
-        </fieldset>
+        <div class="mathpix-header-row">
+          <fieldset id="toolSelection" class="">
+            <legend>Tool in use</legend>
+            <input
+              type="radio"
+              id="OpenRouter"
+              name="presentation"
+              value="OpenRouter"
+              onclick="showOpenRouter()"
+              checked=""
+            />
+            <label for="OpenRouter" class="radio">OpenRouter AI</label>
+            <input
+              type="radio"
+              id="MarkdownEditorRadio"
+              name="presentation"
+              value="Markdown Editor"
+              onclick="showMkdEd()"
+            />
+            <label for="MarkdownEditorRadio" class="radio"
+              >Markdown Editor</label
+            >
+            <input
+              type="radio"
+              id="GraphBuilder"
+              name="presentation"
+              value="Graph Builder"
+              onclick="showGrhBld()"
+            />
+            <label for="GraphBuilder" class="radio">Graph Builder</label>
+            <input
+              type="radio"
+              id="MathPix"
+              name="presentation"
+              value="MathPix"
+              onclick="showMathPix()"
+            />
+            <label for="MathPix" class="radio">MathPix</label>
+          </fieldset>
+        </div>
         <!--  Screen reader announcement area for radio button switching -->
         <span
           role="alert"
@@ -6704,6 +6708,218 @@ Science,91</pre
       window.toggle = toggle;
     </script>
     <script>
+      // ============================================================================
+      // MathJax Status Indicator Functions
+      // ============================================================================
+
+      /**
+       * MathJax Notification Configuration
+       * Centralised control for notification behavior
+       *
+       * FUTURE: To reduce notification noise once MathJax is stable:
+       * - Set notifyOnLoading: false (silent loading)
+       * - Set notifyOnReady: false (silent success)
+       * - Keep notifyOnError: true (only notify on problems)
+       * - Set notifyOnRecovery: true (show when recovered from error)
+       */
+      const MATHJAX_NOTIFICATION_CONFIG = {
+        // Control which statuses trigger notifications
+        notifyOnLoading: true, // Show "Loading MathJax..." message
+        notifyOnReady: true, // Show "MathJax ready" message
+        notifyOnLimited: true, // Show "Limited mode" warning
+        notifyOnError: true, // Show error messages
+        notifyOnRecovery: true, // Show "Recovered successfully" message
+
+        // Durations (0 = no auto-dismiss)
+        durations: {
+          loading: 0,
+          ready: 3000,
+          limited: 8000,
+          error: 0,
+          recovery: 4000,
+        },
+
+        // Notification types mapping
+        types: {
+          loading: "info",
+          ready: "success",
+          limited: "warning",
+          error: "error",
+          recovery: "success",
+        },
+
+        // Console logging (independent of notifications)
+        alwaysLog: true, // Log to console even if notification disabled
+
+        // For future "silent mode" - only notify on persistent errors
+        silentMode: false, // When true, only shows errors that don't recover
+      };
+
+      /**
+       * Update the MathJax status using Universal Notifications
+       * Uses MATHJAX_NOTIFICATION_CONFIG for centralized behavior control
+       *
+       * @param {string} status - One of: 'loading', 'ready', 'limited', 'error'
+       * @param {string} message - Status message to display
+       */
+      function updateMathJaxStatus(status, message) {
+        const config = MATHJAX_NOTIFICATION_CONFIG;
+
+        // Always log to console if configured (independent of notifications)
+        if (config.alwaysLog) {
+          const logPrefix = "🔧 [MathJax Status]";
+          console.log(`${logPrefix} ${status.toUpperCase()}: ${message}`);
+        }
+
+        // Check if UniversalNotifications is available
+        if (typeof UniversalNotifications === "undefined") {
+          console.warn(
+            "UniversalNotifications not available, falling back to console only"
+          );
+          return;
+        }
+
+        // In silent mode, only show errors that don't recover
+        if (config.silentMode && status !== "error") {
+          // Silently dismiss any notifications and exit
+          if (window._mathJaxLoadingNotification) {
+            UniversalNotifications.dismiss(window._mathJaxLoadingNotification);
+            window._mathJaxLoadingNotification = null;
+          }
+          if (window._mathJaxErrorNotification) {
+            UniversalNotifications.dismiss(window._mathJaxErrorNotification);
+            window._mathJaxErrorNotification = null;
+          }
+          return;
+        }
+
+        // Handle loading status
+        if (status === "loading") {
+          if (!config.notifyOnLoading) return; // Skip if disabled
+
+          const notificationId = UniversalNotifications.show(
+            message,
+            config.types.loading,
+            {
+              duration: config.durations.loading,
+              dismissible: false,
+            }
+          );
+
+          if (notificationId) {
+            window._mathJaxLoadingNotification = notificationId;
+            if (config.alwaysLog) {
+              console.log("Stored loading notification ID:", notificationId);
+            }
+          }
+          return;
+        }
+
+        // Always dismiss loading notification when moving to another state
+        if (window._mathJaxLoadingNotification) {
+          UniversalNotifications.dismiss(window._mathJaxLoadingNotification);
+          window._mathJaxLoadingNotification = null;
+        }
+
+        // Handle error status
+        if (status === "error") {
+          if (!config.notifyOnError) return; // Skip if disabled
+
+          const notificationId = UniversalNotifications.show(
+            message,
+            config.types.error,
+            {
+              duration: config.durations.error,
+              dismissible: true,
+            }
+          );
+
+          if (notificationId) {
+            window._mathJaxErrorNotification = notificationId;
+            if (config.alwaysLog) {
+              console.log("Stored error notification ID:", notificationId);
+            }
+          }
+          return;
+        }
+
+        // Check for recovery scenario
+        const hadError = !!window._mathJaxErrorNotification;
+
+        // Dismiss any error notification
+        if (window._mathJaxErrorNotification) {
+          UniversalNotifications.dismiss(window._mathJaxErrorNotification);
+          window._mathJaxErrorNotification = null;
+        }
+
+        // Handle recovery message
+        if (hadError && status === "ready") {
+          if (!config.notifyOnRecovery) return; // Skip if disabled
+
+          UniversalNotifications.show(
+            "MathJax recovered successfully",
+            config.types.recovery,
+            {
+              duration: config.durations.recovery,
+              dismissible: true,
+            }
+          );
+
+          if (config.alwaysLog) {
+            console.log("✅ MathJax recovered from error");
+          }
+          return;
+        }
+
+        // Handle ready status (normal success)
+        if (status === "ready") {
+          if (!config.notifyOnReady) return; // Skip if disabled
+
+          UniversalNotifications.show(message, config.types.ready, {
+            duration: config.durations.ready,
+            dismissible: true,
+          });
+          return;
+        }
+
+        // Handle limited status
+        if (status === "limited") {
+          if (!config.notifyOnLimited) return; // Skip if disabled
+
+          UniversalNotifications.show(message, config.types.limited, {
+            duration: config.durations.limited,
+            dismissible: true,
+          });
+          return;
+        }
+      }
+      function showMathJaxLoading() {
+        updateMathJaxStatus("loading", "Loading MathJax...");
+      }
+
+      function showMathJaxReady() {
+        updateMathJaxStatus("ready", "MathJax ready");
+      }
+
+      function showMathJaxLimited() {
+        updateMathJaxStatus("limited", "MathJax running in limited mode");
+      }
+
+      function showMathJaxError(errorMessage = "MathJax failed to initialise") {
+        updateMathJaxStatus("error", errorMessage);
+      }
+
+      // ============================================================================
+      // End MathJax Status Indicator Functions
+      // ============================================================================
+
+      // Clean up notification references on page unload
+      window.addEventListener("beforeunload", function () {
+        window._mathJaxLoadingNotification = null;
+        window._mathJaxErrorNotification = null;
+      });
+    </script>
+    <script>
       // Simplified, robust MathJax configuration with interactive features
       window.MathJax = {
         tex: {
@@ -6748,6 +6964,7 @@ Science,91</pre
             console.log(
               "🔧 MathJax startup initiated (stability-focused configuration)..."
             );
+            showMathJaxLoading(); // Show loading status
 
             // Delay to ensure DOM is completely stable
             return new Promise((resolve) => {
@@ -6762,15 +6979,36 @@ Science,91</pre
                       "📊 Features: Click-to-zoom, right-click menus"
                     );
 
-                    // Wait additional time before allowing rendering
+                    // Wait for complete DOM stability before first render
                     setTimeout(() => {
                       window.MathJaxEnhancementReady = true;
                       console.log("✅ MathJax ready for rendering operations");
+
+                      // Manually trigger initial page typeset now that DOM is stable
+                      // This prevents replaceChild errors from premature rendering
+                      console.log("🔄 Triggering safe initial page typeset...");
+                      MathJax.typesetPromise()
+                        .then(() => {
+                          console.log(
+                            "✅ Initial page typeset completed successfully"
+                          );
+                        })
+                        .catch((error) => {
+                          console.warn(
+                            "⚠️ Initial typeset failed (non-critical):",
+                            error
+                          );
+                          // Not critical - individual elements will render on demand
+                        });
+
                       resolve();
                     }, 500);
                   })
                   .catch((error) => {
                     console.error("❌ MathJax startup error:", error);
+                    showMathJaxError(
+                      "MathJax encountered errors during startup"
+                    );
 
                     // CRITICAL FIX: Set ready flag even on error
                     // Otherwise system deadlocks waiting for flag that never gets set
@@ -6820,13 +7058,30 @@ Science,91</pre
               console.log(
                 "🔄 Triggering MathJax Manager initialization after MathJax load..."
               );
-              window.mathJaxManager.initialize(true).then((success) => {
-                if (success) {
-                  console.log("✅ MathJax Manager initialized successfully");
-                } else {
-                  console.warn("⚠️ MathJax Manager initialization failed");
-                }
-              });
+              window.mathJaxManager
+                .initialize(true)
+                .then((success) => {
+                  if (success) {
+                    console.log("✅ MathJax Manager initialized successfully");
+                    // Check actual health status
+                    const status = window.mathJaxManager.getStatus();
+                    if (status.isHealthy) {
+                      showMathJaxReady();
+                    } else {
+                      showMathJaxLimited();
+                    }
+                  } else {
+                    console.warn("⚠️ MathJax Manager initialization failed");
+                    showMathJaxLimited();
+                  }
+                })
+                .catch((error) => {
+                  console.error(
+                    "⚠️ MathJax Manager initialization error:",
+                    error
+                  );
+                  showMathJaxLimited();
+                });
             }
 
             // Store reference globally BEFORE wrapping
@@ -6919,19 +7174,16 @@ Science,91</pre
         setTimeout(() => {
           if (!window.MathJax?.typesetPromise) {
             console.error("⚠️ MathJax failed to load within timeout");
-            const statusDiv = document.getElementById("mathjax-status");
-            if (statusDiv) {
-              statusDiv.style.display = "block";
+            showMathJaxError("MathJax failed to load within 20 seconds");
 
-              // Auto-hide after 10 seconds if MathJax loads
-              const recheckInterval = setInterval(() => {
-                if (window.MathJax?.typesetPromise) {
-                  statusDiv.style.display = "none";
-                  clearInterval(recheckInterval);
-                  console.log("✅ MathJax loaded successfully after delay");
-                }
-              }, 1000);
-            }
+            // Auto-hide after 10 seconds if MathJax loads
+            const recheckInterval = setInterval(() => {
+              if (window.MathJax?.typesetPromise) {
+                showMathJaxReady();
+                clearInterval(recheckInterval);
+                console.log("✅ MathJax loaded successfully after delay");
+              }
+            }, 1000);
           }
         }, MATHJAX_TIMEOUT);
       })();

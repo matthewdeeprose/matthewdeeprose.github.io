@@ -1483,7 +1483,7 @@ const ChartAccessibility = (function () {
    * @returns {string} The chart title
    */
   function getChartTitle(chartInstance, chartData) {
-    // Try to get title from Chart.js options
+    // Try to get title from Chart.js v3+ options (rendered instance)
     if (
       chartInstance.options &&
       chartInstance.options.plugins &&
@@ -1493,7 +1493,7 @@ const ChartAccessibility = (function () {
       return chartInstance.options.plugins.title.text;
     }
 
-    // Try to get title from original chart data
+    // Try to get title from Chart.js v3+ original chart data
     if (
       chartData.options &&
       chartData.options.plugins &&
@@ -1501,6 +1501,18 @@ const ChartAccessibility = (function () {
       chartData.options.plugins.title.text
     ) {
       return chartData.options.plugins.title.text;
+    }
+
+    // ✓ ADDED: Try to get title from Chart.js v2 format (backward compatibility)
+    if (
+      chartData.options &&
+      chartData.options.title &&
+      chartData.options.title.text
+    ) {
+      console.log(
+        "[Chart Accessibility] Using legacy Chart.js v2 title format. Consider updating to v3 format: options.plugins.title.text"
+      );
+      return chartData.options.title.text;
     }
 
     // Generate a default title based on chart type

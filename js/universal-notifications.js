@@ -211,14 +211,16 @@ const UniversalNotifications = (function () {
      * Main show method that determines display mode
      * If modal is active, use in-modal notification
      * Otherwise, show as toast
+     * @returns {string|null} Toast ID if toast shown, null if in-modal notification
      */
     show(message, type = "info", options = {}) {
       // If modal is active, use in-modal notification
       if (this.isModalActive()) {
         this.showInModalNotification(message, type, options);
+        return null; // In-modal notifications don't have IDs
       } else {
-        // Otherwise, show as toast
-        this.showToastNotification(message, type, options);
+        // Otherwise, show as toast and return its ID
+        return this.showToastNotification(message, type, options);
       }
     }
 

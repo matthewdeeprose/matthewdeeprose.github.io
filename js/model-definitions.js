@@ -27395,6 +27395,682 @@ modelRegistry.registerModel("minimax/minimax-m2:free", {
     errorMessage: null
   }
 });
+// Insert this model registration entry for OpenAI gpt-oss-safeguard-20b
+modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
+  provider: "openai",
+  name: "GPT OSS Safeguard 20B",
+  category: "Specialized",
+  disabled: false,
+  description: "A specialised safety reasoning model built upon GPT OSS 20B, designed for Trust & Safety workflows. This 21B-parameter Mixture-of-Experts model excels at content classification, policy enforcement, and safety labelling with custom policy interpretation capabilities. Optimised for lower latency in safety tasks whilst maintaining sophisticated reasoning for nuanced content decisions.",
+  costs: {
+    input: 0.075,
+    output: 0.30,
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "reasoning",
+    "tool_calling",
+  ],
+  maxContext: 131072,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Purpose-built safety and content moderation model",
+    releaseDate: "2025-10-29",
+    modelArchitecture: {
+      parameters: "21B",
+      type: "safety-tuned-reasoning",
+      architecture: "Mixture-of-Experts (MoE)",
+      baseModel: "gpt-oss-20b",
+      specialisation: "Trust & Safety workflows",
+    },
+    policyLinks: {
+      privacyPolicy: "https://openai.com/privacy",
+      acceptableUse: "https://openai.com/usage-policies",
+      termsOfService: "https://openai.com/terms",
+      lastUpdated: "2025-10-29",
+    },
+    domainExpertise: {
+      safetyClassification: 10,
+      contentModeration: 10,
+      policyInterpretation: 9,
+      trustAndSafety: 10,
+      reasoning: 8,
+    },
+    bestFor: [
+      "content moderation",
+      "safety classification", 
+      "policy enforcement",
+      "Trust & Safety workflows",
+      "custom policy interpretation",
+      "real-time content filtering",
+    ],
+    accessibility: {
+      safetyFeatures: [
+        "Custom policy adherence",
+        "Explainable safety decisions", 
+        "Auditability support",
+        "Contextual reasoning",
+      ],
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning", 
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "seed",
+      "response_format",
+      "tools",
+      "tool_choice",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "reasoning-channels",
+      "policy-interpretation", 
+      "safety-classification",
+      "custom-taxonomy-support",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "content-moderation",
+      "safety-workflows",
+      "policy-enforcement",
+      "trust-and-safety-systems",
+    ],
+    warnings: [
+      "Specialised for safety tasks - may not perform optimally for general conversation",
+      "Requires well-structured policy prompts for optimal performance",
+      "Best suited for Trust & Safety professionals with policy writing experience",
+    ],
+    ariaLabels: {
+      modelSelect: "GPT OSS Safeguard 20B - Safety reasoning model with 131K context for Trust & Safety workflows",
+      parameterSection: "Parameter controls for GPT OSS Safeguard 20B safety model",
+      statusMessages: {
+        processing: "Processing safety classification request with GPT OSS Safeguard 20B",
+        complete: "Safety analysis complete from GPT OSS Safeguard 20B",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert in model-definitions.js under Vision Models section
+
+modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
+  provider: "nvidia",
+  name: "Nemotron Nano 12B 2 VL",
+  category: "Vision",
+  disabled: false,
+  description: "Advanced 12-billion-parameter multimodal reasoning model optimised for video understanding and document intelligence. Features hybrid Transformer-Mamba architecture combining transformer-level accuracy with memory-efficient sequence modelling for enhanced throughput and reduced latency. Specialises in optical character recognition, chart reasoning, and multimodal comprehension with leading performance on OCRBench v2 and strong results across vision-language benchmarks.",
+  costs: {
+    input: 0.20,
+    output: 0.60,
+    image: 0.20,
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "vision",
+    "reasoning",
+    "mathematics",
+    "multilingual",
+    "tool_calling"
+  ],
+  maxContext: 131072,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Multimodal reasoning model with advanced video and document understanding capabilities",
+    releaseDate: "2024-10-28",
+    modelArchitecture: {
+      parameters: "12B",
+      type: "instruction-tuned",
+      architecture: "Hybrid Transformer-Mamba",
+      specialFeatures: [
+        "Efficient Video Sampling (EVS)",
+        "Multi-image document processing",
+        "Memory-efficient sequence modelling"
+      ]
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.nvidia.com/en-us/about-nvidia/privacy-policy/",
+      acceptableUse: "https://www.nvidia.com/en-us/about-nvidia/acceptable-use-policy/",
+      termsOfService: "https://www.nvidia.com/en-us/about-nvidia/terms-of-use/",
+      lastUpdated: "2024-10-28",
+    },
+    trainingData: {
+      sources: ["NVIDIA-curated synthetic datasets"],
+      optimisedFor: [
+        "Optical character recognition",
+        "Chart reasoning", 
+        "Multimodal comprehension"
+      ],
+      license: "NVIDIA Open License"
+    },
+    domainExpertise: {
+      vision: 9,
+      mathematics: 8,
+      documentProcessing: 9,
+      videoAnalysis: 8,
+      reasoning: 8
+    },
+    benchmarkResults: {
+      "OCRBench v2": "Leading performance",
+      "MMMU/MathVista/AI2D Average": "~74",
+      "Video-MME": "Strong performance"
+    },
+    bestFor: [
+      "Video understanding and analysis",
+      "Document intelligence and OCR",
+      "Chart and diagram reasoning",
+      "Mathematical visual reasoning",
+      "Multi-image document processing",
+      "Long-form video analysis with cost efficiency"
+    ],
+    accessibility: {
+      visualProcessing: "Excellent OCR and document accessibility support",
+      videoDescription: "Advanced video content analysis capabilities"
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning", 
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "repetition_penalty",
+      "top_k",
+      "seed",
+      "min_p",
+      "response_format",
+      "system-prompt"
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["reasoning-support", "video-processing", "document-intelligence", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "document-accessibility-analysis",
+      "visual-content-description", 
+      "ocr-text-extraction",
+      "chart-data-interpretation",
+      "video-content-analysis"
+    ],
+    warnings: [
+      "Video processing may require significant computational resources",
+      "Image quality affects OCR accuracy - ensure high-resolution inputs for optimal results",
+      "Complex mathematical notation may require careful formatting verification"
+    ],
+    ariaLabels: {
+      modelSelect: "Nemotron Nano 12B 2 VL - Multimodal reasoning model with 131K context optimised for video and document analysis",
+      parameterSection: "Parameter controls for Nemotron Nano 12B 2 VL multimodal model",
+      statusMessages: {
+        processing: "Processing multimodal request with Nemotron Nano 12B 2 VL",
+        complete: "Multimodal analysis complete from Nemotron Nano 12B 2 VL",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this registration entry into model-definitions.js
+
+modelRegistry.registerModel("mistralai/voxtral-small-24b-2507", {
+  provider: "mistralai",
+  name: "Voxtral Small 24B 2507",
+  category: "Specialized",
+  disabled: false,
+  description: "Enhanced version of Mistral Small 3 with state-of-the-art audio input capabilities whilst retaining best-in-class text performance. Specialised for speech transcription, translation, and comprehensive audio understanding tasks.",
+  costs: {
+    input: 0.10, // Per million tokens
+    output: 0.30, // Per million tokens
+    audio: 100.00, // Per million seconds
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "audio",
+    "multilingual",
+    "tool_calling",
+  ],
+  maxContext: 32000,
+  fallbackTo: "mistralai/mistral-small",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced multimodal model with audio processing capabilities",
+    releaseDate: "2025-10-30",
+    modelArchitecture: {
+      parameters: "24B",
+      type: "instruction-tuned",
+      audioSupport: true,
+      baseModel: "Mistral Small 3",
+    },
+    policyLinks: {
+      privacyPolicy: "https://mistral.ai/privacy-policy/",
+      acceptableUse: "https://mistral.ai/terms-of-use/",
+      termsOfService: "https://mistral.ai/terms-of-use/",
+      lastUpdated: "2025-10-30",
+    },
+    languageSupport: ["multilingual"],
+    domainExpertise: {
+      audioProcessing: 9,
+      speechTranscription: 9,
+      translation: 8,
+      textGeneration: 8,
+    },
+    bestFor: [
+      "speech transcription",
+      "audio understanding", 
+      "multilingual translation",
+      "audio-text integration",
+      "voice assistant applications",
+    ],
+    accessibility: {
+      audioAccessibility: true,
+      speechProcessing: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature", 
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "seed",
+      "response_format",
+      "structured_outputs",
+      "tools",
+      "tool_choice",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["audio_processing", "structured_outputs", "tool_calling", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "audio-transcription",
+      "voice-interfaces",
+      "accessibility-applications",
+      "multilingual-communication",
+    ],
+    warnings: [
+      "Audio processing may require additional bandwidth considerations",
+      "Audio input costs are significantly higher than text input",
+    ],
+    ariaLabels: {
+      modelSelect: "Voxtral Small 24B 2507 - Audio-enhanced model with 32K context for speech and text processing",
+      parameterSection: "Parameter controls for Voxtral Small 24B 2507",
+      statusMessages: {
+        processing: "Processing request with Voxtral Small 24B 2507 multimodal capabilities",
+        complete: "Response ready from Voxtral Small 24B 2507",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry into model-definitions.js
+
+modelRegistry.registerModel("perplexity/sonar-pro-search", {
+  provider: "perplexity",
+  name: "Sonar Pro Search",
+  category: "Specialized",
+  disabled: false,
+  description: "Perplexity's most advanced agentic search system designed for deeper reasoning and analysis. Features autonomous, multi-step reasoning that plans and executes entire research workflows using tools. Exclusively optimised for comprehensive research tasks with web search integration and structured outputs.",
+  costs: {
+    input: 3.00, // Per million tokens
+    output: 15.00, // Per million tokens
+    requests: 18.00, // Per thousand requests
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "reasoning",
+    "tool_calling",
+    "web_search",
+    "research",
+    "multilingual",
+    "structured_outputs"
+  ],
+  maxContext: 200000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced agentic search model for research workflows",
+    releaseDate: "2025-10-30",
+    modelArchitecture: {
+      type: "agentic-search", 
+      searchCapabilities: "multi-step autonomous reasoning",
+      toolIntegration: "advanced workflow execution"
+    },
+    policyLinks: {
+      privacyPolicy: "https://perplexity.ai/privacy",
+      acceptableUse: "https://perplexity.ai/terms", 
+      termsOfService: "https://perplexity.ai/terms",
+      lastUpdated: "2025-10-30",
+    },
+    bestFor: [
+      "research workflows",
+      "in-depth analysis", 
+      "multi-step reasoning",
+      "information synthesis",
+      "academic research",
+      "professional analysis",
+      "web-based research",
+      "structured information gathering"
+    ],
+    accessibility: {
+      searchMode: "agentic",
+      workflowSupport: true,
+      structuredOutput: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning", 
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "top_k", 
+      "frequency_penalty",
+      "presence_penalty",
+      "web_search_options",
+      "structured_outputs",
+      "system-prompt"
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["agentic_search", "multi_step_reasoning", "web_search_integration", "structured_outputs", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "research-workflows",
+      "academic-analysis", 
+      "professional-research",
+      "in-depth-investigation",
+      "multi-step-reasoning-tasks"
+    ],
+    warnings: [
+      "Request-based pricing model requires careful usage monitoring",
+      "Advanced agentic features may require additional time for complex workflows",
+      "Web search results depend on current internet accessibility"
+    ],
+    ariaLabels: {
+      modelSelect: "Sonar Pro Search - Advanced agentic search model with 200K context for research workflows",
+      parameterSection: "Parameter controls for Sonar Pro Search agentic reasoning",
+      statusMessages: {
+        processing: "Processing agentic search workflow with Sonar Pro Search",
+        complete: "Research workflow completed by Sonar Pro Search",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry into model-definitions.js
+
+modelRegistry.registerModel("mistralai/codestral-embed-2505", {
+  provider: "mistralai",
+  name: "Codestral Embed 2505",
+  category: "Code",
+  disabled: false,
+  description: "Specialised embedding model designed specifically for code, optimised for embedding code databases, repositories, and powering coding assistants with state-of-the-art retrieval capabilities.",
+  costs: {
+    input: 0.15, // Per million tokens
+    output: 0.00, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "code",
+  ],
+  maxContext: 8192,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Code embedding and retrieval specialist",
+    releaseDate: "2025-10-30",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "embedding-optimised",
+      specialisation: "code-embedding",
+      retrievalCapabilities: "state-of-the-art",
+    },
+    policyLinks: {
+      privacyPolicy: "https://mistral.ai/privacy",
+      acceptableUse: "https://mistral.ai/terms",
+      termsOfService: "https://mistral.ai/terms",
+      lastUpdated: "2025-10-30",
+    },
+    bestFor: [
+      "code database embedding",
+      "repository indexing",
+      "coding assistant retrieval",
+      "semantic code search",
+      "code similarity analysis",
+    ],
+    domainExpertise: {
+      codeEmbedding: 10,
+      retrieval: 9,
+      semanticSearch: 9,
+    },
+    accessibility: {
+      embeddingtSupport: "optimised for code representation",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty", 
+      "presence_penalty",
+      "seed",
+      "response_format",
+      "structured_outputs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["code-embedding", "retrieval-optimised", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "code-database-embedding",
+      "repository-indexing",
+      "semantic-code-search",
+      "coding-assistant-backends",
+    ],
+    warnings: [
+      "Embedding model - generates vector representations, not text responses",
+      "Optimised for code retrieval rather than code generation",
+    ],
+    ariaLabels: {
+      modelSelect: "Codestral Embed 2505 - Code embedding specialist with 8K context",
+      parameterSection: "Parameter controls for Codestral Embed 2505",
+      statusMessages: {
+        processing: "Processing embedding request with Codestral Embed 2505",
+        complete: "Code embedding ready from Codestral Embed 2505",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Add this registration entry to model-definitions.js:
+
+modelRegistry.registerModel("amazon/nova-premier-v1", {
+  provider: "amazon",
+  name: "Nova Premier 1.0",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "Amazon's most capable multimodal model optimised for complex reasoning tasks and serving as an excellent teacher for distilling custom models. Combines advanced reasoning capabilities with multimodal understanding for sophisticated problem-solving applications.",
+  costs: {
+    input: 2.50,
+    output: 12.50,
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "reasoning",
+    "vision",
+    "tool_calling",
+    "multilingual"
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Premium multimodal reasoning model for complex tasks",
+    releaseDate: "2025-10-31",
+    modelArchitecture: {
+      type: "multimodal-instruction-tuned",
+      capabilities: "reasoning, vision, tool-calling"
+    },
+    policyLinks: {
+      privacyPolicy: "https://aws.amazon.com/privacy/",
+      acceptableUse: "",
+      termsOfService: "https://aws.amazon.com/terms/",
+      lastUpdated: "2025-10-31",
+    },
+    bestFor: [
+      "complex reasoning tasks",
+      "model distillation",
+      "multimodal applications",
+      "advanced problem-solving"
+    ],
+    domainExpertise: {
+      reasoning: 9,
+      multimodal: 8,
+      teaching: 9
+    },
+    accessibility: {
+      screenReaderOptimised: true,
+      highContrastSupport: true,
+      keyboardNavigable: true
+    }
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature", 
+      "top_p",
+      "top_k",
+      "stop",
+      "tools",
+      "system-prompt"
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["complex-reasoning", "multimodal-processing", "tool-calling", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "multimodal-analysis", 
+      "model-distillation",
+      "advanced-problem-solving"
+    ],
+    warnings: [
+      "High output costs may impact accessibility for extended conversations",
+      "Complex reasoning responses may require additional processing time"
+    ],
+    ariaLabels: {
+      modelSelect: "Nova Premier 1.0 - Amazon's premium multimodal reasoning model with 1 million token context",
+      parameterSection: "Parameter controls for Nova Premier 1.0",
+      statusMessages: {
+        processing: "Processing complex reasoning request with Nova Premier 1.0",
+        complete: "Advanced reasoning response ready from Nova Premier 1.0",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;
