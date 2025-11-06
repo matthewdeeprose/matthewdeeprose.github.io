@@ -973,7 +973,7 @@
 
 /* Mathpix debug code */
 .code-block-container {
-  background-color: #ffffff !important;
+  background-color: #fffdf9 !important;
 }
 
 /* Markdown texteditable mode */
@@ -2840,7 +2840,7 @@ footer a:focus:not(:focus-visible) {
 
   @media (forced-colors: none), (forced-colors: active) {
     :root {
-      --prism-a11y-color-background: hsla(0, 0%, 100%, 1);
+      --prism-a11y-color-background: hsla(40, 100%, 99%, 1);
       --prism-a11y-color-text-no-token: hsla(0, 0%, 33%, 1);
       --prism-a11y-color-text-comment: hsla(16, 100%, 25%, 1);
       --prism-a11y-color-text-blue: hsla(195, 100%, 30%, 1);
@@ -2993,7 +2993,7 @@ footer a:focus:not(:focus-visible) {
    */
   @media (forced-colors: active) {
     :root {
-      --prism-a11y-color-background: Canvas;
+      --prism-a11y-color-background: #fffdf9;
       --prism-a11y-color-text-no-token: CanvasText;
       --prism-a11y-color-text-comment: GrayText;
       --prism-a11y-color-text-blue: LinkText;

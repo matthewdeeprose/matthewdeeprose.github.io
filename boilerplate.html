@@ -457,7 +457,7 @@
         >
           MathJax loading issue - please refresh
         </div>
-        <article class="standard" id="openrouter-app">
+        <article class="standard" id="openrouter-app" aria-hidden="false">
           <h1 id="top">OpenRouter Testing</h1>
 
           <div id="startHere">
@@ -1569,7 +1569,12 @@
             </details>
           </div>
         </article>
-        <article id="markdown-converter" class="standard">
+        <article
+          id="markdown-converter"
+          class="standard"
+          style="display: none"
+          aria-hidden="true"
+        >
           <h1>Markdown converter</h1>
           <details>
             <summary><h2>Instructions</h2></summary>
@@ -1784,7 +1789,12 @@
           ></div>
         </article>
 
-        <article id="graph-builder" class="standard">
+        <article
+          id="graph-builder"
+          class="standard"
+          style="display: none"
+          aria-hidden="true"
+        >
           <h1>Graph Builder</h1>
 
           <div id="GraphBuilderContainer">
@@ -2488,7 +2498,12 @@ Science,91</pre
           </div>
         </article>
 
-        <article class="standard" id="mathpix-app" style="display: none">
+        <article
+          class="standard"
+          id="mathpix-app"
+          style="display: none"
+          aria-hidden="true"
+        >
           <h1>MathPix Mathematics OCR</h1>
 
           <!-- Global ARIA Live Region for Screen Reader Announcements -->
@@ -7282,23 +7297,67 @@ Science,91</pre
       }
     </script>
     <script>
+      /**
+       * Utility function to hide an article element
+       * Uses both display:none and aria-hidden for comprehensive accessibility
+       */
+      function hideArticle(element) {
+        if (!element) return;
+        element.style.display = "none";
+        element.setAttribute("aria-hidden", "true");
+      }
+
+      /**
+       * Utility function to show an article element
+       * Removes both display:none and aria-hidden for comprehensive accessibility
+       */
+      function showArticle(element) {
+        if (!element) return;
+        element.style.display = "block";
+        element.setAttribute("aria-hidden", "false");
+      }
+
+      /**
+       * Get all tool article elements
+       */
+      function getAllToolArticles() {
+        return {
+          graphBuilder: document.getElementById("graph-builder"),
+          markdownConverter: document.getElementById("markdown-converter"),
+          openrouterApp: document.getElementById("openrouter-app"),
+          mathPixApp: document.getElementById("mathpix-app"),
+        };
+      }
+
       function showOpenRouter(isUserInitiated = true) {
         // Cleanup live editor when switching away from Markdown Editor
         if (typeof window.markdownEditorCleanup === "function") {
           window.markdownEditorCleanup();
         }
 
-        const graphBuilder = document.getElementById("graph-builder");
-        const markdownConverter = document.getElementById("markdown-converter");
-        const openrouterApp = document.getElementById("openrouter-app");
-        const mathPixApp = document.getElementById("mathpix-app");
+        const articles = getAllToolArticles();
         const announcer = document.getElementById("radioSRannounce");
 
-        if (graphBuilder) graphBuilder.style.display = "none";
-        if (markdownConverter) markdownConverter.style.display = "none";
-        if (mathPixApp) mathPixApp.style.display = "none"; // Hide MathPix
+        // Hide all other tools
+        hideArticle(articles.graphBuilder);
+        hideArticle(articles.markdownConverter);
+        hideArticle(articles.mathPixApp);
 
-        if (openrouterApp) openrouterApp.style.display = "block";
+        // Show OpenRouter
+        showArticle(articles.openrouterApp);
+
+        // Move focus to the main heading for screen reader users
+        if (isUserInitiated) {
+          setTimeout(() => {
+            const heading = articles.openrouterApp?.querySelector("h1");
+            if (heading) {
+              heading.setAttribute("tabindex", "-1");
+              heading.focus();
+              // Remove tabindex after focus to prevent persistent tab stop
+              setTimeout(() => heading.removeAttribute("tabindex"), 100);
+            }
+          }, 100);
+        }
 
         if (isUserInitiated && announcer) {
           announcer.textContent = "Switched to OpenRouter AI tool";
@@ -7312,17 +7371,16 @@ Science,91</pre
           window.markdownEditorRestore();
         }
 
-        const graphBuilder = document.getElementById("graph-builder");
-        const markdownConverter = document.getElementById("markdown-converter");
-        const openrouterApp = document.getElementById("openrouter-app");
-        const mathPixApp = document.getElementById("mathpix-app");
+        const articles = getAllToolArticles();
         const announcer = document.getElementById("radioSRannounce");
 
-        if (graphBuilder) graphBuilder.style.display = "none";
-        if (openrouterApp) openrouterApp.style.display = "none";
-        if (mathPixApp) mathPixApp.style.display = "none"; // Hide MathPix
+        // Hide all other tools
+        hideArticle(articles.graphBuilder);
+        hideArticle(articles.openrouterApp);
+        hideArticle(articles.mathPixApp);
 
-        if (markdownConverter) markdownConverter.style.display = "block";
+        // Show Markdown Editor
+        showArticle(articles.markdownConverter);
 
         if (
           window.MarkdownEditor &&
@@ -7362,6 +7420,18 @@ Science,91</pre
           }, 200);
         }
 
+        // Move focus to the main heading for screen reader users
+        if (isUserInitiated) {
+          setTimeout(() => {
+            const heading = articles.markdownConverter?.querySelector("h1");
+            if (heading) {
+              heading.setAttribute("tabindex", "-1");
+              heading.focus();
+              setTimeout(() => heading.removeAttribute("tabindex"), 100);
+            }
+          }, 300);
+        }
+
         if (isUserInitiated && announcer) {
           announcer.textContent = "Switched to Markdown Editor tool";
           setTimeout(() => (announcer.textContent = ""), 1000);
@@ -7374,17 +7444,16 @@ Science,91</pre
           window.markdownEditorCleanup();
         }
 
-        const graphBuilder = document.getElementById("graph-builder");
-        const openrouterApp = document.getElementById("openrouter-app");
-        const markdownConverter = document.getElementById("markdown-converter");
-        const mathPixApp = document.getElementById("mathpix-app");
+        const articles = getAllToolArticles();
         const announcer = document.getElementById("radioSRannounce");
 
-        if (markdownConverter) markdownConverter.style.display = "none";
-        if (openrouterApp) openrouterApp.style.display = "none";
-        if (mathPixApp) mathPixApp.style.display = "none"; // Hide MathPix
+        // Hide all other tools
+        hideArticle(articles.markdownConverter);
+        hideArticle(articles.openrouterApp);
+        hideArticle(articles.mathPixApp);
 
-        if (graphBuilder) graphBuilder.style.display = "block";
+        // Show Graph Builder
+        showArticle(articles.graphBuilder);
 
         if (
           window.GraphBuilder &&
@@ -7410,6 +7479,18 @@ Science,91</pre
           }
         }
 
+        // Move focus to the main heading for screen reader users
+        if (isUserInitiated) {
+          setTimeout(() => {
+            const heading = articles.graphBuilder?.querySelector("h1");
+            if (heading) {
+              heading.setAttribute("tabindex", "-1");
+              heading.focus();
+              setTimeout(() => heading.removeAttribute("tabindex"), 100);
+            }
+          }, 300);
+        }
+
         if (isUserInitiated && announcer) {
           announcer.textContent = "Switched to Graph Builder tool";
           setTimeout(() => (announcer.textContent = ""), 1000);
@@ -7422,17 +7503,16 @@ Science,91</pre
           window.markdownEditorCleanup();
         }
 
-        const graphBuilder = document.getElementById("graph-builder");
-        const markdownConverter = document.getElementById("markdown-converter");
-        const openrouterApp = document.getElementById("openrouter-app");
-        const mathPixApp = document.getElementById("mathpix-app");
+        const articles = getAllToolArticles();
         const announcer = document.getElementById("radioSRannounce");
 
-        if (graphBuilder) graphBuilder.style.display = "none";
-        if (markdownConverter) markdownConverter.style.display = "none";
-        if (openrouterApp) openrouterApp.style.display = "none";
+        // Hide all other tools
+        hideArticle(articles.graphBuilder);
+        hideArticle(articles.markdownConverter);
+        hideArticle(articles.openrouterApp);
 
-        if (mathPixApp) mathPixApp.style.display = "block";
+        // Show MathPix
+        showArticle(articles.mathPixApp);
 
         setTimeout(async () => {
           try {
@@ -7486,6 +7566,18 @@ Science,91</pre
               );
               // Don't fail the entire MathPix system if preview modules fail to load
               // The system can still work without the preview feature
+            }
+
+            // Move focus to the main heading for screen reader users
+            if (isUserInitiated) {
+              setTimeout(() => {
+                const heading = articles.mathPixApp?.querySelector("h1");
+                if (heading) {
+                  heading.setAttribute("tabindex", "-1");
+                  heading.focus();
+                  setTimeout(() => heading.removeAttribute("tabindex"), 100);
+                }
+              }, 100);
             }
           } catch (error) {
             console.error("MathPix initialisation error:", error);

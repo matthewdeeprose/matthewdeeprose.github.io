@@ -942,7 +942,27 @@ const ChartAccessibility = (function () {
       const maxToAvgRatio = barStats.max / barStats.average;
       const minToAvgRatio = barStats.min / barStats.average;
 
-      if (maxToAvgRatio > 1.5) {
+      // Check for clear trends first (more insightful for time-series data)
+      const firstDataset = datasets[0];
+      const trend = analyzeTrend(firstDataset.data);
+
+      if (
+        trend === "consistently increasing" ||
+        trend === "consistently decreasing"
+      ) {
+        // Calculate percentage change for consistent trends
+        const percentChange = Math.round(
+          ((barStats.max - barStats.min) / barStats.min) * 100
+        );
+        const trendDirection =
+          trend === "consistently increasing" ? "increased" : "decreased";
+        const capitalisedDescriptor =
+          valueDescriptor.charAt(0).toUpperCase() + valueDescriptor.slice(1);
+
+        primaryTakeaway = `${capitalisedDescriptor} ${trendDirection} by ${percentChange}% from ${formatValue(
+          barStats.min
+        )} (${minLabel}) to ${formatValue(barStats.max)} (${maxLabel}).`;
+      } else if (maxToAvgRatio > 1.5) {
         primaryTakeaway = `${maxLabel} has the highest ${valueDescriptor} at ${formatValue(
           barStats.max
         )}, ${Math.round((maxToAvgRatio - 1) * 100)}% above the average.`;
@@ -951,7 +971,10 @@ const ChartAccessibility = (function () {
           barStats.min
         )}, ${Math.round((1 - minToAvgRatio) * 100)}% below the average.`;
       } else {
-        primaryTakeaway = `Values range from ${formatValue(
+        // Capitalise the first letter of valueDescriptor for better grammar
+        const capitalisedDescriptor =
+          valueDescriptor.charAt(0).toUpperCase() + valueDescriptor.slice(1);
+        primaryTakeaway = `${capitalisedDescriptor} range from ${formatValue(
           barStats.min
         )} to ${formatValue(barStats.max)} with an average of ${formatValue(
           barStats.average
@@ -1027,13 +1050,30 @@ const ChartAccessibility = (function () {
       insights.push(`Standard deviation: ${formatValue(stdDev)}`);
       insights.push(`Median value: ${formatValue(median)}`);
 
-      // Determine skewness
-      if (mean > median + stdDev * 0.2) {
-        insights.push("Distribution is positively skewed (right-tailed).");
-      } else if (mean < median - stdDev * 0.2) {
-        insights.push("Distribution is negatively skewed (left-tailed).");
+      // For time-series data, detect trends before commenting on distribution
+      const firstDataset = datasets[0];
+      const trend = analyzeTrend(firstDataset.data);
+
+      // If there's a clear directional trend, report that instead of symmetry
+      if (
+        trend === "consistently increasing" ||
+        trend === "consistently decreasing"
+      ) {
+        insights.push(`Data shows ${trend} pattern over time.`);
+      } else if (
+        trend === "generally increasing with fluctuations" ||
+        trend === "generally decreasing with fluctuations"
+      ) {
+        insights.push(`Data shows ${trend}.`);
       } else {
-        insights.push("Distribution is approximately symmetric.");
+        // For non-trending data, report distribution symmetry
+        if (mean > median + stdDev * 0.2) {
+          insights.push("Distribution is positively skewed (right-tailed).");
+        } else if (mean < median - stdDev * 0.2) {
+          insights.push("Distribution is negatively skewed (left-tailed).");
+        } else {
+          insights.push("Distribution is approximately symmetric.");
+        }
       }
 
       // Detect outliers using 1.5 * IQR
@@ -2343,6 +2383,57 @@ const ChartAccessibility = (function () {
   }
 
   /**
+   * Pluralise a word based on count (British spelling in comments, but function name uses 's')
+   * @param {number} count - The count to determine plural form
+   * @param {string} word - The word to potentially pluralise
+   * @returns {string} The word in singular or plural form as appropriate
+   */
+  function pluralize(count, word) {
+    // If count is 1, return singular form
+    if (count === 1) {
+      return word;
+    }
+
+    // Common irregular plurals in axis labels
+    const irregulars = {
+      person: "people",
+      child: "children",
+      datum: "data",
+      criterion: "criteria",
+      analysis: "analyses",
+      basis: "bases",
+      crisis: "crises",
+    };
+
+    const lowerWord = word.toLowerCase();
+    if (irregulars[lowerWord]) {
+      // Preserve original capitalisation
+      return word.charAt(0) === word.charAt(0).toUpperCase()
+        ? irregulars[lowerWord].charAt(0).toUpperCase() +
+            irregulars[lowerWord].slice(1)
+        : irregulars[lowerWord];
+    }
+
+    // Regular plural rules
+    if (lowerWord.endsWith("y") && !lowerWord.match(/[aeiou]y$/)) {
+      // category → categories, but day → days
+      return word.slice(0, -1) + "ies";
+    } else if (lowerWord.match(/[sxz]$|[cs]h$/)) {
+      // class → classes, box → boxes, match → matches
+      return word + "es";
+    } else if (lowerWord.endsWith("f")) {
+      // leaf → leaves
+      return word.slice(0, -1) + "ves";
+    } else if (lowerWord.endsWith("fe")) {
+      // life → lives
+      return word.slice(0, -2) + "ves";
+    } else {
+      // Default: just add 's'
+      return word + "s";
+    }
+  }
+
+  /**
    * Generate a short description for a chart
    * @param {Object} chartInstance - The Chart.js instance
    * @param {Object} chartData - The original chart data object
@@ -2392,12 +2483,19 @@ const ChartAccessibility = (function () {
 
     switch (chartType) {
       case "bar":
+        // Prefer explicit axis labels over detected time period types for better precision
+        let xAxisDescriptor;
+        if (xAxisLabel) {
+          // Use the explicit axis label and pluralise it appropriately
+          xAxisDescriptor = pluralize(dataPointCount, xAxisLabel.toLowerCase());
+        } else {
+          // Fall back to detected time period (already plural) or "categories"
+          xAxisDescriptor = timePeriodType || "categories";
+        }
+
         basicDescription = `A bar chart titled "${title}" showing ${valueDescriptor} for ${formatNumberToWord(
           dataPointCount
-        )} ${
-          timePeriodType ||
-          (xAxisLabel ? xAxisLabel.toLowerCase() : "categories")
-        }${
+        )} ${xAxisDescriptor}${
           datasetCount > 1
             ? ` for ${formatNumberToWord(
                 datasetCount
@@ -2407,12 +2505,22 @@ const ChartAccessibility = (function () {
         break;
 
       case "line":
+        // Prefer explicit axis labels over detected time period types for better precision
+        let lineXAxisDescriptor;
+        if (xAxisLabel) {
+          // Use the explicit axis label and pluralise it appropriately
+          lineXAxisDescriptor = pluralize(
+            dataPointCount,
+            xAxisLabel.toLowerCase()
+          );
+        } else {
+          // Fall back to detected time period (already plural) or "time periods"
+          lineXAxisDescriptor = timePeriodType || "time periods";
+        }
+
         basicDescription = `A line chart titled "${title}" showing ${valueDescriptor} over ${formatNumberToWord(
           dataPointCount
-        )} ${
-          timePeriodType ||
-          (xAxisLabel ? xAxisLabel.toLowerCase() : "time periods")
-        }${
+        )} ${lineXAxisDescriptor}${
           datasetCount > 1
             ? ` for ${formatNumberToWord(
                 datasetCount
@@ -2531,9 +2639,15 @@ const ChartAccessibility = (function () {
       valueDescriptorLowercase = datasets[0].label.toLowerCase();
     }
 
-    // Determine x-axis descriptor
-    const xAxisDescriptor =
-      timePeriodType || (xAxisLabel ? xAxisLabel.toLowerCase() : "categories");
+    // Determine x-axis descriptor - prefer explicit axis label over detected time period
+    let xAxisDescriptor;
+    if (xAxisLabel) {
+      // Use the explicit axis label and pluralise it appropriately
+      xAxisDescriptor = pluralize(labels.length, xAxisLabel.toLowerCase());
+    } else {
+      // Fall back to detected time period (already plural) or "categories"
+      xAxisDescriptor = timePeriodType || "categories";
+    }
     const xAxisDescriptorCapitalized =
       xAxisDescriptor.charAt(0).toUpperCase() + xAxisDescriptor.slice(1);
 
@@ -2544,10 +2658,8 @@ const ChartAccessibility = (function () {
     // Add structure description based on chart type
     switch (chartType) {
       case "bar":
-        // For bar charts
-        description += `<p>This ${chartType} chart titled "${title}" shows ${valueDescriptorLowercase} for ${
-          timePeriodType || xAxisLabelLowercase || "categories"
-        }.</p>`;
+        // For bar charts - use the already-determined xAxisDescriptor which prefers explicit labels
+        description += `<p>This ${chartType} chart titled "${title}" shows ${valueDescriptorLowercase} for ${xAxisDescriptor}.</p>`;
 
         if (datasets.length > 1) {
           description += `<p>The chart has ${formatNumberToWord(
@@ -2659,9 +2771,8 @@ const ChartAccessibility = (function () {
         break;
 
       case "line":
-        description += `<p>This ${chartType} chart titled "${title}" shows trends over ${
-          timePeriodType || "time or categories"
-        }.</p>`;
+        // Use the already-determined xAxisDescriptor which prefers explicit labels
+        description += `<p>This ${chartType} chart titled "${title}" shows trends over ${xAxisDescriptor}.</p>`;
 
         // Add dataset information as bullet list if multiple datasets
         if (datasets.length > 1) {
