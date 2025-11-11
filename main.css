@@ -7,7 +7,9 @@ html {
     scrollbar-gutter: stable;
   }
 }
-
+#dependency-report-container {
+  display: none;
+}
 /* likely to update */
 
 /* OpenRouter API Configuration Styling */
