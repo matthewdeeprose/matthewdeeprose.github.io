@@ -1,0 +1,115 @@
+/* ===== ENHANCED GRID LAYOUT SYSTEM - FIXED: Natural Content Flow ===== */
+.document-wrapper {
+    display: grid;
+    gap: 0;
+    min-height: 100vh;
+    background-color: var(--sidebar-bg);
+    font-family: inherit;
+    max-width: 1600px;
+    margin: 0 auto;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+/* FIXED: Layout with TOC (3 columns, content flows naturally) - IMPROVED: Better proportions */
+.document-wrapper:not(.no-toc) {
+    grid-template-columns: minmax(220px, 240px) 1fr minmax(300px, 360px);
+    grid-template-rows: auto auto;
+    grid-template-areas: 
+        "toc content sidebar"
+        "footer footer footer";
+}
+
+/* FIXED: Layout without TOC (2 columns, content flows naturally) */
+.document-wrapper.no-toc {
+    grid-template-columns: 1fr minmax(320px, 380px);
+    grid-template-rows: auto auto;
+    grid-template-areas: 
+        "content sidebar"
+        "footer footer";
+}
+
+/* ===== HIDDEN SECTIONS ===== */
+.document-header,
+.document-navigation {
+    display: none !important;
+}
+
+/* ===== TABLE OF CONTENTS (Only when exists) ===== */
+.table-of-contents {
+    grid-area: toc;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    padding: 1.5rem;
+    /* ENHANCED: Let content flow naturally without height constraints */
+    /* Removed max-height and overflow-y to prevent scroll bars at zoom levels */
+}
+
+/* Visual heading for TOC using CSS pseudo-element */
+.table-of-contents::before {
+    content: "Table of Contents";
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--heading-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    line-height: 1.3;
+}
+
+.document-wrapper.no-toc .table-of-contents {
+    display: none;
+}
+
+/* ===== MAIN CONTENT (Enhanced spacing and typography) ===== */
+.document-content {
+    grid-area: content;
+    background: var(--body-bg);
+    padding: 3rem 2.5rem;
+    /* FIXED: Remove fixed height constraints */
+    border-right: 1px solid var(--sidebar-border);
+    /* IMPROVED: Ensure containers don't overflow */
+    overflow-x: hidden;
+    word-wrap: break-word;
+    
+    /* Reading accessibility controls target */
+    font-family: inherit;
+    line-height: inherit;
+    word-spacing: normal;
+    letter-spacing: normal;
+    
+    /* Enhanced content presentation */
+   max-width: clamp(min(93.75vw, 50ch), 60vw, 65ch);
+    margin: 0 auto;
+    /* Allow natural content flow */
+    min-height: 0;
+}
+
+/* ===== DOCUMENT SIDEBAR (Enhanced aesthetic - FIXED: Natural flow) ===== */
+.document-sidebar {
+    grid-area: sidebar;
+    background: var(--sidebar-bg);
+    border-left: 1px solid var(--sidebar-border);
+    padding: 0;
+    /* FIXED: Remove fixed height, allow natural content flow */
+    box-shadow: inset 1px 0 0 var(--sidebar-shadow);
+    /* Allow natural content flow */
+    min-height: 0;
+}
+
+/* ===== FOOTER (Enhanced integration - FIXED: Proper placement) ===== */
+.document-footer {
+    grid-area: footer;
+    background: var(--sidebar-bg);
+    border-top: 2px solid var(--border-color);
+    padding: 1.5rem 2rem;
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    /* FIXED: Remove min-height that was causing issues */
+    margin-top: 2rem; /* Add some space above footer */
+}
+
+.document-footer p {
+    margin: 0.25rem 0;
+}

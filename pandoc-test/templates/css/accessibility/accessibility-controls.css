@@ -1,0 +1,54 @@
+/* ===== ACCESSIBILITY CONTROLS STYLING ===== */
+.accessibility-controls {
+    background: var(--body-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    margin: 1rem 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px var(--sidebar-shadow);
+    /* IMPROVED: Consistent sizing with tools-section */
+    box-sizing: border-box;
+    max-width: calc(100% - 1.5rem);
+}
+
+.control-group {
+    margin-bottom: 1.5rem;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+/* ===== USAGE INSTRUCTIONS ===== */
+.usage-instructions h4 {
+    color: var(--heading-color);
+    margin-bottom: 0.75rem;
+}
+
+.usage-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.usage-list li {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    position: relative;
+}
+
+.usage-list li::before {
+    content: '•';
+    color: var(--link-color);
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+}
+
+.usage-list li strong {
+    color: var(--body-text);
+    font-weight: 600;
+}

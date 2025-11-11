@@ -812,6 +812,42 @@ const ConversionEngine = (function () {
 
           if (conversionResult) {
             logInfo("ConversionOrchestrator completed successfully");
+
+            // ✅ CRITICAL FIX: Store LaTeX for enhanced export processor
+            if (window.LaTeXProcessorEnhanced && rawInputText) {
+              try {
+                window.LaTeXProcessorEnhanced.storeOriginalLatex(rawInputText);
+                logDebug("✅ Stored LaTeX for enhanced export (auto-capture)");
+              } catch (storageError) {
+                logWarn(
+                  "Failed to store LaTeX for enhanced export:",
+                  storageError
+                );
+                // Non-critical - conversion succeeded, just log warning
+              }
+            }
+
+            // PHASE 1F PART B: Register LaTeX environments for export reconstruction
+            if (window.MathJaxManagerInstance && rawInputText) {
+              try {
+                const envCount =
+                  window.MathJaxManagerInstance.registerSourceEnvironments(
+                    rawInputText
+                  );
+                if (envCount > 0) {
+                  logInfo(
+                    `✅ Registered ${envCount} LaTeX environment(s) for export`
+                  );
+                } else {
+                  logDebug(
+                    "No numbered environments found (align, gather, etc.)"
+                  );
+                }
+              } catch (registrationError) {
+                logWarn("Failed to register environments:", registrationError);
+                // Non-critical - conversion succeeded, environment detection is optional
+              }
+            }
           }
           return conversionResult;
         } catch (orchestrationError) {
@@ -901,8 +937,60 @@ const ConversionEngine = (function () {
           window.StatusManager.updateConversionStatus("CONVERT_MATHJAX", 90);
         }
 
+        // PHASE 1F PART B FIX: Clear MathJax processing state before rendering
+        // This ensures MathJax treats content as new and applies correct equation numbering
+        if (window.MathJax?.typesetClear) {
+          logInfo(
+            "🧹 Clearing MathJax processing state for output container..."
+          );
+          window.MathJax.typesetClear([this.outputDiv]);
+          logInfo("✅ MathJax state cleared - ready for fresh processing");
+        } else {
+          logDebug(
+            "MathJax.typesetClear not available - using standard render"
+          );
+        }
+
         await window.MathJax.typesetPromise([this.outputDiv]);
         logInfo("✅ MathJax typeset complete");
+
+        // Verify equation numbers were created (for numbered environments)
+        const equationTags = this.outputDiv.querySelectorAll(
+          ".mjx-tag, .mjx-label"
+        );
+        if (equationTags.length > 0) {
+          logInfo(
+            `✅ Equation numbering successful: ${equationTags.length} number tags created`
+          );
+        } else {
+          logDebug(
+            "No equation number tags found (document may not contain numbered environments)"
+          );
+        }
+
+        // PHASE 1F PART B: Auto-tag rendered containers with environment data
+        if (window.tagMathEnvironments) {
+          // Small delay to ensure MathJax DOM is fully settled
+          setTimeout(() => {
+            try {
+              const taggedCount = window.tagMathEnvironments();
+              if (taggedCount > 0) {
+                logInfo(
+                  `✅ Auto-tagged ${taggedCount} container(s) with environment data`
+                );
+              } else {
+                logDebug(
+                  "No containers needed tagging (already tagged or no environments found)"
+                );
+              }
+            } catch (taggingError) {
+              logWarn("Auto-tagging failed:", taggingError);
+              // Non-critical - rendering succeeded, tagging is optional enhancement
+            }
+          }, 150); // Increased from 100ms to 150ms for better reliability
+        } else {
+          logDebug("tagMathEnvironments not available - skipping auto-tagging");
+        }
       } catch (error) {
         logError("MathJax rendering error:", error);
         // Don't throw - conversion can continue without MathJax

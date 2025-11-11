@@ -1,0 +1,21 @@
+/* ===== BASE STYLES ===== */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--body-text);
+    background-color: var(--sidebar-bg);
+    font-size: 16px;
+    transition: color 0.3s ease, background-color 0.3s ease;
+    height: 100%;
+}

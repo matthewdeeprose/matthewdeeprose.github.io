@@ -12,7 +12,7 @@ const ChunkedProcessingEngine = (function () {
   const logger = window.LoggingSystem?.createModuleLogger(
     "CHUNKED_PROCESSING",
     {
-      level: window.LoggingSystem.LOG_LEVELS.WARN,
+      level: window.LoggingSystem.LOG_LEVELS.INFO,
     }
   ) || {
     logError: console.error.bind(console, "[CHUNKED_PROCESSING]"),
@@ -67,6 +67,35 @@ const ChunkedProcessingEngine = (function () {
 
       // Set chunked processing flag to optimize cross-reference timing
       window.ChunkedProcessingEngine.isProcessing = true;
+
+      // PHASE 1F PART C: Reset MathJax equation counter BEFORE processing
+      // This ensures numbering starts from (1) for each new document
+      if (window.MathJaxManagerInstance?.resetEquationCounter) {
+        try {
+          window.MathJaxManagerInstance.resetEquationCounter();
+          logInfo("✅ Reset MathJax equation counter for new document");
+        } catch (resetError) {
+          logWarn("⚠️ Failed to reset equation counter:", resetError);
+        }
+      } else {
+        logDebug("MathJax counter reset not available");
+      }
+
+      // PHASE 1F PART C: Register environments BEFORE processing
+      // This ensures the registry has data for environment restoration
+      if (window.MathJaxManagerInstance?.registerSourceEnvironments) {
+        try {
+          const envCount =
+            window.MathJaxManagerInstance.registerSourceEnvironments(inputText);
+          logInfo(
+            `✅ Registered ${envCount} environments before chunked processing`
+          );
+        } catch (registryError) {
+          logWarn("⚠️ Failed to register environments:", registryError);
+        }
+      } else {
+        logDebug("Environment registration not available");
+      }
 
       // Update status if StatusManager available
       if (window.StatusManager) {
@@ -141,6 +170,32 @@ const ChunkedProcessingEngine = (function () {
         argumentsText,
         inputText
       );
+
+      // PHASE 1F PART B FIX: Restore environment wrappers after combining chunks
+      // Pandoc converts align->aligned, gather->gathered which prevents numbering
+      // This restoration ensures MathJax can number equations correctly
+      if (window.MathJaxManagerInstance?.restoreEnvironmentWrappersInHTML) {
+        try {
+          const restoredOutput =
+            window.MathJaxManagerInstance.restoreEnvironmentWrappersInHTML(
+              combinedOutput
+            );
+          logInfo(
+            "✅ Restored environment wrappers in chunked output for playground numbering"
+          );
+          combinedOutput = restoredOutput;
+        } catch (restoreError) {
+          logWarn(
+            "⚠️ Failed to restore environment wrappers in chunked output:",
+            restoreError
+          );
+          // Non-critical - use original combined output
+        }
+      } else {
+        logDebug(
+          "Environment restoration not available - numbering may not work"
+        );
+      }
 
       logInfo("✅ Chunked processing completed successfully");
       return {

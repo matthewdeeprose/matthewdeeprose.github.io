@@ -1,0 +1,41 @@
+/* ===== SKIP LINKS (First in Tab Order) - Enhanced Specificity ===== */
+a.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background-color: var(--link-color) !important;
+    color: var(--body-bg) !important;
+    padding: 8px;
+    text-decoration: none;
+    border-radius: 0 0 6px 6px;
+    font-weight: 600;
+    font-size: 14px;
+    z-index: 10000;
+    transition: top 0.3s ease;
+}
+
+a.skip-link:focus {
+    top: 0;
+    outline: 3px solid var(--body-bg) !important;
+    outline-offset: 2px;
+    background-color: var(--link-color) !important;
+    color: var(--body-bg) !important;
+}
+
+a.skip-link:hover {
+    background-color: var(--link-hover) !important;
+    color: var(--body-bg) !important;
+}
+
+/* Dark mode skip links */
+[data-theme="dark"] a.skip-link {
+    background-color: var(--link-color) !important;
+    color: var(--body-bg) !important;
+}
+
+[data-theme="dark"] a.skip-link:focus,
+[data-theme="dark"] a.skip-link:hover {
+    background-color: var(--link-hover) !important;
+    color: var(--body-bg) !important;
+    outline-color: var(--body-bg) !important;
+}

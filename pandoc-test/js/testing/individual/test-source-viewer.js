@@ -10,7 +10,10 @@ const TestSourceViewer = (function () {
         return typeof window.SourceViewer !== "undefined";
       },
 
-      hasRequiredMethods: () => {
+hasRequiredMethods: () => {
+        // Check module exists first
+        if (!window.SourceViewer) return false;
+        
         const required = [
           "generateEnhancedFooter",
           "detectSourceLanguage",
@@ -22,12 +25,13 @@ const TestSourceViewer = (function () {
         ];
 
         return required.every(
-          (method) => typeof window.SourceViewer[method] === "function"
+          (method) => window.SourceViewer && typeof window.SourceViewer[method] === "function"
         );
       },
 
-      languageDetection: () => {
-        if (!window.SourceViewer.detectSourceLanguage) return false;
+languageDetection: () => {
+        // Check module exists first
+        if (!window.SourceViewer || !window.SourceViewer.detectSourceLanguage) return false;
 
         const testCases = [
           {
@@ -66,15 +70,15 @@ const TestSourceViewer = (function () {
         });
       },
 
-      footerGeneration: () => {
-        if (!window.SourceViewer.generateEnhancedFooter) return false;
+footerGeneration: async () => {
+        if (!window.SourceViewer || !window.SourceViewer.generateEnhancedFooter) return false;
 
         const testSource =
           "\\documentclass{article}\n\\title{Test Document}\n\\begin{document}\n\\maketitle\nHello World\n\\end{document}";
         const testArgs = "--from latex --to html5 --mathjax";
         const metadata = { title: "Test Document" };
 
-        const footer = window.SourceViewer.generateEnhancedFooter(
+        const footer = await window.SourceViewer.generateEnhancedFooter(
           testSource,
           testArgs,
           metadata
@@ -94,7 +98,7 @@ const TestSourceViewer = (function () {
       },
 
       embeddedAssets: async () => {
-        if (!window.SourceViewer.generateEmbeddedAssets) return false;
+         if (!window.SourceViewer || !window.SourceViewer.generateEmbeddedAssets) return false;
 
         try {
           const assets = await window.SourceViewer.generateEmbeddedAssets();
@@ -113,12 +117,12 @@ const TestSourceViewer = (function () {
         }
       },
 
-      securityEscaping: () => {
-        if (!window.SourceViewer.generateEnhancedFooter) return false;
+      securityEscaping: async () => {
+        if (!window.SourceViewer || !window.SourceViewer.generateEnhancedFooter) return false;
 
         const maliciousSource =
           "<script>alert('XSS')</script>\n<iframe src='evil.com'></iframe>";
-        const footer = window.SourceViewer.generateEnhancedFooter(
+        const footer = await window.SourceViewer.generateEnhancedFooter(
           maliciousSource,
           "--from latex"
         );
@@ -131,10 +135,10 @@ const TestSourceViewer = (function () {
         );
       },
 
-      accessibilityFeatures: () => {
-        if (!window.SourceViewer.generateEnhancedFooter) return false;
+accessibilityFeatures: async () => {
+        if (!window.SourceViewer || !window.SourceViewer.generateEnhancedFooter) return false;
 
-        const footer = window.SourceViewer.generateEnhancedFooter(
+        const footer = await window.SourceViewer.generateEnhancedFooter(
           "Test source",
           "--from latex"
         );
@@ -150,11 +154,12 @@ const TestSourceViewer = (function () {
         );
       },
 
-      integrationReadiness: () => {
+integrationReadiness: () => {
         // Test integration with export manager
         return (
           typeof window.ExportManager !== "undefined" &&
           typeof window.SourceViewer !== "undefined" &&
+          window.SourceViewer !== null &&
           typeof window.SourceViewer.generateEnhancedFooter === "function"
         );
       },

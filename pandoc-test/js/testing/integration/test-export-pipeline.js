@@ -68,9 +68,21 @@ const TestExportPipeline = (function () {
 
       const tests = {
         latexConversion: () => {
-          const converted =
-            window.LaTeXProcessor.convertMathJaxToLatex(testContent);
-          return converted && converted.length > 0;
+          // Export pipeline should use legacy module for conversion
+          const testHTML = `
+    <mjx-container display="true">
+      <mjx-assistive-mml>
+        <math>
+          <annotation encoding="application/x-tex">x = 5</annotation>
+        </math>
+      </mjx-assistive-mml>
+    </mjx-container>
+  `;
+
+          // Use legacy module (which export-manager.js should use)
+          const result =
+            window.LaTeXProcessorLegacy.convertMathJaxToLatex(testHTML);
+          return result.includes("\\[x = 5\\]");
         },
 
         metadataExtraction: () => {
@@ -81,13 +93,14 @@ const TestExportPipeline = (function () {
           );
         },
 
-        contentGeneration: () => {
+        contentGeneration: async () => {
           const metadata =
             window.LaTeXProcessor.extractDocumentMetadata(testContent);
-          const enhanced = window.ContentGenerator.enhanceDocumentStructure(
-            testContent,
-            metadata
-          );
+          const enhanced =
+            await window.ContentGenerator.enhanceDocumentStructure(
+              testContent,
+              metadata
+            );
           return (
             enhanced.includes("document-wrapper") && enhanced.includes("main")
           );

@@ -365,13 +365,50 @@ const TestFramework = (function () {
    * Run complete system validation with detailed reporting
    * @returns {Object} Complete system test results
    */
-  function runComprehensiveTests() {
+  async function runComprehensiveTests() {
     logInfo("🚀 Running comprehensive system validation");
 
     const startTime = performance.now();
     console.log("🎯 COMPREHENSIVE SYSTEM VALIDATION");
     console.log("===================================");
     console.log(`Started at: ${new Date().toLocaleString()}`);
+
+    // ===========================================================================================
+    // CRITICAL: Reset template system state before testing
+    // ===========================================================================================
+    // This ensures consecutive test runs work reliably by:
+    // 1. Clearing stale cache state (prevents state pollution)
+    // 2. Reloading templates fresh (ensures tests have required templates)
+    try {
+      if (window.TemplateSystem) {
+        console.log(
+          "\n🧹 Resetting template system state for clean test run..."
+        );
+
+        // Step 1: Clear all caches (reset state machine)
+        if (typeof window.TemplateSystem.clearAllCaches === "function") {
+          window.TemplateSystem.clearAllCaches();
+          logInfo("✅ Template caches cleared");
+        }
+
+        // Step 2: Reload templates (ensure they're available for tests)
+        if (typeof window.TemplateSystem.reloadGlobalCache === "function") {
+          await window.TemplateSystem.reloadGlobalCache();
+          logInfo("✅ Templates reloaded successfully");
+        }
+
+        // Verify templates are ready
+        const cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
+        console.log(
+          `📊 Template system ready: ${cacheStatus.templatesCount} templates loaded`
+        );
+      } else {
+        logWarn("⚠️ TemplateSystem not available - skipping cleanup");
+      }
+    } catch (error) {
+      logWarn(`⚠️ Failed to reset template system: ${error.message}`);
+      // Continue with tests anyway - this is a best-effort cleanup
+    }
 
     const comprehensiveResults = {
       individualTests: null,
@@ -382,7 +419,6 @@ const TestFramework = (function () {
       executionTime: 0,
       timestamp: new Date().toISOString(),
     };
-
     try {
       // Step 1: Individual Module Tests
       console.log("\n🔧 PHASE 1: Individual Module Tests");

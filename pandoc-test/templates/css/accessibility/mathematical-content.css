@@ -1,0 +1,55 @@
+/* ===== ENHANCED MATHEMATICAL CONTENT ===== */
+mjx-container {
+    max-width: 100%;
+    cursor: context-menu;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    margin: 0.5em 0;
+    overflow-x: auto;
+    min-width: 0;
+    overflow-y: hidden;
+}
+
+mjx-container:hover {
+    background-color: var(--focus-bg);
+    outline: 1px solid var(--border-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+mjx-container:focus-visible {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+    background-color: var(--focus-bg);
+}
+
+/* Enhanced display math styling */
+mjx-container[display="true"] {
+    margin: 1.5em 0;
+    padding: 0.5em;
+    border-radius: 6px;
+}
+
+mjx-container[display="true"]:hover {
+    background-color: var(--focus-bg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar styling for math overflow */
+mjx-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+mjx-container::-webkit-scrollbar-track {
+    background: var(--surface-color);
+    border-radius: 4px;
+}
+
+mjx-container::-webkit-scrollbar-thumb {
+    background: var(--text-secondary);
+    border-radius: 4px;
+}
+
+mjx-container::-webkit-scrollbar-thumb:hover {
+    background: var(--link-color);
+}

@@ -64,10 +64,10 @@ const TestAccessibilityIntegration = (function () {
       const generator = window.TemplateSystem.createGenerator();
 
       const tests = {
-        skipLinks: () => {
+skipLinks: async () => {
           const testContent = "<p>Test content</p>";
           const metadata = { sections: [] };
-          const enhanced = window.ContentGenerator.enhanceDocumentStructure(
+          const enhanced = await window.ContentGenerator.enhanceDocumentStructure(
             testContent,
             metadata
           );
@@ -107,10 +107,10 @@ const TestAccessibilityIntegration = (function () {
           );
         },
 
-        semanticStructure: () => {
+semanticStructure: async () => {
           const testContent = "<h1>Test</h1><p>Content</p>";
           const metadata = { sections: [{ title: "Test", level: 1 }] };
-          const enhanced = window.ContentGenerator.enhanceDocumentStructure(
+          const enhanced = await window.ContentGenerator.enhanceDocumentStructure(
             testContent,
             metadata
           );

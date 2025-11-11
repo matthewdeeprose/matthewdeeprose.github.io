@@ -326,6 +326,42 @@ const AppConfig = (function () {
       // Timing
       commandsDelayMs: 100,
     },
+
+    // ===========================================================================================
+    // PHASE 1F PART B: LATEX PROCESSOR CONFIGURATION
+    // ===========================================================================================
+    LATEX_PROCESSOR: {
+      /**
+       * Clean invalid nested environments
+       * If true: Remove invalid \begin{equation} wrappers around align/gather
+       * If false: Leave as-is (may cause rendering errors)
+       *
+       * LaTeX-standard: equation (single) cannot wrap align/gather (multi-line)
+       */
+      CLEAN_INVALID_NESTING: true,
+
+      /**
+       * Show UI warnings for auto-cleaned environments
+       * If true: Display notification when invalid nesting is cleaned
+       * If false: Only log to console
+       */
+      UI_WARNINGS_ENABLED: false,
+
+      /**
+       * Reset equation counter between conversions
+       * If true: Each new conversion starts numbering from (1)
+       * If false: Numbering continues from previous conversion
+       *
+       * Note: Counter always resets in exports (standard LaTeX behaviour)
+       */
+      EQUATION_COUNTER_RESET: true,
+
+      /**
+       * Logging level for LaTeX processing
+       * Options: 'ERROR', 'WARN', 'INFO', 'DEBUG'
+       */
+      LOG_LEVEL: "WARN",
+    },
   };
 
   /**

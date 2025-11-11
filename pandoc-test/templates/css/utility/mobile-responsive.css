@@ -1,0 +1,102 @@
+/* ===== ENHANCED MOBILE RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    /* IMPROVED: Single column layout for better mobile experience */
+    .document-wrapper,
+    .document-wrapper.no-toc {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0;
+        box-shadow: none;
+        height: auto;
+        overflow: visible;
+    }
+
+    /* IMPROVED: Reset grid areas for block layout */
+    .table-of-contents,
+    .document-content,
+    .document-sidebar {
+        grid-area: unset !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border: none !important;
+    }
+
+    /* IMPROVED: TOC styling for mobile */
+    .table-of-contents {
+        background: var(--surface-color);
+        padding: 1rem;
+        margin-bottom: 1px;
+        border-right: none;
+        border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    /* IMPROVED: Content styling for mobile */
+    .document-content {
+        padding: 1.5rem 1rem;
+        background: var(--body-bg);
+        border-left: none;
+        border-right: none;
+        height: auto;
+        overflow-y: visible;
+    }
+
+    /* IMPROVED: Sidebar styling for mobile */
+    .document-sidebar {
+        background: var(--sidebar-bg);
+        padding: 0;
+        position: relative;
+        max-height: none;
+        height: auto;
+        border-left: none;
+        border-top: 1px solid var(--sidebar-border);
+        overflow-y: visible;
+    }
+
+    /* IMPROVED: Footer styling for mobile */
+    .document-footer {
+        background: var(--sidebar-bg);
+        padding: 1.5rem 1rem;
+        margin-top: 1rem;
+    }
+
+    .accessibility-controls {
+        margin: 0.5rem;
+        padding: 1rem !important;
+    }
+
+    .tools-section .tool-group {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .tool-group .form-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .tool-group input[type="number"] {
+        width: 60px;
+    }
+
+    .reset-button {
+        font-size: 13px;
+        padding: 8px 14px;
+    }
+    
+    .slider-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .range-value {
+        align-self: center;
+        min-width: auto;
+        width: 4rem;
+    }
+}

@@ -1,0 +1,80 @@
+/* ===== ENHANCED TABLE STYLING ===== */
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 2rem 0;
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, .39);
+	border: 1px solid var(--body-text);
+	position: relative;
+	font-variant-numeric: tabular-nums;
+	/* Better number alignment */
+}
+/* Enhanced table typography */
+table {
+	font-size: 0.95rem;
+	line-height: 1.5;
+}
+/* Table captions */
+caption {
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: var(--body-text);
+	text-align: left;
+	padding: 1rem;
+	margin-bottom: 0.5rem;
+	background: var(--body-bg);
+	border-radius: 8px 8px 0 0;
+	border: 1px solid var(--body-text);
+	border-bottom: none;
+}
+/* Enhanced cell styling */
+th,
+td {
+	padding: 1rem;
+	text-align: left;
+	vertical-align: top;
+	position: relative;
+	border: 2px solid var(--body-text);
+}
+/* Remove border from last column */
+th:last-child,
+td:last-child {
+	border-right: none;
+}
+/* Header styling with gradient */
+th {
+	font-weight: 600;
+	font-size: 0.875rem;
+	letter-spacing: 0.05em;
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	border: 2px solid var(--body-text);
+}
+/* Row styling with enhanced interactions */
+tr {
+	transition: all 0.2s ease;
+}
+/* Zebra striping for better readability */
+tr:last-child td {
+	border-bottom: none;
+}
+/* Cell content alignment classes */
+.table-cell-center {
+	text-align: center;
+}
+.table-cell-right {
+	text-align: right;
+}
+.table-cell-numeric {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace, var(--font-primary);
+}
+/* Mathematical content in tables */
+table mjx-container {
+	margin: 0.25em 0;
+	font-size: 0.9em;
+}

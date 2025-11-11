@@ -1,0 +1,49 @@
+/* ===== FOCUS MANAGEMENT - KEYBOARD NAVIGATION ONLY ===== */
+/* Remove default focus outline for mouse/touch interactions */
+:focus:not(:focus-visible) {
+    outline: none !important;
+}
+
+/* Apply focus styles only for keyboard navigation */
+:focus-visible {
+    outline: 3px solid var(--focus-outline) !important;
+    outline-offset: 2px !important;
+    border-radius: 2px;
+}
+
+
+nav#toc:focus-visible {
+  border: 2px dotted var(--focus-outline);
+  outline: 3px solid var(--focus-outline) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px var(--focus-bg);
+}
+
+
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+.theme-toggle:focus-visible,
+.reset-button:focus-visible,
+.print-button:focus-visible,
+.action-button:focus-visible,
+.focus-toggle-btn:focus-visible {
+    outline: 3px solid var(--focus-outline) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px var(--focus-bg);
+}
+
+/* MathJax containers */
+mjx-container:focus:not(:focus-visible) {
+    outline: none;
+    background-color: transparent;
+}
+
+mjx-container:focus-visible {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+    background-color: var(--focus-bg);
+}

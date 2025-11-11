@@ -143,10 +143,10 @@ const TestTableEnhancements = (function () {
           );
         },
 
-        // Test table CSS generation
-        generateTableCSS: () => {
+// Test table CSS generation
+        generateTableCSS: async () => {
           try {
-            const css = window.ContentGenerator.generateTableCSS();
+            const css = await window.ContentGenerator.generateTableCSS();
             return (
               css &&
               css.length > 1000 &&
@@ -161,10 +161,10 @@ const TestTableEnhancements = (function () {
           }
         },
 
-        // Test advanced table CSS features
-        advancedTableCSS: () => {
+// Test advanced table CSS features
+        advancedTableCSS: async () => {
           try {
-            const css = window.ContentGenerator.generateAdvancedTableCSS();
+            const css = await window.ContentGenerator.generateAdvancedTableCSS();
             return (
               css &&
               css.includes("linear-gradient") &&
@@ -178,10 +178,10 @@ const TestTableEnhancements = (function () {
           }
         },
 
-        // Test responsive table CSS
-        responsiveTableCSS: () => {
+// Test responsive table CSS
+        responsiveTableCSS: async () => {
           try {
-            const css = window.ContentGenerator.generateResponsiveTableCSS();
+            const css = await window.ContentGenerator.generateResponsiveTableCSS();
             return (
               css &&
               css.includes("card layout") &&
@@ -195,10 +195,10 @@ const TestTableEnhancements = (function () {
           }
         },
 
-        // Test table accessibility CSS
-        accessibilityCSS: () => {
+// Test table accessibility CSS
+        accessibilityCSS: async () => {
           try {
-            const css = window.ContentGenerator.generateTableAccessibilityCSS();
+            const css = await window.ContentGenerator.generateTableAccessibilityCSS();
             return (
               css &&
               css.includes("focus") &&
@@ -303,10 +303,10 @@ const TestTableEnhancements = (function () {
           }
         },
 
-        // Test integration with design system
-        designSystemIntegration: () => {
+// Test integration with design system
+        designSystemIntegration: async () => {
           try {
-            const css = window.ContentGenerator.generateTableCSS();
+            const css = await window.ContentGenerator.generateTableCSS();
             return (
               css &&
               css.includes("var(--surface-color)") &&
@@ -320,10 +320,10 @@ const TestTableEnhancements = (function () {
           }
         },
 
-        // Test print CSS compatibility
-        printCSS: () => {
+// Test print CSS compatibility
+        printCSS: async () => {
           try {
-            const css = window.ContentGenerator.generateTablePrintCSS();
+            const css = await window.ContentGenerator.generateTablePrintCSS();
             return (
               css &&
               css.includes("@media print") &&

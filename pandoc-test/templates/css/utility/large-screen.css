@@ -1,0 +1,50 @@
+/* ===== LARGE SCREEN OPTIMIZATIONS ===== */
+@media (max-width: 1200px) {
+    /* IMPROVED: Better responsive TOC layout for tablets - Enhanced TOC width */
+    .document-wrapper:not(.no-toc) {
+       grid-template-columns: minmax(220px, 240px) 1fr minmax(240px, 260px);
+    }
+}
+
+@media (min-width: 1200px) {
+    .document-wrapper {
+        max-width: 1800px;
+    }
+    
+    .document-wrapper.no-toc {
+        grid-template-columns: 1fr minmax(300px, 350px);
+    }
+    
+    .document-wrapper:not(.no-toc) {
+        grid-template-columns: minmax(240px, 260px) 1fr minmax(300px, 350px);
+    }
+    
+    .document-content {
+        padding: 2rem 3rem 4rem 3rem;
+        font-size: 1.05rem;
+    }
+    
+    h1 {
+        font-size: 2.5rem;
+    }
+    
+    h2 {
+        font-size: 1.875rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .document-wrapper {
+        max-width: 2000px;
+    }
+    
+    .document-content {
+        padding: 2rem 4rem 4rem 4rem;
+        font-size: 1.1rem;
+        line-height: 1.8;
+    }
+    
+    .sidebar-section {
+        padding: 2rem;
+    }
+}

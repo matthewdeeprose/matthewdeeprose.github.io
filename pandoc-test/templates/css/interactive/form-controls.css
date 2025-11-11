@@ -1,0 +1,270 @@
+/* ===== FORM CONTROLS STYLING ===== */
+.form-group {
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    /* IMPROVED: Prevent form elements from overflowing */
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+/* Special layout for form groups containing select elements */
+.form-group:has(select) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+}
+
+/* Fallback for browsers that don't support :has() */
+.form-group.select-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+}
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    color: var(--body-text);
+    cursor: pointer;
+    flex: 1;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+/* Adjust label styling when above select elements */
+.form-group:has(select) label,
+.form-group.select-group label {
+    flex: none;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+
+.form-group input[type="checkbox"],
+.form-group input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--link-color);
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Remove outline for mouse clicks on checkboxes/radios */
+.form-group input[type="checkbox"]:focus:not(:focus-visible),
+.form-group input[type="radio"]:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.form-group input[type="checkbox"]:focus-visible,
+.form-group input[type="radio"]:focus-visible {
+    outline: 2px solid var(--focus-outline);
+    outline-offset: 2px;
+}
+
+
+.form-group select {
+background-color: var(--body-bg);
+border: 1px solid var(--body-text);
+
+color: var(--body-text);
+padding: 0.5rem 0.75rem;
+border-radius: 0.375rem;
+font-size: 0.875rem;
+cursor: pointer;
+transition: all 0.2s ease;
+font-family: inherit;
+min-width: 200px;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+}
+
+/* Specific styling for select options */
+.form-group select option {
+background-color: var(--body-bg);
+color: var(--body-text);
+padding: 0.5rem;
+}
+
+/* Dark mode specific fixes */
+[data-theme="dark"] .form-group select {
+background-color: var(--body-bg);
+color: var(--body-text);
+border-color: var(--body-text);
+
+}
+
+/* Force dark mode option styling with higher specificity */
+[data-theme="dark"] .form-group select option {
+background-color: var(--body-bg) !important;
+color: var(--body-text) !important;
+}
+
+/* Additional browser-specific fixes */
+[data-theme="dark"] .form-group select {
+/* Webkit browsers (Chrome, Safari) */
+-webkit-color-scheme: dark;
+
+/* Firefox */
+color-scheme: dark;
+}
+
+/* Focus states */
+.form-group select:focus-visible {
+outline: 3px solid var(--focus-outline);
+outline-offset: 2px;
+border-color: var(--link-color);
+}
+
+[data-theme="dark"] .form-group select:focus-visible {
+border-color: var(--link-color);
+}
+
+.form-group select:focus {
+	outline: transparent 2px solid !important;
+}
+
+[data-theme="dark"] .form-group select:focus {
+	outline: transparent 2px solid;
+}
+
+/* Hover states */
+.form-group select:hover {
+border-color: var(--link-color);
+box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .form-group select:hover {
+border-color: var(--link-color);
+box-shadow: 0 2px 6px rgba(179, 219, 210, 0.2);
+}
+
+.form-group input[type="number"] {
+    padding: 6px 8px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+    background: var(--surface-color);
+    color: var(--body-text);
+    font-size: 0.8rem;
+    font-family: inherit;
+    width: 80px;
+    transition: all 0.2s ease;
+}
+
+/* Remove outline for mouse clicks on number inputs */
+.form-group input[type="number"]:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.form-group input[type="number"]:focus-visible {
+    outline: 2px solid var(--focus-outline);
+    outline-offset: 1px;
+    border-color: var(--focus-outline);
+    box-shadow: 0 0 0 4px var(--focus-bg);
+}
+
+.form-group input[type="number"]:hover {
+    border-color: var(--link-color);
+    background: var(--body-bg);
+}
+
+/* ===== RANGE SLIDER STYLING ===== */
+.slider-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.form-group input[type="range"] {
+    flex: 1;
+    cursor: pointer;
+    accent-color: var(--link-color);
+    height: 6px;
+    background: var(--surface-color);
+    border-radius: 3px;
+    outline: none;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+/* Remove outline for mouse clicks on range sliders */
+.form-group input[type="range"]:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.form-group input[type="range"]:focus-visible {
+    outline: 2px solid var(--focus-outline);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-bg);
+}
+
+.form-group input[type="range"]:hover {
+    background: var(--border-color);
+}
+
+.form-group input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--link-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid var(--body-bg);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+.form-group input[type="range"]::-webkit-slider-thumb:hover {
+    background: var(--link-hover);
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.form-group input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--link-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid var(--body-bg);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+.form-group input[type="range"]::-moz-range-thumb:hover {
+    background: var(--link-hover);
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.range-value {
+    min-width: 3.5rem;
+    text-align: center;
+    font-weight: 600;
+    color: var(--link-color);
+    font-size: 0.85rem;
+    background: var(--focus-bg);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--sidebar-border);
+    transition: all 0.2s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.radio-group {
+    margin-left: 0.5rem;
+    border-left: 2px solid var(--sidebar-border);
+    padding-left: 0.75rem;
+}

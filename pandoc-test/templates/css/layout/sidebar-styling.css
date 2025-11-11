@@ -1,0 +1,67 @@
+/* ===== SIDEBAR SECTIONS ===== */
+.sidebar-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.sidebar-section:last-child {
+    border-bottom: none;
+}
+
+.sidebar-section h2 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--heading-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.sidebar-section h3 {
+    margin: 1.5rem 0 0.75rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--heading-color);
+    
+    letter-spacing: 0.05em;
+}
+
+.sidebar-section h3:first-of-type {
+    margin-top: 0;
+}
+
+/* ===== TOOLS SECTION STYLING (Enhanced to match accessibility-controls) ===== */
+.tools-section {
+    background: var(--body-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    margin: 1rem 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px var(--sidebar-shadow);
+    /* IMPROVED: Prevent overflow at high zoom levels */
+    box-sizing: border-box;
+    max-width: calc(100% - 1.5rem);
+}
+
+.tool-group {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    /* IMPROVED: Ensure content fits within container */
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.tool-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.tool-group h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--heading-color);
+    
+    letter-spacing: 0.05em;
+}

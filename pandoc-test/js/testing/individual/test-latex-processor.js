@@ -65,11 +65,18 @@ const TestLaTeXProcessor = (function () {
       }
 
       const tests = {
-        convertMathJax: () => {
-          const testContent = "<mjx-container>Test math</mjx-container>";
-          const result =
-            window.LaTeXProcessor.convertMathJaxToLatex(testContent);
-          return typeof result === "string";
+        sharedUtilitiesAvailable: () => {
+          // Verify core module has shared utilities, NOT legacy methods
+          const hasShared =
+            typeof window.LaTeXProcessor.extractDocumentMetadata ===
+              "function" &&
+            typeof window.LaTeXProcessor.cleanLatexContent === "function" &&
+            typeof window.LaTeXProcessor.validateLatexSyntax === "function";
+
+          const noLegacy =
+            typeof window.LaTeXProcessor.convertMathJaxToLatex === "undefined";
+
+          return hasShared && noLegacy;
         },
 
         generateMathJaxConfig: () => {
@@ -78,6 +85,63 @@ const TestLaTeXProcessor = (function () {
             config.includes("MathJax") &&
             config.includes("Enhanced MathJax Configuration")
           );
+        },
+
+        // Phase 1E: Test MathJax extension loading
+        mathJaxExtensionsInConfig: () => {
+          const config = window.LaTeXProcessor.generateMathJaxConfig(2);
+
+          // Check cancel extension in loader
+          const hasCancelLoader = config.includes("'[tex]/cancel'");
+          if (!hasCancelLoader) {
+            throw new Error("Missing [tex]/cancel in loader configuration");
+          }
+
+          // Check color extension in loader
+          const hasColorLoader = config.includes("'[tex]/color'");
+          if (!hasColorLoader) {
+            throw new Error("Missing [tex]/color in loader configuration");
+          }
+
+          // Check cancel in packages array
+          const hasCancelPackage = config.includes("'cancel'");
+          if (!hasCancelPackage) {
+            throw new Error("Missing 'cancel' in packages array");
+          }
+
+          // Check color in packages array
+          const hasColorPackage = config.includes("'color'");
+          if (!hasColorPackage) {
+            throw new Error("Missing 'color' in packages array");
+          }
+
+          // Check coloneqq macro exists
+          const hasColoneqqMacro = config.includes("coloneqq");
+          if (!hasColoneqqMacro) {
+            throw new Error("Missing coloneqq macro in configuration");
+          }
+
+          return true;
+        },
+
+        // Phase 1E: Test default macros include coloneqq
+        mathJaxDefaultMacros: () => {
+          const config = window.LaTeXProcessor.generateMathJaxConfig(2);
+
+          // Check widecheck macro (existing default)
+          const hasWidecheck = config.includes("widecheck");
+          if (!hasWidecheck) {
+            throw new Error("Missing default widecheck macro");
+          }
+
+          // Check coloneqq macro (new in Phase 1E)
+          const hasColoneqq =
+            config.includes("coloneqq") && config.includes("\\\\mathrel{:=}");
+          if (!hasColoneqq) {
+            throw new Error("Missing or malformed coloneqq macro");
+          }
+
+          return true;
         },
 
         extractMetadata: () => {
@@ -91,30 +155,6 @@ const TestLaTeXProcessor = (function () {
           const testLatex = "x^2 + y^2 = z^2";
           const result = window.LaTeXProcessor.validateLatexSyntax(testLatex);
           return result && result.valid === true;
-        },
-
-        consistencyIntegration: () => {
-          // Test integration with consistency testing system
-          if (window.TestLaTeXConsistency) {
-            const testResult =
-              window.TestLaTeXConsistency.testLatexExpression("x^2");
-            return testResult && testResult.success;
-          }
-          return false;
-        },
-
-        exportConsistencyReady: () => {
-          // Verify export consistency capabilities
-          if (window.TestLaTeXConsistency) {
-            const consistency =
-              window.TestLaTeXConsistency.testExportConsistency();
-            return (
-              consistency &&
-              consistency.processorTest &&
-              consistency.processorTest.available
-            );
-          }
-          return false;
         },
 
         cleanContent: () => {

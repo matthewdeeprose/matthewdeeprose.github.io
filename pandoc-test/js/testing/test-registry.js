@@ -67,6 +67,16 @@ const TestRegistry = (function () {
         module: "LaTeXProcessor",
       },
       {
+        name: "LaTeXProcessorEnhanced",
+        command: "testLaTeXProcessorEnhanced",
+        module: "LaTeXProcessorEnhanced",
+      },
+      {
+        name: "LaTeXProcessorCoordinator",
+        command: "testLaTeXProcessorCoordinator",
+        module: "LaTeXProcessorCoordinator",
+      },
+      {
         name: "ContentGenerator",
         command: "testContentGenerator",
         module: "ContentGenerator",
@@ -80,6 +90,31 @@ const TestRegistry = (function () {
         name: "ExportManager",
         command: "testExportManager",
         module: "ExportManager",
+      },
+      {
+        name: "HeadGenerator",
+        command: "testHeadGenerator",
+        module: "HeadGenerator",
+      },
+      {
+        name: "ScriptOrchestrator",
+        command: "testScriptOrchestrator",
+        module: "ScriptOrchestrator",
+      },
+      {
+        name: "BodyGenerator",
+        command: "testBodyGenerator",
+        module: "BodyGenerator",
+      },
+      {
+        name: "FooterGenerator",
+        command: "testFooterGenerator",
+        module: "FooterGenerator",
+      },
+      {
+        name: "Base64Handler",
+        command: "testBase64Handler",
+        module: "Base64Handler",
       },
       {
         name: "SCORMExportManager",
@@ -556,14 +591,14 @@ const TestRegistry = (function () {
         testFrameworkAvailable: typeof window.TestFramework !== "undefined",
         testCommandsAvailable: typeof window.TestCommands !== "undefined",
         templateSystemAvailable: typeof window.TemplateSystem !== "undefined",
-        individualTestsExpected: 16, // 🔧 Updated to match current test count
+        individualTestsExpected: 17, // 🔧 Updated to match current test count
         integrationTestsExpected: 5, // 🔧 Updated to match current test count
         individualTestsFound: status.categories.individual?.count || 0,
         integrationTestsFound: status.categories.integration?.count || 0,
       };
 
       // Health check
-      const expectedIndividual = 16; // 🔧 Updated to match current test count
+      const expectedIndividual = 17; // 🔧 Updated to match current test count
       const expectedIntegration = 5; // 🔧 Updated to match current test count
       const foundIndividual = status.systemIntegration.individualTestsFound;
       const foundIntegration = status.systemIntegration.integrationTestsFound;
@@ -627,6 +662,70 @@ const TestRegistry = (function () {
   }
 
   // ===========================================================================================
+  // DYNAMIC TEST DISCOVERY HELPERS
+  // ===========================================================================================
+
+  /**
+   * Get list of individual test commands from KNOWN_TEST_PATTERNS
+   * Replaces hardcoded test lists with dynamic discovery
+   * @returns {string[]} Array of individual test command names
+   */
+  function getIndividualTestCommands() {
+    try {
+      return KNOWN_TEST_PATTERNS.individual.map((pattern) => pattern.command);
+    } catch (error) {
+      logError("Failed to get individual test commands:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get list of integration test commands from KNOWN_TEST_PATTERNS
+   * Replaces hardcoded test lists with dynamic discovery
+   * @returns {string[]} Array of integration test command names
+   */
+  function getIntegrationTestCommands() {
+    try {
+      return KNOWN_TEST_PATTERNS.integration.map((pattern) => pattern.command);
+    } catch (error) {
+      logError("Failed to get integration test commands:", error);
+      return [];
+    }
+  }
+
+  // ===========================================================================================
+  // DYNAMIC TEST DISCOVERY HELPERS
+  // ===========================================================================================
+
+  /**
+   * Get list of individual test commands from KNOWN_TEST_PATTERNS
+   * Replaces hardcoded test lists with dynamic discovery
+   * @returns {string[]} Array of individual test command names
+   */
+  function getIndividualTestCommands() {
+    try {
+      return KNOWN_TEST_PATTERNS.individual.map((pattern) => pattern.command);
+    } catch (error) {
+      logError("Failed to get individual test commands:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get list of integration test commands from KNOWN_TEST_PATTERNS
+   * Replaces hardcoded test lists with dynamic discovery
+   * @returns {string[]} Array of integration test command names
+   */
+  function getIntegrationTestCommands() {
+    try {
+      return KNOWN_TEST_PATTERNS.integration.map((pattern) => pattern.command);
+    } catch (error) {
+      logError("Failed to get integration test commands:", error);
+      return [];
+    }
+  }
+
+  // ===========================================================================================
   // INITIALISATION
   // ===========================================================================================
 
@@ -669,6 +768,10 @@ const TestRegistry = (function () {
     listAvailableTests,
     getTestMetadata,
     getRegistryStatus,
+
+    // Dynamic test discovery (Phase 4)
+    getIndividualTestCommands,
+    getIntegrationTestCommands,
 
     // Initialisation
     initialiseRegistry,
@@ -826,11 +929,40 @@ window.testAllQuiet = () => {
 };
 
 // Ultra-safe quiet testing (bypasses TestRunner completely)
-window.testAllSafe = () => {
+window.testAllSafe = async () => {
+  const startTime = performance.now();
   console.log("🔇 Running safe comprehensive tests...");
 
-  // ✅ FIX: Make this synchronous again to avoid Promise issues
-  // Template system will use inline fallbacks immediately
+  // ===========================================================================================
+  // CRITICAL: Reset template system state before testing
+  // ===========================================================================================
+  // This ensures consecutive test runs work reliably by:
+  // 1. Clearing stale cache state (prevents state pollution)
+  // 2. Reloading templates fresh (ensures tests have required templates)
+  try {
+    if (window.TemplateSystem) {
+      console.log("🧹 Resetting template system state for clean test run...");
+
+      // Step 1: Clear all caches (reset state machine)
+      if (typeof window.TemplateSystem.clearAllCaches === "function") {
+        window.TemplateSystem.clearAllCaches();
+      }
+
+      // Step 2: Reload templates (ensure they're available for tests)
+      if (typeof window.TemplateSystem.reloadGlobalCache === "function") {
+        await window.TemplateSystem.reloadGlobalCache();
+      }
+
+      // Verify templates are ready
+      const cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
+      console.log(
+        `📊 Template system ready: ${cacheStatus.templatesCount} templates loaded`
+      );
+    }
+  } catch (error) {
+    console.warn(`⚠️ Failed to reset template system: ${error.message}`);
+    // Continue with tests anyway - this is a best-effort cleanup
+  }
 
   try {
     // Test core functionality without verbose TestRunner
@@ -839,20 +971,8 @@ window.testAllSafe = () => {
     let passedTests = 0;
 
     // Test individual modules one by one
-    const individualTests = [
-      "testAppConfig",
-      "testMathJaxManager",
-      "testLaTeXProcessor",
-      "testContentGenerator",
-      "testTemplateSystem",
-      "testExportManager",
-      "testExampleSystem",
-      "testStatusManager",
-      "testConversionEngine",
-      "testEventManager",
-      "testAppStateManager",
-      "testLayoutDebugger",
-    ];
+    // ✅ DYNAMIC DISCOVERY: Uses TestRegistry instead of hardcoded list
+    const individualTests = TestRegistry.getIndividualTestCommands();
 
     console.log("📊 Testing individual modules...");
     for (const testName of individualTests) {
@@ -881,13 +1001,8 @@ window.testAllSafe = () => {
     }
 
     // Test integration
-    const integrationTests = [
-      "testExportPipeline",
-      "testModularIntegration",
-      "testAccessibilityIntegration",
-      "testPerformance",
-    ];
-
+    // ✅ DYNAMIC DISCOVERY: Uses TestRegistry instead of hardcoded list
+    const integrationTests = TestRegistry.getIntegrationTestCommands();
     console.log("📊 Testing integration...");
     for (const testName of integrationTests) {
       totalTests++;
@@ -921,9 +1036,98 @@ window.testAllSafe = () => {
     console.log(`Overall: ${allPassed ? "✅ ALL PASSED" : "❌ SOME FAILED"}`);
     console.log("=".repeat(50));
 
+    // Calculate final timing
+    const endTime = performance.now();
+    const executionTime = Math.round(endTime - startTime);
+    const timestamp = new Date().toLocaleTimeString();
+
+    // ===========================================================================================
+    // FINAL SUMMARY - Appears at END of console output for easy visibility
+    // ===========================================================================================
+
+    // Store results for re-display after async operations complete
+    window._lastTestResults = {
+      passedTests,
+      totalTests,
+      allPassed,
+      executionTime,
+      timestamp,
+    };
+
+    console.log("\n\n");
+    console.log(
+      "%c╔══════════════════════════════════════════════════════════════╗",
+      "color: #00ff00; font-weight: bold; font-size: 14px;"
+    );
+    console.log(
+      "%c║          🎯 FINAL TEST SUMMARY (testAllSafe)                ║",
+      "color: #00ff00; font-weight: bold; font-size: 14px;"
+    );
+    console.log(
+      "%c╚══════════════════════════════════════════════════════════════╝",
+      "color: #00ff00; font-weight: bold; font-size: 14px;"
+    );
+    console.log("");
+
+    if (allPassed) {
+      console.log(
+        "%c   🎉 SUCCESS: All tests passed!",
+        "color: #00ff00; font-weight: bold;"
+      );
+      console.log(
+        `   ✅ ${passedTests}/${totalTests} tests completed successfully`
+      );
+    } else {
+      const failedCount = totalTests - passedTests;
+      console.log(
+        "%c   ⚠️  WARNING: Some tests failed",
+        "color: #ff9900; font-weight: bold;"
+      );
+      console.log(`   ❌ ${failedCount} test(s) failed`);
+      console.log(`   ✅ ${passedTests}/${totalTests} tests passed`);
+    }
+
+    console.log(`   ⏱️  Execution time: ${executionTime}ms`);
+    console.log(`   🕐 Completed at: ${timestamp}`);
+    console.log("");
+    console.log(
+      "%c══════════════════════════════════════════════════════════════",
+      "color: #00ff00; font-weight: bold;"
+    );
+    console.log(
+      "%c💡 TIP: Run showTestResults() after logs settle to see this summary again",
+      "color: #888888; font-style: italic;"
+    );
+    console.log("");
+
     return allPassed;
   } catch (error) {
     console.error("❌ Safe test failed:", error);
+
+    // Final error summary
+    const endTime = performance.now();
+    const executionTime = Math.round(endTime - startTime);
+
+    console.log("\n\n");
+    console.log(
+      "╔══════════════════════════════════════════════════════════════╗"
+    );
+    console.log(
+      "║                    FINAL TEST SUMMARY                        ║"
+    );
+    console.log(
+      "╚══════════════════════════════════════════════════════════════╝"
+    );
+    console.log("");
+    console.log("   💥 ERROR: Test execution failed");
+    console.log(`   ❌ ${error.message}`);
+    console.log(`   ⏱️  Execution time: ${executionTime}ms`);
+    console.log("");
+    console.log(
+      "══════════════════════════════════════════════════════════════"
+    );
+    console.log("");
+
     return false;
   }
 };
@@ -1018,6 +1222,61 @@ window.systemStatus = () => {
   }
 };
 
+// Re-display last test results (useful after async operations complete)
+window.showTestResults = () => {
+  if (!window._lastTestResults) {
+    console.log("❌ No test results available. Run testAllSafe() first.");
+    return;
+  }
+
+  const { passedTests, totalTests, allPassed, executionTime, timestamp } =
+    window._lastTestResults;
+
+  console.log("\n\n");
+  console.log(
+    "%c╔══════════════════════════════════════════════════════════════╗",
+    "color: #00ff00; font-weight: bold; font-size: 14px;"
+  );
+  console.log(
+    "%c║          🎯 TEST RESULTS SUMMARY (Re-displayed)             ║",
+    "color: #00ff00; font-weight: bold; font-size: 14px;"
+  );
+  console.log(
+    "%c╚══════════════════════════════════════════════════════════════╝",
+    "color: #00ff00; font-weight: bold; font-size: 14px;"
+  );
+  console.log("");
+
+  if (allPassed) {
+    console.log(
+      "%c   🎉 SUCCESS: All tests passed!",
+      "color: #00ff00; font-weight: bold;"
+    );
+    console.log(
+      `   ✅ ${passedTests}/${totalTests} tests completed successfully`
+    );
+  } else {
+    const failedCount = totalTests - passedTests;
+    console.log(
+      "%c   ⚠️  WARNING: Some tests failed",
+      "color: #ff9900; font-weight: bold;"
+    );
+    console.log(`   ❌ ${failedCount} test(s) failed`);
+    console.log(`   ✅ ${passedTests}/${totalTests} tests passed`);
+  }
+
+  console.log(`   ⏱️  Execution time: ${executionTime}ms`);
+  console.log(`   🕐 Completed at: ${timestamp}`);
+  console.log("");
+  console.log(
+    "%c══════════════════════════════════════════════════════════════",
+    "color: #00ff00; font-weight: bold;"
+  );
+  console.log("");
+
+  return window._lastTestResults;
+};
+
 // Refactoring success test
 window.testRefactor = () => {
   const result = TestRunner.runProductionCheck();
@@ -1041,7 +1300,10 @@ console.log("📋 Transition commands available:");
 console.log("  • testAll() - Comprehensive tests (COMPLETE QUIET MODE)");
 console.log("  • testAllQuiet() - Super quiet (1 line result only)");
 console.log(
-  "  • testAllSafe() - Ultra-safe testing (bypasses verbose components)"
+  "  • await testAllSafe() - Ultra-safe testing (bypasses verbose components)"
+);
+console.log(
+  "  • showTestResults() - Re-display last test summary (after logs settle)"
 );
 console.log("  • testAllModules() - Individual module tests only");
 console.log("  • testAllIntegration() - Integration tests only");
@@ -1049,7 +1311,9 @@ console.log("  • systemStatus() - Quick system health check");
 console.log("  • testRefactor() - Production readiness check");
 console.log("  • testModuleDependencies() - Dependency validation");
 console.log("");
-console.log("💡 Use testAllSafe() if other commands produce too much output");
+console.log(
+  "💡 Use await testAllSafe() if other commands produce too much output"
+);
 console.log("💡 Use testAllQuiet() for absolute minimal output (1 line)");
 
 // ===========================================================================================
@@ -1118,16 +1382,6 @@ window.validateComprehensiveExport = () => {
     return window.TestComprehensiveLaTeXSyntax.validateComprehensiveExport();
   } else {
     console.error("❌ TestComprehensiveLaTeXSyntax module not loaded");
-    return null;
-  }
-};
-
-// Export-specific diagnostics
-window.diagnosticExportedMath = () => {
-  if (window.TestLaTeXConsistency) {
-    return window.TestLaTeXConsistency.diagnosticExportedMath();
-  } else {
-    console.error("❌ TestLaTeXConsistency module not loaded");
     return null;
   }
 };
@@ -1417,7 +1671,7 @@ window.tracingHelp = function () {
   console.log("  window.lastTracingResults - Most recent tracing session data");
   console.log("");
   console.log("💡 Example Usage:");
-  console.log("  await traceConversionFlow()  // Complete analysis");
+  console.log("  F // Complete analysis");
   console.log("  startTracing('my-test'); /* do conversions */; stopTracing()");
 };
 

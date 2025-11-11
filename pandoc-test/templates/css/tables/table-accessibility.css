@@ -1,0 +1,83 @@
+/* ===== TABLE ACCESSIBILITY ENHANCEMENTS ===== */
+
+/* Enhanced focus indicators for keyboard navigation */
+table:focus-visible {
+	outline: 2px solid var(--focus-outline);
+	outline-offset: 2px;
+}
+
+/* Row and cell focus management */
+tr[tabindex]:focus-visible {
+	background: var(--focus-bg);
+	outline: 2px solid var(--focus-outline);
+	outline-offset: -2px;
+}
+
+/* ARIA-enhanced tables */
+table[role="table"] {
+	border: 2px solid var(--body-text);
+}
+
+/* Screen reader enhancements */
+.table-description {
+	font-size: 0.875rem;
+	color: var(--text-secondary);
+	margin-bottom: 0.5rem;
+	font-style: italic;
+}
+
+/* High contrast mode enhancements */
+@media (prefers-contrast: high) {
+	table {
+		border: 3px solid currentColor;
+	}
+
+	th {
+		border: 2px solid currentColor;
+		font-weight: 700;
+	}
+
+	td {
+		border: 1px solid currentColor;
+	}
+
+	tbody tr:hover {
+		background: Highlight;
+		color: HighlightText;
+	}
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+	tr, tbody tr:hover {
+		transition: none;
+		transform: none;
+	}
+}
+
+/* Screen reader only content for table navigation help */
+.table-nav-help {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.table-nav-help:focus-visible{
+	position: static;
+	width: auto;
+	height: auto;
+	padding: 0.5rem;
+	margin: 0.5rem 0;
+	overflow: visible;
+	clip: auto;
+	white-space: normal;
+	background: var(--focus-bg);
+	border: 1px solid var(--focus-outline);
+	border-radius: 4px;
+}

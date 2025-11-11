@@ -1,6 +1,21 @@
 // export-manager.js
-// Main Export Orchestration Module
-// Coordinates all modules to generate enhanced HTML exports
+// Export Orchestrator - Coordinates all export modules for enhanced HTML generation
+//
+// Delegates to:
+//   - HeadGenerator (head-generator.js) - HTML head with metadata and CSS
+//   - BodyGenerator (body-generator.js) - Document body structure and content
+//   - FooterGenerator (footer-generator.js) - Document footer with scripts
+//   - ContentGenerator (content-generator.js) - CSS generation and content enhancement
+//   - TemplateSystem (template-system.js) - Template loading and processing
+//   - MathJaxManager (mathjax-manager.js) - MathJax configuration and integration
+//   - LaTeXProcessor (latex-processor.js) - LaTeX metadata extraction
+//
+// Stage 1 Status: In Progress
+//   - Architecture: Pure delegation orchestrator
+//   - Code organisation: Adding comprehensive section headers
+//   - Error handling: Consistent [EXPORT] prefix pattern
+//   - Documentation: Adding complete JSDoc with delegation info
+//   - Test status: Baseline to be established
 
 const ExportManager = (function () {
   "use strict";
@@ -44,15 +59,103 @@ const ExportManager = (function () {
   }
 
   // ===========================================================================================
-  // 🧪 ENHANCED PANDOC EXPORT INTEGRATION
+  // PANDOC ARGUMENT CAPTURE SYSTEM
   // ===========================================================================================
+  // Captures the exact Pandoc arguments used in frontend conversion to ensure export
+  // uses identical settings. Critical for preventing align environment breakage and
+  // maintaining LaTeX consistency between UI and exports.
 
   /**
-   * Export using enhanced Pandoc arguments from investigation
-   * Uses current rendered content with enhanced Pandoc semantic structure
-   * Single file generation with proper content source
+   * Capture the actual Pandoc arguments currently being used in frontend conversion.
+   *
+   * Retrieves arguments from the UI arguments input field and stores them globally
+   * for later use during export. This ensures that exports use EXACTLY the same
+   * Pandoc conversion settings as the frontend, preventing discrepancies in LaTeX
+   * interpretation (especially for complex environments like align, cases, etc.).
+   *
+   * Critical for Stage 1 of export quality enhancement - ensures unified pipeline.
+   *
+   * @returns {string} The current Pandoc arguments string
+   */
+  function captureFrontendPandocArgs() {
+    try {
+      const argumentsInput = document.getElementById("arguments");
+      const actualArgs =
+        argumentsInput?.value || "--from latex --to html5 --mathjax";
+
+      // Store globally for export use
+      window.lastUsedPandocArgs = actualArgs;
+
+      logInfo(`📋 Captured frontend Pandoc arguments: ${actualArgs}`);
+      logDebug("Stored in window.lastUsedPandocArgs for export use");
+
+      return actualArgs;
+    } catch (error) {
+      logError("Error capturing Pandoc arguments:", error);
+      // Return safe default
+      return "--from latex --to html5 --mathjax";
+    }
+  }
+
+  /**
+   * Get the last captured Pandoc arguments, with fallback to current UI state.
+   *
+   * Attempts to retrieve the stored Pandoc arguments from the last conversion.
+   * If not available (e.g., page just loaded), falls back to reading current
+   * UI arguments input. Ensures exports always have valid arguments to use.
+   *
+   * @returns {string} Pandoc arguments to use for export conversion
+   */
+  function getStoredPandocArgs() {
+    // First try stored args from last conversion
+    if (window.lastUsedPandocArgs) {
+      logInfo(`✅ Using stored Pandoc args: ${window.lastUsedPandocArgs}`);
+      return window.lastUsedPandocArgs;
+    }
+
+    // Fallback to current UI state
+    const argumentsInput = document.getElementById("arguments");
+    const currentArgs =
+      argumentsInput?.value || "--from latex --to html5 --mathjax";
+
+    logWarn(`⚠️ No stored args found, using current UI state: ${currentArgs}`);
+    return currentArgs;
+  }
+
+  // ============================================================================
+  // ENHANCED PANDOC EXPORT INTEGRATION
+  // ============================================================================
+  // Handles enhanced Pandoc conversion with semantic HTML structure
+  // Primary delegation: ConversionEngine for Pandoc operations
+  // Uses enhanced Pandoc arguments for improved document semantics
+
+  /**
+   * Export document using enhanced Pandoc arguments for improved semantic structure.
+   * Delegates to: ConversionEngine for Pandoc conversion with enhanced arguments
+   * Delegates to: LaTeXProcessor for metadata extraction
+   * Delegates to: AppConfig for validation, filename generation, and screen reader announcements
+   * Uses current rendered content and re-converts with enhanced Pandoc arguments
+   * for better semantic HTML. Falls back to current content if re-conversion fails.
+   * Generates single standalone HTML file with embedded resources.
+   * @returns {Promise<void>} Completes when export is finished or error handled
    */
   async function exportWithEnhancedPandoc() {
+    // DEPRECATED: This function is superseded by exportEnhancedHTML()
+    // Log caller information to identify source of unexpected calls
+    const stack = new Error().stack;
+    logWarn("DEPRECATED exportWithEnhancedPandoc() called!");
+    logWarn("Call stack:", stack);
+    logWarn(
+      "This function should not be used - use exportEnhancedHTML() instead"
+    );
+
+    // Prevent execution to avoid duplicate exports
+    alert(
+      "This export method is deprecated. Please refresh the page and try again."
+    );
+    return;
+
+    // DEAD CODE BELOW - Kept for reference only
     logInfo("🧪 === ENHANCED PANDOC EXPORT STARTED ===");
     window.exportGenerationInProgress = true;
 
@@ -86,7 +189,9 @@ const ExportManager = (function () {
       const missingDeps = requiredDeps.filter((dep) => !window[dep]);
 
       if (missingDeps.length > 0) {
-        throw new Error(`Missing dependencies: ${missingDeps.join(", ")}`);
+        throw new Error(
+          `[EXPORT] Missing dependencies: ${missingDeps.join(", ")}`
+        );
       }
 
       // Show loading state
@@ -101,13 +206,15 @@ const ExportManager = (function () {
         "🧪 Using current rendered content with enhanced Pandoc semantic structure..."
       );
 
-      // CRITICAL FIX 2: Get the CURRENT rendered content (same as standard export)
+      // === CONTENT RETRIEVAL ===
+      // Get the CURRENT rendered content (same as standard export)
       const currentContent = outputContent.innerHTML.trim();
       logInfo("Retrieved current content, length:", currentContent.length);
 
       // Enhanced validation with pre-rendered MathJax detection
       window.AppConfig.validateEnhancedContent(currentContent);
 
+      // === ENHANCED CONVERSION ===
       // For enhanced export, we'll convert the rendered content to LaTeX,
       // then re-convert with enhanced Pandoc args to get better semantic structure
       if (window.ConversionEngine && inputTextarea?.value?.trim()) {
@@ -115,19 +222,21 @@ const ExportManager = (function () {
           "🧪 Re-converting with enhanced Pandoc arguments for better semantic HTML..."
         );
 
-        // Get base arguments
-        const baseArgs =
-          argumentsInput?.value || "--from latex --to html5 --mathjax";
+        // ✅ STAGE 1.1: Use EXACT frontend arguments for unified pipeline
+        // Get the stored arguments from last frontend conversion
+        const frontendArgs = getStoredPandocArgs();
 
-        // Generate enhanced arguments using investigation settings
-        const enhancedArgs =
-          window.ConversionEngine.generateEnhancedPandocArgs(baseArgs);
+        logInfo(
+          `✅ Using unified Pandoc arguments (same as frontend): ${frontendArgs}`
+        );
+        logInfo("📊 This ensures export LaTeX matches UI LaTeX exactly");
 
-        logInfo(`🧪 Using enhanced arguments: ${enhancedArgs}`);
+        // ❌ REMOVED: Enhanced argument generation (caused align environment breakage)
+        // const enhancedArgs = window.ConversionEngine.generateEnhancedPandocArgs(baseArgs);
 
-        // Re-convert the original LaTeX with enhanced arguments
+        // Re-convert the original LaTeX with SAME arguments as frontend
         const enhancedHTML = window.ConversionEngine.pandocFunction(
-          enhancedArgs,
+          frontendArgs,
           inputTextarea.value
         );
 
@@ -140,6 +249,16 @@ const ExportManager = (function () {
           const metadata =
             window.LaTeXProcessor.extractDocumentMetadata(cleanedHTML);
 
+          // ✅ STAGE 1.1: Verification logging
+          logInfo("📊 Export conversion verification:");
+          logInfo(`  - Frontend args used: ${frontendArgs}`);
+          logInfo(`  - Generated HTML length: ${cleanedHTML.length} chars`);
+          logInfo(`  - Document title: ${metadata.title || "untitled"}`);
+          logDebug(
+            "Unified pipeline ensures frontend and export use identical Pandoc settings"
+          );
+
+          // === EXPORT GENERATION ===
           // Generate enhanced standalone HTML with enhanced Pandoc content
           const standaloneHTML =
             await generateEnhancedStandaloneHTMLWithMinimalProcessing(
@@ -163,6 +282,7 @@ const ExportManager = (function () {
         }
       }
 
+      // === FALLBACK HANDLING ===
       // Fallback: Use current rendered content if re-conversion fails
       logInfo("🧪 Using current rendered content as fallback...");
 
@@ -214,8 +334,12 @@ const ExportManager = (function () {
   }
 
   /**
-   * Get user-configured Pandoc arguments from UI elements
-   * Respects enhancement presets, custom args, and export settings
+   * Get user-configured Pandoc arguments from UI elements.
+   * Delegates to: ConversionEngine for enhancement preset application
+   * Reads configuration from DOM elements: arguments input, export-enhanced-pandoc checkbox,
+   * pandoc-enhancement-preset select, and custom-pandoc-args textarea.
+   * Respects enhancement presets, custom arguments, and export settings.
+   * @returns {string} Complete Pandoc arguments string for conversion
    */
   function getUserConfiguredPandocArgs() {
     // Start with base arguments from main input
@@ -262,45 +386,47 @@ const ExportManager = (function () {
   }
 
   /**
-   * Validate and clean Base64 content
-   * @param {string} content - The content to encode
-   * @returns {string} - Clean Base64 encoded content
+   * Validate and create safe Base64 encoded content without line breaks.
+   * Delegates to: Base64Handler for Base64 encoding operations and validation
+   * Ensures content is properly encoded as valid Base64 string without line breaks
+   * or invalid characters that could break data URLs or embedded content.
+   * @param {string} content - Content to encode as Base64
+   * @returns {string} Clean Base64 encoded content suitable for data URLs
+   * @throws {Error} If Base64Handler module not available
    */
   function createSafeBase64(content) {
-    try {
-      // Ensure content is a string
-      const stringContent =
-        typeof content === "string" ? content : String(content);
-
-      // Remove any null bytes or problematic characters
-      const cleanContent = stringContent.replace(/\0/g, "");
-
-      // Encode to Base64
-      const base64Content = btoa(cleanContent);
-
-      // Validate by attempting to decode
-      const testDecode = atob(base64Content);
-
-      console.log("✅ Base64 encoding validated successfully");
-      console.log("📊 Original content length:", stringContent.length);
-      console.log("📊 Base64 content length:", base64Content.length);
-
-      return base64Content;
-    } catch (error) {
-      console.error("❌ Base64 encoding failed:", error);
-      console.log(
-        "🔍 Content preview:",
-        content ? String(content).substring(0, 100) : "null/undefined"
+    if (!window.Base64Handler) {
+      throw new Error(
+        "[EXPORT] Base64Handler module required for Base64 encoding"
       );
-
-      // Return empty string as fallback
-      return "";
     }
+    return window.Base64Handler.createSafeBase64(content);
   }
 
+  // ============================================================================
+  // MAIN EXPORT ORCHESTRATION
+  // ============================================================================
+  // Primary export functions coordinating all generation modules
+  // Delegates to: HeadGenerator, BodyGenerator, FooterGenerator, ContentGenerator
+
   /**
-   * Generate enhanced standalone HTML with screen reader controls and theme toggle
-   * FIXED: Now properly handles Pandoc conversion for original LaTeX content
+   * Generate complete enhanced standalone HTML document with full feature set.
+   * Delegates to: HeadGenerator for HTML head with metadata and embedded CSS
+   * Delegates to: BodyGenerator for document body structure and content wrapping
+   * Delegates to: FooterGenerator for credits, acknowledgements, and closing elements
+   * Delegates to: ContentGenerator for document structure enhancement and CSS generation
+   * Delegates to: LaTeXProcessor for metadata extraction and MathJax conversion
+   * Delegates to: ConversionEngine for Pandoc operations with user-configured arguments
+   * Delegates to: Base64Handler for self-referencing HTML generation with convergence
+   * Main orchestration function coordinating all export modules to produce a single
+   * self-contained HTML file with embedded resources, accessibility features, and
+   * MathJax support. Includes smart content source detection to preserve quality and
+   * functionality. Supports infinite save chain through Base64 convergence.
+   * @param {string} content - HTML content to export (from output div or processed input)
+   * @param {string} title - Document title for metadata and filename generation
+   * @param {number} accessibilityLevel - Accessibility feature level (1-3), default 2
+   * @returns {Promise<string>} Complete standalone HTML document with embedded resources
+   * @throws {Error} If required modules (LaTeXProcessor, ContentGenerator, TemplateSystem, Base64Handler) unavailable
    */
   async function generateEnhancedStandaloneHTML(
     content,
@@ -314,47 +440,121 @@ const ExportManager = (function () {
     logInfo("Accessibility level:", accessibilityLevel);
 
     try {
-      // Ensure fonts are loaded for export
+      // === FONT VALIDATION ===
       logInfo("Ensuring fonts are loaded for export...");
       const fontResult = await ensureEmbeddedFontsInclusion();
       logInfo("Fonts validated successfully for export");
 
-      // Check dependencies
+      // === DEPENDENCY VALIDATION ===
       if (!window.LaTeXProcessor) {
-        throw new Error("LaTeXProcessor module not available");
+        throw new Error("[EXPORT] LaTeXProcessor module not available");
       }
       if (!window.ContentGenerator) {
-        throw new Error("ContentGenerator module not available");
+        throw new Error("[EXPORT] ContentGenerator module not available");
       }
       if (!window.TemplateSystem) {
-        throw new Error("TemplateSystem module not available");
+        throw new Error("[EXPORT] TemplateSystem module not available");
       }
 
+      // === CONTENT SOURCE OPTIMIZATION ===
       // SMART: Use optimal content source to preserve quality when possible
       const contentSource = getOptimalContentSource();
       logInfo(
         `Export strategy: ${contentSource.type} (quality: ${contentSource.qualityLevel})`
       );
 
+      // ✅ STAGE 1.2: DETAILED TRACKING - Show content sample at start
+      logInfo("📊 === EXPORT PIPELINE TRACKING START ===");
+      logInfo(`📋 Source type: ${contentSource.type}`);
+      logInfo(`📏 Source length: ${contentSource.content.length} chars`);
+      logInfo(`🔍 First 200 chars: ${contentSource.content.substring(0, 200)}`);
+
+      // Track specific LaTeX commands
+      const trackCommands = ["widecheck", "align", "cases", "widetilde"];
+      trackCommands.forEach((cmd) => {
+        const count = (
+          contentSource.content.match(new RegExp(`\\\\${cmd}`, "g")) || []
+        ).length;
+        if (count > 0) {
+          logInfo(`🎯 Found ${count} instances of \\${cmd}`);
+        }
+      });
+
       let latexContent;
       let htmlContent;
 
+      // === MATHJAX CONVERSION ===
       // Step 1: Handle MathJax conversion if needed
       if (contentSource.needsConversion) {
         // Convert pre-rendered content for menu functionality
-        logInfo("Converting pre-rendered MathJax for menu attachment");
-        latexContent = window.LaTeXProcessor.convertMathJaxToLatex(
-          contentSource.content
+        logInfo(
+          "🔧 STEP 1: Converting pre-rendered MathJax for menu attachment"
         );
+
+        // STAGE 6: Use coordinator for intelligent method selection
+        if (window.LaTeXProcessorCoordinator) {
+          // Use coordinator (tries enhanced, falls back to legacy)
+          const processingResult =
+            await window.LaTeXProcessorCoordinator.process({
+              content: contentSource.content,
+            });
+
+          latexContent = processingResult.content;
+
+          logInfo(`✅ Used ${processingResult.metadata.method} export method`);
+
+          // If enhanced method was used, store custom macros for later
+          if (
+            processingResult.metadata.method === "enhanced" &&
+            processingResult.metadata.customMacros
+          ) {
+            logInfo(
+              `Enhanced export: ${processingResult.metadata.macroCount} custom macros found`
+            );
+            // Store for use in metadata
+            window.__customMacrosForExport =
+              processingResult.metadata.customMacros;
+          }
+        } else if (window.LaTeXProcessorLegacy) {
+          // Fallback to legacy if coordinator not available
+          latexContent = await window.LaTeXProcessorLegacy.process({
+            content: contentSource.content,
+          });
+          logInfo(
+            "✅ Used legacy module for LaTeX conversion (coordinator unavailable)"
+          );
+        } else {
+          throw new Error(
+            "[EXPORT] No LaTeX processor available. " +
+              "Both coordinator and legacy modules missing."
+          );
+        }
+
+        // ✅ STAGE 1.2: Track after MathJax conversion
+        logInfo(`📊 After MathJax conversion: ${latexContent.length} chars`);
+        logInfo(`🔍 First 200 chars: ${latexContent.substring(0, 200)}`);
+        trackCommands.forEach((cmd) => {
+          const count = (
+            latexContent.match(new RegExp(`\\\\${cmd}`, "g")) || []
+          ).length;
+          if (count > 0) {
+            logInfo(`🎯 After conversion: ${count} instances of \\${cmd}`);
+          }
+        });
       } else {
         // Use content directly - no MathJax conversion needed
-        logInfo("Using content directly - no MathJax conversion needed");
+        logInfo(
+          "📝 STEP 1: Using content directly - no MathJax conversion needed"
+        );
         latexContent = contentSource.content;
       }
 
+      // === PANDOC CONVERSION ===
       // Step 2: Handle Pandoc conversion if needed
       if (contentSource.needsPandocConversion) {
-        logInfo("Running Pandoc conversion for LaTeX structure commands");
+        logInfo(
+          "📝 STEP 2: Running Pandoc conversion for LaTeX structure commands"
+        );
 
         // Run through Pandoc to convert LaTeX commands to HTML
         if (window.ConversionEngine && window.ConversionEngine.pandocFunction) {
@@ -363,20 +563,49 @@ const ExportManager = (function () {
             let pandocArgs = getUserConfiguredPandocArgs();
 
             logInfo("Using user-configured Pandoc args:", pandocArgs);
+            logInfo(
+              `📏 Content going into Pandoc: ${latexContent.length} chars`
+            );
+
             htmlContent = await window.ConversionEngine.pandocFunction(
               latexContent,
               pandocArgs.split(" ")
             );
 
+            // ✅ STAGE 1.2: Track after Pandoc
+            logInfo(`📊 After Pandoc: ${htmlContent.length} chars`);
+            logInfo(`🔍 First 200 chars: ${htmlContent.substring(0, 200)}`);
+            trackCommands.forEach((cmd) => {
+              const count = (
+                htmlContent.match(new RegExp(`\\\\${cmd}`, "g")) || []
+              ).length;
+              if (count > 0) {
+                logInfo(`🎯 After Pandoc: ${count} instances of \\${cmd}`);
+              }
+            });
+
             // Clean the output
             if (window.ConversionEngine.cleanPandocOutput) {
+              const beforeClean = htmlContent.length;
               htmlContent =
                 window.ConversionEngine.cleanPandocOutput(htmlContent);
+
+              logInfo(
+                `📊 After cleaning: ${htmlContent.length} chars (was ${beforeClean})`
+              );
+              trackCommands.forEach((cmd) => {
+                const count = (
+                  htmlContent.match(new RegExp(`\\\\${cmd}`, "g")) || []
+                ).length;
+                if (count > 0) {
+                  logInfo(`🎯 After cleaning: ${count} instances of \\${cmd}`);
+                }
+              });
             }
 
             logInfo("Pandoc conversion completed successfully");
           } catch (error) {
-            logError("Pandoc conversion failed:", error);
+            logError("[EXPORT] Pandoc conversion failed:", error);
             // Fallback to original content
             htmlContent = latexContent;
           }
@@ -386,24 +615,61 @@ const ExportManager = (function () {
         }
       } else {
         // Content is already processed HTML
-        logInfo("Content already processed - using as-is");
+        logInfo("📝 STEP 2: Content already processed - using as-is");
         htmlContent = latexContent;
+
+        // ✅ STAGE 1.2: Track the already-processed content
+        logInfo(`📊 Already-processed HTML: ${htmlContent.length} chars`);
+        trackCommands.forEach((cmd) => {
+          const count = (htmlContent.match(new RegExp(`\\\\${cmd}`, "g")) || [])
+            .length;
+          if (count > 0) {
+            logInfo(`🎯 In processed HTML: ${count} instances of \\${cmd}`);
+          }
+        });
       }
 
+      // ✅ STAGE 1.2: Final content tracking before metadata extraction
+      logInfo("📊 === EXPORT PIPELINE TRACKING: BEFORE METADATA ===");
+      logInfo(`📏 Final HTML length: ${htmlContent.length} chars`);
+      logInfo(`🔍 First 300 chars: ${htmlContent.substring(0, 300)}`);
+      trackCommands.forEach((cmd) => {
+        const count = (htmlContent.match(new RegExp(`\\\\${cmd}`, "g")) || [])
+          .length;
+        if (count > 0) {
+          logInfo(`🎯 Final check: ${count} instances of \\${cmd}`);
+        }
+      });
+      // === METADATA EXTRACTION ===
       // Extract comprehensive metadata from the processed content
       const metadata =
         window.LaTeXProcessor.extractDocumentMetadata(htmlContent);
       const documentTitle = metadata.title || title || "Mathematical Document";
 
+      // STAGE 6: Add custom macros to metadata if available from enhanced export
+      if (window.__customMacrosForExport) {
+        metadata.customMacros = window.__customMacrosForExport;
+        logInfo(
+          `Added ${
+            Object.keys(metadata.customMacros).length
+          } custom macros to metadata`
+        );
+        // Clean up global variable
+        delete window.__customMacrosForExport;
+      }
+
+      // === DOCUMENT STRUCTURE ENHANCEMENT ===
       // Enhance document structure with integrated sidebar
-      const enhancedContent = window.ContentGenerator.enhanceDocumentStructure(
-        htmlContent,
-        metadata
-      );
+      const enhancedContent =
+        await window.ContentGenerator.enhanceDocumentStructure(
+          htmlContent,
+          metadata
+        );
 
       logInfo("Document title:", documentTitle);
       logInfo("Metadata:", metadata);
 
+      // === HTML COMPONENT ASSEMBLY ===
       // Build HTML structure using template system
       const htmlComponents = [];
 
@@ -411,66 +677,14 @@ const ExportManager = (function () {
       htmlComponents.push("<!DOCTYPE html>");
       htmlComponents.push('<html lang="en-GB">');
 
+      // === HEAD GENERATION ===
       // Enhanced head section
       htmlComponents.push(
         await generateEnhancedHead(documentTitle, metadata, accessibilityLevel)
       );
 
-      // Body and main content
-      htmlComponents.push("<body>");
-      htmlComponents.push(enhancedContent);
-
-      // Add integrated sidebar using template system
-      // Ensure templates are loaded before creating generator
-      const loadResults =
-        await window.TemplateSystem.GlobalTemplateCache.ensureTemplatesLoaded();
-      logDebug("Template load results:", loadResults);
-
-      let cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
-      let retries = 0;
-      while (!cacheStatus.isLoaded && retries < 20) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
-        retries++;
-      }
-
-      if (!cacheStatus.isLoaded) {
-        logWarn("Templates failed to load, using fallback sidebar");
-        htmlComponents.push(`
-        <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
-          <div class="sidebar-content">
-            <p>Reading tools temporarily unavailable</p>
-          </div>
-        </aside>
-      `);
-      } else {
-        const templateGenerator =
-          new window.TemplateSystem.EnhancedHTMLGenerator();
-        await templateGenerator.engine.initializeFromGlobalCache();
-
-        const integratedSidebar = templateGenerator.renderTemplate(
-          "integratedDocumentSidebar",
-          metadata
-        );
-
-        if (
-          integratedSidebar.includes("<!-- Template") &&
-          integratedSidebar.includes("not found")
-        ) {
-          logWarn("Template not found, using fallback sidebar");
-          htmlComponents.push(`
-          <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
-            <div class="sidebar-content">
-              <p>Reading tools temporarily unavailable</p>
-            </div>
-          </aside>
-        `);
-        } else {
-          htmlComponents.push(integratedSidebar);
-        }
-      }
-
-      // Add enhanced document footer with source viewer
+      // === FOOTER GENERATION ===
+      // Generate document footer first
       // Get DOM elements safely (may not exist during testing)
       const inputTextarea = document.getElementById("input");
 
@@ -482,13 +696,22 @@ const ExportManager = (function () {
         pandocArgs,
         metadata
       );
-      htmlComponents.push(footerHTML);
 
-      htmlComponents.push("</div>"); // Close document-wrapper
+      // === BODY GENERATION ===
+      // Generate complete body section using BodyGenerator module
+      // This includes: <body>, content, sidebar, footer, </div> (document-wrapper)
+      const bodyHTML = await window.BodyGenerator.generateDocumentBody(
+        enhancedContent,
+        metadata,
+        footerHTML
+      );
+      htmlComponents.push(bodyHTML);
 
+      // === JAVASCRIPT GENERATION ===
       // Enhanced JavaScript with complete reading accessibility features
       htmlComponents.push(await generateEnhancedJavaScript(accessibilityLevel));
 
+      // === FINAL ASSEMBLY ===
       // End document
       htmlComponents.push("</body>");
       htmlComponents.push("</html>");
@@ -496,74 +719,24 @@ const ExportManager = (function () {
       // Generate the initial HTML structure
       let preliminaryHTML = htmlComponents.join("\n");
 
-      // Self-containing Base64 solution - iterative convergence approach
-      logInfo(
-        "Generating self-containing Base64 content through iterative convergence..."
-      );
-
-      // Implement iterative convergence to achieve true self-reference
-      let currentHTML = preliminaryHTML;
-      let previousBase64 = "";
-      let iteration = 0;
-      const maxIterations = 5;
-      let converged = false;
-
-      logInfo("Starting iterative Base64 generation for self-reference...");
-
-      while (iteration < maxIterations) {
-        // Create script with current Base64 (empty on first iteration)
-        const embeddedDataScript = `
-<!-- Embedded Original Content for Save Functionality -->
-<script id="original-content-data" type="application/x-original-html-base64">
-${previousBase64}
-</script>`;
-
-        // Insert script into HTML
-        currentHTML = preliminaryHTML.replace(
-          "</body>",
-          embeddedDataScript + "\n</body>"
+      // === SELF-REFERENCING HTML ===
+      // Self-containing Base64 solution - DELEGATED to Base64Handler
+      if (!window.Base64Handler) {
+        throw new Error(
+          "[EXPORT] Base64Handler module required for self-referencing HTML"
         );
-
-        // Generate new Base64 from complete HTML
-        const newBase64 = btoa(unescape(encodeURIComponent(currentHTML)));
-
-        logDebug(
-          `Iteration ${iteration}: Base64 length = ${newBase64.length} characters`
-        );
-
-        // Check for convergence (Base64 stabilises when self-referential)
-        if (newBase64 === previousBase64 && iteration > 0) {
-          logInfo(
-            `Self-referential convergence achieved in ${iteration} iterations`
-          );
-          converged = true;
-          break;
-        }
-
-        previousBase64 = newBase64;
-        iteration++;
       }
 
-      // Final HTML with self-referential Base64
-      const finalHTML = currentHTML;
-      const finalBase64Length = previousBase64.length;
+      const convergenceResult =
+        window.Base64Handler.generateSelfReferencingHTML(
+          preliminaryHTML,
+          "Standard",
+          5 // maxIterations
+        );
 
-      if (converged) {
-        logInfo(
-          `True self-containing Base64 generated: ${finalBase64Length} characters`
-        );
-        logInfo(
-          `Base64 now contains HTML with exact same Base64 - perfect self-reference`
-        );
-        logInfo(
-          `Self-containing HTML generated (${finalHTML.length} characters)`
-        );
-      } else {
-        logWarn(
-          `Convergence not achieved after ${maxIterations} iterations, using best attempt`
-        );
-        logInfo(`Final Base64 length: ${finalBase64Length} characters`);
-      }
+      const finalHTML = convergenceResult.finalHTML;
+      const converged = convergenceResult.converged;
+      const finalBase64Length = convergenceResult.base64Length;
 
       logInfo(`Enhanced export completed: ${finalHTML.length} characters`);
       logInfo(`Quality level: ${contentSource.qualityLevel}`);
@@ -587,15 +760,36 @@ ${previousBase64}
 
       return finalHTML;
     } catch (error) {
-      logError("Error generating enhanced standalone HTML:", error);
-      throw new Error("Failed to generate enhanced HTML: " + error.message);
+      logError("[EXPORT] Error generating enhanced standalone HTML:", error);
+      throw new Error(
+        "[EXPORT] Failed to generate enhanced HTML: " + error.message
+      );
     }
   }
+
+  // ============================================================================
+  // ENHANCED EXPORT WITH MINIMAL PROCESSING
+  // ============================================================================
+  // Variant export function using minimal post-processing
+  // Delegates to: Same modules as main export but with reduced processing
+
   /**
-   * Generate enhanced standalone HTML with minimal post-processing
-   * Uses enhanced Pandoc HTML content with complete feature set and accessibility
-   * "Minimal processing" means leveraging enhanced Pandoc arguments to reduce regex post-processing
-   * while maintaining 100% feature parity with standard export
+   * Generate enhanced HTML with minimal post-processing using enhanced Pandoc output.
+   * Delegates to: HeadGenerator for HTML head with metadata and embedded CSS
+   * Delegates to: BodyGenerator for minimal document body structure (preserves Pandoc semantics)
+   * Delegates to: FooterGenerator for credits and acknowledgements
+   * Delegates to: ContentGenerator for minimal document structure enhancement
+   * Delegates to: LaTeXProcessor for metadata extraction from enhanced Pandoc content
+   * Delegates to: Base64Handler for self-referencing HTML with convergence
+   * Variant of main export that leverages enhanced Pandoc arguments to reduce regex
+   * post-processing while maintaining 100% feature parity. Uses enhanced Pandoc
+   * semantic HTML structure directly with minimal modifications. Preserves better
+   * semantic HTML from enhanced Pandoc whilst providing full accessibility features.
+   * @param {string} content - Enhanced Pandoc HTML content with semantic structure
+   * @param {string} title - Document title for metadata and filename generation
+   * @param {number} accessibilityLevel - Accessibility feature level (1-3)
+   * @returns {Promise<string>} Complete standalone HTML document with enhanced Pandoc semantics
+   * @throws {Error} If required modules (LaTeXProcessor, ContentGenerator, TemplateSystem, Base64Handler) unavailable
    */
   async function generateEnhancedStandaloneHTMLWithMinimalProcessing(
     content,
@@ -610,13 +804,13 @@ ${previousBase64}
     try {
       // Check dependencies
       if (!window.LaTeXProcessor) {
-        throw new Error("LaTeXProcessor module not available");
+        throw new Error("[EXPORT] LaTeXProcessor module not available");
       }
       if (!window.ContentGenerator) {
-        throw new Error("ContentGenerator module not available");
+        throw new Error("[EXPORT] ContentGenerator module not available");
       }
       if (!window.TemplateSystem) {
-        throw new Error("TemplateSystem module not available");
+        throw new Error("[EXPORT] TemplateSystem module not available");
       }
 
       // CRITICAL: Use enhanced Pandoc content directly with minimal regex processing
@@ -632,10 +826,11 @@ ${previousBase64}
 
       // Enhance document structure using enhanced Pandoc content (minimal processing)
       // This preserves the semantic HTML from enhanced Pandoc arguments
-      const enhancedContent = window.ContentGenerator.enhanceDocumentStructure(
-        enhancedPandocContent,
-        metadata
-      );
+      const enhancedContent =
+        await window.ContentGenerator.enhanceDocumentStructure(
+          enhancedPandocContent,
+          metadata
+        );
 
       logInfo("✅ Enhanced Pandoc content preserved with minimal processing");
       logInfo("Document title:", documentTitle);
@@ -653,70 +848,7 @@ ${previousBase64}
         await generateEnhancedHead(documentTitle, metadata, accessibilityLevel)
       );
 
-      // Body and main content with complete structure
-      htmlComponents.push("<body>");
-      htmlComponents.push(enhancedContent);
-
-      // Add complete integrated sidebar using template system (ALL sections)
-      // 🎯 CRITICAL FIX: Ensure external templates are loaded first and force sync
-      const loadResults =
-        await window.TemplateSystem.GlobalTemplateCache.ensureTemplatesLoaded();
-      logDebug("Template load results:", loadResults);
-
-      // Check global cache status and wait if necessary
-      let cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
-      logDebug("Cache status after ensureTemplatesLoaded:", cacheStatus);
-
-      // If templates aren't loaded, wait with retries
-      let retries = 0;
-      while (!cacheStatus.isLoaded && retries < 20) {
-        logDebug(`Waiting for templates to load (retry ${retries + 1}/20)...`);
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        cacheStatus = window.TemplateSystem.getGlobalCacheStatus();
-        retries++;
-      }
-
-      if (!cacheStatus.isLoaded) {
-        logWarn("Templates failed to load after retries, using fallback");
-        htmlComponents.push(`
-        <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
-          <div class="sidebar-content">
-            <p>Reading tools temporarily unavailable</p>
-          </div>
-        </aside>
-      `);
-      } else {
-        const templateGenerator =
-          new window.TemplateSystem.EnhancedHTMLGenerator();
-        await templateGenerator.engine.initializeFromGlobalCache();
-
-        const integratedSidebar = templateGenerator.renderTemplate(
-          "integratedDocumentSidebar",
-          metadata
-        );
-
-        if (
-          integratedSidebar.includes("<!-- Template") &&
-          integratedSidebar.includes("not found")
-        ) {
-          logWarn("Template not found, using fallback sidebar");
-          htmlComponents.push(`
-          <aside id="document-sidebar" class="document-sidebar" aria-label="Document Tools">
-            <div class="sidebar-content">
-              <p>Reading tools temporarily unavailable</p>
-            </div>
-          </aside>
-        `);
-        } else {
-          logDebug(
-            "✅ Successfully rendered integrated sidebar with templates"
-          );
-          htmlComponents.push(integratedSidebar);
-        }
-      }
-
-      // Add document footer
-      // Add enhanced document footer with source viewer
+      // Generate document footer first
       // Get DOM elements safely (may not exist during testing)
       const inputTextarea = document.getElementById("input");
       const argumentsInput = document.getElementById("arguments");
@@ -724,11 +856,20 @@ ${previousBase64}
       const originalSource = inputTextarea?.value || "";
       const pandocArgs =
         argumentsInput?.value || "--from latex --to html5 --mathjax";
-      htmlComponents.push(
-        generateDocumentFooter(originalSource, pandocArgs, metadata)
+      const footerHTML = generateDocumentFooter(
+        originalSource,
+        pandocArgs,
+        metadata
       );
 
-      htmlComponents.push("</div>"); // Close document-wrapper
+      // Generate complete body section using BodyGenerator module (minimal processing)
+      // This includes: <body>, content, sidebar with template loading/retries, footer, </div>
+      const bodyHTML = await window.BodyGenerator.generateDocumentBodyMinimal(
+        enhancedContent,
+        metadata,
+        footerHTML
+      );
+      htmlComponents.push(bodyHTML);
 
       // End document (but don't add JavaScript yet)
       htmlComponents.push("</body>");
@@ -737,11 +878,7 @@ ${previousBase64}
       // Generate the complete HTML first
       let preliminaryHTML = htmlComponents.join("\n");
 
-      // 🎯 SELF-CONTAINING BASE64 SOLUTION - ITERATIVE CONVERGENCE APPROACH
-      logInfo(
-        "🔧 Generating self-containing Base64 content through iterative convergence (Enhanced Pandoc)..."
-      );
-
+      // 🎯 SELF-CONTAINING BASE64 SOLUTION - DELEGATED to Base64Handler
       // First generate JavaScript without embedded content for structure
       const enhancedJS = await generateEnhancedJavaScript(accessibilityLevel);
 
@@ -751,73 +888,26 @@ ${previousBase64}
         enhancedJS + "\n</body>\n</html>"
       );
 
-      // Now implement iterative convergence for self-reference
-      let currentHTML = baseHTML;
-      let previousBase64 = "";
-      let iteration = 0;
+      // Generate self-referencing HTML using Base64Handler
+      if (!window.Base64Handler) {
+        throw new Error(
+          "[EXPORT] Base64Handler module required for self-referencing HTML"
+        );
+      }
+
       // Change maxIterations value to increase number of possible saves that can be made
       // This will increase file size
       // After maxIterations -1 the save function will stop working properly
-      const maxIterations = 5;
-      let converged = false;
-
-      logInfo(
-        "🔄 Starting iterative Base64 generation for self-reference (Enhanced Pandoc)..."
-      );
-
-      while (iteration < maxIterations) {
-        // Create script with current Base64 (empty on first iteration)
-        const embeddedDataScript = `
-<!-- Embedded Original Content for Save Functionality -->
-<script id="original-content-data" type="application/x-original-html-base64">
-${previousBase64}
-</script>`;
-
-        // Insert script into HTML (before closing body tag)
-        currentHTML = baseHTML.replace(
-          "</body>",
-          embeddedDataScript + "\n</body>"
+      const convergenceResult =
+        window.Base64Handler.generateSelfReferencingHTML(
+          baseHTML,
+          "Enhanced Pandoc",
+          5 // maxIterations
         );
 
-        // Generate new Base64 from complete HTML
-        const newBase64 = btoa(unescape(encodeURIComponent(currentHTML)));
-
-        logDebug(
-          `Enhanced Pandoc - Iteration ${iteration}: Base64 length = ${newBase64.length} characters`
-        );
-
-        // Check for convergence (Base64 stabilises when self-referential)
-        if (newBase64 === previousBase64 && iteration > 0) {
-          logInfo(
-            `✅ Self-referential convergence achieved in ${iteration} iterations (Enhanced Pandoc)`
-          );
-          converged = true;
-          break;
-        }
-
-        previousBase64 = newBase64;
-        iteration++;
-      }
-
-      // Final HTML with self-referential Base64
-      const finalHTML = currentHTML;
-      const finalBase64Length = previousBase64.length;
-
-      if (converged) {
-        logInfo(
-          `✅ True self-containing Base64 generated (Enhanced Pandoc): ${finalBase64Length} characters`
-        );
-        logInfo(
-          `🔄 Base64 now contains HTML with exact same Base64 - perfect self-reference (Enhanced Pandoc)`
-        );
-      } else {
-        logWarn(
-          `⚠️ Convergence not achieved after ${maxIterations} iterations (Enhanced Pandoc), using best attempt`
-        );
-        logInfo(
-          `📊 Final Base64 length (Enhanced Pandoc): ${finalBase64Length} characters`
-        );
-      }
+      const finalHTML = convergenceResult.finalHTML;
+      const converged = convergenceResult.converged;
+      const finalBase64Length = convergenceResult.base64Length;
 
       logInfo(
         `🧪 Enhanced standalone HTML generated (${finalHTML.length} characters)`
@@ -832,45 +922,67 @@ ${previousBase64}
       return finalHTML;
     } catch (error) {
       logError(
-        "Error generating enhanced standalone HTML with minimal processing:",
+        "[EXPORT] Error generating enhanced standalone HTML with minimal processing:",
         error
       );
-      throw new Error("Failed to generate enhanced HTML: " + error.message);
+      throw new Error(
+        "[EXPORT] Failed to generate enhanced HTML: " + error.message
+      );
     }
   }
 
+  // ============================================================================
+  // EXPORT UTILITIES
+  // ============================================================================
+  // Helper functions for file downloads and UI management
+
   /**
-   * Download HTML file with enhanced filename generation
-   * @param {string} htmlContent - HTML content to download
-   * @param {string} baseTitle - Base title for filename
-   * @param {Object} metadata - Document metadata
+   * Download HTML file using robust method that prevents browser-level duplicates.
+   * Uses object URL with Content-Disposition header simulation and delayed cleanup.
+   * Prevents multiple simultaneous downloads with global flag and validates filename safety.
+   * Records download metrics for monitoring and analysis.
+   *
+   * @param {string} htmlContent - Complete HTML content to download
+   * @param {string} baseTitle - Base title for filename (optional, metadata preferred)
+   * @param {Object} metadata - Document metadata for enhanced filename generation
+   * @returns {void}
    */
   function downloadHTMLFile(htmlContent, baseTitle, metadata) {
     logInfo("Preparing HTML file download...");
 
-    // 🛡️ Prevent duplicate downloads
+    // 🛡️ CRITICAL: Prevent duplicate downloads with strict checking
     if (window.downloadInProgress) {
       logWarn("Download already in progress - preventing duplicate");
       return;
     }
+
+    // Set flag immediately to prevent race conditions
     window.downloadInProgress = true;
+    const downloadId = `download_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
 
     try {
+      // Generate filename once
       const filename =
         window.AppConfig && metadata
           ? window.AppConfig.generateEnhancedFilename(metadata)
           : baseTitle || "mathematical_document.html";
 
+      logInfo(`[${downloadId}] Creating download for: ${filename}`);
+
+      // Create blob with explicit MIME type
       const blob = new Blob([htmlContent], {
         type: "text/html;charset=utf-8",
       });
 
-      // 🛡️ Record download for duplicate detection
+      // 🛡️ Record download for monitoring
       if (window.DownloadMonitor) {
         window.DownloadMonitor.recordDownload(filename, {
           type: "html",
           size: blob.size,
           source: "export-manager",
+          downloadId: downloadId,
           metadata: {
             title: baseTitle,
             sections: metadata?.sections?.length || 0,
@@ -881,48 +993,92 @@ ${previousBase64}
         });
       }
 
+      // 🎯 NEW METHOD: Use saveAs simulation without FileSaver.js
+      // This method is more reliable across browsers and prevents duplicates
+
+      // Create object URL
       const url = URL.createObjectURL(blob);
-      const downloadLink = document.createElement("a");
+
+      // Create invisible iframe for download (prevents multiple clicks)
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.setAttribute("aria-hidden", "true");
+      document.body.appendChild(iframe);
+
+      // Use iframe to trigger download (more reliable, single trigger)
+      let iframeDoc = iframe.contentWindow || iframe.contentDocument;
+      if (iframeDoc.document) {
+        iframeDoc = iframeDoc.document;
+      }
+
+      // Create download link in iframe context
+      const downloadLink = iframeDoc.createElement("a");
       downloadLink.href = url;
       downloadLink.download = filename;
       downloadLink.style.display = "none";
-      downloadLink.setAttribute("aria-hidden", "true");
 
-      // 🛡️ Enhanced click protection
-      let hasClicked = false;
-      downloadLink.addEventListener("click", function () {
-        if (hasClicked) {
-          logWarn("Preventing duplicate click on download link");
-          return false;
-        }
-        hasClicked = true;
-        logInfo("Download link clicked successfully");
-      });
+      // Add to iframe document and trigger
+      iframeDoc.body.appendChild(downloadLink);
 
-      document.body.appendChild(downloadLink);
+      // Single click event with immediate cleanup
+      downloadLink.addEventListener(
+        "click",
+        function () {
+          logInfo(`[${downloadId}] Download triggered successfully`);
+        },
+        { once: true }
+      );
+
+      // Trigger download
       downloadLink.click();
-      document.body.removeChild(downloadLink);
 
-      // Clean up
+      // Cleanup after delay (ensure download starts)
       setTimeout(() => {
-        URL.revokeObjectURL(url);
-        window.downloadInProgress = false;
-      }, 200);
+        // Remove iframe
+        if (iframe.parentNode) {
+          document.body.removeChild(iframe);
+        }
 
-      logInfo("HTML file download initiated:", filename);
+        // Revoke object URL
+        URL.revokeObjectURL(url);
+
+        // Clear download flag
+        window.downloadInProgress = false;
+
+        logInfo(`[${downloadId}] Download cleanup completed`);
+      }, 2000);
+
+      logInfo(`[${downloadId}] HTML file download initiated: ${filename}`);
     } catch (error) {
-      logError("Download failed:", error);
+      logError(`[${downloadId}] Download failed:`, error);
       window.downloadInProgress = false;
       throw error;
     }
   }
 
   /**
-   * ENHANCED: Smart content source detection with chunked document support
-   * CRITICAL FIX: Properly detects and uses combined chunked content
+   * Smart content source detection with chunked document support and quality assessment.
+   * Analyzes available content sources (original LaTeX input vs processed HTML output)
+   * to determine optimal export strategy. Detects full documents with chunking
+   * requirements and ensures combined output is used for multi-chunk processing.
+   * Prioritizes original LaTeX for single-pass documents to preserve quality,
+   * whilst using processed output for chunked documents to preserve combined results.
+   * Returns content with comprehensive metadata about conversion requirements and quality level.
+   * @returns {Object} Content source with type, content, conversion flags, and quality assessment
+   * @returns {string} Object.content - The actual content string for export
+   * @returns {string} Object.type - Source type: "original-latex", "chunked-processed", "pre-rendered", or "empty"
+   * @returns {boolean} Object.needsConversion - Whether MathJax to LaTeX conversion needed
+   * @returns {boolean} Object.needsPandocConversion - Whether Pandoc conversion needed
+   * @returns {string} Object.qualityLevel - Quality assessment: "optimal", "optimal-chunked", "processed", or "none"
+   * @returns {string} Object.sourceInfo - Human-readable description of content source
    */
   function getOptimalContentSource() {
     logInfo("Determining optimal content source for export...");
+
+    // ✅ STAGE 1.1: Capture current Pandoc arguments for unified pipeline
+    captureFrontendPandocArgs();
 
     const inputTextarea = document.getElementById("input");
     const outputDiv = document.getElementById("output");
@@ -958,17 +1114,34 @@ ${previousBase64}
           qualityLevel: "optimal-chunked",
           sourceInfo: "Combined output from chunked processing",
         };
+      } else if (hasProcessedOutput) {
+        // ✅ STAGE 1.2: Use processed output for single documents too!
+        // The output has already been through ConversionEngine with all fixes
+        logInfo(
+          "SINGLE DOCUMENT WITH PROCESSED OUTPUT: Using processed output (preserves all fixes)"
+        );
+        logInfo(`Processed output length: ${outputContent.length}`);
+
+        return {
+          content: outputContent,
+          type: "processed-single",
+          needsConversion: true, // MathJax conversion needed for menus
+          needsPandocConversion: false, // ✅ Already processed - don't re-convert!
+          qualityLevel: "optimal-processed",
+          sourceInfo:
+            "Processed output from ConversionEngine (preserves align, widecheck fixes)",
+        };
       } else {
-        // Standard single-pass document
-        logInfo("SINGLE DOCUMENT: Using original LaTeX for processing");
+        // Only re-convert if there's NO processed output at all
+        logWarn("NO PROCESSED OUTPUT: Will re-convert original LaTeX");
 
         return {
           content: originalLatex,
           type: "original-latex",
-          needsConversion: false, // No MathJax conversion needed
-          needsPandocConversion: true, // Needs Pandoc conversion
+          needsConversion: false,
+          needsPandocConversion: true,
           qualityLevel: "optimal",
-          sourceInfo: "Original LaTeX from input",
+          sourceInfo: "Original LaTeX from input (fallback)",
         };
       }
     }
@@ -992,7 +1165,7 @@ ${previousBase64}
     }
 
     // No valid content found
-    logWarn("No valid content source found for export");
+    logWarn("[EXPORT] No valid content source found for export");
     return {
       content: "",
       type: "empty",
@@ -1003,259 +1176,107 @@ ${previousBase64}
     };
   }
 
+  // ============================================================================
+  // FONT LOADING AND VALIDATION
+  // ============================================================================
+  // Ensures embedded fonts are properly loaded and included in exports
+  // Validates font availability and provides user feedback
+
   /**
-   * Validate that font CSS contains actual base64 data, not placeholders
-   * @param {string} css - The CSS to validate
-   * @returns {Object} Validation result with details
+   * Validate that font CSS contains actual Base64 data, not placeholder strings.
+   * Delegates to: HeadGenerator for CSS validation and Base64 content verification
+   * Checks embedded font CSS to ensure Base64 font data is present and valid,
+   * detecting placeholder strings like "YOUR_BASE64_PLACEHOLDER" that indicate
+   * font loading failure. Returns validation result with detailed error information
+   * for debugging font embedding issues. Critical for preventing broken exports.
+   * @param {string} css - Font CSS content to validate
+   * @returns {Object} Validation result with isValid boolean and error details array
+   * @returns {boolean} Object.isValid - Whether CSS contains valid Base64 font data
+   * @returns {Array<string>} Object.errors - Array of validation error messages
+   * @throws {Error} If HeadGenerator module not available
    */
   function validateFontCSS(css) {
-    const validation = {
-      isValid: false,
-      hasPlaceholders: false,
-      hasRealFontData: false,
-      placeholderCount: 0,
-      realFontCount: 0,
-      details: [],
-      errors: [],
-    };
-
-    if (!css || typeof css !== "string") {
-      validation.errors.push("CSS is empty or invalid");
-      return validation;
+    if (!window.HeadGenerator) {
+      logError("[EXPORT] HeadGenerator module not available");
+      throw new Error("[EXPORT] HeadGenerator module required");
     }
-
-    // Check for placeholder patterns
-    const placeholderMatches = css.match(/YOUR_BASE64_PLACEHOLDER/g);
-    validation.placeholderCount = placeholderMatches
-      ? placeholderMatches.length
-      : 0;
-    validation.hasPlaceholders = validation.placeholderCount > 0;
-
-    // Check for real base64 font data patterns
-    // Real base64 font data should be long strings starting with typical font headers
-    // Support woff2, woff, truetype, opentype with optional charset parameter
-    const realFontMatches = css.match(
-      /data:font\/[^;]+;[^,]*base64,([A-Za-z0-9+/]{100,})/g
-    );
-    validation.realFontCount = realFontMatches ? realFontMatches.length : 0;
-    validation.hasRealFontData = validation.realFontCount > 0;
-
-    // Additional validation: Check for common font file signatures in base64
-    const fontSignatures = [
-      "d09G", // WOFF/WOFF2 signature
-      "wOF2", // WOFF2 signature
-      "OTTO", // OpenType signature
-      "true", // TrueType signature
-      "0001", // TrueType signature variant
-    ];
-
-    let validSignatureCount = 0;
-    for (const signature of fontSignatures) {
-      if (css.includes(signature)) {
-        validSignatureCount++;
-      }
-    }
-
-    // Log detailed analysis
-    validation.details.push(`CSS length: ${css.length} characters`);
-    validation.details.push(
-      `Placeholders found: ${validation.placeholderCount}`
-    );
-    validation.details.push(
-      `Real font data sections: ${validation.realFontCount}`
-    );
-    validation.details.push(`Valid font signatures: ${validSignatureCount}`);
-
-    // Determine overall validity
-    validation.isValid =
-      !validation.hasPlaceholders &&
-      validation.hasRealFontData &&
-      validSignatureCount > 0 &&
-      css.length > 1000; // Real fonts should be substantial
-
-    // Add specific error messages
-    if (validation.hasPlaceholders) {
-      validation.errors.push(
-        `Found ${validation.placeholderCount} placeholder(s) - fonts not loaded`
-      );
-    }
-    if (!validation.hasRealFontData) {
-      validation.errors.push("No real font data detected");
-    }
-    if (validSignatureCount === 0) {
-      validation.errors.push("No valid font signatures found");
-    }
-    if (css.length <= 1000) {
-      validation.errors.push("CSS too short for embedded fonts");
-    }
-
-    return validation;
+    return window.HeadGenerator.validateFontCSS(css);
   }
 
   /**
-   * Wait for fonts to be loaded with timeout and validation
-   * @param {number} timeoutMs - Maximum time to wait
-   * @param {number} retryIntervalMs - Time between retry attempts
-   * @returns {Promise<Object>} Result with font CSS or error
+   * Wait for fonts to be loaded with timeout, retries, and validation.
+   * Delegates to: HeadGenerator for font loading monitoring and validation
+   * Polls font loading status at regular intervals until fonts are ready or timeout
+   * occurs. Validates loaded font CSS to ensure Base64 data is present. Returns
+   * success status with font CSS or error information. Prevents exports with
+   * incomplete font data that would result in broken typography in exported documents.
+   * @param {number} timeoutMs - Maximum time to wait in milliseconds, default 5000 (5 seconds)
+   * @param {number} retryIntervalMs - Time between retry attempts in milliseconds, default 100
+   * @returns {Promise<Object>} Result object with success status and font CSS or error details
+   * @returns {boolean} Object.success - Whether fonts loaded successfully within timeout
+   * @returns {string} Object.css - Font CSS content if successful
+   * @returns {Object} Object.validation - Validation result with isValid and errors
+   * @returns {string} Object.error - Error message if loading failed
+   * @throws {Error} If HeadGenerator module not available
    */
   async function waitForFontsToLoad(timeoutMs = 5000, retryIntervalMs = 100) {
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeoutMs) {
-      try {
-        if (window.TemplateSystem) {
-          const generator = window.TemplateSystem.createGenerator();
-          const embeddedFontsCSS = await generator.generateEmbeddedFontsCSS();
-
-          if (embeddedFontsCSS) {
-            const validation = validateFontCSS(embeddedFontsCSS);
-
-            if (validation.isValid) {
-              console.log("✅ Fonts loaded and validated successfully");
-              return {
-                success: true,
-                css: embeddedFontsCSS,
-                validation: validation,
-                loadTime: Date.now() - startTime,
-              };
-            } else {
-              console.log(
-                "⏳ Fonts still loading...",
-                validation.errors.join(", ")
-              );
-            }
-          }
-        }
-      } catch (error) {
-        console.warn("Font loading attempt failed:", error.message);
-      }
-
-      // Wait before retry
-      await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+    if (!window.HeadGenerator) {
+      logError("[EXPORT] HeadGenerator module not available");
+      throw new Error("[EXPORT] HeadGenerator module required");
     }
-
-    return {
-      success: false,
-      error: "Font loading timeout - fonts may not be ready",
-      timeout: true,
-      loadTime: Date.now() - startTime,
-    };
+    return await window.HeadGenerator.waitForFontsToLoad(
+      timeoutMs,
+      retryIntervalMs
+    );
   }
 
   /**
-   * UPDATED: Enhanced ensureEmbeddedFontsInclusion with proper validation
-   * Replace the existing ensureEmbeddedFontsInclusion function with this version
+   * Ensure embedded fonts are loaded and validated before export operations.
+   * Delegates to: HeadGenerator for font loading coordination and validation
+   * Primary font readiness check called before export generation. Waits for fonts
+   * to load with timeout, validates Base64 content, and returns comprehensive result
+   * including validation status. Blocks exports if fonts are not ready to prevent
+   * broken typography. Essential for maintaining font embedding quality in exports.
+   * @returns {Promise<Object>} Font loading result with validation details
+   * @returns {boolean} Object.success - Whether fonts loaded and validated successfully
+   * @returns {string} Object.css - Font CSS content with embedded Base64 data
+   * @returns {Object} Object.validation - Detailed validation result with errors array
+   * @returns {boolean} Object.validation.isValid - Whether validation passed
+   * @returns {Array<string>} Object.validation.errors - Validation error messages
+   * @throws {Error} If HeadGenerator module not available
    */
   async function ensureEmbeddedFontsInclusion() {
-    const LOG_LEVELS = {
-      ERROR: 0,
-      WARN: 1,
-      INFO: 2,
-      DEBUG: 3,
-    };
-
-    const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
-    const ENABLE_ALL_LOGGING = false;
-    const DISABLE_ALL_LOGGING = false;
-
-    function shouldLog(level) {
-      if (DISABLE_ALL_LOGGING) return false;
-      if (ENABLE_ALL_LOGGING) return true;
-      return level <= DEFAULT_LOG_LEVEL;
+    if (!window.HeadGenerator) {
+      logError("[EXPORT] HeadGenerator module not available");
+      throw new Error("[EXPORT] HeadGenerator module required");
     }
 
-    function logError(message, ...args) {
-      if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+    // ✅ CRITICAL: Ensure templates are loaded before creating generators
+    // This prevents inline fallback templates on first export
+    if (
+      window.TemplateSystem &&
+      !window.TemplateSystem.getGlobalCacheStatus().isLoaded
+    ) {
+      logDebug("[EXPORT] Pre-loading templates for font generation...");
+      await window.TemplateSystem.ensureTemplatesLoaded();
+      logDebug("[EXPORT] ✅ Templates ready for export");
     }
 
-    function logWarn(message, ...args) {
-      if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
-    }
-
-    function logInfo(message, ...args) {
-      if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
-    }
-
-    function logDebug(message, ...args) {
-      if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
-    }
-
-    const result = {
-      css: "",
-      method: "",
-      errors: [],
-      attempts: [],
-      validation: null,
-    };
-
-    // ✅ ENHANCED: Try to load fonts with validation and timeout
-    try {
-      logDebug("🔄 Attempting to load fonts with validation...");
-
-      // First, try immediate load attempt
-      if (window.TemplateSystem) {
-        const generator = window.TemplateSystem.createGenerator();
-        const embeddedFontsCSS = await generator.generateEmbeddedFontsCSS();
-
-        if (embeddedFontsCSS) {
-          const validation = validateFontCSS(embeddedFontsCSS);
-          result.validation = validation;
-
-          if (validation.isValid) {
-            result.css = embeddedFontsCSS;
-            result.method = "immediate-success";
-            result.attempts.push("immediate-validated");
-            logInfo("✅ Font embedding successful on immediate attempt");
-            return result;
-          } else {
-            logWarn(
-              "⚠️ Immediate attempt failed validation:",
-              validation.errors.join(", ")
-            );
-            result.attempts.push("immediate-invalid");
-          }
-        }
-      }
-
-      // If immediate attempt failed, wait for fonts to load
-      logDebug("⏳ Waiting for fonts to load properly...");
-      const fontLoadResult = await waitForFontsToLoad(3000); // 3 second timeout
-
-      if (fontLoadResult.success) {
-        result.css = fontLoadResult.css;
-        result.method = "wait-success";
-        result.validation = fontLoadResult.validation;
-        result.attempts.push("wait-validated");
-        logInfo(
-          `✅ Font embedding successful after ${fontLoadResult.loadTime}ms`
-        );
-        return result;
-      } else {
-        logWarn("⚠️ Font loading failed:", fontLoadResult.error);
-        result.attempts.push("wait-failed");
-        result.errors.push(fontLoadResult.error);
-      }
-    } catch (error) {
-      result.errors.push(`Template system error: ${error.message}`);
-      result.attempts.push("template-system-error");
-      logWarn("⚠️ Template system failed:", error.message);
-    }
-
-    // 🛡️ FALLBACK: Use fallback only if fonts cannot be loaded
-    logWarn("⚠️ Using fallback CSS - fonts may not display correctly");
-    result.css = generateFallbackFontCSS();
-    result.method = "fallback-forced";
-    result.attempts.push("fallback-used");
-
-    // Validate even the fallback to confirm it has placeholders
-    result.validation = validateFontCSS(result.css);
-
-    return result;
+    return await window.HeadGenerator.ensureEmbeddedFontsInclusion();
   }
 
   /**
-   * UPDATED: Enhanced export function with font validation guard
-   * Add this validation check to the main export functions
+   * Validate complete export readiness including font loading and resource availability.
+   * Delegates to: ensureEmbeddedFontsInclusion for font validation
+   * Comprehensive pre-export validation checking all required resources are ready.
+   * Validates fonts are loaded with proper Base64 data, checks resource availability,
+   * and provides user-friendly error messages via notifications or alerts. Blocks
+   * exports if validation fails, preventing broken documents. Returns detailed
+   * readiness status for export decision-making.
+   * @returns {Promise<Object>} Export readiness result with detailed status
+   * @returns {boolean} Object.ready - Whether export can proceed safely
+   * @returns {string} Object.error - User-friendly error message if not ready
+   * @returns {Object} Object.fontResult - Detailed font loading and validation result
    */
   async function validateExportReadiness() {
     console.log("🔍 Validating export readiness...");
@@ -1311,7 +1332,13 @@ This prevents broken exports with missing font data.
   }
 
   /**
-   * Create and manage font loading status indicator
+   * Create DOM element for font loading status indicator with visual feedback.
+   * Creates floating status indicator element displaying font loading progress to
+   * users. Shows loading spinner icon and status text. Indicator provides visual
+   * feedback during font loading process, automatically hides after fonts load
+   * successfully. Improves user experience by making font loading visible and
+   * preventing confusion about export button availability.
+   * @returns {HTMLElement} Created status indicator DOM element
    */
   function createFontStatusIndicator() {
     // Create status indicator element
@@ -1336,7 +1363,15 @@ This prevents broken exports with missing font data.
   }
 
   /**
-   * Update font status indicator
+   * Update font status indicator with current loading state and message.
+   * Updates existing status indicator element (or creates one if missing) with
+   * current font loading status. Supports four states: "loading" (spinner icon),
+   * "ready" (checkmark, auto-hides after 3 seconds), "error" (warning icon), and
+   * "hidden". Changes icon, text, and styling to match status. Provides immediate
+   * visual feedback about font loading progress to users.
+   * @param {string} status - Status type: "loading", "ready", "error", or "hidden"
+   * @param {string} message - Status message to display to user
+   * @returns {void}
    */
   function updateFontStatus(status, message) {
     let indicator = document.getElementById("font-status-indicator");
@@ -1385,7 +1420,13 @@ This prevents broken exports with missing font data.
   }
 
   /**
-   * Monitor font loading status and update UI
+   * Monitor font loading status continuously and update UI feedback accordingly.
+   * Orchestrates font loading monitoring process: checks if fonts are already ready,
+   * displays loading indicator whilst waiting, updates status as fonts load, handles
+   * timeouts gracefully. Provides comprehensive user feedback throughout font loading
+   * lifecycle. Automatically hides indicators after success or error display period.
+   * Called during application initialization to ensure fonts ready before exports.
+   * @returns {Promise<void>} Completes when monitoring finished (success, error, or timeout)
    */
   async function monitorFontLoadingStatus() {
     updateFontStatus("loading", "Checking fonts...");
@@ -1414,7 +1455,7 @@ This prevents broken exports with missing font data.
         }, 5000);
       }
     } catch (error) {
-      console.error("Font monitoring error:", error);
+      console.error("[EXPORT] Font monitoring error:", error);
       updateFontStatus("error", "Font loading error");
       setTimeout(() => {
         updateFontStatus("hidden");
@@ -1423,7 +1464,13 @@ This prevents broken exports with missing font data.
   }
 
   /**
-   * Add export button enhancement to show font status
+   * Enhance export button with font validation check before export execution.
+   * Wraps export button click handler with font readiness validation. Prevents
+   * exports when fonts are not ready, providing user feedback via notifications.
+   * Only proceeds with export if validateExportReadiness returns ready status.
+   * Updates button title to indicate font validation is active. Improves user
+   * experience by preventing broken exports and providing clear feedback.
+   * @returns {void}
    */
   function enhanceExportButtonWithFontStatus() {
     const exportButton = document.getElementById("export-html");
@@ -1461,7 +1508,13 @@ This prevents broken exports with missing font data.
   }
 
   /**
-   * Initialize font monitoring system
+   * Initialize font monitoring system on document load with delayed start.
+   * Sets up font loading monitoring and export button enhancement when DOM is ready.
+   * Waits for DOMContentLoaded if necessary, then starts monitoring after 1 second
+   * delay to allow initial font loading to begin. Enhances export button with
+   * validation checks. Coordinates all font monitoring initialization in single
+   * function for easy setup.
+   * @returns {void}
    */
   function initializeFontMonitoring() {
     // Start monitoring when DOM is ready
@@ -1477,7 +1530,18 @@ This prevents broken exports with missing font data.
   }
 
   /**
-   * Load font data directly without template system
+   * Load font data directly from files without template system (fallback method).
+   * Fetches Base64 font data directly from font files in fonts/ directory using
+   * fetch API. Provides fallback loading mechanism if template system unavailable.
+   * Loads OpenDyslexic font variants (regular, bold, italic, bold-italic) and
+   * AnnotationMono variable font. Returns object with Base64 data or placeholders
+   * on fetch failure. Used internally by font loading system.
+   * @returns {Promise<Object>} Font data object with Base64 strings for each variant
+   * @returns {string} Object.base64Regular - OpenDyslexic regular variant Base64
+   * @returns {string} Object.base64Bold - OpenDyslexic bold variant Base64
+   * @returns {string} Object.base64Italic - OpenDyslexic italic variant Base64
+   * @returns {string} Object.base64BoldItalic - OpenDyslexic bold-italic variant Base64
+   * @returns {string} Object.base64AnnotationMonoVF - AnnotationMono variable font Base64
    */
   async function loadFontDataDirect() {
     const fontFiles = {
@@ -1507,7 +1571,20 @@ This prevents broken exports with missing font data.
   }
 
   /**
-   * Render font template with simple string replacement
+   * Render font template with simple string replacement for Base64 data injection.
+   * Processes font CSS template by replacing template variables ({{base64Regular}},
+   * {{base64Bold}}, etc.) with actual Base64 font data. Handles conditional sections
+   * for variable font availability using {{#if}} syntax. Provides simple template
+   * rendering without requiring full template system. Used as fallback when template
+   * system unavailable or for direct font CSS generation.
+   * @param {string} template - Font CSS template with template variable placeholders
+   * @param {Object} fontData - Font data object with Base64 strings for each variant
+   * @param {string} fontData.base64Regular - OpenDyslexic regular Base64 data
+   * @param {string} fontData.base64Bold - OpenDyslexic bold Base64 data
+   * @param {string} fontData.base64Italic - OpenDyslexic italic Base64 data
+   * @param {string} fontData.base64BoldItalic - OpenDyslexic bold-italic Base64 data
+   * @param {string} fontData.base64AnnotationMonoVF - AnnotationMono variable font Base64 data
+   * @returns {string} Rendered font CSS with embedded Base64 font data
    */
   function renderFontTemplate(template, fontData) {
     let rendered = template;
@@ -1552,751 +1629,338 @@ This prevents broken exports with missing font data.
     return rendered;
   }
 
-  /**
-   * Generate fallback font CSS that always works
-   */
-  function generateFallbackFontCSS() {
-    return `<!-- OpenDyslexic Font Family - Embedded for Offline Use -->
-<style>
-    @font-face {
-      font-family: "OpenDyslexic";
-      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2");
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-
-    @font-face {
-      font-family: "OpenDyslexic";
-      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2");
-      font-weight: bold;
-      font-style: normal;
-      font-display: swap;
-    }
-
-    @font-face {
-      font-family: "OpenDyslexic";
-      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2");
-      font-weight: normal;
-      font-style: italic;
-      font-display: swap;
-    }
-
-    @font-face {
-      font-family: "OpenDyslexic";
-      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2");
-      font-weight: bold;
-      font-style: italic;
-      font-display: swap;
-    }
-
-    <!-- Annotation Mono Variable Font -->
-    @font-face {
-      font-family: "Annotation Mono";
-      src: url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2 supports variations"),
-           url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2-variations"),
-           url("data:font/woff2;base64,YOUR_BASE64_PLACEHOLDER") format("woff2") tech(variations);
-      font-weight: 100 1000;
-      font-display: swap;
-    }
-</style>`;
-  }
+  // ============================================================================
+  // HEAD GENERATION DELEGATION
+  // ============================================================================
+  // Delegates head generation to HeadGenerator module
+  // Handles metadata, CSS loading, and accessibility configuration
 
   /**
-   * Generate enhanced HTML head section with metadata and accessibility features
-   */
-
-  /**
-   * Generate enhanced head section with all required components
+   * Generate enhanced HTML head section with metadata, CSS, and accessibility features.
+   * Delegates to: HeadGenerator for complete head section generation
+   * Templates: embedded-fonts.html for font embedding with Base64 validation
+   * Generates complete head section including meta tags, title, embedded CSS from
+   * templates, embedded fonts with validation, MathJax configuration, and accessibility
+   * meta tags. Ensures all resources are embedded for offline standalone functionality.
+   * @param {string} title - Document title for head metadata
+   * @param {Object} metadata - Document metadata (author, date, sections, etc.)
+   * @param {number} accessibilityLevel - Accessibility feature level (1-3)
+   * @returns {Promise<string>} Complete HTML head section with embedded resources
+   * @throws {Error} If HeadGenerator module not available
    */
   async function generateEnhancedHead(title, metadata, accessibilityLevel) {
-    const headComponents = [];
-
-    // Meta tags
-    headComponents.push("<head>");
-    headComponents.push('    <meta charset="UTF-8">');
-    headComponents.push(
-      '    <meta name="viewport" content="width=device-width, initial-scale=1.0">'
-    );
-    headComponents.push(
-      `    <title>${window.ContentGenerator.escapeHtml(title)}</title>`
-    );
-    headComponents.push(
-      '    <meta name="description" content="Mathematical document with reading accessibility controls and comprehensive accessibility features">'
-    );
-    headComponents.push(
-      '    <meta name="generator" content="Enhanced Pandoc-WASM Mathematical Converter with Reading Controls">'
-    );
-
-    // Optional metadata
-    if (metadata.author) {
-      headComponents.push(
-        `    <meta name="author" content="${window.ContentGenerator.escapeHtml(
-          metadata.author
-        )}">`
-      );
-    }
-    if (metadata.date) {
-      headComponents.push(
-        `    <meta name="date" content="${window.ContentGenerator.escapeHtml(
-          metadata.date
-        )}">`
-      );
+    if (!window.HeadGenerator) {
+      logError("[EXPORT] HeadGenerator module not available");
+      throw new Error("[EXPORT] HeadGenerator module required");
     }
 
-    // ✅ ENHANCED: Embedded OpenDyslexic fonts with guaranteed inclusion and async protection
-    try {
-      // 🛡️ ASYNC OPERATION PROTECTION: Prevent multiple font loading attempts
-      if (!window.fontEmbeddingInProgress) {
-        window.fontEmbeddingInProgress = true;
-
-        const embeddedFontsResult = await ensureEmbeddedFontsInclusion();
-
-        if (embeddedFontsResult.css && embeddedFontsResult.css.length > 0) {
-          headComponents.push(
-            "    " + embeddedFontsResult.css.replace(/\n/g, "\n    ")
-          );
-          logInfo(
-            "✅ OpenDyslexic fonts embedded successfully via",
-            embeddedFontsResult.method
-          );
-        } else {
-          logWarn("⚠️ Font embedding failed, using emergency fallback");
-          headComponents.push("    " + generateFallbackFontCSS());
-        }
-      } else {
-        logWarn(
-          "⚠️ Font embedding already in progress, using emergency fallback"
-        );
-        headComponents.push("    " + generateFallbackFontCSS());
-      }
-    } catch (error) {
-      logError("❌ Font embedding error:", error.message);
-      headComponents.push("    " + generateFallbackFontCSS());
-    } finally {
-      // Always clear the flag
-      window.fontEmbeddingInProgress = false;
-    }
-    headComponents.push(
-      '    <meta name="keywords" content="mathematics, LaTeX, MathJax, accessibility, WCAG, reading tools, theme toggle">'
+    logInfo("Delegating head generation to HeadGenerator module");
+    return await window.HeadGenerator.generateEnhancedHead(
+      title,
+      metadata,
+      accessibilityLevel
     );
-    headComponents.push('    <meta name="robots" content="index, follow">');
-    headComponents.push("");
-
-    // MathJax configuration with accessibility features - Phase 2.3 Simplified Controls
-    const mathJaxConfig = window.LaTeXProcessor.generateMathJaxConfig(
-      accessibilityLevel,
-      {
-        // ✅ OPTIMAL DEFAULTS for exported documents with proven working controls
-        zoomTrigger: "Click", // Most accessible default
-        zoomScale: "200%", // Good default zoom level
-        inTabOrder: true, // More accessible default (enabled by default)
-        assistiveMml: true, // Always enabled for accessibility
-        // ✅ BAKED-IN FEATURES (always enabled via LaTeX preservation)
-        enableContextMenu: true, // Always enabled via LaTeX preservation
-        renderer: "CHTML", // Always optimal renderer
-        explorer: accessibilityLevel >= 2, // Enabled for level 2+
-        mathScale: 1.0, // Always optimal scale
-      }
-    );
-    headComponents.push(mathJaxConfig);
-    headComponents.push("");
-
-    // Enhanced CSS generation with source viewer styles
-    headComponents.push("    <style>");
-    headComponents.push(window.ContentGenerator.generateEnhancedCSS());
-
-    // Add source viewer CSS if available
-    if (window.SourceViewer) {
-      headComponents.push("");
-      headComponents.push("/* Source Viewer Styles */");
-      const prismCSS = await window.SourceViewer.getPrismCSS();
-      headComponents.push(prismCSS);
-    }
-
-    headComponents.push("    </style>");
-    headComponents.push("</head>");
-
-    return headComponents.join("\n");
   }
 
+  // ============================================================================
+  // FOOTER GENERATION DELEGATION
+  // ============================================================================
+  // Delegates footer generation to FooterGenerator module
+  // Handles credits, acknowledgements, and closing elements
+
   /**
-   * Generate enhanced document footer with source viewer
-   * @param {string} originalSource - Original source content
-   * @param {string} pandocArgs - Pandoc arguments for language detection
-   * @param {Object} metadata - Document metadata
-   * @returns {string} HTML footer with embedded source viewer
+   * Generate document footer with credits, acknowledgements, and metadata display.
+   * Delegates to: FooterGenerator for footer HTML generation
+   * Templates: credits-acknowledgements.html for credits and attribution section
+   * Generates footer containing document metadata, generation timestamp, Pandoc
+   * arguments used, credits for open-source tools (Pandoc, MathJax, OpenDyslexic),
+   * and accessibility acknowledgements. Includes collapsible source code viewer.
+   * @param {string} originalSource - Original LaTeX source code for display
+   * @param {string} pandocArgs - Pandoc arguments used for conversion display
+   * @param {Object} metadata - Document metadata for footer display
+   * @returns {Promise<string>} Complete HTML footer section with credits
+   * @throws {Error} If FooterGenerator module not available
    */
-  function generateDocumentFooter(
+  async function generateDocumentFooter(
     originalSource = "",
     pandocArgs = "",
     metadata = {}
   ) {
-    try {
-      // Check if SourceViewer module is available
-      if (window.SourceViewer && originalSource.trim()) {
-        logDebug("Generating enhanced footer with source viewer");
-        return window.SourceViewer.generateEnhancedFooter(
-          originalSource,
-          pandocArgs,
-          metadata
-        );
-      } else {
-        // Fallback to basic footer
-        logWarn(
-          "SourceViewer not available or no source content, using basic footer"
-        );
-        const generationDate = new Date().toISOString().split("T")[0];
-        let html = "";
-        html += '<footer class="document-footer" role="contentinfo">\n';
-        html += `    <p>Generated on <time datetime="${generationDate}">${generationDate}</time> using Pandoc-WASM and MathJax</p>\n`;
-        html += "</footer>\n";
-        return html;
-      }
-    } catch (error) {
-      logError("Error generating enhanced footer:", error);
-
-      // Error fallback
-      const generationDate = new Date().toISOString().split("T")[0];
-      let html = "";
-      html += '<footer class="document-footer" role="contentinfo">\n';
-      html += `    <p>Generated on <time datetime="${generationDate}">${generationDate}</time> using Pandoc-WASM and MathJax</p>\n`;
-      html += "    <p><em>Source viewing temporarily unavailable</em></p>\n";
-      html += "</footer>\n";
-      return html;
+    if (!window.FooterGenerator) {
+      logError("[EXPORT] FooterGenerator module not available");
+      throw new Error("[EXPORT] FooterGenerator module required");
     }
+    logInfo("Delegating footer generation to FooterGenerator module");
+    return await window.FooterGenerator.generateDocumentFooter(
+      originalSource,
+      pandocArgs,
+      metadata
+    );
   }
 
   /**
-   * Generate MathJax controls JavaScript for exported documents
-   * ✅ MIGRATED: Now uses external JavaScript template
+   * Generate MathJax accessibility controls JavaScript for exported documents.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/mathjax-controls.js for MathJax context menu controls
+   * Generates JavaScript enabling MathJax equation explorer, context menus, zoom
+   * controls, and screen reader accessibility features in exported documents.
+   * Controls are accessibility-level aware for progressive enhancement.
+   * @param {number} accessibilityLevel - Accessibility feature level (1-3), default 1
+   * @returns {Promise<string>} JavaScript code for MathJax accessibility controls
+   * @throws {Error} If ScriptOrchestrator module not available
    */
   async function generateMathJaxControlsJS(accessibilityLevel = 1) {
-    if (window.TemplateSystem) {
-      const generator = window.TemplateSystem.createGenerator();
-      return await generator.generateMathJaxControlsJS(accessibilityLevel);
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
     }
-    throw new Error("Template system required for MathJax controls generation");
+    logInfo(
+      "Delegating MathJax controls generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateMathJaxControlsJS(
+      accessibilityLevel
+    );
   }
 
   /**
-   * Generate Reading Tools Setup JavaScript for exported documents
-   * ✅ PHASE 2A STEP 2: Now uses external JavaScript template
+   * Generate reading tools initialization JavaScript for exported documents.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/initialization.js for reading tools setup and initialization
+   * Generates JavaScript that initializes reading tools panel (font selection, spacing
+   * controls, width controls, theme toggle) and sets up event listeners for user
+   * preferences. Ensures reading tools are available immediately on document load.
+   * @param {number} accessibilityLevel - Accessibility feature level (1-3), default 1
+   * @returns {Promise<string>} JavaScript code for reading tools initialization
+   * @throws {Error} If ScriptOrchestrator module not available
    */
   async function generateReadingToolsSetupJS(accessibilityLevel = 1) {
-    if (window.TemplateSystem) {
-      const generator = window.TemplateSystem.createGenerator();
-      return await generator.generateReadingToolsSetupJS(accessibilityLevel);
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
     }
-    throw new Error(
-      "Template system required for reading tools setup generation"
+    logInfo(
+      "Delegating reading tools setup generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateReadingToolsSetupJS(
+      accessibilityLevel
     );
   }
 
   /**
-   * Generate focus tracking utility for exported documents
-   * ✅ MIGRATED: Now uses external JavaScript template
+   * Generate focus tracking utility JavaScript for keyboard navigation support.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/focus-tracking.js for focus management and visible focus indicators
+   * Generates JavaScript providing visible focus indicators for keyboard navigation,
+   * focus trap management for modal dialogs, and focus restoration after interactions.
+   * Critical for WCAG 2.2 AA keyboard accessibility compliance.
+   * @param {Object} options - Configuration options for focus tracking behaviour
+   * @returns {Promise<string>} JavaScript code for focus tracking utilities
+   * @throws {Error} If ScriptOrchestrator module not available
    */
   async function generateFocusTrackingJS(options = {}) {
-    if (window.TemplateSystem) {
-      const generator = window.TemplateSystem.createGenerator();
-      return await generator.generateFocusTrackingJS(options);
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
     }
-    throw new Error("Template system required for focus tracking generation");
+    logInfo(
+      "Delegating focus tracking generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateFocusTrackingJS(options);
   }
 
   /**
-   * Generate Theme Management JavaScript for exported documents
-   * ✅ MIGRATED: Now uses external JavaScript template
+   * Generate theme management JavaScript for light/dark theme switching.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/theme-management.js for theme toggle and persistence
+   * Generates JavaScript managing light/dark theme switching with localStorage
+   * persistence, respects user's system preferences (prefers-color-scheme), and
+   * provides smooth transitions. Includes ARIA announcements for theme changes.
+   * @param {Object} options - Configuration options for theme management behaviour
+   * @returns {Promise<string>} JavaScript code for theme management system
+   * @throws {Error} If ScriptOrchestrator module not available
    */
   async function generateThemeManagementJS(options = {}) {
-    if (window.TemplateSystem) {
-      const generator = window.TemplateSystem.createGenerator();
-      return await generator.generateThemeManagementJS(options);
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
     }
-    throw new Error("Template system required for theme management generation");
+    logInfo(
+      "Delegating theme management generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateThemeManagementJS(options);
   }
 
   /**
-   * Generate form initialization JavaScript for exported documents
-   * ✅ MIGRATED: Now uses external JavaScript template
+   * Generate form initialization JavaScript for accessibility control forms.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/form-initialization.js for form setup and state restoration
+   * Generates JavaScript initializing accessibility control forms (font selection,
+   * spacing, width controls) with saved preferences from localStorage, sets up
+   * change event listeners, and manages form state persistence across sessions.
+   * @param {Object} options - Configuration options for form initialization behaviour
+   * @returns {Promise<string>} JavaScript code for form initialization
+   * @throws {Error} If ScriptOrchestrator module not available
    */
   async function generateFormInitializationJS(options = {}) {
-    if (window.TemplateSystem) {
-      const generator = window.TemplateSystem.createGenerator();
-      return await generator.generateFormInitializationJS(options);
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
     }
-    throw new Error(
-      "Template system required for form initialization generation"
+    logInfo(
+      "Delegating form initialization generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateFormInitializationJS(
+      options
     );
   }
 
   /**
-   * Generate ReadingAccessibilityManager class for exported documents
-   * ✅ MIGRATED: Now uses external JavaScript template
+   * Generate ReadingAccessibilityManager class for comprehensive accessibility control.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/reading-accessibility-manager-class.js for manager class implementation
+   * Generates complete JavaScript class managing all reading accessibility features:
+   * font selection, line spacing, letter spacing, word spacing, reading width,
+   * zoom levels, and preference persistence. Provides unified API for accessibility
+   * controls with localStorage integration and screen reader announcements.
+   * @param {Object} options - Configuration options for accessibility manager behaviour
+   * @returns {Promise<string>} JavaScript code for ReadingAccessibilityManager class
+   * @throws {Error} If ScriptOrchestrator module not available
    */
   async function generateReadingAccessibilityManagerClass(options = {}) {
-    if (window.TemplateSystem) {
-      const generator = window.TemplateSystem.createGenerator();
-      return await generator.generateReadingAccessibilityManagerClassJS(
-        options
-      );
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
     }
-    throw new Error(
-      "Template system required for reading accessibility manager class generation"
+    logInfo(
+      "Delegating reading accessibility manager generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateReadingAccessibilityManagerClass(
+      options
     );
   }
 
   /**
-   * Generate enhanced JavaScript with reading accessibility features and MathJax controls
-   * Now uses template system for initialization JavaScript
-   * ENHANCED: Embeds clean HTML for reliable save functionality
+   * Generate document save functionality JavaScript for self-contained HTML updates.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/document-save-functionality.js for save mechanism implementation
+   * Generates JavaScript enabling users to save modified versions of exported documents
+   * whilst preserving all functionality. Implements self-referencing HTML technique
+   * allowing infinite save chains where each save produces fully functional copy.
+   * Includes UI feedback, error handling, and download management.
+   * @returns {Promise<string>} JavaScript code for document save functionality
+   * @throws {Error} If ScriptOrchestrator module not available
+   */
+  async function generateDocumentSaveFunctionalityJS() {
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
+    }
+    logInfo(
+      "Delegating document save functionality generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateDocumentSaveFunctionalityJS();
+  }
+
+  /**
+   * Generate save verification JavaScript for validating successful document saves.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/save-verification.js for save validation implementation
+   * Generates JavaScript verifying saved documents maintain all functionality including
+   * embedded resources, accessibility features, and save capability itself. Provides
+   * user feedback on save success/failure and validates HTML structure integrity.
+   * Critical for ensuring infinite save chain reliability.
+   * @returns {Promise<string>} JavaScript code for save verification utilities
+   * @throws {Error} If ScriptOrchestrator module not available
+   */
+  async function generateSaveVerificationJS() {
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
+    }
+    logInfo(
+      "Delegating save verification generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateSaveVerificationJS();
+  }
+
+  /**
+   * Generate content storage handler JavaScript for managing embedded content updates.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/content-storage-handler.js for storage management implementation
+   * Generates JavaScript handling storage and retrieval of updated document content
+   * within self-contained HTML structure. Manages Base64 encoding/decoding for
+   * embedded content updates and ensures content integrity during save operations.
+   * Supports infinite save chain by properly updating embedded content references.
+   * @returns {Promise<string>} JavaScript code for content storage management
+   * @throws {Error} If ScriptOrchestrator module not available
+   */
+  async function generateContentStorageHandlerJS() {
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
+    }
+    logInfo(
+      "Delegating content storage handler generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateContentStorageHandlerJS();
+  }
+
+  // ============================================================================
+  // JAVASCRIPT GENERATION DELEGATION
+  // ============================================================================
+  // Delegates JavaScript generation to ScriptOrchestrator and TemplateSystem
+  // Handles all interactive features, MathJax, and accessibility controls
+
+  /**
+   * Generate complete enhanced JavaScript for all interactive document features.
+   * Delegates to: ScriptOrchestrator for coordinated JavaScript generation from all templates
+   * Templates: Multiple JavaScript templates for all interactive features (see individual generators)
+   * Main orchestration function coordinating generation of all JavaScript components:
+   * MathJax controls, reading tools, focus tracking, theme management, form initialization,
+   * accessibility manager, document save functionality, save verification, and content
+   * storage. Ensures proper initialization order and integration of all features.
+   * @param {number} accessibilityLevel - Accessibility feature level (1-3) for progressive enhancement
+   * @param {string|null} cleanHTMLContent - Optional pre-cleaned HTML content for optimization
+   * @returns {Promise<string>} Complete JavaScript code for all document features
+   * @throws {Error} If ScriptOrchestrator module not available
    */
   async function generateEnhancedJavaScript(
     accessibilityLevel,
     cleanHTMLContent = null
   ) {
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
+    }
     logInfo(
-      "Generating enhanced JavaScript with complete accessibility functionality"
+      "Delegating enhanced JavaScript generation to ScriptOrchestrator module"
     );
-
-    let html = "";
-    html +=
-      "    <!-- Enhanced Script with Reading Controls, Theme Toggle, Focus Tracking, and MathJax Controls -->\n";
-
-    // ✅ NEW: Embed clean HTML content as Base64 for save functionality
-    if (cleanHTMLContent) {
-      html += `    <script id="original-content-data" type="application/x-original-html-base64">\n`;
-      // Convert to Base64 (handling Unicode properly)
-      const base64Content = btoa(
-        unescape(encodeURIComponent(cleanHTMLContent))
-      );
-      html += base64Content;
-      html += `\n    </script>\n`;
-      logInfo(
-        `✅ Embedded clean HTML content (${base64Content.length} Base64 characters)`
-      );
-    }
-
-    html += "    <script>\n";
-
-    // ✅ FIXED: Generate ReadingAccessibilityManager class separately with proper template processing
-    const accessibilityDefaults =
-      window.AppConfig?.CONFIG?.ACCESSIBILITY_DEFAULTS || {};
-    html += await generateReadingAccessibilityManagerClass({
-      defaultFontSize: accessibilityDefaults.defaultFontSize || 1.0, // ✅ Number
-      defaultFontFamily:
-        accessibilityDefaults.defaultFontFamily || "Verdana, sans-serif",
-      defaultReadingWidth:
-        accessibilityDefaults.defaultReadingWidth || "narrow",
-      defaultLineHeight: accessibilityDefaults.defaultLineHeight || 1.6, // ✅ Number
-      defaultParagraphSpacing:
-        accessibilityDefaults.defaultParagraphSpacing || 1.0, // ✅ Number
-      enableAdvancedControls: accessibilityLevel >= 2,
-    });
-
-    // Generate theme management functionality
-    html += await generateThemeManagementJS();
-
-    // Generate document save functionality
-    html += `
-    
-// ===========================================================================================
-// DOCUMENT SAVE FUNCTIONALITY  
-// ===========================================================================================
-
-// Global storage for original HTML content
-window.originalDocumentHTML = null;
-
-/**
- * Save complete document functionality for exported HTML files
- * Retrieves clean HTML from embedded Base64 data
- * Guarantees no MathJax pollution in saved files
- */
-window.saveCompleteDocument = function() {
-  console.log('🔥 saveCompleteDocument function called');
-  
-  try {
-    // Get the original static HTML content
-    let documentHtml;
-    let retrievalMethod = 'none'; // Track which method succeeded
-    
-    // ✅ PRIMARY METHOD: Retrieve from embedded Base64 data
-    const embeddedData = document.getElementById('original-content-data');
-    console.log('🔍 Looking for embedded data element...');
-    
-    if (embeddedData) {
-      console.log('✅ Found embedded data element');
-      try {
-        const base64Content = embeddedData.textContent.trim();
-        console.log('📊 Embedded Base64 data size:', base64Content.length, 'characters');
-        
-        // Show first 100 chars for debugging
-        console.log('🔍 Base64 preview:', base64Content.substring(0, 100) + '...');
-        
-        documentHtml = decodeURIComponent(escape(atob(base64Content)));
-        console.log('✅ Successfully decoded clean HTML from embedded Base64 data');
-        console.log('📊 Decoded content length:', documentHtml.length, 'characters');
-        retrievalMethod = 'embedded-base64';
-      } catch (decodeError) {
-        console.error('❌ Failed to decode embedded content:', decodeError);
-        console.error('Error details:', decodeError.message);
-        documentHtml = null;
-      }
-    } else {
-      console.warn('⚠️ No embedded data element found with ID "original-content-data"');
-      console.log('🔍 Available script elements:', document.querySelectorAll('script[type*="original"]').length);
-    }
-    
-    // FALLBACK 1: Use stored original HTML if available
-    if (!documentHtml && window.originalDocumentHTML) {
-      documentHtml = window.originalDocumentHTML;
-      console.warn('⚠️ Using FALLBACK 1: stored original HTML');
-      console.log('📊 Stored content length:', documentHtml.length, 'characters');
-      retrievalMethod = 'stored-original';
-    }
-    
-    // FALLBACK 2: Attempt to clean current DOM
-    if (!documentHtml) {
-      console.warn('⚠️ Using FALLBACK 2: attempting to clean current DOM');
-      documentHtml = window.cleanDynamicMathJaxContent(document.documentElement.outerHTML);
-      console.log('📊 Cleaned DOM length:', documentHtml ? documentHtml.length : 0, 'characters');
-      retrievalMethod = 'cleaned-dom';
-    }
-    
-    if (!documentHtml) {
-      throw new Error('Unable to retrieve document content for saving - all methods failed');
-    }
-    
-    console.log('✅ Content retrieved using method:', retrievalMethod);
-    
-    // Create filename based on document title
-    const title = document.title || 'Mathematical Document';
-    const cleanTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = cleanTitle + '_' + timestamp + '.html';
-    
-    // Create and trigger download
-    const blob = new Blob([documentHtml], { 
-      type: 'text/html;charset=utf-8' 
-    });
-    const url = URL.createObjectURL(blob);
-    
-    const downloadLink = document.createElement('a');
-    downloadLink.href = url;
-    downloadLink.download = filename;
-    downloadLink.style.display = 'none';
-    downloadLink.setAttribute('aria-hidden', 'true');
-    
-    // Trigger download
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    
-    // Clean up
-    setTimeout(function() {
-      URL.revokeObjectURL(url);
-    }, 100);
-    
-    // Announce to screen readers
-    if (typeof announceToScreenReader === 'function') {
-      announceToScreenReader('Document saved as ' + filename + '. The file contains all original formatting, mathematics, and accessibility features.');
-    }
-    
-console.log('✅ Document saved successfully:', filename);
-    console.log('📄 Final content length:', documentHtml.length, 'characters');
-    console.log('🎯 Save completed using retrieval method:', retrievalMethod);
-    
-  } catch (error) {
-    console.error('❌ Error saving document:', error);
-    console.error('Full error details:', error.stack);
-    alert("Sorry, there was an error saving the document. Please try using your browser's Save As function instead.");
-  }
-};
-
-/**
- * Clean dynamic MathJax content from HTML to restore original state
- * Removes runtime-generated styles and elements that can break functionality
- */
-window.cleanDynamicMathJaxContent = function(html) {
-  console.log('🧹 Cleaning dynamic MathJax content from HTML');
-  
-  // Remove dynamic MathJax style elements added at runtime
-  let cleaned = html.replace(/<style[^>]*id="MJX-CHTML-styles"[^>]*>[\\s\\S]*?<\\/style>/gi, '');
-  cleaned = cleaned.replace(/<style[^>]*>\\s*\\.CtxtMenu_[\\s\\S]*?<\\/style>/gi, '');
-  cleaned = cleaned.replace(/<style[^>]*>\\s*\\.MJX_[\\s\\S]*?<\\/style>/gi, '');
-  
-  // Remove dynamic font-face declarations 
-  cleaned = cleaned.replace(/@font-face\\s*\\/\\*\\s*\\d+\\s*\\*\\/\\s*\\{[\\s\\S]*?\\}/gi, '');
-  
-  // Remove dynamic MathJax font styles
-  cleaned = cleaned.replace(/mjx-c\\.mjx-c[^{]*\\{[^}]*\\}/gi, '');
-  
-  // Remove MathJax accessibility live regions that are added dynamically
-  cleaned = cleaned.replace(/<div[^>]*class="MJX_LiveRegion"[^>]*>[\\s\\S]*?<\\/div>/gi, '');
-  cleaned = cleaned.replace(/<div[^>]*class="MJX_HoverRegion"[^>]*>[\\s\\S]*?<\\/div>/gi, '');
-  cleaned = cleaned.replace(/<div[^>]*class="MJX_ToolTip"[^>]*>[\\s\\S]*?<\\/div>/gi, '');
-  
-  // Remove any script elements that were added by MathJax dynamically
-  cleaned = cleaned.replace(/<script[^>]*src="[^"]*mathjax[^"]*a11y[^"]*"[^>]*><\\/script>/gi, '');
-  
-  console.log('✅ Cleaned dynamic MathJax content');
-  return cleaned;
-};
-
-/**
- * Store original document HTML for later saving
- * Call this when the document is first loaded
- */
-window.storeOriginalDocumentHTML = function(htmlContent) {
-  window.originalDocumentHTML = htmlContent;
-  console.log('📄 Stored original document HTML for saving');
-  console.log('📊 Original content length:', htmlContent.length, 'characters');
-};
-
-// Note: Original content is now embedded as Base64 data, no runtime storage needed
-
-console.log('✅ Save document functionality loaded and ready');
-`;
-
-    // Test and verify save functionality
-    html += `
-
-// ===========================================================================================
-// SAVE FUNCTIONALITY VERIFICATION
-// ===========================================================================================
-
-// Verify function is properly defined
-setTimeout(function() {
-  if (typeof window.saveCompleteDocument === 'function') {
-    console.log('✅ saveCompleteDocument function verified and ready');
-  } else {
-    console.error('❌ saveCompleteDocument function not found!');
-  }
-}, 200);
-`;
-
-    // Store original HTML content for saving functionality
-    html += `
-    
-// ===========================================================================================
-// ORIGINAL CONTENT STORAGE FOR SAVE FUNCTIONALITY
-// ===========================================================================================
-
-// Verify embedded content and hide save button if no more saves available
-setTimeout(function() {
-  const embeddedData = document.getElementById('original-content-data');
-  
-  if (embeddedData) {
-    const base64Content = embeddedData.textContent.trim();
-    
-    if (base64Content.length === 0) {
-      // Empty script tag means no more saves with full MathJax functionality
-      console.log('⚠️ No embedded Base64 content - this is the final save iteration');
-      console.log('🔒 Hiding save button as MathJax will not work properly on next save');
-      
-      // Hide the save button
-      const saveButton = document.querySelector('button.action-button.save-button');
-      if (saveButton) {
-        saveButton.style.display = 'none';
-        console.log('✅ Save button hidden successfully');
-        
-        // Announce to screen readers
-        if (typeof announceToScreenReader === 'function') {
-          announceToScreenReader('Save functionality has reached its limit. This document can still be saved using your browser\\'s Save As function, but mathematical expressions may have limited functionality.');
-        }
-      } else {
-        console.warn('⚠️ Save button not found - selector may need adjustment');
-        // Try alternative selectors
-        const altButton = document.querySelector('.save-button') || document.querySelector('[title*="Save"]') || document.querySelector('[aria-label*="Save"]');
-        if (altButton) {
-          altButton.style.display = 'none';
-          console.log('✅ Save button hidden using alternative selector');
-        }
-      }
-      
-    } else {
-      console.log('✅ Clean HTML content embedded and ready for saving');
-      console.log('📊 Embedded data size:', base64Content.length, 'Base64 characters');
-      
-// Verify we can decode it
-try {
-  // First check if base64Content is valid
-  if (!base64Content || typeof base64Content !== 'string') {
-    throw new Error('Base64 content is null, undefined, or not a string');
-  }
-  
-  // Check for invalid Base64 characters
-  const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-  if (!base64Regex.test(base64Content)) {
-    throw new Error('Base64 content contains invalid characters');
-  }
-  
-  // Test decode with error handling
-  const testDecode = atob(base64Content).substring(0, 100);
-  console.log('✅ Embedded data decoding verified');
-  console.log('🔍 Decoded preview:', testDecode.substring(0, 50) + '...');
-  
-} catch (e) {
-  console.error('❌ Embedded data exists but cannot be decoded:', e);
-  console.log('🔍 Base64 content type:', typeof base64Content);
-  console.log('🔍 Base64 content length:', base64Content ? base64Content.length : 'null/undefined');
-  console.log('🔍 Base64 content preview:', base64Content ? base64Content.substring(0, 100) : 'null/undefined');
-  
-  // Log invalid characters if any
-  if (base64Content && typeof base64Content === 'string') {
-    const invalidChars = base64Content.match(/[^A-Za-z0-9+/=]/g);
-    if (invalidChars) {
-      console.log('🚨 Invalid Base64 characters found:', [...new Set(invalidChars)]);
-    }
-  }
-}
-    }
-    
-  } else {
-    console.warn('⚠️ No embedded data element found - save functionality will use fallback methods');
-  }
-}, 100);
-`;
-
-    // Generate form initialization (from external template) - Using centralized defaults
-    html += await generateFormInitializationJS({
-      defaultFontSize: accessibilityDefaults.defaultFontSize || "1.0",
-      defaultFontSizePercent:
-        accessibilityDefaults.defaultFontSizePercent || "100%",
-      defaultLineHeight: accessibilityDefaults.defaultLineHeight || "1.6",
-      defaultWordSpacing: accessibilityDefaults.defaultWordSpacing || "0",
-      defaultReadingWidth:
-        accessibilityDefaults.defaultReadingWidth || "narrow", // ✅ FIXED
-      defaultZoomLevel: accessibilityDefaults.defaultZoomLevel || "1.0",
-      enableValidation: accessibilityDefaults.enableValidation !== false,
-      enableAccessibility: accessibilityDefaults.enableAccessibility !== false,
-      enablePreferences: accessibilityDefaults.enablePreferences !== false,
-    });
-
-    // Include focus tracking with console commands
-    html += await generateFocusTrackingJS({
-      enableConsoleCommands: true,
-      commandsDelayMs: 100,
-    });
-
-    // Include MathJax controls
-    html += await generateMathJaxControlsJS(accessibilityLevel);
-
-    // ✅ CRITICAL FIX: Include MathJax Manager for sophisticated refresh dialog logic
-    html += await generateMathJaxManagerJS();
-
-    // Add source viewer JavaScript for syntax highlighting
-    if (window.SourceViewer) {
-      html += "\n        // Source Viewer - Prism.js Syntax Highlighting\n";
-      const prismJS = await window.SourceViewer.getPrismJS();
-      html += "        " + prismJS.split("\n").join("\n        ") + "\n";
-
-      // Add accessibility enhancements
-      html += `
-        
-        // Source Viewer - Accessibility Enhancements
-        document.addEventListener('DOMContentLoaded', function() {
-          if (window.SourceViewer && window.SourceViewer.enhanceAccessibility) {
-            window.SourceViewer.enhanceAccessibility();
-          }
-        });
-`;
-    }
-
-    // ✅ PHASE 1 MIGRATION: Use template system for initialization
-    try {
-      if (window.TemplateSystem) {
-        const generator = window.TemplateSystem.createGenerator();
-        const initializationJS = await generator.generateInitializationJS();
-        html += "\n        // Initialization (from external template)\n";
-        html += initializationJS;
-        logDebug("✅ Using external template for initialization JavaScript");
-      } else {
-        throw new Error("TemplateSystem not available");
-      }
-    } catch (error) {
-      logWarn(
-        "Template system not available, using fallback initialization:",
-        error.message
-      );
-
-      // Fallback initialization (original hardcoded version)
-      html += "\n        // Fallback removed\n";
-    }
-
-    // ✅ CRITICAL FIX: Create Dynamic MathJax Manager instance for sophisticated controls
-    html += `
-        // Create Dynamic MathJax Manager instance for sophisticated controls
-        setTimeout(() => {
-            if (!window.dynamicMathJaxManager && window.MathJaxManager) {
-                try {
-                    window.dynamicMathJaxManager = window.MathJaxManager.createManager();
-                    window.dynamicMathJaxManager.initialise();
-                    console.log('✅ Dynamic MathJax Manager instance created and initialised in exported document');
-                } catch (error) {
-                    console.error('❌ Failed to create Dynamic MathJax Manager in exported document:', error);
-                }
-            } else if (!window.MathJaxManager) {
-                console.warn('⚠️ MathJaxManager module not available in exported document');
-            } else if (window.dynamicMathJaxManager) {
-                console.log('ℹ️ Dynamic MathJax Manager already exists in exported document');
-            }
-        }, 500);
-`;
-
-    html += "    </script>\n";
-
-    return html;
+    return await window.ScriptOrchestrator.generateEnhancedJavaScript(
+      accessibilityLevel,
+      cleanHTMLContent
+    );
   }
 
   /**
-   * Generate MathJax Manager JavaScript for exported documents
-   * ✅ CRITICAL FIX: Include sophisticated refresh dialog logic
+   * Generate MathJax Manager JavaScript for MathJax lifecycle management.
+   * Delegates to: ScriptOrchestrator for JavaScript template loading and processing
+   * Templates: templates/js/mathjax-manager.js (conceptual - may use inline MathJax config)
+   * Generates JavaScript managing MathJax initialization, configuration, and lifecycle
+   * in exported documents. Handles MathJax loading, equation rendering, re-rendering
+   * on content updates, and configuration of accessibility features (context menus,
+   * equation explorer). Ensures MathJax is ready before document interactions.
+   * @returns {Promise<string>} JavaScript code for MathJax manager
+   * @throws {Error} If ScriptOrchestrator module not available
    */
   async function generateMathJaxManagerJS() {
-    logInfo(
-      "Including MathJax Manager for sophisticated accessibility controls"
-    );
-
-    try {
-      // Read the mathjax-manager.js file content
-      const response = await fetch("./js/export/mathjax-manager.js");
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to load mathjax-manager.js: ${response.status}`
-        );
-      }
-
-      const mathJaxManagerContent = await response.text();
-
-      logDebug("✅ MathJax Manager content loaded successfully");
-
-      // Return with proper formatting and comments
-      return (
-        "\n        // MathJax Manager (sophisticated refresh dialog logic)\n" +
-        "        " +
-        mathJaxManagerContent.split("\n").join("\n        ") +
-        "\n"
-      );
-    } catch (error) {
-      logError("Failed to load MathJax Manager:", error);
-
-      // Return minimal fallback that at least provides the module structure
-      return `
-        // MathJax Manager (fallback - sophisticated features unavailable)
-        window.MathJaxManager = {
-          createManager: function() {
-            console.warn('⚠️ MathJax Manager fallback - sophisticated features unavailable');
-            return {
-              getCurrentSettings: () => ({}),
-              initialise: () => console.log('MathJax Manager fallback initialized')
-            };
-          }
-        };
-`;
+    if (!window.ScriptOrchestrator) {
+      logError("[EXPORT] ScriptOrchestrator module not available");
+      throw new Error("[EXPORT] ScriptOrchestrator module required");
     }
+    logInfo(
+      "Delegating MathJax Manager generation to ScriptOrchestrator module"
+    );
+    return await window.ScriptOrchestrator.generateMathJaxManagerJS();
   }
 
   // ===========================================================================================
@@ -2304,20 +1968,30 @@ try {
   // ===========================================================================================
 
   /**
-   * Enhanced main export function with screen reader accessibility controls
-   * Now supports investigation-based enhanced export mode
+   * Main export function triggered by UI export button with full validation.
+   * Delegates to: generateEnhancedStandaloneHTML for complete HTML generation
+   * Delegates to: validateExportReadiness for font and resource validation
+   * Delegates to: AppConfig for filename generation and screen reader announcements
+   * Delegates to: LaTeXProcessor for metadata extraction from content
+   * Delegates to: downloadHTMLFile for file download coordination
+   * Primary user-facing export function that validates export readiness (including
+   * font loading), generates enhanced HTML, creates download file, and provides
+   * comprehensive user feedback via notifications and screen reader announcements.
+   * Includes error handling, button state management, and duplicate download prevention.
+   * @returns {Promise<void>} Completes when export finished or error handled and user notified
    */
   async function exportEnhancedHTML() {
     const logInfo = window.ExportManager?.logInfo || console.log;
     const logError = window.ExportManager?.logError || console.error;
     const logWarn = window.ExportManager?.logWarn || console.warn;
 
+    // === VALIDATION ===
     // Get UI elements
     const outputContent = document.querySelector(".output-content");
     const exportButton = document.getElementById("export-html");
 
     if (!outputContent) {
-      logError("Output content not found - cannot export");
+      logError("[EXPORT] Output content not found - cannot export");
       if (window.showNotification) {
         window.showNotification("Cannot find content to export", "error");
       }
@@ -2334,12 +2008,13 @@ try {
       const validation = await validateExportReadiness();
 
       if (!validation.ready) {
-        logError("❌ Export validation failed:", validation.error);
+        logError("[EXPORT] Export validation failed:", validation.error);
         return; // Stop export - user has been notified
       }
 
       logInfo("✅ Export validation passed - proceeding with export");
 
+      // === BUTTON STATE MANAGEMENT ===
       // Set button state to loading
       window.exportGenerationInProgress = true;
       if (exportButton) {
@@ -2351,6 +2026,7 @@ try {
           "Generating Enhanced Export...";
       }
 
+      // === CONTENT PREPARATION ===
       // Get the current output content
       const content = outputContent.innerHTML.trim();
       logInfo("Retrieved content, length:", content.length);
@@ -2362,6 +2038,7 @@ try {
       const metadata = window.LaTeXProcessor.extractDocumentMetadata(content);
       logInfo("Extracted metadata:", metadata);
 
+      // === HTML GENERATION ===
       // Generate the enhanced standalone HTML
       logInfo("Generating enhanced standalone HTML with validated fonts...");
       const standaloneHTML = await generateEnhancedStandaloneHTML(
@@ -2371,19 +2048,20 @@ try {
       );
       logInfo("Generated enhanced HTML length:", standaloneHTML.length);
 
-      // Create blob and download
+      // ✅ PHASE 1F: Store export for diagnostic analysis
+      if (window.ExportDiagnostics) {
+        window.ExportDiagnostics.storeExport(standaloneHTML);
+        logInfo("🔬 Export stored for diagnostic analysis (use quickCheck())");
+      }
+
+      // === FILE DOWNLOAD ===
+      // Generate filename (downloadHTMLFile will use this if provided)
       logInfo("Creating download blob...");
-      const blob = new Blob([standaloneHTML], {
-        type: "text/html;charset=utf-8",
-      });
+      const filename = window.AppConfig.generateEnhancedFilename(metadata);
+      logInfo(`Generated filename: ${filename}`);
 
-      // Create enhanced filename
-      const filename = window.AppConfig.generateEnhancedFilename(
-        metadata.title
-      );
-
-      // Download the file
-      window.ExportManager.downloadHTMLFile(standaloneHTML, filename, metadata);
+      // Download the file (pass null for filename param to prevent duplicate generation)
+      window.ExportManager.downloadHTMLFile(standaloneHTML, null, metadata);
 
       // Show success notification
       if (window.showNotification) {
@@ -2399,7 +2077,7 @@ try {
         `Enhanced HTML document exported successfully as ${filename}`
       );
     } catch (error) {
-      logError("Enhanced export failed:", error);
+      logError("[EXPORT] Enhanced export failed:", error);
 
       if (window.showNotification) {
         window.showNotification(
@@ -2412,6 +2090,7 @@ try {
         "Enhanced export failed. Please try again or use standard export."
       );
     } finally {
+      // === CLEANUP AND NOTIFICATIONS ===
       // Reset button state and clear export flag
       window.exportGenerationInProgress = false;
       if (exportButton) {
@@ -2421,12 +2100,22 @@ try {
     }
   }
 
-  // ===========================================================================================
-  // INITIALIZATION AND EVENT SETUP
-  // ===========================================================================================
+  // ============================================================================
+  // INITIALIZATION AND EVENT HANDLERS
+  // ============================================================================
+  // Sets up export button handlers and initializes export functionality
+  // Manages event listeners and prevents duplicate initialization
 
   /**
-   * Set up enhanced event handlers for export functionality
+   * Set up enhanced event handlers for export functionality with duplicate prevention.
+   * Attaches click event handler to export button with comprehensive safeguards:
+   * global setup flag to prevent multiple attachments, retry mechanism with limit
+   * for button not found scenarios, data attribute marking for initialization tracking,
+   * and duplicate click prevention during export generation. Preserves button element
+   * reference for AppStateManager compatibility. Includes debouncing to prevent
+   * rapid-fire export attempts. Makes exportEnhancedHTML globally available for
+   * keyboard shortcuts.
+   * @returns {void}
    */
   function setupEnhancedExportHandlers() {
     logInfo(
@@ -2440,17 +2129,20 @@ try {
     }
 
     // Find export button
+    // === VALIDATION AND SETUP ===
     const exportButton = document.getElementById("exportButton");
 
     if (!exportButton) {
-      logError("Export button not found - retrying in 100ms");
+      logError("[EXPORT] Export button not found - retrying in 100ms");
       // ✅ ENHANCED: Add retry limit to prevent infinite retries
       const retryCount = (window.exportButtonRetries || 0) + 1;
       if (retryCount <= 5) {
         window.exportButtonRetries = retryCount;
         setTimeout(setupEnhancedExportHandlers, 100);
       } else {
-        logError("❌ Export button not found after 5 retries - giving up");
+        logError(
+          "[EXPORT] Export button not found after 5 retries - giving up"
+        );
         window.exportButtonRetries = 0;
       }
       return;
@@ -2469,23 +2161,34 @@ try {
     // Instead, store a reference to our handler to avoid duplicates
     if (!window.exportButtonHandler) {
       window.exportButtonHandler = function (e) {
-        logInfo("Enhanced export button clicked");
+        // 🔍 CRITICAL: Add call tracking for debugging
+        const callId = `export_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`;
+        logInfo(`Enhanced export button clicked [${callId}]`);
+        console.trace("Export call stack:");
+
         e.preventDefault();
 
         // ✅ ENHANCED: Prevent double-clicks during export
         if (window.exportGenerationInProgress) {
-          logWarn("Export already in progress - ignoring click");
+          logWarn(`Export already in progress - ignoring click [${callId}]`);
           return;
         }
 
-        // 🛡️ NEW: Add download debouncing
+        // 🛡️ ENHANCED: Stricter download debouncing (2 seconds instead of 1)
         const now = Date.now();
-        if (window.lastExportTime && now - window.lastExportTime < 1000) {
-          logWarn("Export called too quickly - ignoring to prevent duplicates");
+        if (window.lastExportTime && now - window.lastExportTime < 2000) {
+          logWarn(
+            `Export called too quickly (${
+              now - window.lastExportTime
+            }ms ago) - ignoring to prevent duplicates [${callId}]`
+          );
           return;
         }
         window.lastExportTime = now;
 
+        logInfo(`Proceeding with export [${callId}]`);
         exportEnhancedHTML();
       };
     }
@@ -2528,7 +2231,14 @@ try {
   }
 
   /**
-   * Initialise enhanced export functionality with screen reader accessibility controls
+   * Initialise enhanced export functionality with screen reader accessibility controls.
+   * Delegates to: setupEnhancedExportHandlers for event handler attachment
+   * Primary initialization function for export system. Includes call stack tracing
+   * for debugging initialization order, duplicate initialization prevention with
+   * global flag, and DOMContentLoaded coordination for proper timing. Ensures export
+   * functionality is ready when document loads. Called automatically when module loads
+   * via global initialization guard. Logs initialization context for troubleshooting.
+   * @returns {void}
    */
   function initialiseEnhancedExportFunctionality() {
     // ✅ ENHANCED: Add call stack tracing for debugging
@@ -2550,6 +2260,13 @@ try {
       return;
     }
 
+    // 🧹 CRITICAL: Clear any stale export state
+    window.lastConvertedLatex = null;
+    window.lastExportTime = null;
+    window.downloadInProgress = false;
+    window.exportGenerationInProgress = false;
+    logInfo("🧹 Cleared stale export state variables");
+
     window.exportFunctionalityInitialized = true;
 
     // Wait for DOM to be ready
@@ -2570,7 +2287,17 @@ try {
   // ===========================================================================================
 
   /**
-   * Validate export manager dependencies
+   * Validate export manager dependencies are available and report status.
+   * Checks availability of all required modules: AppConfig, LaTeXProcessor,
+   * ContentGenerator, TemplateSystem, and MathJaxManager. Returns comprehensive
+   * validation result with passed/total counts, success status, and list of missing
+   * modules. Logs validation results for debugging. Used in testing and initialization
+   * to ensure export system has all required dependencies before operation.
+   * @returns {Object} Dependency validation result with detailed status
+   * @returns {number} Object.passed - Number of available dependencies
+   * @returns {number} Object.total - Total number of required dependencies
+   * @returns {boolean} Object.success - Whether all dependencies available
+   * @returns {Array<string>} Object.missing - Array of missing module names
    */
   function validateDependencies() {
     logInfo("🧪 Validating export manager dependencies...");
@@ -2615,7 +2342,22 @@ try {
   }
 
   /**
-   * Test export generation without download
+   * Test export generation without download for validation and debugging.
+   * Delegates to: generateEnhancedStandaloneHTML for HTML generation
+   * Synthetic test function generating complete export from test content including
+   * mathematical equations. Validates generated HTML structure (DOCTYPE, reading
+   * tools, sidebar, integrated sidebar) without triggering actual download. Returns
+   * comprehensive test result with success status, size metrics, and structure
+   * validation flags. Used in automated testing and manual validation of export
+   * functionality. Critical for regression testing after modifications.
+   * @returns {Promise<Object>} Test result with detailed validation status
+   * @returns {boolean} Object.success - Whether test passed all validations
+   * @returns {number} Object.size - Generated HTML size in characters
+   * @returns {boolean} Object.hasDoctype - Whether HTML includes DOCTYPE declaration
+   * @returns {boolean} Object.hasReadingTools - Whether reading tools section present
+   * @returns {boolean} Object.hasSidebar - Whether document sidebar present
+   * @returns {boolean} Object.hasIntegratedSidebar - Whether integrated sidebar present
+   * @returns {string} Object.error - Error message if test failed
    */
   async function testExportGeneration() {
     logInfo("🧪 Testing export generation...");
@@ -2665,44 +2407,97 @@ try {
   }
 
   // ===========================================================================================
+  // ===========================================================================================
   // PUBLIC API
   // ===========================================================================================
 
+  // ✅ STAGE 1.1 COMPLETE: Unified Conversion Pipeline
+  // The export system now uses IDENTICAL Pandoc arguments as the frontend, ensuring
+  // consistent LaTeX interpretation. This fixes align environment breakage and other
+  // discrepancies between UI rendering and export output.
+  //
+  // Key Changes:
+  //   - captureFrontendPandocArgs(): Stores frontend arguments globally
+  //   - getStoredPandocArgs(): Retrieves stored arguments for export use
+  //   - exportWithEnhancedPandoc(): Now uses frontend args, not enhanced args
+  //
+  // Impact: Eliminates "Misplaced &" errors in align environments and ensures
+  // all LaTeX that renders correctly in UI also renders correctly in exports.
+
   return {
-    // Main export functions
+    // === MAIN EXPORT ORCHESTRATION ===
+    // Primary functions for generating and exporting enhanced HTML documents
     generateEnhancedStandaloneHTML,
     exportEnhancedHTML,
-    exportWithEnhancedPandoc,
+    //  REMOVED: exportWithEnhancedPandoc (deprecated - superseded by exportEnhancedHTML)
     generateEnhancedStandaloneHTMLWithMinimalProcessing,
 
-    // Font validation functions
+    // === HEAD, BODY, AND FOOTER GENERATION ===
+    // Delegation functions for document structure components
+    generateEnhancedHead,
+    generateDocumentFooter,
+    generateEnhancedJavaScript,
+
+    // === JAVASCRIPT GENERATION DELEGATION ===
+    // Individual JavaScript component generators
+    generateMathJaxControlsJS,
+    generateReadingToolsSetupJS,
+    generateFocusTrackingJS,
+    generateThemeManagementJS,
+    generateFormInitializationJS,
+    generateReadingAccessibilityManagerClass,
+    generateDocumentSaveFunctionalityJS,
+    generateSaveVerificationJS,
+    generateContentStorageHandlerJS,
+    generateMathJaxManagerJS,
+
+    // === FONT VALIDATION AND LOADING ===
+    // Functions ensuring proper font embedding in exports
     validateFontCSS,
     waitForFontsToLoad,
     validateExportReadiness,
     ensureEmbeddedFontsInclusion,
 
-    // UI functions
+    // === FONT UI MONITORING ===
+    // User interface functions for font loading feedback
     createFontStatusIndicator,
     updateFontStatus,
     monitorFontLoadingStatus,
     enhanceExportButtonWithFontStatus,
     initializeFontMonitoring,
 
-    // Initialization
+    // === CONTENT SOURCE OPTIMIZATION ===
+    // Smart content detection and strategy functions
+    getOptimalContentSource,
+    getUserConfiguredPandocArgs,
+    createSafeBase64,
+
+    // === FONT TEMPLATE UTILITIES ===
+    // Direct font loading and template rendering (fallback methods)
+    loadFontDataDirect,
+    renderFontTemplate,
+
+    // === INITIALIZATION AND EVENT HANDLING ===
+    // Setup functions for export functionality
     initialiseEnhancedExportFunctionality,
     setupEnhancedExportHandlers,
 
-    // Testing and validation
+    // === TESTING AND VALIDATION ===
+    // Development and testing utilities
     validateDependencies,
     testExportGeneration,
 
-    // Utilities
-    generateEnhancedHead,
-    generateDocumentFooter,
-    generateEnhancedJavaScript,
+    // === STAGE 1.1: PANDOC ARGUMENT MANAGEMENT ===
+    // Functions for unified pipeline argument capture and retrieval
+    captureFrontendPandocArgs,
+    getStoredPandocArgs,
+
+    // === UTILITIES ===
+    // Helper functions for exports
     downloadHTMLFile,
 
-    // Logging
+    // === LOGGING ===
+    // Logging functions for debugging and monitoring
     logError,
     logWarn,
     logInfo,

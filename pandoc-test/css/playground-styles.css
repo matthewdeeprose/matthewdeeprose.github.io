@@ -3040,3 +3040,7 @@ a[data-reference-type="ref"]:focus-visible {
     transform: none;
   }
 }
+
+#investigation-details {
+  display: none;
+}

@@ -16,7 +16,7 @@ const MathJaxManager = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -74,19 +74,37 @@ const MathJaxManager = (function () {
       logInfo("Initialising Dynamic MathJax Configuration Manager...");
 
       try {
-        // Wait for MathJax to be ready
-        if (window.MathJax && window.MathJax.startup) {
-          window.MathJax.startup.promise.then(() => {
-            this.setupEventHandlers();
-            this.detectCurrentSettings();
-            logInfo("✅ Dynamic MathJax Manager initialised successfully");
-          });
+        // PHASE 1F PART B: Enhanced initialization checks
+        // Check if MathJax is available and has startup promise
+        if (
+          window.MathJax &&
+          window.MathJax.startup &&
+          window.MathJax.startup.promise
+        ) {
+          window.MathJax.startup.promise
+            .then(() => {
+              this.setupEventHandlers();
+              this.detectCurrentSettings();
+              this.setupEnvironmentTracking(); // PHASE 1F PART B: Setup environment detection
+              logInfo("✅ Dynamic MathJax Manager initialised successfully");
+            })
+            .catch((error) => {
+              logError("Error in MathJax startup promise:", error);
+              // Retry initialization
+              setTimeout(() => this.initialise(), 500);
+            });
+        } else if (window.MathJax && window.MathJax.startup) {
+          // MathJax exists but promise not ready yet - retry
+          logInfo("MathJax startup promise not ready - retrying in 500ms");
+          setTimeout(() => this.initialise(), 500);
         } else {
           logWarn("MathJax not available - retrying in 500ms");
           setTimeout(() => this.initialise(), 500);
         }
       } catch (error) {
         logError("Error initialising Dynamic MathJax Manager:", error);
+        // Retry on error
+        setTimeout(() => this.initialise(), 500);
       }
     }
 
@@ -590,6 +608,268 @@ const MathJaxManager = (function () {
     }
 
     /**
+     * PHASE 1F PART B: Parse source LaTeX to extract environment information
+     * This captures environment types BEFORE Pandoc strips them
+     *
+     * @param {string} sourceLatex - The source LaTeX content
+     * @returns {Array} - Array of {env, content, normalized} objects
+     */
+    /**
+     * PHASE 1F PART B: Parse LaTeX source to extract math environments
+     * FIXED: Now strips document structure and only matches math environments
+     *
+     * This captures environment types BEFORE Pandoc processes them.
+     * The key improvements:
+     * 1. Strips \begin{document}...\end{document} wrapper to prevent greedy matching
+     * 2. Only matches MATH environments (align, gather, equation, etc.)
+     * 3. Ignores structural environments (document, section, figure, etc.)
+     *
+     * @param {string} sourceLatex - The source LaTeX content
+     * @returns {Array} - Array of {env, content, normalized} objects
+     */
+    parseSourceEnvironments(sourceLatex) {
+      const environments = [];
+
+      try {
+        // STEP 1: Strip document structure (preamble and document wrapper)
+        // This prevents the regex from matching \begin{document}...\end{document}
+        let cleanLatex = sourceLatex;
+
+        // Extract content between \begin{document} and \end{document} if present
+        const docMatch = sourceLatex.match(
+          /\\begin\{document\}([\s\S]*?)\\end\{document\}/
+        );
+        if (docMatch) {
+          cleanLatex = docMatch[1];
+          logDebug("✅ Stripped document wrapper, processing body only");
+        }
+
+        // STEP 2: Match ONLY math environments (not document/section/figure/etc)
+        // Supported: align, align*, gather, gather*, equation, multline, flalign, alignat
+        // This prevents capturing structural LaTeX elements
+        const mathEnvPattern =
+          /\\begin\{(align\*?|gather\*?|equation|multline\*?|flalign\*?|alignat\*?)\}([\s\S]*?)\\end\{\1\}/g;
+
+        let match;
+        while ((match = mathEnvPattern.exec(cleanLatex)) !== null) {
+          const envName = match[1]; // e.g., 'align', 'align*', 'gather'
+          const content = match[2].trim(); // Inner content
+
+          // Enhanced normalization for reliable matching
+          // This handles variations in whitespace and newlines
+          const normalized = content
+            .replace(/\\\\/g, "\\\\") // Normalize double backslashes
+            .replace(/\s+/g, " ") // Collapse all whitespace
+            .trim(); // Remove leading/trailing
+
+          environments.push({
+            env: envName,
+            content: content,
+            normalized: normalized,
+          });
+
+          logDebug(
+            `✅ Found math environment: ${envName} (content length: ${content.length})`
+          );
+        }
+
+        logInfo(
+          `✅ Parsed ${environments.length} math environment(s) from source LaTeX`
+        );
+        return environments;
+      } catch (error) {
+        logError("Error parsing source environments:", error);
+        return [];
+      }
+    }
+
+    /**
+     * PHASE 1F PART B: Registry to store parsed environments
+     * Maps normalized content to environment names
+     */
+    environmentRegistry = new Map();
+
+    /**
+     * PHASE 1F PART B: Register environments from source LaTeX
+     * Call this before conversion to build the registry
+     *
+     * @param {string} sourceLatex - The source LaTeX content
+     */
+    registerSourceEnvironments(sourceLatex) {
+      this.environmentRegistry.clear();
+
+      const environments = this.parseSourceEnvironments(sourceLatex);
+
+      environments.forEach(({ env, content, normalized }) => {
+        // Store by normalized content
+        this.environmentRegistry.set(normalized, env);
+        logDebug(`📝 Registered: "${normalized.substring(0, 30)}..." → ${env}`);
+      });
+
+      logInfo(`✅ Registered ${this.environmentRegistry.size} environments`);
+      return this.environmentRegistry.size;
+    }
+
+    /**
+     * PHASE 1F PART B: Look up environment name from content
+     * Matches container content to registry
+     *
+     * @param {string} content - The annotation content from container
+     * @returns {string|null} - Environment name or null
+     */
+    lookupEnvironment(content) {
+      const normalized = content.replace(/\s+/g, " ").trim();
+      return this.environmentRegistry.get(normalized) || null;
+    }
+
+    /**
+     * PHASE 1F PART B: Restore environment wrappers in HTML for playground numbering
+     *
+     * Pandoc converts LaTeX environments in ways that prevent MathJax numbering:
+     * - \begin{align} → \[\begin{aligned}...\end{aligned}\]  (unnumbered)
+     * - \begin{gather} → \[\begin{gathered}...\end{gathered}\]  (unnumbered)
+     *
+     * This function:
+     * 1. Parses the HTML to find math display spans
+     * 2. Looks up original environment from registry
+     * 3. Restores correct wrapper: \begin{align}...\end{align} (numbered!)
+     *
+     * @param {string} html - HTML output from Pandoc
+     * @returns {string} - HTML with restored environment wrappers
+     */
+    restoreEnvironmentWrappersInHTML(html) {
+      // Only process if we have registered environments
+      if (!this.environmentRegistry || this.environmentRegistry.size === 0) {
+        logDebug("No registered environments, skipping wrapper restoration");
+        return html;
+      }
+
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        // Find all math display spans
+        const mathSpans = doc.querySelectorAll("span.math.display");
+        let restoredCount = 0;
+
+        mathSpans.forEach((span) => {
+          const originalContent = span.textContent;
+
+          // Pandoc wraps in \[...\] which we need to remove
+          // Pattern: \[\begin{aligned}...content...\end{aligned}\]
+          const unwrappedMatch = originalContent.match(/^\\\[([\s\S]*)\\\]$/);
+
+          if (!unwrappedMatch) {
+            return; // Not wrapped, skip
+          }
+
+          const innerContent = unwrappedMatch[1].trim();
+
+          // Check if it's a Pandoc-converted environment
+          // aligned, gathered, etc. (Pandoc adds 'ed' suffix)
+          const pandocEnvMatch = innerContent.match(
+            /^\\begin\{(aligned|gathered)\}([\s\S]*)\\end\{\1\}$/
+          );
+
+          if (!pandocEnvMatch) {
+            return; // Not a converted environment, skip
+          }
+
+          const pandocEnvName = pandocEnvMatch[1]; // 'aligned' or 'gathered'
+          const mathContent = pandocEnvMatch[2].trim();
+
+          // ✅ PHASE 1F PART B FIX: Decode HTML entities before normalization
+          const decoded = mathContent
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'");
+
+          // Normalize decoded content for registry lookup
+          const normalized = decoded
+            .replace(/\\\\/g, "\\\\")
+            .replace(/\s+/g, " ")
+            .trim();
+
+          // Look up original environment from registry
+          const originalEnv = this.environmentRegistry.get(normalized);
+
+          if (originalEnv) {
+            // Restore original environment wrapper
+            // Use decoded content (not encoded) for consistency
+            const restoredContent = `\\begin{${originalEnv}}\n${decoded}\n\\end{${originalEnv}}`;
+            span.textContent = restoredContent;
+
+            // ✅ PHASE 1F PART C FIX: Change span class to enable MathJax numbering
+            // MathJax treats "math display" as unnumbered display mode
+            // Change to "math numbered-env" so MathJax processes it as a numbered environment
+            span.classList.remove("display");
+            span.classList.add("numbered-env");
+
+            // Also add data attribute for environment type (helps with debugging/styling)
+            span.setAttribute("data-math-env", originalEnv);
+
+            restoredCount++;
+
+            logDebug(
+              `✅ Restored ${originalEnv} wrapper (Pandoc used ${pandocEnvName}) + changed class`
+            );
+          } else {
+            logDebug(
+              `⚠️ No registry entry for content: "${normalized.substring(
+                0,
+                30
+              )}..."`
+            );
+          }
+        });
+
+        if (restoredCount > 0) {
+          logInfo(
+            `✅ Restored ${restoredCount} environment wrapper(s) for numbering (with class changes)`
+          );
+        }
+
+        return doc.body.innerHTML;
+      } catch (error) {
+        logError("Error restoring environment wrappers:", error);
+        return html; // Return original on error
+      }
+    }
+
+    /**
+     * PHASE 1F PART B: Reset MathJax equation counter
+     * Called before each render to ensure equation numbering starts from (1)
+     * This prevents counter persistence between playground conversions
+     */
+    resetEquationCounter() {
+      try {
+        if (window.MathJax?.texReset) {
+          window.MathJax.texReset();
+          logInfo("✅ MathJax equation counter reset");
+          return true;
+        }
+
+        // Alternative reset method for older MathJax versions
+        if (window.MathJax?.config?.tex?.tags) {
+          // Force re-initialisation of tag counter
+          const tagConfig = window.MathJax.config.tex.tags;
+          if (typeof tagConfig === "object") {
+            logInfo("✅ MathJax equation counter reset (alternative method)");
+            return true;
+          }
+        }
+
+        logWarn("⚠️ MathJax counter reset not available");
+        return false;
+      } catch (error) {
+        logError("Error resetting equation counter:", error);
+        return false;
+      }
+    }
+
+    /**
      * Detect current MathJax settings on startup
      */
     detectCurrentSettings() {
@@ -624,6 +904,213 @@ const MathJaxManager = (function () {
         const nextUpdate = this.updateQueue.shift();
         setTimeout(nextUpdate, 100);
       }
+    }
+
+    /**
+     * PHASE 1F PART B: Setup environment tracking using DOM observation
+     * Watches for new MathJax containers and tags them with environment info
+     * This approach works with the playground's Pandoc → MathJax workflow
+     */
+    setupEnvironmentTracking() {
+      logInfo(
+        "Setting up DOM-based environment tracking for Phase 1F Part B..."
+      );
+
+      try {
+        // Initial scan of existing containers
+        this.scanAndTagContainers();
+
+        // Setup MutationObserver to catch newly rendered math
+        this.setupContainerObserver();
+
+        // Expose manual tagging function for external use
+        window.tagMathEnvironments = () => this.scanAndTagContainers();
+
+        logInfo("✅ Environment tracking setup complete");
+        logInfo("   Use tagMathEnvironments() to manually tag containers");
+        return true;
+      } catch (error) {
+        logError("Error setting up environment tracking:", error);
+        return false;
+      }
+    }
+
+    /**
+     * PHASE 1F PART B: Setup MutationObserver to watch for new containers
+     * Automatically tags containers as they're added to the DOM
+     */
+    setupContainerObserver() {
+      if (this.containerObserver) {
+        logDebug("Container observer already active");
+        return;
+      }
+
+      try {
+        this.containerObserver = new MutationObserver((mutations) => {
+          let newContainersFound = false;
+
+          mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+              // Check if the added node is or contains mjx-container (both cases)
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                // Check if node itself is a container (try both cases)
+                const isContainerLower =
+                  node.matches && node.matches("mjx-container");
+                const isContainerUpper =
+                  node.matches && node.matches("MJX-CONTAINER");
+
+                if (isContainerLower || isContainerUpper) {
+                  this.tagSingleContainer(node);
+                  newContainersFound = true;
+                } else if (node.querySelectorAll) {
+                  // Check for containers inside the node (both cases)
+                  const containersLower =
+                    node.querySelectorAll("mjx-container");
+                  const containersUpper =
+                    node.querySelectorAll("MJX-CONTAINER");
+
+                  if (containersLower.length > 0) {
+                    containersLower.forEach((c) => this.tagSingleContainer(c));
+                    newContainersFound = true;
+                  }
+                  if (containersUpper.length > 0) {
+                    containersUpper.forEach((c) => this.tagSingleContainer(c));
+                    newContainersFound = true;
+                  }
+                }
+              }
+            });
+          });
+
+          if (newContainersFound) {
+            logDebug("✅ New containers detected and tagged");
+          }
+        });
+
+        // Observe the output area (confirmed to exist from diagnostics)
+        const outputArea = document.getElementById("output");
+
+        if (outputArea) {
+          this.containerObserver.observe(outputArea, {
+            childList: true,
+            subtree: true,
+          });
+          logInfo("✅ Observing output area for new containers");
+        }
+
+        // Also observe the document body as fallback
+        this.containerObserver.observe(document.body, {
+          childList: true,
+          subtree: true,
+        });
+
+        logInfo("✅ Container observer active");
+      } catch (error) {
+        logError("Error setting up container observer:", error);
+      }
+    }
+
+    /**
+     * PHASE 1F PART B: Scan DOM and tag all existing containers
+     * Can be called manually after conversions
+     */
+    scanAndTagContainers() {
+      try {
+        // Try both case variations since MathJax uses uppercase custom elements
+        const containersLower = document.querySelectorAll("mjx-container");
+        const containersUpper = document.querySelectorAll("MJX-CONTAINER");
+
+        // Combine results (use Set to avoid duplicates)
+        const allContainers = new Set([...containersLower, ...containersUpper]);
+        let taggedCount = 0;
+
+        allContainers.forEach((container) => {
+          if (this.tagSingleContainer(container)) {
+            taggedCount++;
+          }
+        });
+
+        logInfo(`✅ Scanned and tagged ${taggedCount} containers`);
+        return taggedCount;
+      } catch (error) {
+        logError("Error scanning containers:", error);
+        return 0;
+      }
+    }
+
+    /**
+     * PHASE 1F PART B: Tag a single container with environment data
+     * Uses registry lookup to match content to environment names
+     *
+     * @param {HTMLElement} container - The mjx-container element to tag
+     * @returns {boolean} - True if successfully tagged
+     */
+    tagSingleContainer(container) {
+      try {
+        // Skip if already tagged
+        if (container.hasAttribute("data-latex-env")) {
+          return false;
+        }
+
+        // Get the LaTeX annotation content
+        const mathML = container.querySelector("mjx-assistive-mml math");
+        if (!mathML) return false;
+
+        const annotation = mathML.querySelector(
+          'annotation[encoding="application/x-tex"]'
+        );
+        if (!annotation) return false;
+
+        const latex = annotation.textContent.trim();
+        if (!latex) return false;
+
+        // Look up environment from registry based on content
+        const envName = this.lookupEnvironment(latex);
+
+        if (envName) {
+          container.setAttribute("data-latex-env", envName);
+          logDebug(
+            `✅ Tagged container with environment: ${envName} (from registry)`
+          );
+          return true;
+        } else {
+          // Fallback: Detect from content patterns (heuristic)
+          const detectedEnv = this.detectEnvironmentFromContent(latex);
+          if (detectedEnv) {
+            container.setAttribute("data-latex-env", detectedEnv);
+            logDebug(
+              `✅ Tagged container with environment: ${detectedEnv} (from heuristic)`
+            );
+            return true;
+          }
+        }
+
+        return false;
+      } catch (error) {
+        logWarn("Error tagging single container:", error);
+        return false;
+      }
+    }
+
+    /**
+     * PHASE 1F PART B: Heuristic fallback for environment detection
+     * Used when registry lookup fails
+     * Note: Cannot distinguish align vs align* - defaults to starred (unnumbered)
+     *
+     * @param {string} latex - The LaTeX content
+     * @returns {string|null} - Detected environment name or null
+     */
+    detectEnvironmentFromContent(latex) {
+      const hasAlignment = latex.includes("&");
+      const hasLineBreaks = latex.includes("\\\\") || latex.includes("\\\n");
+
+      if (hasAlignment && hasLineBreaks) {
+        return "align*"; // Default to unnumbered (matches playground behavior)
+      } else if (hasLineBreaks && !hasAlignment) {
+        return "gather*"; // Default to unnumbered
+      }
+
+      return null; // Not a multi-line environment
     }
 
     /**
@@ -821,8 +1308,157 @@ const MathJaxManager = (function () {
     createManager() {
       return new DynamicMathJaxManager();
     },
+
+    // PHASE 1F PART B: Environment detection and counter management
+    resetEquationCounter() {
+      if (window.MathJaxManagerInstance) {
+        return window.MathJaxManagerInstance.resetEquationCounter();
+      }
+      logWarn("MathJax Manager instance not available");
+      return false;
+    },
+
+    detectEnvironmentFromMath(mathItem) {
+      if (window.MathJaxManagerInstance) {
+        return window.MathJaxManagerInstance.detectEnvironmentFromMath(
+          mathItem
+        );
+      }
+      return null;
+    },
   };
 })();
 
 // Make globally available for other modules
 window.MathJaxManager = MathJaxManager;
+
+// PHASE 1F PART B: Create and store global manager instance
+// This allows the public API functions to access the manager
+if (!window.MathJaxManagerInstance) {
+  window.MathJaxManagerInstance = MathJaxManager.createManager();
+
+  // PHASE 1F PART B: Delayed initialization to ensure MathJax is loaded
+  // Wait for both DOM ready AND MathJax to be available
+  function initializeWhenReady() {
+    if (document.readyState === "loading") {
+      // DOM still loading - wait for it
+      document.addEventListener("DOMContentLoaded", () => {
+        // DOM ready, now wait a bit for MathJax
+        setTimeout(() => {
+          window.MathJaxManagerInstance.initialise();
+        }, 100);
+      });
+    } else {
+      // DOM already loaded, wait a bit for MathJax to initialize
+      setTimeout(() => {
+        window.MathJaxManagerInstance.initialise();
+      }, 100);
+    }
+  }
+
+  initializeWhenReady();
+}
+
+// PHASE 1F PART B: Expose testing commands
+window.testEnvironmentDetection = function () {
+  console.log("🧪 Testing environment detection...");
+  console.log("MathJax Manager Instance:", !!window.MathJaxManagerInstance);
+  console.log(
+    "Reset Counter Function:",
+    typeof MathJaxManager.resetEquationCounter
+  );
+
+  // Try resetting counter
+  const resetResult = MathJaxManager.resetEquationCounter();
+  console.log("Counter reset:", resetResult ? "✅ Success" : "❌ Failed");
+
+  // Try manual tagging first
+  if (window.tagMathEnvironments) {
+    console.log("Running manual environment scan...");
+    const taggedCount = window.tagMathEnvironments();
+    console.log(`Tagged ${taggedCount} containers`);
+  }
+
+  // Check for environment-tagged containers (try both cases)
+  const containersLower = document.querySelectorAll(
+    "mjx-container[data-latex-env]"
+  );
+  const containersUpper = document.querySelectorAll(
+    "MJX-CONTAINER[data-latex-env]"
+  );
+  const containers = [...containersLower, ...containersUpper];
+  console.log(`Found ${containers.length} containers with environment data`);
+
+  containers.forEach((container, index) => {
+    const env = container.getAttribute("data-latex-env");
+    const latex = container
+      .querySelector('annotation[encoding="application/x-tex"]')
+      ?.textContent.substring(0, 50);
+    console.log(`  Container ${index + 1}: ${env} - ${latex}...`);
+  });
+
+  if (containers.length === 0) {
+    console.log("ℹ️ No environments detected yet. Render some math first.");
+    console.log(
+      "ℹ️ Try: Convert a document with \\begin{align}...\\end{align}"
+    );
+    console.log("ℹ️ After conversion, run: tagMathEnvironments()");
+  }
+
+  return {
+    managerAvailable: !!window.MathJaxManagerInstance,
+    counterReset: resetResult,
+    containersFound: containers.length,
+  };
+};
+
+console.log("🎯 Phase 1F Part B testing commands available:");
+console.log("  - testEnvironmentDetection() - Test environment tracking");
+console.log("  - tagMathEnvironments() - Manually scan and tag all containers");
+console.log(
+  "  - MathJaxManager.resetEquationCounter() - Reset equation counter"
+);
+
+// PHASE 1F PART B: Registry management commands
+window.registerEnvironments = function (sourceLatex) {
+  if (!sourceLatex) {
+    console.log("Usage: registerEnvironments(sourceLatex)");
+    console.log(
+      "Example: registerEnvironments(document.getElementById('latex-input').value)"
+    );
+    return 0;
+  }
+
+  if (window.MathJaxManagerInstance) {
+    const count =
+      window.MathJaxManagerInstance.registerSourceEnvironments(sourceLatex);
+    console.log(`✅ Registered ${count} environments`);
+    return count;
+  }
+  return 0;
+};
+
+window.showRegistry = function () {
+  if (
+    window.MathJaxManagerInstance &&
+    window.MathJaxManagerInstance.environmentRegistry
+  ) {
+    console.log("📚 Environment Registry:");
+    window.MathJaxManagerInstance.environmentRegistry.forEach(
+      (env, content) => {
+        console.log(`  "${content.substring(0, 40)}..." → ${env}`);
+      }
+    );
+    console.log(
+      `Total: ${window.MathJaxManagerInstance.environmentRegistry.size} entries`
+    );
+  } else {
+    console.log("Registry not available");
+  }
+};
+
+console.log("📚 Phase 1F Part B registry commands:");
+console.log(
+  "  - registerEnvironments(latex) - Parse and register environments"
+);
+console.log("  - showRegistry() - View current registry");

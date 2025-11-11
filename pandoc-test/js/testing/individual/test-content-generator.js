@@ -83,10 +83,10 @@ const TestContentGenerator = (function () {
           return toc.includes("nav") && toc.includes("Introduction");
         },
 
-        enhanceDocument: () => {
+enhanceDocument: async () => {
           const testContent = "<p>Test content</p>";
           const metadata = { sections: [] };
-          const enhanced = window.ContentGenerator.enhanceDocumentStructure(
+          const enhanced = await window.ContentGenerator.enhanceDocumentStructure(
             testContent,
             metadata
           );

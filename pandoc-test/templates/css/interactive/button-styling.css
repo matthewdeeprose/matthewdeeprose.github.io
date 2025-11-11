@@ -1,0 +1,306 @@
+/* ===== RESET BUTTON STYLING ===== */
+.reset-button {
+    width: 100%;
+    background:  #495961;
+    color: var(--body-bg);
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    margin-top: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.reset-button:hover {
+    background: #231F20;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.reset-button:focus {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+}
+
+.reset-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode reset button */
+[data-theme="dark"] .reset-button {
+    background: #FCBC00;
+    color: var(--body-bg);
+}
+
+[data-theme="dark"] .reset-button:hover {
+    background: #EF7D00;
+}
+
+/* ===== PRINT BUTTON STYLING ===== */
+.print-button {
+    width: 100%;
+background: var(    --success-hover);
+color: var(--body-text);
+border: 2px solid var(--success-text) !important;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+}
+
+.print-button:hover {
+    background: var(--link-color);
+    transform: translateY(-1px);
+	  color: var(--body-bg);
+}
+[data-theme="dark"] .print-button {
+background: var(   --sidebar-border);
+color: var(--body-text);
+border: 2px solid var(--success-text);
+
+}
+
+[data-theme="dark"] .print-button:hover {
+background: var(--surface-color)
+;
+}
+.print-button:focus-visible {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+}
+
+/* ===== ACTION BUTTON BASE STYLING ===== */
+.action-button {
+    width: 100%;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.action-button:focus-visible {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+}
+
+.action-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.action-button.save-button {
+    background: var(--success-bg, #e8f5e8);
+    color: var(--success-text, #2d5a2d);
+    border: 2px solid var(--success-border, #4a7c4a);
+}
+    .action-button.save-button {margin-bottom: .5rem;}
+
+.action-button.save-button:hover {
+    background: var(--success-hover, #d4f4d4);
+    transform: translateY(-1px);
+}
+
+.action-button.save-button:focus {
+    outline: 3px solid var(--focus-color);
+    outline-offset: 2px;
+}
+
+/* Hide save button when no more saves available with full MathJax */
+button.action-button.save-button[style*="display: none"] {
+display: none !important;
+}
+
+/* Alternative selectors for save button hiding */
+.save-button[style*="display: none"],
+[title*="Save"][style*="display: none"],
+[aria-label*="Save"][style*="display: none"] {
+display: none !important;
+}
+
+.action-button:hover .action-icon {
+transform: scale(1.1);
+}
+
+.action-button {
+stroke-width: 1.5; /* Adjust line thickness if needed */
+}
+.action-icon {
+flex-shrink: 0;
+transition: transform 0.2s ease;
+}
+.theme-icon {
+flex-shrink: 0;
+transition: transform 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+.theme-icon {
+  transition: none;
+}
+}
+
+.theme-toggle:hover .theme-icon {
+transform: rotate(15deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+.theme-toggle:hover .theme-icon {
+  transform: none;
+}
+}
+
+.theme-toggle-icon {
+display: inline-flex;
+align-items: center;
+margin-right: 0.5rem;
+}
+.reset-icon {
+transition: transform 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+.reset-icon {
+  transition: none;
+}
+}
+
+.reset-button:hover .reset-icon {
+transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+.reset-button:hover .reset-icon {
+  transform: none;
+}
+}
+
+.reset-button:active .reset-icon {
+transform: rotate(360deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+.reset-button:active .reset-icon {
+  transform: none;
+}
+}
+.heading-icon {
+display: inline-block;
+vertical-align: middle;
+margin-right: 0.5rem;
+}
+
+.action-icon {
+flex-shrink: 0;
+vertical-align: middle;
+margin-right: 0.5rem;
+}
+
+
+
+
+
+
+
+@media (prefers-reduced-motion: reduce) {
+.action-button:hover .action-icon {
+  transform: none;
+}
+}
+
+
+
+/* ===== THEME TOGGLE STYLING ===== */
+.theme-toggle {
+    width: 100%;
+    background: var(--surface-color);
+    color: var(--body-text);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.theme-toggle:hover {
+    background: var(--focus-bg);
+    border-color: var(--link-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.theme-toggle:focus-visible {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-bg);
+}
+
+.theme-toggle:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Theme toggle icon styling */
+.theme-toggle-icon {
+    font-size: 16px;
+    line-height: 1;
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover .theme-toggle-icon {
+    transform: scale(1.1);
+}
+
+.theme-toggle-text {
+    font-weight: 600;
+    letter-spacing: 0.025em;
+}
+
+/* Dark mode theme toggle styling */
+[data-theme="dark"] .theme-toggle {
+    background: var(--surface-color);
+    border-color: var(--sidebar-border);
+    color: var(--body-text);
+}
+
+[data-theme="dark"] .theme-toggle:hover {
+    background: var(--focus-bg);
+    border-color: var(--link-color);
+}

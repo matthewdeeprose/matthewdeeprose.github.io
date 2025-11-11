@@ -1,0 +1,116 @@
+/* ===== DOCUMENT TITLE BLOCK STYLING ===== */
+#title-block-header {
+    background: linear-gradient(135deg, var(--body-bg) 0%, var(--surface-color) 100%);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2rem) clamp(1.5rem, 3vw, 2rem);
+    margin: 0 0 3rem 0;
+    text-align: left;
+    box-shadow: 0 4px 20px var(--sidebar-shadow);
+
+    /* FIXED: Remove overflow hidden and add proper text wrapping */
+    box-sizing: border-box;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Subtle decorative element */
+#title-block-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--link-color), var(--border-color), var(--link-color));
+    opacity: 0.6;
+}
+
+/* Document title styling - FIXED: Ensure proper text wrapping */
+#title-block-header .title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--heading-color);
+    margin: 0 0 1rem 0;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    font-family: var(--font-family-sans);
+    /* FIXED: Add text wrapping rules */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    max-width: 100%;
+}
+
+/* Author styling - FIXED: Ensure proper text wrapping */
+#title-block-header .author {
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--body-text);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+/* Date styling - FIXED: Ensure proper text wrapping */
+#title-block-header .date {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--body-text);
+    margin: 0;
+    opacity: 0.8;
+    font-variant-numeric: tabular-nums;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+/* Enhanced styling for dark mode */
+[data-theme="dark"] #title-block-header {
+    background: linear-gradient(135deg, var(--surface-color) 0%, var(--sidebar-bg) 100%);
+    border-color: var(--sidebar-border);
+    box-shadow: 0 8px 32px rgba(179, 219, 210, 0.08);
+}
+
+[data-theme="dark"] #title-block-header::before {
+    background: linear-gradient(90deg, var(--link-color), var(--border-color), var(--link-hover));
+    opacity: 0.8;
+}
+
+[data-theme="dark"] #title-block-header .title {
+    color: var(--heading-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #title-block-header {
+        padding: 2rem 1.5rem 1.5rem;
+        margin: 0 0 2rem 0;
+        border-radius: 8px;
+    }
+
+    #title-block-header .title {
+        font-size: 1.875rem;
+        margin-bottom: 0.75rem;
+    }
+
+    #title-block-header .author {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    #title-block-header .date {
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 480px) {
+    #title-block-header .title {
+        font-size: 1.5rem;
+        line-height: 1.3;
+    }
+}

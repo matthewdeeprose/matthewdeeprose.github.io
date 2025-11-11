@@ -28071,6 +28071,263 @@ modelRegistry.registerModel("amazon/nova-premier-v1", {
     errorMessage: null,
   },
 });
+modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
+  provider: "moonshotai",
+  name: "Kimi K2 Thinking",
+  category: "Specialized",
+  disabled: false,
+  description: "Moonshot AI's most advanced open reasoning model featuring agentic, long-horizon reasoning capabilities. Built on a trillion-parameter Mixture-of-Experts architecture that activates 32 billion parameters per forward pass. Optimised for persistent step-by-step thought, dynamic tool invocation, and complex reasoning workflows spanning hundreds of turns. Excels at autonomous research, coding, and analytical tasks with stable multi-agent behaviour.",
+  costs: {
+    input: 0.60,
+    output: 2.50,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "reasoning", 
+    "tool_calling",
+    "code",
+    "mathematics",
+    "multilingual",
+  ],
+  maxContext: 262144,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced reasoning model with agentic capabilities",
+    releaseDate: "2025-11-06",
+    modelArchitecture: {
+      parameters: "32B active (1T total MoE)",
+      type: "mixture-of-experts",
+      specialFeatures: [
+        "MuonClip optimisation",
+        "Agentic reasoning",
+        "Long-horizon planning",
+        "Multi-turn stability"
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://moonshot.ai/privacy",
+      acceptableUse: "",
+      termsOfService: "https://moonshot.ai/terms",
+      lastUpdated: "2025-11-06",
+    },
+    trainingData: {
+      benchmarks: [
+        "HLE",
+        "BrowseComp", 
+        "SWE-Multilingual",
+        "LiveCodeBench"
+      ],
+      capabilities: "200-300 tool calls without drift",
+    },
+    languageSupport: [
+      "English",
+      "Chinese",
+      "Multilingual"
+    ],
+    domainExpertise: {
+      reasoning: 10,
+      coding: 9,
+      research: 9,
+      analysis: 9,
+      planning: 9,
+      toolUse: 10,
+    },
+    bestFor: [
+      "autonomous research",
+      "complex reasoning workflows",
+      "agentic tasks",
+      "multi-turn analysis",
+      "coding projects",
+      "analytical writing",
+      "tool-assisted problem solving"
+    ],
+    accessibility: {
+      cognitiveLoad: "high",
+      responseComplexity: "detailed",
+      processingTime: "extended",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning", 
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "tool_choice",
+      "tools",
+      "structured_outputs",
+      "response_format",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "agentic_reasoning",
+      "tool_calling",
+      "long_horizon_planning", 
+      "multi_turn_stability",
+      "system-prompt"
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "reasoning-tasks",
+      "research-assistance", 
+      "coding-projects",
+      "complex-analysis",
+      "multi-step-workflows",
+      "tool-assisted-tasks"
+    ],
+    warnings: [
+      "Extended response times due to complex reasoning processes",
+      "High cognitive load - responses may be detailed and technical",
+      "Tool calling may require additional setup and permissions",
+      "Long-form outputs may need scrolling or pagination support"
+    ],
+    ariaLabels: {
+      modelSelect: "Kimi K2 Thinking - Advanced reasoning model with 262K context and agentic capabilities",
+      parameterSection: "Parameter controls for Kimi K2 Thinking reasoning model",
+      statusMessages: {
+        processing: "Processing complex reasoning request with Kimi K2 Thinking",
+        complete: "Detailed reasoning response ready from Kimi K2 Thinking",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Add this entry to model-definitions.js
+modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
+  provider: "moonshotai",
+  name: "Kimi Linear 48B A3B Instruct",
+  category: "LargeContext",
+  disabled: false,
+  description: "Advanced hybrid linear attention architecture optimised for long-context processing with Kimi Delta Attention (KDA). Delivers superior performance and hardware efficiency, reducing KV cache requirements by 75% and boosting decoding throughput by 6x for contexts up to 1M tokens. Specialised for extended document analysis and memory-efficient processing.",
+  costs: {
+    input: 0.30, // Per million tokens
+    output: 0.60, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "reasoning",
+    "multilingual"
+  ],
+  maxContext: 1048576, // 1M+ context window
+  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar long-context capabilities
+  isFree: false,
+  metadata: {
+    categoryDescription: "Optimised for extended context processing and memory efficiency",
+    releaseDate: "2025-11-08",
+    modelArchitecture: {
+      parameters: "48B",
+      type: "instruction-tuned",
+      attentionMechanism: "hybrid-linear",
+      specialFeatures: [
+        "Kimi Delta Attention (KDA)",
+        "Finite-state RNN memory",
+        "75% KV cache reduction",
+        "6x decoding throughput improvement"
+      ]
+    },
+    policyLinks: {
+      privacyPolicy: "https://moonshotai.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://moonshotai.com/terms",
+      lastUpdated: "2025-11-08",
+    },
+    bestFor: [
+      "long-context document analysis",
+      "extended conversation processing",
+      "memory-efficient inference",
+      "large-scale text processing",
+      "context-intensive reasoning tasks"
+    ],
+    domainExpertise: {
+      longContextProcessing: 10,
+      memoryEfficiency: 9,
+      documentAnalysis: 8,
+      conversationalAI: 7
+    },
+    accessibility: {
+      processingComplexity: "optimised-for-long-context",
+      memoryRequirements: "reduced-kv-cache"
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature", 
+      "top_p",
+      "frequency_penalty",
+      "min_p",
+      "presence_penalty",
+      "repetition_penalty",
+      "seed",
+      "stop",
+      "top_k",
+      "logit_bias",
+      "structured_outputs",
+      "response_format",
+      "logprobs",
+      "top_logprobs",
+      "system-prompt"
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["hybrid_linear_attention", "kimi_delta_attention", "memory_optimisation", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "long-context-processing",
+      "document-analysis", 
+      "extended-conversations",
+      "memory-efficient-inference"
+    ],
+    warnings: [
+      "Processing very long contexts may require additional time",
+      "Hybrid architecture may behave differently than traditional attention models"
+    ],
+    ariaLabels: {
+      modelSelect: "Kimi Linear 48B A3B Instruct - Long-context optimised model with 1M+ token context window",
+      parameterSection: "Parameter controls for Kimi Linear 48B A3B Instruct",
+      statusMessages: {
+        processing: "Processing long-context request with Kimi Linear 48B A3B Instruct",
+        complete: "Long-context response ready from Kimi Linear 48B A3B Instruct",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;

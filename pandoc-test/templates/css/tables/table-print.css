@@ -1,0 +1,66 @@
+/* ===== ENHANCED TABLE PRINT STYLING ===== */
+@media print {
+	/* Use browser defaults for better print compatibility */
+	table, table *, 
+	table[role="table"], table[role="table"] *,
+	thead, thead *, tbody, tbody *, tfoot, tfoot *,
+	tr, tr *, th, th *, td, td * {
+		all: unset !important;
+		display: revert !important;
+		font-family: revert !important;
+		margin: revert !important;
+		padding: revert !important;
+		background: revert !important;
+		border: revert !important;
+		color: revert !important;
+	}
+
+	/* Restore essential table structure */
+	table {
+		width: 100% !important;
+		border-collapse: collapse !important;
+		margin: 1rem 0 !important;
+		page-break-inside: auto !important;
+	}
+
+	caption {
+		text-align: center !important;
+		font-weight: bold !important;
+		margin-bottom: 0.5rem !important;
+	}
+
+	th, td {
+		border: 1px solid #000 !important;
+		padding: 0.3rem 0.5rem !important;
+		text-align: left !important;
+		vertical-align: top !important;
+	}
+
+	th {
+		background: #f0f0f0 !important;
+		font-weight: bold !important;
+	}
+
+	/* Improve page breaks */
+	tr {
+		page-break-inside: avoid !important;
+		break-inside: avoid !important;
+	}
+
+	/* Ensure headers repeat on new pages */
+	thead {
+		display: table-header-group !important;
+	}
+
+	tbody {
+		display: table-row-group !important;
+	}
+
+	/* Remove interactive elements for print */
+	tr:hover, td:focus, th:focus {
+		background: transparent !important;
+		outline: none !important;
+		transform: none !important;
+		box-shadow: none !important;
+	}
+}

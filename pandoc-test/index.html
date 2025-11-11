@@ -85,10 +85,13 @@
           ],
           processEscapes: true,
           processEnvironments: true,
-          packages: { "[+]": ["ams", "amssymb", "cases", "mathtools"] },
+          packages: {
+            "[+]": ["ams", "amssymb", "cases", "mathtools", "cancel", "color"],
+          },
           tags: "ams",
           macros: {
             widecheck: ["\\overset{\\vee}{#1}", 1],
+            coloneqq: ["\\mathrel{:=}", 0],
           },
         },
 
@@ -99,6 +102,8 @@
             "a11y/sre",
             "a11y/semantic-enrich",
             "a11y/explorer",
+            "[tex]/cancel",
+            "[tex]/color",
           ],
           paths: {
             a11y: "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/a11y",
@@ -2706,16 +2711,37 @@
     <!-- Foundation utilities -->
     <script src="js/export/mathjax-manager.js"></script>
     <!-- MathJax controls -->
+
     <script src="js/export/latex-processor.js"></script>
+    <script src="./js/export/latex-processor-legacy.js"></script>
+    <script src="./js/export/latex-processor-enhanced.js"></script>
+    <script src="./js/export/latex-processor-coordinator.js"></script>
+
     <!-- LaTeX processing -->
-    <script src="js/export/content-generator.js"></script>
+    <!-- Content Generator Modules -->
+    <script src="js/export/content-generator/css-loader.js"></script>
+    <script src="js/export/content-generator/html-enhancer.js"></script>
+    <script src="js/export/content-generator/table-enhancer.js"></script>
+    <script src="js/export/content-generator/toc-generator.js"></script>
     <!-- CSS & structure -->
-    <script src="js/export/template-system.js"></script>
+    <script src="js/export/content-generator.js"></script>
     <!-- HTML generation -->
+    <script src="js/export/template-cache.js"></script>
+    <script src="js/export/template-engine.js"></script>
+    <script src="js/export/template-generator.js"></script>
+    <script src="js/export/template-system.js"></script>
+
     <script src="js/export/download-monitor.js"></script>
+    <script src="./js/export/head-generator.js"></script>
+    <script src="./js/export/script-orchestrator.js"></script>
+    <script src="./js/export/body-generator.js"></script>
+    <script src="./js/export/footer-generator.js"></script>
+    <script src="./js/export/base64-handler.js"></script>
+
     <script src="js/export/export-manager.js"></script>
     <script src="./js/export/scorm-export-manager.js"></script>
     <script src="js/export/source-viewer.js"></script>
+    <script src="./js/export/export-diagnostics.js"></script>
     <!-- Export orchestration -->
 
     <!-- Application Feature Modules -->
@@ -2797,7 +2823,6 @@
     <script src="./js/testing/individual/test-mathjax-accessibility-diagnostics.js"></script>
     <script src="./js/testing/individual/test-annotation-timing.js"></script>
     <script src="js/testing/individual/test-source-viewer.js"></script>
-    <script src="js/testing/individual/test-latex-consistency.js"></script>
     <script src="js/testing/individual/test-mathjax-promise-utility.js"></script>
     <script src="js/testing/individual/test-comprehensive-latex-syntax.js"></script>
     <script src="js/testing/individual/test-example-annotation-timing.js"></script>
@@ -2805,6 +2830,16 @@
     <script src="./js/testing/individual/test-annotation-removal-detective.js"></script>
     <script src="./js/testing/individual/test-conversion-flow-tracing.js"></script>
     <script src="./js/testing/individual/test-cross-reference-fixer.js"></script>
+    <script src="./js/testing/individual/test-head-generator.js"></script>
+    <script src="./js/testing/individual/test-script-orchestrator.js"></script>
+    <script src="./js/testing/individual/test-body-generator.js"></script>
+    <script src="./js/testing/individual/test-footer-generator.js"></script>
+    <script src="./js/testing/individual/test-base64-handler.js"></script>
+    <script src="./js/testing/individual/test-stress-testing.js"></script>
+    <script src="./js/testing/individual/test-css-loader.js"></script>
+    <script src="./js/testing/individual/test-latex-processor-legacy.js"></script>
+    <script src="./js/testing/individual/test-latex-processor-enhanced.js"></script>
+    <script src="./js/testing/individual/test-latex-processor-coordinator.js"></script>
 
     <script src="js/testing/enhanced/test-mathematical-consistency.js"></script>
     <script src="js/testing/enhanced/test-accessibility-restoration.js"></script>
@@ -2813,6 +2848,8 @@
     <script src="./js/testing/test-framework.js"></script>
     <script src="./js/testing/test-registry.js"></script>
     <script src="./js/testing/comprehensive/test-runner.js"></script>
+    <!-- Individual Module Tests -->
+    <script src="./js/testing/individual/test-template-generator.js"></script>
     <!-- JS Migration testing -->
     <script src="./js/testing/migration/test-initialization-js-migration.js"></script>
     <script src="./js/testing/migration/test-mathjax-controls-js-migration.js"></script>
@@ -2823,6 +2860,7 @@
     <script src="./js/testing/migration/test-reading-accessibility-manager-class-js-migration.js"></script>
     <script src="./js/testing/migration/test-enhanced-javascript-orchestrator-optimization.js"></script>
     <script src="./js/testing/migration/test-accessibility-configuration.js"></script>
+    <script src="./js/testing/validation/test-original-parity.js"></script>
 
     <!-- JS Migration testing ends -->
 
