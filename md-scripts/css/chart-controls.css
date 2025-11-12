@@ -1,5 +1,25 @@
 /* Chart.js Controls Styling */
 
+/* Manual Retry Button for Failed Accessibility Initialization */
+.chart-accessibility-retry-button {
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+}
+
+/* Ensure button text wraps nicely on smaller screens */
+@media (max-width: 768px) {
+  .chart-accessibility-retry-button {
+    font-size: 0.85em;
+    padding: 6px 10px;
+  }
+}
+
 .chart-palette-label {
   padding: 0.37rem;
   background: #00131d;

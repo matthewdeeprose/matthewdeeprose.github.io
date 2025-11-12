@@ -104,6 +104,96 @@ const ChartAccessibility = (function () {
     return descriptions;
   }
   /**
+   * Create a manual retry button for failed accessibility initialization
+   * @param {HTMLElement} container - The chart container
+   * @param {string|number} chartId - Unique identifier for the chart
+   * @returns {HTMLElement} The retry button
+   */
+  function createAccessibilityRetryButton(container, chartId) {
+    const retryButton = document.createElement("button");
+    retryButton.className = "chart-accessibility-retry-button";
+    retryButton.setAttribute(
+      "aria-label",
+      "Retry loading chart accessibility features"
+    );
+    retryButton.setAttribute(
+      "title",
+      "Chart accessibility features failed to load. Click to retry."
+    );
+
+    // Add visual indication with icon and text
+    retryButton.innerHTML = `
+      <span aria-hidden="true">⚠️</span>
+      <span>Retry Accessibility Features</span>
+    `;
+
+    // Track manual retry attempts
+    let manualAttempts = 0;
+    const maxManualAttempts = 3;
+
+    retryButton.addEventListener("click", () => {
+      manualAttempts++;
+
+      console.log(
+        `[Chart Accessibility] Manual retry ${manualAttempts}/${maxManualAttempts} triggered for chart ${chartId}`
+      );
+
+      // Clear all pending states to allow fresh initialization
+      container.removeAttribute("data-accessibility-initialized");
+      container.removeAttribute("data-accessibility-pending-attempts");
+
+      // Update button state during retry
+      retryButton.disabled = true;
+      retryButton.innerHTML = `
+        <span aria-hidden="true">⏳</span>
+        <span>Retrying... (${manualAttempts}/${maxManualAttempts})</span>
+      `;
+
+      // Attempt initialization
+      setTimeout(() => {
+        initAccessibilityFeatures(container, chartId);
+
+        // Check if initialization succeeded
+        setTimeout(() => {
+          const initialized =
+            container.getAttribute("data-accessibility-initialized") === "true";
+
+          if (initialized) {
+            // Success - remove the retry button
+            console.log(
+              `[Chart Accessibility] ✅ Manual retry succeeded for chart ${chartId}`
+            );
+            retryButton.remove();
+          } else if (manualAttempts >= maxManualAttempts) {
+            // Max manual attempts reached
+            console.warn(
+              `[Chart Accessibility] Max manual retry attempts (${maxManualAttempts}) reached for chart ${chartId}`
+            );
+            retryButton.disabled = true;
+            retryButton.innerHTML = `
+              <span aria-hidden="true">❌</span>
+              <span>Accessibility Features Unavailable</span>
+            `;
+            retryButton.setAttribute(
+              "aria-label",
+              "Chart accessibility features could not be loaded"
+            );
+          } else {
+            // Re-enable button for another attempt
+            retryButton.disabled = false;
+            retryButton.innerHTML = `
+              <span aria-hidden="true">⚠️</span>
+              <span>Retry Accessibility Features (${manualAttempts}/${maxManualAttempts})</span>
+            `;
+          }
+        }, 500); // Wait for initialization to complete
+      }, 100);
+    });
+
+    return retryButton;
+  }
+
+  /**
    * Initialize accessibility features for a chart container
    * @param {HTMLElement} container - The chart container
    * @param {string|number} chartId - Unique identifier for the chart
@@ -114,7 +204,7 @@ const ChartAccessibility = (function () {
       return;
     }
 
-    // Skip if already processed
+    // Skip if already fully initialized
     if (container.getAttribute("data-accessibility-initialized") === "true") {
       return;
     }
@@ -133,11 +223,75 @@ const ChartAccessibility = (function () {
     // Get the Chart.js instance
     const chartInstance = Chart.getChart(canvasElement);
     if (!chartInstance) {
-      console.warn(
-        "[Chart Accessibility] No Chart.js instance found for canvas"
+      // Chart.js instance not ready yet - this is normal in streaming mode
+      // Check if we're already waiting for this chart
+      const pendingAttempts = parseInt(
+        container.getAttribute("data-accessibility-pending-attempts") || "0",
+        10
       );
+      const maxAttempts = 5;
+
+      if (pendingAttempts >= maxAttempts) {
+        console.warn(
+          `[Chart Accessibility] Max retry attempts (${maxAttempts}) reached for chart ${chartId}, adding manual retry option`
+        );
+
+        // Mark as initialized to stop further automatic attempts
+        container.setAttribute("data-accessibility-initialized", "true");
+
+        // Add a manual retry button to the controls container
+        const controlsContainer = container.querySelector(".chart-controls");
+        if (controlsContainer) {
+          const retryButton = createAccessibilityRetryButton(
+            container,
+            chartId
+          );
+
+          // Insert retry button at the beginning of controls for visibility
+          if (controlsContainer.firstChild) {
+            controlsContainer.insertBefore(
+              retryButton,
+              controlsContainer.firstChild
+            );
+          } else {
+            controlsContainer.appendChild(retryButton);
+          }
+
+          console.log(
+            `[Chart Accessibility] Manual retry button added for chart ${chartId}`
+          );
+        } else {
+          console.warn(
+            `[Chart Accessibility] Could not add manual retry button - no controls container found`
+          );
+        }
+
+        return;
+      }
+
+      // Mark as pending and schedule a retry
+      container.setAttribute(
+        "data-accessibility-pending-attempts",
+        (pendingAttempts + 1).toString()
+      );
+
+      console.log(
+        `[Chart Accessibility] Chart.js instance not ready yet for ${chartId}, scheduling retry ${
+          pendingAttempts + 1
+        }/${maxAttempts}`
+      );
+
+      // Schedule retry with exponential backoff
+      const retryDelay = 100 * Math.pow(1.5, pendingAttempts); // 100ms, 150ms, 225ms, 337ms, 506ms
+      setTimeout(() => {
+        initAccessibilityFeatures(container, chartId);
+      }, retryDelay);
+
       return;
     }
+
+    // Chart.js instance found - clear any pending retry markers
+    container.removeAttribute("data-accessibility-pending-attempts");
 
     // Get the chart data from the data-chart-code attribute
     const encodedCode = container.getAttribute("data-chart-code") || "{}";
@@ -233,6 +387,10 @@ const ChartAccessibility = (function () {
 
     // Mark as initialized
     container.setAttribute("data-accessibility-initialized", "true");
+
+    console.log(
+      `[Chart Accessibility] ✅ Successfully initialized accessibility features for chart ${chartId}`
+    );
   }
 
   /**
