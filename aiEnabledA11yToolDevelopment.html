@@ -118,9 +118,9 @@
 				</ul>
 			</details>
          <h2>Slide deck</h2>
-         <p><a href="https://">Slide Deck: Democratising Digital Accessibility: AI-Enabled Tool Development for Barrier-Free Content Creation</a> (XXX MB PowerPoint)</p>
-<h2>Tool I created with the assistance of AI</h2>
-<h3>"Complete" Tool</h3>
+         <p><a href="https://">Slide Deck: Democratising Digital Accessibility: AI-Enabled Tool Development for Barrier-Free Content Creation</a> (60 MB PowerPoint)</p>
+<h2>Tools I created with the assistance of AI</h2>
+<h3>"Complete" Tools</h3>
 <p>These are tools that I consider to be complete and not still "in development"</p>
 <ul>
    <li><a href="https://matthewdeeprose.github.io/CVDP.html">Colour vision deficiency palette builder</a>. Time to create: 15 hours.</li>
@@ -164,6 +164,324 @@
 
 
 <li><a href=""></a></li>
+
+
+<h3>System prompt</h3>
+<p>Use this system prompt in a new Claude project. Other LLMs may require a different approach but you can use this prompt as a basis. The version on this page is formatted as HTML for readability, but I recommend downloading and using <a href="vibes/system-prompt.md"></a>this markdown version with an LLM instead</a>.</p> 
+
+<h4>Using this system prompt</h4>
+<section id="what-it-covers">
+   <h5>What It Covers</h5>
+   
+
+     <h6>Core Accessibility Requirements</h6>
+     <p>The system prompt enforces non-negotiable accessibility standards:</p>
+     <ul>
+       <li><strong>WCAG 2.2 AA Compliance</strong> - All generated code must meet Level AA success criteria including colour contrast ratios, keyboard navigation, focus indicators, and semantic structure</li>
+       <li><strong>The Five Rules of ARIA</strong> - Comprehensive guidance on when and how to use ARIA, with emphasis on using native HTML first</li>
+       <li><strong>Focus Indicators</strong> - Detailed patterns for keyboard focus that work across all backgrounds and in Windows High Contrast Mode</li>
+       <li><strong>Motion Preferences</strong> - Mandatory prefers-reduced-motion support for all animations</li>
+       <li><strong>Screen Reader Considerations</strong> - Proper labelling, semantic structure, and announcement behaviour</li>
+     </ul>
+
+
+
+     <h6>Colour and Contrast Management</h6>
+     <p>The prompt includes an extensively tested colour palette with pre-validated pairings:</p>
+     <ul>
+       <li><strong>Pre-tested Palette</strong> - Semantic CSS custom properties that automatically switch between light and dark modes</li>
+       <li><strong>Safe Pairings Matrix</strong> - Explicit documentation of which colour combinations pass WCAG 2.2 AA in both light and dark modes</li>
+       <li><strong>Anti-patterns</strong> - Clear examples of what not to do, as 51-58% of possible colour combinations fail accessibility requirements</li>
+       <li><strong>Decision Trees</strong> - Step-by-step guidance for selecting appropriate colour pairings</li>
+     </ul>
+     <p>The accompanying <code>accessible-palette.css</code> file provides 12 semantic colour variables for backgrounds, text, accents, borders, and state indicators.</p>
+
+
+
+     <h6>Critical Usage Guidelines</h6>
+     <p>The prompt prevents common accessibility mistakes:</p>
+     <ul>
+       <li><strong>Never Use Title Attributes</strong> - Comprehensive explanation of why <code>title</code> creates barriers and what to use instead</li>
+       <li><strong>Aria-Label Limitations</strong> - When to use it, when not to use it, and its limitations across assistive technologies</li>
+       <li><strong>Windows High Contrast Mode</strong> - Specific patterns for supporting users who override author styles</li>
+       <li><strong>Icon Handling</strong> - Always hide decorative icons with <code>aria-hidden="true"</code> and provide visible text</li>
+     </ul>
+
+
+
+     <h6>Technology Stack and Constraints</h6>
+     <p>The prompt enforces a specific, accessible technology stack:</p>
+     <ul>
+       <li><strong>Semantic HTML5</strong> - Native elements first, custom widgets only when necessary</li>
+       <li><strong>CSS</strong> - Modern CSS including custom properties, no preprocessors</li>
+       <li><strong>Vanilla JavaScript</strong> - No frameworks, no build tools, no npm</li>
+       <li><strong>CDN-Only Dependencies</strong> - External libraries must be loaded from CDN</li>
+       <li><strong>HTML-First Development</strong> - Write HTML directly in files; avoid generating HTML with JavaScript</li>
+     </ul>
+
+
+
+     <h6>File Management and Workflow</h6>
+     <p>Critical protocols to prevent wasted effort and broken code:</p>
+     <ul>
+       <li><strong>Mandatory Current File Requests</strong> - LLM must always ask for current file contents before modifying</li>
+       <li><strong>One File at a Time</strong> - Work on single files with testing verification before proceeding</li>
+       <li><strong>Incremental Development</strong> - Step-by-step modifications with console testing between each step</li>
+       <li><strong>Integration Checks</strong> - Verify import/export patterns, method naming, and dependencies before changes</li>
+     </ul>
+
+
+
+     <h6>Code Quality Standards</h6>
+     <p>Consistency and maintainability requirements:</p>
+     <ul>
+       <li><strong>British English</strong> - All comments, variables, and documentation use British spelling</li>
+       <li><strong>Configurable Logging</strong> - Standard logging configuration for all JavaScript files with ERROR, WARN, INFO, and DEBUG levels</li>
+       <li><strong>Clear Instructions</strong> - Step-by-step modification format with line numbers and complete code blocks</li>
+     </ul>
+
+
+
+     <h6>Project Viability Assessment</h6>
+     <p>Guidance on which projects are suitable for vibe-coding:</p>
+     <ul>
+       <li><strong>Ideal Projects</strong> - Client-side only applications with no server requirements</li>
+       <li><strong>Acceptable with Caution</strong> - Projects using public APIs with CORS, GDPR, and rate limiting considerations</li>
+       <li><strong>Never Attempt</strong> - Projects requiring authentication, databases, payment processing, or storing personal data</li>
+     </ul>
+
+ </section>
+
+ <section id="how-to-use">
+   <h5>How to Use It</h5>
+   
+
+     <h6>Setting Up the System Prompt</h6>
+     <p>The system prompt is designed to be used with Claude or other LLMs that support system prompts or custom instructions:</p>
+     <ol>
+       <li><strong>For Claude.ai</strong> - Add the prompt content to your Project Knowledge or Custom Instructions</li>
+       <li><strong>For Claude API</strong> - Include the prompt in the <code>system</code> parameter of your messages</li>
+       <li><strong>For Other LLMs</strong> - Add as custom instructions, system prompt, or initial context depending on the platform</li>
+     </ol>
+
+
+
+     <h6>Including the Colour Palette</h6>
+     <p>The <code>accessible-palette.css</code> file should be:</p>
+     <ol>
+       <li>Uploaded to your project as a reference file</li>
+       <li>Linked in your HTML: <code>&lt;link rel="stylesheet" href="accessible-palette.css"&gt;</code></li>
+       <li>Referenced in conversations when discussing colour choices</li>
+     </ol>
+     <p>The LLM will use the documented colour variables and never suggest untested colour combinations.</p>
+
+
+
+     <h6>Starting a New Project</h6>
+     <p>When beginning a new accessible web project:</p>
+     <ol>
+       <li>Verify your project is suitable using the viability checklist</li>
+       <li>Describe your project goals and requirements</li>
+       <li>The LLM will use semantic HTML, the accessible colour palette, and vanilla JavaScript</li>
+       <li>Request one feature or file at a time</li>
+       <li>Test each component before requesting the next</li>
+     </ol>
+
+
+
+     <h6>Modifying Existing Code</h6>
+     <p>When working with existing files:</p>
+     <ol>
+       <li>Share the current file contents with the LLM</li>
+       <li>Describe the changes you need</li>
+       <li>The LLM will provide step-by-step modification instructions</li>
+       <li>Implement one step at a time</li>
+       <li>Test in the browser console after each step</li>
+       <li>Report any errors before proceeding</li>
+     </ol>
+
+
+
+     <h6>Expected Interaction Pattern</h6>
+     <p>The system prompt creates this workflow:</p>
+     <ol>
+       <li><strong>Human requests a feature</strong> - Describe what you want to build</li>
+       <li><strong>LLM asks for current file</strong> - Never assumes it has the latest version</li>
+       <li><strong>Human provides file contents</strong> - Copy and paste current code</li>
+       <li><strong>LLM provides numbered steps</strong> - Clear find/replace instructions</li>
+       <li><strong>Human implements changes</strong> - Update code one step at a time</li>
+       <li><strong>Human tests in browser</strong> - Check console, keyboard navigation, screen reader</li>
+       <li><strong>Human reports results</strong> - Confirm success or describe errors</li>
+       <li><strong>Repeat for next file</strong> - Only proceed after current file works</li>
+     </ol>
+
+ </section>
+
+ <section id="key-features">
+   <h5>Key Features</h5>
+   
+
+     <h6>Accessibility-First Decision Making</h6>
+     <p>Every suggestion prioritises removing barriers:</p>
+     <ul>
+       <li>Native HTML elements over custom widgets</li>
+       <li>Visible text over icon-only interfaces</li>
+       <li>Keyboard accessibility by default</li>
+       <li>Screen reader compatibility in all interactions</li>
+     </ul>
+
+
+
+     <h6>Prevention of Common Mistakes</h6>
+     <p>The prompt actively prevents problematic patterns:</p>
+     <ul>
+       <li>Using <code>title</code> attributes for important information</li>
+       <li>Overusing <code>aria-label</code> when visible text would work</li>
+       <li>Creating colour combinations that fail contrast requirements</li>
+       <li>Building custom controls without keyboard support</li>
+       <li>Hiding focus indicators for mouse users</li>
+     </ul>
+
+
+
+     <h6>Token Awareness</h6>
+     <p>The prompt makes the LLM conscious of usage costs:</p>
+     <ul>
+       <li>Ask clarifying questions before generating large amounts of code</li>
+       <li>Request current file contents rather than guessing</li>
+       <li>Provide correct solutions on the first attempt</li>
+       <li>Avoid creating bugs that waste tokens fixing</li>
+     </ul>
+
+
+
+     <h6>Educational Component</h6>
+     <p>While generating code, the LLM explains:</p>
+     <ul>
+       <li>Why specific accessibility patterns are used</li>
+       <li>What problems are being prevented</li>
+       <li>How the code supports different assistive technologies</li>
+       <li>WCAG success criteria being met</li>
+     </ul>
+
+ </section>
+
+ <section id="when-to-use">
+   <h5>When to Use This System Prompt</h5>
+   
+
+     <h6>Ideal Use Cases</h6>
+     <p>This system prompt excels for:</p>
+     <ul>
+       <li><strong>Learning accessible development</strong> - Students and developers new to accessibility</li>
+       <li><strong>Rapid prototyping</strong> - Creating accessible proof-of-concepts quickly</li>
+       <li><strong>Client-side tools</strong> - Calculators, converters, validators, visualisations</li>
+       <li><strong>Educational resources</strong> - Building inclusive learning materials</li>
+       <li><strong>Portfolio sites</strong> - Creating accessible personal or professional websites</li>
+       <li><strong>Accessibility auditing tools</strong> - Building tools to test other sites</li>
+     </ul>
+
+
+
+     <h6>When to Consider Alternatives</h6>
+     <p>This approach is not suitable for:</p>
+     <ul>
+       <li>Projects requiring user authentication</li>
+       <li>Database-backed applications</li>
+       <li>Payment processing systems</li>
+       <li>Projects collecting personal data</li>
+       <li>Real-time collaboration requiring servers</li>
+       <li>Large-scale production applications requiring frameworks</li>
+     </ul>
+     <p>For these projects, professional development practices with proper security, testing, and infrastructure are essential.</p>
+
+ </section>
+
+ <section id="getting-started">
+   <h5>Getting Started</h5>
+   
+
+     <h6>Prerequisites</h6>
+     <p>Before using this system prompt, you should have:</p>
+     <ul>
+       <li>Basic understanding of HTML, CSS, and JavaScript</li>
+       <li>A text editor for writing code</li>
+       <li>A modern web browser for testing</li>
+       <li>Access to Claude.ai or another LLM that supports system prompts</li>
+     </ul>
+     <p>You do not need to be an accessibility expert; the system prompt provides that expertise.</p>
+
+
+
+     <h6>Your First Project</h6>
+     <p>Try building something simple to learn the workflow:</p>
+     <ol>
+       <li><strong>Choose a simple project</strong> - A colour contrast checker or accessible form validator</li>
+       <li><strong>Set up the system prompt</strong> - Add it to Claude's Project Knowledge</li>
+       <li><strong>Upload accessible-palette.css</strong> - Include it as a reference file</li>
+       <li><strong>Describe your project</strong> - Explain what you want to build</li>
+       <li><strong>Follow the step-by-step instructions</strong> - Implement one change at a time</li>
+       <li><strong>Test thoroughly</strong> - Check keyboard navigation, colour contrast, and screen reader behaviour</li>
+     </ol>
+
+
+
+     <h6>Testing Your Code</h6>
+     <p>After implementing changes, always test:</p>
+     <ol>
+       <li><strong>Browser console</strong> - Check for JavaScript errors (should be zero)</li>
+       <li><strong>Keyboard navigation</strong> - Tab through all interactive elements</li>
+       <li><strong>Focus indicators</strong> - Verify visible focus states on all interactive elements</li>
+       <li><strong>Colour contrast</strong> - Use browser DevTools or online checkers</li>
+       <li><strong>Screen reader</strong> - Test with NVDA (Windows), JAWS (Windows), or VoiceOver (macOS/iOS)</li>
+       <li><strong>Zoom</strong> - Test at 200% zoom level</li>
+       <li><strong>Windows High Contrast Mode</strong> - Verify visibility of focus states and borders</li>
+     </ol>
+
+ </section>
+
+ <section id="best-practices">
+   <h5>Best Practices</h5>
+   
+
+     <h6>Communication with the LLM</h6>
+     <ul>
+       <li><strong>Be specific</strong> - Describe exactly what you want to achieve</li>
+       <li><strong>Share complete files</strong> - Always provide current file contents when modifying existing code</li>
+       <li><strong>Report test results</strong> - Let the LLM know what works and what doesn't</li>
+       <li><strong>Ask questions</strong> - If you don't understand why something is done a certain way, ask</li>
+     </ul>
+
+
+
+     <h6>Incremental Development</h6>
+     <ul>
+       <li><strong>One file at a time</strong> - Complete and test each file before moving to the next</li>
+       <li><strong>Small steps</strong> - Request small changes rather than large rewrites</li>
+       <li><strong>Test frequently</strong> - Check the browser console after every change</li>
+       <li><strong>Version control</strong> - Keep backup copies of working code</li>
+     </ul>
+
+
+
+     <h6>Learning and Understanding</h6>
+     <ul>
+       <li><strong>Read the explanations</strong> - The LLM explains why certain patterns are used</li>
+       <li><strong>Refer to the system prompt</strong> - Consult the colour palette guide and ARIA rules</li>
+       <li><strong>Build progressively</strong> - Start with simple projects and increase complexity</li>
+       <li><strong>Contribute back</strong> - Share what you learn with others building accessible sites</li>
+     </ul>
+
+ </section>
+
+ <section>
+   <h5>Conclusion</h5>
+   <p>This system prompt transforms LLMs into accessible-first development assistants that help you build inclusive websites. By enforcing WCAG 2.2 AA standards, preventing common mistakes, and providing clear guidance, it enables developers of all skill levels to create digital experiences that work for everyone.</p>
+   
+   <p>Remember: accessibility is not optional. Every barrier you remove makes the web more usable for disabled people, and often improves the experience for everyone.</p>
+ </section>
+
+
 
             </article>
 			      <div id="panel">
