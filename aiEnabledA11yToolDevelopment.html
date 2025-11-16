@@ -121,7 +121,12 @@
 				</ul>
 			</details>
          <h2>Slide deck</h2>
-         <p><a href="https://">Slide Deck: Democratising Digital Accessibility: AI-Enabled Tool Development for Barrier-Free Content Creation</a> (60 MB PowerPoint)</p>
+         <p><a href="https://blackboard.soton.ac.uk/bbcswebdav/xid-36512947_1">Slide Deck: Democratising Digital Accessibility: AI-Enabled Tool Development for Barrier-Free Content Creation</a> (50 MB PowerPoint)</p>
+         <h2>Resources for you</h2>
+         <ul>
+          <li><a href="vibes/system-prompt.md">A "system prompt"</a> I made based on my experience developing accessibility tools using LLMs. This is designed for use with a Claude Project where the project prompt is this system prompt. You can <a href="#Systemprompt">preview the system prompt</a> and <a href="Usingthissystemprompt">read some guidance on using the prompt</a>.</li>
+          <li><a href="vibes/accessible-palette.css">accessible-palette.css</a> - a CSS file I've made to get you started. LLMs are not great at choosing colours with sufficient contrast. Add this css file to your project files in Claude. It's just a start and will need further customisation, but should get you started for both light and dark modes.</li>
+         </ul>
 <h2>Tools I created with the assistance of AI</h2>
 <h3>"Complete" Tools</h3>
 <p>These are tools that I consider to be complete and not still "in development"</p>
@@ -170,7 +175,7 @@
 
 
 <h3>System prompt</h3>
-<p>Use this system prompt in a new Claude project. Other LLMs may require a different approach but you can use this prompt as a basis. The version on this page is formatted as HTML for readability, but I recommend downloading and using <a href="vibes/system-prompt.md">this markdown version with an LLM instead</a>.</p>
+<p>Use this <a href="vibes/system-prompt.md">"system prompt"</a> in a new Claude project. Other LLMs may require a different approach but you can use this prompt as a basis. The version on this page is formatted as HTML for readability, but I recommend downloading and using <a href="vibes/system-prompt.md">this markdown version with an LLM instead</a>.</p>
 <blockquote class="prompt">		
 <h4>System Prompt: Accessible Web Development Assistant</h4>
 
@@ -765,7 +770,7 @@ box-shadow: none;
    
 
      <h6>Core Accessibility Requirements</h6>
-     <p>The system prompt enforces non-negotiable accessibility standards:</p>
+     <p>The <a href="vibes/system-prompt.md">system prompt</a> enforces non-negotiable accessibility standards:</p>
      <ul>
        <li><strong>WCAG 2.2 AA Compliance</strong> - All generated code must meet Level AA success criteria including colour contrast ratios, keyboard navigation, focus indicators, and semantic structure</li>
        <li><strong>The Five Rules of ARIA</strong> - Comprehensive guidance on when and how to use ARIA, with emphasis on using native HTML first</li>
@@ -847,7 +852,7 @@ box-shadow: none;
    
 
      <h6>Setting Up the System Prompt</h6>
-     <p>The system prompt is designed to be used with Claude or other LLMs that support system prompts or custom instructions:</p>
+     <p>The <a href="vibes/system-prompt.md">system prompt</a>is designed to be used with Claude or other LLMs that support system prompts or custom instructions:</p>
      <ol>
        <li><strong>For Claude.ai</strong> - Add the prompt content to your Project Knowledge or Custom Instructions</li>
        <li><strong>For Claude API</strong> - Include the prompt in the <code>system</code> parameter of your messages</li>
@@ -893,7 +898,7 @@ box-shadow: none;
 
 
      <h6>Expected Interaction Pattern</h6>
-     <p>The system prompt creates this workflow:</p>
+     <p>The <a href="vibes/system-prompt.md">system prompt</a> creates this workflow:</p>
      <ol>
        <li><strong>Human requests a feature</strong> - Describe what you want to build</li>
        <li><strong>LLM asks for current file</strong> - Never assumes it has the latest version</li>
@@ -961,7 +966,7 @@ box-shadow: none;
    
 
      <h6>Ideal Use Cases</h6>
-     <p>This system prompt excels for:</p>
+     <p>This <a href="vibes/system-prompt.md">system prompt</a> excels for:</p>
      <ul>
        <li><strong>Learning accessible development</strong> - Students and developers new to accessibility</li>
        <li><strong>Rapid prototyping</strong> - Creating accessible proof-of-concepts quickly</li>
@@ -999,7 +1004,7 @@ box-shadow: none;
        <li>A modern web browser for testing</li>
        <li>Access to Claude.ai or another LLM that supports system prompts</li>
      </ul>
-     <p>You do not need to be an accessibility expert; the system prompt provides that expertise.</p>
+
 
 
 
@@ -1057,7 +1062,7 @@ box-shadow: none;
      <h6>Learning and Understanding</h6>
      <ul>
        <li><strong>Read the explanations</strong> - The LLM explains why certain patterns are used</li>
-       <li><strong>Refer to the system prompt</strong> - Consult the colour palette guide and ARIA rules</li>
+       <li><strong>Refer to the <a href="vibes/system-prompt.md">system prompt</a></strong> - Consult the colour palette guide and ARIA rules</li>
        <li><strong>Build progressively</strong> - Start with simple projects and increase complexity</li>
        <li><strong>Contribute back</strong> - Share what you learn with others building accessible sites</li>
      </ul>
@@ -1066,9 +1071,9 @@ box-shadow: none;
 
  <section>
    <h5>Conclusion</h5>
-   <p>This system prompt transforms LLMs into accessible-first development assistants that help you build inclusive websites. By enforcing WCAG 2.2 AA standards, preventing common mistakes, and providing clear guidance, it enables developers of all skill levels to create digital experiences that work for everyone.</p>
+   <p>This <a href="vibes/system-prompt.md">system prompt</a> aims to steer accessible-first LLM accelerated development. </p>
    
-   <p>Remember: accessibility is not optional. Every barrier you remove makes the web more usable for disabled people, and often improves the experience for everyone.</p>
+   <p>Remember: accessibility testing and working with users with lived experience of disability is still required.</p>
  </section>
 
 
