@@ -1,6 +1,15 @@
 html {
   overflow-y: scroll;
 }
+
+:not(pre) > code {
+  padding: 0.125em 0.25em;
+  border-radius: 3px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
 @supports (scrollbar-gutter: stable) {
   html {
     overflow-y: auto;

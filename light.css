@@ -1,5 +1,13 @@
 /*Light mode */
 
+:not(pre) > code {
+  background-color: #f4f4f4;
+  border: 1px dotted #00131d;
+}
+
+        pre[class*="language-"] {border: 1px solid #00131d;
+}
+
 /* Canvas Element */
 .mathpix-draw-canvas {
   background: #fffff4;

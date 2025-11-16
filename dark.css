@@ -1,5 +1,15 @@
 /* Dark mode */
 
+:not(pre) > code {
+  background-color: #231f20;
+  border: 1px dotted #9fb1bd;
+}
+
+        pre[class*="language-"] {border: 1px solid #9fb1bd;
+}
+
+
+
 /* ===========================================
    MATHPIX
    =========================================== */
