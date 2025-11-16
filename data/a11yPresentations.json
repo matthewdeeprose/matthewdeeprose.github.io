@@ -1,5 +1,13 @@
 {
   "presentations": [
+        {
+      "title": "Democratising Digital Accessibility: AI-Enabled Tool Development for Barrier-Free Content Creation",
+      "url": "aiEnabledA11yToolDevelopment.html",
+      "summary": "Presentation for DisabilityNow.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
       {
       "title": "Mermaids and unicorns – further adventures with AI and accessibility",
       "url": "MermaidsUnicorns.html",

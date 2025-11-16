@@ -1,5 +1,12 @@
 {
   "updates": [
+            {
+      "title": "Create accessibility tools with AI",
+      "link": "aiEnabledA11yToolDevelopment.html",
+      "imageSrc": "democ169.png",
+      "imageAlt": "",
+      "description": "Presentation for Disability Now"
+    },
           {
       "title": "Contrast Cards",
       "link": "contrastCards",
