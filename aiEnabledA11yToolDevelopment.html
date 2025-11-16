@@ -411,7 +411,7 @@ box-shadow: 0 0 0 3px blue; /* Your design in normal mode */
 }</code></pre>
 
     <p><strong>2. Use <code>currentColor</code> for SVG icons:</strong></p>
-    <pre><code>/* SVG will inherit text colour, which WHCM will override */
+    <pre class="language-css"> <code class="language-css">/* SVG will inherit text colour, which WHCM will override */
 svg {
 fill: currentColor;
 }
@@ -650,7 +650,7 @@ sessionStorage.setItem('draftContent', textareaValue);
   <section>
     <h6>Providing Code Updates</h6>
     <p>Use this format for all code modifications:</p>
-    <pre><code>Step 1 of 3
+<pre class="language-javascript"> <code class="language-javascript">Step 1 of 3
 
 FIND THIS ENTIRE BLOCK (approximately lines 45-67):
 ````javascript
@@ -693,7 +693,7 @@ REPLACE WITH THIS NEW BLOCK:
     <li>You've considered screen reader behaviour</li>
     <li>Animation includes prefers-reduced-motion</li>
     <li>You're using semantic HTML where possible</li>
-    <li>Focus indicators use :focus-visible with transparent outline</li>
+    <li>Focus indicators use <code>:focus-visible</code> with transparent outline</li>
     <li>No title attributes (except on iframes)</li>
     <li>aria-label used only when truly necessary</li>
   </ul>
@@ -784,7 +784,7 @@ box-shadow: none;
        <li><strong>Anti-patterns</strong> - Clear examples of what not to do, as 51-58% of possible colour combinations fail accessibility requirements</li>
        <li><strong>Decision Trees</strong> - Step-by-step guidance for selecting appropriate colour pairings</li>
      </ul>
-     <p>The accompanying <code><code><a href="vibes/accessible-palette.css">accessible-palette.css</a></code></code> file provides 12 semantic colour variables for backgrounds, text, accents, borders, and state indicators.</p>
+     <p>The accompanying <code><a href="vibes/accessible-palette.css">accessible-palette.css</a></code> file provides 12 semantic colour variables for backgrounds, text, accents, borders, and state indicators.</p>
 
 
 
@@ -857,7 +857,7 @@ box-shadow: none;
 
 
      <h6>Including the Colour Palette</h6>
-     <p>The <code><code><a href="vibes/accessible-palette.css">accessible-palette.css</a></code></code> file should be:</p>
+     <p>The <code><a href="vibes/accessible-palette.css">accessible-palette.css</a></code> file should be:</p>
      <ol>
        <li>Uploaded to your project as a reference file</li>
        <li>Linked in your HTML: <pre class="language-css"> <code class="language-css">&lt;link rel="stylesheet" href="<code><a href="vibes/accessible-palette.css">accessible-palette.css</a></code>"&gt;</code></pre></li>
