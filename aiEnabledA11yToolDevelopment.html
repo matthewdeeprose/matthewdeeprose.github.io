@@ -1273,28 +1273,106 @@ box-shadow: none;
     <script src="scripts/details.js"></script>
 		  <script>
 document.addEventListener("DOMContentLoaded", function() {
+    // Logging configuration
+    const LOG_LEVELS = {
+        ERROR: 0,
+        WARN: 1,
+        INFO: 2,
+        DEBUG: 3
+    };
+
+    const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+    const ENABLE_ALL_LOGGING = false;
+    const DISABLE_ALL_LOGGING = false;
+
+    function shouldLog(level) {
+        if (DISABLE_ALL_LOGGING) return false;
+        if (ENABLE_ALL_LOGGING) return true;
+        return level <= DEFAULT_LOG_LEVEL;
+    }
+
+    function logError(message, ...args) {
+        if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+    }
+
+    function logWarn(message, ...args) {
+        if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+    }
+
+    function logInfo(message, ...args) {
+        if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+    }
+
+    function logDebug(message, ...args) {
+        if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+    }
+
     // Step 1: Add IDs to all heading elements without IDs
     const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
     headings.forEach(heading => {
         if (!heading.id) {
             heading.id = heading.textContent.replace(/\s+/g, '');
+            logDebug(`Generated ID for heading: ${heading.id}`);
         }
     });
 
-    // Step 2: Create list items for each H2 in the ul with ID 'index'
+    // Step 2: Create nested list for h2-h6 headings in the ul with ID 'index'
     const contentsList = document.getElementById("index");
     if (contentsList) {
-        const h2Elements = document.querySelectorAll("h2");
-        h2Elements.forEach(h2 => {
-            if (h2.textContent !== "Contents") {
-                const listItem = document.createElement("li");
-                const link = document.createElement("a");
-                link.href = `#${h2.id}`;
-                link.textContent = h2.textContent;
-                listItem.appendChild(link);
-                contentsList.appendChild(listItem);
+        const relevantHeadings = document.querySelectorAll("h2, h3, h4, h5, h6");
+        
+        // Stack to track current parent elements at each level
+        const levelStack = [{ element: contentsList, level: 1 }];
+        
+        relevantHeadings.forEach(heading => {
+            // Skip "Contents" heading
+            if (heading.textContent === "Contents") {
+                return;
             }
+            
+            const headingLevel = parseInt(heading.tagName.substring(1));
+            logDebug(`Processing heading: ${heading.textContent} (level ${headingLevel})`);
+            
+            // Pop stack until we find the correct parent level
+            while (levelStack.length > 0 && levelStack[levelStack.length - 1].level >= headingLevel) {
+                levelStack.pop();
+            }
+            
+            // Ensure we have a parent
+            if (levelStack.length === 0) {
+                logWarn(`No parent found for heading level ${headingLevel}, using root list`);
+                levelStack.push({ element: contentsList, level: 1 });
+            }
+            
+            const parent = levelStack[levelStack.length - 1].element;
+            
+            // Create the list item with link
+            const listItem = document.createElement("li");
+            const link = document.createElement("a");
+            link.href = `#${heading.id}`;
+            link.textContent = heading.textContent;
+            listItem.appendChild(link);
+            
+            // Append to parent
+            parent.appendChild(listItem);
+            
+            // Create a nested list for potential children
+            const nestedList = document.createElement("ul");
+            listItem.appendChild(nestedList);
+            
+            // Push this nested list onto the stack as potential parent for next headings
+            levelStack.push({ element: nestedList, level: headingLevel });
+            
+            logDebug(`Added heading to contents: ${heading.textContent}`);
         });
+        
+        // Clean up empty nested lists
+        const emptyLists = contentsList.querySelectorAll("ul:empty");
+        emptyLists.forEach(list => list.remove());
+        
+        logInfo(`Table of contents generated with ${relevantHeadings.length} headings`);
+    } else {
+        logWarn('Contents list element with ID "index" not found');
     }
 });
 	  </script>
