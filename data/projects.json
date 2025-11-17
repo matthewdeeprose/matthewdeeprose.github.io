@@ -1,5 +1,13 @@
 {
   "projects": [
+          {
+      "title": "PanoptoText",
+      "link": "panoptoText",
+      "imageSrc": "panoptoText169",
+      "imageAlt": "",
+      "description": "Download transcripts or captions from Panopto",
+      "isHighlighted": true
+    },
         {
       "title": "Contrast Cards",
       "link": "contrastCards",

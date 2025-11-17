@@ -1,5 +1,12 @@
 {
   "updates": [
+              {
+      "title": "PanoptoText",
+      "link": "panoptoText",
+      "imageSrc": "panoptoText169.png",
+      "imageAlt": "",
+      "description": "Download transcripts or captions from Panopto"
+    },
             {
       "title": "Create accessibility tools with AI",
       "link": "aiEnabledA11yToolDevelopment.html",
