@@ -3,7 +3,7 @@
           {
       "title": "PanoptoText",
       "link": "panoptoText",
-      "imageSrc": "panoptoText169",
+      "imageSrc": "panoptoText169.png",
       "imageAlt": "",
       "description": "Download transcripts or captions from Panopto",
       "isHighlighted": true
