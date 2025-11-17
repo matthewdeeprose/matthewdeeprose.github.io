@@ -122,11 +122,7 @@
 <article class="standard">
     <h1 id="top">Download Text / Captions from Panopto</h1>
     
-    <details id="index">
-        <summary class="">
-            <h2 id="Contents">Contents</h2>
-        </summary>
-    </details>
+
     
     <h2>What Does This Tool Do?</h2>
     <script src="prism/prism.js"></script>
@@ -176,6 +172,131 @@
         <li>It will not automatically format or improve the quality of auto-generated captions.</li>
         <li>It cannot create captions for videos that don't already have them.</li>
     </ol>
+	
+	<h2>Alternative: Console Method</h2>
+<p>If you prefer not to use a bookmarklet, you can run the code directly in your browser's developer console:</p>
+<ol>
+    <li>Navigate to a Panopto video page</li>
+    <li>Open your browser's developer console:
+        <ul>
+            <li>Windows/Linux: Press <kbd>F12</kbd> or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd></li>
+            <li>Mac: Press <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd></li>
+        </ul>
+    </li>
+    <li>Click on the "Console" tab</li>
+    <li>Click the "Copy to Clipboard" button below</li>
+    <li>Paste the code into the console and press <kbd>Enter</kbd></li>
+    <li>The download dialogue will appear immediately</li>
+</ol>
+
+<details>
+    <summary><strong>Show Console Code</strong></summary>
+    <button id="copy-console-code" class="copy-button" type="button" aria-live="polite">
+        Copy to Clipboard
+    </button>
+    <pre><code class="language-javascript" id="console-code">(function(){
+  const d = document, b = d.body;
+  if (d.getElementById('panopto-caption-dl')) { return; }
+  let previousFocus = d.activeElement;
+  const m = d.createElement('div');
+  m.id = 'panopto-caption-dl';
+  m.setAttribute('role', 'dialog');
+  m.setAttribute('aria-labelledby', 'panopto-dl-title');
+  m.setAttribute('aria-modal', 'true');
+  m.innerHTML = '&lt;style&gt;#panopto-caption-dl{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fffff4;border:2px solid #00131D;padding:20px;z-index:999999;box-shadow:0 4px 6px rgba(0,0,0,0.3);max-width:500px;font-family:sans-serif}#panopto-caption-dl h2{margin:0 0 15px 0;font-size:1.25rem;color:#00131D}#panopto-caption-dl button{display:block;width:100%;margin:10px 0;padding:12px;font-size:1rem;background:#002E3B;color:#fff;border:none;cursor:pointer;border-radius:4px;text-align:left}#panopto-caption-dl button:hover{background:#005C84}#panopto-caption-dl button:focus,#panopto-caption-dl .close-btn:focus{background:#00131D;outline:2px transparent solid;box-shadow:0 0 0 2px white,0 0 0 4px #002e3b,0 0 4px 8px white}#panopto-caption-dl button:disabled{background:#9FB1BD;color:#231F20;cursor:not-allowed}#panopto-caption-dl .close-btn{background:#00131D;color:#FCBC00;border:1px solid #00131D;text-align:center}#panopto-caption-dl .close-btn:hover{background:#FCBC00;color:#00131D;border:1px solid #00131D}#panopto-caption-dl .status{margin:10px 0;padding:10px;background:#f0f0f0;border-radius:4px;font-size:0.9rem}#panopto-caption-dl .btn-desc{display:block;font-size:0.85rem;opacity:0.9;margin-top:4px}#panopto-caption-dl .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}&lt;/style&gt;&lt;h2 id="panopto-dl-title"&gt;Download Captions&lt;/h2&gt;&lt;p class="visually-hidden"&gt;Press Escape to close this dialogue&lt;/p&gt;&lt;div id="status-msg" class="status" style="display:none" role="status" aria-live="polite"&gt;&lt;/div&gt;&lt;button id="dl-clean" type="button" aria-label="Download clean text - continuous text, no timestamps"&gt;Clean Text&lt;span class="btn-desc"&gt;Continuous text, no timestamps&lt;/span&gt;&lt;/button&gt;&lt;button id="dl-full" type="button" aria-label="Download text with line breaks - original formatting preserved"&gt;Text with Line Breaks&lt;span class="btn-desc"&gt;Original formatting preserved&lt;/span&gt;&lt;/button&gt;&lt;button id="dl-basic" type="button" aria-label="Download captions with timestamps - standard caption file format"&gt;Captions with Timestamps&lt;span class="btn-desc"&gt;Standard caption file format&lt;/span&gt;&lt;/button&gt;&lt;button class="close-btn" id="close-dl" type="button" aria-label="Close dialogue"&gt;Close&lt;/button&gt;';
+  b.appendChild(m);
+  const u = new URLSearchParams(window.location.search), vid = u.get('id');
+  if (!vid) { alert('Could not find video ID. Please ensure you are on a Panopto video page.'); m.remove(); if (previousFocus) previousFocus.focus(); return; }
+  const focusableEls = m.querySelectorAll('button'), firstFocusable = focusableEls[0], lastFocusable = focusableEls[focusableEls.length - 1];
+  const trapFocus = (e) =&gt; { if (e.key === 'Tab') { if (e.shiftKey) { if (d.activeElement === firstFocusable) { e.preventDefault(); lastFocusable.focus(); } } else { if (d.activeElement === lastFocusable) { e.preventDefault(); firstFocusable.focus(); } } } };
+  const handleEscape = (e) =&gt; { if (e.key === 'Escape') { closeDialog(); } };
+  const closeDialog = () =&gt; { m.removeEventListener('keydown', trapFocus); d.removeEventListener('keydown', handleEscape); m.remove(); if (previousFocus) previousFocus.focus(); };
+  const host = window.location.host;
+  const basicUrl = 'https://' + host + '/Panopto/Pages/Transcription/GenerateSRT.ashx?id=' + vid + '&amp;language=1';
+  const fullUrl = basicUrl + '&amp;full=true';
+  const statusEl = d.getElementById('status-msg');
+  const getVideoTitle = () =&gt; { const t = d.querySelector('#primaryVideoName, .video-title, h1'); return t ? t.textContent.trim().replace(/[^a-z0-9]/gi, '_').substring(0, 50) : 'panopto_captions'; };
+  const showStatus = (msg, isError) =&gt; { statusEl.textContent = msg; statusEl.style.display = 'block'; statusEl.style.background = isError ? '#fee' : '#f0f0f0'; statusEl.style.color = isError ? '#c00' : '#333'; };
+  const cleanTranscript = (text) =&gt; { const lines = text.split('\n'); let cleanedText = ''; let firstLine = true; for (let line of lines) { line = line.trim(); if (!line) continue; if (/^\d+$/.test(line)) continue; if (/^\d{2}:\d{2}:\d{2}/.test(line)) continue; if (line.startsWith('[') &amp;&amp; line.includes('transcript')) { cleanedText += line + '\n'; continue; } if (line) { if (!firstLine &amp;&amp; !cleanedText.endsWith('\n')) cleanedText += ' '; cleanedText += line; firstLine = false; } } return cleanedText.trim(); };
+  const downloadFile = async (url, filename, shouldClean) =&gt; { const btns = m.querySelectorAll('button'); btns.forEach(btn =&gt; btn.disabled = true); showStatus('Downloading captions...'); try { const resp = await fetch(url); if (!resp.ok) throw new Error('Download failed'); let text = await resp.text(); if (shouldClean) text = cleanTranscript(text); const blob = new Blob([text], { type: 'text/plain' }), link = d.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.style.display = 'none'; b.appendChild(link); link.click(); b.removeChild(link); URL.revokeObjectURL(link.href); showStatus('Download complete! Check your downloads folder.'); setTimeout(closeDialog, 2000); } catch (err) { showStatus('Error: Unable to download captions. You may not have permission.', true); } finally { btns.forEach(btn =&gt; btn.disabled = false); } };
+  const videoTitle = getVideoTitle();
+  m.addEventListener('keydown', trapFocus);
+  d.addEventListener('keydown', handleEscape);
+  d.getElementById('dl-clean').onclick = () =&gt; downloadFile(fullUrl, videoTitle + '_clean.txt', true);
+  d.getElementById('dl-full').onclick = () =&gt; downloadFile(fullUrl, videoTitle + '_transcript.txt', false);
+  d.getElementById('dl-basic').onclick = () =&gt; downloadFile(basicUrl, videoTitle + '_captions.srt', false);
+  d.getElementById('close-dl').onclick = closeDialog;
+  firstFocusable.focus();
+})();</code></pre>
+</details>
+
+
+
+<script>
+// Store the raw JavaScript code (unescaped)
+const consoleCode = `(function(){
+  const d = document, b = d.body;
+  if (d.getElementById('panopto-caption-dl')) { return; }
+  let previousFocus = d.activeElement;
+  const m = d.createElement('div');
+  m.id = 'panopto-caption-dl';
+  m.setAttribute('role', 'dialog');
+  m.setAttribute('aria-labelledby', 'panopto-dl-title');
+  m.setAttribute('aria-modal', 'true');
+  m.innerHTML = '<style>#panopto-caption-dl{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fffff4;border:2px solid #00131D;padding:20px;z-index:999999;box-shadow:0 4px 6px rgba(0,0,0,0.3);max-width:500px;font-family:sans-serif}#panopto-caption-dl h2{margin:0 0 15px 0;font-size:1.25rem;color:#00131D}#panopto-caption-dl button{display:block;width:100%;margin:10px 0;padding:12px;font-size:1rem;background:#002E3B;color:#fff;border:none;cursor:pointer;border-radius:4px;text-align:left}#panopto-caption-dl button:hover{background:#005C84}#panopto-caption-dl button:focus,#panopto-caption-dl .close-btn:focus{background:#00131D;outline:2px transparent solid;box-shadow:0 0 0 2px white,0 0 0 4px #002e3b,0 0 4px 8px white}#panopto-caption-dl button:disabled{background:#9FB1BD;color:#231F20;cursor:not-allowed}#panopto-caption-dl .close-btn{background:#00131D;color:#FCBC00;border:1px solid #00131D;text-align:center}#panopto-caption-dl .close-btn:hover{background:#FCBC00;color:#00131D;border:1px solid #00131D}#panopto-caption-dl .status{margin:10px 0;padding:10px;background:#f0f0f0;border-radius:4px;font-size:0.9rem}#panopto-caption-dl .btn-desc{display:block;font-size:0.85rem;opacity:0.9;margin-top:4px}#panopto-caption-dl .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}</style><h2 id="panopto-dl-title">Download Captions</h2><p class="visually-hidden">Press Escape to close this dialogue</p><div id="status-msg" class="status" style="display:none" role="status" aria-live="polite"></div><button id="dl-clean" type="button" aria-label="Download clean text - continuous text, no timestamps">Clean Text<span class="btn-desc">Continuous text, no timestamps</span></button><button id="dl-full" type="button" aria-label="Download text with line breaks - original formatting preserved">Text with Line Breaks<span class="btn-desc">Original formatting preserved</span></button><button id="dl-basic" type="button" aria-label="Download captions with timestamps - standard caption file format">Captions with Timestamps<span class="btn-desc">Standard caption file format</span></button><button class="close-btn" id="close-dl" type="button" aria-label="Close dialogue">Close</button>';
+  b.appendChild(m);
+  const u = new URLSearchParams(window.location.search), vid = u.get('id');
+  if (!vid) { alert('Could not find video ID. Please ensure you are on a Panopto video page.'); m.remove(); if (previousFocus) previousFocus.focus(); return; }
+  const focusableEls = m.querySelectorAll('button'), firstFocusable = focusableEls[0], lastFocusable = focusableEls[focusableEls.length - 1];
+  const trapFocus = (e) => { if (e.key === 'Tab') { if (e.shiftKey) { if (d.activeElement === firstFocusable) { e.preventDefault(); lastFocusable.focus(); } } else { if (d.activeElement === lastFocusable) { e.preventDefault(); firstFocusable.focus(); } } } };
+  const handleEscape = (e) => { if (e.key === 'Escape') { closeDialog(); } };
+  const closeDialog = () => { m.removeEventListener('keydown', trapFocus); d.removeEventListener('keydown', handleEscape); m.remove(); if (previousFocus) previousFocus.focus(); };
+  const host = window.location.host;
+  const basicUrl = 'https://' + host + '/Panopto/Pages/Transcription/GenerateSRT.ashx?id=' + vid + '&language=1';
+  const fullUrl = basicUrl + '&full=true';
+  const statusEl = d.getElementById('status-msg');
+  const getVideoTitle = () => { const t = d.querySelector('#primaryVideoName, .video-title, h1'); return t ? t.textContent.trim().replace(/[^a-z0-9]/gi, '_').substring(0, 50) : 'panopto_captions'; };
+  const showStatus = (msg, isError) => { statusEl.textContent = msg; statusEl.style.display = 'block'; statusEl.style.background = isError ? '#fee' : '#f0f0f0'; statusEl.style.color = isError ? '#c00' : '#333'; };
+  const cleanTranscript = (text) => { const lines = text.split('\\n'); let cleanedText = ''; let firstLine = true; for (let line of lines) { line = line.trim(); if (!line) continue; if (/^\\d+$/.test(line)) continue; if (/^\\d{2}:\\d{2}:\\d{2}/.test(line)) continue; if (line.startsWith('[') && line.includes('transcript')) { cleanedText += line + '\\n'; continue; } if (line) { if (!firstLine && !cleanedText.endsWith('\\n')) cleanedText += ' '; cleanedText += line; firstLine = false; } } return cleanedText.trim(); };
+  const downloadFile = async (url, filename, shouldClean) => { const btns = m.querySelectorAll('button'); btns.forEach(btn => btn.disabled = true); showStatus('Downloading captions...'); try { const resp = await fetch(url); if (!resp.ok) throw new Error('Download failed'); let text = await resp.text(); if (shouldClean) text = cleanTranscript(text); const blob = new Blob([text], { type: 'text/plain' }), link = d.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.style.display = 'none'; b.appendChild(link); link.click(); b.removeChild(link); URL.revokeObjectURL(link.href); showStatus('Download complete! Check your downloads folder.'); setTimeout(closeDialog, 2000); } catch (err) { showStatus('Error: Unable to download captions. You may not have permission.', true); } finally { btns.forEach(btn => btn.disabled = false); } };
+  const videoTitle = getVideoTitle();
+  m.addEventListener('keydown', trapFocus);
+  d.addEventListener('keydown', handleEscape);
+  d.getElementById('dl-clean').onclick = () => downloadFile(fullUrl, videoTitle + '_clean.txt', true);
+  d.getElementById('dl-full').onclick = () => downloadFile(fullUrl, videoTitle + '_transcript.txt', false);
+  d.getElementById('dl-basic').onclick = () => downloadFile(basicUrl, videoTitle + '_captions.srt', false);
+  d.getElementById('close-dl').onclick = closeDialog;
+  firstFocusable.focus();
+})();`;
+
+document.getElementById('copy-console-code').onclick = function() {
+    const button = this;
+    const originalText = button.textContent;
+    
+    navigator.clipboard.writeText(consoleCode).then(() => {
+        // Success feedback
+        button.textContent = '✓ Copied!';
+        button.classList.add('copied');
+        button.setAttribute('aria-label', 'Code copied to clipboard');
+        
+        // Reset after 2 seconds
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('copied');
+            button.setAttribute('aria-label', 'Copy console code to clipboard');
+        }, 2000);
+    }).catch(err => {
+        // Error feedback
+        button.textContent = '✗ Copy failed';
+        console.error('Failed to copy:', err);
+        
+        // Reset after 2 seconds
+        setTimeout(() => {
+            button.textContent = originalText;
+        }, 2000);
+    });
+};
+</script>
 </article>
 			      <div id="panel">
          <button class="panelButton" onclick="topFunction()" id="myBtn">
