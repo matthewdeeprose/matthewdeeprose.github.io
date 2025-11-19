@@ -151,35 +151,6 @@
         <a class="bookmarklet" href="" id="bookmarklet-link">panoptoText</a>
     </p>
     
-    <h2>Why This Tool is Useful</h2>
-    <p>Students often need access to video transcripts for various accessibility and learning purposes, but downloading captions from Panopto typically requires instructor permissions or navigating through multiple settings menus. This creates barriers for students who:</p>
-    <ul>
-        <li>Want to process transcripts with AI tools to create structured notes with headings and lists</li>
-        <li>Need plain text versions for copying and pasting into documents</li>
-        <li>Prefer reading transcripts rather than watching videos</li>
-        <li>Require captions files for personal video editing or archival purposes</li>
-        <li>Have limited time and need to quickly search through transcript content</li>
-    </ul>
-    <p>This bookmarklet addresses these challenges by providing immediate, one-click access to captions in multiple formats, directly from the video viewing page without requiring special permissions or technical knowledge.</p>
-    
-    <h2>Top Tips for Usage</h2>
-    <ol class="tips">
-        <li>Use the <strong>Clean Text</strong> option when you plan to paste the transcript into ChatGPT, Claude, or other AI tools to reformat it with proper headings and structure.</li>
-        <li>Choose <strong>Text with Line Breaks</strong> if you want to preserve the original caption timing structure whilst removing timestamps.</li>
-        <li>Select <strong>Captions with Timestamps</strong> (SRT format) if you need the file for video editing software or caption viewers.</li>
-        <li>The downloaded files are automatically named using the video title, making them easy to identify in your downloads folder.</li>
-        <li>You can press <kbd>Escape</kbd> to close the dialogue at any time, and keyboard navigation with <kbd>Tab</kbd> is fully supported.</li>
-    </ol>
-    
-    <h2>What This Tool Won't Do</h2>
-    <ol>
-        <li>It cannot download captions from videos that don't have captions enabled or published.</li>
-        <li>It will not work on Panopto videos where you don't have viewing permissions.</li>
-        <li>It cannot download the actual video file itself, only the text captions and transcripts.</li>
-        <li>It will not automatically format or improve the quality of auto-generated captions.</li>
-        <li>It cannot create captions for videos that don't already have them.</li>
-    </ol>
-	
 	<h2>Alternative: Console Method</h2>
 <p>If you prefer not to use a bookmarklet, you can run the code directly in your browser's developer console:</p>
 <ol>
@@ -521,7 +492,7 @@
 })();</code></pre>
 </details>
 
-<h3>How to create a more readable transcript from the clean text you download</h3>
+<h2>How to create a more readable transcript from the clean text you download</h2>
 <p>To make a better formatted transcript with headings, paragraphs, bullet points and so on, use the below prompt with <a href="https://m365.cloud.microsoft/chat/?auth=2">Copilot</a> or a similar generative AI tool and give it the transcript you downloaded.</p>
           <blockquote class="prompt">
                 <p>Instructions:</p>
@@ -534,6 +505,37 @@
     <p>Transcript:</p>
     <p>[Insert your transcript here or attach it]</p>
     </blockquote>
+
+    
+    <h2>Why This Tool is Useful</h2>
+    <p>Students often need access to video transcripts for various accessibility and learning purposes, but downloading captions from Panopto typically requires instructor permissions or navigating through multiple settings menus. This creates barriers for students who:</p>
+    <ul>
+        <li>Want to process transcripts with AI tools to create structured notes with headings and lists</li>
+        <li>Need plain text versions for copying and pasting into documents</li>
+        <li>Prefer reading transcripts rather than watching videos</li>
+        <li>Require captions files for personal video editing or archival purposes</li>
+        <li>Have limited time and need to quickly search through transcript content</li>
+    </ul>
+    <p>This bookmarklet addresses these challenges by providing immediate, one-click access to captions in multiple formats, directly from the video viewing page without requiring special permissions or technical knowledge.</p>
+    
+    <h2>Top Tips for Usage</h2>
+    <ol class="tips">
+        <li>Use the <strong>Clean Text</strong> option when you plan to paste the transcript into ChatGPT, Claude, or other AI tools to reformat it with proper headings and structure.</li>
+        <li>Choose <strong>Text with Line Breaks</strong> if you want to preserve the original caption timing structure whilst removing timestamps.</li>
+        <li>Select <strong>Captions with Timestamps</strong> (SRT format) if you need the file for video editing software or caption viewers.</li>
+        <li>The downloaded files are automatically named using the video title, making them easy to identify in your downloads folder.</li>
+        <li>You can press <kbd>Escape</kbd> to close the dialogue at any time, and keyboard navigation with <kbd>Tab</kbd> is fully supported.</li>
+    </ol>
+    
+    <h2>What This Tool Won't Do</h2>
+    <ol>
+        <li>It cannot download captions from videos that don't have captions enabled or published.</li>
+        <li>It will not work on Panopto videos where you don't have viewing permissions.</li>
+        <li>It cannot download the actual video file itself, only the text captions and transcripts.</li>
+        <li>It will not automatically format or improve the quality of auto-generated captions.</li>
+        <li>It cannot create captions for videos that don't already have them.</li>
+    </ol>
+	
 
 <script>
     // Store the raw JavaScript code for console use
