@@ -28328,6 +28328,692 @@ modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
     errorMessage: null,
   },
 });
+// Add this GPT-5.1 Chat model registration
+modelRegistry.registerModel("openai/gpt-5.1-chat", {
+  provider: "openai",
+  name: "GPT-5.1 Chat",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "Fast, lightweight member of the GPT-5.1 family optimised for low-latency chat whilst retaining strong general intelligence. Features adaptive reasoning that selectively engages deeper thinking for complex queries, improving accuracy on mathematics, coding, and multi-step tasks without compromising conversational responsiveness. Designed for high-throughput, interactive workloads where consistency and speed are prioritised.",
+  costs: {
+    input: 1.25, // Per million tokens
+    output: 10.00, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "multilingual"
+  ],
+  maxContext: 128000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced general-purpose model optimised for interactive applications",
+    releaseDate: "2025-11-13",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "instruction-tuned",
+      specialFeatures: ["adaptive-reasoning", "low-latency-optimised", "structured-outputs"]
+    },
+    policyLinks: {
+      privacyPolicy: "https://openai.com/privacy/",
+      acceptableUse: "https://openai.com/policies/usage-policies/",
+      termsOfService: "https://openai.com/terms/",
+      lastUpdated: "2025-11-13",
+    },
+    trainingData: {
+      cutoffDate: "2024-10",
+      sources: ["web-crawl", "curated-datasets", "code-repositories"],
+      specialisedDomains: ["mathematics", "coding", "reasoning-tasks"]
+    },
+    bestFor: [
+      "interactive chat applications",
+      "low-latency conversations", 
+      "mathematical problem solving",
+      "code generation and debugging",
+      "multi-step reasoning tasks",
+      "high-throughput workloads"
+    ],
+    domainExpertise: {
+      mathematics: 9,
+      coding: 9,
+      reasoning: 9,
+      conversation: 10,
+      responsiveness: 10
+    },
+    accessibility: {
+      responseLatency: "optimised",
+      consistencyRating: "high"
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "structured_outputs",
+      "response_format", 
+      "seed",
+      "max_tokens",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "logit_bias",
+      "logprobs",
+      "top_logprobs",
+      "tool_choice",
+      "tools",
+      "system-prompt"
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["structured-outputs", "tool-calling", "adaptive-reasoning", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "interactive-applications",
+      "real-time-conversations",
+      "mathematical-problem-solving",
+      "coding-assistance",
+      "multi-step-reasoning"
+    ],
+    warnings: [
+      "High output token costs may impact accessibility for extended conversations",
+      "Adaptive reasoning may introduce slight latency variation for complex queries"
+    ],
+    ariaLabels: {
+      modelSelect: "GPT-5.1 Chat - Fast conversational model with 128K context optimised for interactive applications",
+      parameterSection: "Parameter controls for GPT-5.1 Chat model",
+      statusMessages: {
+        processing: "Processing request with GPT-5.1 Chat adaptive reasoning",
+        complete: "Response ready from GPT-5.1 Chat",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry into model-definitions.js
+
+modelRegistry.registerModel("openai/gpt-5.1", {
+  provider: "openai",
+  name: "GPT-5.1",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "OpenAI's latest frontier-grade model offering enhanced general-purpose reasoning, adaptive computation allocation, and improved instruction adherence. Features refined conversational alignment with clearer explanations, reduced jargon, and consistent performance gains across mathematical, coding, and structured analysis workloads. Optimised for both simple queries and complex multi-step problems with superior tool-use reliability.",
+  costs: {
+    input: 1.25, // Per million tokens
+    output: 10.00, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "reasoning",
+    "code",
+    "mathematics",
+    "tool_calling",
+    "web_search",
+    "structured_outputs",
+  ],
+  maxContext: 400000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced general-purpose reasoning with adaptive computation",
+    releaseDate: "2025-11-13",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "instruction-tuned",
+      adaptiveReasoning: true,
+      structuredOutputs: true,
+    },
+    policyLinks: {
+      privacyPolicy: "https://openai.com/privacy",
+      acceptableUse: "https://openai.com/usage-policies",
+      termsOfService: "https://openai.com/terms",
+      lastUpdated: "2025-11-13",
+    },
+    bestFor: [
+      "complex reasoning tasks",
+      "mathematical problem solving", 
+      "coding assistance",
+      "structured analysis",
+      "long-form content generation",
+      "tool-assisted workflows",
+      "technical explanations",
+    ],
+    domainExpertise: {
+      mathematics: 9,
+      coding: 9,
+      reasoning: 10,
+      analysis: 9,
+      conversation: 9,
+    },
+    accessibility: {
+      reducedJargon: true,
+      clearerExplanations: true,
+      adaptiveComplexity: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning", 
+      "structured_outputs",
+      "response_format",
+      "seed",
+      "max_tokens",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "logit_bias",
+      "logprobs",
+      "top_logprobs",
+      "tools",
+      "tool_choice",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["adaptive_reasoning", "structured_outputs", "tool_calling", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "technical-explanations",
+      "step-by-step-reasoning", 
+      "adaptive-complexity-responses",
+      "tool-assisted-workflows",
+    ],
+    warnings: [
+      "High computational cost for complex reasoning tasks",
+      "May provide extensive detail that could overwhelm users seeking brief answers",
+    ],
+    ariaLabels: {
+      modelSelect: "GPT-5.1 - Advanced reasoning model with 400,000 token context",
+      parameterSection: "Parameter controls for GPT-5.1 reasoning model",
+      statusMessages: {
+        processing: "Processing request with GPT-5.1 adaptive reasoning",
+        complete: "Response ready from GPT-5.1 with structured analysis",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+
+// xAI Grok 4.1 Fast - Free tier agentic tool calling model
+modelRegistry.registerModel("x-ai/grok-4.1-fast", {
+  provider: "xAI",
+  name: "Grok 4.1 Fast",
+  category: "FreeTier",
+  disabled: false,
+  description: "xAI's best agentic tool calling model optimised for real-world applications including customer support and deep research. Features a massive 2M context window with optional reasoning capabilities that can be enabled or disabled via API parameters.",
+  costs: {
+    input: 0.00, // Per million tokens
+    output: 0.00, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "tool_calling",
+    "reasoning",
+    "multilingual",
+  ],
+  maxContext: 2000000, // 2M context window
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct", // Similar capability free alternative
+  isFree: true,
+  metadata: {
+    categoryDescription: "Free tier model with advanced agentic capabilities",
+    releaseDate: "2025-11-19",
+    modelArchitecture: {
+      parameters: "Unknown", 
+      type: "instruction-tuned",
+      specialFeatures: ["agentic_reasoning", "tool_calling", "large_context", "configurable_reasoning"],
+    },
+    policyLinks: {
+      privacyPolicy: "https://x.ai/privacy",
+      acceptableUse: "", 
+      termsOfService: "https://x.ai/terms", 
+      lastUpdated: "2025-11-19",
+    },
+    domainExpertise: {
+      customerSupport: 9,
+      research: 9,
+      toolCalling: 10,
+      reasoning: 9,
+    },
+    bestFor: [
+      "customer support automation",
+      "deep research tasks",
+      "agentic workflows",
+      "tool calling applications",
+      "long document analysis",
+      "multi-step reasoning",
+    ],
+    accessibility: {
+      screenReaderOptimised: true,
+      keyboardNavigation: true,
+      highContrast: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning", 
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "seed",
+      "logprobs",
+      "top_logprobs",
+      "response_format",
+      "tools",
+      "tool_choice",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["agentic_reasoning", "configurable_reasoning", "advanced_tool_calling", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "customer-support",
+      "research-tasks", 
+      "tool-calling",
+      "long-context-analysis",
+      "agentic-workflows",
+    ],
+    warnings: [
+      "Reasoning mode may increase response time significantly",
+      "Large context window may impact processing speed for screen readers",
+      "Tool calling responses may require additional navigation considerations",
+    ],
+    ariaLabels: {
+      modelSelect: "Grok 4.1 Fast - Free agentic tool calling model with 2M context window",
+      parameterSection: "Parameter controls for Grok 4.1 Fast including reasoning toggle",
+      statusMessages: {
+        processing: "Processing agentic request with Grok 4.1 Fast",
+        complete: "Agentic response ready from Grok 4.1 Fast",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry for AllenAI Olmo 3 7B Think
+
+modelRegistry.registerModel("allenai/olmo-3-7b-think", {
+  provider: "allenai",
+  name: "Olmo 3 7B Think",
+  category: "Specialized",
+  disabled: false,
+  description: "Research-oriented language model in the Olmo family designed for advanced reasoning and instruction-driven tasks. Excels at multi-step problem solving, logical inference, and maintaining coherent conversational context. Developed by Ai2 under Apache 2.0 licence, supporting transparent experimentation and providing a capable foundation for academic research and practical NLP workflows.",
+  costs: {
+    input: 0.12,
+    output: 0.20,
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "reasoning",
+    "mathematics",
+    "tool_calling"
+  ],
+  maxContext: 65536,
+  fallbackTo: "meta-llama/llama-3.1-8b-instruct",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Research-focused reasoning model with transparent open-source development",
+    releaseDate: "2025-11-21",
+    modelArchitecture: {
+      parameters: "7B",
+      type: "instruction-tuned",
+      license: "Apache 2.0",
+      openSource: true
+    },
+    policyLinks: {
+      privacyPolicy: "https://allenai.org/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://allenai.org/terms", 
+      lastUpdated: "2025-11-21",
+    },
+    bestFor: [
+      "multi-step problem solving",
+      "logical inference", 
+      "academic research",
+      "advanced reasoning tasks",
+      "NLP workflows"
+    ],
+    accessibility: {
+      transparency: "Fully open-source under Apache 2.0",
+      research: "Designed for transparent experimentation"
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning", 
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "frequency_penalty",
+      "min_p",
+      "presence_penalty",
+      "repetition_penalty", 
+      "seed",
+      "stop",
+      "top_k",
+      "logit_bias",
+      "structured_outputs",
+      "response_format",
+      "system-prompt"
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["reasoning", "structured_outputs", "open_source", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "academic-research",
+      "reasoning-tasks", 
+      "problem-solving",
+      "research-experimentation"
+    ],
+    warnings: [
+      "Research model may require specific prompting techniques for optimal reasoning performance",
+      "Open-source model may have different safety considerations compared to commercial models"
+    ],
+    ariaLabels: {
+      modelSelect: "Olmo 3 7B Think - Research-oriented reasoning model with 65,536 token context",
+      parameterSection: "Parameter controls for Olmo 3 7B Think reasoning model",
+      statusMessages: {
+        processing: "Processing request with Olmo 3 7B Think reasoning model",
+        complete: "Response ready from Olmo 3 7B Think reasoning model",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert in model-definitions.js under GeneralPurpose category
+
+modelRegistry.registerModel("allenai/olmo-3-7b-instruct", {
+  provider: "allenai",
+  name: "Olmo 3 7B Instruct",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "A supervised instruction-fine-tuned variant optimised for instruction-following, question-answering, and natural conversational dialogue. Developed by AI2 with an open training pipeline, it delivers strong performance across everyday NLP tasks whilst remaining accessible and easy to integrate. Built under Apache 2.0 licence for transparent, community-friendly applications.",
+  costs: {
+    input: 0.10, // Per million tokens
+    output: 0.20, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "reasoning",
+    "tool_calling",
+    "multilingual",
+  ],
+  maxContext: 65536,
+  fallbackTo: "meta-llama/llama-3.1-8b-instruct",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Versatile instruction-tuned model for everyday NLP tasks",
+    releaseDate: "2025-11-21",
+    modelArchitecture: {
+      parameters: "7B",
+      type: "instruction-tuned",
+      license: "Apache 2.0",
+      trainingApproach: "supervised instruction fine-tuning",
+    },
+    policyLinks: {
+      privacyPolicy: "https://allenai.org/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://allenai.org/terms",
+      lastUpdated: "2025-11-21",
+    },
+    trainingData: {
+      sources: ["high-quality instruction datasets"],
+      approach: "open training pipeline",
+      transparency: "fully documented",
+    },
+    bestFor: [
+      "instruction-following tasks",
+      "question-answering systems", 
+      "conversational dialogue",
+      "everyday NLP applications",
+      "community-driven projects",
+    ],
+    domainExpertise: {
+      "instruction_following": 8,
+      "conversation": 7,
+      "general_knowledge": 7,
+      "accessibility": 8,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature", 
+      "top_p",
+      "frequency_penalty",
+      "min_p",
+      "presence_penalty",
+      "repetition_penalty", 
+      "seed",
+      "stop",
+      "top_k",
+      "logit_bias",
+      "tools",
+      "tool_choice",
+      "structured_outputs",
+      "response_format",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["tool_calling", "structured_outputs", "instruction_following", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "instruction-following-tasks",
+      "conversational-interfaces",
+      "educational-applications", 
+      "community-projects",
+    ],
+    warnings: [
+      "7B parameter model may have limitations with highly complex reasoning tasks",
+      "Performance may vary on specialised domain knowledge outside training data",
+    ],
+    ariaLabels: {
+      modelSelect: "Olmo 3 7B Instruct - Open-source instruction-tuned model with 65K context",
+      parameterSection: "Parameter controls for Olmo 3 7B Instruct model",
+      statusMessages: {
+        processing: "Processing request with Olmo 3 7B Instruct",
+        complete: "Response ready from Olmo 3 7B Instruct",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Add this model registration entry to model-definitions.js
+
+modelRegistry.registerModel("allenai/olmo-3-32b-think", {
+  provider: "allenai",
+  name: "Olmo 3 32B Think",
+  category: "Specialized",
+  disabled: false,
+  description: "A specialised 32-billion-parameter model purpose-built for deep reasoning, complex logic chains, and advanced instruction-following scenarios. Developed by Ai2 under Apache 2.0 licence, offering full transparency across weights, code, and training methodology with strong performance on demanding evaluation tasks.",
+  costs: {
+    input: 0.20, // Per million tokens
+    output: 0.35, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "reasoning",
+    "mathematics",
+    "multilingual",
+    "tool_calling"
+  ],
+  maxContext: 65536,
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced reasoning and logic-focused model",
+    releaseDate: "2024-11-21",
+    modelArchitecture: {
+      parameters: "32B",
+      type: "instruction-tuned",
+      license: "Apache 2.0",
+      specialization: "reasoning-optimised",
+      transparency: "full-weights-and-training-data"
+    },
+    policyLinks: {
+      privacyPolicy: "https://allenai.org/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://allenai.org/terms",
+      lastUpdated: "2024-11-21",
+    },
+    trainingData: {
+      transparency: "full",
+      openSource: true,
+      license: "Apache 2.0"
+    },
+    domainExpertise: {
+      reasoning: 9,
+      logic: 9,
+      instruction_following: 8,
+      conversation: 7,
+      mathematics: 8
+    },
+    bestFor: [
+      "deep reasoning tasks",
+      "complex logic chains",
+      "advanced instruction following",
+      "demanding evaluation tasks",
+      "nuanced conversational reasoning",
+      "transparent ai research"
+    ],
+    accessibility: {
+      openSource: true,
+      transparency: "full methodology available"
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "frequency_penalty",
+      "min_p",
+      "presence_penalty",
+      "repetition_penalty",
+      "seed",
+      "stop",
+      "top_k",
+      "logit_bias",
+      "structured_outputs",
+      "response_format",
+      "system-prompt"
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["reasoning-chains", "structured-outputs", "logic-analysis", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "academic-research",
+      "complex-problem-solving",
+      "logical-reasoning-tasks",
+      "transparent-ai-applications"
+    ],
+    warnings: [
+      "Optimised for reasoning tasks - may be slower for simple queries",
+      "32B parameter size requires consideration for response time expectations"
+    ],
+    ariaLabels: {
+      modelSelect: "Olmo 3 32B Think - Specialised reasoning model with 65,536 token context",
+      parameterSection: "Parameter controls for Olmo 3 32B Think reasoning model",
+      statusMessages: {
+        processing: "Processing reasoning request with Olmo 3 32B Think",
+        complete: "Reasoning response ready from Olmo 3 32B Think",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;
