@@ -1,0 +1,103 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "24 November 2025",
+  "toolName": "Image Describer",
+  "toolDescription": "Generate accessible alt text descriptions for images using AI.",
+
+  "audienceLevels": [
+    { "value": "general", "label": "General Audience", "promptModifier": "" },
+    {
+      "value": "ug1",
+      "label": "Undergraduate Year 1",
+      "promptModifier": "The audience is first-year undergraduate students who may be new to this subject."
+    },
+    {
+      "value": "ug2",
+      "label": "Undergraduate Year 2",
+      "promptModifier": "The audience is second-year undergraduate students with foundational knowledge."
+    },
+    {
+      "value": "ug3",
+      "label": "Undergraduate Year 3",
+      "promptModifier": "The audience is third-year undergraduate students with intermediate knowledge."
+    },
+    {
+      "value": "ug4",
+      "label": "Undergraduate Year 4",
+      "promptModifier": "The audience is final-year undergraduate students with advanced knowledge."
+    },
+    {
+      "value": "pg",
+      "label": "Postgraduate",
+      "promptModifier": "The audience is postgraduate students with specialist knowledge in the field."
+    },
+    {
+      "value": "staff",
+      "label": "Staff / Academic",
+      "promptModifier": "The audience is academic staff and researchers with expert knowledge."
+    }
+  ],
+
+  "descriptionStyles": [
+    {
+      "value": "brief",
+      "label": "Brief",
+      "hint": "Concise, 1-2 sentences",
+      "default": false,
+      "promptModifier": "For the Long Description section: provide a BRIEF summary of two to three sentences total (maximum 60 words). Within Visual Content: describe only the most essential visual elements in one sentence. Within Educational Significance: state the primary learning purpose in one sentence. Omit fine architectural details, decorative elements, and extended thematic analysis. Prioritise immediate clarity and conciseness."
+    },
+    {
+      "value": "detailed",
+      "label": "Detailed",
+      "hint": "Comprehensive description",
+      "default": true,
+      "promptModifier": "For the Long Description section: provide COMPREHENSIVE coverage using clear structure. Within Visual Content: systematically describe overall layout, key components and relationships, colours and patterns (considering accessibility for colour-blind users), and any text or labels. Within Educational Significance: explain connections to stated learning objectives, key concepts illustrated, and how this particular visualisation aids understanding. Use clear paragraph breaks and maintain logical organisation throughout."
+    },
+    {
+      "value": "technical",
+      "label": "Technical",
+      "hint": "For technical/scientific images",
+      "default": false,
+      "promptModifier": "For the Long Description section: use appropriate academic and discipline-specific terminology throughout. Assume intermediate-to-advanced knowledge in the stated subject area. In Visual Content: employ precise technical terms relevant to the discipline (such as anatomical terminology for biology, chemical notation for chemistry, or architectural vocabulary for built environment studies). In Educational Significance: use analytical language and reference relevant theoretical frameworks or methodologies. Balance technical precision with the accessibility principles outlined in the writing guide."
+    }
+  ],
+
+  "checkboxOptions": [
+    {
+      "id": "includeColours",
+      "label": "Include colour descriptions",
+      "default": true,
+      "promptModifier": "Include descriptions of colours where they convey meaning or aid understanding."
+    },
+    {
+      "id": "includeSpatial",
+      "label": "Include spatial relationships",
+      "default": false,
+      "promptModifier": "Describe spatial relationships between elements (e.g., 'to the left of', 'above', 'surrounding')."
+    },
+    {
+      "id": "includeText",
+      "label": "Transcribe any visible text",
+      "default": false,
+      "promptModifier": "Transcribe any visible text in the image accurately."
+    },
+    {
+      "id": "includeEmotional",
+      "label": "Include emotional tone",
+      "default": false,
+      "promptModifier": "Describe the emotional tone or mood conveyed by the image where relevant."
+    },
+    {
+      "id": "focusData",
+      "label": "Focus on data/numbers",
+      "default": false,
+      "promptModifier": "Pay particular attention to any data, statistics, or numerical information visible in the image."
+    }
+  ],
+
+  "fileConstraints": {
+    "acceptedTypes": ["image/jpeg", "image/png", "image/webp"],
+    "maxSizeMB": 10,
+    "acceptAttribute": "image/jpeg,image/png,image/webp"
+  }
+}

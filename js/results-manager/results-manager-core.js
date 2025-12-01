@@ -546,6 +546,20 @@ class ResultsManagerCore {
         logDebug(`🔧 Chart ${index} processing completed`, { operationId });
       });
 
+      // ✅ Initialize any pending charts that need Chart.js instances created
+      if (
+        this.bridgeProcessingRef &&
+        typeof this.bridgeProcessingRef.initializePendingCharts === "function"
+      ) {
+        logDebug(`🔧 Initializing pending charts via bridge`, { operationId });
+        this.bridgeProcessingRef.initializePendingCharts(container);
+      } else {
+        logDebug(
+          `🔧 Bridge processing reference not available for chart initialization`,
+          { operationId }
+        );
+      }
+
       // Update metrics
       this.domOperationMetrics.chartProcessingCount += chartContainers.length;
 

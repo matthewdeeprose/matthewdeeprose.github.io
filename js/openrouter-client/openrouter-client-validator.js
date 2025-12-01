@@ -345,7 +345,7 @@ export class OpenRouterValidator {
       const { validatedOptions, parameterWarnings, supportedParams } =
         this.validateModelParameters(options, options.model);
 
-      // Build request body with only supported parameters
+// Build request body with only supported parameters
       const requestBody = {
         model:
           options.model ||
@@ -376,6 +376,16 @@ export class OpenRouterValidator {
       }
       if (supportedParams.includes("presence_penalty")) {
         requestBody.presence_penalty = presence_penalty;
+      }
+
+      // Add plugins parameter if provided (for PDF engine selection, file handling, etc.)
+      // This is critical for file uploads with streaming
+      if (options.plugins && Array.isArray(options.plugins)) {
+        requestBody.plugins = options.plugins;
+        openRouterUtils.debug("Added plugins parameter to request body", {
+          pluginCount: options.plugins.length,
+          plugins: options.plugins,
+        });
       }
 
       return {

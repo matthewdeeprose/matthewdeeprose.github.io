@@ -441,7 +441,8 @@ export class DebugManager {
     // Add event listeners with null checks and create copy buttons
     if (downloadRawBtn) {
       if (!downloadRawBtn._hasClickListener) {
-        downloadRawBtn.addEventListener("click", () => {
+        downloadRawBtn.addEventListener("click", (event) => {
+          event.stopPropagation(); // ✅ Prevent bubbling to parent handlers
           this.downloadContent("raw-response", "markdown");
         });
         downloadRawBtn._hasClickListener = true;
@@ -454,7 +455,8 @@ export class DebugManager {
 
     if (downloadFormattedBtn) {
       if (!downloadFormattedBtn._hasClickListener) {
-        downloadFormattedBtn.addEventListener("click", () => {
+        downloadFormattedBtn.addEventListener("click", (event) => {
+          event.stopPropagation(); // ✅ Prevent bubbling to parent handlers
           this.downloadContent("formatted-response", "html");
         });
         downloadFormattedBtn._hasClickListener = true;
@@ -471,7 +473,8 @@ export class DebugManager {
 
     if (downloadSemanticBtn) {
       if (!downloadSemanticBtn._hasClickListener) {
-        downloadSemanticBtn.addEventListener("click", () => {
+        downloadSemanticBtn.addEventListener("click", (event) => {
+          event.stopPropagation(); // ✅ Prevent bubbling to parent handlers
           this.downloadContent("semantic-analysis", "json");
         });
         downloadSemanticBtn._hasClickListener = true;

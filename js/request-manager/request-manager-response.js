@@ -27,6 +27,50 @@ export class RequestManagerResponse {
   }
 
   /**
+   * Sanitize request body for display to prevent syntax highlighter crashes
+   * @param {Object} requestBody - Request body to sanitize
+   * @returns {Object} Sanitized request body
+   */
+  sanitizeRequestForDisplay(requestBody) {
+    try {
+      const clone = JSON.parse(JSON.stringify(requestBody));
+
+      if (clone.messages && Array.isArray(clone.messages)) {
+        clone.messages = clone.messages.map((msg) => {
+          if (msg.content && Array.isArray(msg.content)) {
+            return {
+              ...msg,
+              content: msg.content.map((item) => {
+                // Truncate base64 image data to prevent display crashes
+                if (item.type === "image_url" && item.image_url?.url) {
+                  const url = item.image_url.url;
+                  if (url.startsWith("data:") && url.length > 200) {
+                    const [header] = url.split(",");
+                    const dataLength = url.length - header.length - 1;
+                    return {
+                      ...item,
+                      image_url: {
+                        url: `${header},<BASE64_TRUNCATED: ${dataLength.toLocaleString()} chars>`,
+                      },
+                    };
+                  }
+                }
+                return item;
+              }),
+            };
+          }
+          return msg;
+        });
+      }
+
+      return clone;
+    } catch (e) {
+      console.warn("Failed to sanitize request for display:", e);
+      return requestBody; // Return original if sanitization fails
+    }
+  }
+
+  /**
    * Send request to API
    * @param {Array} request - Prepared request messages
    * @param {Object} parameters - Request parameters
@@ -133,7 +177,12 @@ export class RequestManagerResponse {
         };
 
         console.log("Updating request code display");
-        openRouterClient.updateCodeDisplay("original-request", requestBody);
+        // Sanitize request to prevent Prism.js crash with large base64 data
+        const sanitizedRequest = this.sanitizeRequestForDisplay(requestBody);
+        openRouterClient.updateCodeDisplay(
+          "original-request",
+          sanitizedRequest
+        );
       }
 
       // Create a response object for display

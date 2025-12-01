@@ -679,6 +679,7 @@ class MathPixStrokesAPIClient {
     // Extract all formats from data array
     const htmlValue = this.extractDataValue(apiResponse.data, "html");
     const tsvValue = this.extractDataValue(apiResponse.data, "tsv");
+    const markdownValue = this.extractDataValue(apiResponse.data, "markdown"); // ✅ Extract markdown from API
 
     // Detect if response contains table data
     const containsTable = !!(htmlValue || tsvValue);
@@ -695,6 +696,7 @@ class MathPixStrokesAPIClient {
       // Extract additional formats from data array
       asciimath: this.extractDataValue(apiResponse.data, "asciimath"),
       mathml: this.extractDataValue(apiResponse.data, "mathml"),
+      markdown: markdownValue || "", // ✅ Markdown format from API
 
       // ✅ FIXED: Table formats with correct property names
       // Note: API returns "html" in data array for tables, we store as both html and tableHtml
@@ -719,6 +721,7 @@ class MathPixStrokesAPIClient {
       hasLatex: !!result.latex,
       hasAsciimath: !!result.asciimath,
       hasMathml: !!result.mathml,
+      hasMarkdown: !!result.markdown,
       hasHtml: !!result.html,
       hasTableHtml: !!result.tableHtml,
       hasTsv: !!result.tsv,

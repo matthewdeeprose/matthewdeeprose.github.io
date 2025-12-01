@@ -35,6 +35,7 @@
     <link rel="stylesheet" href="file-upload.css" />
     <link rel="stylesheet" href="error-handler.css" />
     <link rel="stylesheet" href="md-scripts/css/markdown-live-editor.css" />
+    <link rel="stylesheet" href="image-describer/image-describer.css" />
 
     <link
       rel="stylesheet"
@@ -432,6 +433,15 @@
               onclick="showMathPix()"
             />
             <label for="MathPix" class="radio">MathPix</label>
+
+            <input
+              type="radio"
+              id="ImageDescTool"
+              name="presentation"
+              value="Image Describer"
+              onclick="showImageDescTool()"
+            />
+            <label for="ImageDescTool" class="radio">Image Describer</label>
           </fieldset>
         </div>
         <!--  Screen reader announcement area for radio button switching -->
@@ -6212,6 +6222,492 @@ Science,91</pre
           </details>
         </article>
 
+        <!-- Image Describer Tool -->
+        <article
+          id="image-describe-app"
+          class="tool-container"
+          aria-hidden="true"
+          style="display: none"
+        >
+          <h1>Image Describer</h1>
+          <p class="tool-description">
+            Generate accessible alt text descriptions for images using AI.
+          </p>
+
+          <!-- Two-Column Layout Container (Phase 2B.2) -->
+          <div class="imgdesc-layout">
+            <!-- LEFT COLUMN: Upload & Preview -->
+            <div class="imgdesc-input-column">
+              <!-- Section 1: Image Upload -->
+              <section class="imgdesc-section">
+                <h2>Upload Image</h2>
+                <div class="imgdesc-upload-area" id="imgdesc-upload-area">
+                  <label for="imgdesc-file-input" class="imgdesc-upload-label">
+                    <span class="imgdesc-upload-icon" aria-hidden="true"
+                      >📷</span
+                    >
+                    <span class="imgdesc-upload-text"
+                      >Choose an image or drag and drop</span
+                    >
+                    <span class="imgdesc-upload-formats"
+                      >Supports: JPEG, PNG, WebP (max 10MB)</span
+                    >
+                  </label>
+                  <input
+                    type="file"
+                    id="imgdesc-file-input"
+                    accept="image/jpeg,image/png,image/webp"
+                    class="visually-hidden"
+                  />
+                </div>
+                <div
+                  id="imgdesc-preview"
+                  class="imgdesc-preview"
+                  role="region"
+                  aria-live="polite"
+                  aria-label="Image preview"
+                ></div>
+                <button
+                  type="button"
+                  id="imgdesc-clear"
+                  class="secondary-button"
+                  style="display: none"
+                >
+                  <span aria-hidden="true">✕</span> Clear Image
+                </button>
+              </section>
+            </div>
+
+            <!-- RIGHT COLUMN: Config (before) / Output (after) -->
+            <div class="imgdesc-output-column">
+              <!-- Configuration Panel - Hidden during/after generation -->
+              <div id="imgdesc-config-panel" class="imgdesc-config-panel">
+                <!-- Section 2: Context -->
+                <section class="imgdesc-section">
+                  <h2>Add Context</h2>
+
+                  <details class="imgdesc-options-group">
+                    <summary>Educational Context</summary>
+                    <div class="imgdesc-option-content">
+                      <div class="imgdesc-field">
+                        <label for="imgdesc-subject">Subject Area</label>
+                        <input
+                          type="text"
+                          id="imgdesc-subject"
+                          placeholder="e.g., Mathematics, Biology, History"
+                        />
+                      </div>
+
+                      <div class="imgdesc-field">
+                        <label for="imgdesc-topic">Specific Topic</label>
+                        <input
+                          type="text"
+                          id="imgdesc-topic"
+                          placeholder="e.g., Differential equations, Cell division"
+                        />
+                      </div>
+
+                      <div class="imgdesc-field">
+                        <label for="imgdesc-objective"
+                          >Learning Objective</label
+                        >
+                        <textarea
+                          id="imgdesc-objective"
+                          rows="2"
+                          placeholder="What should students understand after engaging with this image?"
+                        ></textarea>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="imgdesc-options-group">
+                    <summary>
+                      Additional Context
+                      <span class="imgdesc-optional">(Optional)</span>
+                    </summary>
+                    <div class="imgdesc-option-content">
+                      <div class="imgdesc-field">
+                        <label for="imgdesc-context">Extra Information</label>
+                        <textarea
+                          id="imgdesc-context"
+                          rows="3"
+                          placeholder="Any other relevant information about how this image is used..."
+                        ></textarea>
+                      </div>
+                    </div>
+                  </details>
+                </section>
+
+                <!-- Section 3: Options -->
+                <section class="imgdesc-section">
+                  <h2>Configure Options</h2>
+
+                  <fieldset class="imgdesc-fieldset">
+                    <legend class="visually-hidden">Description Options</legend>
+
+                    <!-- Description Style - open by default -->
+                    <details class="imgdesc-options-group" open>
+                      <summary>Description Style</summary>
+                      <div class="imgdesc-option-content">
+                        <div
+                          class="imgdesc-radio-group"
+                          role="radiogroup"
+                          aria-label="Description Style"
+                          id="imgdesc-style-options"
+                        >
+                          <!-- Populated from config.json -->
+                        </div>
+                      </div>
+                    </details>
+
+                    <!-- Audience Level - closed by default -->
+                    <details class="imgdesc-options-group">
+                      <summary>Audience Level</summary>
+                      <div class="imgdesc-option-content">
+                        <div class="imgdesc-option-group">
+                          <label
+                            for="imgdesc-audience"
+                            class="imgdesc-option-label"
+                          >
+                            Select audience
+                          </label>
+                          <select id="imgdesc-audience">
+                            <!-- Populated from config.json -->
+                          </select>
+                        </div>
+
+                        <div class="imgdesc-option-group">
+                          <label
+                            for="imgdesc-module"
+                            class="imgdesc-option-label"
+                          >
+                            Module/Course Name
+                            <span class="imgdesc-optional">(Optional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="imgdesc-module"
+                            placeholder="e.g., MATH201 Calculus II"
+                          />
+                        </div>
+                      </div>
+                    </details>
+
+                    <!-- Additional Options - closed by default -->
+                    <details class="imgdesc-options-group">
+                      <summary>Additional Options</summary>
+                      <div class="imgdesc-option-content">
+                        <div
+                          class="imgdesc-option-group imgdesc-checkbox-group"
+                          id="imgdesc-checkbox-options"
+                        >
+                          <!-- Populated from config.json -->
+                        </div>
+                      </div>
+                    </details>
+                  </fieldset>
+                </section>
+              </div>
+
+              <!-- Output Section - Hidden until generation starts -->
+              <section
+                class="imgdesc-section imgdesc-output-section"
+                id="imgdesc-output-section"
+                style="display: none"
+              >
+                <h2>Generated Description</h2>
+
+                <!-- Progress Indicator (Phase 2A) - now inside output section -->
+                <div id="imgdesc-progress" class="imgdesc-progress" hidden>
+                  <div
+                    class="imgdesc-progress-bar"
+                    role="progressbar"
+                    aria-valuenow="0"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-label="Generation progress"
+                  >
+                    <div class="imgdesc-progress-fill"></div>
+                  </div>
+                  <div class="imgdesc-progress-info">
+                    <span
+                      class="imgdesc-progress-stage"
+                      id="imgdesc-progress-stage"
+                      >Preparing...</span
+                    >
+                    <span
+                      class="imgdesc-progress-time"
+                      id="imgdesc-progress-time"
+                      >0s</span
+                    >
+                  </div>
+                  <button
+                    type="button"
+                    class="imgdesc-progress-cancel secondary-button"
+                    id="imgdesc-cancel"
+                  >
+                    <span aria-hidden="true">✕</span> Cancel
+                  </button>
+                </div>
+
+                <!-- Completion Timer (Phase 2A) -->
+                <div
+                  id="imgdesc-completion-time"
+                  class="imgdesc-completion-time"
+                  hidden
+                >
+                  <span aria-hidden="true">⏱️</span>
+                  <span>Completed in </span>
+                  <strong id="imgdesc-final-time">0s</strong>
+                </div>
+
+                <p
+                  id="imgdesc-status"
+                  class="imgdesc-status"
+                  aria-live="polite"
+                ></p>
+
+                <div
+                  id="imgdesc-output"
+                  class="imgdesc-output"
+                  aria-live="polite"
+                ></div>
+                <div class="imgdesc-output-actions">
+                  <!-- Copy options group -->
+                  <div class="imgdesc-button-group imgdesc-copy-buttons">
+                    <span
+                      class="imgdesc-button-group-label"
+                      id="copy-options-label"
+                      >Copy as:</span
+                    >
+                    <button
+                      type="button"
+                      id="imgdesc-copy"
+                      class="secondary-button"
+                      aria-describedby="copy-options-label"
+                    >
+                      <span aria-hidden="true">📋</span> Text
+                    </button>
+                    <button
+                      type="button"
+                      id="imgdesc-copy-formatted"
+                      class="secondary-button"
+                      aria-describedby="copy-options-label"
+                    >
+                      <span aria-hidden="true">📝</span> Formatted
+                    </button>
+                    <button
+                      type="button"
+                      id="imgdesc-copy-html"
+                      class="secondary-button"
+                      aria-describedby="copy-options-label"
+                    >
+                      <span aria-hidden="true">&lt;/&gt;</span> HTML
+                    </button>
+                  </div>
+
+                  <!-- Action buttons group -->
+                  <div class="imgdesc-button-group imgdesc-action-buttons">
+                    <button
+                      type="button"
+                      id="imgdesc-regenerate"
+                      class="secondary-button"
+                    >
+                      <span aria-hidden="true">🔄</span> Regenerate
+                    </button>
+                    <button
+                      type="button"
+                      id="imgdesc-new"
+                      class="primary-button"
+                    >
+                      <span aria-hidden="true">🖼️</span> Describe New Image
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Debug Panel (Phase 2C) - Remove open="open" for production -->
+                <details
+                  class="imgdesc-debug-panel"
+                  id="imgdesc-debug-panel"
+                  open="open"
+                >
+                  <summary>
+                    <span aria-hidden="true">🔧</span> Debug Information
+                  </summary>
+
+                  <div class="imgdesc-debug-content">
+                    <!-- Request Details Section -->
+                    <section class="imgdesc-debug-section">
+                      <h3>Request Details</h3>
+                      <dl class="imgdesc-debug-list">
+                        <dt>Model</dt>
+                        <dd id="imgdesc-debug-model">-</dd>
+
+                        <dt>Temperature</dt>
+                        <dd id="imgdesc-debug-temperature">-</dd>
+
+                        <dt>Max Tokens</dt>
+                        <dd id="imgdesc-debug-max-tokens">-</dd>
+
+                        <dt>System Prompt Length</dt>
+                        <dd id="imgdesc-debug-system-length">-</dd>
+
+                        <dt>User Prompt Length</dt>
+                        <dd id="imgdesc-debug-user-length">-</dd>
+
+                        <dt>Streaming Mode</dt>
+                        <dd id="imgdesc-debug-streaming">-</dd>
+                      </dl>
+                    </section>
+
+                    <!-- File Details Section -->
+                    <section class="imgdesc-debug-section">
+                      <h3>File Details</h3>
+                      <dl class="imgdesc-debug-list">
+                        <dt>Original Filename</dt>
+                        <dd id="imgdesc-debug-filename">-</dd>
+
+                        <dt>Original Size</dt>
+                        <dd id="imgdesc-debug-original-size">-</dd>
+
+                        <dt>Compressed Size</dt>
+                        <dd id="imgdesc-debug-compressed-size">-</dd>
+
+                        <dt>Compression Savings</dt>
+                        <dd id="imgdesc-debug-compression-savings">-</dd>
+
+                        <dt>Format Conversion</dt>
+                        <dd id="imgdesc-debug-format">-</dd>
+
+                        <dt>Original Dimensions</dt>
+                        <dd id="imgdesc-debug-dimensions-original">-</dd>
+
+                        <dt>Compressed Dimensions</dt>
+                        <dd id="imgdesc-debug-dimensions-compressed">-</dd>
+                      </dl>
+                    </section>
+
+                    <!-- Response Details Section -->
+                    <section class="imgdesc-debug-section">
+                      <h3>Response Details</h3>
+                      <dl class="imgdesc-debug-list">
+                        <dt>Prompt Tokens</dt>
+                        <dd id="imgdesc-debug-prompt-tokens">-</dd>
+
+                        <dt>Completion Tokens</dt>
+                        <dd id="imgdesc-debug-completion-tokens">-</dd>
+
+                        <dt>Total Tokens</dt>
+                        <dd id="imgdesc-debug-total-tokens">-</dd>
+
+                        <dt>Processing Time</dt>
+                        <dd id="imgdesc-debug-processing-time">-</dd>
+
+                        <dt>Response Length</dt>
+                        <dd id="imgdesc-debug-response-length">-</dd>
+
+                        <dt>Estimated Cost</dt>
+                        <dd id="imgdesc-debug-cost">-</dd>
+                      </dl>
+                    </section>
+
+                    <!-- Context Applied Section -->
+                    <section class="imgdesc-debug-section">
+                      <h3>Context Applied</h3>
+                      <dl class="imgdesc-debug-list">
+                        <dt>Subject Area</dt>
+                        <dd id="imgdesc-debug-subject">-</dd>
+
+                        <dt>Topic</dt>
+                        <dd id="imgdesc-debug-topic">-</dd>
+
+                        <dt>Learning Objective</dt>
+                        <dd id="imgdesc-debug-objective">-</dd>
+
+                        <dt>Module</dt>
+                        <dd id="imgdesc-debug-module">-</dd>
+
+                        <dt>Description Style</dt>
+                        <dd id="imgdesc-debug-style">-</dd>
+
+                        <dt>Audience Level</dt>
+                        <dd id="imgdesc-debug-audience">-</dd>
+
+                        <dt>Additional Options</dt>
+                        <dd id="imgdesc-debug-checkboxes">-</dd>
+                      </dl>
+                    </section>
+
+                    <!-- Full Prompts Section -->
+                    <section
+                      class="imgdesc-debug-section imgdesc-debug-prompts"
+                    >
+                      <h3>Full Prompts</h3>
+
+                      <details class="imgdesc-debug-prompt-details">
+                        <summary>
+                          System Prompt (<span
+                            id="imgdesc-debug-system-char-count"
+                            >0</span
+                          >
+                          characters)
+                        </summary>
+                        <pre
+                          id="imgdesc-debug-system-prompt"
+                          class="imgdesc-debug-prompt-text"
+                        >
+-</pre
+                        >
+                        <button
+                          type="button"
+                          class="imgdesc-debug-copy-btn"
+                          data-copy-target="imgdesc-debug-system-prompt"
+                        >
+                          <span aria-hidden="true">📋</span> Copy System Prompt
+                        </button>
+                      </details>
+
+                      <details class="imgdesc-debug-prompt-details">
+                        <summary>
+                          User Prompt (<span id="imgdesc-debug-user-char-count"
+                            >0</span
+                          >
+                          characters)
+                        </summary>
+                        <pre
+                          id="imgdesc-debug-user-prompt"
+                          class="imgdesc-debug-prompt-text"
+                        >
+-</pre
+                        >
+                        <button
+                          type="button"
+                          class="imgdesc-debug-copy-btn"
+                          data-copy-target="imgdesc-debug-user-prompt"
+                        >
+                          <span aria-hidden="true">📋</span> Copy User Prompt
+                        </button>
+                      </details>
+                    </section>
+                  </div>
+                </details>
+              </section>
+            </div>
+
+            <!-- Generate Button - Full width below both columns (Phase 2B.2) -->
+            <div class="imgdesc-generate-inline" id="imgdesc-generate-area">
+              <button
+                type="button"
+                id="imgdesc-generate"
+                class="primary-button"
+                disabled
+              >
+                <span aria-hidden="true">✨</span> Generate Description
+              </button>
+            </div>
+          </div>
+        </article>
+
         <div id="panel">
           <button class="panelButton" onclick="topFunction()" id="myBtn">
             <svg
@@ -6448,6 +6944,79 @@ Science,91</pre
 
     <!-- OpenRouter Embed Diagnostics -->
     <script src="openrouter-embed/openrouter-embed-diagnostic.js"></script>
+    <script
+      type="module"
+      src="openrouter-embed/openrouter-embed-progress.js"
+    ></script>
+    <script
+      type="module"
+      src="openrouter-embed/openrouter-embed-config.js"
+    ></script>
+
+    <script
+      type="module"
+      src="openrouter-embed/openrouter-embed-file.js"
+    ></script>
+    <script src="openrouter-embed/openrouter-embed-prompt-loader.js"></script>
+    <script src="openrouter-embed/openrouter-embed-model-selector.js"></script>
+    <script src="openrouter-embed/openrouter-embed-retry.js"></script>
+
+    <script src="openrouter-embed/openrouter-embed-events.js"></script>
+
+    <script src="openrouter-embed/openrouter-embed-postprocessor.js"></script>
+
+    <script src="openrouter-embed/openrouter-embed-throttle.js"></script>
+
+    <script src="openrouter-embed/openrouter-embed-cache.js"></script>
+
+    <script src="openrouter-embed/openrouter-embed-preprocessor.js"></script>
+
+    <script src="openrouter-embed/openrouter-embed-queue.js"></script>
+
+    <script src="openrouter-embed/openrouter-embed-health.js"></script>
+
+    <script
+      type="module"
+      src="openrouter-embed/openrouter-embed-core.js"
+    ></script>
+
+    <script src="js/testing/openrouter-embed-stage1-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage2-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage3-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage4-phase1-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage4-phase2-tests.js"></script>
+    <!-- Stage 5 Phase 1 Tests -->
+    <script src="js/testing/openrouter-embed-stage5-phase1-tests.js"></script>
+    <script src="js/testing/openrouter-embed-progress-phase2-tests.js"></script>
+    <script src="js/testing/openrouter-embed-phase3-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage5-phase4-debug-tests.js"></script>
+
+    <script src="/js/testing/openrouter-embed-prompt-loader-tests.js"></script>
+    <script src="/js/testing/openrouter-embed-clipboard-tests.js"></script>
+    <script src="/js/testing/openrouter-embed-phase4-runner.js"></script>
+    <script src="js/testing/openrouter-embed-phase5-tests.js"></script>
+
+    <script src="js/testing/image-describer-stage1-tests.js"></script>
+    <script src="js/testing/image-describer-stage2-tests.js"></script>
+    <script src="js/testing/image-describer-stage3-tests.js"></script>
+    <script src="js/testing/image-describer-performance-tests.js"></script>
+
+    <script src="js/testing/image-describer-size-tests.js"></script>
+    <script src="js/testing/compression-quality-validation.js"></script>
+    <script src="js/testing/openrouter-embed-stage6-phase1-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage6-phase2-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage6-phase3-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage6-phase4-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage6-phase5-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage6-phase6-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage6-phase7-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage6-phase8-tests.js"></script>
+
+    <!-- Image Describer Prompts (must load before controller) -->
+    <script src="image-describer/prompts/prompt-loader.js"></script>
+
+    <!-- Image Describer Controller -->
+    <script src="image-describer/image-describer-controller.js"></script>
 
     <!-- Initialize the editor -->
     <script>
@@ -7301,6 +7870,262 @@ Science,91</pre
     </script>
     <script>
       /**
+       * Tool Switching System - Configuration-Driven Architecture
+       *
+       * To add a new tool:
+       * 1. Add entry to TOOL_CONFIG below
+       * 2. Add corresponding article element with matching ID
+       * 3. (Optional) Add initialisation function if needed
+       */
+
+      // ============================================================
+      // TOOL CONFIGURATION - Add new tools here
+      // ============================================================
+      const TOOL_CONFIG = {
+        OpenRouter: {
+          articleId: "openrouter-app",
+          displayName: "OpenRouter AI",
+          announceText: "Switched to OpenRouter AI tool",
+          // No special init needed
+          init: null,
+          // Cleanup function to run when LEAVING this tool (optional)
+          cleanup: null,
+        },
+
+        "Markdown Editor": {
+          articleId: "markdown-converter",
+          displayName: "Markdown Editor",
+          announceText: "Switched to Markdown Editor tool",
+          init: async function () {
+            // Restore live editor when switching TO Markdown Editor
+            if (typeof window.markdownEditorRestore === "function") {
+              window.markdownEditorRestore();
+            }
+
+            if (
+              window.MarkdownEditor &&
+              typeof window.MarkdownEditor.init === "function"
+            ) {
+              const success = window.MarkdownEditor.init();
+              if (!success) {
+                window.AppLogging?.logError(
+                  "Markdown Editor initialisation failed"
+                );
+                return false;
+              }
+
+              // Initialize examples loader after editor is ready
+              if (
+                window.MarkdownExamplesLoader &&
+                typeof window.MarkdownExamplesLoader.initialise ===
+                  "function" &&
+                !window.MarkdownExamplesLoader.isInitialised()
+              ) {
+                try {
+                  await window.MarkdownExamplesLoader.initialise();
+                  console.log("Markdown Examples Loader initialised");
+                } catch (error) {
+                  console.warn("Markdown Examples Loader failed:", error);
+                }
+              }
+            }
+            return true;
+          },
+          cleanup: null,
+        },
+
+        "Graph Builder": {
+          articleId: "graph-builder",
+          displayName: "Graph Builder",
+          announceText: "Switched to Graph Builder tool",
+          init: function () {
+            if (
+              window.GraphBuilder &&
+              typeof window.GraphBuilder.init === "function"
+            ) {
+              window.AppLogging?.logDebug("[UI] Initialising Graph Builder...");
+              const success = window.GraphBuilder.init();
+              if (!success) {
+                window.AppLogging?.logError(
+                  "[UI] Graph Builder initialisation failed"
+                );
+                return false;
+              }
+              return true;
+            } else {
+              window.AppLogging?.logError("[UI] GraphBuilder not available");
+              return false;
+            }
+          },
+          cleanup: null,
+        },
+
+        MathPix: {
+          articleId: "mathpix-app",
+          displayName: "MathPix Mathematics OCR",
+          announceText: "Switched to MathPix Mathematics OCR tool",
+          init: async function () {
+            try {
+              // Load MathPix main controller
+              const mathPixModule = await import(
+                "./mathpix-scripts/ui/mathpix-main-controller.js"
+              );
+              const success = mathPixModule.initMathPix();
+
+              if (!success) {
+                console.error("MathPix initialisation failed");
+                return false;
+              }
+
+              console.log("MathPix initialised successfully");
+              window.getMathPixController = mathPixModule.getMathPixController;
+
+              // Phase 3.4: Load PDF preview modules (non-critical)
+              try {
+                const [{ PDFUploadVerification }, { PDFPreviewAccessibility }] =
+                  await Promise.all([
+                    import(
+                      "./mathpix-scripts/pdf-preview/pdf-preview-upload-verification.js"
+                    ),
+                    import(
+                      "./mathpix-scripts/pdf-preview/pdf-preview-accessibility.js"
+                    ),
+                  ]);
+
+                window.PDFUploadVerification = PDFUploadVerification;
+                window.PDFPreviewAccessibility = PDFPreviewAccessibility;
+
+                if (!window.mathpixAccessibility) {
+                  window.mathpixAccessibility = new PDFPreviewAccessibility();
+                  console.log(
+                    "Phase 3.4: PDF preview accessibility system initialised"
+                  );
+                }
+
+                console.log(
+                  "Phase 3.4: PDF preview modules loaded successfully"
+                );
+              } catch (previewError) {
+                console.warn(
+                  "Phase 3.4: Failed to load PDF preview modules (non-critical)",
+                  previewError
+                );
+              }
+
+              return true;
+            } catch (error) {
+              console.error("MathPix initialisation error:", error);
+              return false;
+            }
+          },
+          cleanup: null,
+        },
+        //insert_new_tool_here
+        "Image Describer": {
+          articleId: "image-describe-app",
+          displayName: "Image Describer",
+          announceText: "Switched to Image Describer tool",
+          init: async function () {
+            // Load config and populate form if not already done
+            if (!window.imageDescriberConfigLoaded) {
+              try {
+                const response = await fetch(
+                  "image-describer/image-describer-config.json"
+                );
+                const config = await response.json();
+
+                // Populate description styles
+                const styleContainer = document.getElementById(
+                  "imgdesc-style-options"
+                );
+                if (
+                  styleContainer &&
+                  config.descriptionStyles &&
+                  styleContainer.children.length === 0
+                ) {
+                  config.descriptionStyles.forEach((style) => {
+                    const label = document.createElement("label");
+                    label.className = "imgdesc-radio-label";
+                    label.innerHTML = `
+                      <input type="radio" name="imgdesc-style" value="${
+                        style.value
+                      }" ${style.default ? "checked" : ""}>
+                      <span class="imgdesc-radio-content">
+                        <span class="imgdesc-radio-text">${style.label}</span>
+                        <span class="imgdesc-radio-hint">${style.hint}</span>
+                      </span>
+                    `;
+                    styleContainer.appendChild(label);
+                  });
+                }
+
+                // Populate audience levels
+                const audienceSelect =
+                  document.getElementById("imgdesc-audience");
+                if (
+                  audienceSelect &&
+                  config.audienceLevels &&
+                  audienceSelect.options.length === 0
+                ) {
+                  config.audienceLevels.forEach((level) => {
+                    const option = document.createElement("option");
+                    option.value = level.value;
+                    option.textContent = level.label;
+                    audienceSelect.appendChild(option);
+                  });
+                }
+
+                // Populate checkbox options
+                const checkboxContainer = document.getElementById(
+                  "imgdesc-checkbox-options"
+                );
+                if (
+                  checkboxContainer &&
+                  config.checkboxOptions &&
+                  checkboxContainer.children.length === 0
+                ) {
+                  config.checkboxOptions.forEach((opt) => {
+                    const label = document.createElement("label");
+                    label.className = "imgdesc-checkbox-label";
+                    label.innerHTML = `
+                      <input type="checkbox" id="imgdesc-${opt.id}" ${
+                      opt.default ? "checked" : ""
+                    }>
+                      <span>${opt.label}</span>
+                    `;
+                    checkboxContainer.appendChild(label);
+                  });
+                }
+
+                // Store config for later use
+                window.imageDescriberConfig = config;
+                window.imageDescriberConfigLoaded = true;
+                console.log(
+                  "[ImageDescriber] Config loaded and form populated"
+                );
+
+                // Initialise the controller now that config is ready
+                if (window.initImageDescriber) {
+                  await window.initImageDescriber();
+                }
+              } catch (error) {
+                console.error("[ImageDescriber] Failed to load config:", error);
+              }
+            }
+            return true;
+          },
+          cleanup: null, // No cleanup needed yet
+        },
+      };
+
+      // Track current tool for cleanup purposes
+      let currentTool = null;
+
+      // ============================================================
+      // CORE SWITCHING LOGIC - No modification needed when adding tools
+      // ============================================================
+
+      /**
        * Utility function to hide an article element
        * Uses both display:none and aria-hidden for comprehensive accessibility
        */
@@ -7321,288 +8146,177 @@ Science,91</pre
       }
 
       /**
-       * Get all tool article elements
+       * Get all tool article elements dynamically from config
        */
       function getAllToolArticles() {
-        return {
-          graphBuilder: document.getElementById("graph-builder"),
-          markdownConverter: document.getElementById("markdown-converter"),
-          openrouterApp: document.getElementById("openrouter-app"),
-          mathPixApp: document.getElementById("mathpix-app"),
-        };
+        const articles = {};
+        for (const [toolName, config] of Object.entries(TOOL_CONFIG)) {
+          articles[toolName] = document.getElementById(config.articleId);
+        }
+        return articles;
       }
 
-      function showOpenRouter(isUserInitiated = true) {
-        // Cleanup live editor when switching away from Markdown Editor
+      /**
+       * Run global cleanup tasks when switching between tools
+       */
+      function runGlobalCleanup() {
+        // Markdown Editor cleanup runs when leaving it
         if (typeof window.markdownEditorCleanup === "function") {
           window.markdownEditorCleanup();
         }
 
-        const articles = getAllToolArticles();
-        const announcer = document.getElementById("radioSRannounce");
-
-        // Hide all other tools
-        hideArticle(articles.graphBuilder);
-        hideArticle(articles.markdownConverter);
-        hideArticle(articles.mathPixApp);
-
-        // Show OpenRouter
-        showArticle(articles.openrouterApp);
-
-        // Move focus to the main heading for screen reader users
-        if (isUserInitiated) {
-          setTimeout(() => {
-            const heading = articles.openrouterApp?.querySelector("h1");
-            if (heading) {
-              heading.setAttribute("tabindex", "-1");
-              heading.focus();
-              // Remove tabindex after focus to prevent persistent tab stop
-              setTimeout(() => heading.removeAttribute("tabindex"), 100);
-            }
-          }, 100);
+        // Run tool-specific cleanup if defined
+        if (currentTool && TOOL_CONFIG[currentTool]?.cleanup) {
+          try {
+            TOOL_CONFIG[currentTool].cleanup();
+          } catch (error) {
+            console.warn(`Cleanup failed for ${currentTool}:`, error);
+          }
         }
+      }
 
-        if (isUserInitiated && announcer) {
-          announcer.textContent = "Switched to OpenRouter AI tool";
+      /**
+       * Focus the main heading within a tool for screen reader users
+       */
+      function focusToolHeading(articleElement) {
+        if (!articleElement) return;
+
+        setTimeout(() => {
+          const heading = articleElement.querySelector("h1");
+          if (heading) {
+            heading.setAttribute("tabindex", "-1");
+            heading.focus();
+            // Remove tabindex after focus to prevent persistent tab stop
+            setTimeout(() => heading.removeAttribute("tabindex"), 100);
+          }
+        }, 100);
+      }
+
+      /**
+       * Announce tool switch to screen readers
+       */
+      function announceToolSwitch(text) {
+        const announcer = document.getElementById("radioSRannounce");
+        if (announcer) {
+          announcer.textContent = text;
           setTimeout(() => (announcer.textContent = ""), 1000);
         }
       }
 
-      function showMkdEd(isUserInitiated = true) {
-        // Restore live editor when switching back to Markdown Editor
-        if (typeof window.markdownEditorRestore === "function") {
-          window.markdownEditorRestore();
-        }
-
-        const articles = getAllToolArticles();
+      /**
+       * Announce an error to screen readers
+       */
+      function announceError(toolDisplayName) {
         const announcer = document.getElementById("radioSRannounce");
-
-        // Hide all other tools
-        hideArticle(articles.graphBuilder);
-        hideArticle(articles.openrouterApp);
-        hideArticle(articles.mathPixApp);
-
-        // Show Markdown Editor
-        showArticle(articles.markdownConverter);
-
-        if (
-          window.MarkdownEditor &&
-          typeof window.MarkdownEditor.init === "function"
-        ) {
-          setTimeout(() => {
-            const success = window.MarkdownEditor.init();
-            if (!success) {
-              window.AppLogging.logError(
-                "Markdown Editor initialisation failed"
-              );
-            } else {
-              // Initialize examples loader after editor is ready
-              if (
-                window.MarkdownExamplesLoader &&
-                typeof window.MarkdownExamplesLoader.initialise ===
-                  "function" &&
-                !window.MarkdownExamplesLoader.isInitialised()
-              ) {
-                setTimeout(() => {
-                  window.MarkdownExamplesLoader.initialise()
-                    .then((success) => {
-                      if (success) {
-                        console.log("Markdown Examples Loader initialised");
-                      } else {
-                        console.warn(
-                          "Markdown Examples Loader failed to initialise"
-                        );
-                      }
-                    })
-                    .catch((error) => {
-                      console.error("Markdown Examples Loader error:", error);
-                    });
-                }, 100);
-              }
-            }
-          }, 200);
-        }
-
-        // Move focus to the main heading for screen reader users
-        if (isUserInitiated) {
-          setTimeout(() => {
-            const heading = articles.markdownConverter?.querySelector("h1");
-            if (heading) {
-              heading.setAttribute("tabindex", "-1");
-              heading.focus();
-              setTimeout(() => heading.removeAttribute("tabindex"), 100);
-            }
-          }, 300);
-        }
-
-        if (isUserInitiated && announcer) {
-          announcer.textContent = "Switched to Markdown Editor tool";
-          setTimeout(() => (announcer.textContent = ""), 1000);
+        if (announcer) {
+          announcer.textContent = `Error: ${toolDisplayName} failed to initialise`;
+          setTimeout(() => (announcer.textContent = ""), 3000);
         }
       }
 
-      function showGrhBld(isUserInitiated = true) {
-        // Cleanup live editor when switching away from Markdown Editor
-        if (typeof window.markdownEditorCleanup === "function") {
-          window.markdownEditorCleanup();
+      /**
+       * Main tool switching function - handles all tools generically
+       * @param {string} toolName - The tool key from TOOL_CONFIG
+       * @param {boolean} isUserInitiated - Whether the switch was user-triggered
+       */
+      async function switchToTool(toolName, isUserInitiated = true) {
+        const config = TOOL_CONFIG[toolName];
+
+        if (!config) {
+          console.error(`Unknown tool: ${toolName}`);
+          return;
         }
 
+        // Run cleanup before switching
+        runGlobalCleanup();
+
         const articles = getAllToolArticles();
-        const announcer = document.getElementById("radioSRannounce");
 
-        // Hide all other tools
-        hideArticle(articles.markdownConverter);
-        hideArticle(articles.openrouterApp);
-        hideArticle(articles.mathPixApp);
+        // Hide all tools
+        for (const article of Object.values(articles)) {
+          hideArticle(article);
+        }
 
-        // Show Graph Builder
-        showArticle(articles.graphBuilder);
+        // Show the selected tool
+        const targetArticle = articles[toolName];
+        showArticle(targetArticle);
 
-        if (
-          window.GraphBuilder &&
-          typeof window.GraphBuilder.init === "function"
-        ) {
-          setTimeout(() => {
-            window.AppLogging.logDebug("[UI] Initialising Graph Builder...");
-            const success = window.GraphBuilder.init();
-            if (!success) {
-              window.AppLogging.logError(
-                "[UI] Graph Builder initialisation failed"
-              );
-              if (isUserInitiated && announcer) {
-                announcer.textContent =
-                  "Error: Graph Builder failed to initialise";
+        // Update current tool tracker
+        currentTool = toolName;
+
+        // Run tool-specific initialisation if defined
+        if (config.init) {
+          // Use setTimeout to allow DOM to update before init
+          setTimeout(async () => {
+            try {
+              const success = await config.init();
+
+              if (success === false && isUserInitiated) {
+                announceError(config.displayName);
+                return;
               }
+            } catch (error) {
+              console.error(`${toolName} initialisation error:`, error);
+              if (isUserInitiated) {
+                announceError(config.displayName);
+              }
+              return;
+            }
+
+            // Focus heading after successful init (slightly delayed for async inits)
+            if (isUserInitiated) {
+              focusToolHeading(targetArticle);
             }
           }, 200);
         } else {
-          window.AppLogging.logError("[UI] GraphBuilder not available");
-          if (isUserInitiated && announcer) {
-            announcer.textContent = "Error: Graph Builder not available";
+          // No init needed - focus immediately
+          if (isUserInitiated) {
+            focusToolHeading(targetArticle);
           }
         }
 
-        // Move focus to the main heading for screen reader users
+        // Announce the switch
         if (isUserInitiated) {
-          setTimeout(() => {
-            const heading = articles.graphBuilder?.querySelector("h1");
-            if (heading) {
-              heading.setAttribute("tabindex", "-1");
-              heading.focus();
-              setTimeout(() => heading.removeAttribute("tabindex"), 100);
-            }
-          }, 300);
-        }
-
-        if (isUserInitiated && announcer) {
-          announcer.textContent = "Switched to Graph Builder tool";
-          setTimeout(() => (announcer.textContent = ""), 1000);
+          announceToolSwitch(config.announceText);
         }
       }
 
-      async function showMathPix(isUserInitiated = true) {
-        // Cleanup live editor when switching away from Markdown Editor
-        if (typeof window.markdownEditorCleanup === "function") {
-          window.markdownEditorCleanup();
-        }
+      // ============================================================
+      // BACKWARDS-COMPATIBLE WRAPPER FUNCTIONS
+      // ============================================================
+      // These maintain the existing API so no HTML changes are needed
 
-        const articles = getAllToolArticles();
-        const announcer = document.getElementById("radioSRannounce");
-
-        // Hide all other tools
-        hideArticle(articles.graphBuilder);
-        hideArticle(articles.markdownConverter);
-        hideArticle(articles.openrouterApp);
-
-        // Show MathPix
-        showArticle(articles.mathPixApp);
-
-        setTimeout(async () => {
-          try {
-            // Load MathPix main controller
-            const mathPixModule = await import(
-              "./mathpix-scripts/ui/mathpix-main-controller.js"
-            );
-            const success = mathPixModule.initMathPix();
-
-            if (!success) {
-              console.error("MathPix initialisation failed");
-              if (isUserInitiated && announcer) {
-                announcer.textContent = "Error: MathPix failed to initialise";
-                setTimeout(() => (announcer.textContent = ""), 3000);
-              }
-              return; // Exit early if main init failed
-            }
-
-            console.log("MathPix initialised successfully");
-            window.getMathPixController = mathPixModule.getMathPixController;
-
-            // Phase 3.4: Load PDF preview modules
-            try {
-              const [{ PDFUploadVerification }, { PDFPreviewAccessibility }] =
-                await Promise.all([
-                  import(
-                    "./mathpix-scripts/pdf-preview/pdf-preview-upload-verification.js"
-                  ),
-                  import(
-                    "./mathpix-scripts/pdf-preview/pdf-preview-accessibility.js"
-                  ),
-                ]);
-
-              // Make modules globally available for testing
-              window.PDFUploadVerification = PDFUploadVerification;
-              window.PDFPreviewAccessibility = PDFPreviewAccessibility;
-
-              // Initialize global accessibility system if not already present
-              if (!window.mathpixAccessibility) {
-                window.mathpixAccessibility = new PDFPreviewAccessibility();
-                console.log(
-                  "Phase 3.4: PDF preview accessibility system initialised"
-                );
-              }
-
-              console.log("Phase 3.4: PDF preview modules loaded successfully");
-            } catch (previewError) {
-              console.warn(
-                "Phase 3.4: Failed to load PDF preview modules (non-critical)",
-                previewError
-              );
-              // Don't fail the entire MathPix system if preview modules fail to load
-              // The system can still work without the preview feature
-            }
-
-            // Move focus to the main heading for screen reader users
-            if (isUserInitiated) {
-              setTimeout(() => {
-                const heading = articles.mathPixApp?.querySelector("h1");
-                if (heading) {
-                  heading.setAttribute("tabindex", "-1");
-                  heading.focus();
-                  setTimeout(() => heading.removeAttribute("tabindex"), 100);
-                }
-              }, 100);
-            }
-          } catch (error) {
-            console.error("MathPix initialisation error:", error);
-            if (isUserInitiated && announcer) {
-              announcer.textContent = "Error: MathPix module failed to load";
-              setTimeout(() => (announcer.textContent = ""), 3000);
-            }
-          }
-        }, 200);
-
-        if (isUserInitiated && announcer) {
-          announcer.textContent = "Switched to MathPix Mathematics OCR tool";
-          setTimeout(() => (announcer.textContent = ""), 1000);
-        }
+      function showOpenRouter(isUserInitiated = true) {
+        switchToTool("OpenRouter", isUserInitiated);
       }
 
+      function showMkdEd(isUserInitiated = true) {
+        switchToTool("Markdown Editor", isUserInitiated);
+      }
+
+      function showGrhBld(isUserInitiated = true) {
+        switchToTool("Graph Builder", isUserInitiated);
+      }
+
+      function showMathPix(isUserInitiated = true) {
+        switchToTool("MathPix", isUserInitiated);
+      }
+      function showImageDescTool(isUserInitiated = true) {
+        switchToTool("Image Describer", isUserInitiated);
+      }
+
+      // Expose functions globally
       window.showOpenRouter = showOpenRouter;
       window.showMkdEd = showMkdEd;
       window.showGrhBld = showGrhBld;
       window.showMathPix = showMathPix;
+      window.switchToTool = switchToTool; // Also expose generic function
+      window.showImageDescTool = showImageDescTool;
 
-      // Helper functions for Markdown Examples Loader
+      // ============================================================
+      // HELPER FUNCTIONS FOR MARKDOWN EXAMPLES LOADER
+      // ============================================================
+
       window.loadMarkdownContent = function (markdownText) {
         if (
           window.MarkdownEditor &&
@@ -7625,30 +8339,27 @@ Science,91</pre
         }
       };
 
+      // ============================================================
+      // INITIALISATION
+      // ============================================================
+
       function initializeToolVisibility() {
         const checkedRadio = document.querySelector(
           'input[name="presentation"]:checked'
         );
-        if (!checkedRadio) {
-          showOpenRouter();
-          return;
-        }
-        switch (checkedRadio.value) {
-          case "OpenRouter":
-            showOpenRouter();
-            break;
-          case "Markdown Editor":
-            showMkdEd();
-            break;
-          case "Graph Builder":
-            showGrhBld();
-            break;
-          case "MathPix":
-            showMathPix();
-            break;
-          default:
-            showOpenRouter();
-        }
+        const toolValue = checkedRadio?.value || "OpenRouter";
+
+        // Map radio values to tool names (handles any naming differences)
+        const radioToTool = {
+          OpenRouter: "OpenRouter",
+          "Markdown Editor": "Markdown Editor",
+          "Graph Builder": "Graph Builder",
+          MathPix: "MathPix",
+          "Image Describer": "Image Describer",
+        };
+
+        const toolName = radioToTool[toolValue] || "OpenRouter";
+        switchToTool(toolName, false); // false = not user-initiated
       }
 
       document.addEventListener("DOMContentLoaded", initializeToolVisibility);
@@ -7959,6 +8670,9 @@ Science,91</pre
         markdownEditorAvailable: typeof window.MarkdownEditor !== "undefined",
       });
     </script>
+    <!-- Memory Management Utilities (Load First) -->
+    <script type="module" src="js/utilities/memory-manager.js"></script>
+    <script type="module" src="js/utilities/memory-debug-commands.js"></script>
     <script type="module" src="js/main.js" crossorigin="anonymous"></script>
     <script type="module" src="js/tests.js" crossorigin="anonymous"></script>
     <script>

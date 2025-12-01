@@ -27283,19 +27283,20 @@ modelRegistry.registerModel("minimax/minimax-m2:free", {
   name: "MiniMax M2 (Free)",
   category: "FreeTier",
   disabled: false,
-  description: "Compact, high-efficiency large language model optimised for end-to-end coding and agentic workflows. Delivers near-frontier intelligence across general reasoning, tool use, and multi-step task execution with 10 billion activated parameters and exceptional cost efficiency.",
+  description:
+    "Compact, high-efficiency large language model optimised for end-to-end coding and agentic workflows. Delivers near-frontier intelligence across general reasoning, tool use, and multi-step task execution with 10 billion activated parameters and exceptional cost efficiency.",
   costs: {
-    input: 0.00,
-    output: 0.00,
+    input: 0.0,
+    output: 0.0,
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "code",
     "reasoning",
     "tool_calling",
     "mathematics",
-    "multilingual"
+    "multilingual",
   ],
   maxContext: 204800,
   fallbackTo: "anthropic/claude-3.5-sonnet",
@@ -27305,30 +27306,30 @@ modelRegistry.registerModel("minimax/minimax-m2:free", {
     releaseDate: "2025-10-23",
     modelArchitecture: {
       parameters: "10B",
-      totalParameters: "230B", 
+      totalParameters: "230B",
       type: "instruction-tuned",
       activationEfficient: true,
-      optimisedFor: "coding and agentic workflows"
+      optimisedFor: "coding and agentic workflows",
     },
     policyLinks: {
       privacyPolicy: "https://www.minimaxi.com/privacy",
       acceptableUse: "",
       termsOfService: "https://www.minimaxi.com/terms",
-      lastUpdated: "2025-10-23"
+      lastUpdated: "2025-10-23",
     },
     domainExpertise: {
       coding: 9,
       reasoning: 8,
       mathematics: 8,
       agenticWorkflows: 9,
-      toolUse: 8
+      toolUse: 8,
     },
     benchmarkResults: {
       "SWE-Bench Verified": "strong performance",
-      "Multi-SWE-Bench": "strong performance", 
+      "Multi-SWE-Bench": "strong performance",
       "Terminal-Bench": "strong performance",
-      "BrowseComp": "competitive performance",
-      "GAIA": "competitive performance"
+      BrowseComp: "competitive performance",
+      GAIA: "competitive performance",
     },
     bestFor: [
       "code generation",
@@ -27337,24 +27338,24 @@ modelRegistry.registerModel("minimax/minimax-m2:free", {
       "developer assistance",
       "reasoning-driven applications",
       "multi-step task execution",
-      "cost-efficient deployment"
+      "cost-efficient deployment",
     ],
     accessibility: {
       lowLatency: true,
       highConcurrency: true,
-      costEfficient: true
-    }
+      costEfficient: true,
+    },
   },
   parameterSupport: {
     supported: [
       "reasoning",
-      "include_reasoning", 
+      "include_reasoning",
       "max_tokens",
       "temperature",
       "top_p",
       "tool_choice",
       "tools",
-      "system-prompt"
+      "system-prompt",
     ],
     statistics: {
       frequency_penalty: { p10: 0, p50: 0, p90: 0 },
@@ -27363,37 +27364,43 @@ modelRegistry.registerModel("minimax/minimax-m2:free", {
       repetition_penalty: { p10: 1, p50: 1, p90: 1 },
       temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
       top_k: { p10: 0, p50: 0, p90: 0 },
-      top_p: { p10: 0.9, p50: 1, p90: 1 }
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["reasoning-mode", "tool-calling", "code-optimisation", "system-prompt"]
+    features: [
+      "reasoning-mode",
+      "tool-calling",
+      "code-optimisation",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "coding-assistance",
-      "agentic-workflows", 
+      "agentic-workflows",
       "cost-sensitive-applications",
       "high-throughput-scenarios",
-      "developer-tools"
+      "developer-tools",
     ],
     warnings: [
       "Optimised for technical and coding tasks - may require additional context for general conversational use",
-      "Free tier model - performance may vary during high-demand periods"
+      "Free tier model - performance may vary during high-demand periods",
     ],
     ariaLabels: {
-      modelSelect: "MiniMax M2 Free - Coding and agentic workflow model with 204,800 context window",
+      modelSelect:
+        "MiniMax M2 Free - Coding and agentic workflow model with 204,800 context window",
       parameterSection: "Parameter controls for MiniMax M2 Free model",
       statusMessages: {
         processing: "Processing coding request with MiniMax M2 Free",
-        complete: "Code generation response ready from MiniMax M2 Free"
-      }
-    }
+        complete: "Code generation response ready from MiniMax M2 Free",
+      },
+    },
   },
   status: {
     isAvailable: true,
     lastCheck: new Date().toISOString(),
     errorCode: null,
-    errorMessage: null
-  }
+    errorMessage: null,
+  },
 });
 // Insert this model registration entry for OpenAI gpt-oss-safeguard-20b
 modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
@@ -27401,17 +27408,13 @@ modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
   name: "GPT OSS Safeguard 20B",
   category: "Specialized",
   disabled: false,
-  description: "A specialised safety reasoning model built upon GPT OSS 20B, designed for Trust & Safety workflows. This 21B-parameter Mixture-of-Experts model excels at content classification, policy enforcement, and safety labelling with custom policy interpretation capabilities. Optimised for lower latency in safety tasks whilst maintaining sophisticated reasoning for nuanced content decisions.",
+  description:
+    "A specialised safety reasoning model built upon GPT OSS 20B, designed for Trust & Safety workflows. This 21B-parameter Mixture-of-Experts model excels at content classification, policy enforcement, and safety labelling with custom policy interpretation capabilities. Optimised for lower latency in safety tasks whilst maintaining sophisticated reasoning for nuanced content decisions.",
   costs: {
     input: 0.075,
-    output: 0.30,
+    output: 0.3,
   },
-  capabilities: [
-    "text",
-    "dialogue", 
-    "reasoning",
-    "tool_calling",
-  ],
+  capabilities: ["text", "dialogue", "reasoning", "tool_calling"],
   maxContext: 131072,
   fallbackTo: "anthropic/claude-3.5-sonnet",
   isFree: false,
@@ -27440,7 +27443,7 @@ modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
     },
     bestFor: [
       "content moderation",
-      "safety classification", 
+      "safety classification",
       "policy enforcement",
       "Trust & Safety workflows",
       "custom policy interpretation",
@@ -27449,7 +27452,7 @@ modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
     accessibility: {
       safetyFeatures: [
         "Custom policy adherence",
-        "Explainable safety decisions", 
+        "Explainable safety decisions",
         "Auditability support",
         "Contextual reasoning",
       ],
@@ -27458,7 +27461,7 @@ modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
   parameterSupport: {
     supported: [
       "reasoning",
-      "include_reasoning", 
+      "include_reasoning",
       "max_tokens",
       "temperature",
       "top_p",
@@ -27480,7 +27483,7 @@ modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
     },
     features: [
       "reasoning-channels",
-      "policy-interpretation", 
+      "policy-interpretation",
       "safety-classification",
       "custom-taxonomy-support",
       "system-prompt",
@@ -27499,10 +27502,13 @@ modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
       "Best suited for Trust & Safety professionals with policy writing experience",
     ],
     ariaLabels: {
-      modelSelect: "GPT OSS Safeguard 20B - Safety reasoning model with 131K context for Trust & Safety workflows",
-      parameterSection: "Parameter controls for GPT OSS Safeguard 20B safety model",
+      modelSelect:
+        "GPT OSS Safeguard 20B - Safety reasoning model with 131K context for Trust & Safety workflows",
+      parameterSection:
+        "Parameter controls for GPT OSS Safeguard 20B safety model",
       statusMessages: {
-        processing: "Processing safety classification request with GPT OSS Safeguard 20B",
+        processing:
+          "Processing safety classification request with GPT OSS Safeguard 20B",
         complete: "Safety analysis complete from GPT OSS Safeguard 20B",
       },
     },
@@ -27521,26 +27527,28 @@ modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
   name: "Nemotron Nano 12B 2 VL",
   category: "Vision",
   disabled: false,
-  description: "Advanced 12-billion-parameter multimodal reasoning model optimised for video understanding and document intelligence. Features hybrid Transformer-Mamba architecture combining transformer-level accuracy with memory-efficient sequence modelling for enhanced throughput and reduced latency. Specialises in optical character recognition, chart reasoning, and multimodal comprehension with leading performance on OCRBench v2 and strong results across vision-language benchmarks.",
+  description:
+    "Advanced 12-billion-parameter multimodal reasoning model optimised for video understanding and document intelligence. Features hybrid Transformer-Mamba architecture combining transformer-level accuracy with memory-efficient sequence modelling for enhanced throughput and reduced latency. Specialises in optical character recognition, chart reasoning, and multimodal comprehension with leading performance on OCRBench v2 and strong results across vision-language benchmarks.",
   costs: {
-    input: 0.20,
-    output: 0.60,
-    image: 0.20,
+    input: 0.2,
+    output: 0.6,
+    image: 0.2,
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "vision",
     "reasoning",
     "mathematics",
     "multilingual",
-    "tool_calling"
+    "tool_calling",
   ],
   maxContext: 131072,
   fallbackTo: "anthropic/claude-3.5-sonnet",
   isFree: false,
   metadata: {
-    categoryDescription: "Multimodal reasoning model with advanced video and document understanding capabilities",
+    categoryDescription:
+      "Multimodal reasoning model with advanced video and document understanding capabilities",
     releaseDate: "2024-10-28",
     modelArchitecture: {
       parameters: "12B",
@@ -27549,12 +27557,14 @@ modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
       specialFeatures: [
         "Efficient Video Sampling (EVS)",
         "Multi-image document processing",
-        "Memory-efficient sequence modelling"
-      ]
+        "Memory-efficient sequence modelling",
+      ],
     },
     policyLinks: {
-      privacyPolicy: "https://www.nvidia.com/en-us/about-nvidia/privacy-policy/",
-      acceptableUse: "https://www.nvidia.com/en-us/about-nvidia/acceptable-use-policy/",
+      privacyPolicy:
+        "https://www.nvidia.com/en-us/about-nvidia/privacy-policy/",
+      acceptableUse:
+        "https://www.nvidia.com/en-us/about-nvidia/acceptable-use-policy/",
       termsOfService: "https://www.nvidia.com/en-us/about-nvidia/terms-of-use/",
       lastUpdated: "2024-10-28",
     },
@@ -27562,22 +27572,22 @@ modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
       sources: ["NVIDIA-curated synthetic datasets"],
       optimisedFor: [
         "Optical character recognition",
-        "Chart reasoning", 
-        "Multimodal comprehension"
+        "Chart reasoning",
+        "Multimodal comprehension",
       ],
-      license: "NVIDIA Open License"
+      license: "NVIDIA Open License",
     },
     domainExpertise: {
       vision: 9,
       mathematics: 8,
       documentProcessing: 9,
       videoAnalysis: 8,
-      reasoning: 8
+      reasoning: 8,
     },
     benchmarkResults: {
       "OCRBench v2": "Leading performance",
       "MMMU/MathVista/AI2D Average": "~74",
-      "Video-MME": "Strong performance"
+      "Video-MME": "Strong performance",
     },
     bestFor: [
       "Video understanding and analysis",
@@ -27585,17 +27595,17 @@ modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
       "Chart and diagram reasoning",
       "Mathematical visual reasoning",
       "Multi-image document processing",
-      "Long-form video analysis with cost efficiency"
+      "Long-form video analysis with cost efficiency",
     ],
     accessibility: {
       visualProcessing: "Excellent OCR and document accessibility support",
-      videoDescription: "Advanced video content analysis capabilities"
+      videoDescription: "Advanced video content analysis capabilities",
     },
   },
   parameterSupport: {
     supported: [
       "reasoning",
-      "include_reasoning", 
+      "include_reasoning",
       "max_tokens",
       "temperature",
       "top_p",
@@ -27607,7 +27617,7 @@ modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
       "seed",
       "min_p",
       "response_format",
-      "system-prompt"
+      "system-prompt",
     ],
     statistics: {
       frequency_penalty: { p10: 0, p50: 0, p90: 0 },
@@ -27618,24 +27628,31 @@ modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["reasoning-support", "video-processing", "document-intelligence", "system-prompt"],
+    features: [
+      "reasoning-support",
+      "video-processing",
+      "document-intelligence",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "document-accessibility-analysis",
-      "visual-content-description", 
+      "visual-content-description",
       "ocr-text-extraction",
       "chart-data-interpretation",
-      "video-content-analysis"
+      "video-content-analysis",
     ],
     warnings: [
       "Video processing may require significant computational resources",
       "Image quality affects OCR accuracy - ensure high-resolution inputs for optimal results",
-      "Complex mathematical notation may require careful formatting verification"
+      "Complex mathematical notation may require careful formatting verification",
     ],
     ariaLabels: {
-      modelSelect: "Nemotron Nano 12B 2 VL - Multimodal reasoning model with 131K context optimised for video and document analysis",
-      parameterSection: "Parameter controls for Nemotron Nano 12B 2 VL multimodal model",
+      modelSelect:
+        "Nemotron Nano 12B 2 VL - Multimodal reasoning model with 131K context optimised for video and document analysis",
+      parameterSection:
+        "Parameter controls for Nemotron Nano 12B 2 VL multimodal model",
       statusMessages: {
         processing: "Processing multimodal request with Nemotron Nano 12B 2 VL",
         complete: "Multimodal analysis complete from Nemotron Nano 12B 2 VL",
@@ -27656,24 +27673,20 @@ modelRegistry.registerModel("mistralai/voxtral-small-24b-2507", {
   name: "Voxtral Small 24B 2507",
   category: "Specialized",
   disabled: false,
-  description: "Enhanced version of Mistral Small 3 with state-of-the-art audio input capabilities whilst retaining best-in-class text performance. Specialised for speech transcription, translation, and comprehensive audio understanding tasks.",
+  description:
+    "Enhanced version of Mistral Small 3 with state-of-the-art audio input capabilities whilst retaining best-in-class text performance. Specialised for speech transcription, translation, and comprehensive audio understanding tasks.",
   costs: {
-    input: 0.10, // Per million tokens
-    output: 0.30, // Per million tokens
-    audio: 100.00, // Per million seconds
+    input: 0.1, // Per million tokens
+    output: 0.3, // Per million tokens
+    audio: 100.0, // Per million seconds
   },
-  capabilities: [
-    "text",
-    "dialogue", 
-    "audio",
-    "multilingual",
-    "tool_calling",
-  ],
+  capabilities: ["text", "dialogue", "audio", "multilingual", "tool_calling"],
   maxContext: 32000,
   fallbackTo: "mistralai/mistral-small",
   isFree: false,
   metadata: {
-    categoryDescription: "Advanced multimodal model with audio processing capabilities",
+    categoryDescription:
+      "Advanced multimodal model with audio processing capabilities",
     releaseDate: "2025-10-30",
     modelArchitecture: {
       parameters: "24B",
@@ -27696,7 +27709,7 @@ modelRegistry.registerModel("mistralai/voxtral-small-24b-2507", {
     },
     bestFor: [
       "speech transcription",
-      "audio understanding", 
+      "audio understanding",
       "multilingual translation",
       "audio-text integration",
       "voice assistant applications",
@@ -27709,7 +27722,7 @@ modelRegistry.registerModel("mistralai/voxtral-small-24b-2507", {
   parameterSupport: {
     supported: [
       "max_tokens",
-      "temperature", 
+      "temperature",
       "top_p",
       "stop",
       "frequency_penalty",
@@ -27730,7 +27743,12 @@ modelRegistry.registerModel("mistralai/voxtral-small-24b-2507", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["audio_processing", "structured_outputs", "tool_calling", "system-prompt"],
+    features: [
+      "audio_processing",
+      "structured_outputs",
+      "tool_calling",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
@@ -27744,10 +27762,12 @@ modelRegistry.registerModel("mistralai/voxtral-small-24b-2507", {
       "Audio input costs are significantly higher than text input",
     ],
     ariaLabels: {
-      modelSelect: "Voxtral Small 24B 2507 - Audio-enhanced model with 32K context for speech and text processing",
+      modelSelect:
+        "Voxtral Small 24B 2507 - Audio-enhanced model with 32K context for speech and text processing",
       parameterSection: "Parameter controls for Voxtral Small 24B 2507",
       statusMessages: {
-        processing: "Processing request with Voxtral Small 24B 2507 multimodal capabilities",
+        processing:
+          "Processing request with Voxtral Small 24B 2507 multimodal capabilities",
         complete: "Response ready from Voxtral Small 24B 2507",
       },
     },
@@ -27766,21 +27786,22 @@ modelRegistry.registerModel("perplexity/sonar-pro-search", {
   name: "Sonar Pro Search",
   category: "Specialized",
   disabled: false,
-  description: "Perplexity's most advanced agentic search system designed for deeper reasoning and analysis. Features autonomous, multi-step reasoning that plans and executes entire research workflows using tools. Exclusively optimised for comprehensive research tasks with web search integration and structured outputs.",
+  description:
+    "Perplexity's most advanced agentic search system designed for deeper reasoning and analysis. Features autonomous, multi-step reasoning that plans and executes entire research workflows using tools. Exclusively optimised for comprehensive research tasks with web search integration and structured outputs.",
   costs: {
-    input: 3.00, // Per million tokens
-    output: 15.00, // Per million tokens
-    requests: 18.00, // Per thousand requests
+    input: 3.0, // Per million tokens
+    output: 15.0, // Per million tokens
+    requests: 18.0, // Per thousand requests
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "reasoning",
     "tool_calling",
     "web_search",
     "research",
     "multilingual",
-    "structured_outputs"
+    "structured_outputs",
   ],
   maxContext: 200000,
   fallbackTo: "anthropic/claude-3.5-sonnet",
@@ -27789,25 +27810,25 @@ modelRegistry.registerModel("perplexity/sonar-pro-search", {
     categoryDescription: "Advanced agentic search model for research workflows",
     releaseDate: "2025-10-30",
     modelArchitecture: {
-      type: "agentic-search", 
+      type: "agentic-search",
       searchCapabilities: "multi-step autonomous reasoning",
-      toolIntegration: "advanced workflow execution"
+      toolIntegration: "advanced workflow execution",
     },
     policyLinks: {
       privacyPolicy: "https://perplexity.ai/privacy",
-      acceptableUse: "https://perplexity.ai/terms", 
+      acceptableUse: "https://perplexity.ai/terms",
       termsOfService: "https://perplexity.ai/terms",
       lastUpdated: "2025-10-30",
     },
     bestFor: [
       "research workflows",
-      "in-depth analysis", 
+      "in-depth analysis",
       "multi-step reasoning",
       "information synthesis",
       "academic research",
       "professional analysis",
       "web-based research",
-      "structured information gathering"
+      "structured information gathering",
     ],
     accessibility: {
       searchMode: "agentic",
@@ -27818,16 +27839,16 @@ modelRegistry.registerModel("perplexity/sonar-pro-search", {
   parameterSupport: {
     supported: [
       "reasoning",
-      "include_reasoning", 
+      "include_reasoning",
       "max_tokens",
       "temperature",
       "top_p",
-      "top_k", 
+      "top_k",
       "frequency_penalty",
       "presence_penalty",
       "web_search_options",
       "structured_outputs",
-      "system-prompt"
+      "system-prompt",
     ],
     statistics: {
       frequency_penalty: { p10: 0, p50: 0, p90: 0 },
@@ -27838,24 +27859,32 @@ modelRegistry.registerModel("perplexity/sonar-pro-search", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["agentic_search", "multi_step_reasoning", "web_search_integration", "structured_outputs", "system-prompt"],
+    features: [
+      "agentic_search",
+      "multi_step_reasoning",
+      "web_search_integration",
+      "structured_outputs",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "research-workflows",
-      "academic-analysis", 
+      "academic-analysis",
       "professional-research",
       "in-depth-investigation",
-      "multi-step-reasoning-tasks"
+      "multi-step-reasoning-tasks",
     ],
     warnings: [
       "Request-based pricing model requires careful usage monitoring",
       "Advanced agentic features may require additional time for complex workflows",
-      "Web search results depend on current internet accessibility"
+      "Web search results depend on current internet accessibility",
     ],
     ariaLabels: {
-      modelSelect: "Sonar Pro Search - Advanced agentic search model with 200K context for research workflows",
-      parameterSection: "Parameter controls for Sonar Pro Search agentic reasoning",
+      modelSelect:
+        "Sonar Pro Search - Advanced agentic search model with 200K context for research workflows",
+      parameterSection:
+        "Parameter controls for Sonar Pro Search agentic reasoning",
       statusMessages: {
         processing: "Processing agentic search workflow with Sonar Pro Search",
         complete: "Research workflow completed by Sonar Pro Search",
@@ -27876,15 +27905,13 @@ modelRegistry.registerModel("mistralai/codestral-embed-2505", {
   name: "Codestral Embed 2505",
   category: "Code",
   disabled: false,
-  description: "Specialised embedding model designed specifically for code, optimised for embedding code databases, repositories, and powering coding assistants with state-of-the-art retrieval capabilities.",
+  description:
+    "Specialised embedding model designed specifically for code, optimised for embedding code databases, repositories, and powering coding assistants with state-of-the-art retrieval capabilities.",
   costs: {
     input: 0.15, // Per million tokens
-    output: 0.00, // Per million tokens
+    output: 0.0, // Per million tokens
   },
-  capabilities: [
-    "text",
-    "code",
-  ],
+  capabilities: ["text", "code"],
   maxContext: 8192,
   fallbackTo: "anthropic/claude-3.5-sonnet",
   isFree: false,
@@ -27925,7 +27952,7 @@ modelRegistry.registerModel("mistralai/codestral-embed-2505", {
       "temperature",
       "top_p",
       "stop",
-      "frequency_penalty", 
+      "frequency_penalty",
       "presence_penalty",
       "seed",
       "response_format",
@@ -27955,7 +27982,8 @@ modelRegistry.registerModel("mistralai/codestral-embed-2505", {
       "Optimised for code retrieval rather than code generation",
     ],
     ariaLabels: {
-      modelSelect: "Codestral Embed 2505 - Code embedding specialist with 8K context",
+      modelSelect:
+        "Codestral Embed 2505 - Code embedding specialist with 8K context",
       parameterSection: "Parameter controls for Codestral Embed 2505",
       statusMessages: {
         processing: "Processing embedding request with Codestral Embed 2505",
@@ -27977,18 +28005,19 @@ modelRegistry.registerModel("amazon/nova-premier-v1", {
   name: "Nova Premier 1.0",
   category: "GeneralPurpose",
   disabled: false,
-  description: "Amazon's most capable multimodal model optimised for complex reasoning tasks and serving as an excellent teacher for distilling custom models. Combines advanced reasoning capabilities with multimodal understanding for sophisticated problem-solving applications.",
+  description:
+    "Amazon's most capable multimodal model optimised for complex reasoning tasks and serving as an excellent teacher for distilling custom models. Combines advanced reasoning capabilities with multimodal understanding for sophisticated problem-solving applications.",
   costs: {
-    input: 2.50,
-    output: 12.50,
+    input: 2.5,
+    output: 12.5,
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "reasoning",
     "vision",
     "tool_calling",
-    "multilingual"
+    "multilingual",
   ],
   maxContext: 1000000,
   fallbackTo: "anthropic/claude-3.5-sonnet",
@@ -27998,7 +28027,7 @@ modelRegistry.registerModel("amazon/nova-premier-v1", {
     releaseDate: "2025-10-31",
     modelArchitecture: {
       type: "multimodal-instruction-tuned",
-      capabilities: "reasoning, vision, tool-calling"
+      capabilities: "reasoning, vision, tool-calling",
     },
     policyLinks: {
       privacyPolicy: "https://aws.amazon.com/privacy/",
@@ -28010,28 +28039,28 @@ modelRegistry.registerModel("amazon/nova-premier-v1", {
       "complex reasoning tasks",
       "model distillation",
       "multimodal applications",
-      "advanced problem-solving"
+      "advanced problem-solving",
     ],
     domainExpertise: {
       reasoning: 9,
       multimodal: 8,
-      teaching: 9
+      teaching: 9,
     },
     accessibility: {
       screenReaderOptimised: true,
       highContrastSupport: true,
-      keyboardNavigable: true
-    }
+      keyboardNavigable: true,
+    },
   },
   parameterSupport: {
     supported: [
       "max_tokens",
-      "temperature", 
+      "temperature",
       "top_p",
       "top_k",
       "stop",
       "tools",
-      "system-prompt"
+      "system-prompt",
     ],
     statistics: {
       frequency_penalty: { p10: 0, p50: 0, p90: 0 },
@@ -28042,24 +28071,31 @@ modelRegistry.registerModel("amazon/nova-premier-v1", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["complex-reasoning", "multimodal-processing", "tool-calling", "system-prompt"],
+    features: [
+      "complex-reasoning",
+      "multimodal-processing",
+      "tool-calling",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "complex-reasoning-tasks",
-      "multimodal-analysis", 
+      "multimodal-analysis",
       "model-distillation",
-      "advanced-problem-solving"
+      "advanced-problem-solving",
     ],
     warnings: [
       "High output costs may impact accessibility for extended conversations",
-      "Complex reasoning responses may require additional processing time"
+      "Complex reasoning responses may require additional processing time",
     ],
     ariaLabels: {
-      modelSelect: "Nova Premier 1.0 - Amazon's premium multimodal reasoning model with 1 million token context",
+      modelSelect:
+        "Nova Premier 1.0 - Amazon's premium multimodal reasoning model with 1 million token context",
       parameterSection: "Parameter controls for Nova Premier 1.0",
       statusMessages: {
-        processing: "Processing complex reasoning request with Nova Premier 1.0",
+        processing:
+          "Processing complex reasoning request with Nova Premier 1.0",
         complete: "Advanced reasoning response ready from Nova Premier 1.0",
       },
     },
@@ -28076,15 +28112,16 @@ modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
   name: "Kimi K2 Thinking",
   category: "Specialized",
   disabled: false,
-  description: "Moonshot AI's most advanced open reasoning model featuring agentic, long-horizon reasoning capabilities. Built on a trillion-parameter Mixture-of-Experts architecture that activates 32 billion parameters per forward pass. Optimised for persistent step-by-step thought, dynamic tool invocation, and complex reasoning workflows spanning hundreds of turns. Excels at autonomous research, coding, and analytical tasks with stable multi-agent behaviour.",
+  description:
+    "Moonshot AI's most advanced open reasoning model featuring agentic, long-horizon reasoning capabilities. Built on a trillion-parameter Mixture-of-Experts architecture that activates 32 billion parameters per forward pass. Optimised for persistent step-by-step thought, dynamic tool invocation, and complex reasoning workflows spanning hundreds of turns. Excels at autonomous research, coding, and analytical tasks with stable multi-agent behaviour.",
   costs: {
-    input: 0.60,
-    output: 2.50,
+    input: 0.6,
+    output: 2.5,
   },
   capabilities: [
     "text",
     "dialogue",
-    "reasoning", 
+    "reasoning",
     "tool_calling",
     "code",
     "mathematics",
@@ -28103,7 +28140,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
         "MuonClip optimisation",
         "Agentic reasoning",
         "Long-horizon planning",
-        "Multi-turn stability"
+        "Multi-turn stability",
       ],
     },
     policyLinks: {
@@ -28113,19 +28150,10 @@ modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
       lastUpdated: "2025-11-06",
     },
     trainingData: {
-      benchmarks: [
-        "HLE",
-        "BrowseComp", 
-        "SWE-Multilingual",
-        "LiveCodeBench"
-      ],
+      benchmarks: ["HLE", "BrowseComp", "SWE-Multilingual", "LiveCodeBench"],
       capabilities: "200-300 tool calls without drift",
     },
-    languageSupport: [
-      "English",
-      "Chinese",
-      "Multilingual"
-    ],
+    languageSupport: ["English", "Chinese", "Multilingual"],
     domainExpertise: {
       reasoning: 10,
       coding: 9,
@@ -28141,7 +28169,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
       "multi-turn analysis",
       "coding projects",
       "analytical writing",
-      "tool-assisted problem solving"
+      "tool-assisted problem solving",
     ],
     accessibility: {
       cognitiveLoad: "high",
@@ -28152,7 +28180,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
   parameterSupport: {
     supported: [
       "reasoning",
-      "include_reasoning", 
+      "include_reasoning",
       "max_tokens",
       "temperature",
       "top_p",
@@ -28177,31 +28205,34 @@ modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
     features: [
       "agentic_reasoning",
       "tool_calling",
-      "long_horizon_planning", 
+      "long_horizon_planning",
       "multi_turn_stability",
-      "system-prompt"
+      "system-prompt",
     ],
   },
   accessibility: {
     preferredFor: [
       "reasoning-tasks",
-      "research-assistance", 
+      "research-assistance",
       "coding-projects",
       "complex-analysis",
       "multi-step-workflows",
-      "tool-assisted-tasks"
+      "tool-assisted-tasks",
     ],
     warnings: [
       "Extended response times due to complex reasoning processes",
       "High cognitive load - responses may be detailed and technical",
       "Tool calling may require additional setup and permissions",
-      "Long-form outputs may need scrolling or pagination support"
+      "Long-form outputs may need scrolling or pagination support",
     ],
     ariaLabels: {
-      modelSelect: "Kimi K2 Thinking - Advanced reasoning model with 262K context and agentic capabilities",
-      parameterSection: "Parameter controls for Kimi K2 Thinking reasoning model",
+      modelSelect:
+        "Kimi K2 Thinking - Advanced reasoning model with 262K context and agentic capabilities",
+      parameterSection:
+        "Parameter controls for Kimi K2 Thinking reasoning model",
       statusMessages: {
-        processing: "Processing complex reasoning request with Kimi K2 Thinking",
+        processing:
+          "Processing complex reasoning request with Kimi K2 Thinking",
         complete: "Detailed reasoning response ready from Kimi K2 Thinking",
       },
     },
@@ -28219,22 +28250,19 @@ modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
   name: "Kimi Linear 48B A3B Instruct",
   category: "LargeContext",
   disabled: false,
-  description: "Advanced hybrid linear attention architecture optimised for long-context processing with Kimi Delta Attention (KDA). Delivers superior performance and hardware efficiency, reducing KV cache requirements by 75% and boosting decoding throughput by 6x for contexts up to 1M tokens. Specialised for extended document analysis and memory-efficient processing.",
+  description:
+    "Advanced hybrid linear attention architecture optimised for long-context processing with Kimi Delta Attention (KDA). Delivers superior performance and hardware efficiency, reducing KV cache requirements by 75% and boosting decoding throughput by 6x for contexts up to 1M tokens. Specialised for extended document analysis and memory-efficient processing.",
   costs: {
-    input: 0.30, // Per million tokens
-    output: 0.60, // Per million tokens
+    input: 0.3, // Per million tokens
+    output: 0.6, // Per million tokens
   },
-  capabilities: [
-    "text",
-    "dialogue", 
-    "reasoning",
-    "multilingual"
-  ],
+  capabilities: ["text", "dialogue", "reasoning", "multilingual"],
   maxContext: 1048576, // 1M+ context window
   fallbackTo: "anthropic/claude-3.5-sonnet", // Similar long-context capabilities
   isFree: false,
   metadata: {
-    categoryDescription: "Optimised for extended context processing and memory efficiency",
+    categoryDescription:
+      "Optimised for extended context processing and memory efficiency",
     releaseDate: "2025-11-08",
     modelArchitecture: {
       parameters: "48B",
@@ -28244,8 +28272,8 @@ modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
         "Kimi Delta Attention (KDA)",
         "Finite-state RNN memory",
         "75% KV cache reduction",
-        "6x decoding throughput improvement"
-      ]
+        "6x decoding throughput improvement",
+      ],
     },
     policyLinks: {
       privacyPolicy: "https://moonshotai.com/privacy",
@@ -28258,23 +28286,23 @@ modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
       "extended conversation processing",
       "memory-efficient inference",
       "large-scale text processing",
-      "context-intensive reasoning tasks"
+      "context-intensive reasoning tasks",
     ],
     domainExpertise: {
       longContextProcessing: 10,
       memoryEfficiency: 9,
       documentAnalysis: 8,
-      conversationalAI: 7
+      conversationalAI: 7,
     },
     accessibility: {
       processingComplexity: "optimised-for-long-context",
-      memoryRequirements: "reduced-kv-cache"
+      memoryRequirements: "reduced-kv-cache",
     },
   },
   parameterSupport: {
     supported: [
       "max_tokens",
-      "temperature", 
+      "temperature",
       "top_p",
       "frequency_penalty",
       "min_p",
@@ -28288,7 +28316,7 @@ modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
       "response_format",
       "logprobs",
       "top_logprobs",
-      "system-prompt"
+      "system-prompt",
     ],
     statistics: {
       frequency_penalty: { p10: 0, p50: 0, p90: 0 },
@@ -28299,25 +28327,33 @@ modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["hybrid_linear_attention", "kimi_delta_attention", "memory_optimisation", "system-prompt"],
+    features: [
+      "hybrid_linear_attention",
+      "kimi_delta_attention",
+      "memory_optimisation",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "long-context-processing",
-      "document-analysis", 
+      "document-analysis",
       "extended-conversations",
-      "memory-efficient-inference"
+      "memory-efficient-inference",
     ],
     warnings: [
       "Processing very long contexts may require additional time",
-      "Hybrid architecture may behave differently than traditional attention models"
+      "Hybrid architecture may behave differently than traditional attention models",
     ],
     ariaLabels: {
-      modelSelect: "Kimi Linear 48B A3B Instruct - Long-context optimised model with 1M+ token context window",
+      modelSelect:
+        "Kimi Linear 48B A3B Instruct - Long-context optimised model with 1M+ token context window",
       parameterSection: "Parameter controls for Kimi Linear 48B A3B Instruct",
       statusMessages: {
-        processing: "Processing long-context request with Kimi Linear 48B A3B Instruct",
-        complete: "Long-context response ready from Kimi Linear 48B A3B Instruct",
+        processing:
+          "Processing long-context request with Kimi Linear 48B A3B Instruct",
+        complete:
+          "Long-context response ready from Kimi Linear 48B A3B Instruct",
       },
     },
   },
@@ -28334,30 +28370,36 @@ modelRegistry.registerModel("openai/gpt-5.1-chat", {
   name: "GPT-5.1 Chat",
   category: "GeneralPurpose",
   disabled: false,
-  description: "Fast, lightweight member of the GPT-5.1 family optimised for low-latency chat whilst retaining strong general intelligence. Features adaptive reasoning that selectively engages deeper thinking for complex queries, improving accuracy on mathematics, coding, and multi-step tasks without compromising conversational responsiveness. Designed for high-throughput, interactive workloads where consistency and speed are prioritised.",
+  description:
+    "Fast, lightweight member of the GPT-5.1 family optimised for low-latency chat whilst retaining strong general intelligence. Features adaptive reasoning that selectively engages deeper thinking for complex queries, improving accuracy on mathematics, coding, and multi-step tasks without compromising conversational responsiveness. Designed for high-throughput, interactive workloads where consistency and speed are prioritised.",
   costs: {
     input: 1.25, // Per million tokens
-    output: 10.00, // Per million tokens
+    output: 10.0, // Per million tokens
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "code",
     "mathematics",
     "reasoning",
     "tool_calling",
-    "multilingual"
+    "multilingual",
   ],
   maxContext: 128000,
   fallbackTo: "anthropic/claude-3.5-sonnet",
   isFree: false,
   metadata: {
-    categoryDescription: "Advanced general-purpose model optimised for interactive applications",
+    categoryDescription:
+      "Advanced general-purpose model optimised for interactive applications",
     releaseDate: "2025-11-13",
     modelArchitecture: {
       parameters: "Unknown",
       type: "instruction-tuned",
-      specialFeatures: ["adaptive-reasoning", "low-latency-optimised", "structured-outputs"]
+      specialFeatures: [
+        "adaptive-reasoning",
+        "low-latency-optimised",
+        "structured-outputs",
+      ],
     },
     policyLinks: {
       privacyPolicy: "https://openai.com/privacy/",
@@ -28368,32 +28410,32 @@ modelRegistry.registerModel("openai/gpt-5.1-chat", {
     trainingData: {
       cutoffDate: "2024-10",
       sources: ["web-crawl", "curated-datasets", "code-repositories"],
-      specialisedDomains: ["mathematics", "coding", "reasoning-tasks"]
+      specialisedDomains: ["mathematics", "coding", "reasoning-tasks"],
     },
     bestFor: [
       "interactive chat applications",
-      "low-latency conversations", 
+      "low-latency conversations",
       "mathematical problem solving",
       "code generation and debugging",
       "multi-step reasoning tasks",
-      "high-throughput workloads"
+      "high-throughput workloads",
     ],
     domainExpertise: {
       mathematics: 9,
       coding: 9,
       reasoning: 9,
       conversation: 10,
-      responsiveness: 10
+      responsiveness: 10,
     },
     accessibility: {
       responseLatency: "optimised",
-      consistencyRating: "high"
+      consistencyRating: "high",
     },
   },
   parameterSupport: {
     supported: [
       "structured_outputs",
-      "response_format", 
+      "response_format",
       "seed",
       "max_tokens",
       "stop",
@@ -28404,7 +28446,7 @@ modelRegistry.registerModel("openai/gpt-5.1-chat", {
       "top_logprobs",
       "tool_choice",
       "tools",
-      "system-prompt"
+      "system-prompt",
     ],
     statistics: {
       frequency_penalty: { p10: 0, p50: 0, p90: 0 },
@@ -28415,7 +28457,12 @@ modelRegistry.registerModel("openai/gpt-5.1-chat", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["structured-outputs", "tool-calling", "adaptive-reasoning", "system-prompt"],
+    features: [
+      "structured-outputs",
+      "tool-calling",
+      "adaptive-reasoning",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
@@ -28423,14 +28470,15 @@ modelRegistry.registerModel("openai/gpt-5.1-chat", {
       "real-time-conversations",
       "mathematical-problem-solving",
       "coding-assistance",
-      "multi-step-reasoning"
+      "multi-step-reasoning",
     ],
     warnings: [
       "High output token costs may impact accessibility for extended conversations",
-      "Adaptive reasoning may introduce slight latency variation for complex queries"
+      "Adaptive reasoning may introduce slight latency variation for complex queries",
     ],
     ariaLabels: {
-      modelSelect: "GPT-5.1 Chat - Fast conversational model with 128K context optimised for interactive applications",
+      modelSelect:
+        "GPT-5.1 Chat - Fast conversational model with 128K context optimised for interactive applications",
       parameterSection: "Parameter controls for GPT-5.1 Chat model",
       statusMessages: {
         processing: "Processing request with GPT-5.1 Chat adaptive reasoning",
@@ -28452,14 +28500,15 @@ modelRegistry.registerModel("openai/gpt-5.1", {
   name: "GPT-5.1",
   category: "GeneralPurpose",
   disabled: false,
-  description: "OpenAI's latest frontier-grade model offering enhanced general-purpose reasoning, adaptive computation allocation, and improved instruction adherence. Features refined conversational alignment with clearer explanations, reduced jargon, and consistent performance gains across mathematical, coding, and structured analysis workloads. Optimised for both simple queries and complex multi-step problems with superior tool-use reliability.",
+  description:
+    "OpenAI's latest frontier-grade model offering enhanced general-purpose reasoning, adaptive computation allocation, and improved instruction adherence. Features refined conversational alignment with clearer explanations, reduced jargon, and consistent performance gains across mathematical, coding, and structured analysis workloads. Optimised for both simple queries and complex multi-step problems with superior tool-use reliability.",
   costs: {
     input: 1.25, // Per million tokens
-    output: 10.00, // Per million tokens
+    output: 10.0, // Per million tokens
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "reasoning",
     "code",
     "mathematics",
@@ -28471,7 +28520,8 @@ modelRegistry.registerModel("openai/gpt-5.1", {
   fallbackTo: "anthropic/claude-3.5-sonnet",
   isFree: false,
   metadata: {
-    categoryDescription: "Advanced general-purpose reasoning with adaptive computation",
+    categoryDescription:
+      "Advanced general-purpose reasoning with adaptive computation",
     releaseDate: "2025-11-13",
     modelArchitecture: {
       parameters: "Unknown",
@@ -28487,7 +28537,7 @@ modelRegistry.registerModel("openai/gpt-5.1", {
     },
     bestFor: [
       "complex reasoning tasks",
-      "mathematical problem solving", 
+      "mathematical problem solving",
       "coding assistance",
       "structured analysis",
       "long-form content generation",
@@ -28510,7 +28560,7 @@ modelRegistry.registerModel("openai/gpt-5.1", {
   parameterSupport: {
     supported: [
       "reasoning",
-      "include_reasoning", 
+      "include_reasoning",
       "structured_outputs",
       "response_format",
       "seed",
@@ -28534,12 +28584,17 @@ modelRegistry.registerModel("openai/gpt-5.1", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["adaptive_reasoning", "structured_outputs", "tool_calling", "system-prompt"],
+    features: [
+      "adaptive_reasoning",
+      "structured_outputs",
+      "tool_calling",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "technical-explanations",
-      "step-by-step-reasoning", 
+      "step-by-step-reasoning",
       "adaptive-complexity-responses",
       "tool-assisted-workflows",
     ],
@@ -28548,7 +28603,8 @@ modelRegistry.registerModel("openai/gpt-5.1", {
       "May provide extensive detail that could overwhelm users seeking brief answers",
     ],
     ariaLabels: {
-      modelSelect: "GPT-5.1 - Advanced reasoning model with 400,000 token context",
+      modelSelect:
+        "GPT-5.1 - Advanced reasoning model with 400,000 token context",
       parameterSection: "Parameter controls for GPT-5.1 reasoning model",
       statusMessages: {
         processing: "Processing request with GPT-5.1 adaptive reasoning",
@@ -28570,14 +28626,15 @@ modelRegistry.registerModel("x-ai/grok-4.1-fast", {
   name: "Grok 4.1 Fast",
   category: "FreeTier",
   disabled: false,
-  description: "xAI's best agentic tool calling model optimised for real-world applications including customer support and deep research. Features a massive 2M context window with optional reasoning capabilities that can be enabled or disabled via API parameters.",
+  description:
+    "xAI's best agentic tool calling model optimised for real-world applications including customer support and deep research. Features a massive 2M context window with optional reasoning capabilities that can be enabled or disabled via API parameters.",
   costs: {
-    input: 0.00, // Per million tokens
-    output: 0.00, // Per million tokens
+    input: 0.0, // Per million tokens
+    output: 0.0, // Per million tokens
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "tool_calling",
     "reasoning",
     "multilingual",
@@ -28589,14 +28646,19 @@ modelRegistry.registerModel("x-ai/grok-4.1-fast", {
     categoryDescription: "Free tier model with advanced agentic capabilities",
     releaseDate: "2025-11-19",
     modelArchitecture: {
-      parameters: "Unknown", 
+      parameters: "Unknown",
       type: "instruction-tuned",
-      specialFeatures: ["agentic_reasoning", "tool_calling", "large_context", "configurable_reasoning"],
+      specialFeatures: [
+        "agentic_reasoning",
+        "tool_calling",
+        "large_context",
+        "configurable_reasoning",
+      ],
     },
     policyLinks: {
       privacyPolicy: "https://x.ai/privacy",
-      acceptableUse: "", 
-      termsOfService: "https://x.ai/terms", 
+      acceptableUse: "",
+      termsOfService: "https://x.ai/terms",
       lastUpdated: "2025-11-19",
     },
     domainExpertise: {
@@ -28622,7 +28684,7 @@ modelRegistry.registerModel("x-ai/grok-4.1-fast", {
   parameterSupport: {
     supported: [
       "reasoning",
-      "include_reasoning", 
+      "include_reasoning",
       "max_tokens",
       "temperature",
       "top_p",
@@ -28643,12 +28705,17 @@ modelRegistry.registerModel("x-ai/grok-4.1-fast", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["agentic_reasoning", "configurable_reasoning", "advanced_tool_calling", "system-prompt"],
+    features: [
+      "agentic_reasoning",
+      "configurable_reasoning",
+      "advanced_tool_calling",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "customer-support",
-      "research-tasks", 
+      "research-tasks",
       "tool-calling",
       "long-context-analysis",
       "agentic-workflows",
@@ -28659,8 +28726,10 @@ modelRegistry.registerModel("x-ai/grok-4.1-fast", {
       "Tool calling responses may require additional navigation considerations",
     ],
     ariaLabels: {
-      modelSelect: "Grok 4.1 Fast - Free agentic tool calling model with 2M context window",
-      parameterSection: "Parameter controls for Grok 4.1 Fast including reasoning toggle",
+      modelSelect:
+        "Grok 4.1 Fast - Free agentic tool calling model with 2M context window",
+      parameterSection:
+        "Parameter controls for Grok 4.1 Fast including reasoning toggle",
       statusMessages: {
         processing: "Processing agentic request with Grok 4.1 Fast",
         complete: "Agentic response ready from Grok 4.1 Fast",
@@ -28681,66 +28750,68 @@ modelRegistry.registerModel("allenai/olmo-3-7b-think", {
   name: "Olmo 3 7B Think",
   category: "Specialized",
   disabled: false,
-  description: "Research-oriented language model in the Olmo family designed for advanced reasoning and instruction-driven tasks. Excels at multi-step problem solving, logical inference, and maintaining coherent conversational context. Developed by Ai2 under Apache 2.0 licence, supporting transparent experimentation and providing a capable foundation for academic research and practical NLP workflows.",
+  description:
+    "Research-oriented language model in the Olmo family designed for advanced reasoning and instruction-driven tasks. Excels at multi-step problem solving, logical inference, and maintaining coherent conversational context. Developed by Ai2 under Apache 2.0 licence, supporting transparent experimentation and providing a capable foundation for academic research and practical NLP workflows.",
   costs: {
     input: 0.12,
-    output: 0.20,
+    output: 0.2,
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "reasoning",
     "mathematics",
-    "tool_calling"
+    "tool_calling",
   ],
   maxContext: 65536,
   fallbackTo: "meta-llama/llama-3.1-8b-instruct",
   isFree: false,
   metadata: {
-    categoryDescription: "Research-focused reasoning model with transparent open-source development",
+    categoryDescription:
+      "Research-focused reasoning model with transparent open-source development",
     releaseDate: "2025-11-21",
     modelArchitecture: {
       parameters: "7B",
       type: "instruction-tuned",
       license: "Apache 2.0",
-      openSource: true
+      openSource: true,
     },
     policyLinks: {
       privacyPolicy: "https://allenai.org/privacy-policy",
       acceptableUse: "",
-      termsOfService: "https://allenai.org/terms", 
+      termsOfService: "https://allenai.org/terms",
       lastUpdated: "2025-11-21",
     },
     bestFor: [
       "multi-step problem solving",
-      "logical inference", 
+      "logical inference",
       "academic research",
       "advanced reasoning tasks",
-      "NLP workflows"
+      "NLP workflows",
     ],
     accessibility: {
       transparency: "Fully open-source under Apache 2.0",
-      research: "Designed for transparent experimentation"
+      research: "Designed for transparent experimentation",
     },
   },
   parameterSupport: {
     supported: [
       "reasoning",
-      "include_reasoning", 
+      "include_reasoning",
       "max_tokens",
       "temperature",
       "top_p",
       "frequency_penalty",
       "min_p",
       "presence_penalty",
-      "repetition_penalty", 
+      "repetition_penalty",
       "seed",
       "stop",
       "top_k",
       "logit_bias",
       "structured_outputs",
       "response_format",
-      "system-prompt"
+      "system-prompt",
     ],
     statistics: {
       frequency_penalty: { p10: 0, p50: 0, p90: 0 },
@@ -28751,22 +28822,29 @@ modelRegistry.registerModel("allenai/olmo-3-7b-think", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["reasoning", "structured_outputs", "open_source", "system-prompt"],
+    features: [
+      "reasoning",
+      "structured_outputs",
+      "open_source",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "academic-research",
-      "reasoning-tasks", 
+      "reasoning-tasks",
       "problem-solving",
-      "research-experimentation"
+      "research-experimentation",
     ],
     warnings: [
       "Research model may require specific prompting techniques for optimal reasoning performance",
-      "Open-source model may have different safety considerations compared to commercial models"
+      "Open-source model may have different safety considerations compared to commercial models",
     ],
     ariaLabels: {
-      modelSelect: "Olmo 3 7B Think - Research-oriented reasoning model with 65,536 token context",
-      parameterSection: "Parameter controls for Olmo 3 7B Think reasoning model",
+      modelSelect:
+        "Olmo 3 7B Think - Research-oriented reasoning model with 65,536 token context",
+      parameterSection:
+        "Parameter controls for Olmo 3 7B Think reasoning model",
       statusMessages: {
         processing: "Processing request with Olmo 3 7B Think reasoning model",
         complete: "Response ready from Olmo 3 7B Think reasoning model",
@@ -28787,14 +28865,15 @@ modelRegistry.registerModel("allenai/olmo-3-7b-instruct", {
   name: "Olmo 3 7B Instruct",
   category: "GeneralPurpose",
   disabled: false,
-  description: "A supervised instruction-fine-tuned variant optimised for instruction-following, question-answering, and natural conversational dialogue. Developed by AI2 with an open training pipeline, it delivers strong performance across everyday NLP tasks whilst remaining accessible and easy to integrate. Built under Apache 2.0 licence for transparent, community-friendly applications.",
+  description:
+    "A supervised instruction-fine-tuned variant optimised for instruction-following, question-answering, and natural conversational dialogue. Developed by AI2 with an open training pipeline, it delivers strong performance across everyday NLP tasks whilst remaining accessible and easy to integrate. Built under Apache 2.0 licence for transparent, community-friendly applications.",
   costs: {
-    input: 0.10, // Per million tokens
-    output: 0.20, // Per million tokens
+    input: 0.1, // Per million tokens
+    output: 0.2, // Per million tokens
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "reasoning",
     "tool_calling",
     "multilingual",
@@ -28803,7 +28882,8 @@ modelRegistry.registerModel("allenai/olmo-3-7b-instruct", {
   fallbackTo: "meta-llama/llama-3.1-8b-instruct",
   isFree: false,
   metadata: {
-    categoryDescription: "Versatile instruction-tuned model for everyday NLP tasks",
+    categoryDescription:
+      "Versatile instruction-tuned model for everyday NLP tasks",
     releaseDate: "2025-11-21",
     modelArchitecture: {
       parameters: "7B",
@@ -28824,27 +28904,27 @@ modelRegistry.registerModel("allenai/olmo-3-7b-instruct", {
     },
     bestFor: [
       "instruction-following tasks",
-      "question-answering systems", 
+      "question-answering systems",
       "conversational dialogue",
       "everyday NLP applications",
       "community-driven projects",
     ],
     domainExpertise: {
-      "instruction_following": 8,
-      "conversation": 7,
-      "general_knowledge": 7,
-      "accessibility": 8,
+      instruction_following: 8,
+      conversation: 7,
+      general_knowledge: 7,
+      accessibility: 8,
     },
   },
   parameterSupport: {
     supported: [
       "max_tokens",
-      "temperature", 
+      "temperature",
       "top_p",
       "frequency_penalty",
       "min_p",
       "presence_penalty",
-      "repetition_penalty", 
+      "repetition_penalty",
       "seed",
       "stop",
       "top_k",
@@ -28864,13 +28944,18 @@ modelRegistry.registerModel("allenai/olmo-3-7b-instruct", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["tool_calling", "structured_outputs", "instruction_following", "system-prompt"],
+    features: [
+      "tool_calling",
+      "structured_outputs",
+      "instruction_following",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "instruction-following-tasks",
       "conversational-interfaces",
-      "educational-applications", 
+      "educational-applications",
       "community-projects",
     ],
     warnings: [
@@ -28878,7 +28963,8 @@ modelRegistry.registerModel("allenai/olmo-3-7b-instruct", {
       "Performance may vary on specialised domain knowledge outside training data",
     ],
     ariaLabels: {
-      modelSelect: "Olmo 3 7B Instruct - Open-source instruction-tuned model with 65K context",
+      modelSelect:
+        "Olmo 3 7B Instruct - Open-source instruction-tuned model with 65K context",
       parameterSection: "Parameter controls for Olmo 3 7B Instruct model",
       statusMessages: {
         processing: "Processing request with Olmo 3 7B Instruct",
@@ -28900,9 +28986,10 @@ modelRegistry.registerModel("allenai/olmo-3-32b-think", {
   name: "Olmo 3 32B Think",
   category: "Specialized",
   disabled: false,
-  description: "A specialised 32-billion-parameter model purpose-built for deep reasoning, complex logic chains, and advanced instruction-following scenarios. Developed by Ai2 under Apache 2.0 licence, offering full transparency across weights, code, and training methodology with strong performance on demanding evaluation tasks.",
+  description:
+    "A specialised 32-billion-parameter model purpose-built for deep reasoning, complex logic chains, and advanced instruction-following scenarios. Developed by Ai2 under Apache 2.0 licence, offering full transparency across weights, code, and training methodology with strong performance on demanding evaluation tasks.",
   costs: {
-    input: 0.20, // Per million tokens
+    input: 0.2, // Per million tokens
     output: 0.35, // Per million tokens
   },
   capabilities: [
@@ -28911,7 +28998,7 @@ modelRegistry.registerModel("allenai/olmo-3-32b-think", {
     "reasoning",
     "mathematics",
     "multilingual",
-    "tool_calling"
+    "tool_calling",
   ],
   maxContext: 65536,
   fallbackTo: "meta-llama/llama-3.3-70b-instruct",
@@ -28924,7 +29011,7 @@ modelRegistry.registerModel("allenai/olmo-3-32b-think", {
       type: "instruction-tuned",
       license: "Apache 2.0",
       specialization: "reasoning-optimised",
-      transparency: "full-weights-and-training-data"
+      transparency: "full-weights-and-training-data",
     },
     policyLinks: {
       privacyPolicy: "https://allenai.org/privacy-policy",
@@ -28935,14 +29022,14 @@ modelRegistry.registerModel("allenai/olmo-3-32b-think", {
     trainingData: {
       transparency: "full",
       openSource: true,
-      license: "Apache 2.0"
+      license: "Apache 2.0",
     },
     domainExpertise: {
       reasoning: 9,
       logic: 9,
       instruction_following: 8,
       conversation: 7,
-      mathematics: 8
+      mathematics: 8,
     },
     bestFor: [
       "deep reasoning tasks",
@@ -28950,11 +29037,11 @@ modelRegistry.registerModel("allenai/olmo-3-32b-think", {
       "advanced instruction following",
       "demanding evaluation tasks",
       "nuanced conversational reasoning",
-      "transparent ai research"
+      "transparent ai research",
     ],
     accessibility: {
       openSource: true,
-      transparency: "full methodology available"
+      transparency: "full methodology available",
     },
   },
   parameterSupport: {
@@ -28974,7 +29061,7 @@ modelRegistry.registerModel("allenai/olmo-3-32b-think", {
       "logit_bias",
       "structured_outputs",
       "response_format",
-      "system-prompt"
+      "system-prompt",
     ],
     statistics: {
       frequency_penalty: { p10: 0, p50: 0, p90: 0 },
@@ -28985,25 +29072,408 @@ modelRegistry.registerModel("allenai/olmo-3-32b-think", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["reasoning-chains", "structured-outputs", "logic-analysis", "system-prompt"],
+    features: [
+      "reasoning-chains",
+      "structured-outputs",
+      "logic-analysis",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "academic-research",
       "complex-problem-solving",
       "logical-reasoning-tasks",
-      "transparent-ai-applications"
+      "transparent-ai-applications",
     ],
     warnings: [
       "Optimised for reasoning tasks - may be slower for simple queries",
-      "32B parameter size requires consideration for response time expectations"
+      "32B parameter size requires consideration for response time expectations",
     ],
     ariaLabels: {
-      modelSelect: "Olmo 3 32B Think - Specialised reasoning model with 65,536 token context",
-      parameterSection: "Parameter controls for Olmo 3 32B Think reasoning model",
+      modelSelect:
+        "Olmo 3 32B Think - Specialised reasoning model with 65,536 token context",
+      parameterSection:
+        "Parameter controls for Olmo 3 32B Think reasoning model",
       statusMessages: {
         processing: "Processing reasoning request with Olmo 3 32B Think",
         complete: "Reasoning response ready from Olmo 3 32B Think",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert Claude Opus 4.5 registration
+modelRegistry.registerModel("anthropic/claude-opus-4.5", {
+  provider: "anthropic",
+  name: "Claude Opus 4.5",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "Anthropic's frontier reasoning model optimised for complex software engineering, agentic workflows, and long-horizon computer use. Features strong multimodal capabilities, competitive performance across real-world coding and reasoning benchmarks, and improved robustness to prompt injection. Designed to operate efficiently across varied effort levels with configurable token efficiency controls.",
+  costs: {
+    input: 5.0, // Per million tokens
+    output: 25.0, // Per million tokens
+    image: 10.0, // Per thousand web searches/multimodal operations
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 200000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced frontier model for complex reasoning and software engineering tasks",
+    releaseDate: "2025-11-24",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "instruction-tuned",
+      specialFeatures: [
+        "Verbosity control parameter",
+        "Advanced tool use",
+        "Extended context management",
+        "Multi-agent coordination",
+        "Prompt injection robustness",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.anthropic.com/privacy",
+      acceptableUse: "https://www.anthropic.com/usage-policy",
+      termsOfService: "https://www.anthropic.com/terms",
+      lastUpdated: "2025-11-24",
+    },
+    domainExpertise: {
+      softwareEngineering: 10,
+      reasoning: 10,
+      debugging: 9,
+      planning: 9,
+      autonomousResearch: 9,
+      browserAutomation: 8,
+    },
+    bestFor: [
+      "complex software engineering",
+      "agentic workflows",
+      "long-horizon computer use",
+      "autonomous research",
+      "debugging and troubleshooting",
+      "multi-step planning",
+      "browser and spreadsheet manipulation",
+    ],
+    accessibility: {
+      tokenEfficiencyControl: true,
+      structuredReasoning: true,
+      reliableExecution: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "stop",
+      "reasoning",
+      "include_reasoning",
+      "tool_choice",
+      "tools",
+      "structured_outputs",
+      "response_format",
+      "verbosity",
+      "top_k",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "verbosity_control",
+      "advanced_reasoning",
+      "structured_outputs",
+      "tool_calling",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "software-engineering",
+      "complex-reasoning",
+      "agentic-workflows",
+      "computer-automation",
+      "multi-step-planning",
+    ],
+    warnings: [
+      "High token costs for output generation",
+      "Advanced model requires careful prompt engineering for optimal results",
+      "Verbosity parameter affects both response quality and token usage",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Claude Opus 4.5 - Frontier reasoning model with 200K context optimised for software engineering and agentic workflows",
+      parameterSection:
+        "Parameter controls for Claude Opus 4.5 including verbosity and reasoning options",
+      statusMessages: {
+        processing: "Processing complex reasoning request with Claude Opus 4.5",
+        complete: "Advanced reasoning response ready from Claude Opus 4.5",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry:
+
+modelRegistry.registerModel("tngtech/tng-r1t-chimera", {
+  provider: "tng",
+  name: "TNG R1T Chimera",
+  category: "Specialized",
+  disabled: false,
+  description:
+    "An experimental LLM specialised in creative storytelling and character interaction. This derivative of the original TNG/DeepSeek-R1T-Chimera features enhanced emotional intelligence, improved reasoning consistency, and superior tool calling capabilities. Designed for creative applications with a pleasant, engaging personality.",
+  costs: {
+    input: 0.3, // Per million tokens
+    output: 1.2, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "creative_writing",
+    "reasoning",
+    "tool_calling",
+  ],
+  maxContext: 163840,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Specialised model optimised for creative storytelling and character interactions",
+    releaseDate: "2025-11-26",
+    modelArchitecture: {
+      type: "instruction-tuned",
+      baseModel: "DeepSeek-R1T-Chimera",
+      specialisation: "creative_storytelling",
+    },
+    policyLinks: {
+      privacyPolicy: "",
+      acceptableUse: "https://huggingface.co/microsoft/MAI-DS-R1",
+      termsOfService: "",
+      lastUpdated: "2025-11-26",
+    },
+    domainExpertise: {
+      creative_writing: 9,
+      character_development: 9,
+      emotional_intelligence: 8,
+      reasoning: 7,
+    },
+    benchmarkScores: {
+      eqBench3: 1305,
+    },
+    bestFor: [
+      "creative storytelling",
+      "character interaction",
+      "dialogue systems",
+      "creative writing",
+      "narrative development",
+    ],
+    accessibility: {
+      emotionalIntelligence:
+        "High EQ-Bench3 score supports empathetic interactions",
+      reasoningClarity: "Improved think-token consistency aids comprehension",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "seed",
+      "top_k",
+      "repetition_penalty",
+      "tools",
+      "tool_choice",
+      "structured_outputs",
+      "response_format",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "reasoning_consistency",
+      "tool_calling",
+      "creative_personality",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "creative-writing",
+      "character-interaction",
+      "dialogue-systems",
+      "narrative-development",
+    ],
+    warnings: [
+      "Experimental model may have unpredictable creative outputs",
+      "Follow Microsoft MAI-DS-R1 guidelines for responsible usage",
+      "Model may be slower than standard alternatives",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "TNG R1T Chimera - Creative storytelling model with 163,840 token context",
+      parameterSection: "Parameter controls for TNG R1T Chimera creative model",
+      statusMessages: {
+        processing: "Processing creative request with TNG R1T Chimera",
+        complete: "Creative response ready from TNG R1T Chimera",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry:
+modelRegistry.registerModel("prime-intellect/intellect-3", {
+  provider: "prime_intellect",
+  name: "INTELLECT-3",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "A highly efficient 106B-parameter Mixture-of-Experts model (12B active) built from GLM-4.5-Air-Base with advanced reinforcement learning optimisation. Delivers state-of-the-art performance across mathematics, coding, scientific reasoning, and multi-step problem solving whilst maintaining efficient inference through its specialised MoE architecture.",
+  costs: {
+    input: 0.20, // Per million tokens
+    output: 1.10, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue", 
+    "code",
+    "mathematics",
+    "reasoning",
+    "multilingual",
+    "tool_calling",
+  ],
+  maxContext: 131072,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced reasoning model optimised for complex problem-solving",
+    releaseDate: "2025-11-27",
+    modelArchitecture: {
+      parameters: "106B",
+      activeParameters: "12B", 
+      type: "mixture-of-experts",
+      baseModel: "GLM-4.5-Air-Base",
+      trainingMethods: ["supervised-fine-tuning", "reinforcement-learning"],
+      architecture: "transformer-moe",
+    },
+    policyLinks: {
+      privacyPolicy: "https://primeintellect.ai/privacy",
+      acceptableUse: "",
+      termsOfService: "https://primeintellect.ai/terms",
+      lastUpdated: "2025-11-27",
+    },
+    domainExpertise: {
+      mathematics: 9,
+      coding: 9,
+      science: 8,
+      reasoning: 9,
+      problemSolving: 9,
+    },
+    bestFor: [
+      "multi-step problem solving",
+      "mathematical reasoning", 
+      "code generation and analysis",
+      "scientific analysis",
+      "structured task completion",
+      "complex logical reasoning",
+    ],
+    accessibility: {
+      reasoningTransparency: "Supports explicit reasoning traces",
+      structuredOutputs: "Enhanced structured response formatting",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens", 
+      "temperature",
+      "top_p",
+      "frequency_penalty",
+      "presence_penalty", 
+      "top_k",
+      "repetition_penalty",
+      "tools",
+      "tool_choice",
+      "response_format",
+      "structured_outputs",
+      "min_p",
+      "seed",
+      "stop",
+      "logit_bias",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: ["reasoning-traces", "structured-outputs", "tool-calling", "system-prompt"],
+  },
+  accessibility: {
+    preferredFor: [
+      "mathematical-problem-solving",
+      "code-analysis-and-generation", 
+      "scientific-reasoning",
+      "multi-step-logical-tasks",
+      "structured-data-processing",
+    ],
+    warnings: [
+      "Complex reasoning tasks may require longer processing times",
+      "Structured outputs may need careful validation for accessibility compliance",
+    ],
+    ariaLabels: {
+      modelSelect: "INTELLECT-3 - Advanced reasoning model with 131,072 token context",
+      parameterSection: "Parameter controls for INTELLECT-3 reasoning model",
+      statusMessages: {
+        processing: "Processing complex reasoning request with INTELLECT-3", 
+        complete: "Reasoning response ready from INTELLECT-3",
       },
     },
   },

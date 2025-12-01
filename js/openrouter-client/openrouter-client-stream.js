@@ -109,11 +109,62 @@ class OpenRouterStream {
       const signal = abortSignal || controller.signal;
 
       // Log the streaming request
+
       openRouterUtils.debug("Prepared streaming request body", requestBody);
 
-      // Update the original request display
-      openRouterDisplay.updateCodeDisplay("original-request", requestBody);
-      openRouterUtils.debug("Prepared streaming request body", requestBody);
+      // Sanitize requestBody for console logging to prevent browser freeze with large base64 data
+      const sanitizedBodyForConsole = (() => {
+        try {
+          const clone = JSON.parse(JSON.stringify(requestBody));
+          if (clone.messages && Array.isArray(clone.messages)) {
+            clone.messages = clone.messages.map((msg) => {
+              if (msg.content && Array.isArray(msg.content)) {
+                return {
+                  ...msg,
+                  content: msg.content.map((item) => {
+                    // Truncate base64 image data to prevent console freeze
+                    if (item.type === "image_url" && item.image_url?.url) {
+                      const url = item.image_url.url;
+                      if (url.startsWith("data:") && url.length > 200) {
+                        const [header] = url.split(",");
+                        const dataLength = url.length - header.length - 1;
+                        return {
+                          ...item,
+                          image_url: {
+                            url: `${header},<BASE64_TRUNCATED: ${dataLength.toLocaleString()} chars>`,
+                          },
+                        };
+                      }
+                    }
+                    return item;
+                  }),
+                };
+              }
+              return msg;
+            });
+          }
+          return clone;
+        } catch (e) {
+          return {
+            error: "Failed to sanitize request body",
+            type: typeof requestBody,
+          };
+        }
+      })();
+
+      console.log(
+        "📤 STREAMING REQUEST BODY:",
+        JSON.stringify(sanitizedBodyForConsole, null, 2)
+      );
+      // Use sanitized body for display to prevent UI freeze with large base64 data
+      openRouterDisplay.updateCodeDisplay(
+        "original-request",
+        sanitizedBodyForConsole
+      );
+      openRouterUtils.debug(
+        "Prepared streaming request body",
+        sanitizedBodyForConsole
+      );
 
       // Update UI to show streaming has started
       if (onStart && typeof onStart === "function") {
@@ -140,6 +191,24 @@ class OpenRouterStream {
 
       if (!response.ok) {
         const error = await response.json();
+
+        // Enhanced error logging for debugging
+        openRouterUtils.error("API returned error response", {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage: error.error?.message,
+          errorCode: error.error?.code,
+          errorType: error.error?.type,
+          errorMetadata: error.error?.metadata,
+          fullError: error,
+        });
+
+        // Log the full error as JSON to see all details
+        console.error(
+          "Full API error details:",
+          JSON.stringify(error, null, 2)
+        );
+
         throw new OpenRouterClientError(
           error.error?.message || "API request failed",
           ErrorCodes.API_ERROR,
@@ -147,7 +216,7 @@ class OpenRouterStream {
         );
       }
 
-      // Process the stream
+      // Process the stream (with defensive error handling)
       this.processStream(response, {
         onChunk,
         onToolCall,
@@ -155,6 +224,27 @@ class OpenRouterStream {
         onError,
         requestId: this.generateRequestId(),
         model: options.model,
+      }).catch((error) => {
+        // Defensive catch for any uncaught errors from processStream
+        // AbortErrors should be handled in processStream, but this prevents
+        // any potential uncaught promise rejections
+        const isAbortError =
+          error.name === "AbortError" || error.message?.includes("aborted");
+
+        if (!isAbortError) {
+          // Only log non-abort errors (real errors)
+          openRouterUtils.error("Uncaught error from processStream", { error });
+
+          // Notify via onError if not already called
+          if (onError && typeof onError === "function") {
+            onError(error);
+          }
+        } else {
+          // Abort errors are expected - log as debug
+          openRouterUtils.debug("Stream cancellation in defensive catch", {
+            message: error.message,
+          });
+        }
       });
 
       // Return controller for potential cancellation
@@ -445,6 +535,28 @@ class OpenRouterStream {
         }
       }
     } catch (error) {
+      // Check if this is an expected cancellation (AbortError)
+      const isAbortError =
+        error.name === "AbortError" ||
+        error.message.includes("aborted") ||
+        error.message.includes("BodyStreamBuffer was aborted");
+
+      if (isAbortError) {
+        // Expected cancellation - log as debug, not error
+        openRouterUtils.debug("Stream aborted (expected cancellation)", {
+          message: error.message,
+          errorName: error.name,
+        });
+
+        // DON'T call onError for expected cancellations
+        // The embed core already handles cleanup via cancelStreaming()
+        // Calling onError would trigger unnecessary error handlers
+
+        // Return gracefully without throwing or calling callbacks
+        return;
+      }
+
+      // Real errors - log and handle normally
       openRouterUtils.error("Error processing stream", {
         error,
         message: error.message,
@@ -469,8 +581,17 @@ class OpenRouterStream {
             ? fullResponse.substring(0, 30) + "..."
             : "no content",
       });
-      // Ensure reader is closed
-      reader.cancel();
+
+      // Ensure reader is closed - wrap in try-catch to handle cancellation errors
+      try {
+        reader.cancel();
+      } catch (cancelError) {
+        // Silently handle cancellation errors - they're expected when already aborted
+        openRouterUtils.debug("Reader cancellation completed", {
+          hadError: true,
+          errorMessage: cancelError.message,
+        });
+      }
     }
   }
 
@@ -535,12 +656,47 @@ class OpenRouterStream {
             // Track token usage if not done already
             this.trackStreamTokens(options, parsedData);
 
-            // Call the onChunk callback
+            // Call the onChunk callback (with error handling for user code)
             if (options.onChunk && typeof options.onChunk === "function") {
               openRouterUtils.debug("Calling onChunk callback with content:", {
                 contentLength: content.length,
               });
-              options.onChunk(content, parsedData);
+              try {
+                options.onChunk(content, parsedData);
+              } catch (callbackError) {
+                // Handle errors thrown by user callback code
+                const isAbortError =
+                  callbackError.name === "AbortError" ||
+                  callbackError.message?.includes("aborted");
+
+                if (isAbortError) {
+                  // Expected cancellation from callback - log as debug and throw to trigger processStream's catch
+                  openRouterUtils.debug(
+                    "Callback triggered cancellation (expected)",
+                    {
+                      message: callbackError.message,
+                    }
+                  );
+                  throw callbackError;
+                } else {
+                  // Unexpected error from user callback
+                  openRouterUtils.error("Error in onChunk callback", {
+                    error: callbackError,
+                  });
+                  if (
+                    options.onError &&
+                    typeof options.onError === "function"
+                  ) {
+                    try {
+                      options.onError(callbackError);
+                    } catch (e) {
+                      openRouterUtils.error("Error in onError callback", {
+                        error: e,
+                      });
+                    }
+                  }
+                }
+              }
             } else {
               openRouterUtils.warn(
                 "onChunk callback not available or not a function"
@@ -556,9 +712,40 @@ class OpenRouterStream {
               length: content.length,
             });
 
-            // Call the onChunk callback
+            // Call the onChunk callback (with error handling)
             if (options.onChunk && typeof options.onChunk === "function") {
-              options.onChunk(content, parsedData);
+              try {
+                options.onChunk(content, parsedData);
+              } catch (callbackError) {
+                const isAbortError =
+                  callbackError.name === "AbortError" ||
+                  callbackError.message?.includes("aborted");
+                if (isAbortError) {
+                  openRouterUtils.debug(
+                    "Callback triggered cancellation (expected)",
+                    {
+                      message: callbackError.message,
+                    }
+                  );
+                  throw callbackError;
+                } else {
+                  openRouterUtils.error("Error in onChunk callback", {
+                    error: callbackError,
+                  });
+                  if (
+                    options.onError &&
+                    typeof options.onError === "function"
+                  ) {
+                    try {
+                      options.onError(callbackError);
+                    } catch (e) {
+                      openRouterUtils.error("Error in onError callback", {
+                        error: e,
+                      });
+                    }
+                  }
+                }
+              }
             }
 
             return { content, parsedData };
@@ -570,8 +757,40 @@ class OpenRouterStream {
               length: content.length,
             });
 
+            // Call the onChunk callback (with error handling)
             if (options.onChunk && typeof options.onChunk === "function") {
-              options.onChunk(content, parsedData);
+              try {
+                options.onChunk(content, parsedData);
+              } catch (callbackError) {
+                const isAbortError =
+                  callbackError.name === "AbortError" ||
+                  callbackError.message?.includes("aborted");
+                if (isAbortError) {
+                  openRouterUtils.debug(
+                    "Callback triggered cancellation (expected)",
+                    {
+                      message: callbackError.message,
+                    }
+                  );
+                  throw callbackError;
+                } else {
+                  openRouterUtils.error("Error in onChunk callback", {
+                    error: callbackError,
+                  });
+                  if (
+                    options.onError &&
+                    typeof options.onError === "function"
+                  ) {
+                    try {
+                      options.onError(callbackError);
+                    } catch (e) {
+                      openRouterUtils.error("Error in onError callback", {
+                        error: e,
+                      });
+                    }
+                  }
+                }
+              }
             }
 
             return { content, parsedData };

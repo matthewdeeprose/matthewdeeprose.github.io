@@ -296,7 +296,7 @@ const MATHPIX_CONFIG = {
    * @property {boolean} data_options.include_asciimath - Include AsciiMath output format
    */
   DEFAULT_REQUEST: {
-    formats: ["text", "data", "html"],
+    formats: ["text", "data", "html", "markdown"], // ✅ Added "markdown" format
     metadata: { improve_mathpix: false }, // Privacy: No data improvement/training
     data_options: {
       include_latex: true,

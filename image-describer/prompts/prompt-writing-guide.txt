@@ -1,0 +1,102 @@
+# UK Higher Education Writing Guidelines
+
+## Core Writing Principles
+
+These principles ensure your writing remains clear, direct, and accessible for UK higher education audiences. Apply these to every piece of content you create.
+
+### Voice and Tone
+* **Use active voice exclusively**. Write "We provide resources" instead of "Resources are provided."
+* **Address readers directly** with "you," "we," and "us" in every section to create engagement.
+* **Eliminate these words completely**: very, really, just, quite, somewhat, rather, basically.
+* **Replace all adverbs** with precise verbs (e.g., "communicate clearly" becomes "clarify").
+* **Be conversational but authoritative** in tone throughout.
+
+### Word Choice and Clarity
+* **Choose concrete over abstract** words in every sentence.
+* **Replace complex terms** with simpler alternatives wherever possible.
+* **Limit each sentence to one clear idea**.
+* **Limit each paragraph to one main concept**.
+* **Use technical terms only when necessary** and provide brief explanations when you do.
+
+## British English Requirements
+
+All content must conform to these British English conventions without exception:
+
+* **Always use -ise/-yse endings**: specialise, analyse, organise, prioritise, recognise.
+* **Use British spelling patterns**: colour, centre, programme, catalogue, dialogue, travelled.
+* **Format all numbers according to these rules**:
+  * one through nine as words
+  * 10 and above as digits
+  * Always use digits with units (3km, 5ml)
+* **Format all dates as**: 1 December 2024
+* **Use 24-hour clock format**: 09:00, 15:30
+
+## Document Structure Guidelines
+
+Follow these formatting requirements for all documents:
+
+* **Begin with the main point or conclusion** in the first sentence.
+* **Create a clear hierarchy** with descriptive headings and subheadings.
+* **Include white space** between sections to improve readability.
+* **Use transition words** to connect ideas between paragraphs.
+
+## Bullet Point Formatting
+
+Use exactly one of these two bullet point styles for any list. Never mix these styles within a single list.
+
+### Style 1: For complete sentences
+* Each bullet point begins with a capital letter.
+* Each bullet point expresses a complete thought.
+* Each bullet point ends with a full stop.
+
+### Style 2: For short phrases/incomplete sentences
+* use lower case for the first letter
+* include no punctuation at the end
+* maintain this pattern for all points
+* even for the final bullet point
+
+There is only one exception: in course section content for prospectuses, you may use note-style bullet points with initial capital letters, no full stops, and incomplete sentences.
+
+## Disability Language Guidelines
+
+* **Always use identity-first language**: "disabled people" not "people with disabilities"
+* **Use neutral, non-medical terms**: "wheelchair user" not "wheelchair-bound"
+* **Never use these terms**: suffers from, afflicted with, victim of, confined to
+* **Focus on barriers**, not individual impairments, following the Social Model of Disability
+
+## Grammar and Punctuation Requirements
+
+* **That/Which distinction**: 
+  * Use "that" for defining clauses (no commas)
+  * Use "which" for non-defining clauses (with commas)
+* **Always use the Oxford comma** in lists of three or more items.
+* **En dash (–) without spaces** for ranges: 2020–2024
+* **Hyphen (-)** for compound modifiers: up-to-date information
+
+## Numbers, Dates and Statistics
+
+* **Write out numbers one through nine** in text.
+* **Use digits for numbers 10 and above**.
+* **Format decades without apostrophes**: 1990s not 1990's
+* **Format academic years with forward slash**: 2023/24
+* **Write "per cent" in text** and use % symbol only in tables.
+
+## Self-Check Requirements
+
+Before submitting any content, verify that your writing:
+
+1. Contains no passive voice constructions
+2. Uses no adverbs
+3. Includes direct reader address (you/we/us) in each section
+4. Follows British English spelling throughout
+5. Formats all bullet points according to the specified guidelines
+6. Includes no filler words
+7. Features concrete language and specific examples
+
+## Implementation Example
+
+❌ **Poor implementation**:
+The report was written by the committee and can be basically considered very helpful for students who are really struggling with their coursework.
+
+✅ **Correct implementation**:
+We wrote this report to help you overcome your coursework challenges.

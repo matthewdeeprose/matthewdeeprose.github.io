@@ -935,66 +935,16 @@ export class MarkdownItBridge extends ContentProcessorBase {
       const chartData = JSON.parse(code);
       const chartId = "chart-" + Math.random().toString(36).substring(2, 15);
 
-      setTimeout(() => {
-        try {
-          const canvas = document.getElementById(chartId);
-          if (canvas && window.Chart) {
-            // Create the chart instance
-            const chartInstance = new window.Chart(canvas, chartData);
-
-            // Apply default palette after chart creation
-            setTimeout(() => {
-              const container = canvas.closest(".chart-container");
-              if (container && window.ChartControls) {
-                const defaultPalette =
-                  window.ChartControls.utils.getDefaultPaletteForCurrentMode();
-
-                window.ChartControls.applyPalette(
-                  container,
-                  canvas,
-                  defaultPalette
-                );
-
-                const paletteSelect = container.querySelector(
-                  ".chart-palette-select"
-                );
-                if (paletteSelect) {
-                  paletteSelect.value = defaultPalette;
-                }
-
-                logDebug(
-                  "Applied default palette to bridge-rendered chart:",
-                  defaultPalette
-                );
-              }
-            }, 100);
-
-            // Add basic chart controls
-            if (
-              window.ChartControls &&
-              typeof window.ChartControls.addControlsToContainer === "function"
-            ) {
-              const container = canvas.closest(".chart-container");
-              if (container) {
-                window.ChartControls.addControlsToContainer(container, chartId);
-              }
-            }
-
-            // Mark container to prevent early view control initialization
-            const container = canvas.closest(".chart-container");
-            if (container) {
-              container.setAttribute("data-bridge-processed", "true");
-              container.setAttribute("data-defer-view-controls", "true");
-            }
-          }
-        } catch (err) {
-          logError("Chart rendering failed", { error: err });
-        }
-      }, 0);
+      // Chart initialization is now deferred until after DOM insertion
+      // See initializePendingCharts() method which is called after DOM update
+      logDebug(
+        "[Chart Debug] Chart container created, initialization deferred",
+        { chartId }
+      );
 
       return `<div class="chart-container" aria-label="Chart" role="figure" data-chart-code="${encodeURIComponent(
         code
-      )}" data-bridge-processing="true">
+      )}" data-chart-id="${chartId}" data-chart-needs-initialization="true" data-bridge-processing="true">
               <canvas id="${chartId}" width="600" height="400"></canvas>
           </div>`;
     } catch (err) {
@@ -1070,6 +1020,193 @@ export class MarkdownItBridge extends ContentProcessorBase {
           '<p class="error-boundary">Chart processing failed</p>';
       }
     });
+  }
+
+  /**
+   * Initialize all pending charts that have been inserted into the DOM
+   * Called after DOM insertion to create Chart.js instances
+   * @param {HTMLElement} container - Container to search for pending charts
+   */
+  initializePendingCharts(container = document) {
+    const pendingCharts = container.querySelectorAll(
+      '[data-chart-needs-initialization="true"]'
+    );
+
+    if (pendingCharts.length === 0) {
+      return;
+    }
+
+    logDebug(
+      `[Chart Debug] Initializing ${pendingCharts.length} pending chart(s) after DOM insertion`
+    );
+
+    pendingCharts.forEach((chartContainer, index) => {
+      try {
+        const chartId = chartContainer.getAttribute("data-chart-id");
+        const chartCodeEncoded = chartContainer.getAttribute("data-chart-code");
+
+        if (!chartId || !chartCodeEncoded) {
+          logError("[Chart Error] Missing chart ID or code", {
+            index,
+            chartId,
+          });
+          return;
+        }
+
+        const chartCode = decodeURIComponent(chartCodeEncoded);
+        let chartData;
+
+        try {
+          chartData = JSON.parse(chartCode);
+        } catch (parseError) {
+          logError("[Chart Error] Failed to parse chart JSON", {
+            index,
+            chartId,
+            error: parseError.message,
+          });
+          chartContainer.innerHTML = `
+            <div class="chart-error" role="alert">
+              <p><strong>Chart Configuration Error</strong></p>
+              <p>Invalid JSON: ${parseError.message}</p>
+            </div>
+          `;
+          return;
+        }
+
+        const canvas = document.getElementById(chartId);
+        if (!canvas) {
+          logError("[Chart Error] Canvas element not found in DOM", {
+            chartId,
+            index,
+          });
+          return;
+        }
+
+        if (!window.Chart) {
+          logError("[Chart Error] Chart.js library not loaded");
+          return;
+        }
+
+        // Validate chart data structure
+        if (!chartData || typeof chartData !== "object") {
+          logError("[Chart Error] Invalid chart data structure", {
+            chartId,
+            chartData,
+          });
+          return;
+        }
+
+        if (!chartData.type) {
+          logError("[Chart Error] Chart type not specified", {
+            chartId,
+            chartData,
+          });
+          return;
+        }
+
+        if (!chartData.data) {
+          logError("[Chart Error] Chart data not provided", {
+            chartId,
+            chartData,
+          });
+          return;
+        }
+
+        logDebug("[Chart Debug] Creating Chart.js instance", {
+          chartId,
+          index,
+          type: chartData.type,
+          hasData: !!chartData.data,
+          hasOptions: !!chartData.options,
+        });
+
+        // Create the chart instance with comprehensive error handling
+        let chartInstance;
+        try {
+          chartInstance = new window.Chart(canvas, chartData);
+          logDebug("[Chart Debug] ✅ Chart.js instance created successfully", {
+            chartId,
+            index,
+          });
+        } catch (chartError) {
+          logError("[Chart Error] Chart.js instantiation failed", {
+            chartId,
+            index,
+            error: chartError.message,
+            stack: chartError.stack,
+            chartType: chartData.type,
+            dataKeys: Object.keys(chartData.data || {}),
+            optionKeys: Object.keys(chartData.options || {}),
+          });
+
+          chartContainer.innerHTML = `
+            <div class="chart-error" role="alert">
+              <p><strong>Chart Creation Failed</strong></p>
+              <p>Error: ${chartError.message}</p>
+              <details>
+                <summary>Chart Configuration</summary>
+                <pre>${JSON.stringify(chartData, null, 2)}</pre>
+              </details>
+            </div>
+          `;
+          return;
+        }
+
+        // Remove the initialization flag
+        chartContainer.removeAttribute("data-chart-needs-initialization");
+
+        // Apply default palette after chart creation
+        setTimeout(() => {
+          if (window.ChartControls) {
+            const defaultPalette =
+              window.ChartControls.utils.getDefaultPaletteForCurrentMode();
+            window.ChartControls.applyPalette(
+              chartContainer,
+              canvas,
+              defaultPalette
+            );
+
+            const paletteSelect = chartContainer.querySelector(
+              ".chart-palette-select"
+            );
+            if (paletteSelect) {
+              paletteSelect.value = defaultPalette;
+            }
+
+            logDebug("[Chart Debug] Applied default palette", {
+              chartId,
+              palette: defaultPalette,
+            });
+          }
+        }, 100);
+
+        // Add basic chart controls
+        if (
+          window.ChartControls &&
+          typeof window.ChartControls.addControlsToContainer === "function"
+        ) {
+          window.ChartControls.addControlsToContainer(chartContainer, chartId);
+        }
+
+        // Mark container to prevent early view control initialization
+        chartContainer.setAttribute("data-bridge-processed", "true");
+        chartContainer.setAttribute("data-defer-view-controls", "true");
+        chartContainer.setAttribute("data-chart-initialized", "true");
+
+        logDebug("[Chart Debug] ✅ Chart initialization complete", {
+          chartId,
+          index,
+        });
+      } catch (error) {
+        logError("[Chart Error] Chart initialization pipeline failed", {
+          index,
+          error: error.message,
+          stack: error.stack,
+        });
+      }
+    });
+
+    logDebug(`[Chart Debug] ✅ All pending charts processed`);
   }
 
   /**

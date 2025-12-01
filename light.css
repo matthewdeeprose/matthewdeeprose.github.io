@@ -5,7 +5,8 @@
   border: 1px dotted #00131d;
 }
 
-        pre[class*="language-"] {border: 1px solid #00131d;
+pre[class*="language-"] {
+  border: 1px solid #00131d;
 }
 
 /* Canvas Element */
@@ -2182,7 +2183,8 @@ del {
   border: 1px solid #1e8765;
 }
 
-.results-content {
+.results-content,
+.imgdesc-output {
   background-color: #fffdf9;
 }
 

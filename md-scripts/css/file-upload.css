@@ -1,0 +1,1454 @@
+/* ===== COLOUR PROPERTIES SECTION ===== */
+
+/* Response management styles - Phase 4.5 - Colours */
+.response-management {
+  border-color: #ffc107;
+  background: #fff3cd;
+}
+
+.response-size {
+  color: #666;
+}
+
+.response-options button[aria-pressed="true"] {
+  background: #007bff;
+  color: #fffff4;
+}
+
+.response-preview {
+  background: #e1e8ec;
+}
+
+/* Cost warning styles - Phase 4.6 preparation - Colours */
+.cost-warning-yellow {
+  background: #fff3cd;
+  color: currentcolor;
+}
+
+.cost-warning-orange {
+  background: #ffeaa7;
+  color: currentcolor;
+}
+
+.cost-warning-red {
+  background: #ffcccc;
+  color: currentcolor;
+}
+
+/* PDF Engine Parameter Control - Colours */
+.pdf-engine-control {
+  border-color: #ddd;
+  background-color: #fff;
+}
+
+.pdf-engine-control .parameter-label {
+  color: #333;
+}
+
+.pdf-engine-control .parameter-input {
+  border-color: #ccc;
+  background-color: #fff;
+  color: #333;
+}
+
+.pdf-engine-control .parameter-input:focus {
+  outline-color: #007acc;
+}
+
+.pdf-engine-control .parameter-input:disabled {
+  background-color: #e1e8ec;
+}
+
+.pdf-engine-control .parameter-help {
+  color: currentcolor;
+}
+
+/* Engine cost info levels - Colours */
+.engine-cost-info.cost-low {
+  background-color: #d4edda;
+  color: #005051;
+  border-color: #c3e6cb;
+}
+
+.engine-cost-info.cost-medium {
+  background-color: #fff3cd;
+  color: #856404;
+  border-color: #ffeaa7;
+}
+
+.engine-cost-info.cost-high {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+.file-upload-text {
+  color: currentcolor;
+}
+
+.file-upload-subtext {
+  color: currentcolor;
+}
+
+.help-text {
+  color: currentcolor;
+}
+
+/* File Preview Area - Colours */
+.file-preview {
+  border-color: #002e3b;
+  background-color: #fffff4;
+}
+
+.preview-filename {
+  color: currentcolor;
+}
+
+.preview-filesize {
+  color: #495961;
+}
+
+.preview-remove {
+  background-color: #d5007f;
+  color: #fffff4;
+  border: 0.2rem solid #d5007f;
+}
+
+.preview-remove:hover {
+  background-color: #8d3970;
+  border: 0.2rem solid #8d3970;
+  color: #fffff4;
+}
+
+.preview-remove:focus {
+  outline-color: #005c84;
+}
+
+.preview-image {
+  border-color: #ddd;
+}
+
+.preview-pdf-info {
+  background-color: #e1e8ec;
+}
+
+.preview-pdf-icon {
+  color: #dc3545;
+}
+
+.preview-pdf-name {
+  color: #333;
+}
+
+.preview-pdf-size {
+  color: #666;
+}
+
+.preview-cost-estimate {
+  border: 1px solid currentcolor;
+}
+
+/* Cost Estimation - Colours */
+.preview-cost-estimate.cost-low {
+  background-color: #d4edda;
+  border-left-color: #005051;
+  color: currentcolor;
+}
+
+.preview-cost-estimate.cost-medium {
+  background-color: #fff3cd;
+  border-left-color: #ffc107;
+  color: #856404;
+}
+
+.preview-cost-estimate.cost-high {
+  background-color: #f8d7da;
+  border-left-color: #dc3545;
+  color: #721c24;
+}
+
+/* Response Size Warning - Colours */
+.response-size-warning {
+  background-color: #b3dbd2;
+  color: currentcolor;
+}
+
+/* Error States - Colours */
+.file-upload-error {
+  border-color: #d5007f;
+  background-color: #f8d7da;
+  color: currentcolor;
+}
+
+.upload-error-message {
+  background-color: #f8d7da;
+  border-color: #d5007f;
+  color: currentcolor;
+}
+
+/* Stage 5 Enhanced File Preview Styling - Colours */
+.file-preview-content.enhanced-preview {
+  background: none;
+}
+
+.image-details span {
+  background: #e9ecef;
+}
+
+.image-info {
+  color: currentcolor;
+}
+
+.image-preview {
+  border: 1px solid #231f20;
+  outline: 1px solid #fffff4;
+}
+
+.image-preview-error {
+  background: none;
+  border-color: currentcolor;
+  color: currentcolor;
+}
+
+.image-preview-error .error-message strong {
+  color: currentcolor;
+}
+
+.pdf-info-card {
+  background: #fffff4;
+  border-color: #002e3b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.pdf-card-header {
+  background: #002e3b;
+  color: #fffff4;
+}
+
+.pdf-stats {
+  background: #e1e8ec;
+}
+
+.stat-item {
+  background: #fffff4;
+  border: 1px solid currentcolor;
+}
+
+.stat-value {
+  color: currentcolor;
+}
+
+.cost-breakdown {
+  border-top-color: #dee2e6;
+}
+
+.cost-breakdown-header {
+  color: currentcolor;
+}
+
+.engine-option {
+  background: #e1e8ec;
+  border-color: #e9ecef;
+  color: currentcolor;
+  border: 1px solid currentcolor;
+}
+
+.engine-option.recommended {
+  background: #d4edda;
+  border-color: #c3e6cb;
+  border: 1px solid currentcolor;
+}
+
+.engine-option:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.engine-option.recommended:hover {
+  background: #c8e6c5;
+}
+
+.recommended-badge {
+  background: #005051;
+  color: #fffff4;
+}
+
+.engine-cost {
+  color: currentcolor;
+}
+
+.engine-notes {
+  color: currentcolor;
+}
+
+.confidence-indicator {
+  background: #e9ecef;
+  border-top: 1px solid currentcolor;
+}
+
+.confidence-indicator.confidence-high {
+  background: #d4edda;
+  color: currentcolor;
+}
+
+.confidence-indicator.confidence-medium {
+  background: #fff3cd;
+  color: currentcolor;
+}
+
+.confidence-indicator.confidence-low {
+  background: #f8d7da;
+  color: currentcolor;
+}
+
+.response-size-warning.warning-large {
+  background: #f8d7da;
+  border-color: currentcolor;
+}
+
+.response-size-warning.warning-very-large {
+  background: #f8d7da;
+  border-color: currentcolor;
+}
+
+.warning-header {
+  color: currentcolor;
+}
+
+.size-estimate {
+  color: currentcolor;
+}
+
+.warning-confidence {
+  color: currentcolor;
+}
+
+.warning-factors {
+  color: currentcolor;
+}
+
+.warning-recommendation {
+  background: rgba(255, 255, 255, 0.7);
+  color: currentcolor;
+  border: 1px solid currentcolor;
+}
+
+.engine-recommendation-display {
+  background: #b3dbd2;
+  border-color: #b3dbd2;
+  border: 1px solid currentcolor;
+}
+
+.recommendation-header {
+  color: currentcolor;
+}
+
+.primary-recommendation {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid currentcolor;
+}
+
+.recommended-engine {
+  color: currentcolor;
+}
+
+.recommendation-reasoning {
+  color: currentcolor;
+}
+
+.performance-header {
+  color: currentcolor;
+}
+
+.performance-list {
+  color: currentcolor;
+}
+
+.generic-file-preview {
+  background: #e1e8ec;
+}
+
+.file-name {
+  color: currentcolor;
+}
+
+.file-type {
+  color: currentcolor;
+}
+
+.file-size,
+.complexity,
+.processing-time {
+  background: #9fb1bd;
+  outline: 1px solid currentcolor;
+  color: currentcolor;
+}
+
+.preview-generation-error {
+  background: none;
+  border-color: #d5007f;
+  color: currentcolor;
+}
+
+.error-message {
+  color: #d5007f;
+}
+
+/* Interactive Engine Cards - Colours (extending existing .engine-option) */
+.engine-option.interactive-card {
+  background: #e1e8ec;
+  border-color: #e9ecef;
+  color: currentcolor;
+}
+
+.engine-option.interactive-card:hover {
+  background: #e9ecef;
+  border-color: #005c84;
+}
+
+.engine-option.interactive-card:focus-within {
+  outline-color: #005c84;
+  border-color: #005c84;
+}
+
+.engine-option.interactive-card.selected {
+  background: #d4edda;
+  border-color: #005051;
+  color: currentcolor;
+}
+
+.engine-option.interactive-card.recommended {
+  background: #d4edda;
+  border-color: #c3e6cb;
+}
+
+.engine-option.interactive-card.recommended:hover {
+  background: #c8e6c5;
+}
+
+.engine-option.interactive-card.recommended.selected {
+  background: #d4edda;
+  border-color: #005051;
+}
+
+/* Native Radio Button Styling - Colours */
+.engine-radio {
+  accent-color: #005051;
+  color: #005051;
+}
+
+.engine-radio:focus {
+  outline-color: #005c84;
+}
+
+/* Interactive Card Content - Colours */
+.engine-option.interactive-card .engine-cost {
+  color: currentcolor;
+}
+
+.engine-option.interactive-card .engine-notes {
+  color: currentcolor;
+}
+
+/* Recommended Badge Container - Use existing styling */
+.recommended-badge-container .recommended-badge {
+  background: #005051;
+  color: #fffff4;
+}
+
+/* Engine Options Fieldset - Colours */
+.engine-options-fieldset {
+  border-color: transparent;
+  background: none;
+}
+
+/* ===== STRUCTURAL PROPERTIES SECTION ===== */
+
+/* Response management styles - Phase 4.5 - Structure */
+.response-management {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 8px;
+}
+
+.response-size-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.response-size {
+  margin-left: auto;
+  font-size: 0.9em;
+}
+
+.response-options {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.response-options button {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.5rem 1rem;
+}
+
+.response-preview {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+/* Cost warning styles - Phase 4.6 preparation - Structure */
+.cost-display {
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.cost-warning-yellow,
+.cost-warning-orange {
+  border-width: 1px;
+  border-style: solid;
+  font-weight: 600;
+}
+
+.cost-warning-red {
+  border-width: 2px;
+  border-style: solid;
+  font-weight: bold;
+}
+
+/* Icon indicators for cost warnings */
+.cost-warning-yellow::before {
+  content: "⚠️ ";
+}
+
+.cost-warning-orange::before {
+  content: "⚠️⚠️ ";
+}
+
+.cost-warning-red::before {
+  content: "🚨 ";
+}
+
+/* PDF Engine Parameter Control - Structure */
+.pdf-engine-control {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.375rem;
+}
+
+.pdf-engine-control .parameter-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.pdf-engine-control .parameter-input {
+  width: 100%;
+  padding: 0.5rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+}
+
+.pdf-engine-control .parameter-input:focus {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+.pdf-engine-control .parameter-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pdf-engine-control .parameter-help {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.pdf-engine-control .engine-cost-info {
+  margin-top: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Engine cost info levels - Structure */
+.engine-cost-info.cost-low,
+.engine-cost-info.cost-medium,
+.engine-cost-info.cost-high {
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* Accessibility enhancements */
+.pdf-engine-control[aria-hidden="true"] {
+  display: none;
+}
+
+/* File Upload Section - Structure */
+.file-upload-section {
+  margin-bottom: 1rem;
+  border-width: 2px;
+  border-style: dashed;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.file-upload-section.drag-over {
+  border-style: solid;
+}
+
+/* File Upload Controls - Structure */
+.file-upload-controls {
+  position: relative;
+}
+
+.file-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 1.5rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.file-upload-label:focus-within {
+  outline-width: 3px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+.file-upload-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.file-upload-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.file-upload-subtext {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Help Text - Structure */
+.help-text {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin: 0;
+  margin-top: 0.75rem;
+}
+
+/* File Preview Area - Structure */
+.file-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-filename {
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.preview-filesize {
+  font-size: 0.875rem;
+}
+
+.preview-remove {
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 1.25rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-remove:hover {
+  transform: scale(1.1);
+}
+
+/* Preview Content - Structure */
+.preview-content {
+  margin-bottom: 1rem;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 4px;
+  border-width: 1px;
+  border-style: solid;
+  object-fit: cover;
+}
+
+.preview-pdf-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+.preview-pdf-icon {
+  font-size: 2rem;
+}
+
+.preview-pdf-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.preview-pdf-name {
+  font-weight: 600;
+}
+
+.preview-pdf-size {
+  font-size: 0.875rem;
+}
+
+/* Cost Estimation - Structure */
+.preview-cost-estimate {
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+
+.cost-breakdown {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Response Size Warning - Structure */
+.response-size-warning {
+  padding: 0.75rem;
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
+#response-warning {
+  font-size: 0.8rem;
+  border: solid 0px;
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-radius: 4px;
+  font-weight: 600;
+  border-left-color: #002e3b;
+}
+
+/* Error States - Structure */
+.upload-error-message {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* Stage 5 Enhanced File Preview Styling - Structure */
+.file-preview-content.enhanced-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+/* Image Preview Styling - Structure */
+.image-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.image-preview {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  object-fit: contain;
+}
+
+.image-info {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.image-details {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.image-details span {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+/* Image Error Handling - Structure */
+.image-preview-error {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+}
+
+.image-preview-error .error-icon {
+  font-size: 2rem;
+}
+
+.image-preview-error .error-message {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* PDF Info Card Styling - Structure */
+.pdf-info-card {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pdf-card-header {
+  display: flex;
+  justify-content: between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.pdf-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 1;
+  word-break: break-word;
+}
+
+.pdf-icon {
+  font-size: 1.5rem;
+  margin-left: 1rem;
+  opacity: 0.8;
+}
+
+.pdf-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.stat-icon {
+  font-size: 1rem;
+}
+
+.stat-value {
+  font-weight: 500;
+}
+
+/* Cost Breakdown Styling - Structure */
+.cost-breakdown {
+  padding: 1rem;
+}
+
+.cost-breakdown-header {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cost-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.engine-option {
+  padding: 0.75rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.engine-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.recommended-badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.engine-cost {
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.engine-notes {
+  font-size: 0.85rem;
+}
+
+/* Confidence Indicator - Structure */
+.confidence-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+
+.confidence-label {
+  font-weight: 500;
+}
+
+.confidence-value {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+/* Response Size Warning Styling - Structure */
+.response-size-warning {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.warning-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.warning-icon {
+  font-size: 1.2rem;
+}
+
+.warning-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.size-estimate {
+  font-weight: 500;
+}
+
+.warning-factors {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.25rem;
+}
+
+.warning-factors li {
+  margin-bottom: 0.25rem;
+}
+
+.warning-recommendation {
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+/* Engine Recommendation Display - Structure */
+.engine-recommendation-display {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.recommendation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.recommendation-icon {
+  font-size: 1.2rem;
+}
+
+.primary-recommendation {
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.recommendation-reasoning {
+  margin: 0 0 0.75rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+}
+
+.recommendation-reasoning li {
+  margin-bottom: 0.25rem;
+}
+
+.performance-notes {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.performance-header {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.performance-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.performance-list li {
+  margin-bottom: 0.25rem;
+}
+
+/* Generic File Preview - Structure */
+.generic-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.generic-file-icon {
+  font-size: 2.5rem;
+  opacity: 0.6;
+}
+
+.generic-file-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.file-name {
+  font-weight: 500;
+}
+
+.file-type {
+  font-size: 0.9rem;
+}
+
+.file-size {
+  font-size: 0.85rem;
+}
+
+/* Preview Generation Error - Structure */
+.preview-generation-error {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.error-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.error-message {
+  font-family: monospace;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* Interactive Engine Cards - Structure (extending existing .engine-option) */
+.engine-option.interactive-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  min-height: 4rem;
+  cursor: pointer;
+}
+
+.engine-option.interactive-card:focus-within {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+.engine-option.interactive-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Engine Options Fieldset - Structure */
+.engine-options-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.cost-options-list.interactive {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Native Radio Button Styling - Structure */
+.engine-radio {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.engine-radio:focus {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+/* Interactive Card Content Layout - Structure */
+.engine-option.interactive-card .engine-name {
+  flex: 1;
+  font-weight: 500;
+  font-size: 1rem;
+  margin-bottom: 0;
+}
+
+.engine-option.interactive-card .engine-cost {
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: right;
+  min-width: 8rem;
+  margin-bottom: 0;
+}
+
+/* Recommended Badge Container - Structure */
+.recommended-badge-container {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-width: fit-content;
+}
+
+.recommended-badge-container .recommended-badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.engine-option.interactive-card .engine-details {
+  flex-basis: 100%;
+  margin-top: 0.5rem;
+}
+
+.engine-option.interactive-card .engine-notes {
+  font-size: 0.85rem;
+  font-style: italic;
+  line-height: 1.3;
+}
+
+/* Accessibility enhancements */
+@media (prefers-reduced-motion: reduce) {
+  .response-management {
+    transition: none;
+  }
+
+  .cost-warning-red {
+    animation: none;
+  }
+
+  .image-preview,
+  .engine-option {
+    transition: none;
+  }
+
+  .image-loading .image-preview {
+    animation: none;
+  }
+
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .engine-option.interactive-card {
+    transition: none;
+  }
+
+  .engine-option.interactive-card:hover {
+    transform: none;
+  }
+}
+
+/* High contrast support */
+@media (prefers-contrast: high) {
+  .response-management {
+    border-width: 3px;
+  }
+
+  .file-upload-section {
+    border-width: 3px;
+  }
+
+  .pdf-engine-control {
+    border-width: 2px;
+  }
+
+  .pdf-engine-control .parameter-input:focus {
+    outline-width: 3px;
+  }
+
+  .file-upload-label:focus-within {
+    outline-width: 4px;
+  }
+
+  .engine-cost-info.cost-low,
+  .engine-cost-info.cost-medium,
+  .engine-cost-info.cost-high {
+    border-width: 2px;
+  }
+
+  .pdf-info-card,
+  .engine-option,
+  .response-size-warning,
+  .engine-recommendation-display {
+    border-width: 2px;
+  }
+
+  .recommended-badge {
+    border: 1px solid currentColor;
+  }
+
+  .engine-option.interactive-card {
+    border-width: 2px;
+  }
+
+  .engine-option.interactive-card:focus-within {
+    outline-width: 3px;
+  }
+
+  .engine-radio {
+    outline-width: 3px;
+  }
+
+  .recommended-badge-container .recommended-badge {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .file-upload-label {
+    min-height: 100px;
+    padding: 1rem;
+  }
+
+  .file-upload-text {
+    font-size: 1rem;
+  }
+
+  .preview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .preview-remove {
+    align-self: flex-end;
+  }
+
+  .preview-image {
+    max-width: 150px;
+    max-height: 150px;
+  }
+
+  .pdf-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .image-details {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .cost-options-list {
+    gap: 0.75rem;
+  }
+
+  .engine-name {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .cost-options-list.interactive {
+    gap: 0.5rem;
+  }
+
+  .engine-option.interactive-card {
+    padding: 0.75rem;
+    gap: 0.75rem;
+    min-height: 3.5rem;
+    flex-wrap: wrap;
+  }
+
+  .engine-option.interactive-card .engine-name {
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .engine-option.interactive-card .engine-cost {
+    font-size: 0.8rem;
+    min-width: 6rem;
+    text-align: left;
+  }
+
+  .engine-radio {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .recommended-badge-container {
+    order: 1;
+  }
+
+  .recommended-badge-container .recommended-badge {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .engine-option.interactive-card {
+    border: 1px solid #000;
+    box-shadow: none;
+    background-color: white;
+    margin-bottom: 0.5rem;
+    break-inside: avoid;
+  }
+
+  .engine-option.interactive-card.selected::before {
+    content: "✓ ";
+    font-weight: bold;
+  }
+
+  .engine-radio {
+    print-color-adjust: exact;
+  }
+}

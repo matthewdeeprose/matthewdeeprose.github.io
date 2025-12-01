@@ -192,6 +192,23 @@ export class RequestManagerStreaming {
         },
         onError: (error) => {
           logError("Streaming error:", error);
+
+          // CRITICAL: Clear streaming state to stop blinking cursor and allow next request
+          if (this.onStreamComplete) {
+            try {
+              // Call onStreamComplete with empty response to trigger cleanup
+              this.onStreamComplete("", { error: true });
+              logInfo(
+                "Streaming state cleared after error via onStreamComplete"
+              );
+            } catch (cleanupError) {
+              logWarn(
+                "Failed to clear streaming state after error:",
+                cleanupError
+              );
+            }
+          }
+
           throw error; // Re-throw to be caught by the outer try/catch
         },
         controller: (this.abortController = new AbortController()),

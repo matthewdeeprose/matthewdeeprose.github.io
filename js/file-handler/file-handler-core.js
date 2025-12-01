@@ -1,12 +1,21 @@
 /**
- * @fileoverview Core File Handler - Phase 4.3+ Implementation
+ * @fileoverview Core File Handler - Phase 4.3+ Implementation with Memory Management
  * Handles file upload, validation, preview, and cost estimation with Stage 3 integration
  * Enhanced with Phase 4.3.1 Parameter Synchronization System
+ * Enhanced with comprehensive memory management to prevent browser freezes
  * Follows defensive programming patterns and provides comprehensive console testing
+ *
+ * @version Phase 4.3+ with Memory Management
+ * @date 25 November 2025
  */
 
 import { CONFIG } from "../config.js";
 import { FileHandlerParameterSync } from "./file-handler-parameter-sync.js";
+import {
+  MemoryMonitor,
+  ResourceTracker,
+  CircuitBreaker,
+} from "../utilities/memory-manager.js";
 
 // Stage 3 logging configuration pattern (MANDATORY)
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
@@ -21,18 +30,21 @@ function shouldLog(level) {
 }
 
 function logError(message, ...args) {
-  if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+  if (shouldLog(LOG_LEVELS.ERROR))
+    console.error(`[FileHandler] ${message}`, ...args);
 }
 function logWarn(message, ...args) {
-  if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+  if (shouldLog(LOG_LEVELS.WARN))
+    console.warn(`[FileHandler] ${message}`, ...args);
 }
 function logInfo(message, ...args) {
-  if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+  if (shouldLog(LOG_LEVELS.INFO))
+    console.log(`[FileHandler] ${message}`, ...args);
 }
 function logDebug(message, ...args) {
-  if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+  if (shouldLog(LOG_LEVELS.DEBUG))
+    console.log(`[FileHandler] ${message}`, ...args);
 }
-
 export class FileHandler {
   constructor() {
     this.currentFile = null;
@@ -64,13 +76,23 @@ export class FileHandler {
       engineRecommendation: null,
     };
 
+    // Memory management tracking
+    this.resourceIds = new Set(); // Track all resources created by this handler
+
     // State management
     this.isInitialised = false;
     this.hasValidFile = false;
 
     logInfo(
-      "FileHandler: Core file handler initialised with Stage 3 integration"
+      "Core file handler initialised with Stage 3 integration and memory management"
     );
+
+    // Track initialisation
+    if (MemoryMonitor) {
+      MemoryMonitor.track("FileHandler_constructor", {
+        timestamp: Date.now(),
+      });
+    }
   }
 
   /**
@@ -426,15 +448,129 @@ export class FileHandler {
    * Convert file to base64 string
    */
   async fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+    const operationId = `fileToBase64_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    this.resourceIds.add(operationId);
+
+    logDebug("Converting file to base64...", {
+      name: file.name,
+      size: file.size,
+      operationId,
     });
+
+    // Track memory before operation
+    if (MemoryMonitor) {
+      MemoryMonitor.track("FileHandler_fileToBase64_start", {
+        fileName: file.name,
+        fileSize: file.size,
+        operationId,
+      });
+    }
+
+    let reader = null;
+
+    try {
+      // Use circuit breaker protection
+      const performConversion = async () => {
+        return new Promise((resolve, reject) => {
+          reader = new FileReader();
+
+          // Track the reader resource
+          if (ResourceTracker) {
+            ResourceTracker.track("readers", reader, operationId);
+          }
+
+          // Set timeout for large files
+          const timeout = setTimeout(() => {
+            if (reader && reader.readyState === 1) {
+              reader.abort();
+              reject(new Error("File conversion timeout (30s)"));
+            }
+          }, 30000);
+
+          reader.onload = () => {
+            clearTimeout(timeout);
+            const base64 = reader.result.split(",")[1];
+
+            logDebug("File converted to base64", {
+              length: base64.length,
+              operationId,
+            });
+
+            // Track memory after conversion
+            if (MemoryMonitor) {
+              MemoryMonitor.track("FileHandler_fileToBase64_complete", {
+                base64Length: base64.length,
+                operationId,
+              });
+            }
+
+            resolve(base64);
+          };
+
+          reader.onerror = () => {
+            clearTimeout(timeout);
+            logError("Failed to read file:", reader.error);
+
+            // Track failure
+            if (MemoryMonitor) {
+              MemoryMonitor.track("FileHandler_fileToBase64_error", {
+                error: reader.error?.message || "Unknown error",
+                operationId,
+              });
+            }
+
+            reject(new Error("Failed to read file: " + reader.error));
+          };
+
+          reader.readAsDataURL(file);
+        });
+      };
+
+      // Execute with circuit breaker
+      if (CircuitBreaker) {
+        return await CircuitBreaker.execute(
+          performConversion,
+          `FileHandler.fileToBase64(${file.name})`
+        );
+      } else {
+        return await performConversion();
+      }
+    } finally {
+      // Critical cleanup
+      if (reader) {
+        try {
+          reader.onload = null;
+          reader.onerror = null;
+
+          // Release tracked resource
+          if (ResourceTracker) {
+            ResourceTracker.release("readers", operationId);
+          }
+
+          reader = null;
+        } catch (e) {
+          logDebug("Reader cleanup warning:", e.message);
+        }
+      }
+
+      // Track final cleanup
+      if (MemoryMonitor) {
+        MemoryMonitor.track("FileHandler_fileToBase64_cleanup", {
+          operationId,
+        });
+      }
+
+      // Remove from tracked IDs
+      this.resourceIds.delete(operationId);
+
+      // Suggest garbage collection for large files (>5MB)
+      if (file.size > 5 * 1024 * 1024 && window.gc) {
+        window.gc();
+        logDebug("Garbage collection suggested for large file");
+      }
+    }
   }
 
   /**
@@ -2070,10 +2206,19 @@ export class FileHandler {
   }
 
   /**
-   * Remove file and reset UI
+   * Remove file and reset UI with comprehensive memory cleanup
    */
   removeFile() {
-    logInfo("FileHandler: Removing file");
+    logInfo("Removing file with memory cleanup");
+
+    // Track memory before cleanup
+    if (MemoryMonitor) {
+      MemoryMonitor.track("FileHandler_removeFile_start", {
+        hadFile: !!this.currentFile,
+        trackedResources: this.resourceIds.size,
+      });
+    }
+
     // Clear file data
     this.currentFile = null;
     this.fileType = null;
@@ -2119,10 +2264,60 @@ export class FileHandler {
       window.dispatchEvent(new CustomEvent("file-removed"));
     }
 
+    // Memory Management: Clean up tracked resources
+    if (ResourceTracker && this.resourceIds.size > 0) {
+      logDebug(`Cleaning up ${this.resourceIds.size} tracked resources`);
+
+      // Release all tracked resources for this handler
+      this.resourceIds.forEach((resourceId) => {
+        // Try to release from all resource types
+        ["readers", "images", "blobs", "canvases"].forEach((type) => {
+          try {
+            ResourceTracker.release(type, resourceId);
+          } catch (e) {
+            // Resource might not exist in this type, that's fine
+          }
+        });
+      });
+
+      this.resourceIds.clear();
+    }
+
+    // Memory Management: Clean up preview images
+    if (this.previewArea) {
+      const previewImages = this.previewArea.querySelectorAll("img");
+      previewImages.forEach((img) => {
+        if (img.src && img.src.startsWith("blob:")) {
+          try {
+            URL.revokeObjectURL(img.src);
+            logDebug("Revoked preview blob URL");
+          } catch (e) {
+            logDebug("Preview blob cleanup warning:", e.message);
+          }
+        }
+        img.src = "";
+        img.onload = null;
+        img.onerror = null;
+      });
+    }
+
     // Notify other components
     this.notifyFileStateChange(false);
 
-    logInfo("FileHandler: File removed successfully with Phase 4.3.1 cleanup");
+    // Track memory after cleanup
+    if (MemoryMonitor) {
+      MemoryMonitor.track("FileHandler_removeFile_complete", {
+        remainingResources: this.resourceIds.size,
+      });
+    }
+
+    // Suggest garbage collection
+    if (window.gc) {
+      window.gc();
+      logDebug("Garbage collection suggested after file removal");
+    }
+
+    logInfo("File removed successfully with comprehensive memory cleanup");
   }
 
   /**

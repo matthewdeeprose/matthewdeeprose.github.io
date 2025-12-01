@@ -1,0 +1,1110 @@
+/**
+ * Image Describer Tool - CSS
+ * Layout and positioning only - NO colours, NO button styling
+ * Colours inherit from theme (light.css/dark.css)
+ * Version: 1.0.0
+ * Date: 24 November 2025
+ */
+
+/* ==============================================
+   SECTIONS
+   ============================================== */
+
+.imgdesc-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid currentColor;
+  opacity: 0.9;
+}
+
+.imgdesc-section:last-of-type {
+  border-bottom: none;
+}
+
+.imgdesc-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.imgdesc-optional {
+  font-weight: normal;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* ==============================================
+   UPLOAD AREA
+   ============================================== */
+
+.imgdesc-upload-area {
+  border: 2px dashed currentColor;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  transition: border-style 0.2s ease;
+}
+
+.imgdesc-upload-area.drag-over {
+  border-style: solid;
+  border-width: 3px;
+}
+
+.imgdesc-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.imgdesc-upload-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.imgdesc-upload-text {
+  font-weight: 600;
+}
+
+.imgdesc-upload-formats {
+  font-size: 0.875rem;
+  opacity: 0.7;
+}
+
+/* ==============================================
+   PREVIEW
+   ============================================== */
+
+.imgdesc-preview {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.imgdesc-preview img {
+  max-width: 100%;
+  max-height: 300px;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+}
+
+/* Preview actions container (Phase 2E) */
+.imgdesc-preview-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (min-width: 600px) {
+  .imgdesc-preview-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+/* File info styling */
+.imgdesc-file-info {
+  margin: 0;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/* Fullscreen button (Phase 2E) */
+.imgdesc-fullscreen-btn {
+  font-size: 0.875rem;
+  padding: 0.4rem 0.75rem;
+  white-space: nowrap;
+}
+
+/* Preview when inside output section */
+.imgdesc-output-section > .imgdesc-preview {
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid currentColor;
+}
+
+.imgdesc-output-section > .imgdesc-preview img {
+  max-height: 400px; /* Larger in output view */
+}
+
+/* ==============================================
+   FORM FIELDS
+   ============================================== */
+
+.imgdesc-field {
+  margin-bottom: 1rem;
+}
+
+.imgdesc-field label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.imgdesc-field input[type="text"],
+.imgdesc-field textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+.imgdesc-field textarea {
+  resize: vertical;
+  min-height: 3rem;
+}
+
+/* ==============================================
+   OPTIONS FIELDSET
+   ============================================== */
+
+.imgdesc-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.imgdesc-option-group {
+  margin-bottom: 1.25rem;
+}
+
+.imgdesc-option-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* ==============================================
+   RADIO GROUP (Description Style)
+   ============================================== */
+
+.imgdesc-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.imgdesc-radio-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+.imgdesc-radio-label:has(input:checked) {
+  border-width: 2px;
+}
+
+.imgdesc-radio-label:focus-within {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.imgdesc-radio-label input[type="radio"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.imgdesc-radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.imgdesc-radio-text {
+  font-weight: 600;
+}
+
+.imgdesc-radio-hint {
+  font-size: 0.8125rem;
+  opacity: 0.7;
+}
+
+/* ==============================================
+   SELECT (Audience Level)
+   ============================================== */
+
+.imgdesc-option-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ==============================================
+   CHECKBOX GROUP
+   ============================================== */
+
+.imgdesc-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.imgdesc-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.imgdesc-checkbox-label input[type="checkbox"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* ==============================================
+   GENERATE SECTION
+   ============================================== */
+
+.imgdesc-generate-section {
+  text-align: center;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.imgdesc-status {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  min-height: 1.25rem;
+}
+
+/* ==============================================
+   OUTPUT SECTION
+   ============================================== */
+
+.imgdesc-output-section {
+  border-bottom: none;
+}
+
+.imgdesc-output h3,
+.imgdesc-output h4,
+.imgdesc-output h5,
+.imgdesc-output h6 {
+  margin-block-start: 0;
+  margin-block-end: 0;
+}
+.imgdesc-output p {
+  margin-bottom: 0rem;
+}
+
+.imgdesc-output {
+  padding: 1rem;
+  outline: 0.1rem solid currentcolor;
+  border-radius: 0.25rem;
+  min-height: 4rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.5;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif !important;
+}
+
+.imgdesc-output:empty::before {
+  content: "Generated description will appear here...";
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.imgdesc-output-actions {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* ==============================================
+   RESPONSIVE LAYOUT
+   ============================================== */
+
+@media (max-width: 600px) {
+  .imgdesc-upload-area {
+    padding: 1.5rem 1rem;
+  }
+
+  .imgdesc-upload-icon {
+    font-size: 2rem;
+  }
+
+  .imgdesc-radio-group {
+    flex-direction: column;
+  }
+
+  .imgdesc-radio-label {
+    min-width: 100%;
+  }
+
+  .imgdesc-output-actions {
+    flex-direction: column;
+  }
+
+  .imgdesc-output-actions button {
+    width: 100%;
+  }
+}
+
+/* ==============================================
+   REDUCED MOTION
+   ============================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-upload-area {
+    transition: none;
+  }
+}
+
+/* ==============================================
+   VISUALLY HIDDEN (if not already defined)
+   ============================================== */
+
+.imgdesc-section .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Fix text overflow in output */
+.imgdesc-output {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.imgdesc-output-section {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* ==============================================
+   PROGRESS INDICATOR (Phase 2A)
+   ============================================== */
+
+.imgdesc-progress {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+  text-align: left;
+}
+
+.imgdesc-progress-bar {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid currentColor;
+  overflow: hidden;
+}
+
+.imgdesc-progress-fill {
+  height: 100%;
+  background: currentColor;
+  width: 0%;
+  transition: width 0.3s ease-out;
+}
+
+.imgdesc-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.imgdesc-progress-stage {
+  font-weight: 500;
+}
+
+.imgdesc-progress-time {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.imgdesc-progress-cancel {
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+/* ==============================================
+   COMPLETION TIME DISPLAY (Phase 2A)
+   ============================================== */
+
+.imgdesc-completion-time {
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.imgdesc-completion-time strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reduced motion: disable progress bar animation */
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-progress-fill {
+    transition: none;
+  }
+}
+
+/* ==============================================
+   LAYOUT SYSTEM (Phase 2B)
+   ============================================== */
+
+/* Mobile-first: Single column with flex */
+.imgdesc-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.imgdesc-input-column,
+.imgdesc-output-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Desktop: Two-column grid layout */
+@media (min-width: 768px) {
+  .imgdesc-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  /* Sticky output column - no scroll, just sticky positioning */
+  .imgdesc-output-column {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+/* Large desktop: Better proportions */
+@media (min-width: 1200px) {
+  .imgdesc-layout {
+    grid-template-columns: 1.2fr 1fr; /* Slightly wider left column */
+  }
+}
+
+/* ==============================================
+   STEP NUMBERS (Phase 2B)
+   ============================================== */
+
+.imgdesc-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  background: currentColor;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* Invert colour for the number text */
+.imgdesc-step-number::before {
+  content: attr(data-step);
+}
+
+/* Step number text colour via filter - works in both themes */
+@supports (filter: invert(1)) {
+  .imgdesc-section h2 {
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* ==============================================
+   COLLAPSIBLE OPTIONS (Phase 2B)
+   ============================================== */
+
+.imgdesc-options-group {
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.9;
+}
+
+.imgdesc-options-group:last-child {
+  margin-bottom: 0;
+}
+
+.imgdesc-options-group summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  list-style: none; /* Hide default marker */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+/* Remove default marker in Safari */
+.imgdesc-options-group summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Custom disclosure triangle */
+.imgdesc-options-group summary::before {
+  content: "▶";
+  font-size: 0.7rem;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.imgdesc-options-group[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.imgdesc-options-group[open] summary {
+  border-bottom: 1px solid currentColor;
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.imgdesc-option-content {
+  padding: 1rem;
+}
+
+/* Focus styles for summary */
+.imgdesc-options-group summary:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.imgdesc-options-group summary:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Reduced motion: disable triangle animation */
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-options-group summary::before {
+    transition: none;
+  }
+}
+
+/* ==============================================
+   GENERATE BUTTON INLINE (Phase 2B.2)
+   ============================================== */
+
+.imgdesc-generate-inline {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 2px dashed currentColor;
+  border-radius: 0.25rem;
+  text-align: center;
+}
+
+.imgdesc-generate-inline button {
+  width: 100%;
+}
+
+/* Hide generate area when output is showing */
+.imgdesc-generate-inline[hidden] {
+  display: none;
+}
+
+/* Desktop: constrain width when in left column */
+@media (min-width: 768px) {
+  .imgdesc-input-column .imgdesc-generate-inline {
+    margin-top: 1.5rem;
+  }
+}
+
+/* Mobile: full width, more prominent */
+@media (max-width: 767px) {
+  .imgdesc-generate-inline {
+    margin-top: 1rem;
+  }
+}
+
+/* ==============================================
+   OUTPUT MODE - Single Column (Phase 2B.2)
+   ============================================== */
+
+/* When showing output, switch to single column layout */
+@media (min-width: 768px) {
+  .imgdesc-layout.imgdesc-output-mode {
+    display: block; /* Override grid with block for true single column */
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .imgdesc-layout.imgdesc-output-mode .imgdesc-input-column {
+    max-width: 500px;
+    margin: 0 auto 2rem auto;
+  }
+
+  .imgdesc-layout.imgdesc-output-mode .imgdesc-output-column {
+    position: static;
+    max-width: 100%;
+  }
+
+  .imgdesc-layout.imgdesc-output-mode .imgdesc-output-section {
+    max-width: 100%;
+  }
+}
+
+/* ==============================================
+   PROGRESS IN OUTPUT SECTION (Phase 2B.2)
+   ============================================== */
+
+.imgdesc-output-section .imgdesc-progress {
+  margin: 0 0 1rem 0;
+  padding: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+}
+
+.imgdesc-output-section .imgdesc-completion-time {
+  margin: 0 0 0.5rem 0;
+}
+
+/* ==============================================
+   CONFIG PANEL (Phase 2B.2)
+   ============================================== */
+
+.imgdesc-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Hide config panel during generation */
+.imgdesc-config-panel[hidden] {
+  display: none;
+}
+
+/* ==============================================
+   STATUS MESSAGE IN OUTPUT (Phase 2B.2)
+   ============================================== */
+
+.imgdesc-output-section .imgdesc-status {
+  margin: 0 0 1rem 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.9375rem;
+}
+
+.imgdesc-output-section .imgdesc-status:empty {
+  display: none;
+}
+
+.imgdesc-output-section .imgdesc-status-success {
+  border: 1px solid currentColor;
+  opacity: 0.85;
+}
+
+/* ==============================================
+   OUTPUT ACTIONS ENHANCED (Phase 2B.2)
+   ============================================== */
+
+.imgdesc-output-actions {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* New Image button styling - make it stand out */
+#imgdesc-new {
+  flex-basis: 100%;
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 600px) {
+  #imgdesc-new {
+    flex-basis: auto;
+    margin-top: 0;
+  }
+}
+
+/* ==============================================
+   OUTPUT SECTION ENHANCEMENT (Phase 2B)
+   ============================================== */
+
+/* Output section in new layout */
+.imgdesc-output-column .imgdesc-output-section {
+  border: 2px solid currentColor;
+  border-radius: 0.25rem;
+  padding: 1rem;
+  margin-bottom: 0;
+}
+
+.imgdesc-output-column .imgdesc-output-section h2 {
+  margin-top: 0;
+}
+
+/* ==============================================
+   SECTION ADJUSTMENTS FOR LAYOUT (Phase 2B)
+   ============================================== */
+
+/* Remove bottom border from sections in columns */
+.imgdesc-input-column .imgdesc-section,
+.imgdesc-output-column .imgdesc-section {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+/* ==============================================
+   RESPONSIVE ADJUSTMENTS (Phase 2B)
+   ============================================== */
+
+@media (max-width: 767px) {
+  /* Mobile: Full-width buttons */
+  .imgdesc-output-actions {
+    flex-direction: column;
+  }
+
+  .imgdesc-output-actions button {
+    width: 100%;
+  }
+
+  /* Tighter spacing on mobile */
+  .imgdesc-layout {
+    gap: 1rem;
+  }
+
+  .imgdesc-input-column,
+  .imgdesc-output-column {
+    gap: 1rem;
+  }
+
+  /* Smaller step numbers on mobile */
+  .imgdesc-step-number {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* ==============================================
+   PRINT STYLES (Phase 2B)
+   ============================================== */
+
+@media print {
+  .imgdesc-layout {
+    display: block;
+  }
+
+  .imgdesc-input-column,
+  .imgdesc-output-column {
+    page-break-inside: avoid;
+  }
+
+  .imgdesc-options-group {
+    border: 1px solid #000;
+  }
+
+  .imgdesc-options-group summary::before {
+    display: none;
+  }
+
+  .imgdesc-generate-area {
+    display: none;
+  }
+
+  /* Ensure all details are open when printing */
+  .imgdesc-options-group[open] summary,
+  .imgdesc-options-group summary {
+    border-bottom: 1px solid #000;
+  }
+
+  /* Hide debug panel when printing */
+  .imgdesc-debug-panel {
+    display: none;
+  }
+}
+
+/* ==============================================
+     DEBUG PANEL (Phase 2C)
+     ============================================== */
+
+.imgdesc-debug-panel {
+  margin-top: 2rem;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+.imgdesc-debug-panel[open] {
+  opacity: 1;
+}
+
+.imgdesc-debug-panel summary {
+  padding: 0.75rem 1rem;
+  background: var(--surface-secondary, rgba(0, 0, 0, 0.05));
+  cursor: pointer;
+  font-weight: 500;
+  border-radius: 8px;
+  user-select: none;
+}
+
+.imgdesc-debug-panel[open] summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 1px solid currentColor;
+}
+
+.imgdesc-debug-panel summary:hover {
+  background: var(--surface-tertiary, rgba(0, 0, 0, 0.08));
+}
+
+.imgdesc-debug-panel summary:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.imgdesc-debug-content {
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+  background: var(--surface-primary, transparent);
+}
+
+/* Two-column layout on tablet+ */
+@media (min-width: 768px) {
+  .imgdesc-debug-content {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Prompts section spans both columns */
+  .imgdesc-debug-prompts {
+    grid-column: 1 / -1;
+  }
+}
+
+.imgdesc-debug-section {
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 0.75rem;
+  background: var(--surface-secondary, rgba(0, 0, 0, 0.02));
+}
+
+.imgdesc-debug-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  opacity: 0.8;
+  font-weight: 600;
+}
+
+.imgdesc-debug-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.imgdesc-debug-list dt {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.imgdesc-debug-list dd {
+  margin: 0;
+  font-family: "Courier New", Courier, monospace;
+  word-break: break-word;
+}
+
+/* Prompt details styling */
+.imgdesc-debug-prompt-details {
+  margin-top: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: var(--surface-tertiary, rgba(0, 0, 0, 0.03));
+}
+
+.imgdesc-debug-prompt-details summary {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+}
+
+.imgdesc-debug-prompt-details[open] summary {
+  border-bottom: 1px solid currentColor;
+  border-radius: 4px 4px 0 0;
+}
+
+.imgdesc-debug-prompt-details summary:hover {
+  background: var(--surface-primary, rgba(0, 0, 0, 0.05));
+}
+
+.imgdesc-debug-prompt-text {
+  max-height: 300px;
+  overflow: auto;
+  padding: 0.75rem;
+  margin: 0;
+  background: var(--surface-primary, rgba(0, 0, 0, 0.02));
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.8rem;
+  font-family: "Courier New", Courier, monospace;
+  line-height: 1.5;
+}
+
+.imgdesc-debug-copy-btn {
+  margin: 0.5rem 0.75rem 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  background: var(--button-secondary-bg, transparent);
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  color: currentColor;
+}
+
+.imgdesc-debug-copy-btn:hover {
+  background: var(--button-secondary-hover, rgba(0, 0, 0, 0.05));
+}
+
+.imgdesc-debug-copy-btn:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.imgdesc-debug-copy-btn:active {
+  transform: translateY(1px);
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .imgdesc-debug-list {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .imgdesc-debug-list dt {
+    font-weight: 600;
+  }
+
+  .imgdesc-debug-list dd {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* ==============================================
+   FULLSCREEN IMAGE MODAL (Phase 2E)
+   ============================================== */
+
+/* Make the fullscreen modal extra large */
+.imgdesc-fullscreen-modal {
+  width: 90vw !important;
+  max-width: 90vw !important;
+  height: 90vh !important;
+  max-height: 90vh !important;
+}
+
+.imgdesc-fullscreen-modal .universal-modal-container {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Modal header should be compact */
+.imgdesc-fullscreen-modal .universal-modal-header {
+  flex-shrink: 0;
+}
+
+/* Modal body should fill remaining space */
+.imgdesc-fullscreen-modal .universal-modal-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+/* Fullscreen content container */
+.imgdesc-fullscreen-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: 100%;
+}
+
+/* Fullscreen image styling - fits within modal */
+.imgdesc-fullscreen-image {
+  max-width: 100%;
+  max-height: calc(90vh - 180px); /* Account for header and caption */
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Fullscreen caption */
+.imgdesc-fullscreen-caption {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  opacity: 0.8;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .imgdesc-fullscreen-modal {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    height: 95vh !important;
+    max-height: 95vh !important;
+  }
+
+  .imgdesc-fullscreen-image {
+    max-height: calc(95vh - 180px);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-fullscreen-image {
+    animation: none;
+  }
+}

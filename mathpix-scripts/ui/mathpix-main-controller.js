@@ -2286,9 +2286,10 @@ class MathPixController {
    *
    * @example
    * const formats = controller.getSelectedFormats();
-   * // Returns: ['text', 'latex_styled', 'mathml', ...]
+   * // Returns: ['text', 'latex_styled', 'markdown', 'mathml', ...]
    *
    * @since Phase 1E
+   * @updated Phase 1C - Added markdown format support for strokes API
    */
   getSelectedFormats() {
     const formats = [];
@@ -2306,7 +2307,7 @@ class MathPixController {
         mathml: "mathml", // MathML
         asciimath: "asciimath", // AsciiMath
         html: "html", // HTML
-        markdown: "text", // Same as LaTeX for strokes
+        markdown: "text", // Same as LaTeX for strokes (but we also request markdown)
         json: "data", // Raw JSON data
         "table-html": "html", // HTML tables
         "table-markdown": "text", // Markdown tables
@@ -2334,6 +2335,12 @@ class MathPixController {
     // ✅ CRITICAL: Always include html for table extraction and markdown generation
     if (!formats.includes("html")) {
       formats.push("html");
+    }
+
+    // ✅ CRITICAL: Always include markdown format for strokes API
+    // This enables markdown output in addition to LaTeX
+    if (!formats.includes("markdown")) {
+      formats.push("markdown");
     }
 
     logDebug("Final format selection", { formats });

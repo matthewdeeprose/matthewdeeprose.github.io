@@ -5,10 +5,9 @@
   border: 1px dotted #9fb1bd;
 }
 
-        pre[class*="language-"] {border: 1px solid #9fb1bd;
+pre[class*="language-"] {
+  border: 1px solid #9fb1bd;
 }
-
-
 
 /* ===========================================
    MATHPIX
@@ -2384,7 +2383,8 @@ del {
   border: 1px solid #c1d100;
 }
 
-.results-content {
+.results-content,
+.imgdesc-output {
   background-color: #00131d;
 }
 
