@@ -1,5 +1,38 @@
 /* Dark mode */
 
+/* Confidence bar default colour */
+.mathpix-confidence-indicator .confidence-bar {
+  background-color: #c1d100;
+}
+
+/* Confidence level colour coding - High */
+.mathpix-confidence-indicator[data-confidence-level="high"] .confidence-value {
+  color: #c1d100;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="high"] .confidence-bar {
+  background-color: #c1d100;
+}
+
+/* Confidence level colour coding - Medium */
+.mathpix-confidence-indicator[data-confidence-level="medium"]
+  .confidence-value {
+  color: #fcbc00;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="medium"] .confidence-bar {
+  background-color: #fcbc00;
+}
+
+/* Confidence level colour coding - Low */
+.mathpix-confidence-indicator[data-confidence-level="low"] .confidence-value {
+  color: #ef7d00;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="low"] .confidence-bar {
+  background-color: #ef7d00;
+}
+
 :not(pre) > code {
   background-color: #231f20;
   border: 1px dotted #9fb1bd;

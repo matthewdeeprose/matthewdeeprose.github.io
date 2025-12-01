@@ -1,5 +1,38 @@
 /*Light mode */
 
+/* Confidence bar default colour */
+.mathpix-confidence-indicator .confidence-bar {
+  background-color: #005051;
+}
+
+/* Confidence level colour coding - High */
+.mathpix-confidence-indicator[data-confidence-level="high"] .confidence-value {
+  color: #005051;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="high"] .confidence-bar {
+  background-color: #005051;
+}
+
+/* Confidence level colour coding - Medium */
+.mathpix-confidence-indicator[data-confidence-level="medium"]
+  .confidence-value {
+  color: #8d3970;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="medium"] .confidence-bar {
+  background-color: #8d3970;
+}
+
+/* Confidence level colour coding - Low */
+.mathpix-confidence-indicator[data-confidence-level="low"] .confidence-value {
+  color: #d5007f;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="low"] .confidence-bar {
+  background-color: #d5007f;
+}
+
 :not(pre) > code {
   background-color: #f4f4f4;
   border: 1px dotted #00131d;

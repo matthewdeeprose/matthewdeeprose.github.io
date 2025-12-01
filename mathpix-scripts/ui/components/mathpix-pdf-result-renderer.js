@@ -359,6 +359,9 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
               confidence: linesDebugData.averageConfidence,
               pages: linesDebugData.totalPages,
             });
+
+            // Update the prominent confidence indicator
+            this.updateConfidenceIndicator();
           } else {
             logWarn(
               "PDF processor not available for debug data update with Lines API"
@@ -1669,10 +1672,108 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         pageCount: documentInfo.pageCount,
         hasProcessingTime: !!this.currentResults?.processingMetadata?.totalTime,
       });
+
+      // Update confidence indicator if Lines API data is available
+      this.updateConfidenceIndicator();
     } catch (error) {
       logError("Error updating document metadata", error);
       // Don't throw - this shouldn't break the overall display process
     }
+  }
+
+  /**
+   * @method updateConfidenceIndicator
+   * @description Updates the prominent confidence indicator display
+   *
+   * Displays the average recognition confidence from Lines API data
+   * with visual feedback including colour-coded levels and progress bar.
+   *
+   * Confidence Levels:
+   * - High: >= 90% (green)
+   * - Medium: 70-89% (amber)
+   * - Low: < 70% (red)
+   *
+   * @returns {void}
+   *
+   * @accessibility Uses aria-live for screen reader announcements
+   * @since 3.5.0
+   */
+  updateConfidenceIndicator() {
+    const indicator = document.getElementById("mathpix-confidence-indicator");
+    const valueElement = document.getElementById("mathpix-confidence-value");
+    const barElement = document.getElementById("mathpix-confidence-bar");
+
+    if (!indicator || !valueElement) {
+      logDebug("Confidence indicator elements not found");
+      return;
+    }
+
+    // Get confidence from Lines API analysis or fall back to debug element
+    let confidenceValue = null;
+    let confidencePercent = 0;
+
+    if (this.linesAnalysis?.averageConfidence !== undefined) {
+      // Lines API provides confidence as 0-1 or 0-100
+      const rawConfidence = this.linesAnalysis.averageConfidence;
+      confidencePercent =
+        rawConfidence > 1 ? rawConfidence : rawConfidence * 100;
+      confidenceValue = confidencePercent.toFixed(1);
+      logDebug("Confidence from Lines API", {
+        raw: rawConfidence,
+        percent: confidencePercent,
+      });
+    } else {
+      // Fallback: check debug element
+      const debugConfidence = document.getElementById("debug-confidence");
+      if (
+        debugConfidence &&
+        debugConfidence.textContent !== "Not yet processed"
+      ) {
+        const parsed = parseFloat(debugConfidence.textContent);
+        if (!isNaN(parsed)) {
+          confidencePercent = parsed;
+          confidenceValue = parsed.toFixed(1);
+          logDebug("Confidence from debug element", {
+            percent: confidencePercent,
+          });
+        }
+      }
+    }
+
+    if (confidenceValue === null) {
+      // No confidence data available
+      valueElement.textContent = "-";
+      indicator.removeAttribute("data-confidence-level");
+      if (barElement) {
+        barElement.style.width = "0%";
+      }
+      logDebug("No confidence data available for display");
+      return;
+    }
+
+    // Update the display
+    valueElement.textContent = `${confidenceValue}%`;
+
+    // Update the progress bar
+    if (barElement) {
+      barElement.style.width = `${Math.min(confidencePercent, 100)}%`;
+    }
+
+    // Determine confidence level for colour coding
+    let level = "low";
+    if (confidencePercent >= 90) {
+      level = "high";
+    } else if (confidencePercent >= 70) {
+      level = "medium";
+    }
+
+    indicator.setAttribute("data-confidence-level", level);
+
+    logInfo("Confidence indicator updated", {
+      value: confidenceValue,
+      level: level,
+      barWidth: `${confidencePercent}%`,
+    });
   }
 
   /**

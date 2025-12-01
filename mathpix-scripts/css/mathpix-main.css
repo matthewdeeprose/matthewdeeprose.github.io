@@ -2184,6 +2184,114 @@ input#custom-height {
   border-top: 1px solid #00131d;
 }
 
+/* Make document-info a flex container to position confidence on the right */
+.mathpix-document-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.mathpix-doc-details {
+  flex: 1 1 auto;
+  min-width: 280px;
+}
+
+/* Confidence Indicator Card */
+.mathpix-confidence-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid currentcolor;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  min-width: 140px;
+  text-align: center;
+}
+
+.mathpix-confidence-indicator .confidence-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  margin-bottom: 0.25rem;
+}
+
+.mathpix-confidence-indicator .confidence-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Confidence bar (visual indicator) */
+.mathpix-confidence-indicator .confidence-bar-container {
+  width: 100%;
+  height: 6px;
+  background: currentcolor;
+  opacity: 0.2;
+  border-radius: 3px;
+  margin-top: 0.5rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.mathpix-confidence-indicator .confidence-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  opacity: 1;
+  transition: width 0.5s ease-out, background-color 0.3s ease;
+}
+
+/* -----------------------------------------
+   RESPONSIVE ADJUSTMENTS
+   ----------------------------------------- */
+
+@media (max-width: 600px) {
+  .mathpix-document-info {
+    flex-direction: column;
+  }
+
+  .mathpix-confidence-indicator {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+  }
+
+  .mathpix-confidence-indicator .confidence-label {
+    margin-bottom: 0;
+    margin-right: 0.5rem;
+  }
+
+  .mathpix-confidence-indicator .confidence-value {
+    font-size: 1.5rem;
+  }
+
+  .mathpix-confidence-indicator .confidence-bar-container {
+    display: none;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-confidence-indicator .confidence-bar {
+    transition: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .mathpix-confidence-indicator .confidence-bar-container {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
   .mathpix-pdf-options,
   .mathpix-pdf-progress,
