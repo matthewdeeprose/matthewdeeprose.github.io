@@ -26,13 +26,19 @@
     <link rel="stylesheet" href="md-scripts/css/mermaid-controls.css" />
     <link rel="stylesheet" href="mathpix-scripts/css/mathpix-main.css" />
     <link rel="stylesheet" href="mathpix-scripts/css/mathpix-pdf-preview.css" />
+    <link
+      rel="stylesheet"
+      href="mathpix-scripts/pdf-visualiser/pdf-visualiser.css"
+    />
     <link rel="stylesheet" href="md-scripts/css/chart-controls.css" />
     <link rel="stylesheet" href="md-scripts/css/markdown-editor.css" />
     <link rel="stylesheet" href="md-scripts/css/mermaid-view-controls.css" />
     <link rel="stylesheet" href="md-scripts/css/chart-view-controls.css" />
     <link rel="stylesheet" href="md-scripts/css/graph-builder.css" />
-    <link rel="stylesheet" href="md-scripts/css/modal.css" />
+    <link rel="stylesheet" href="mathpix-scripts/css/universal-toggletip.css" />
+
     <link rel="stylesheet" href="file-upload.css" />
+
     <link rel="stylesheet" href="error-handler.css" />
     <link rel="stylesheet" href="md-scripts/css/markdown-live-editor.css" />
     <link rel="stylesheet" href="image-describer/image-describer.css" />
@@ -5135,12 +5141,15 @@ Science,91</pre
                   <dd id="mathpix-doc-formats">-</dd>
                 </dl>
 
-                <!-- Recognition Confidence Indicator -->
-                <div
-                  class="mathpix-confidence-indicator"
+                <!-- Recognition Confidence Indicator (Clickable - navigates to Confidence tab) -->
+                <button
+                  type="button"
+                  class="mathpix-confidence-indicator mathpix-confidence-clickable"
                   id="mathpix-confidence-indicator"
                   role="status"
-                  aria-label="Recognition confidence score"
+                  aria-label="Recognition confidence score. Select to view detailed confidence analysis."
+                  data-confidence-level="unknown"
+                  onclick="window.getMathPixController()?.pdfResultRenderer?.navigateToConfidenceTab()"
                 >
                   <span class="confidence-label">Confidence</span>
                   <span
@@ -5155,7 +5164,10 @@ Science,91</pre
                       id="mathpix-confidence-bar"
                     ></span>
                   </span>
-                </div>
+                  <span class="confidence-hint" aria-hidden="true"
+                    >Select for details</span
+                  >
+                </button>
 
                 <!-- Integrated Page Statistics -->
                 <div
@@ -5471,6 +5483,19 @@ Science,91</pre
                     style="display: none"
                   >
                     HTML Archive
+                  </button>
+                  <button
+                    type="button"
+                    id="tab-confidence"
+                    class="mathpix-tab-header mathpix-tab-confidence"
+                    role="tab"
+                    aria-controls="panel-confidence"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-format="confidence"
+                    style="display: none"
+                  >
+                    <span aria-hidden="true">📊</span> Confidence
                   </button>
                 </div>
 
@@ -5906,6 +5931,36 @@ Science,91</pre
                   aria-labelledby="tab-htmlzip"
                 >
                   <!-- Content populated by populateHtmlZipContent() -->
+                </div>
+
+                <!-- Confidence Visualiser Panel (Phase 3.2) -->
+                <div
+                  id="panel-confidence"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="tab-confidence"
+                >
+                  <div class="mathpix-format-header">
+                    <h4>OCR Confidence Analysis</h4>
+                    <p class="confidence-panel-intro">
+                      Visual overlay showing recognition confidence for each
+                      detected element. Colour coding indicates confidence
+                      levels from high (green) to low (red).
+                    </p>
+                  </div>
+
+                  <!-- Confidence Visualiser Container -->
+                  <div
+                    id="mathpix-confidence-visualiser-container"
+                    class="confidence-visualiser-container"
+                    role="application"
+                    aria-label="PDF confidence visualiser with page navigation and zoom controls"
+                  >
+                    <!-- Visualiser will be initialised here by JavaScript -->
+                    <div class="confidence-visualiser-placeholder">
+                      <p>Loading confidence visualiser...</p>
+                    </div>
+                  </div>
                 </div>
               </div>
               <!-- Page Navigation with Integrated Statistics -->
@@ -6939,6 +6994,36 @@ Science,91</pre
     <script
       type="module"
       src="mathpix-scripts/ui/components/mathpix-mode-switcher.js"
+    ></script>
+
+    <script
+      type="module"
+      src="mathpix-scripts/pdf-visualiser/pdf-visualiser-config.js"
+    ></script>
+
+    <script
+      type="module"
+      src="mathpix-scripts/pdf-visualiser/pdf-visualiser-core.js"
+    ></script>
+
+    <script
+      type="module"
+      src="mathpix-scripts/pdf-visualiser/pdf-visualiser-overlays.js"
+    ></script>
+
+    <script
+      type="module"
+      src="mathpix-scripts/pdf-visualiser/pdf-visualiser-renderer.js"
+    ></script>
+
+    <script
+      type="module"
+      src="mathpix-scripts/pdf-visualiser/pdf-visualiser-stats.js"
+    ></script>
+
+    <script
+      type="module"
+      src="mathpix-scripts/pdf-visualiser/testing/pdf-visualiser-tests.js"
     ></script>
 
     <!-- JSZip Library for Total Downloader -->
@@ -9180,6 +9265,7 @@ Science,91</pre
     </script>
 
     <script src="js/universal-modal.js"></script>
+    <script src="js/universal-toggletip.js"></script>
 
     <!-- OpenRouter API Configuration Management -->
     <script>

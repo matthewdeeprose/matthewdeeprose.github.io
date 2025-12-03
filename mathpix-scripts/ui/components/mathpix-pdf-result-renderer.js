@@ -169,6 +169,20 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     this.documentInfo = null;
 
     /**
+     * @member {Object|null} linesData
+     * @description Lines.json data for confidence visualisation
+     * @since 3.2.0
+     */
+    this.linesData = null;
+
+    /**
+     * @member {Object|null} confidenceVisualiser
+     * @description PDF Confidence Visualiser instance
+     * @since 3.2.0
+     */
+    this.confidenceVisualiser = null;
+
+    /**
      * @member {string} activeFormat
      * @description Currently active format tab
      */
@@ -276,6 +290,15 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     // Store results for reference
     this.currentResults = results;
     this.documentInfo = documentInfo;
+
+    // Phase 3.2: Store PDF file reference for confidence visualiser
+    if (pdfBlob) {
+      this.currentPDFFile = pdfBlob;
+      logDebug("PDF file stored for confidence visualiser", {
+        fileName: pdfBlob.name,
+        size: pdfBlob.size,
+      });
+    }
 
     // ✅ STEP 1: Store document ID for Lines API calls (FIXED: pdfId not pdf_id)
     this.documentId = results.processingMetadata?.pdfId || null;
@@ -1972,7 +1995,8 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       "mmdzip",
       "mdzip",
       "htmlzip",
-    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latexpdf" | Phase 2: Added "pptx" | Phase 2B: Added archive formats
+      "confidence", // Phase 3.2: PDF Confidence Visualiser tab
+    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latexpdf" | Phase 2: Added "pptx" | Phase 2B: Added archive formats | Phase 3.2: confidence
 
     formats.forEach((format) => {
       // Use direct DOM queries instead of cached elements to ensure we find existing elements
@@ -2836,6 +2860,11 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         activeTab.setAttribute("tabindex", "0");
         activeTab.classList.add("active");
         activeTab.focus();
+      }
+
+      // Phase 3.2: Initialise confidence visualiser when switching to confidence tab
+      if (format === "confidence") {
+        this.initialiseConfidenceVisualiser();
       }
 
       this.activeFormat = format;
@@ -4315,6 +4344,365 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     } catch (error) {
       logError("Failed to enhance PDF HTML tables", error);
       return htmlContent; // Return original on error
+    }
+  }
+  // ===========================================================================
+  // CONFIDENCE VISUALISER INTEGRATION (Phase 3.2)
+  // ===========================================================================
+
+  /**
+   * @method fetchAndStoreLinesData
+   * @description Fetches lines.json data for confidence visualisation
+   *
+   * Called after PDF processing completes to retrieve per-line confidence
+   * data for the confidence visualiser feature.
+   *
+   * @param {string} pdfId - PDF document ID from processing
+   * @returns {Promise<Object|null>} Lines data or null on failure
+   *
+   * @since 3.2.0
+   */
+  async fetchAndStoreLinesData(pdfId) {
+    if (!pdfId) {
+      logWarn("Cannot fetch lines data: no PDF ID provided");
+      return null;
+    }
+
+    try {
+      logInfo("Fetching lines data for confidence visualisation", { pdfId });
+
+      const linesData = await this.controller.apiClient.fetchLinesData(pdfId);
+      this.linesData = linesData;
+
+      const totalLines =
+        linesData.pages?.reduce(
+          (sum, page) => sum + (page.lines?.length || 0),
+          0
+        ) || 0;
+
+      logInfo("Lines data stored successfully", {
+        pdfId,
+        pageCount: linesData.pages?.length || 0,
+        totalLines,
+      });
+
+      // Phase 3.2: Update confidence indicator and show Confidence tab
+      this.showConfidenceTabIfDataAvailable();
+
+      return linesData;
+    } catch (error) {
+      logWarn(
+        "Failed to fetch lines data - confidence visualisation unavailable",
+        {
+          pdfId,
+          error: error.message,
+        }
+      );
+      this.linesData = null;
+      return null;
+    }
+  }
+
+  /**
+   * @method hasLinesData
+   * @description Checks if lines data is available for confidence visualisation
+   * @returns {boolean} True if lines data is available
+   * @since 3.2.0
+   */
+  hasLinesData() {
+    return this.linesData !== null && Array.isArray(this.linesData.pages);
+  }
+
+  /**
+   * @method getLinesData
+   * @description Returns stored lines data
+   * @returns {Object|null} Lines data or null
+   * @since 3.2.0
+   */
+  getLinesData() {
+    return this.linesData;
+  }
+
+  /**
+   * @method clearLinesData
+   * @description Clears stored lines data
+   * @since 3.2.0
+   */
+  clearLinesData() {
+    this.linesData = null;
+    if (this.confidenceVisualiser) {
+      this.confidenceVisualiser.destroy();
+      this.confidenceVisualiser = null;
+    }
+  }
+
+  /**
+   * @method updatePDFConfidenceIndicator
+   * @description Updates the clickable confidence indicator with average confidence from lines data
+   * @returns {void}
+   * @since 3.2.0
+   */
+  updatePDFConfidenceIndicator() {
+    const indicator = document.getElementById(
+      "mathpix-pdf-confidence-indicator"
+    );
+    const valueElement = document.getElementById(
+      "mathpix-pdf-confidence-value"
+    );
+    const barElement = document.getElementById("mathpix-pdf-confidence-bar");
+
+    if (!indicator || !valueElement) {
+      logDebug("Confidence indicator elements not found");
+      return;
+    }
+
+    // Check if we have lines data with confidence information
+    if (
+      !this.linesData ||
+      !this.linesData.pages ||
+      this.linesData.pages.length === 0
+    ) {
+      indicator.style.display = "none";
+      logDebug("No lines data available for confidence indicator");
+      return;
+    }
+
+    // Calculate average confidence across all pages
+    let totalConfidence = 0;
+    let lineCount = 0;
+
+    this.linesData.pages.forEach((page) => {
+      if (page.lines && Array.isArray(page.lines)) {
+        page.lines.forEach((line) => {
+          // Use confidence_rate (geometric mean) as primary metric
+          const confidence = line.confidence_rate ?? line.confidence ?? null;
+          if (confidence !== null && confidence !== undefined) {
+            totalConfidence += confidence;
+            lineCount++;
+          }
+        });
+      }
+    });
+
+    if (lineCount === 0) {
+      indicator.style.display = "none";
+      logDebug("No confidence data found in lines");
+      return;
+    }
+
+    const averageConfidence = totalConfidence / lineCount;
+    const percentageValue = (averageConfidence * 100).toFixed(1);
+
+    // Determine confidence level
+    let level = "very-low";
+    if (averageConfidence >= 0.95) {
+      level = "high";
+    } else if (averageConfidence >= 0.8) {
+      level = "medium";
+    } else if (averageConfidence >= 0.6) {
+      level = "low";
+    }
+
+    // Update the indicator
+    indicator.setAttribute("data-confidence-level", level);
+    indicator.style.display = "flex";
+    valueElement.textContent = `${percentageValue}%`;
+
+    if (barElement) {
+      barElement.style.width = `${percentageValue}%`;
+    }
+
+    // Update aria-label for screen readers
+    indicator.setAttribute(
+      "aria-label",
+      `Recognition confidence: ${percentageValue}% (${level.replace(
+        "-",
+        " "
+      )}). Click to view detailed confidence analysis.`
+    );
+
+    logInfo("PDF confidence indicator updated", {
+      averageConfidence: percentageValue,
+      level,
+      lineCount,
+    });
+  }
+
+  /**
+   * @method navigateToConfidenceTab
+   * @description Navigates to the Confidence tab and initialises the visualiser
+   * @returns {Promise<void>}
+   * @since 3.2.0
+   */
+  async navigateToConfidenceTab() {
+    logInfo("Navigating to confidence tab");
+
+    // Check if we have lines data
+    if (!this.hasLinesData()) {
+      logWarn("Cannot navigate to confidence tab: no lines data available");
+      if (
+        this.controller &&
+        typeof this.controller.showNotification === "function"
+      ) {
+        this.controller.showNotification(
+          "Confidence data not available. Please wait for processing to complete.",
+          "warning"
+        );
+      }
+      return;
+    }
+
+    // Show the confidence tab if hidden
+    const confidenceTab = this.formatElements.tabs["confidence"];
+    if (confidenceTab) {
+      confidenceTab.style.display = "block";
+    }
+
+    // Switch to the confidence tab
+    await this.switchToFormat("confidence");
+
+    // Initialise the visualiser if not already done
+    await this.initialiseConfidenceVisualiser();
+  }
+
+  /**
+   * @method initialiseConfidenceVisualiser
+   * @description Initialises the PDF Confidence Visualiser in the confidence tab panel
+   * @returns {Promise<void>}
+   * @since 3.2.0
+   */
+  async initialiseConfidenceVisualiser() {
+    const container = document.getElementById(
+      "mathpix-confidence-visualiser-container"
+    );
+
+    if (!container) {
+      logError("Confidence visualiser container not found");
+      return;
+    }
+
+    // Check if already initialised
+    if (this.confidenceVisualiser && this.confidenceVisualiser.isInitialised) {
+      logDebug("Confidence visualiser already initialised");
+      return;
+    }
+
+    // Check dependencies
+    if (typeof window.PDFConfidenceVisualiser === "undefined") {
+      logError(
+        "PDFConfidenceVisualiser not available. Ensure pdf-visualiser-core.js is loaded."
+      );
+      container.innerHTML = `
+      <div class="confidence-visualiser-error" role="alert">
+        <p><strong>Visualiser unavailable</strong></p>
+        <p>The confidence visualiser module could not be loaded. Please refresh the page and try again.</p>
+      </div>
+    `;
+      return;
+    }
+
+    try {
+      // Clear placeholder
+      container.innerHTML = "";
+
+      // Create visualiser instance
+      this.confidenceVisualiser = new window.PDFConfidenceVisualiser({
+        container: container,
+        onError: (error) => {
+          logError("Confidence visualiser error:", error);
+          if (
+            this.controller &&
+            typeof this.controller.showNotification === "function"
+          ) {
+            this.controller.showNotification(
+              `Visualiser error: ${error.message}`,
+              "error"
+            );
+          }
+        },
+        onPageChange: (pageNumber) => {
+          logDebug("Visualiser page changed:", pageNumber);
+        },
+        onStatsCalculated: (stats) => {
+          logDebug("Visualiser stats calculated:", stats);
+        },
+      });
+
+      // Initialise the visualiser
+      await this.confidenceVisualiser.initialize();
+
+      // Load the PDF and lines data
+      // We need to get the PDF file - check if we have it stored or can access it
+      const pdfSource = this.getPDFSourceForVisualiser();
+
+      if (pdfSource && this.linesData) {
+        await this.confidenceVisualiser.loadPDF(pdfSource, this.linesData);
+        logInfo("Confidence visualiser loaded successfully");
+      } else {
+        logWarn("PDF source or lines data not available for visualiser");
+        container.innerHTML = `
+        <div class="confidence-visualiser-placeholder">
+          <p>PDF source not available for visualisation. The confidence data is displayed in the indicator above.</p>
+        </div>
+      `;
+      }
+    } catch (error) {
+      logError("Failed to initialise confidence visualiser:", error);
+      container.innerHTML = `
+      <div class="confidence-visualiser-error" role="alert">
+        <p><strong>Failed to load visualiser</strong></p>
+        <p>${error.message}</p>
+      </div>
+    `;
+    }
+  }
+
+  /**
+   * @method getPDFSourceForVisualiser
+   * @description Gets the PDF source (File or URL) for the visualiser
+   * @returns {File|string|null} PDF source or null if not available
+   * @private
+   * @since 3.2.0
+   */
+  getPDFSourceForVisualiser() {
+    // Try to get PDF from controller's file handler
+    if (this.controller && this.controller.fileHandler) {
+      const currentFile = this.controller.fileHandler.currentFile;
+      if (currentFile && currentFile.type === "application/pdf") {
+        return currentFile;
+      }
+    }
+
+    // Try to get from stored reference
+    if (this.currentPDFFile) {
+      return this.currentPDFFile;
+    }
+
+    // Could also construct URL from pdfId if API supports it
+    // For now, return null and handle gracefully
+    logDebug("No PDF source available for visualiser");
+    return null;
+  }
+
+  /**
+   * @method showConfidenceTabIfDataAvailable
+   * @description Shows the confidence tab and updates indicator when lines data is available
+   * @returns {void}
+   * @since 3.2.0
+   */
+  showConfidenceTabIfDataAvailable() {
+    if (!this.hasLinesData()) {
+      return;
+    }
+
+    // Update the confidence indicator
+    this.updatePDFConfidenceIndicator();
+
+    // Show the confidence tab (but don't activate it)
+    const confidenceTab = this.formatElements.tabs["confidence"];
+    if (confidenceTab) {
+      confidenceTab.style.display = "block";
+      logInfo("Confidence tab shown (lines data available)");
     }
   }
 }

@@ -557,8 +557,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
         );
 
         dollarPre.appendChild(dollarCode);
+        dollarWrapper.appendChild(dollarPre);
 
-        // Clone and attach copy button
+        // Clone and attach copy button to WRAPPER (not pre) so it doesn't scroll with content
         const originalCopyBtnDollar =
           preElement.querySelector(".code-copy-button");
         if (originalCopyBtnDollar) {
@@ -588,11 +589,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
             }
           });
 
-          dollarPre.appendChild(dollarCopyBtn);
+          dollarWrapper.appendChild(dollarCopyBtn);
           logDebug("Copy button cloned and attached for dollar format");
         }
-
-        dollarWrapper.appendChild(dollarPre);
         wrapper.appendChild(dollarWrapper);
 
         // Add single line expression label
@@ -623,8 +622,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
         );
 
         doublePre.appendChild(doubleCode);
+        doubleWrapper.appendChild(doublePre);
 
-        // Clone and attach copy button
+        // Clone and attach copy button to WRAPPER (not pre) so it doesn't scroll with content
         const originalCopyBtnDouble =
           preElement.querySelector(".code-copy-button");
         if (originalCopyBtnDouble) {
@@ -656,11 +656,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
             }
           });
 
-          doublePre.appendChild(doubleCopyBtn);
+          doubleWrapper.appendChild(doubleCopyBtn);
           logDebug("Copy button cloned and attached for double format");
         }
-
-        doubleWrapper.appendChild(doublePre);
         wrapper.appendChild(doubleWrapper);
 
         logInfo(

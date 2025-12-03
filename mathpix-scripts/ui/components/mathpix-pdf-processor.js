@@ -357,6 +357,31 @@ class MathPixPDFProcessor extends MathPixBaseModule {
         console.log("PDF results display triggered successfully", {
           pdfId: this.currentPdfId,
         });
+
+        // Step 4.5: Fetch lines.json data for confidence visualisation (Phase 3.2)
+        // Non-blocking fetch - visualiser feature remains optional
+        if (
+          this.controller.pdfResultRenderer &&
+          typeof this.controller.pdfResultRenderer.fetchAndStoreLinesData ===
+            "function"
+        ) {
+          this.controller.pdfResultRenderer
+            .fetchAndStoreLinesData(this.currentPdfId)
+            .then((linesData) => {
+              if (linesData) {
+                logInfo("Lines data fetched for confidence visualisation", {
+                  pdfId: this.currentPdfId,
+                  pageCount: linesData.pages?.length || 0,
+                });
+              }
+            })
+            .catch((error) => {
+              logWarn("Lines data fetch failed (non-blocking)", {
+                pdfId: this.currentPdfId,
+                error: error.message,
+              });
+            });
+        }
       } else {
         console.error(
           "PDF handler not available or displayPDFResults method missing"

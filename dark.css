@@ -1,5 +1,187 @@
 /* Dark mode */
 
+/* ===========================================
+   PDF CONFIDENCE VISUALISER UI (Phase 3.2)
+   =========================================== */
+
+/* Main container colours */
+.pdf-vis-container {
+  background-color: #161415;
+  border: 1px solid currentcolor;
+  color: currentcolor;
+}
+
+.pdf-vis-container:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+/* Controls bar colours */
+.pdf-vis-controls {
+  background-color: #00131d;
+  border-bottom: 1px solid currentcolor;
+}
+
+/* ============================================
+   PDF Confidence Visualiser - Colours
+   ============================================ */
+
+/* High confidence (≥95%) - Green */
+.pdf-vis-legend-swatch[data-confidence-level="high"],
+.pdf-vis-legend-swatch--high {
+  background-color: rgba(34, 197, 94, 0.3);
+  border-color: #00131d;
+}
+
+/* Medium confidence (80-94%) - Yellow */
+.pdf-vis-legend-swatch[data-confidence-level="medium"],
+.pdf-vis-legend-swatch--medium {
+  background-color: rgba(250, 204, 21, 0.3);
+  border-color: #00131d;
+}
+
+/* Low confidence (60-79%) - Orange */
+.pdf-vis-legend-swatch[data-confidence-level="low"],
+.pdf-vis-legend-swatch--low {
+  background-color: rgba(249, 115, 22, 0.3);
+  border-color: #00131d;
+}
+
+/* Very low confidence (<60%) - Red */
+.pdf-vis-legend-swatch[data-confidence-level="very-low"],
+.pdf-vis-legend-swatch--very-low {
+  background-color: rgba(239, 68, 68, 0.3);
+  border-color: #00131d;
+}
+
+/* Legend label colour */
+.pdf-vis-legend-label {
+  color: currentcolor;
+}
+
+/* Legend count badge colour */
+.pdf-vis-legend-count {
+  background-color: #231f20;
+}
+
+/* Canvas wrapper colours */
+.pdf-vis-canvas-wrapper {
+  background-color: #00131d;
+}
+
+/* PDF canvas colours */
+.pdf-vis-pdf-canvas {
+  background-color: #00131d;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Statistics panel colours */
+.pdf-vis-stats-panel {
+  background-color: #00131d;
+  border-left: 1px solid currentcolor;
+}
+
+/* Summary statistics colours */
+.pdf-vis-stats-summary {
+  border-bottom: 1px solid currentcolor;
+}
+
+/* Loading overlay colours */
+.pdf-vis--loading {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.pdf-vis-loading-spinner {
+  border: 3px solid #e1e8ec;
+  border-top-color: #8d3970;
+}
+
+.mathpix-upload-preview {
+  background: #00131d !important;
+  border: 2px dashed currentcolor;
+}
+
+.upload-preview-display {
+  border: 1px solid currentcolor;
+  background: #231f20 !important;
+}
+/* ============================================
+   COLOUR PROPERTIES
+   ============================================ */
+/* Clickable Confidence Indicator - Colours */
+.mathpix-confidence-indicator.mathpix-confidence-clickable {
+  border-color: #e1e8ec;
+  background: #00131d;
+}
+.mathpix-confidence-clickable:active {
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.1);
+}
+.mathpix-confidence-clickable:hover .confidence-hint {
+  color: #3cbac6;
+  text-decoration: none;
+}
+/* Confidence Level Colours for Indicator */
+.mathpix-confidence-indicator[data-confidence-level="high"] {
+  border-color: #c1d100;
+  color: #c1d100;
+}
+.mathpix-confidence-indicator[data-confidence-level="high"] .confidence-bar {
+  background: #c1d100;
+}
+.mathpix-confidence-indicator[data-confidence-level="medium"] {
+  border-color: #fcbc00;
+  color: #fcbc00;
+}
+.mathpix-confidence-indicator[data-confidence-level="medium"] .confidence-bar {
+  background: #fcbc00;
+}
+.mathpix-confidence-indicator[data-confidence-level="low"] {
+  border-color: #ef7d00;
+  color: #ef7d00;
+}
+.mathpix-confidence-indicator[data-confidence-level="low"] .confidence-bar {
+  background: #ef7d00;
+}
+.mathpix-confidence-indicator[data-confidence-level="very-low"] {
+  border-color: #ef7d00;
+  color: #ef7d00;
+}
+.mathpix-confidence-indicator[data-confidence-level="very-low"]
+  .confidence-bar {
+  background: #ef7d00;
+}
+/* Confidence Legend - Colours */
+.confidence-legend {
+  background: #00131d;
+  border-color: currentcolor;
+}
+.legend-colour {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.legend-high {
+  background: rgba(0, 80, 81, 0.5);
+  border-color: #c1d100;
+}
+.legend-medium {
+  background: rgba(250, 204, 21, 0.5);
+  border-color: #fcbc00;
+}
+.legend-low {
+  background: rgba(249, 115, 22, 0.5);
+  border-color: #ef7d00;
+}
+.legend-very-low {
+  background: rgba(239, 68, 68, 0.5);
+  border-color: #ef7d00;
+}
+.legend-label {
+  color: currentcolor;
+}
+
+.confidence-hint {
+  color: #fcbc00;
+}
+
 /* Confidence bar default colour */
 .mathpix-confidence-indicator .confidence-bar {
   background-color: #c1d100;
@@ -938,11 +1120,6 @@ pre[class*="language-"] {
 
 .mathpix-format-actions {
   border-bottom: 1px solid #00131d;
-}
-
-.mathpix-copy-btn,
-.mathpix-download-btn,
-.mathpix-preview-btn {
 }
 
 .mathpix-copy-btn:hover,
@@ -1956,10 +2133,6 @@ universal-modal-button-primary {
 .color-card.selected-background {
   border: 3px solid #231f20 !important;
   outline: 3px solid #e1e8ec !important;
-}
-
-.contrast-status {
-  /* color: #231f20;*/
 }
 
 .bg-preview-value {

@@ -306,6 +306,20 @@ class MathPixDownloadManager extends MathPixBaseModule {
       const request = this.downloader.getRealRequest(this.controller);
       const debugData = this.downloader.getRealDebugData(this.controller);
 
+      // Collect lines data for confidence visualisation (Phase 3.2)
+      let linesData = null;
+      if (
+        apiType === "pdf" &&
+        this.controller.pdfResultRenderer?.getLinesData
+      ) {
+        linesData = this.controller.pdfResultRenderer.getLinesData();
+        if (linesData) {
+          logInfo("Lines data collected for archive", {
+            pageCount: linesData.pages?.length || 0,
+          });
+        }
+      }
+
       // Validate collected data
       if (!response) {
         throw new Error(
@@ -323,6 +337,7 @@ class MathPixDownloadManager extends MathPixBaseModule {
         response,
         request,
         debugData,
+        linesData, // Include lines data for confidence visualisation
       });
 
       // Success!

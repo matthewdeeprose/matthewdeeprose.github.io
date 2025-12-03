@@ -1,5 +1,185 @@
 /*Light mode */
 
+/* Main container colours */
+.pdf-vis-container {
+  background-color: #f0f2e8;
+  border: 1px solid currentcolor;
+  color: currentcolor;
+}
+
+.pdf-vis-container:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+/* Controls bar colours */
+.pdf-vis-controls {
+  background-color: #e1e8ec;
+  border-bottom: 1px solid currentcolor;
+}
+
+/* ============================================
+   PDF Confidence Visualiser - Colours
+   ============================================ */
+
+/* High confidence (≥95%) - Green */
+.pdf-vis-legend-swatch[data-confidence-level="high"],
+.pdf-vis-legend-swatch--high {
+  background-color: rgba(34, 197, 94, 0.3);
+  border-color: currentcolor;
+}
+
+/* Medium confidence (80-94%) - Yellow */
+.pdf-vis-legend-swatch[data-confidence-level="medium"],
+.pdf-vis-legend-swatch--medium {
+  background-color: rgba(250, 204, 21, 0.3);
+  border-color: currentcolor;
+}
+
+/* Low confidence (60-79%) - Orange */
+.pdf-vis-legend-swatch[data-confidence-level="low"],
+.pdf-vis-legend-swatch--low {
+  background-color: rgba(249, 115, 22, 0.3);
+  border-color: currentcolor;
+}
+
+/* Very low confidence (<60%) - Red */
+.pdf-vis-legend-swatch[data-confidence-level="very-low"],
+.pdf-vis-legend-swatch--very-low {
+  background-color: rgba(239, 68, 68, 0.3);
+  border-color: currentcolor;
+}
+
+/* Legend label colour */
+.pdf-vis-legend-label {
+  color: currentcolor;
+}
+
+/* Legend count badge colour */
+.pdf-vis-legend-count {
+  background-color: #e1e8ec;
+}
+
+/* Canvas wrapper colours */
+.pdf-vis-canvas-wrapper {
+  background-color: #fffff4;
+}
+
+/* PDF canvas colours */
+.pdf-vis-pdf-canvas {
+  background-color: #e1e8ec;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Statistics panel colours */
+.pdf-vis-stats-panel {
+  background-color: #fffff4;
+  border-left: 1px solid currentcolor;
+}
+
+/* Summary statistics colours */
+.pdf-vis-stats-summary {
+  border-bottom: 1px solid currentcolor;
+}
+
+/* Loading overlay colours */
+.pdf-vis--loading {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.pdf-vis-loading-spinner {
+  border: 3px solid #e1e8ec;
+  border-top-color: #8d3970;
+}
+
+/* Clickable Confidence Indicator - Colours */
+.mathpix-confidence-indicator.mathpix-confidence-clickable {
+  border-color: #d1d5db;
+  background: #fffff4;
+  box-shadow: 0 4px 12px rgba(0, 19, 29, 0.15);
+}
+
+.mathpix-confidence-clickable:active {
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.1);
+}
+
+.mathpix-confidence-clickable:hover .confidence-hint {
+  color: #8d3970;
+  text-decoration: none;
+}
+
+/* Confidence Level Colours for Indicator */
+.mathpix-confidence-indicator[data-confidence-level="high"] {
+  border-color: #005051;
+  color: #005051;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="high"] .confidence-bar {
+  background: #005051;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="medium"] {
+  border-color: #8d3970;
+  color: #8d3970;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="medium"] .confidence-bar {
+  background: #8d3970;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="low"] {
+  border-color: #d5007f;
+  color: #9a3412;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="low"] .confidence-bar {
+  background: #d5007f;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="very-low"] {
+  border-color: #d5007f;
+  color: #d5007f;
+}
+
+.mathpix-confidence-indicator[data-confidence-level="very-low"]
+  .confidence-bar {
+  background: #d5007f;
+}
+
+/* Confidence Legend - Colours */
+.confidence-legend {
+  background: #e1e8ec;
+  border-color: currentcolor;
+}
+
+.legend-colour {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.legend-high {
+  background: rgba(0, 80, 81, 0.5);
+  border-color: #005051;
+}
+
+.legend-medium {
+  background: rgba(250, 204, 21, 0.5);
+  border-color: #8d3970;
+}
+
+.legend-low {
+  background: rgba(249, 115, 22, 0.5);
+  border-color: #d5007f;
+}
+
+.legend-very-low {
+  background: rgba(239, 68, 68, 0.5);
+  border-color: #d5007f;
+}
+
+.legend-label {
+  color: currentcolor;
+}
+
 /* Confidence bar default colour */
 .mathpix-confidence-indicator .confidence-bar {
   background-color: #005051;

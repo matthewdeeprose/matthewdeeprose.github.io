@@ -1,0 +1,552 @@
+/**
+ * Universal Toggletip - Accessible Popover Styles
+ * WCAG 2.2 AA compliant styling
+ *
+ * Colour scheme:
+ * - Background: #fffff4
+ * - Text/outline: #00131d
+ * - Green: #005051
+ * - Warning: #d5007f
+ * - Neutral: #495961
+ * - Marine: #005C84
+ * - Horizon: #8D3970
+ *
+ * @version 1.0.0
+ */
+
+/* ====== CSS CUSTOM PROPERTIES ====== */
+:root {
+  /* Toggletip colours */
+  --toggletip-background: #fffff4;
+  --toggletip-text: #00131d;
+  --toggletip-border: #00131d;
+  --toggletip-shadow: rgba(0, 19, 29, 0.15);
+
+  /* Type colours */
+  --toggletip-info-accent: #005c84;
+  --toggletip-success-accent: #005051;
+  --toggletip-warning-accent: #d5007f;
+  --toggletip-error-accent: #d5007f;
+  --toggletip-neutral-accent: #495961;
+
+  /* Sizing */
+  --toggletip-min-width: 150px;
+  --toggletip-max-width: 300px;
+  --toggletip-padding: 0.75rem 1rem;
+  --toggletip-border-radius: 4px;
+  --toggletip-arrow-size: 8px;
+
+  /* Animation */
+  --toggletip-transition-duration: 200ms;
+  --toggletip-transition-timing: ease-out;
+}
+
+/* ====== TRIGGER STYLES ====== */
+.universal-toggletip-trigger {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--toggletip-info-accent);
+  text-underline-offset: 2px;
+}
+
+.universal-toggletip-trigger:hover,
+.universal-toggletip-trigger:focus {
+  text-decoration-style: solid;
+  outline: 2px solid var(--toggletip-info-accent);
+  outline-offset: 2px;
+}
+
+.universal-toggletip-trigger:focus {
+  outline: 2px solid var(--toggletip-info-accent);
+  outline-offset: 2px;
+}
+
+.universal-toggletip-trigger:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.universal-toggletip-trigger:focus-visible {
+  outline: 2px solid var(--toggletip-info-accent);
+  outline-offset: 2px;
+}
+
+.universal-toggletip-trigger-active {
+  text-decoration-style: solid;
+}
+
+/* Button triggers - reset underline styling */
+button.universal-toggletip-trigger,
+[role="button"].universal-toggletip-trigger {
+  text-decoration: none;
+}
+
+button.universal-toggletip-trigger:hover,
+button.universal-toggletip-trigger:focus,
+[role="button"].universal-toggletip-trigger:hover,
+[role="button"].universal-toggletip-trigger:focus {
+  text-decoration: none;
+}
+
+/* ====== TOGGLETIP CONTAINER ====== */
+.universal-toggletip {
+  position: absolute;
+  z-index: 10000;
+  display: none;
+  min-width: var(--toggletip-min-width);
+  max-width: var(--toggletip-max-width);
+  width: max-content;
+  padding: var(--toggletip-padding);
+  background-color: var(--toggletip-background);
+  border: 2px solid var(--toggletip-border);
+  border-radius: var(--toggletip-border-radius);
+  box-shadow: 0 4px 12px var(--toggletip-shadow);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--toggletip-text);
+
+  /* Animation setup */
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--toggletip-transition-duration)
+      var(--toggletip-transition-timing),
+    transform var(--toggletip-transition-duration)
+      var(--toggletip-transition-timing);
+}
+
+.universal-toggletip-visible {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Position-specific transforms for animation */
+.universal-toggletip-position-top {
+  transform: translateY(-4px);
+}
+
+.universal-toggletip-position-top.universal-toggletip-visible {
+  transform: translateY(0);
+}
+
+.universal-toggletip-position-bottom {
+  transform: translateY(4px);
+}
+
+.universal-toggletip-position-bottom.universal-toggletip-visible {
+  transform: translateY(0);
+}
+
+.universal-toggletip-position-left {
+  transform: translateX(-4px);
+}
+
+.universal-toggletip-position-left.universal-toggletip-visible {
+  transform: translateX(0);
+}
+
+.universal-toggletip-position-right {
+  transform: translateX(4px);
+}
+
+.universal-toggletip-position-right.universal-toggletip-visible {
+  transform: translateX(0);
+}
+
+/* ====== TYPE VARIANTS ====== */
+.universal-toggletip-info {
+  border-left: 4px solid var(--toggletip-info-accent);
+}
+
+.universal-toggletip-success {
+  border-left: 4px solid var(--toggletip-success-accent);
+}
+
+.universal-toggletip-warning {
+  border-left: 4px solid var(--toggletip-warning-accent);
+}
+
+.universal-toggletip-error {
+  border-left: 4px solid var(--toggletip-error-accent);
+}
+
+.universal-toggletip-neutral {
+  border-left: 4px solid var(--toggletip-neutral-accent);
+}
+
+/* ====== CONTENT AREA ====== */
+.universal-toggletip-content {
+  margin: 0;
+  padding-right: 1.5rem; /* Space for close button */
+}
+
+.universal-toggletip-content p {
+  margin: 0 0 0.5rem 0;
+}
+
+.universal-toggletip-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Content typography */
+.universal-toggletip-content strong,
+.universal-toggletip-content b {
+  font-weight: 600;
+  color: var(--toggletip-text);
+}
+
+.universal-toggletip-content em,
+.universal-toggletip-content i {
+  font-style: italic;
+}
+
+/* Lists within toggletip */
+.universal-toggletip-content ul,
+.universal-toggletip-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.universal-toggletip-content li {
+  margin-bottom: 0.25rem;
+}
+
+/* Links within toggletip */
+.universal-toggletip-content a {
+  color: var(--toggletip-info-accent);
+  text-decoration: underline;
+}
+
+.universal-toggletip-content a:hover,
+.universal-toggletip-content a:focus {
+  color: var(--toggletip-text);
+}
+
+/* ====== CLOSE BUTTON ====== */
+.universal-toggletip-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  color: var(--toggletip-neutral-accent);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.universal-toggletip-close:hover {
+  background-color: rgba(0, 19, 29, 0.08);
+  color: var(--toggletip-text);
+}
+
+.universal-toggletip-close:focus {
+  outline: 2px solid var(--toggletip-info-accent);
+  outline-offset: 1px;
+  background-color: rgba(0, 19, 29, 0.08);
+}
+
+.universal-toggletip-close:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.universal-toggletip-close:focus-visible {
+  outline: 2px solid var(--toggletip-info-accent);
+  outline-offset: 1px;
+}
+
+/* ====== ARROW ====== */
+.universal-toggletip-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+/* Arrow for bottom position (arrow points up) */
+.universal-toggletip-position-bottom .universal-toggletip-arrow {
+  top: calc(-1 * var(--toggletip-arrow-size));
+  border-width: 0 var(--toggletip-arrow-size) var(--toggletip-arrow-size)
+    var(--toggletip-arrow-size);
+  border-color: transparent transparent var(--toggletip-border) transparent;
+}
+
+.universal-toggletip-position-bottom .universal-toggletip-arrow::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: calc(-1 * var(--toggletip-arrow-size));
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 var(--toggletip-arrow-size) var(--toggletip-arrow-size)
+    var(--toggletip-arrow-size);
+  border-color: transparent transparent var(--toggletip-background) transparent;
+}
+
+/* Arrow for top position (arrow points down) */
+.universal-toggletip-position-top .universal-toggletip-arrow {
+  bottom: calc(-1 * var(--toggletip-arrow-size));
+  border-width: var(--toggletip-arrow-size) var(--toggletip-arrow-size) 0
+    var(--toggletip-arrow-size);
+  border-color: var(--toggletip-border) transparent transparent transparent;
+}
+
+.universal-toggletip-position-top .universal-toggletip-arrow::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: calc(-1 * var(--toggletip-arrow-size));
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: var(--toggletip-arrow-size) var(--toggletip-arrow-size) 0
+    var(--toggletip-arrow-size);
+  border-color: var(--toggletip-background) transparent transparent transparent;
+}
+
+/* Arrow for left position (arrow points right) */
+.universal-toggletip-position-left .universal-toggletip-arrow {
+  right: calc(-1 * var(--toggletip-arrow-size));
+  border-width: var(--toggletip-arrow-size) 0 var(--toggletip-arrow-size)
+    var(--toggletip-arrow-size);
+  border-color: transparent transparent transparent var(--toggletip-border);
+}
+
+.universal-toggletip-position-left .universal-toggletip-arrow::after {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--toggletip-arrow-size));
+  right: 2px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: var(--toggletip-arrow-size) 0 var(--toggletip-arrow-size)
+    var(--toggletip-arrow-size);
+  border-color: transparent transparent transparent var(--toggletip-background);
+}
+
+/* Arrow for right position (arrow points left) */
+.universal-toggletip-position-right .universal-toggletip-arrow {
+  left: calc(-1 * var(--toggletip-arrow-size));
+  border-width: var(--toggletip-arrow-size) var(--toggletip-arrow-size)
+    var(--toggletip-arrow-size) 0;
+  border-color: transparent var(--toggletip-border) transparent transparent;
+}
+
+.universal-toggletip-position-right .universal-toggletip-arrow::after {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--toggletip-arrow-size));
+  left: 2px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: var(--toggletip-arrow-size) var(--toggletip-arrow-size)
+    var(--toggletip-arrow-size) 0;
+  border-color: transparent var(--toggletip-background) transparent transparent;
+}
+
+/* ====== CANVAS OVERLAY AND FOCUSABLE REGIONS ====== */
+.universal-toggletip-canvas-overlay {
+  position: absolute;
+  pointer-events: none; /* Allow clicks to pass through to canvas */
+  z-index: 1;
+}
+
+.universal-toggletip-canvas-region-button {
+  /* Transparent, focusable button positioned over canvas region */
+  position: absolute;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 2px;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  pointer-events: auto; /* Re-enable pointer events for buttons */
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.universal-toggletip-canvas-region-button:hover {
+  border-color: var(--toggletip-info-accent);
+  background: rgba(0, 92, 132, 0.1);
+}
+
+.universal-toggletip-canvas-region-button:focus {
+  outline: none;
+  background: rgba(0, 92, 132, 0.05);
+  border-color: var(--toggletip-info-accent);
+  box-shadow: 0 0 0 2px var(--toggletip-background),
+    0 0 0 4px var(--toggletip-info-accent);
+}
+
+.universal-toggletip-canvas-region-button:focus:not(:focus-visible) {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.universal-toggletip-canvas-region-button:focus-visible {
+  background: rgba(0, 92, 132, 0.05);
+  border-color: var(--toggletip-info-accent);
+  box-shadow: 0 0 0 2px var(--toggletip-background),
+    0 0 0 4px var(--toggletip-info-accent);
+}
+
+/* Active state when toggletip is open */
+.universal-toggletip-canvas-region-button[aria-expanded="true"] {
+  border-color: var(--toggletip-info-accent);
+  background: rgba(0, 92, 132, 0.15);
+}
+
+/* Screen reader only text inside button */
+.universal-toggletip-canvas-region-button .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ====== OCR CONFIDENCE SPECIFIC STYLES ====== */
+/* High confidence (≥95%) */
+.universal-toggletip-confidence-high .universal-toggletip-content {
+  border-left-color: var(--toggletip-success-accent);
+}
+
+/* Medium confidence (80-94%) */
+.universal-toggletip-confidence-medium .universal-toggletip-content {
+  border-left-color: var(--toggletip-info-accent);
+}
+
+/* Low confidence (60-79%) */
+.universal-toggletip-confidence-low .universal-toggletip-content {
+  border-left-color: #8d3970; /* Horizon 5 */
+}
+
+/* Very low confidence (<60%) */
+.universal-toggletip-confidence-very-low .universal-toggletip-content {
+  border-left-color: var(--toggletip-warning-accent);
+}
+
+/* Confidence value display */
+.toggletip-confidence-value {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  border-radius: 2px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.toggletip-confidence-high {
+  background-color: rgba(0, 80, 81, 0.15);
+  color: var(--toggletip-success-accent);
+}
+
+.toggletip-confidence-medium {
+  background-color: rgba(0, 92, 132, 0.15);
+  color: var(--toggletip-info-accent);
+}
+
+.toggletip-confidence-low {
+  background-color: rgba(141, 57, 112, 0.15);
+  color: #8d3970;
+}
+
+.toggletip-confidence-very-low {
+  background-color: rgba(213, 0, 127, 0.15);
+  color: var(--toggletip-warning-accent);
+}
+
+/* ====== DATA DISPLAY UTILITIES ====== */
+.toggletip-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: var(--toggletip-neutral-accent);
+  margin-bottom: 0.25rem;
+}
+
+.toggletip-value {
+  display: block;
+  font-size: 1rem;
+  color: var(--toggletip-text);
+}
+
+.toggletip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(0, 19, 29, 0.1);
+}
+
+.toggletip-row:last-child {
+  border-bottom: none;
+}
+
+/* ====== REDUCED MOTION ====== */
+@media (prefers-reduced-motion: reduce) {
+  .universal-toggletip {
+    transition: none;
+  }
+
+  .universal-toggletip-visible {
+    transform: none;
+  }
+
+  .universal-toggletip-position-top,
+  .universal-toggletip-position-bottom,
+  .universal-toggletip-position-left,
+  .universal-toggletip-position-right {
+    transform: none;
+  }
+}
+
+/* ====== HIGH CONTRAST MODE ====== */
+@media (prefers-contrast: more) {
+  .universal-toggletip {
+    border-width: 3px;
+    box-shadow: none;
+  }
+
+  .universal-toggletip-close:focus {
+    outline-width: 3px;
+  }
+
+  .universal-toggletip-trigger:focus {
+    outline-width: 3px;
+  }
+}
+
+/* ====== PRINT STYLES ====== */
+@media print {
+  .universal-toggletip {
+    display: none !important;
+  }
+}
+
+/* ====== RESPONSIVE ADJUSTMENTS ====== */
+@media (max-width: 480px) {
+  :root {
+    --toggletip-max-width: calc(100vw - 2rem);
+  }
+
+  .universal-toggletip {
+    font-size: 0.875rem;
+  }
+}

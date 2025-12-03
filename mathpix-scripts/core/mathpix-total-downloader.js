@@ -3340,6 +3340,16 @@ Timestamp: ${timestamp}
       );
       logInfo("Results collection result:", resultsResult);
 
+      // Phase 3.2: Add lines.json for confidence visualisation (PDF only)
+      if (data.linesData && data.linesData.pages) {
+        const linesContent = JSON.stringify(data.linesData, null, 2);
+        dataFolder.file("lines.json", linesContent);
+        logInfo("Lines data added to archive", {
+          pageCount: data.linesData.pages.length,
+          size: linesContent.length,
+        });
+      }
+
       // Collect data files (Phase 4)
       // Phase 5.5: Use rawResponse for metadata
       const collectionData = {

@@ -518,7 +518,4 @@
   window.testMarkdownStability = function () {
     window.markdownLiveEditorTests.runAll();
   };
-
-  logInfo("Live Markdown Editor Test Suite loaded");
-  console.log("Run tests with: window.testMarkdownStability()");
 })();

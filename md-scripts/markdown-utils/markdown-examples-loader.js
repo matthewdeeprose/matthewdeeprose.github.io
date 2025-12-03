@@ -383,6 +383,3 @@ if (typeof module !== "undefined" && module.exports) {
 
 // Global exposure for testing
 window.MarkdownExamplesLoader = MarkdownExamplesLoader;
-
-// Module loaded (using console.log since logInfo is scoped inside IIFE)
-console.log("[MarkdownExamples] Markdown Examples Loader module loaded");

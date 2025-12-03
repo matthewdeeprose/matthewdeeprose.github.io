@@ -2214,7 +2214,6 @@ input#custom-height {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.05em;
-  opacity: 0.7;
   margin-bottom: 0.25rem;
 }
 
@@ -3944,5 +3943,144 @@ input#custom-height {
 
   .mathpix-format-tab:hover:not([aria-disabled="true"]) {
     transform: none;
+  }
+}
+/* ============================================
+   Confidence visualiser
+   ============================================ */
+
+/* Clickable Confidence Indicator - Structure */
+.mathpix-confidence-indicator.mathpix-confidence-clickable {
+  cursor: pointer;
+  border-width: 2px;
+  border-style: solid;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  position: relative;
+}
+
+.mathpix-confidence-clickable:hover {
+  transform: translateY(-1px);
+}
+
+.mathpix-confidence-clickable:focus {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+.mathpix-confidence-clickable:active {
+  transform: translateY(0);
+}
+
+/* Hint text for clickable indicator */
+.mathpix-confidence-clickable .confidence-hint {
+  font-size: 0.65rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  text-transform: none;
+  text-decoration: underline;
+  letter-spacing: 0.05em;
+  text-underline-position: under;
+}
+
+/* Confidence Tab Styling */
+.mathpix-tab-header.mathpix-tab-confidence {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Confidence Panel Intro - Structure */
+.confidence-panel-intro {
+  font-size: 0.875rem;
+  margin: 0.5rem 0 1rem 0;
+  line-height: 1.5;
+}
+
+/* Confidence Visualiser Container - Structure */
+.confidence-visualiser-container {
+  min-height: 400px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.confidence-visualiser-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  font-size: 0.9rem;
+}
+
+/* Confidence Legend - Structure */
+.confidence-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.legend-colour {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border-width: 1px;
+  border-style: solid;
+  flex-shrink: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .mathpix-confidence-clickable .confidence-hint {
+    display: none;
+  }
+
+  .confidence-legend {
+    gap: 0.5rem;
+  }
+
+  .legend-item {
+    font-size: 0.7rem;
+  }
+
+  .legend-colour {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-confidence-clickable {
+    transition: none;
+  }
+
+  .mathpix-confidence-clickable:hover {
+    transform: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .mathpix-confidence-clickable .confidence-hint {
+    display: none;
+  }
+
+  .confidence-visualiser-container {
+    min-height: auto;
   }
 }

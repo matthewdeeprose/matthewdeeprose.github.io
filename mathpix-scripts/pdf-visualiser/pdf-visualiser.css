@@ -1,0 +1,470 @@
+/* Responsive colours */
+@media (max-width: 768px) {
+  .pdf-vis-stats-panel {
+    border-left: none;
+    border-top: 1px solid currentcolor;
+  }
+}
+
+/* Print colours */
+@media print {
+  .pdf-vis-container {
+    border: none;
+    box-shadow: none;
+  }
+}
+
+/* =============================================================================
+   ALL LAYOUT & STRUCTURE - DEFINED SECOND
+   ============================================================================= */
+
+.pdf-vis-control-btn button,
+.pdf-vis-page-nav button,
+.pdf-vis-control-group button {
+  font-size: 0.8rem;
+}
+
+.confidence-visualiser-error {
+  margin: 1rem;
+}
+
+/* Full page view toggle - combined selector for higher specificity */
+.pdf-vis-viewer.pdf-vis-viewer--fullpage {
+  max-height: fit-content;
+}
+
+/* Main container layout */
+.pdf-vis-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+}
+
+/* Controls bar layout */
+.pdf-vis-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+}
+
+.pdf-vis-control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Navigation and control buttons layout */
+
+/* Page indicator layout */
+.pdf-vis-page-indicator {
+  font-size: 0.875rem;
+  padding: 0 0.5rem;
+  min-width: 8ch;
+  text-align: center;
+}
+
+/* Toggle switches layout */
+.pdf-vis-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  user-select: none;
+}
+
+.pdf-vis-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+/* Viewer area layout */
+.pdf-vis-viewer {
+  display: flex;
+  flex: 1;
+  min-height: 400px;
+  max-height: 70vh;
+  overflow: hidden;
+}
+
+/* Canvas wrapper layout - scrollable container with centering */
+.pdf-vis-canvas-wrapper {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* Page wrapper - sizes to PDF canvas, provides positioning context for overlays
+   CRITICAL: Uses inline-block so it sizes to content (the PDF canvas)
+   This allows offsetLeft/offsetTop calculations to work correctly for toggletips */
+.pdf-vis-page-wrapper {
+  position: relative;
+  display: inline-block;
+  box-shadow: 0 4px 12px rgba(0, 19, 29, 0.15);
+}
+
+/* PDF canvas layout */
+.pdf-vis-pdf-canvas {
+  display: block;
+}
+
+/* Overlay canvas layout - positioned relative to page-wrapper
+   CRITICAL: Uses top: 0; left: 0 positioning - no transforms or offsets
+   This ensures toggletip regions align exactly with visual overlay boxes */
+.pdf-vis-overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* Interactive state - applied to page-wrapper to enable pointer events on overlay */
+.pdf-vis-page-wrapper.pdf-vis-interactive .pdf-vis-overlay-canvas {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+/* Statistics panel layout */
+.pdf-vis-stats-panel {
+  width: 280px;
+  min-width: 250px;
+  max-width: 320px;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.pdf-vis-stats-panel h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pdf-vis-stats-panel h4 {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Summary statistics layout */
+.pdf-vis-stats-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-bottom: 1rem;
+}
+
+.pdf-vis-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.pdf-vis-stat-value {
+  font-weight: 600;
+}
+
+/* Legend layout */
+.pdf-vis-legend {
+  padding: 0.5rem 0;
+}
+
+.pdf-vis-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.8125rem;
+}
+
+.pdf-vis-legend-swatch {
+  width: 1rem;
+  height: 1rem;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 0.25rem;
+  flex-shrink: 0;
+}
+
+.pdf-vis-legend-label {
+  flex: 1;
+}
+
+.pdf-vis-legend-count {
+  font-size: 0.75rem;
+}
+
+/* Breakdown / distribution layout */
+.pdf-vis-stats-breakdown {
+  padding-top: 0.5rem;
+}
+
+.pdf-vis-breakdown-item {
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.pdf-vis-breakdown-bar {
+  display: block;
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.25rem;
+  transition: width 150ms ease-in-out;
+}
+
+.pdf-vis-breakdown-bar.pdf-vis-confidence--high,
+.pdf-vis-breakdown-bar.pdf-vis-confidence--medium,
+.pdf-vis-breakdown-bar.pdf-vis-confidence--low,
+.pdf-vis-breakdown-bar.pdf-vis-confidence--very-low {
+  border: 1px solid;
+}
+
+.pdf-vis-breakdown-label {
+  font-size: 0.75rem;
+}
+
+/* Loading overlay layout */
+.pdf-vis--loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  z-index: 100;
+}
+
+.pdf-vis--loading[hidden] {
+  display: none;
+}
+
+.pdf-vis-loading-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  animation: pdf-vis-spin 1s linear infinite;
+}
+
+@keyframes pdf-vis-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error state layout */
+.pdf-vis--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.pdf-vis--error::before {
+  content: "⚠️";
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pdf-vis-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pdf-vis-control-group {
+    justify-content: center;
+  }
+
+  .pdf-vis-viewer {
+    flex-direction: column;
+  }
+
+  .pdf-vis-stats-panel {
+    width: 100%;
+    max-width: none;
+    max-height: 200px;
+  }
+
+  .pdf-vis-viewer {
+    max-height: fit-content;
+  }
+}
+
+@media (max-width: 480px) {
+  .pdf-vis-nav-btn span[aria-hidden],
+  .pdf-vis-control-btn span[aria-hidden] {
+    display: none;
+  }
+
+  .pdf-vis-toggle-label {
+    font-size: 0.75rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .pdf-vis-controls,
+  .pdf-vis-stats-panel,
+  .pdf-vis--loading {
+    display: none !important;
+  }
+
+  .pdf-vis-viewer {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .pdf-vis-canvas-wrapper {
+    padding: 0;
+    overflow: visible;
+  }
+}
+
+/* Base swatch styling */
+.pdf-vis-legend-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 2px solid;
+  flex-shrink: 0;
+}
+
+/* Legend item layout */
+.pdf-vis-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Legend count badge structure */
+.pdf-vis-legend-count {
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pdf-vis-container,
+  .pdf-vis-container * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* =============================================================================
+   FULLSCREEN MODE
+   ============================================================================= */
+
+/* Fullscreen container - fixed positioning fills viewport */
+.pdf-vis-container.pdf-vis--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fullscreen viewer area - expand to fill available space */
+.pdf-vis-container.pdf-vis--fullscreen .pdf-vis-viewer {
+  max-height: none;
+  height: 100%;
+  flex: 1;
+}
+
+/* Fullscreen canvas wrapper - more space for PDF */
+.pdf-vis-container.pdf-vis--fullscreen .pdf-vis-canvas-wrapper {
+  padding: 1.5rem;
+}
+
+/* Fullscreen stats panel - slightly larger */
+.pdf-vis-container.pdf-vis--fullscreen .pdf-vis-stats-panel {
+  max-height: none;
+}
+
+/* Fullscreen button styling */
+.pdf-vis-fullscreen-icon {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.pdf-vis-fullscreen-text {
+  margin-left: 0.25rem;
+}
+
+/* Active/pressed state for fullscreen button */
+.pdf-vis-control-btn[aria-pressed="true"] {
+  font-weight: 600;
+}
+
+/* Responsive fullscreen adjustments */
+@media (max-width: 768px) {
+  .pdf-vis-container.pdf-vis--fullscreen .pdf-vis-viewer {
+    flex-direction: column;
+  }
+
+  .pdf-vis-container.pdf-vis--fullscreen .pdf-vis-stats-panel {
+    width: 100%;
+    max-width: none;
+    max-height: 180px;
+    border-left: none;
+    border-top: 1px solid currentcolor;
+  }
+
+  .pdf-vis-container.pdf-vis--fullscreen .pdf-vis-canvas-wrapper {
+    padding: 0.75rem;
+  }
+}
+
+/* Print - never show fullscreen state */
+@media print {
+  .pdf-vis-container.pdf-vis--fullscreen {
+    position: static;
+    width: auto;
+    height: auto;
+  }
+}
+
+/* =============================================================================
+   CONDITIONAL TOGGLE VISIBILITY
+   ============================================================================= */
+
+/* Show Full Page toggle - visible in normal mode only */
+.pdf-vis-toggle--fullscreen-only {
+  display: none;
+}
+
+/* In fullscreen mode: hide Show Full Page, show Fit to Screen */
+.pdf-vis-container.pdf-vis--fullscreen .pdf-vis-toggle--normal-only {
+  display: none;
+}
+
+.pdf-vis-container.pdf-vis--fullscreen .pdf-vis-toggle--fullscreen-only {
+  display: inline-flex;
+}
