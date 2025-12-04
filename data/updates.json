@@ -1,5 +1,12 @@
 {
   "updates": [
+                {
+      "title": "Building Digital Accessibility Tools with Generative AI",
+      "link": "BuildingA11yToolsWithGenAI",
+      "imageSrc": "builda11ygenai169.webp",
+      "imageAlt": "",
+      "description": "Presentation for Media & Learning Association (MLA)."
+    },
               {
       "title": "PanoptoText",
       "link": "panoptoText",

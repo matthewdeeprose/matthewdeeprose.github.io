@@ -1,5 +1,13 @@
 {
   "presentations": [
+          {
+      "title": "Building Digital Accessibility Tools with Generative AI",
+      "url": "BuildingA11yToolsWithGenAI.html",
+      "summary": "Presentation for Media & Learning Association (MLA).",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
         {
       "title": "Democratising Digital Accessibility: AI-Enabled Tool Development for Barrier-Free Content Creation",
       "url": "aiEnabledA11yToolDevelopment.html",
