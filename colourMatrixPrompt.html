@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+   <head>
+      <meta charset="utf-8" />
+      <meta name="description" content="Prompt: Creating a dynamic colour contrast matrix using chroma.js, semantic html, vanilla javascript and css">
+      <meta name="keywords" content="accessibility, presentation, blog">
+      <meta name="author" content="Matthew Deeprose">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Prompt: Creating a dynamic colour contrast matrix using chroma.js, semantic html, vanilla javascript and css</title>
+      <link rel="stylesheet" id="lightCSS" href="light.css" media="(prefers-color-scheme: light)">
+      <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
+      <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
+      <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+	      <link rel="stylesheet" href="md-scripts/css/sortable-table.css" />
+    <link rel="stylesheet" href="md-scripts/css/mermaid-controls.css" />
+    <link rel="stylesheet" href="mathpix-scripts/css/mathpix-main.css" />
+
+    <link rel="stylesheet" href="md-scripts/css/markdown-editor.css" />
+
+      <meta property="og:title" content="Prompt: Creating a dynamic colour contrast matrix using chroma.js, semantic html, vanilla javascript and css - Matthew Deeprose">
+      <meta property="og:description" content="">
+      <meta property="og:image" content="https://matthewdeeprose.github.io/image.png">
+	  <meta property="og:image:width" content="2500" />
+	  <meta property="og:image:height" content="1306" />
+      <meta property="og:image:alt" content="">
+      <meta property="og:locale" content="en_GB">
+      <meta property="og:type" content="website">
+      <meta property="og:url" content="https://matthewdeeprose.github.io/colourMatrixPrompt.html">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="theme-color" content="#231F20" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#FFFFF4" media="(prefers-color-scheme: light)">
+      <link rel="icon" href="favicon.ico">
+      <link rel="alternate" type="application/rss+xml" title="RSS Feed for matthewdeeprose.github.io" href="https://matthewdeeprose.github.io/feed.rss">
+      <link rel="icon" href="favicon.svg" type="image/svg+xml">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="Prompt: Creating a dynamic colour contrast matrix using chroma.js, semantic html, vanilla javascript and css - Matthew Deeprose" />
+      <meta name="twitter:description" content=""/>
+      <meta name="twitter:creator" content="@VLEguru"/>
+      <meta name="twitter:site" content="@VLEguru"/>
+      <meta name="twitter:image" content="https://matthewdeeprose.github.io/image.png"/>
+      <meta name="twitter:image:alt" content=""/>
+      <meta name="twitter:card" content="summary_large_image"/>
+	  	  <style>
+	      .page-wrap > * {
+      grid-column: 1/-1 !important;
+      grid-row: auto !important;
+    }
+	aside {display:none;}
+	</style>
+	  </head>
+   <body>
+       <script src="https://matthewdeeprose.github.io/markdownit/markdown-it.min.js"></script>
+      <div class="page-wrap" id="start">
+         <a class="skip-link" id="skipToContent" href='#main'>Skip to content</a>
+         <header class="page-header">
+            <div id="banner">
+               <div id="logo">
+                  <button id="modeToggle" aria-label="Change between light and dark theme" aria-pressed="false" onclick="toggle(this.id);">
+                     <svg id="logoSVG" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitle svgDesc" role="img">
+                        <title id="svgTitle">Change theme</title>
+                        <desc id="svgDesc">Select to switch to light theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)">
+                           <path d="m6.5 17.5h4"/>
+                           <path d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                           <path d="m8.5 1.5v-1"/>
+                           <path d="m13.5 3.5 1-1"/>
+                           <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)"/>
+                           <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)"/>
+                           <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)"/>
+                           <path d="m1.5 7.5h-1"/>
+                           <path d="m16.5 7.5h-1"/>
+                        </g>
+                     </svg>
+                     <svg id="logoSVG-Off" height="45" viewBox="0 0 21 21" width="45" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgTitleX svgDescX">
+                        <title id="svgTitleX">Change theme</title>
+                        <desc id="svgDescX">Select to switch to dark theme</desc>
+                        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)">
+                           <path d="m2.5 13.5h4"/>
+                           <path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/>
+                        </g>
+                     </svg>
+                  </button>
+               </div>
+               <span role="alert" class="hidden" aria-live="polite" id="lightDark"></span>
+               <div id="titleLink">Matthew Deeprose</div>
+            </div>
+         </header>
+         <div id="main-navigation" class="page-nav">
+            <nav aria-label="Main menu" class="topnav" id="myTopnav">
+               <button id="menu" aria-controls="myTopnav" aria-labelledby="myTopnav" aria-expanded="false" class="icon"  aria-haspopup="menu" onclick="menuAction()">
+                  <span id="hamburger">
+                     <svg id="hamSVG" viewBox="0 0 100 80" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" role="img">
+                        <title id="hamSVGTitle">Menu</title>
+                        <desc id="hamSVGDesc">Select to expand or collapse the menu</desc>
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                     </svg>
+                  </span>
+                  <span id="arrow">
+                     <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                        <title id="arrowSVGTitle">Menu</title>
+                        <desc id="arrowSVGDesc">Select to expand or collapse the menu</desc>
+                        <g stroke-width="4"  stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" fill-rule="evenodd" fill="none">
+                           <path  d="m7.499,6.497l-3.999,4.002l4,4.001"/>
+                           <path  d="m16.5,10.5l-13,0"/>
+                        </g>
+                     </svg>
+                  </span>
+               </button>
+               <a id="homeMenu" href="index.html">Home</a>
+               <a href="presentations.html" >Presentations</a>
+               <a href="posts.html" aria-current="page" class="active">Blog Posts</a>
+               <a href="projects.html">Projects</a>
+               <a href="about.html">About</a>
+            </nav>
+         </div>
+         <main class="page-main" id="main">
+            <article class="standard">
+<h1 id="top">Prompt: Creating a dynamic colour contrast matrix using chroma.js, semantic html, vanilla javascript and css</h1>
+<p>This is an example prompt designed to "one shot" a <a href="https://matthewdeeprose.github.io/matrix/matrix.html">Colour Accessibility Matrix similar to one I made by hand in 2019</a>. This version is formatted for readability, to use with an LLM I recommend <a href="vibes/prompt-colour-matrix.md">using the original markdown version</a>.</p>
+<p>Here is <a href="vibes/colour-matrix.html">an example of the tool it created in one iteration</a>. It's definitely not perfect, the UI needs work, but I'm sharing this version to show what can easily be created with a fairly detailed prompt. I used an LLM to help me to craft the prompt and brainstorm the architecture. It took me months of evenings to slowly build and iterate upon my handmade version 5 years ago, this slighly shoddy version took 2 minutes for an LLM to make and I estimate it would take 4 hours to polish the user-interface.</p>
+<h2 id="details" tabindex="-1">Details <a class="header-anchor" href="#details" aria-label="Direct link to &quot;Details&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h2>
+<h3 id="overview" tabindex="-1">Overview <a class="header-anchor" href="#overview" aria-label="Direct link to &quot;Overview&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>A single-page web application that generates a colour contrast accessibility matrix. Users input colour palette hex codes (with optional vanity names), and the tool calculates WCAG contrast ratios for all foreground/background combinations, displaying results in an interactive, filterable matrix.</p>
+<hr>
+<h3 id="input-specification" tabindex="-1">Input Specification <a class="header-anchor" href="#input-specification" aria-label="Direct link to &quot;Input Specification&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<div class="mdSortableTable-table-container"><div class="mdSortableTable-top-scroll"><div class="mdSortableTable-top-scroll-content"></div></div><div class="mdSortableTable-table-wrapper"><table class="mdSortableTable-data-table" role="table"><caption class="mdSortableTable-sr-only">Table with 8 rows and 2 columns, sortable by selecting column headers</caption><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader" aria-sort="none">Aspect</th><th scope="col" role="columnheader" aria-sort="none">Detail</th></tr></thead><tbody role="rowgroup"><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Input element</td><td role="cell" data-label="Detail">Single &lt;textarea&gt;</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Format</td><td role="cell" data-label="Detail">One colour per line</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Accepted formats</td><td role="cell" data-label="Detail">name, #hex / #hex, name / name: #hex / #hex alone</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Delimiters</td><td role="cell" data-label="Detail">Comma , Tab \t Pipe | Colon :</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Hash symbol</td><td role="cell" data-label="Detail">Optional (accepts FFFFFF or #FFFFFF)</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Validation</td><td role="cell" data-label="Detail">Real-time; highlight invalid lines in red with error message</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Generate button</td><td role="cell" data-label="Detail">Disabled until ≥2 valid colours entered</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Example button</td><td role="cell" data-label="Detail">Populates textarea with example palette</td></tr></tbody></table></div></div>
+<p><strong>Example Palette:</strong></p>
+<pre class="language-css code-block-container" tabindex="0" id="pre-block-0-1764830867919" data-original-code="Snow White, #F8F9FA
+Sunset Orange, #F57C00
+Midnight Coal, #151414
+Lush Green, #4CAF50
+Sky Blue, #2196F3
+"><code class="language-css" id="code-block-0-1764830867919">Snow White, #F8F9FA
+Sunset Orange, #F57C00
+Midnight Coal, #151414
+Lush Green, #4CAF50
+Sky Blue, #2196F3
+</code></pre>
+<hr>
+<h3 id="matrix-specification" tabindex="-1">Matrix Specification <a class="header-anchor" href="#matrix-specification" aria-label="Direct link to &quot;Matrix Specification&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<div class="mdSortableTable-table-container"><div class="mdSortableTable-top-scroll"><div class="mdSortableTable-top-scroll-content"></div></div><div class="mdSortableTable-table-wrapper"><table class="mdSortableTable-data-table" role="table"><caption class="mdSortableTable-sr-only">Table with 5 rows and 2 columns, sortable by selecting column headers</caption><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader" aria-sort="none">Aspect</th><th scope="col" role="columnheader" aria-sort="none">Detail</th></tr></thead><tbody role="rowgroup"><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Structure</td><td role="cell" data-label="Detail">Foreground colours = columns; Background colours = rows</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Cell display</td><td role="cell" data-label="Detail">Configurable: Rating only / Ratio only / Both</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Contrast thresholds</td><td role="cell" data-label="Detail">F: ❤️ / G: ≥3 &amp; &lt;4.5 / AA: ≥4.5 &amp; &lt;7 / AAA: ≥7</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Cell backgrounds</td><td role="cell" data-label="Detail">Colour-coded per rating level</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Responsive</td><td role="cell" data-label="Detail">CSS-based responsive design (single table)</td></tr></tbody></table></div></div>
+<p><strong>Rating Background Colours (Light Mode):</strong></p>
+<ul>
+<li>F: <code>#E0E0E0</code> (neutral grey)</li>
+<li>G: <code>#B3DBD2</code> (soft teal)</li>
+<li>AA: <code>#FCBC00</code> (amber)</li>
+<li>AAA: <code>#C1D100</code> (lime green)</li>
+</ul>
+<p><strong>Rating Background Colours (Dark Mode):</strong></p>
+<ul>
+<li>Adjusted versions maintaining sufficient contrast</li>
+</ul>
+<hr>
+<h3 id="controls-specification" tabindex="-1">Controls Specification <a class="header-anchor" href="#controls-specification" aria-label="Direct link to &quot;Controls Specification&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<div class="mdSortableTable-table-container"><div class="mdSortableTable-top-scroll"><div class="mdSortableTable-top-scroll-content"></div></div><div class="mdSortableTable-table-wrapper"><table class="mdSortableTable-data-table" role="table"><caption class="mdSortableTable-sr-only">Table with 9 rows and 2 columns, sortable by selecting column headers</caption><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader" aria-sort="none">Control Group</th><th scope="col" role="columnheader" aria-sort="none">Controls</th></tr></thead><tbody role="rowgroup"><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">Display mode</td><td role="cell" data-label="Controls">Radio buttons: Rating / Ratio / Both</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">WCAG filters</td><td role="cell" data-label="Controls">Buttons: Show G+ / Show AA+ / Show AAA+ / Reset</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">Column filters</td><td role="cell" data-label="Controls">Checkbox per colour (show/hide columns)</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">Row filters</td><td role="cell" data-label="Controls">Checkbox per colour (show/hide rows)</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">Focus colour</td><td role="cell" data-label="Controls">Button per colour (highlights and filters)</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">Table sizing</td><td role="cell" data-label="Controls">Buttons: Fit to page / Full size</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">Dark mode</td><td role="cell" data-label="Controls">Toggle button + automatic prefers-color-scheme</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">CVD simulation</td><td role="cell" data-label="Controls">Buttons: Reset / Protanopia / Deuteranopia / Tritanopia</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Control Group">Export</td><td role="cell" data-label="Controls">Button: Download CSV</td></tr></tbody></table></div></div>
+<hr>
+<h3 id="features-specification" tabindex="-1">Features Specification <a class="header-anchor" href="#features-specification" aria-label="Direct link to &quot;Features Specification&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<div class="mdSortableTable-table-container"><div class="mdSortableTable-top-scroll"><div class="mdSortableTable-top-scroll-content"></div></div><div class="mdSortableTable-table-wrapper"><table class="mdSortableTable-data-table" role="table"><caption class="mdSortableTable-sr-only">Table with 5 rows and 2 columns, sortable by selecting column headers</caption><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader" aria-sort="none">Feature</th><th scope="col" role="columnheader" aria-sort="none">Implementation</th></tr></thead><tbody role="rowgroup"><tr tabindex="0" role="row"><td role="cell" data-label="Feature">CVD simulation</td><td role="cell" data-label="Implementation">SVG filters applied via CSS classes</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Feature">CSV export</td><td role="cell" data-label="Implementation">Full data: names, hex codes, all combinations with rating and ratio</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Feature">Print</td><td role="cell" data-label="Implementation">Print stylesheet showing matrix and explanatory key</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Feature">Accessibility</td><td role="cell" data-label="Implementation">WCAG 2.2 AA compliant, semantic HTML, skip link, ARIA where needed</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Feature">Dark mode</td><td role="cell" data-label="Implementation">CSS custom properties + prefers-color-scheme + manual toggle</td></tr></tbody></table></div></div>
+<hr>
+<h3 id="page-structure" tabindex="-1">Page Structure <a class="header-anchor" href="#page-structure" aria-label="Direct link to &quot;Page Structure&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<ol>
+<li><strong>Skip link</strong> (hidden until focused)</li>
+<li><strong>Header</strong>: Title “Colour Palette Accessibility Matrix” + brief explanation</li>
+<li><strong>Input section</strong>: Textarea, validation feedback, Generate button, Example button</li>
+<li><strong>Controls section</strong> (hidden until matrix generated): All filter/display controls in fieldsets</li>
+<li><strong>Live region</strong> for button feedback (like original <code>#buttonHelp</code>)</li>
+<li><strong>Matrix section</strong>: Generated table</li>
+<li><strong>Explanatory key</strong>: Collapsible <code>&lt;details&gt;</code> explaining F, G, AA, AAA with WCAG links</li>
+<li><strong>Footer</strong>: Chroma.js credit</li>
+<li><strong>SVG filters</strong> (hidden): For CVD simulation</li>
+</ol>
+<hr>
+<h3 id="technical-specification" tabindex="-1">Technical Specification <a class="header-anchor" href="#technical-specification" aria-label="Direct link to &quot;Technical Specification&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<div class="mdSortableTable-table-container"><div class="mdSortableTable-top-scroll"><div class="mdSortableTable-top-scroll-content"></div></div><div class="mdSortableTable-table-wrapper"><table class="mdSortableTable-data-table" role="table"><caption class="mdSortableTable-sr-only">Table with 5 rows and 2 columns, sortable by selecting column headers</caption><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader" aria-sort="none">Aspect</th><th scope="col" role="columnheader" aria-sort="none">Detail</th></tr></thead><tbody role="rowgroup"><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Dependencies</td><td role="cell" data-label="Detail">Chroma.js from https://matthewdeeprose.github.io/scripts/chroma.min.js</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Output</td><td role="cell" data-label="Detail">Single HTML file with embedded CSS and JS</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">JavaScript</td><td role="cell" data-label="Detail">Vanilla JS only (no jQuery)</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">Spelling</td><td role="cell" data-label="Detail">British English throughout (colour, initialised, etc.)</td></tr><tr tabindex="0" role="row"><td role="cell" data-label="Aspect">CSS</td><td role="cell" data-label="Detail">Custom properties for theming</td></tr></tbody></table></div></div>
+<hr>
+<h2 id="the-prompt" tabindex="-1">The Prompt <a class="header-anchor" href="#the-prompt" aria-label="Direct link to &quot;The Prompt&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h2>
+<p>Here is the prompt designed for one-shot generation:</p>
+<hr>
+<p><strong>PROMPT BEGINS</strong></p>
+<hr>
+<p>Create a single HTML file for a “Colour Palette Accessibility Matrix” tool. This tool allows users to input hex colour codes with optional vanity names, then generates an interactive matrix showing WCAG contrast compliance for all foreground/background colour combinations.</p>
+<h2 id="technical-requirements" tabindex="-1">Technical Requirements <a class="header-anchor" href="#technical-requirements" aria-label="Direct link to &quot;Technical Requirements&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h2>
+<ul>
+<li><strong>Single HTML file</strong> with all CSS in a <code>&lt;style&gt;</code> tag and all JS in a <code>&lt;script&gt;</code> tag</li>
+<li><strong>Vanilla JavaScript only</strong> (no jQuery or other libraries)</li>
+<li><strong>British English spelling</strong> throughout (colour, initialised, centre, etc.) except where American spelling is required for code (e.g., <code>background-color</code> in CSS)</li>
+<li><strong>WCAG 2.2 AA compliant</strong>: semantic HTML, sufficient colour contrast, keyboard accessible, focus visible, ARIA where beneficial</li>
+<li><strong>Load Chroma.js</strong> from: <code>https://matthewdeeprose.github.io/scripts/chroma.min.js</code></li>
+</ul>
+<h2 id="page-structure-1" tabindex="-1">Page Structure <a class="header-anchor" href="#page-structure-1" aria-label="Direct link to &quot;Page Structure&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h2>
+<h3 id="1-skip-link" tabindex="-1">1. Skip Link <a class="header-anchor" href="#1-skip-link" aria-label="Direct link to &quot;1. Skip Link&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>Hidden skip link that becomes visible on focus, linking to main content.</p>
+<h3 id="2-header" tabindex="-1">2. Header <a class="header-anchor" href="#2-header" aria-label="Direct link to &quot;2. Header&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<ul>
+<li><code>&lt;h1&gt;</code>: “Colour Palette Accessibility Matrix”</li>
+<li>Brief explanatory paragraph about the tool’s purpose</li>
+</ul>
+<h3 id="3-input-section" tabindex="-1">3. Input Section <a class="header-anchor" href="#3-input-section" aria-label="Direct link to &quot;3. Input Section&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<ul>
+<li><code>&lt;label&gt;</code> and <code>&lt;textarea&gt;</code> for colour input (one colour per line)</li>
+<li>Placeholder text showing example format</li>
+<li>Validation feedback area (shows errors for invalid lines)</li>
+<li>Two buttons:
+<ul>
+<li>“Generate Matrix” (disabled until ≥2 valid colours)</li>
+<li>“Load Example Palette”</li>
+</ul>
+</li>
+</ul>
+<p><strong>Input Parsing Rules:</strong></p>
+<ul>
+<li>Accept formats: <code>name, #hex</code> | <code>#hex, name</code> | <code>name: hex</code> | <code>hex</code> alone</li>
+<li>Delimiters: comma, tab, pipe, colon</li>
+<li>Hash symbol optional</li>
+<li>Validate hex codes (3 or 6 character hex)</li>
+<li>Display name as “Name (#HEXCODE)” when name provided, otherwise just “#HEXCODE”</li>
+</ul>
+<p><strong>Example Palette (for Load Example button):</strong></p>
+<pre class="language-none code-block-container" tabindex="0" id="pre-block-1-1764830867919" data-original-code="Snow White, #F8F9FA
+Sunset Orange, #F57C00
+Midnight Coal, #151414
+Lush Green, #4CAF50
+Sky Blue, #2196F3
+"><code class="language-none" id="code-block-1-1764830867919">Snow White, #F8F9FA
+Sunset Orange, #F57C00
+Midnight Coal, #151414
+Lush Green, #4CAF50
+Sky Blue, #2196F3
+</code></pre>
+<h3 id="4-controls-section" tabindex="-1">4. Controls Section <a class="header-anchor" href="#4-controls-section" aria-label="Direct link to &quot;4. Controls Section&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>Hidden initially; shown after matrix generation. Organised in fieldsets:</p>
+<p><strong>Fieldset: Matrix Controls</strong></p>
+<ul>
+<li>Button: “Reset” (reloads page)</li>
+<li>Button: “Fit Table to Page”</li>
+<li>Button: “Full Size Table”</li>
+</ul>
+<p><strong>Fieldset: Display Results As</strong></p>
+<ul>
+<li>Radio buttons: “Rating” (default checked) | “Ratio” | “Rating and Ratio”</li>
+</ul>
+<p><strong>Fieldset: Filter by WCAG Level</strong></p>
+<ul>
+<li>Button: “Reset Filter” (disabled by default)</li>
+<li>Button: “Show G, AA, AAA only”</li>
+<li>Button: “Show AA, AAA only”</li>
+<li>Button: “Show AAA only”</li>
+</ul>
+<p><strong>Fieldset: Filter Columns</strong></p>
+<ul>
+<li>“Select All” checkbox</li>
+<li>One checkbox per colour (dynamically generated)</li>
+</ul>
+<p><strong>Fieldset: Filter Rows</strong></p>
+<ul>
+<li>“Select All” checkbox</li>
+<li>One checkbox per colour (dynamically generated)</li>
+</ul>
+<p><strong>Fieldset: Focus Colour</strong></p>
+<ul>
+<li>One button per colour (dynamically generated)</li>
+<li>When clicked: highlights that colour’s row and column, hides colours that don’t have any passing contrast with the focus colour</li>
+</ul>
+<p><strong>Fieldset: Colour Vision Simulation</strong></p>
+<ul>
+<li>Button: “Reset to Trichromacy” (disabled by default)</li>
+<li>Button: “Simulate Protanopia”</li>
+<li>Button: “Simulate Deuteranopia”</li>
+<li>Button: “Simulate Tritanopia”</li>
+</ul>
+<p><strong>Fieldset: Export</strong></p>
+<ul>
+<li>Button: “Download CSV”</li>
+</ul>
+<p><strong>Fieldset: Theme</strong></p>
+<ul>
+<li>Button: “Toggle Dark/Light Mode”</li>
+</ul>
+<h3 id="5-live-feedback-region" tabindex="-1">5. Live Feedback Region <a class="header-anchor" href="#5-live-feedback-region" aria-label="Direct link to &quot;5. Live Feedback Region&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p><code>&lt;div&gt;</code> with <code>aria-live="polite"</code> that displays feedback when buttons are pressed (e.g., “Showing AA and AAA combinations only”).</p>
+<h3 id="6-matrix-section" tabindex="-1">6. Matrix Section <a class="header-anchor" href="#6-matrix-section" aria-label="Direct link to &quot;6. Matrix Section&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p><code>&lt;table&gt;</code> with:</p>
+<ul>
+<li><code>&lt;caption&gt;</code> describing the matrix</li>
+<li>First row: empty corner cells, then column headers (colour hex/name)</li>
+<li>Second row: empty corner cells, then colour swatches (small coloured cells)</li>
+<li>Subsequent rows: row header (colour hex/name), row swatch, then result cells</li>
+</ul>
+<p><strong>Result Cells:</strong></p>
+<ul>
+<li>Show rating (F/G/AA/AAA), ratio (e.g., “4.5:1”), or both based on display mode</li>
+<li>Background colour based on rating:
+<ul>
+<li>F: <code>--rating-f</code> (neutral grey)</li>
+<li>G: <code>--rating-g</code> (teal)</li>
+<li>AA: <code>--rating-aa</code> (amber)</li>
+<li>AAA: <code>--rating-aaa</code> (lime green)</li>
+</ul>
+</li>
+<li>Add appropriate classes for filtering (e.g., <code>result-f</code>, <code>result-g</code>, <code>result-aa</code>, <code>result-aaa</code>)</li>
+</ul>
+<p><strong>Contrast Calculation (using chroma.js):</strong></p>
+<pre class="language-javascript code-block-container" tabindex="0" id="pre-block-2-1764830867919" data-original-code="const ratio = chroma.contrast(foreground, background);
+// F: ratio &lt; 3
+// G: ratio &gt;= 3 &amp;&amp; ratio &lt; 4.5
+// AA: ratio &gt;= 4.5 &amp;&amp; ratio &lt; 7
+// AAA: ratio &gt;= 7
+"><code class="language-javascript" id="code-block-2-1764830867919"><span class="token keyword">const</span> ratio <span class="token operator">=</span> chroma<span class="token punctuation">.</span><span class="token method function property-access">contrast</span><span class="token punctuation">(</span>foreground<span class="token punctuation">,</span> background<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// F: ratio &lt; 3</span>
+<span class="token comment">// G: ratio &gt;= 3 &amp;&amp; ratio &lt; 4.5</span>
+<span class="token comment">// AA: ratio &gt;= 4.5 &amp;&amp; ratio &lt; 7</span>
+<span class="token comment">// AAA: ratio &gt;= 7</span>
+</code></pre>
+<h3 id="7-explanatory-key" tabindex="-1">7. Explanatory Key <a class="header-anchor" href="#7-explanatory-key" aria-label="Direct link to &quot;7. Explanatory Key&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p><code>&lt;details&gt;</code> element (collapsible) containing:</p>
+<ul>
+<li>Explanation of each rating level (F, G, AA, AAA)</li>
+<li>What each level is suitable for</li>
+<li>Links to relevant WCAG 2.1 Success Criteria:
+<ul>
+<li>1.4.3 Contrast (Minimum): <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html</a></li>
+<li>1.4.6 Contrast (Enhanced): <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html">https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html</a></li>
+<li>1.4.11 Non-text Contrast: <a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html">https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="8-footer" tabindex="-1">8. Footer <a class="header-anchor" href="#8-footer" aria-label="Direct link to &quot;8. Footer&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>Credit line: “Contrast calculations powered by Chroma.js”</p>
+<h3 id="9-svg-filters-hidden" tabindex="-1">9. SVG Filters (Hidden) <a class="header-anchor" href="#9-svg-filters-hidden" aria-label="Direct link to &quot;9. SVG Filters (Hidden)&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>Include SVG filters for colour vision deficiency simulation:</p>
+<pre class="language-html code-block-container" tabindex="0" id="pre-block-3-1764830867919" data-original-code="&lt;svg style=&quot;height: 0; width: 0; position: absolute;&quot;&gt;
+  &lt;!-- Protanopia filter --&gt;
+  &lt;filter id=&quot;protanopia&quot; color-interpolation-filters=&quot;linearRGB&quot;&gt;
+    &lt;feColorMatrix type=&quot;matrix&quot; in=&quot;SourceGraphic&quot; values=&quot;
+      0.10889,0.89111,-0.00000,0,0
+      0.10889,0.89111,0.00000,0,0
+      0.00447,-0.00447,1.00000,0,0
+      0,0,0,1,0&quot;/&gt;
+  &lt;/filter&gt;
+  
+  &lt;!-- Deuteranopia filter --&gt;
+  &lt;filter id=&quot;deuteranopia&quot; color-interpolation-filters=&quot;linearRGB&quot;&gt;
+    &lt;feColorMatrix type=&quot;matrix&quot; in=&quot;SourceGraphic&quot; values=&quot;
+      0.29031,0.70969,-0.00000,0,0
+      0.29031,0.70969,-0.00000,0,0
+      -0.02197,0.02197,1.00000,0,0
+      0,0,0,1,0&quot;/&gt;
+  &lt;/filter&gt;
+  
+  &lt;!-- Tritanopia filter --&gt;
+  &lt;filter id=&quot;tritanopia&quot; color-interpolation-filters=&quot;linearRGB&quot;&gt;
+    &lt;feColorMatrix type=&quot;matrix&quot; in=&quot;SourceGraphic&quot; result=&quot;ProjectionOnPlane1&quot; values=&quot;
+      1.01354, 0.14268, -0.15622, 0, 0
+      -0.01181, 0.87561, 0.13619, 0, 0
+      0.07707, 0.81208, 0.11085, 0, 0
+      7.92482, -5.66475, -2.26007, 1, -0.2&quot;/&gt;
+    &lt;feComponentTransfer in=&quot;ProjectionOnPlane1&quot; result=&quot;ProjectionOnPlane1&quot;&gt;
+      &lt;feFuncA type=&quot;discrete&quot; tableValues=&quot;0 0 0 0 1&quot;/&gt;
+    &lt;/feComponentTransfer&gt;
+    &lt;feColorMatrix type=&quot;matrix&quot; in=&quot;SourceGraphic&quot; result=&quot;ProjectionOnPlane2&quot; values=&quot;
+      0.93337, 0.19999, -0.13336, 0, 0
+      0.05809, 0.82565, 0.11626, 0, 0
+      -0.37923, 1.13825, 0.24098, 0, 0
+      0,0,0,1,0&quot;/&gt;
+    &lt;feBlend in=&quot;ProjectionOnPlane1&quot; in2=&quot;ProjectionOnPlane2&quot; mode=&quot;normal&quot;/&gt;
+  &lt;/filter&gt;
+&lt;/svg&gt;
+"><code class="language-html" id="code-block-3-1764830867919"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>svg</span> <span class="token special-attr"><span class="token attr-name">style</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span><span class="token value css language-css"><span class="token property">height</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">;</span> <span class="token property">width</span><span class="token punctuation">:</span> <span class="token number">0</span><span class="token punctuation">;</span> <span class="token property">position</span><span class="token punctuation">:</span> absolute<span class="token punctuation">;</span></span><span class="token punctuation">"</span></span></span><span class="token punctuation">&gt;</span></span>
+  <span class="token comment">&lt;!-- Protanopia filter --&gt;</span>
+  <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>filter</span> <span class="token attr-name">id</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>protanopia<span class="token punctuation">"</span></span> <span class="token attr-name">color-interpolation-filters</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>linearRGB<span class="token punctuation">"</span></span><span class="token punctuation">&gt;</span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>feColorMatrix</span> <span class="token attr-name">type</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>matrix<span class="token punctuation">"</span></span> <span class="token attr-name">in</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>SourceGraphic<span class="token punctuation">"</span></span> <span class="token attr-name">values</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>
+      0.10889,0.89111,-0.00000,0,0
+      0.10889,0.89111,0.00000,0,0
+      0.00447,-0.00447,1.00000,0,0
+      0,0,0,1,0<span class="token punctuation">"</span></span><span class="token punctuation">/&gt;</span></span>
+  <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>filter</span><span class="token punctuation">&gt;</span></span>
+  
+  <span class="token comment">&lt;!-- Deuteranopia filter --&gt;</span>
+  <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>filter</span> <span class="token attr-name">id</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>deuteranopia<span class="token punctuation">"</span></span> <span class="token attr-name">color-interpolation-filters</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>linearRGB<span class="token punctuation">"</span></span><span class="token punctuation">&gt;</span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>feColorMatrix</span> <span class="token attr-name">type</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>matrix<span class="token punctuation">"</span></span> <span class="token attr-name">in</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>SourceGraphic<span class="token punctuation">"</span></span> <span class="token attr-name">values</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>
+      0.29031,0.70969,-0.00000,0,0
+      0.29031,0.70969,-0.00000,0,0
+      -0.02197,0.02197,1.00000,0,0
+      0,0,0,1,0<span class="token punctuation">"</span></span><span class="token punctuation">/&gt;</span></span>
+  <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>filter</span><span class="token punctuation">&gt;</span></span>
+  
+  <span class="token comment">&lt;!-- Tritanopia filter --&gt;</span>
+  <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>filter</span> <span class="token attr-name">id</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>tritanopia<span class="token punctuation">"</span></span> <span class="token attr-name">color-interpolation-filters</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>linearRGB<span class="token punctuation">"</span></span><span class="token punctuation">&gt;</span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>feColorMatrix</span> <span class="token attr-name">type</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>matrix<span class="token punctuation">"</span></span> <span class="token attr-name">in</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>SourceGraphic<span class="token punctuation">"</span></span> <span class="token attr-name">result</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>ProjectionOnPlane1<span class="token punctuation">"</span></span> <span class="token attr-name">values</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>
+      1.01354, 0.14268, -0.15622, 0, 0
+      -0.01181, 0.87561, 0.13619, 0, 0
+      0.07707, 0.81208, 0.11085, 0, 0
+      7.92482, -5.66475, -2.26007, 1, -0.2<span class="token punctuation">"</span></span><span class="token punctuation">/&gt;</span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>feComponentTransfer</span> <span class="token attr-name">in</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>ProjectionOnPlane1<span class="token punctuation">"</span></span> <span class="token attr-name">result</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>ProjectionOnPlane1<span class="token punctuation">"</span></span><span class="token punctuation">&gt;</span></span>
+      <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>feFuncA</span> <span class="token attr-name">type</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>discrete<span class="token punctuation">"</span></span> <span class="token attr-name">tableValues</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>0 0 0 0 1<span class="token punctuation">"</span></span><span class="token punctuation">/&gt;</span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>feComponentTransfer</span><span class="token punctuation">&gt;</span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>feColorMatrix</span> <span class="token attr-name">type</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>matrix<span class="token punctuation">"</span></span> <span class="token attr-name">in</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>SourceGraphic<span class="token punctuation">"</span></span> <span class="token attr-name">result</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>ProjectionOnPlane2<span class="token punctuation">"</span></span> <span class="token attr-name">values</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>
+      0.93337, 0.19999, -0.13336, 0, 0
+      0.05809, 0.82565, 0.11626, 0, 0
+      -0.37923, 1.13825, 0.24098, 0, 0
+      0,0,0,1,0<span class="token punctuation">"</span></span><span class="token punctuation">/&gt;</span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>feBlend</span> <span class="token attr-name">in</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>ProjectionOnPlane1<span class="token punctuation">"</span></span> <span class="token attr-name">in2</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>ProjectionOnPlane2<span class="token punctuation">"</span></span> <span class="token attr-name">mode</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>normal<span class="token punctuation">"</span></span><span class="token punctuation">/&gt;</span></span>
+  <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>filter</span><span class="token punctuation">&gt;</span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>svg</span><span class="token punctuation">&gt;</span></span>
+</code></pre>
+<h2 id="css-requirements" tabindex="-1">CSS Requirements <a class="header-anchor" href="#css-requirements" aria-label="Direct link to &quot;CSS Requirements&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h2>
+<h3 id="css-custom-properties" tabindex="-1">CSS Custom Properties <a class="header-anchor" href="#css-custom-properties" aria-label="Direct link to &quot;CSS Custom Properties&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<pre class="language-css code-block-container" tabindex="0" id="pre-block-4-1764830867919" data-original-code=":root {
+  /* Base colours - Light Mode */
+  --bg-primary: #FFFFFC;
+  --bg-secondary: #F5F5F5;
+  --text-primary: #1A1A1A;
+  --text-secondary: #4D4D4D;
+  --accent-primary: #0066CC;
+  --accent-hover: #004C99;
+  --border-standard: #CCCCCC;
+  --focus-outline: #0066CC;
+  
+  /* Rating backgrounds - Light Mode */
+  --rating-f: #E0E0E0;
+  --rating-g: #B3DBD2;
+  --rating-aa: #FCBC00;
+  --rating-aaa: #C1D100;
+  --rating-text: #1A1A1A;
+  
+  /* Button colours */
+  --button-bg: #002E3B;
+  --button-text: #FFFFFC;
+  --button-hover: #004D5C;
+  --button-disabled-bg: #CCCCCC;
+  --button-disabled-text: #666666;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Base colours - Dark Mode */
+    --bg-primary: #1A1A1A;
+    --bg-secondary: #2A2A2A;
+    --text-primary: #F5F5F5;
+    --text-secondary: #B3B3B3;
+    --accent-primary: #66B3FF;
+    --accent-hover: #99CCFF;
+    --border-standard: #4D4D4D;
+    --focus-outline: #66B3FF;
+    
+    /* Rating backgrounds - Dark Mode (adjusted for contrast) */
+    --rating-f: #3D3D3D;
+    --rating-g: #1A5C52;
+    --rating-aa: #8B6914;
+    --rating-aaa: #5C6300;
+    --rating-text: #F5F5F5;
+    
+    /* Button colours */
+    --button-bg: #4A9FB8;
+    --button-text: #1A1A1A;
+    --button-hover: #5CB8D1;
+    --button-disabled-bg: #3D3D3D;
+    --button-disabled-text: #808080;
+  }
+}
+
+/* Manual theme override */
+[data-theme=&quot;light&quot;] {
+  /* Light mode values */
+}
+[data-theme=&quot;dark&quot;] {
+  /* Dark mode values */
+}
+"><code class="language-css" id="code-block-4-1764830867919"><span class="token selector"><span class="token pseudo-class">:root</span></span> <span class="token punctuation">{</span>
+  <span class="token comment">/* Base colours - Light Mode */</span>
+  <span class="token variable">--bg-primary</span><span class="token punctuation">:</span> <span class="token hexcode color">#FFFFFC</span><span class="token punctuation">;</span>
+  <span class="token variable">--bg-secondary</span><span class="token punctuation">:</span> <span class="token hexcode color">#F5F5F5</span><span class="token punctuation">;</span>
+  <span class="token variable">--text-primary</span><span class="token punctuation">:</span> <span class="token hexcode color">#1A1A1A</span><span class="token punctuation">;</span>
+  <span class="token variable">--text-secondary</span><span class="token punctuation">:</span> <span class="token hexcode color">#4D4D4D</span><span class="token punctuation">;</span>
+  <span class="token variable">--accent-primary</span><span class="token punctuation">:</span> <span class="token hexcode color">#0066CC</span><span class="token punctuation">;</span>
+  <span class="token variable">--accent-hover</span><span class="token punctuation">:</span> <span class="token hexcode color">#004C99</span><span class="token punctuation">;</span>
+  <span class="token variable">--border-standard</span><span class="token punctuation">:</span> <span class="token hexcode color">#CCCCCC</span><span class="token punctuation">;</span>
+  <span class="token variable">--focus-outline</span><span class="token punctuation">:</span> <span class="token hexcode color">#0066CC</span><span class="token punctuation">;</span>
+  
+  <span class="token comment">/* Rating backgrounds - Light Mode */</span>
+  <span class="token variable">--rating-f</span><span class="token punctuation">:</span> <span class="token hexcode color">#E0E0E0</span><span class="token punctuation">;</span>
+  <span class="token variable">--rating-g</span><span class="token punctuation">:</span> <span class="token hexcode color">#B3DBD2</span><span class="token punctuation">;</span>
+  <span class="token variable">--rating-aa</span><span class="token punctuation">:</span> <span class="token hexcode color">#FCBC00</span><span class="token punctuation">;</span>
+  <span class="token variable">--rating-aaa</span><span class="token punctuation">:</span> <span class="token hexcode color">#C1D100</span><span class="token punctuation">;</span>
+  <span class="token variable">--rating-text</span><span class="token punctuation">:</span> <span class="token hexcode color">#1A1A1A</span><span class="token punctuation">;</span>
+  
+  <span class="token comment">/* Button colours */</span>
+  <span class="token variable">--button-bg</span><span class="token punctuation">:</span> <span class="token hexcode color">#002E3B</span><span class="token punctuation">;</span>
+  <span class="token variable">--button-text</span><span class="token punctuation">:</span> <span class="token hexcode color">#FFFFFC</span><span class="token punctuation">;</span>
+  <span class="token variable">--button-hover</span><span class="token punctuation">:</span> <span class="token hexcode color">#004D5C</span><span class="token punctuation">;</span>
+  <span class="token variable">--button-disabled-bg</span><span class="token punctuation">:</span> <span class="token hexcode color">#CCCCCC</span><span class="token punctuation">;</span>
+  <span class="token variable">--button-disabled-text</span><span class="token punctuation">:</span> <span class="token hexcode color">#666666</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token atrule"><span class="token rule">@media</span> <span class="token punctuation">(</span><span class="token property">prefers-color-scheme</span><span class="token punctuation">:</span> dark<span class="token punctuation">)</span></span> <span class="token punctuation">{</span>
+  <span class="token selector"><span class="token pseudo-class">:root</span></span> <span class="token punctuation">{</span>
+    <span class="token comment">/* Base colours - Dark Mode */</span>
+    <span class="token variable">--bg-primary</span><span class="token punctuation">:</span> <span class="token hexcode color">#1A1A1A</span><span class="token punctuation">;</span>
+    <span class="token variable">--bg-secondary</span><span class="token punctuation">:</span> <span class="token hexcode color">#2A2A2A</span><span class="token punctuation">;</span>
+    <span class="token variable">--text-primary</span><span class="token punctuation">:</span> <span class="token hexcode color">#F5F5F5</span><span class="token punctuation">;</span>
+    <span class="token variable">--text-secondary</span><span class="token punctuation">:</span> <span class="token hexcode color">#B3B3B3</span><span class="token punctuation">;</span>
+    <span class="token variable">--accent-primary</span><span class="token punctuation">:</span> <span class="token hexcode color">#66B3FF</span><span class="token punctuation">;</span>
+    <span class="token variable">--accent-hover</span><span class="token punctuation">:</span> <span class="token hexcode color">#99CCFF</span><span class="token punctuation">;</span>
+    <span class="token variable">--border-standard</span><span class="token punctuation">:</span> <span class="token hexcode color">#4D4D4D</span><span class="token punctuation">;</span>
+    <span class="token variable">--focus-outline</span><span class="token punctuation">:</span> <span class="token hexcode color">#66B3FF</span><span class="token punctuation">;</span>
+    
+    <span class="token comment">/* Rating backgrounds - Dark Mode (adjusted for contrast) */</span>
+    <span class="token variable">--rating-f</span><span class="token punctuation">:</span> <span class="token hexcode color">#3D3D3D</span><span class="token punctuation">;</span>
+    <span class="token variable">--rating-g</span><span class="token punctuation">:</span> <span class="token hexcode color">#1A5C52</span><span class="token punctuation">;</span>
+    <span class="token variable">--rating-aa</span><span class="token punctuation">:</span> <span class="token hexcode color">#8B6914</span><span class="token punctuation">;</span>
+    <span class="token variable">--rating-aaa</span><span class="token punctuation">:</span> <span class="token hexcode color">#5C6300</span><span class="token punctuation">;</span>
+    <span class="token variable">--rating-text</span><span class="token punctuation">:</span> <span class="token hexcode color">#F5F5F5</span><span class="token punctuation">;</span>
+    
+    <span class="token comment">/* Button colours */</span>
+    <span class="token variable">--button-bg</span><span class="token punctuation">:</span> <span class="token hexcode color">#4A9FB8</span><span class="token punctuation">;</span>
+    <span class="token variable">--button-text</span><span class="token punctuation">:</span> <span class="token hexcode color">#1A1A1A</span><span class="token punctuation">;</span>
+    <span class="token variable">--button-hover</span><span class="token punctuation">:</span> <span class="token hexcode color">#5CB8D1</span><span class="token punctuation">;</span>
+    <span class="token variable">--button-disabled-bg</span><span class="token punctuation">:</span> <span class="token hexcode color">#3D3D3D</span><span class="token punctuation">;</span>
+    <span class="token variable">--button-disabled-text</span><span class="token punctuation">:</span> <span class="token hexcode color">#808080</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment">/* Manual theme override */</span>
+<span class="token selector"><span class="token attribute"><span class="token punctuation">[</span><span class="token attr-name">data-theme</span><span class="token operator">=</span><span class="token attr-value">"light"</span><span class="token punctuation">]</span></span></span> <span class="token punctuation">{</span>
+  <span class="token comment">/* Light mode values */</span>
+<span class="token punctuation">}</span>
+<span class="token selector"><span class="token attribute"><span class="token punctuation">[</span><span class="token attr-name">data-theme</span><span class="token operator">=</span><span class="token attr-value">"dark"</span><span class="token punctuation">]</span></span></span> <span class="token punctuation">{</span>
+  <span class="token comment">/* Dark mode values */</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<h3 id="cvd-simulation-classes" tabindex="-1">CVD Simulation Classes <a class="header-anchor" href="#cvd-simulation-classes" aria-label="Direct link to &quot;CVD Simulation Classes&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<pre class="language-css code-block-container" tabindex="0" id="pre-block-5-1764830867919" data-original-code=".cvd-protanopia { filter: url(#protanopia); }
+.cvd-deuteranopia { filter: url(#deuteranopia); }
+.cvd-tritanopia { filter: url(#tritanopia); }
+"><code class="language-css" id="code-block-5-1764830867919"><span class="token selector"><span class="token class">.cvd-protanopia</span></span> <span class="token punctuation">{</span> <span class="token property">filter</span><span class="token punctuation">:</span> <span class="token url"><span class="token function">url</span><span class="token punctuation">(</span>#protanopia<span class="token punctuation">)</span></span><span class="token punctuation">;</span> <span class="token punctuation">}</span>
+<span class="token selector"><span class="token class">.cvd-deuteranopia</span></span> <span class="token punctuation">{</span> <span class="token property">filter</span><span class="token punctuation">:</span> <span class="token url"><span class="token function">url</span><span class="token punctuation">(</span>#deuteranopia<span class="token punctuation">)</span></span><span class="token punctuation">;</span> <span class="token punctuation">}</span>
+<span class="token selector"><span class="token class">.cvd-tritanopia</span></span> <span class="token punctuation">{</span> <span class="token property">filter</span><span class="token punctuation">:</span> <span class="token url"><span class="token function">url</span><span class="token punctuation">(</span>#tritanopia<span class="token punctuation">)</span></span><span class="token punctuation">;</span> <span class="token punctuation">}</span>
+</code></pre>
+<h3 id="responsive-table" tabindex="-1">Responsive Table <a class="header-anchor" href="#responsive-table" aria-label="Direct link to &quot;Responsive Table&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>Use CSS to make the table scrollable horizontally on small screens while maintaining row headers visible.</p>
+<h3 id="print-styles" tabindex="-1">Print Styles <a class="header-anchor" href="#print-styles" aria-label="Direct link to &quot;Print Styles&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<pre class="language-css code-block-container" tabindex="0" id="pre-block-6-1764830867919" data-original-code="@media print {
+  /* Hide controls, input section, buttons */
+  /* Show matrix and explanatory key */
+  /* Ensure rating backgrounds print */
+}
+"><code class="language-css" id="code-block-6-1764830867919"><span class="token atrule"><span class="token rule">@media</span> print</span> <span class="token punctuation">{</span>
+  <span class="token comment">/* Hide controls, input section, buttons */</span>
+  <span class="token comment">/* Show matrix and explanatory key */</span>
+  <span class="token comment">/* Ensure rating backgrounds print */</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<h3 id="focus-states" tabindex="-1">Focus States <a class="header-anchor" href="#focus-states" aria-label="Direct link to &quot;Focus States&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>All interactive elements must have visible focus indicators using <code>--focus-outline</code>.</p>
+<h2 id="javascript-requirements" tabindex="-1">JavaScript Requirements <a class="header-anchor" href="#javascript-requirements" aria-label="Direct link to &quot;JavaScript Requirements&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h2>
+<h3 id="logging-configuration" tabindex="-1">Logging Configuration <a class="header-anchor" href="#logging-configuration" aria-label="Direct link to &quot;Logging Configuration&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>Include configurable logging as per user preferences:</p>
+<pre class="language-javascript code-block-container" tabindex="0" id="pre-block-7-1764830867919" data-original-code="const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+const ENABLE_ALL_LOGGING = false;
+const DISABLE_ALL_LOGGING = false;
+// ... logging functions
+"><code class="language-javascript" id="code-block-7-1764830867919"><span class="token keyword">const</span> <span class="token constant">LOG_LEVELS</span> <span class="token operator">=</span> <span class="token punctuation">{</span> <span class="token constant">ERROR</span><span class="token operator">:</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token constant">WARN</span><span class="token operator">:</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token constant">INFO</span><span class="token operator">:</span> <span class="token number">2</span><span class="token punctuation">,</span> <span class="token constant">DEBUG</span><span class="token operator">:</span> <span class="token number">3</span> <span class="token punctuation">}</span><span class="token punctuation">;</span>
+<span class="token keyword">const</span> <span class="token constant">DEFAULT_LOG_LEVEL</span> <span class="token operator">=</span> <span class="token constant">LOG_LEVELS</span><span class="token punctuation">.</span><span class="token constant">WARN</span><span class="token punctuation">;</span>
+<span class="token keyword">const</span> <span class="token constant">ENABLE_ALL_LOGGING</span> <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+<span class="token keyword">const</span> <span class="token constant">DISABLE_ALL_LOGGING</span> <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span>
+<span class="token comment">// ... logging functions</span>
+</code></pre>
+<h3 id="key-functions-needed" tabindex="-1">Key Functions Needed <a class="header-anchor" href="#key-functions-needed" aria-label="Direct link to &quot;Key Functions Needed&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<ol>
+<li>
+<p><strong>parseColourInput(text)</strong>: Parse textarea content, return array of {name, hex} objects or validation errors</p>
+</li>
+<li>
+<p><strong>validateHex(hex)</strong>: Check if string is valid 3 or 6 character hex</p>
+</li>
+<li>
+<p><strong>calculateContrast(fg, bg)</strong>: Use chroma.contrast() and return {ratio, rating}</p>
+</li>
+<li>
+<p><strong>generateMatrix(colours)</strong>: Build and insert the table HTML</p>
+</li>
+<li>
+<p><strong>applyWcagFilter(minLevel)</strong>: Show/hide cells based on minimum rating level</p>
+</li>
+<li>
+<p><strong>toggleColumn(colourHex, visible)</strong>: Show/hide a column</p>
+</li>
+<li>
+<p><strong>toggleRow(colourHex, visible)</strong>: Show/hide a row</p>
+</li>
+<li>
+<p><strong>focusColour(colourHex)</strong>: Highlight colour’s row/column, hide non-contrasting colours</p>
+</li>
+<li>
+<p><strong>setDisplayMode(mode)</strong>: Switch between ‘rating’, ‘ratio’, ‘both’</p>
+</li>
+<li>
+<p><strong>applyCvdSimulation(type)</strong>: Apply/remove CVD filter classes</p>
+</li>
+<li>
+<p><strong>toggleDarkMode()</strong>: Toggle <code>data-theme</code> attribute</p>
+</li>
+<li>
+<p><strong>exportCsv()</strong>: Generate and download CSV with full data</p>
+</li>
+<li>
+<p><strong>fitTableToPage()</strong> / <strong>fullSizeTable()</strong>: Adjust table sizing</p>
+</li>
+</ol>
+<h3 id="event-handling" tabindex="-1">Event Handling <a class="header-anchor" href="#event-handling" aria-label="Direct link to &quot;Event Handling&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<p>Use <code>onclick</code> attributes on buttons where appropriate, as per user preferences.</p>
+<h3 id="csv-export-format" tabindex="-1">CSV Export Format <a class="header-anchor" href="#csv-export-format" aria-label="Direct link to &quot;CSV Export Format&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h3>
+<pre class="language-none code-block-container" tabindex="0" id="pre-block-8-1764830867919" data-original-code="Foreground Name,Foreground Hex,Background Name,Background Hex,Contrast Ratio,WCAG Rating
+Snow White,#F8F9FA,Midnight Coal,#151414,16.3:1,AAA
+...
+"><code class="language-none" id="code-block-8-1764830867919">Foreground Name,Foreground Hex,Background Name,Background Hex,Contrast Ratio,WCAG Rating
+Snow White,#F8F9FA,Midnight Coal,#151414,16.3:1,AAA
+...
+</code></pre>
+<h2 id="accessibility-checklist" tabindex="-1">Accessibility Checklist <a class="header-anchor" href="#accessibility-checklist" aria-label="Direct link to &quot;Accessibility Checklist&quot; section"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a></h2>
+<ul class="contains-task-list task-status-list semantic-tasks" role="list" aria-label="Task list: 0 of 11 completed" data-tasks-total="11" data-tasks-completed="0"><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: Skip link to main content" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">Skip link to main content</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: Semantic HTML (`&lt;header&gt;`, `&lt;main&gt;`, `&lt;nav&gt;`, `&lt;footer&gt;`, `&lt;fieldset&gt;`, `&lt;legend&gt;`)" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">Semantic HTML (<code>&lt;header&gt;</code>, <code>&lt;main&gt;</code>, <code>&lt;nav&gt;</code>, <code>&lt;footer&gt;</code>, <code>&lt;fieldset&gt;</code>, <code>&lt;legend&gt;</code>)</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: All form inputs have associated labels" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">All form inputs have associated labels</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: Buttons have accessible names" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">Buttons have accessible names</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: `aria-disabled` alongside `disabled` attribute on buttons" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content"><code>aria-disabled</code> alongside <code>disabled</code> attribute on buttons</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: `aria-live` region for dynamic feedback" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content"><code>aria-live</code> region for dynamic feedback</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: Colour not sole means of conveying information (ratings have text)" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">Colour not sole means of conveying information (ratings have text)</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: Focus visible on all interactive elements" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">Focus visible on all interactive elements</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: Table has `&lt;caption&gt;` and proper `&lt;th&gt;` scope attributes" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">Table has<code>&lt;caption&gt;</code> and proper <code>&lt;th&gt;</code> scope attributes</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: Print stylesheet tested" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">Print stylesheet tested</span></li><li class="task-list-item semantic-task" role="listitem">
+          <span class="task-status" role="img" aria-label="Not completed: Keyboard navigation works throughout" title="Not completed">
+            <span class="status-icon" aria-hidden="true">⭕</span>
+            <span class="status-text sr-only">Not completed:</span>
+          </span>
+          <span class="task-content">Keyboard navigation works throughout</span></li></ul>
+
+            </article>
+			      <div id="panel">
+         <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg id="svgUP" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle2 svgDesc2">
+               <title id="svgTitle2">Top.</title>
+               <desc id="svgDesc2">Move to the top of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m11.5 7.5-3-3-3 3"/>
+                  <path d="m8.5 4.5v8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+         </button>
+         <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg id="svgDOWN" height="50" viewBox="0 0 21 21" width="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgTitle3 svgDesc3">
+               <title id="svgTitle3">Bottom.</title>
+               <desc id="svgDesc3">Move to the bottom of the page.</desc>
+               <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)">
+                  <circle cx="8.5" cy="8.5" r="8"/>
+                  <path d="m5.5 9.5 3 3 3-3"/>
+                  <path d="m8.5 12.5v-8"/>
+               </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+         </button>
+      </div>
+         </main>
+         <aside class="page-sidebar related">
+            <section class="related">
+			<h2>Related content</h2>
+			</section>
+            <section class="related">
+               <h3>Presentations</h3>
+               <ul class="relUL">
+                  <li><a href="#">Using Colours</a></li>
+                  <li><a href="#">Future Teacher</a></li>
+                  <li><a href="#">Bluffers guide to Blackboard theme accessibility</a></li>
+               </ul>
+            </section>
+            <section class="related">
+               <h3>Blog posts</h3>
+               <ul class="relUL">
+                  <li><a href="#">Using Colours</a></li>
+                  <li><a href="#">Future Teacher</a></li>
+                  <li><a href="#">Bluffers guide to Blackboard theme accessibility</a></li>
+               </ul>
+            </section>
+         </aside>
+         <footer class="page-footer">
+            <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+            <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+            <div id="AccessibilityFoot">
+               <a href="Accessibility_Statement.html">Accessibility Statement</a>
+            </div>
+            <div id="twitterFoot">
+               <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw">Follow on Twitter</a>
+            </div>
+            <div id="YouTubeChannelFoot">
+               <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ">YouTube Channel</a>
+            </div>
+            <div id="aboutCodePen"><a href="https://codepen.io/matthewdeeprose/">CodePen</a></div><p><div id="aboutFoot">
+               <a href="https://www.linkedin.com/in/mattdeeprose/">&#169;  Matthew Deeprose</a>
+            </div>
+         </p></footer>
+      </div>
+
+      <script>
+         function menuAction() {
+             let menuSwitch = document.getElementById("myTopnav");
+             if (menuSwitch.className === "topnav") {
+                 menuSwitch.className += " responsive";
+                 
+             } else {
+                 menuSwitch.className = "topnav";
+             }
+             let menuAriaAttrib = document.getElementById("menu").getAttribute("aria-expanded");
+             if (menuAriaAttrib === "true") {
+                 menuAriaAttrib = "false"
+             } else {
+                 menuAriaAttrib = "true"
+             }
+             document.getElementById("menu").setAttribute("aria-expanded", menuAriaAttrib);
+         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      </script>
+      <script>
+         let mybutton = document.getElementById("myBtn");
+         let mybutton2 = document.getElementById("myBtn2");
+         
+         
+         window.onscroll = function() {
+             scrollFunction()
+         };
+         
+         function scrollFunction() {
+             if (document.body.scrollTop > 660 || document.documentElement.scrollTop > 660) {
+                 mybutton.style.display = "block";
+         		mybutton2.style.display = "block";
+             } else {
+                 mybutton.style.display = "none";
+         		mybutton2.style.display = "none";
+             }
+         }
+         
+         
+         
+         function topFunction() {
+             document.body.scrollTop = 0;
+             document.documentElement.scrollTop = 0; 
+         document.getElementById('skipToContent').focus();
+         }
+         
+         function bottomFunction() {
+         window.scrollTo(0,document.body.scrollHeight);
+         document.getElementById('rssA').focus();
+         }
+      </script>
+      <script>
+         let themePref = localStorage.getItem("theme");
+         console.log("Has a theme preference been saved?", themePref);        
+         
+         
+         function setLight() {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById("modeToggle");
+             const d = matchMedia('(prefers-color-scheme: dark)');
+             let dt;
+             if (d.matches) {
+                 dt = 'dark';
+                 console.log("Prefers dark theme in OS");
+             } else {
+                 dt = 'light'
+                 console.log("Prefers light theme in OS");
+             }
+             if (dt == 'dark' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'light' && themePref == 'Dark') {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else if (dt == 'dark' && !themePref) {
+                 theButton.setAttribute("aria-pressed", "true");
+             } else {
+                 theButton.setAttribute("aria-pressed", "false");
+             }
+         }
+         setLight();
+         
+         function toggle(btnID) {
+             let buttonStatus = document.getElementById("lightDark");
+             let theButton = document.getElementById(btnID);
+             if (theButton.getAttribute("aria-pressed") == "true") {
+                 theButton.setAttribute("aria-pressed", "false");
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 console.log("Turned on light mode");
+                 localStorage.setItem("theme", "Light");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Light theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "false");
+             } else {
+                 theButton.setAttribute("aria-pressed", "true");
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 console.log("Turned on dark mode");
+                 localStorage.setItem("theme", "Dark");
+                 let themePref = localStorage.getItem("theme");
+                 console.log("Site theme preference set to ", themePref);
+                 document.getElementById('lightDark').innerHTML = 'Dark theme enabled, the button is now';
+                 let toggleButton = document.getElementById('modeToggle');
+                 toggleButton.removeAttribute("aria-pressed");
+                 toggleButton.setAttribute("aria-pressed", "true");
+             }
+         }
+         
+         function applyThemePreference() {
+             if (themePref == 'Dark') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'dark.css';
+                 document.getElementById('darkCSS').href = 'dark.css';
+                 theButton.setAttribute("aria-pressed", "true");
+                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
+             } else if (themePref == 'Light') {
+                 let theButton = document.getElementById('modeToggle');
+                 document.getElementById('lightCSS').href = 'light.css';
+                 document.getElementById('darkCSS').href = 'light.css';
+                 theButton.setAttribute("aria-pressed", "false");
+                 console.log("Applied", themePref, "theme because site theme preference is set to", themePref);
+             }
+         }
+         applyThemePreference();                
+      </script>
+	  <script src="scripts/lite-yt-embed.js"></script>
+	  <link rel="stylesheet" href="scripts/lite-yt-embed.css"/>
+	  	    <script src="scripts/jquery-3.7.1.min.js"></script>
+    <script src="scripts/details.js"></script>
+    <script>
+      window.console || (window.console = {
+        'log': alert
+      });
+      $(function() {
+        $('html').addClass($.fn.details.support ? 'details' : 'no-details');
+        $('details').details();
+        $('details').on({
+          'open.details': function() {
+            console.log('opened')
+          },
+          'close.details': function() {
+            console.log('closed')
+          }
+        })
+      });
+    </script>
+	    <script>
+      // Expand details / summary when printing
+      // From https://stackoverflow.com/questions/19646684/force-open-the-details-summary-tag-for-print-in-chrome
+      window.matchMedia("print").addEventListener("change", evt => {
+        if (evt.matches) {
+          elms = document.body.querySelectorAll("details:not([open])");
+          for (e of elms) {
+            e.setAttribute("open", "");
+            e.dataset.wasclosed = "";
+          }
+        } else {
+          elms = document.body.querySelectorAll("details[data-wasclosed]");
+          for (e of elms) {
+            e.removeAttribute("open");
+            delete e.dataset.wasclosed;
+          }
+        }
+      })
+    </script>
+	    <script src="md-scripts/markdown-utils/markdown-it-sortable-tables-combined.js"></script>
+		    
+   </body>
+</html>

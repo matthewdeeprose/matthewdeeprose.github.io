@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Colour Palette Accessibility Matrix</title>
+  <script src="https://matthewdeeprose.github.io/scripts/chroma.min.js"></script>
+  <style>
+    /* =============================================================================
+       CSS Custom Properties
+       ============================================================================= */
+    :root {
+      /* Base colours - Light Mode */
+      --bg-primary: #FFFFFC;
+      --bg-secondary: #F5F5F5;
+      --text-primary: #1A1A1A;
+      --text-secondary: #4D4D4D;
+      --accent-primary: #0066CC;
+      --accent-hover: #004C99;
+      --border-standard: #CCCCCC;
+      --focus-outline: #0066CC;
+      
+      /* Rating backgrounds - Light Mode */
+      --rating-f: #E0E0E0;
+      --rating-g: #B3DBD2;
+      --rating-aa: #FCBC00;
+      --rating-aaa: #C1D100;
+      --rating-text: #1A1A1A;
+      
+      /* Button colours */
+      --button-bg: #002E3B;
+      --button-text: #FFFFFC;
+      --button-hover: #004D5C;
+      --button-disabled-bg: #CCCCCC;
+      --button-disabled-text: #666666;
+      
+      /* Table sizing */
+      --table-max-width: none;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        /* Base colours - Dark Mode */
+        --bg-primary: #1A1A1A;
+        --bg-secondary: #2A2A2A;
+        --text-primary: #F5F5F5;
+        --text-secondary: #B3B3B3;
+        --accent-primary: #66B3FF;
+        --accent-hover: #99CCFF;
+        --border-standard: #4D4D4D;
+        --focus-outline: #66B3FF;
+        
+        /* Rating backgrounds - Dark Mode */
+        --rating-f: #3D3D3D;
+        --rating-g: #1A5C52;
+        --rating-aa: #8B6914;
+        --rating-aaa: #5C6300;
+        --rating-text: #F5F5F5;
+        
+        /* Button colours */
+        --button-bg: #4A9FB8;
+        --button-text: #1A1A1A;
+        --button-hover: #5CB8D1;
+        --button-disabled-bg: #3D3D3D;
+        --button-disabled-text: #808080;
+      }
+    }
+
+    /* Manual dark theme override */
+    [data-theme="dark"] {
+      --bg-primary: #1A1A1A;
+      --bg-secondary: #2A2A2A;
+      --text-primary: #F5F5F5;
+      --text-secondary: #B3B3B3;
+      --accent-primary: #66B3FF;
+      --accent-hover: #99CCFF;
+      --border-standard: #4D4D4D;
+      --focus-outline: #66B3FF;
+      --rating-f: #3D3D3D;
+      --rating-g: #1A5C52;
+      --rating-aa: #8B6914;
+      --rating-aaa: #5C6300;
+      --rating-text: #F5F5F5;
+      --button-bg: #4A9FB8;
+      --button-text: #1A1A1A;
+      --button-hover: #5CB8D1;
+      --button-disabled-bg: #3D3D3D;
+      --button-disabled-text: #808080;
+    }
+
+    /* Manual light theme override */
+    [data-theme="light"] {
+      --bg-primary: #FFFFFC;
+      --bg-secondary: #F5F5F5;
+      --text-primary: #1A1A1A;
+      --text-secondary: #4D4D4D;
+      --accent-primary: #0066CC;
+      --accent-hover: #004C99;
+      --border-standard: #CCCCCC;
+      --focus-outline: #0066CC;
+      --rating-f: #E0E0E0;
+      --rating-g: #B3DBD2;
+      --rating-aa: #FCBC00;
+      --rating-aaa: #C1D100;
+      --rating-text: #1A1A1A;
+      --button-bg: #002E3B;
+      --button-text: #FFFFFC;
+      --button-hover: #004D5C;
+      --button-disabled-bg: #CCCCCC;
+      --button-disabled-text: #666666;
+    }
+
+    /* =============================================================================
+       Base Styles
+       ============================================================================= */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 1rem;
+      line-height: 1.5;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 0;
+    }
+
+    /* =============================================================================
+       Skip Link
+       ============================================================================= */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 0;
+      background-color: var(--button-bg);
+      color: var(--button-text);
+      padding: 0.75rem 1rem;
+      text-decoration: none;
+      z-index: 1000;
+      border-radius: 0 0 4px 0;
+    }
+
+    .skip-link:focus {
+      top: 0;
+      outline: 2px solid transparent;
+      box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--focus-outline);
+    }
+
+    /* =============================================================================
+       Layout
+       ============================================================================= */
+    .page-wrapper {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    header {
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 0.5rem 0;
+    }
+
+    .intro-text {
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    main {
+      margin-bottom: 2rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-standard);
+      padding-top: 1rem;
+      margin-top: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: var(--accent-primary);
+    }
+
+    footer a:hover,
+    footer a:focus {
+      color: var(--accent-hover);
+    }
+
+    /* =============================================================================
+       Sections
+       ============================================================================= */
+    .section {
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      margin: 0 0 1rem 0;
+    }
+
+    /* =============================================================================
+       Forms and Inputs
+       ============================================================================= */
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    textarea {
+      width: 100%;
+      max-width: 500px;
+      min-height: 150px;
+      padding: 0.75rem;
+      font-family: "Consolas", "Monaco", monospace;
+      font-size: 0.9375rem;
+      border: 2px solid var(--border-standard);
+      border-radius: 4px;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: 2px solid transparent;
+      border-color: var(--focus-outline);
+      box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--focus-outline);
+    }
+
+    textarea::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .input-help {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+
+    .validation-feedback {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 4px;
+      background-color: var(--bg-secondary);
+      font-size: 0.875rem;
+    }
+
+    .validation-feedback:empty {
+      display: none;
+    }
+
+    .validation-error {
+      color: #CC0000;
+    }
+
+    [data-theme="dark"] .validation-error,
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .validation-error {
+        color: #FF6666;
+      }
+    }
+
+    .validation-success {
+      color: #2D7A2D;
+    }
+
+    [data-theme="dark"] .validation-success {
+      color: #5CB85C;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .validation-success {
+        color: #5CB85C;
+      }
+    }
+
+    /* =============================================================================
+       Buttons
+       ============================================================================= */
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: var(--button-bg);
+      color: var(--button-text);
+      transition: background-color 0.15s ease;
+    }
+
+    .button:hover {
+      background-color: var(--button-hover);
+    }
+
+    .button:focus,
+    .button:focus-visible {
+      outline: 2px solid transparent;
+      box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--focus-outline);
+    }
+
+    .button:focus:not(:focus-visible) {
+      box-shadow: none;
+    }
+
+    .button:disabled,
+    .button[aria-disabled="true"] {
+      background-color: var(--button-disabled-bg);
+      color: var(--button-disabled-text);
+      cursor: not-allowed;
+    }
+
+    .button:disabled:hover,
+    .button[aria-disabled="true"]:hover {
+      background-color: var(--button-disabled-bg);
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .button-secondary {
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 2px solid var(--border-standard);
+    }
+
+    .button-secondary:hover {
+      background-color: var(--border-standard);
+    }
+
+    .button-small {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+
+    /* =============================================================================
+       Fieldsets
+       ============================================================================= */
+    fieldset {
+      border: 1px solid var(--border-standard);
+      border-radius: 4px;
+      padding: 1rem;
+      margin: 0 0 1rem 0;
+    }
+
+    legend {
+      font-weight: 600;
+      padding: 0 0.5rem;
+    }
+
+    /* =============================================================================
+       Radio and Checkbox Groups
+       ============================================================================= */
+    .radio-group,
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .radio-group label,
+    .checkbox-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-weight: normal;
+      cursor: pointer;
+      margin-bottom: 0;
+    }
+
+    .radio-group input[type="radio"],
+    .checkbox-group input[type="checkbox"] {
+      width: 1.125rem;
+      height: 1.125rem;
+      accent-color: var(--accent-primary);
+    }
+
+    .radio-group input[type="radio"]:focus,
+    .checkbox-group input[type="checkbox"]:focus {
+      outline: 2px solid transparent;
+      box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--focus-outline);
+    }
+
+    .colour-filter-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--border-standard);
+      border-radius: 4px;
+      background-color: var(--bg-secondary);
+    }
+
+    .colour-swatch-small {
+      width: 1rem;
+      height: 1rem;
+      border: 1px solid var(--border-standard);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    /* =============================================================================
+       Controls Section
+       ============================================================================= */
+    .controls-section {
+      display: none;
+    }
+
+    .controls-section.visible {
+      display: block;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    /* =============================================================================
+       Live Region
+       ============================================================================= */
+    .live-region {
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+      background-color: var(--bg-secondary);
+      min-height: 2.5rem;
+    }
+
+    .live-region:empty {
+      display: none;
+    }
+
+    /* =============================================================================
+       Matrix Table
+       ============================================================================= */
+    .matrix-container {
+      overflow-x: auto;
+      margin-bottom: 2rem;
+    }
+
+    .matrix-table {
+      border-collapse: collapse;
+      max-width: var(--table-max-width);
+      width: 100%;
+    }
+
+    .matrix-table caption {
+      text-align: left;
+      font-weight: 600;
+      padding: 0.5rem 0;
+      caption-side: top;
+    }
+
+    .matrix-table th,
+    .matrix-table td {
+      border: 1px solid var(--border-standard);
+      padding: 0.5rem;
+      text-align: center;
+      vertical-align: middle;
+      min-width: 5rem;
+    }
+
+    .matrix-table th {
+      background-color: var(--bg-secondary);
+      font-weight: 600;
+      font-size: 0.8125rem;
+    }
+
+    .matrix-table th.corner-cell {
+      background-color: var(--bg-primary);
+      border-color: transparent;
+    }
+
+    .matrix-table .row-header {
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .matrix-table .swatch-cell {
+      padding: 0.25rem;
+    }
+
+    .colour-swatch {
+      width: 2rem;
+      height: 2rem;
+      border: 2px solid var(--border-standard);
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    /* Result cells - now use rating background colours for guaranteed contrast */
+    .result-cell {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      padding: 0.375rem;
+    }
+
+    .result-cell .rating {
+      display: block;
+    }
+
+    .result-cell .ratio {
+      display: block;
+      font-weight: normal;
+      font-size: 0.75rem;
+    }
+
+    /* Colour preview swatch inside result cells */
+    .result-cell .colour-preview {
+      display: block;
+      width: 100%;
+      height: 1.25rem;
+      margin-top: 0.25rem;
+      border: 1px solid var(--border-standard);
+      border-radius: 2px;
+    }
+
+    /* Rating background colours - these provide guaranteed contrast with --rating-text */
+    .result-f { 
+      background-color: var(--rating-f); 
+      color: var(--rating-text); 
+    }
+    .result-g { 
+      background-color: var(--rating-g); 
+      color: var(--rating-text); 
+    }
+    .result-aa { 
+      background-color: var(--rating-aa); 
+      color: var(--rating-text); 
+    }
+    .result-aaa { 
+      background-color: var(--rating-aaa); 
+      color: var(--rating-text); 
+    }
+
+    /* Filtering */
+    .hidden-cell {
+      visibility: hidden;
+    }
+
+    .hidden-column,
+    .hidden-row {
+      display: none;
+    }
+
+    .focus-highlight {
+      outline: 3px solid var(--focus-outline);
+      outline-offset: -3px;
+    }
+
+    /* Display modes */
+    .matrix-table[data-display="rating"] .ratio { display: none; }
+    .matrix-table[data-display="ratio"] .rating { display: none; }
+
+    /* Table sizing */
+    .fit-to-page {
+      --table-max-width: 100%;
+    }
+
+    .fit-to-page .matrix-table th,
+    .fit-to-page .matrix-table td {
+      min-width: auto;
+      font-size: 0.75rem;
+      padding: 0.25rem;
+    }
+
+    .fit-to-page .colour-swatch {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .fit-to-page .result-cell .colour-preview {
+      height: 1rem;
+    }
+
+    /* =============================================================================
+       Details/Summary (Explanatory Key)
+       ============================================================================= */
+    details {
+      border: 1px solid var(--border-standard);
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    summary {
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      background-color: var(--bg-secondary);
+      border-radius: 4px;
+    }
+
+    summary:hover {
+      background-color: var(--border-standard);
+    }
+
+    summary:focus {
+      outline: 2px solid transparent;
+      box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--focus-outline);
+    }
+
+    details[open] summary {
+      border-radius: 4px 4px 0 0;
+      border-bottom: 1px solid var(--border-standard);
+    }
+
+    .details-content {
+      padding: 1rem;
+    }
+
+    .rating-key {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .rating-key-item {
+      padding: 0.75rem;
+      border-radius: 4px;
+    }
+
+    .rating-key-item h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+    }
+
+    .rating-key-item p {
+      margin: 0;
+      font-size: 0.875rem;
+    }
+
+    .key-f { background-color: var(--rating-f); color: var(--rating-text); }
+    .key-g { background-color: var(--rating-g); color: var(--rating-text); }
+    .key-aa { background-color: var(--rating-aa); color: var(--rating-text); }
+    .key-aaa { background-color: var(--rating-aaa); color: var(--rating-text); }
+
+    .wcag-links {
+      list-style: disc;
+      padding-left: 1.5rem;
+      margin: 0;
+    }
+
+    .wcag-links li {
+      margin-bottom: 0.5rem;
+    }
+
+    .wcag-links a {
+      color: var(--accent-primary);
+    }
+
+    .wcag-links a:hover,
+    .wcag-links a:focus {
+      color: var(--accent-hover);
+    }
+
+    /* =============================================================================
+       CVD Simulation Filters
+       ============================================================================= */
+    .cvd-protanopia { filter: url(#protanopia); }
+    .cvd-deuteranopia { filter: url(#deuteranopia); }
+    .cvd-tritanopia { filter: url(#tritanopia); }
+
+    /* =============================================================================
+       Reduced Motion
+       ============================================================================= */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* =============================================================================
+       Print Styles
+       ============================================================================= */
+    @media print {
+      .skip-link,
+      .input-section,
+      .controls-section,
+      .button,
+      footer {
+        display: none !important;
+      }
+
+      body {
+        background-color: white;
+        color: black;
+        font-size: 10pt;
+      }
+
+      .page-wrapper {
+        max-width: none;
+        padding: 0;
+      }
+
+      .matrix-container {
+        overflow: visible;
+      }
+
+      .matrix-table {
+        max-width: 100%;
+        font-size: 8pt;
+      }
+
+      .matrix-table th,
+      .matrix-table td {
+        padding: 0.25rem;
+        min-width: auto;
+      }
+
+      .colour-swatch {
+        width: 1rem;
+        height: 1rem;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .result-cell {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .result-f,
+      .result-g,
+      .result-aa,
+      .result-aaa {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .result-cell .colour-preview {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      details {
+        display: block;
+      }
+
+      details[open] summary {
+        display: none;
+      }
+
+      .details-content {
+        display: block !important;
+      }
+
+      .rating-key-item {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Skip Link -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="page-wrapper">
+    <!-- Header -->
+    <header>
+      <h1>Colour Palette Accessibility Matrix</h1>
+      <p class="intro-text">
+        Enter your colour palette to generate a contrast accessibility matrix. 
+        The tool calculates WCAG contrast ratios for all foreground/background combinations 
+        and displays compliance ratings.
+      </p>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content">
+      <!-- Input Section -->
+      <section class="section input-section" aria-labelledby="input-heading">
+        <h2 id="input-heading" class="section-title">Enter Your Colours</h2>
+        
+        <label for="colour-input">Colour palette (one colour per line)</label>
+        <textarea 
+          id="colour-input" 
+          placeholder="Snow White, #F8F9FA&#10;Sunset Orange, #F57C00&#10;Midnight Coal, #151414&#10;#4CAF50&#10;Sky Blue: 2196F3"
+          spellcheck="false"
+        ></textarea>
+        <p class="input-help">
+          Accepted formats: <code>name, #hex</code> | <code>#hex, name</code> | <code>name: hex</code> | <code>hex</code> alone. 
+          Hash symbol optional.
+        </p>
+        
+        <div id="validation-feedback" class="validation-feedback" role="status"></div>
+        
+        <div class="button-group">
+          <button 
+            type="button" 
+            id="generate-btn" 
+            class="button" 
+            disabled 
+            aria-disabled="true"
+            onclick="generateMatrix()"
+          >
+            <span aria-hidden="true">📊</span> Generate Matrix
+          </button>
+          <button 
+            type="button" 
+            class="button button-secondary" 
+            onclick="loadExamplePalette()"
+          >
+            <span aria-hidden="true">📋</span> Load Example Palette
+          </button>
+        </div>
+      </section>
+
+      <!-- Controls Section (hidden until matrix generated) -->
+      <section class="section controls-section" id="controls-section" aria-labelledby="controls-heading">
+        <h2 id="controls-heading" class="section-title">Matrix Controls</h2>
+        
+        <div class="controls-grid">
+          <!-- Matrix Controls -->
+          <fieldset>
+            <legend>Matrix Controls</legend>
+            <div class="button-group">
+              <button type="button" class="button button-small" onclick="resetPage()">
+                <span aria-hidden="true">🔄</span> Reset
+              </button>
+              <button type="button" class="button button-small button-secondary" onclick="fitTableToPage()">
+                Fit to Page
+              </button>
+              <button type="button" class="button button-small button-secondary" onclick="fullSizeTable()">
+                Full Size
+              </button>
+            </div>
+          </fieldset>
+
+          <!-- Display Mode -->
+          <fieldset>
+            <legend>Display Results As</legend>
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="display-mode" value="rating" checked onchange="setDisplayMode('rating')">
+                Rating
+              </label>
+              <label>
+                <input type="radio" name="display-mode" value="ratio" onchange="setDisplayMode('ratio')">
+                Ratio
+              </label>
+              <label>
+                <input type="radio" name="display-mode" value="both" onchange="setDisplayMode('both')">
+                Both
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- WCAG Filter -->
+          <fieldset>
+            <legend>Filter by WCAG Level</legend>
+            <div class="button-group">
+              <button 
+                type="button" 
+                id="reset-filter-btn" 
+                class="button button-small button-secondary" 
+                disabled 
+                aria-disabled="true"
+                onclick="resetWcagFilter()"
+              >
+                Reset Filter
+              </button>
+              <button type="button" class="button button-small button-secondary" onclick="applyWcagFilter('g')">
+                G+ only
+              </button>
+              <button type="button" class="button button-small button-secondary" onclick="applyWcagFilter('aa')">
+                AA+ only
+              </button>
+              <button type="button" class="button button-small button-secondary" onclick="applyWcagFilter('aaa')">
+                AAA only
+              </button>
+            </div>
+          </fieldset>
+
+          <!-- CVD Simulation -->
+          <fieldset>
+            <legend>Colour Vision Simulation</legend>
+            <div class="button-group">
+              <button 
+                type="button" 
+                id="reset-cvd-btn" 
+                class="button button-small button-secondary" 
+                disabled 
+                aria-disabled="true"
+                onclick="resetCvdSimulation()"
+              >
+                Reset (Trichromacy)
+              </button>
+              <button type="button" class="button button-small button-secondary" onclick="applyCvdSimulation('protanopia')">
+                Protanopia
+              </button>
+              <button type="button" class="button button-small button-secondary" onclick="applyCvdSimulation('deuteranopia')">
+                Deuteranopia
+              </button>
+              <button type="button" class="button button-small button-secondary" onclick="applyCvdSimulation('tritanopia')">
+                Tritanopia
+              </button>
+            </div>
+          </fieldset>
+
+          <!-- Column Filters -->
+          <fieldset>
+            <legend>Filter Columns (Foreground)</legend>
+            <div class="checkbox-group" id="column-filters"></div>
+          </fieldset>
+
+          <!-- Row Filters -->
+          <fieldset>
+            <legend>Filter Rows (Background)</legend>
+            <div class="checkbox-group" id="row-filters"></div>
+          </fieldset>
+
+          <!-- Focus Colour -->
+          <fieldset>
+            <legend>Focus Colour</legend>
+            <div class="button-group" id="focus-colour-buttons"></div>
+          </fieldset>
+
+          <!-- Theme Toggle -->
+          <fieldset>
+            <legend>Theme</legend>
+            <div class="button-group">
+              <button type="button" class="button button-small button-secondary" onclick="toggleDarkMode()">
+                <span aria-hidden="true">🌓</span> Toggle Dark/Light Mode
+              </button>
+            </div>
+          </fieldset>
+
+          <!-- Export -->
+          <fieldset>
+            <legend>Export</legend>
+            <div class="button-group">
+              <button type="button" class="button button-small" onclick="exportCsv()">
+                <span aria-hidden="true">📥</span> Download CSV
+              </button>
+            </div>
+          </fieldset>
+        </div>
+      </section>
+
+      <!-- Live Feedback Region -->
+      <div id="live-feedback" class="live-region" aria-live="polite" aria-atomic="true"></div>
+
+      <!-- Matrix Section -->
+      <section class="section matrix-section" id="matrix-section" aria-labelledby="matrix-heading">
+        <h2 id="matrix-heading" class="section-title visually-hidden">Contrast Matrix</h2>
+        <div class="matrix-container" id="matrix-container"></div>
+      </section>
+
+      <!-- Explanatory Key -->
+      <details id="explanatory-key">
+        <summary>Understanding the Contrast Ratings</summary>
+        <div class="details-content">
+          <div class="rating-key">
+            <div class="rating-key-item key-f">
+              <h3>F (Fail)</h3>
+              <p>Contrast ratio below 3:1. Fails WCAG requirements for all text sizes.</p>
+            </div>
+            <div class="rating-key-item key-g">
+              <h3>G (Graphical)</h3>
+              <p>Contrast ratio 3:1 to 4.5:1. Suitable for large text (18pt+ or 14pt bold) and graphical elements like icons and UI components.</p>
+            </div>
+            <div class="rating-key-item key-aa">
+              <h3>AA (Minimum)</h3>
+              <p>Contrast ratio 4.5:1 to 7:1. Meets WCAG 2.1 Level AA for normal text. This is the minimum recommended for body text.</p>
+            </div>
+            <div class="rating-key-item key-aaa">
+              <h3>AAA (Enhanced)</h3>
+              <p>Contrast ratio 7:1 or above. Meets WCAG 2.1 Level AAA (enhanced contrast). Recommended for optimal readability.</p>
+            </div>
+          </div>
+          
+          <h3>Relevant WCAG Success Criteria</h3>
+          <ul class="wcag-links">
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html" target="_blank" rel="noopener noreferrer">
+                1.4.3 Contrast (Minimum) – Level AA
+              </a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced.html" target="_blank" rel="noopener noreferrer">
+                1.4.6 Contrast (Enhanced) – Level AAA
+              </a>
+            </li>
+            <li>
+              <a href="https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast.html" target="_blank" rel="noopener noreferrer">
+                1.4.11 Non-text Contrast – Level AA
+              </a>
+            </li>
+          </ul>
+        </div>
+      </details>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <p>Contrast calculations powered by <a href="https://gka.github.io/chroma.js/" target="_blank" rel="noopener noreferrer">Chroma.js</a></p>
+    </footer>
+  </div>
+
+  <!-- Hidden SVG Filters for CVD Simulation -->
+  <svg style="height: 0; width: 0; position: absolute;" aria-hidden="true">
+    <!-- Protanopia filter -->
+    <filter id="protanopia" color-interpolation-filters="linearRGB">
+      <feColorMatrix type="matrix" in="SourceGraphic" values="
+        0.10889,0.89111,-0.00000,0,0
+        0.10889,0.89111,0.00000,0,0
+        0.00447,-0.00447,1.00000,0,0
+        0,0,0,1,0"/>
+    </filter>
+    
+    <!-- Deuteranopia filter -->
+    <filter id="deuteranopia" color-interpolation-filters="linearRGB">
+      <feColorMatrix type="matrix" in="SourceGraphic" values="
+        0.29031,0.70969,-0.00000,0,0
+        0.29031,0.70969,-0.00000,0,0
+        -0.02197,0.02197,1.00000,0,0
+        0,0,0,1,0"/>
+    </filter>
+    
+    <!-- Tritanopia filter -->
+    <filter id="tritanopia" color-interpolation-filters="linearRGB">
+      <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane1" values="
+        1.01354, 0.14268, -0.15622, 0, 0
+        -0.01181, 0.87561, 0.13619, 0, 0
+        0.07707, 0.81208, 0.11085, 0, 0
+        7.92482, -5.66475, -2.26007, 1, -0.2"/>
+      <feComponentTransfer in="ProjectionOnPlane1" result="ProjectionOnPlane1">
+        <feFuncA type="discrete" tableValues="0 0 0 0 1"/>
+      </feComponentTransfer>
+      <feColorMatrix type="matrix" in="SourceGraphic" result="ProjectionOnPlane2" values="
+        0.93337, 0.19999, -0.13336, 0, 0
+        0.05809, 0.82565, 0.11626, 0, 0
+        -0.37923, 1.13825, 0.24098, 0, 0
+        0,0,0,1,0"/>
+      <feBlend in="ProjectionOnPlane1" in2="ProjectionOnPlane2" mode="normal"/>
+    </filter>
+  </svg>
+
+  <!-- Visually Hidden Utility Class -->
+  <style>
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+
+  <script>
+    // =============================================================================
+    // Logging Configuration
+    // =============================================================================
+    const LOG_LEVELS = {
+      ERROR: 0,
+      WARN: 1,
+      INFO: 2,
+      DEBUG: 3
+    };
+
+    const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+    const ENABLE_ALL_LOGGING = false;
+    const DISABLE_ALL_LOGGING = false;
+
+    function shouldLog(level) {
+      if (DISABLE_ALL_LOGGING) return false;
+      if (ENABLE_ALL_LOGGING) return true;
+      return level <= DEFAULT_LOG_LEVEL;
+    }
+
+    function logError(message, ...args) {
+      if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+    }
+
+    function logWarn(message, ...args) {
+      if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+    }
+
+    function logInfo(message, ...args) {
+      if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+    }
+
+    function logDebug(message, ...args) {
+      if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+    }
+
+    // =============================================================================
+    // Global State
+    // =============================================================================
+    let parsedColours = [];
+    let contrastData = [];
+    let currentWcagFilter = null;
+    let currentCvdSimulation = null;
+
+    // =============================================================================
+    // DOM References
+    // =============================================================================
+    const colourInput = document.getElementById('colour-input');
+    const generateBtn = document.getElementById('generate-btn');
+    const validationFeedback = document.getElementById('validation-feedback');
+    const controlsSection = document.getElementById('controls-section');
+    const matrixContainer = document.getElementById('matrix-container');
+    const liveFeedback = document.getElementById('live-feedback');
+    const resetFilterBtn = document.getElementById('reset-filter-btn');
+    const resetCvdBtn = document.getElementById('reset-cvd-btn');
+    const columnFilters = document.getElementById('column-filters');
+    const rowFilters = document.getElementById('row-filters');
+    const focusColourButtons = document.getElementById('focus-colour-buttons');
+
+    // =============================================================================
+    // Example Palette
+    // =============================================================================
+    const EXAMPLE_PALETTE = `Snow White, #F8F9FA
+Sunset Orange, #F57C00
+Midnight Coal, #151414
+Lush Green, #4CAF50
+Sky Blue, #2196F3`;
+
+    // =============================================================================
+    // Colour Parsing and Validation
+    // =============================================================================
+    
+    /**
+     * Validates a hex colour string (with or without hash)
+     * @param {string} hex - The hex colour to validate
+     * @returns {string|null} - Normalised hex (with hash) or null if invalid
+     */
+    function validateHex(hex) {
+      if (!hex || typeof hex !== 'string') return null;
+      
+      // Remove hash if present
+      let cleanHex = hex.trim().replace(/^#/, '');
+      
+      // Check for valid 3 or 6 character hex
+      if (!/^[0-9A-Fa-f]{3}$|^[0-9A-Fa-f]{6}$/.test(cleanHex)) {
+        return null;
+      }
+      
+      // Expand 3-character hex to 6-character
+      if (cleanHex.length === 3) {
+        cleanHex = cleanHex.split('').map(c => c + c).join('');
+      }
+      
+      return '#' + cleanHex.toUpperCase();
+    }
+
+    /**
+     * Parses a single line of colour input
+     * @param {string} line - A single line of input
+     * @returns {object} - { valid: boolean, colour?: {name, hex}, error?: string }
+     */
+    function parseColourLine(line) {
+      const trimmed = line.trim();
+      if (!trimmed) return { valid: false, empty: true };
+
+      // Try different delimiter patterns
+      const delimiters = [',', '\t', '|', ':'];
+      let parts = null;
+
+      for (const delimiter of delimiters) {
+        if (trimmed.includes(delimiter)) {
+          parts = trimmed.split(delimiter).map(p => p.trim()).filter(p => p);
+          break;
+        }
+      }
+
+      // If no delimiter found, treat entire line as hex
+      if (!parts) {
+        const hex = validateHex(trimmed);
+        if (hex) {
+          return { valid: true, colour: { name: null, hex } };
+        }
+        return { valid: false, error: `Invalid hex colour: "${trimmed}"` };
+      }
+
+      // Two parts: could be name,hex or hex,name
+      if (parts.length === 2) {
+        const hex1 = validateHex(parts[0]);
+        const hex2 = validateHex(parts[1]);
+
+        if (hex1 && !hex2) {
+          // First part is hex, second is name
+          return { valid: true, colour: { name: parts[1], hex: hex1 } };
+        } else if (hex2 && !hex1) {
+          // Second part is hex, first is name
+          return { valid: true, colour: { name: parts[0], hex: hex2 } };
+        } else if (hex1 && hex2) {
+          // Both are hex - use first as colour, ignore second
+          logWarn('Both parts appear to be hex codes, using first:', parts[0]);
+          return { valid: true, colour: { name: null, hex: hex1 } };
+        }
+      }
+
+      // Try to find any valid hex in the parts
+      for (let i = 0; i < parts.length; i++) {
+        const hex = validateHex(parts[i]);
+        if (hex) {
+          const otherParts = parts.filter((_, idx) => idx !== i);
+          const name = otherParts.join(' ').trim() || null;
+          return { valid: true, colour: { name, hex } };
+        }
+      }
+
+      return { valid: false, error: `No valid hex colour found in: "${trimmed}"` };
+    }
+
+    /**
+     * Parses the entire colour input textarea
+     * @param {string} text - The full textarea content
+     * @returns {object} - { colours: array, errors: array }
+     */
+    function parseColourInput(text) {
+      const lines = text.split('\n');
+      const colours = [];
+      const errors = [];
+
+      lines.forEach((line, index) => {
+        const result = parseColourLine(line);
+        
+        if (result.empty) return;
+        
+        if (result.valid) {
+          // Check for duplicate hex codes
+          const existing = colours.find(c => c.hex === result.colour.hex);
+          if (existing) {
+            errors.push({ line: index + 1, message: `Duplicate colour: ${result.colour.hex}` });
+          } else {
+            colours.push(result.colour);
+          }
+        } else {
+          errors.push({ line: index + 1, message: result.error });
+        }
+      });
+
+      return { colours, errors };
+    }
+
+    /**
+     * Gets the display name for a colour
+     * @param {object} colour - The colour object
+     * @returns {string} - Display name
+     */
+    function getColourDisplayName(colour) {
+      if (colour.name) {
+        return `${colour.name} (${colour.hex})`;
+      }
+      return colour.hex;
+    }
+
+    // =============================================================================
+    // Contrast Calculation
+    // =============================================================================
+    
+    /**
+     * Calculates contrast ratio and rating between two colours
+     * @param {string} fg - Foreground hex colour
+     * @param {string} bg - Background hex colour
+     * @returns {object} - { ratio: number, rating: string }
+     */
+    function calculateContrast(fg, bg) {
+      const ratio = chroma.contrast(fg, bg);
+      let rating;
+
+      if (ratio < 3) {
+        rating = 'F';
+      } else if (ratio < 4.5) {
+        rating = 'G';
+      } else if (ratio < 7) {
+        rating = 'AA';
+      } else {
+        rating = 'AAA';
+      }
+
+      return { ratio: Math.round(ratio * 100) / 100, rating };
+    }
+
+    // =============================================================================
+    // Input Validation and UI Updates
+    // =============================================================================
+    
+    /**
+     * Updates the validation feedback and generate button state
+     */
+    function updateValidation() {
+      const { colours, errors } = parseColourInput(colourInput.value);
+      parsedColours = colours;
+
+      let feedbackHtml = '';
+
+      if (errors.length > 0) {
+        feedbackHtml += '<p class="validation-error"><strong>Errors:</strong></p><ul class="validation-error">';
+        errors.forEach(err => {
+          feedbackHtml += `<li>Line ${err.line}: ${err.message}</li>`;
+        });
+        feedbackHtml += '</ul>';
+      }
+
+      if (colours.length > 0) {
+        feedbackHtml += `<p class="validation-success">${colours.length} valid colour${colours.length !== 1 ? 's' : ''} found.</p>`;
+      }
+
+      validationFeedback.innerHTML = feedbackHtml;
+
+      // Enable/disable generate button
+      const canGenerate = colours.length >= 2;
+      generateBtn.disabled = !canGenerate;
+      generateBtn.setAttribute('aria-disabled', !canGenerate);
+
+      logDebug('Validation updated:', { colours: colours.length, errors: errors.length });
+    }
+
+    // =============================================================================
+    // Matrix Generation
+    // =============================================================================
+    
+    /**
+     * Generates the contrast matrix table
+     */
+    function generateMatrix() {
+      if (parsedColours.length < 2) {
+        logWarn('Cannot generate matrix with fewer than 2 colours');
+        return;
+      }
+
+      logInfo('Generating matrix for', parsedColours.length, 'colours');
+
+      // Calculate all contrast data
+      contrastData = [];
+      parsedColours.forEach(fg => {
+        parsedColours.forEach(bg => {
+          const contrast = calculateContrast(fg.hex, bg.hex);
+          contrastData.push({
+            fg,
+            bg,
+            ...contrast
+          });
+        });
+      });
+
+      // Build table HTML
+      let tableHtml = `
+        <table class="matrix-table" id="contrast-matrix" data-display="rating">
+          <caption>Contrast ratios for ${parsedColours.length} colours. Columns are foreground colours, rows are background colours.</caption>
+          <thead>
+            <tr>
+              <th class="corner-cell" scope="col"></th>
+              <th class="corner-cell" scope="col"></th>
+      `;
+
+      // Column headers (foreground colours)
+      parsedColours.forEach(colour => {
+        tableHtml += `<th scope="col" class="col-header" data-hex="${colour.hex}">${getColourDisplayName(colour)}</th>`;
+      });
+      tableHtml += '</tr><tr><th class="corner-cell"></th><th class="corner-cell"></th>';
+
+      // Column swatches - now decorative with aria-hidden
+      parsedColours.forEach(colour => {
+        tableHtml += `<th scope="col" class="swatch-cell col-swatch" data-hex="${colour.hex}">
+          <span class="colour-swatch" style="background-color: ${colour.hex};" aria-hidden="true"></span>
+        </th>`;
+      });
+      tableHtml += '</tr></thead><tbody>';
+
+      // Data rows
+      parsedColours.forEach(bg => {
+        tableHtml += `<tr class="data-row" data-bg-hex="${bg.hex}">
+          <th scope="row" class="row-header" data-hex="${bg.hex}">${getColourDisplayName(bg)}</th>
+          <td class="swatch-cell row-swatch" data-hex="${bg.hex}">
+            <span class="colour-swatch" style="background-color: ${bg.hex};" aria-hidden="true"></span>
+          </td>`;
+
+        parsedColours.forEach(fg => {
+          const contrast = calculateContrast(fg.hex, bg.hex);
+          const ratingClass = `result-${contrast.rating.toLowerCase()}`;
+          
+          // Cell uses rating background colours for guaranteed contrast
+          // Includes a colour preview strip showing the actual fg/bg combination
+          tableHtml += `<td class="result-cell ${ratingClass}" 
+            data-fg-hex="${fg.hex}" 
+            data-bg-hex="${bg.hex}"
+            data-rating="${contrast.rating.toLowerCase()}">
+            <span class="rating">${contrast.rating}</span>
+            <span class="ratio">${contrast.ratio}:1</span>
+            <span class="colour-preview" style="background: linear-gradient(to right, ${fg.hex} 50%, ${bg.hex} 50%);" aria-hidden="true"></span>
+          </td>`;
+        });
+
+        tableHtml += '</tr>';
+      });
+
+      tableHtml += '</tbody></table>';
+
+      matrixContainer.innerHTML = tableHtml;
+
+      // Show controls section
+      controlsSection.classList.add('visible');
+
+      // Build filter controls
+      buildFilterControls();
+
+      // Reset filter states
+      currentWcagFilter = null;
+      currentCvdSimulation = null;
+      resetFilterBtn.disabled = true;
+      resetFilterBtn.setAttribute('aria-disabled', 'true');
+      resetCvdBtn.disabled = true;
+      resetCvdBtn.setAttribute('aria-disabled', 'true');
+
+      // Update feedback
+      showFeedback('Matrix generated successfully.');
+
+      // Scroll to matrix
+      matrixContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      logInfo('Matrix generated successfully');
+    }
+
+    /**
+     * Builds the column and row filter checkboxes and focus colour buttons
+     */
+    function buildFilterControls() {
+      // Column filters
+      let columnHtml = `
+        <label class="colour-filter-item">
+          <input type="checkbox" checked onchange="toggleAllColumns(this.checked)">
+          Select All
+        </label>
+      `;
+      parsedColours.forEach(colour => {
+        columnHtml += `
+          <label class="colour-filter-item">
+            <input type="checkbox" checked data-hex="${colour.hex}" onchange="toggleColumn('${colour.hex}', this.checked)">
+            <span class="colour-swatch-small" style="background-color: ${colour.hex};" aria-hidden="true"></span>
+            ${colour.name || colour.hex}
+          </label>
+        `;
+      });
+      columnFilters.innerHTML = columnHtml;
+
+      // Row filters
+      let rowHtml = `
+        <label class="colour-filter-item">
+          <input type="checkbox" checked onchange="toggleAllRows(this.checked)">
+          Select All
+        </label>
+      `;
+      parsedColours.forEach(colour => {
+        rowHtml += `
+          <label class="colour-filter-item">
+            <input type="checkbox" checked data-hex="${colour.hex}" onchange="toggleRow('${colour.hex}', this.checked)">
+            <span class="colour-swatch-small" style="background-color: ${colour.hex};" aria-hidden="true"></span>
+            ${colour.name || colour.hex}
+          </label>
+        `;
+      });
+      rowFilters.innerHTML = rowHtml;
+
+      // Focus colour buttons
+      let focusHtml = `
+        <button type="button" class="button button-small button-secondary" onclick="clearFocusColour()">
+          Clear Focus
+        </button>
+      `;
+      parsedColours.forEach(colour => {
+        focusHtml += `
+          <button type="button" class="button button-small button-secondary" onclick="focusColour('${colour.hex}')" style="border-left: 4px solid ${colour.hex};">
+            ${colour.name || colour.hex}
+          </button>
+        `;
+      });
+      focusColourButtons.innerHTML = focusHtml;
+    }
+
+    // =============================================================================
+    // Filter Functions
+    // =============================================================================
+    
+    /**
+     * Applies WCAG level filter
+     * @param {string} minLevel - Minimum level to show ('g', 'aa', 'aaa')
+     */
+    function applyWcagFilter(minLevel) {
+      currentWcagFilter = minLevel;
+      const matrix = document.getElementById('contrast-matrix');
+      if (!matrix) return;
+
+      const cells = matrix.querySelectorAll('.result-cell');
+      const levels = { f: 0, g: 1, aa: 2, aaa: 3 };
+      const minLevelValue = levels[minLevel] || 0;
+
+      cells.forEach(cell => {
+        const rating = cell.dataset.rating;
+        const ratingValue = levels[rating] || 0;
+        
+        if (ratingValue >= minLevelValue) {
+          cell.classList.remove('hidden-cell');
+        } else {
+          cell.classList.add('hidden-cell');
+        }
+      });
+
+      // Enable reset button
+      resetFilterBtn.disabled = false;
+      resetFilterBtn.setAttribute('aria-disabled', 'false');
+
+      const levelNames = { g: 'G, AA, and AAA', aa: 'AA and AAA', aaa: 'AAA' };
+      showFeedback(`Showing ${levelNames[minLevel]} combinations only.`);
+
+      logInfo('WCAG filter applied:', minLevel);
+    }
+
+    /**
+     * Resets the WCAG filter
+     */
+    function resetWcagFilter() {
+      currentWcagFilter = null;
+      const matrix = document.getElementById('contrast-matrix');
+      if (!matrix) return;
+
+      const cells = matrix.querySelectorAll('.result-cell');
+      cells.forEach(cell => {
+        cell.classList.remove('hidden-cell');
+      });
+
+      resetFilterBtn.disabled = true;
+      resetFilterBtn.setAttribute('aria-disabled', 'true');
+
+      showFeedback('WCAG filter reset. Showing all combinations.');
+
+      logInfo('WCAG filter reset');
+    }
+
+    /**
+     * Toggles visibility of a column
+     * @param {string} hex - The colour hex code
+     * @param {boolean} visible - Whether to show or hide
+     */
+    function toggleColumn(hex, visible) {
+      const matrix = document.getElementById('contrast-matrix');
+      if (!matrix) return;
+
+      // Find column index
+      const headers = matrix.querySelectorAll('.col-header');
+      let colIndex = -1;
+      headers.forEach((header, index) => {
+        if (header.dataset.hex === hex) {
+          colIndex = index;
+        }
+      });
+
+      if (colIndex === -1) return;
+
+      // Toggle header
+      headers[colIndex].classList.toggle('hidden-column', !visible);
+
+      // Toggle swatch
+      const swatches = matrix.querySelectorAll('.col-swatch');
+      if (swatches[colIndex]) {
+        swatches[colIndex].classList.toggle('hidden-column', !visible);
+      }
+
+      // Toggle data cells
+      const cells = matrix.querySelectorAll(`.result-cell[data-fg-hex="${hex}"]`);
+      cells.forEach(cell => {
+        cell.classList.toggle('hidden-column', !visible);
+      });
+
+      showFeedback(`Column ${hex} ${visible ? 'shown' : 'hidden'}.`);
+
+      logDebug('Column toggled:', hex, visible);
+    }
+
+    /**
+     * Toggles all columns
+     * @param {boolean} visible - Whether to show or hide all
+     */
+    function toggleAllColumns(visible) {
+      const checkboxes = columnFilters.querySelectorAll('input[data-hex]');
+      checkboxes.forEach(cb => {
+        cb.checked = visible;
+        toggleColumn(cb.dataset.hex, visible);
+      });
+      showFeedback(`All columns ${visible ? 'shown' : 'hidden'}.`);
+    }
+
+    /**
+     * Toggles visibility of a row
+     * @param {string} hex - The colour hex code
+     * @param {boolean} visible - Whether to show or hide
+     */
+    function toggleRow(hex, visible) {
+      const matrix = document.getElementById('contrast-matrix');
+      if (!matrix) return;
+
+      const row = matrix.querySelector(`.data-row[data-bg-hex="${hex}"]`);
+      if (row) {
+        row.classList.toggle('hidden-row', !visible);
+      }
+
+      showFeedback(`Row ${hex} ${visible ? 'shown' : 'hidden'}.`);
+
+      logDebug('Row toggled:', hex, visible);
+    }
+
+    /**
+     * Toggles all rows
+     * @param {boolean} visible - Whether to show or hide all
+     */
+    function toggleAllRows(visible) {
+      const checkboxes = rowFilters.querySelectorAll('input[data-hex]');
+      checkboxes.forEach(cb => {
+        cb.checked = visible;
+        toggleRow(cb.dataset.hex, visible);
+      });
+      showFeedback(`All rows ${visible ? 'shown' : 'hidden'}.`);
+    }
+
+    /**
+     * Focuses on a specific colour, highlighting its row and column
+     * @param {string} hex - The colour hex code to focus
+     */
+    function focusColour(hex) {
+      const matrix = document.getElementById('contrast-matrix');
+      if (!matrix) return;
+
+      // Clear previous focus
+      clearFocusColour(false);
+
+      // Highlight column header and swatch
+      const colHeaders = matrix.querySelectorAll('.col-header');
+      const colSwatches = matrix.querySelectorAll('.col-swatch');
+      colHeaders.forEach((header, index) => {
+        if (header.dataset.hex === hex) {
+          header.classList.add('focus-highlight');
+          if (colSwatches[index]) {
+            colSwatches[index].classList.add('focus-highlight');
+          }
+        }
+      });
+
+      // Highlight row
+      const row = matrix.querySelector(`.data-row[data-bg-hex="${hex}"]`);
+      if (row) {
+        row.classList.add('focus-highlight');
+      }
+
+      // Hide rows that don't have any passing contrast with this colour
+      const rows = matrix.querySelectorAll('.data-row');
+      rows.forEach(row => {
+        const bgHex = row.dataset.bgHex;
+        // Check if any cell in this row with focus colour as FG passes
+        const cell = row.querySelector(`.result-cell[data-fg-hex="${hex}"]`);
+        if (cell) {
+          const rating = cell.dataset.rating;
+          if (rating === 'f') {
+            // Also check if this row as BG with focus colour as FG passes elsewhere
+            const focusCell = matrix.querySelector(`.result-cell[data-fg-hex="${bgHex}"][data-bg-hex="${hex}"]`);
+            if (focusCell && focusCell.dataset.rating === 'f') {
+              row.classList.add('hidden-row');
+            }
+          }
+        }
+      });
+
+      const colour = parsedColours.find(c => c.hex === hex);
+      const displayName = colour ? getColourDisplayName(colour) : hex;
+      showFeedback(`Focused on ${displayName}. Non-contrasting colours hidden.`);
+
+      logInfo('Focus colour set:', hex);
+    }
+
+    /**
+     * Clears the focus colour
+     * @param {boolean} announce - Whether to announce the change
+     */
+    function clearFocusColour(announce = true) {
+      const matrix = document.getElementById('contrast-matrix');
+      if (!matrix) return;
+
+      // Remove all focus highlights
+      matrix.querySelectorAll('.focus-highlight').forEach(el => {
+        el.classList.remove('focus-highlight');
+      });
+
+      // Show all rows
+      matrix.querySelectorAll('.data-row.hidden-row').forEach(row => {
+        row.classList.remove('hidden-row');
+      });
+
+      // Reset row filter checkboxes
+      const rowCheckboxes = rowFilters.querySelectorAll('input[data-hex]');
+      rowCheckboxes.forEach(cb => {
+        cb.checked = true;
+      });
+
+      if (announce) {
+        showFeedback('Focus cleared. All colours shown.');
+      }
+
+      logInfo('Focus colour cleared');
+    }
+
+    // =============================================================================
+    // Display Mode
+    // =============================================================================
+    
+    /**
+     * Sets the display mode for the matrix
+     * @param {string} mode - 'rating', 'ratio', or 'both'
+     */
+    function setDisplayMode(mode) {
+      const matrix = document.getElementById('contrast-matrix');
+      if (!matrix) return;
+
+      matrix.dataset.display = mode;
+
+      const modeNames = { rating: 'Rating', ratio: 'Ratio', both: 'Rating and Ratio' };
+      showFeedback(`Display mode changed to: ${modeNames[mode]}.`);
+
+      logInfo('Display mode set:', mode);
+    }
+
+    // =============================================================================
+    // CVD Simulation
+    // =============================================================================
+    
+    /**
+     * Applies a colour vision deficiency simulation
+     * @param {string} type - 'protanopia', 'deuteranopia', or 'tritanopia'
+     */
+    function applyCvdSimulation(type) {
+      // Remove any existing CVD class
+      document.body.classList.remove('cvd-protanopia', 'cvd-deuteranopia', 'cvd-tritanopia');
+      
+      // Apply new CVD class
+      document.body.classList.add(`cvd-${type}`);
+      currentCvdSimulation = type;
+
+      // Enable reset button
+      resetCvdBtn.disabled = false;
+      resetCvdBtn.setAttribute('aria-disabled', 'false');
+
+      const typeNames = {
+        protanopia: 'Protanopia (red-blind)',
+        deuteranopia: 'Deuteranopia (green-blind)',
+        tritanopia: 'Tritanopia (blue-blind)'
+      };
+      showFeedback(`Simulating ${typeNames[type]}.`);
+
+      logInfo('CVD simulation applied:', type);
+    }
+
+    /**
+     * Resets CVD simulation
+     */
+    function resetCvdSimulation() {
+      document.body.classList.remove('cvd-protanopia', 'cvd-deuteranopia', 'cvd-tritanopia');
+      currentCvdSimulation = null;
+
+      resetCvdBtn.disabled = true;
+      resetCvdBtn.setAttribute('aria-disabled', 'true');
+
+      showFeedback('Colour vision simulation reset to trichromacy.');
+
+      logInfo('CVD simulation reset');
+    }
+
+    // =============================================================================
+    // Theme Toggle
+    // =============================================================================
+    
+    /**
+     * Toggles dark/light mode
+     */
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const currentTheme = html.dataset.theme;
+
+      if (currentTheme === 'dark') {
+        html.dataset.theme = 'light';
+        showFeedback('Light mode enabled.');
+      } else if (currentTheme === 'light') {
+        html.removeAttribute('data-theme');
+        showFeedback('System theme preference enabled.');
+      } else {
+        html.dataset.theme = 'dark';
+        showFeedback('Dark mode enabled.');
+      }
+
+      logInfo('Theme toggled:', html.dataset.theme || 'system');
+    }
+
+    // =============================================================================
+    // Table Sizing
+    // =============================================================================
+    
+    /**
+     * Fits the table to the page width
+     */
+    function fitTableToPage() {
+      matrixContainer.classList.add('fit-to-page');
+      showFeedback('Table fitted to page width.');
+      logInfo('Table fitted to page');
+    }
+
+    /**
+     * Shows the table at full size
+     */
+    function fullSizeTable() {
+      matrixContainer.classList.remove('fit-to-page');
+      showFeedback('Table displayed at full size.');
+      logInfo('Table set to full size');
+    }
+
+    // =============================================================================
+    // CSV Export
+    // =============================================================================
+    
+    /**
+     * Exports the contrast data as CSV
+     */
+    function exportCsv() {
+      if (contrastData.length === 0) {
+        showFeedback('No data to export. Generate a matrix first.');
+        return;
+      }
+
+      const headers = ['Foreground Name', 'Foreground Hex', 'Background Name', 'Background Hex', 'Contrast Ratio', 'WCAG Rating'];
+      const rows = contrastData.map(item => [
+        item.fg.name || '',
+        item.fg.hex,
+        item.bg.name || '',
+        item.bg.hex,
+        `${item.ratio}:1`,
+        item.rating
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'colour-contrast-matrix.csv';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showFeedback('CSV file downloaded.');
+
+      logInfo('CSV exported');
+    }
+
+    // =============================================================================
+    // Utility Functions
+    // =============================================================================
+    
+    /**
+     * Shows feedback in the live region
+     * @param {string} message - The message to display
+     */
+    function showFeedback(message) {
+      liveFeedback.textContent = message;
+      
+      // Clear after 5 seconds
+      setTimeout(() => {
+        if (liveFeedback.textContent === message) {
+          liveFeedback.textContent = '';
+        }
+      }, 5000);
+    }
+
+    /**
+     * Loads the example palette into the textarea
+     */
+    function loadExamplePalette() {
+      colourInput.value = EXAMPLE_PALETTE;
+      updateValidation();
+      showFeedback('Example palette loaded.');
+      logInfo('Example palette loaded');
+    }
+
+    /**
+     * Resets the page
+     */
+    function resetPage() {
+      location.reload();
+    }
+
+    // =============================================================================
+    // Event Listeners
+    // =============================================================================
+    
+    // Validate input on change
+    colourInput.addEventListener('input', updateValidation);
+
+    // Initial validation
+    updateValidation();
+
+    logInfo('Colour Palette Accessibility Matrix initialised');
+  </script>
+</body>
+</html>
