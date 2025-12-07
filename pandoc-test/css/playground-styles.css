@@ -551,6 +551,25 @@ label:has(.coffee-icon) {
   position: relative;
 }
 
+/* Processing state - dramatic multi-layer animation */
+.status-progress-bar.processing {
+  animation: progress-pulse 1.2s ease-in-out infinite,
+    progress-glow 1.2s ease-in-out infinite,
+    progress-wave 3s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+
+/* Add shimmer overlay during processing */
+.status-progress-bar.processing::after {
+  animation: intensive-shimmer 1.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+}
+
 .status-progress-bar::after {
   content: "";
   position: absolute;
@@ -1711,6 +1730,61 @@ mjx-container:focus-visible {
   }
 }
 
+/* Pulse animation for intensive processing - dramatic visibility */
+@keyframes progress-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 0.7;
+    filter: brightness(1.5) saturate(1.4);
+    transform: scaleY(1.15);
+  }
+}
+
+/* Breathing glow effect - dramatic multi-colour halo */
+@keyframes progress-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 4px var(--link-color);
+  }
+  33% {
+    box-shadow: 0 0 16px var(--link-hover), 0 0 24px var(--success-color);
+  }
+  66% {
+    box-shadow: 0 0 16px var(--success-color), 0 0 24px var(--link-color);
+  }
+}
+
+/* Colour wave animation - shifts through theme colours */
+@keyframes progress-wave {
+  0% {
+    background: linear-gradient(90deg, var(--link-color), var(--link-hover));
+  }
+  33% {
+    background: linear-gradient(90deg, var(--link-hover), var(--success-color));
+  }
+  66% {
+    background: linear-gradient(90deg, var(--success-color), var(--link-color));
+  }
+  100% {
+    background: linear-gradient(90deg, var(--link-color), var(--link-hover));
+  }
+}
+
+/* Moving shimmer effect - travels across the bar */
+@keyframes intensive-shimmer {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 /* Accessibility - respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .processing-overlay,
@@ -2389,7 +2463,9 @@ h4:hover .check-icon {
   .spinning,
   .spinner,
   .status-icon.loading,
-  .status-progress-bar::after {
+  .status-progress-bar::after,
+  .status-progress-bar.processing,
+  .status-progress-bar.processing::after {
     animation: none;
   }
 

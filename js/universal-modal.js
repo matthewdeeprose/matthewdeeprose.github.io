@@ -665,6 +665,11 @@ const UniversalModal = (function () {
         if (heading) heading.focus();
       });
 
+      // Notify other components (like toggletips) that a modal has opened
+      document.dispatchEvent(
+        new CustomEvent("modalOpened", { detail: { modalId } })
+      );
+
       logInfo(`Modal ${modalId} displayed with enhanced positioning`);
     }
 

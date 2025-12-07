@@ -5,7 +5,7 @@ html {
 :not(pre) > code {
   padding: 0.125em 0.25em;
   border-radius: 3px;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
   font-size: 0.9em;
   font-weight: 600;
 }
@@ -667,7 +667,7 @@ mark {
 .code-copy-button {
   position: absolute;
   top: 5px;
-  right: 5px;
+  right: 20px;
   display: flex;
   align-items: center;
   gap: 5px;

@@ -671,14 +671,4 @@
     P8_07: testP8_07_OnStatusChangeCallback,
     P8_08: testP8_08_IntegrationWithOpenRouterEmbed,
   };
-
-  // ============================================================================
-  // INITIALIZATION LOG
-  // ============================================================================
-
-  console.log("");
-  console.log("Stage 6 Phase 8 Test Suite loaded");
-  console.log("Run tests with: await runAllStage6Phase8Tests()");
-  console.log("Run single test: await runPhase8Test('P8-01')");
-  console.log("");
 })();

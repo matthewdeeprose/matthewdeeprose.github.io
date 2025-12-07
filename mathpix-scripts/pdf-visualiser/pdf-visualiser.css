@@ -468,3 +468,39 @@
 .pdf-vis-container.pdf-vis--fullscreen .pdf-vis-toggle--fullscreen-only {
   display: inline-flex;
 }
+
+/* Legend heading styling (dt used as heading in dl) */
+.pdf-vis-legend-heading {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  grid-column: 1 / -1; /* Span full width if using grid */
+}
+
+/* Remove colon from dt since we're not using label:value pattern inline */
+.pdf-vis-stats-summary dt::after {
+  content: none;
+}
+/* =============================================================================
+   SEMANTIC DEFINITION LIST STYLING
+   ============================================================================= */
+
+/* Legend heading (first dt in the dl) */
+.pdf-vis-legend-heading {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Legend item dt contains swatch and label */
+.pdf-vis-legend-item dt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+/* Legend item dd is the count */
+.pdf-vis-legend-item dd {
+  margin: 0;
+}

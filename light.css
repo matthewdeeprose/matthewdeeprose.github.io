@@ -1100,25 +1100,13 @@ pre[class*="language-"] {
   border-bottom: 1px solid #00131d;
 }
 
-.mathpix-copy-btn,
-.mathpix-download-btn,
-.mathpix-preview-btn {
-  background: #fffff4;
-  color: #00131d;
-  border: 2px solid #00131d;
-}
-
-.mathpix-copy-btn:hover,
-.mathpix-download-btn:hover,
-.mathpix-preview-btn:hover {
-  background: #005c84;
-  color: #fffff4;
-  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.2);
-}
-
 .mathpix-html-preview-area {
   background: #fffff4;
   border: 1px solid #00131d;
+}
+
+.mmd-preview-container {
+  background: #fffdf9;
 }
 
 .mathpix-preview-frame {

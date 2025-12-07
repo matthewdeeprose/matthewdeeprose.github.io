@@ -127,6 +127,16 @@ const MarkdownCodeCopy = (function () {
       return;
     }
 
+    // Skip if this code block is inside the MMD code container
+    // MMD panel has export buttons (Copy/Download) in the UI header
+    const mmdContainer = preElement.closest("#mmd-code-container");
+    if (mmdContainer) {
+      logDebug(
+        `Skipping code block at index ${index} - inside MMD code container`
+      );
+      return;
+    }
+
     // Skip if already processed
     if (preElement.querySelector(`.${config.buttonClass}`)) {
       logDebug(`Skipping code block at index ${index} - already processed`);
@@ -183,7 +193,19 @@ const MarkdownCodeCopy = (function () {
    * @param {HTMLElement} button - Copy button element
    */
   function copyCodeToClipboard(preElement, button) {
-    const code = preElement.dataset.originalCode;
+    // Try stored original code first, fall back to current textContent
+    let code = preElement.dataset.originalCode;
+
+    // If original code is empty, get current content from the code element
+    // This handles cases where content is populated after button was added
+    if (!code) {
+      const codeElement = preElement.querySelector("code");
+      if (codeElement) {
+        code = codeElement.textContent;
+        logDebug("Using current textContent as original code was empty");
+      }
+    }
+
     if (!code) {
       logWarn("No code content found to copy");
       return;

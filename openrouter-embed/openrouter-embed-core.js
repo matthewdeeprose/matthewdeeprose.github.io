@@ -3947,32 +3947,4 @@ class OpenRouterEmbed {
 
 window.OpenRouterEmbed = OpenRouterEmbed;
 
-// ============================================================================
-// INITIALIZATION LOG
-// ============================================================================
-
-logInfo("OpenRouter Embed API - Stage 3 (with Streaming) loaded successfully");
-logInfo("");
-logInfo("Core Features:");
-logInfo("  - sendRequest() - Standard non-streaming requests");
-logInfo("  - sendStreamingRequest() - Real-time streaming responses");
-logInfo("  - attachFile() - Attach images or PDFs to requests");
-logInfo("  - cancelStreaming() - Cancel active streaming requests");
-logInfo("");
-logInfo("Test Suites (load separate test files):");
-logInfo(
-  "  - openrouter-embed-stage1-tests.js - Stage 1 core functionality tests"
-);
-logInfo("  - openrouter-embed-stage3-tests.js - Stage 3 streaming tests");
-logInfo("Available test commands:");
-logInfo("  - window.testEmbedStage1_All() - Run all Stage 1 tests");
-logInfo(
-  "  - window.testEmbedStage3_All() - Run all Stage 3 tests (requires openrouter-embed-stage3-tests.js)"
-);
-logInfo("");
-logInfo("Stage 3 adds streaming support:");
-logInfo("  - sendStreamingRequest() - Stream responses in real-time");
-logInfo("  - cancelStreaming() - Cancel active streams");
-logInfo("  - Full callback support (onChunk, onComplete, onError)");
-
 export { OpenRouterEmbed };

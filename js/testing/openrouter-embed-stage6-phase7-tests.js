@@ -761,7 +761,4 @@
   window.testP7_08_MaxSizeEnforced = testP7_08_MaxSizeEnforced;
   window.testP7_09_OnQueueChangeCallback = testP7_09_OnQueueChangeCallback;
   window.testP7_10_Integration = testP7_10_Integration;
-
-  console.log("[Phase 7 Tests] Stage 6 Phase 7 tests loaded");
-  console.log("[Phase 7 Tests] Run: await runAllStage6Phase7Tests()");
 })();

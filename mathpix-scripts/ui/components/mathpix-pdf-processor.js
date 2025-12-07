@@ -100,6 +100,87 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+/**
+ * @function getNetworkErrorInfo
+ * @description Translates network errors into user-friendly messages
+ * @param {Error} error - The caught error
+ * @returns {Object} Object with userMessage, technicalDetail, isRetryable, and suggestedAction
+ * @private
+ * @since 4.2.1
+ */
+function getNetworkErrorInfo(error) {
+  const errorString = error?.message?.toLowerCase() || "";
+  const errorName = error?.name?.toLowerCase() || "";
+
+  // DNS resolution failure / network unreachable
+  if (
+    errorString.includes("failed to fetch") ||
+    errorString.includes("networkerror") ||
+    errorString.includes("err_name_not_resolved") ||
+    errorString.includes("err_internet_disconnected")
+  ) {
+    return {
+      userMessage:
+        "Unable to connect to the MathPix server. Please check your internet connection and try again.",
+      technicalDetail: "Network connection failed",
+      isRetryable: true,
+      suggestedAction: "Check your internet connection, then click 'Try Again'",
+      errorType: "network",
+    };
+  }
+
+  // Timeout errors
+  if (errorString.includes("timeout") || errorString.includes("timed out")) {
+    return {
+      userMessage:
+        "The request took too long to complete. The server may be busy.",
+      technicalDetail: "Request timeout",
+      isRetryable: true,
+      suggestedAction: "Please wait a moment and try again",
+      errorType: "timeout",
+    };
+  }
+
+  // CORS or blocked requests
+  if (errorString.includes("cors") || errorString.includes("blocked")) {
+    return {
+      userMessage:
+        "Unable to reach the MathPix server. This may be a temporary issue.",
+      technicalDetail: "Request blocked",
+      isRetryable: true,
+      suggestedAction: "Try refreshing the page",
+      errorType: "blocked",
+    };
+  }
+
+  // Browser offline
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return {
+      userMessage:
+        "You appear to be offline. Please check your internet connection.",
+      technicalDetail: "Browser offline",
+      isRetryable: true,
+      suggestedAction: "Reconnect to the internet and try again",
+      errorType: "offline",
+    };
+  }
+
+  // Generic fetch/network error
+  if (errorName === "typeerror" && errorString.includes("fetch")) {
+    return {
+      userMessage:
+        "A network error occurred. Please check your connection and try again.",
+      technicalDetail: error.message,
+      isRetryable: true,
+      suggestedAction: "Check your internet connection",
+      errorType: "network",
+    };
+  }
+
+  // Not a network error - return null to use default handling
+  return null;
+}
+
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
 
@@ -763,6 +844,39 @@ class MathPixPDFProcessor extends MathPixBaseModule {
 
         await new Promise((resolve) => setTimeout(resolve, waitTime));
       } catch (error) {
+        // Check for network-specific errors and enhance the message
+        const networkErrorInfo = getNetworkErrorInfo(error);
+
+        if (networkErrorInfo) {
+          logError("PDF status polling network error", {
+            pdfId,
+            pollCount: this.pollCount,
+            errorType: networkErrorInfo.errorType,
+            technicalDetail: networkErrorInfo.technicalDetail,
+          });
+
+          // Create enhanced error with user-friendly message
+          const enhancedError = new Error(networkErrorInfo.userMessage);
+          enhancedError.isRetryable = networkErrorInfo.isRetryable;
+          enhancedError.suggestedAction = networkErrorInfo.suggestedAction;
+          enhancedError.originalError = error;
+          enhancedError.errorType = networkErrorInfo.errorType;
+
+          // Notify progress callback of error
+          if (
+            progressCallback &&
+            typeof progressCallback.handleError === "function"
+          ) {
+            progressCallback.handleError(
+              enhancedError,
+              `during status polling (poll ${this.pollCount})`
+            );
+          }
+
+          throw enhancedError;
+        }
+
+        // Non-network error - use original handling
         logError("PDF status polling error occurred", {
           pdfId,
           pollCount: this.pollCount,
@@ -955,6 +1069,22 @@ class MathPixPDFProcessor extends MathPixBaseModule {
       pollCount: this.pollCount,
     });
 
+    // Check if this is an enhanced error from network detection
+    if (error.isRetryable !== undefined && error.suggestedAction) {
+      // Use the pre-classified error information
+      const fullMessage = `${error.message} ${error.suggestedAction}`;
+      this.showNotification(fullMessage, "warning");
+
+      logWarn("PDF processing network error handled", {
+        errorType: error.errorType || "network",
+        userMessage: error.message,
+        suggestedAction: error.suggestedAction,
+        isRetryable: error.isRetryable,
+        context,
+      });
+      return;
+    }
+
     // Classify error types for appropriate user messaging
     let userMessage = "PDF processing failed";
     let errorType = "error";
@@ -972,14 +1102,17 @@ class MathPixPDFProcessor extends MathPixBaseModule {
         "Try again - processing times can vary",
       ];
     } else if (
+      error.message.includes("Unable to connect") ||
       error.message.includes("network") ||
-      error.message.includes("fetch")
+      error.message.includes("fetch") ||
+      error.message.includes("offline")
     ) {
+      // Enhanced network error detection
       userMessage = "Network connection issue during processing";
       errorType = "warning";
       suggestedActions = [
-        "Check your internet connection",
-        "Try processing again",
+        "Check your internet connection and try again",
+        "This is often a temporary issue - please retry",
         "Consider using fewer output formats if the connection is slow",
       ];
     } else if (

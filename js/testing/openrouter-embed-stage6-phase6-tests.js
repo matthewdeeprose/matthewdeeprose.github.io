@@ -698,7 +698,4 @@
   window.testP6_06 = testP6_06_RequestTransformation;
   window.testP6_07 = testP6_07_ContextPassed;
   window.testP6_08 = testP6_08_Integration;
-
-  console.log("[Phase 6 Tests] Stage 6 Phase 6 test suite loaded");
-  console.log("[Phase 6 Tests] Run: await runAllStage6Phase6Tests()");
 })();

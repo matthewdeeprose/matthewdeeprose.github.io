@@ -103,6 +103,85 @@ import MATHPIX_CONFIG, {
 } from "./mathpix-config.js";
 
 /**
+ * Translate network errors into user-friendly messages
+ * @param {Error} error - The caught error
+ * @returns {Object} Object with userMessage and isRetryable flag
+ * @since 4.2.1
+ */
+function getNetworkErrorMessage(error) {
+  const errorString = error?.message?.toLowerCase() || "";
+  const errorName = error?.name?.toLowerCase() || "";
+
+  // DNS resolution failure
+  if (
+    errorString.includes("failed to fetch") ||
+    errorString.includes("networkerror") ||
+    errorString.includes("err_name_not_resolved")
+  ) {
+    return {
+      userMessage:
+        "Unable to connect to the MathPix server. Please check your internet connection and try again.",
+      technicalDetail: "Network connection failed",
+      isRetryable: true,
+      suggestedAction: 'Check your internet connection, then click "Try Again"',
+    };
+  }
+
+  // Timeout
+  if (errorString.includes("timeout") || errorString.includes("timed out")) {
+    return {
+      userMessage:
+        "The request took too long to complete. The server may be busy.",
+      technicalDetail: "Request timeout",
+      isRetryable: true,
+      suggestedAction: "Please wait a moment and try again",
+    };
+  }
+
+  // CORS or blocked
+  if (errorString.includes("cors") || errorString.includes("blocked")) {
+    return {
+      userMessage:
+        "Unable to reach the MathPix server. This may be a temporary issue.",
+      technicalDetail: "Request blocked",
+      isRetryable: true,
+      suggestedAction: "Try refreshing the page",
+    };
+  }
+
+  // Offline
+  if (!navigator.onLine) {
+    return {
+      userMessage:
+        "You appear to be offline. Please check your internet connection.",
+      technicalDetail: "Browser offline",
+      isRetryable: true,
+      suggestedAction: "Reconnect to the internet and try again",
+    };
+  }
+
+  // Generic network error
+  if (errorName === "typeerror" && errorString.includes("fetch")) {
+    return {
+      userMessage:
+        "A network error occurred. Please check your connection and try again.",
+      technicalDetail: error.message,
+      isRetryable: true,
+      suggestedAction: "Check your internet connection",
+    };
+  }
+
+  // Unknown error - return original
+  return {
+    userMessage: `An error occurred: ${error.message}`,
+    technicalDetail: error.message,
+    isRetryable: false,
+    suggestedAction:
+      "Please try again or contact support if the issue persists",
+  };
+}
+
+/**
  * @class MathPixAPIClient
  * @description Main API client for MathPix mathematical content recognition services.
  *
@@ -1779,8 +1858,22 @@ class MathPixAPIClient {
 
       return statusResult;
     } catch (error) {
-      logError("PDF status check request failed", error);
-      throw new Error(`Status check failed: ${error.message}`);
+      const networkError = getNetworkErrorMessage(error);
+
+      logError("PDF status check request failed", {
+        userMessage: networkError.userMessage,
+        technical: networkError.technicalDetail,
+        isRetryable: networkError.isRetryable,
+        originalError: error,
+      });
+
+      // Create enhanced error with user-friendly message
+      const enhancedError = new Error(networkError.userMessage);
+      enhancedError.isRetryable = networkError.isRetryable;
+      enhancedError.suggestedAction = networkError.suggestedAction;
+      enhancedError.originalError = error;
+
+      throw enhancedError;
     }
   }
 

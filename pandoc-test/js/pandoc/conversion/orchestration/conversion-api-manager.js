@@ -100,6 +100,11 @@ const ConversionAPIManager = (function () {
         return conversionManager.cleanPandocOutput(output);
       },
 
+      // LaTeX preservation (required by ConversionOrchestrator)
+      extractAndMapLatexExpressions(content) {
+        return conversionManager.extractAndMapLatexExpressions(content);
+      },
+
       // Direct Pandoc function access for enhanced exports
       pandocFunction(args, input) {
         if (!conversionManager.pandocFunction) {

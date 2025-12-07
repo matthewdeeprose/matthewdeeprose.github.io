@@ -767,6 +767,188 @@ const MATHPIX_CONFIG = {
   DEFAULT_DELIMITER_PRESET: "markdown",
 
   /**
+   * @memberof MATHPIX_CONFIG
+   * @type {Object}
+   * @description MMD Preview System configuration for rendered preview of Mathpix Markdown
+   *
+   * Provides configuration for the CDN-based mathpix-markdown-it library integration,
+   * view mode management, and future extensibility for split view and edit modes.
+   *
+   * @property {Object} CDN - CDN configuration for mathpix-markdown-it library
+   * @property {Object} RENDER_OPTIONS - Options passed to markdownToHTML() function
+   * @property {Object} VIEW_MODES - View mode constants
+   * @property {Object} DEFAULTS - Default settings
+   * @property {Object} FEATURES - Feature flags for staged rollout
+   * @property {Object} MESSAGES - User-facing messages (British spelling)
+   * @property {Object} ARIA - Accessibility configuration
+   * @property {Object} LOAD_STATES - Load state constants
+   *
+   * @example
+   * // Check if preview is enabled
+   * if (MATHPIX_CONFIG.MMD_PREVIEW.FEATURES.PREVIEW_ENABLED) {
+   *   // Load preview renderer
+   * }
+   *
+   * @since 4.0.0
+   */
+  MMD_PREVIEW: {
+    /**
+     * CDN Configuration for mathpix-markdown-it library
+     * @type {Object}
+     */
+    CDN: {
+      URL: "https://cdn.jsdelivr.net/npm/mathpix-markdown-it@2.0.6/es5/bundle.js",
+      VERSION: "2.0.6",
+      LOAD_TIMEOUT: 15000, // 15 seconds
+    },
+
+    /**
+     * Options passed to markdownToHTML() function
+     * @type {Object}
+     */
+    RENDER_OPTIONS: {
+      htmlTags: true,
+    },
+
+    /**
+     * View mode constants
+     * @type {Object}
+     */
+    VIEW_MODES: {
+      CODE: "code",
+      PREVIEW: "preview",
+      SPLIT: "split", // Phase 4.1: Side-by-side code and preview
+      PDF_SPLIT: "pdf_split", // Phase 4.2: PDF comparison view
+      EDIT: "edit", // Future: Live editing mode
+    },
+
+    /**
+     * Default settings
+     * @type {Object}
+     */
+    DEFAULTS: {
+      INITIAL_VIEW: "code",
+      SPLIT_RATIO: 50, // Future: percentage for split view
+      MAX_RETRY_ATTEMPTS: 3,
+    },
+
+    /**
+     * Feature flags for staged rollout
+     * @type {Object}
+     */
+    FEATURES: {
+      PREVIEW_ENABLED: true,
+      SPLIT_VIEW_ENABLED: true, // Phase 4.1: Enabled
+      EDIT_MODE_ENABLED: false, // Future: Phase 4.3
+      PDF_COMPARISON_ENABLED: true, // Phase 4.2: Enabled
+    },
+
+    /**
+     * Split view configuration
+     * Controls the side-by-side code/preview display
+     * @type {Object}
+     * @since 4.1.0
+     */
+    SPLIT_VIEW: {
+      DEFAULT_RATIO: 0.5, // 50/50 split
+      MIN_PANE_WIDTH: 200, // Minimum pane width in pixels
+      MOBILE_BREAKPOINT: 768, // Stack vertically below this width
+      DIVIDER_WIDTH: 1, // Divider line width in pixels
+      // Future extension hooks
+      ENABLE_RESIZE: false, // Drag to resize (future)
+      ENABLE_SCROLL_SYNC: false, // Sync scrolling (future)
+      ENABLE_COLLAPSE: false, // Double-click collapse (future)
+    },
+
+    /**
+     * Edit mode configuration (future Phase 4.2)
+     * Controls live editing behaviour
+     * @type {Object}
+     * @since 4.1.0
+     */
+    EDIT_MODE: {
+      ENABLED: false, // Master toggle (future)
+      DEBOUNCE_MS: 500, // Preview update delay
+      WARN_ON_NAVIGATE: true, // Show unsaved warning
+      AUTO_SAVE: false, // Auto-save to localStorage
+    },
+
+    /**
+     * Keyboard shortcuts configuration (future extension)
+     * @type {Object}
+     * @since 4.1.0
+     */
+    KEYBOARD_SHORTCUTS: {
+      ENABLED: false, // Master toggle (future)
+      VIEW_CODE: "Ctrl+1",
+      VIEW_PREVIEW: "Ctrl+2",
+      VIEW_SPLIT: "Ctrl+3",
+      TOGGLE_EDIT: "Ctrl+E",
+      FULL_SCREEN: "F11",
+    },
+
+    /**
+     * User-facing messages (British spelling)
+     * @type {Object}
+     */
+    MESSAGES: {
+      LOADING: "Loading preview renderer...",
+      LOAD_SUCCESS: "Preview renderer ready",
+      LOAD_ERROR: "Failed to load preview renderer",
+      LOAD_TIMEOUT: "Preview renderer timed out",
+      RENDER_ERROR: "Failed to render preview",
+      RETRY_PROMPT: "Click to retry loading",
+      NO_CONTENT: "No MMD content available to preview",
+      RETRY_ATTEMPT: "Retrying... (attempt {current} of {max})",
+      // Split view messages (Phase 4.1)
+      SPLIT_VIEW: "Viewing code and preview",
+      PDF_SPLIT_VIEW: "Comparing PDF and preview",
+      // Edit mode messages (future)
+      UNSAVED_WARNING:
+        "You have unsaved changes. Are you sure you want to leave?",
+      EDIT_MODE_ON: "Edit mode enabled",
+      EDIT_MODE_OFF: "Edit mode disabled",
+    },
+
+    /**
+     * Accessibility configuration
+     * @type {Object}
+     */
+    ARIA: {
+      VIEW_TOGGLE_LABEL: "MMD view options",
+      CODE_VIEW_LABEL: "View raw MMD code",
+      PREVIEW_VIEW_LABEL: "View rendered preview",
+      SPLIT_VIEW_LABEL: "View code and preview side by side",
+      EDIT_VIEW_LABEL: "Edit MMD with live preview",
+      LOADING_ANNOUNCEMENT: "Loading preview renderer, please wait",
+      LOADED_ANNOUNCEMENT: "Preview renderer loaded successfully",
+      ERROR_ANNOUNCEMENT: "Preview renderer failed to load",
+      VIEW_CHANGED_ANNOUNCEMENT: "Now viewing {view}",
+      RETRY_ANNOUNCEMENT: "Retrying preview load",
+      // Split view ARIA labels (Phase 4.1)
+      SPLIT_VIEW: "Split view showing code and preview side by side",
+      SPLIT_BUTTON: "Split view",
+      CODE_PANE: "Code pane",
+      PREVIEW_PANE: "Preview pane",
+      DIVIDER: "Resize divider between code and preview panes",
+      // PDF comparison ARIA labels (Phase 4.2)
+      PDF_SPLIT_VIEW:
+        "PDF comparison view showing original PDF and rendered preview",
+    },
+
+    /**
+     * Load state constants (for internal use)
+     * @type {Object}
+     */
+    LOAD_STATES: {
+      IDLE: "idle",
+      LOADING: "loading",
+      READY: "ready",
+      ERROR: "error",
+    },
+  },
+
+  /**
    * Get format information for a given MIME type
    * @param {string} mimeType - MIME type to look up
    * @returns {Object|null} Format metadata or null

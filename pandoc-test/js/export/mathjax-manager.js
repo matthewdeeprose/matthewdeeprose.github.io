@@ -16,7 +16,7 @@ const MathJaxManager = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -631,6 +631,15 @@ const MathJaxManager = (function () {
       const environments = [];
 
       try {
+        // DIAGNOSTIC: Log call stack to find duplicate callers
+        const callStack = new Error().stack;
+        logInfo(
+          "=== parseSourceEnvironments: Starting environment detection ==="
+        );
+        logDebug(
+          "Called from stack:",
+          callStack.split("\n").slice(1, 4).join("\n")
+        );
         // STEP 1: Strip document structure (preamble and document wrapper)
         // This prevents the regex from matching \begin{document}...\end{document}
         let cleanLatex = sourceLatex;
@@ -642,17 +651,27 @@ const MathJaxManager = (function () {
         if (docMatch) {
           cleanLatex = docMatch[1];
           logDebug("✅ Stripped document wrapper, processing body only");
+          logDebug(`   Document body length: ${cleanLatex.length} characters`);
+        } else {
+          logDebug("ℹ️  No document wrapper found, processing entire input");
         }
 
         // STEP 2: Match ONLY math environments (not document/section/figure/etc)
-        // Supported: align, align*, gather, gather*, equation, multline, flalign, alignat
-        // This prevents capturing structural LaTeX elements
+        // Supported: align, align*, gather, gather*, equation, equation*, multline, flalign, alignat
+        // CRITICAL FIX: Added \*? to equation to match equation*
         const mathEnvPattern =
-          /\\begin\{(align\*?|gather\*?|equation|multline\*?|flalign\*?|alignat\*?)\}([\s\S]*?)\\end\{\1\}/g;
+          /\\begin\{(align\*?|gather\*?|equation\*?|multline\*?|flalign\*?|alignat\*?)\}([\s\S]*?)\\end\{\1\}/g;
+
+        logDebug("🔍 Scanning for math environments with pattern:");
+        logDebug(
+          "   align|align*|gather|gather*|equation|equation*|multline|multline*|flalign|flalign*|alignat|alignat*"
+        );
 
         let match;
+        let matchCount = 0;
         while ((match = mathEnvPattern.exec(cleanLatex)) !== null) {
-          const envName = match[1]; // e.g., 'align', 'align*', 'gather'
+          matchCount++;
+          const envName = match[1]; // e.g., 'align', 'align*', 'equation*'
           const content = match[2].trim(); // Inner content
 
           // Enhanced normalization for reliable matching
@@ -668,14 +687,35 @@ const MathJaxManager = (function () {
             normalized: normalized,
           });
 
+          const isNumbered = !envName.endsWith("*");
+          const numberStatus = isNumbered ? "NUMBERED" : "UNNUMBERED";
+
           logDebug(
-            `✅ Found math environment: ${envName} (content length: ${content.length})`
+            `✅ Match ${matchCount}: ${envName} (${numberStatus}) - content length: ${content.length}`
           );
+          logDebug(`   Content preview: "${content.substring(0, 50)}..."`);
         }
+
+        // Summary logging
+        const numbered = environments.filter(
+          (e) => !e.env.endsWith("*")
+        ).length;
+        const unnumbered = environments.filter((e) =>
+          e.env.endsWith("*")
+        ).length;
 
         logInfo(
           `✅ Parsed ${environments.length} math environment(s) from source LaTeX`
         );
+        logInfo(`   - ${numbered} numbered environments`);
+        logInfo(`   - ${unnumbered} unnumbered (starred) environments`);
+
+        if (environments.length === 0) {
+          logWarn("⚠️  No math environments found in source LaTeX");
+        }
+
+        logDebug("=== parseSourceEnvironments: Complete ===");
+
         return environments;
       } catch (error) {
         logError("Error parsing source environments:", error);
@@ -684,13 +724,39 @@ const MathJaxManager = (function () {
     }
 
     /**
-     * PHASE 1F PART B: Registry to store parsed environments
-     * Maps normalized content to environment names
+     * PHASE 1F PART D: Registry to store parsed environments with metadata
+     * Maps normalized content to environment objects containing name and numbering status
      */
     environmentRegistry = new Map();
 
     /**
-     * PHASE 1F PART B: Register environments from source LaTeX
+     * PHASE 1F PART D: Determine if environment is numbered
+     * Starred environments (*) are unnumbered, others are numbered
+     *
+     * @param {string} envName - Environment name (e.g., 'align', 'align*', 'equation')
+     * @returns {boolean} - true if environment should be numbered
+     */
+    isNumberedEnvironment(envName) {
+      // Starred environments are always unnumbered
+      if (envName.endsWith("*")) {
+        return false;
+      }
+
+      // Known numbered environments
+      const numberedEnvs = [
+        "equation",
+        "align",
+        "gather",
+        "multline",
+        "flalign",
+        "alignat",
+      ];
+
+      return numberedEnvs.includes(envName);
+    }
+
+    /**
+     * PHASE 1F PART D: Register environments from source LaTeX with metadata
      * Call this before conversion to build the registry
      *
      * @param {string} sourceLatex - The source LaTeX content
@@ -701,9 +767,21 @@ const MathJaxManager = (function () {
       const environments = this.parseSourceEnvironments(sourceLatex);
 
       environments.forEach(({ env, content, normalized }) => {
-        // Store by normalized content
-        this.environmentRegistry.set(normalized, env);
-        logDebug(`📝 Registered: "${normalized.substring(0, 30)}..." → ${env}`);
+        // Store environment metadata (not just name)
+        const envData = {
+          name: env,
+          numbered: this.isNumberedEnvironment(env),
+        };
+
+        this.environmentRegistry.set(normalized, envData);
+
+        const numberStatus = envData.numbered ? "numbered" : "unnumbered";
+        logDebug(
+          `🔍 Registered ${numberStatus}: "${normalized.substring(
+            0,
+            30
+          )}..." → ${env}`
+        );
       });
 
       logInfo(`✅ Registered ${this.environmentRegistry.size} environments`);
@@ -711,11 +789,11 @@ const MathJaxManager = (function () {
     }
 
     /**
-     * PHASE 1F PART B: Look up environment name from content
-     * Matches container content to registry
+     * PHASE 1F PART D: Look up environment data from content
+     * Matches container content to registry and returns full metadata
      *
      * @param {string} content - The annotation content from container
-     * @returns {string|null} - Environment name or null
+     * @returns {Object|null} - Environment data {name, numbered} or null
      */
     lookupEnvironment(content) {
       const normalized = content.replace(/\s+/g, " ").trim();
@@ -755,8 +833,7 @@ const MathJaxManager = (function () {
         mathSpans.forEach((span) => {
           const originalContent = span.textContent;
 
-          // Pandoc wraps in \[...\] which we need to remove
-          // Pattern: \[\begin{aligned}...content...\end{aligned}\]
+          // Pandoc wraps in \[...\] which we need to check
           const unwrappedMatch = originalContent.match(/^\\\[([\s\S]*)\\\]$/);
 
           if (!unwrappedMatch) {
@@ -765,59 +842,117 @@ const MathJaxManager = (function () {
 
           const innerContent = unwrappedMatch[1].trim();
 
-          // Check if it's a Pandoc-converted environment
-          // aligned, gathered, etc. (Pandoc adds 'ed' suffix)
+          // CASE 1: Pandoc-converted environments (align → aligned, gather → gathered)
           const pandocEnvMatch = innerContent.match(
             /^\\begin\{(aligned|gathered)\}([\s\S]*)\\end\{\1\}$/
           );
 
-          if (!pandocEnvMatch) {
-            return; // Not a converted environment, skip
+          if (pandocEnvMatch) {
+            const pandocEnvName = pandocEnvMatch[1]; // 'aligned' or 'gathered'
+            const mathContent = pandocEnvMatch[2].trim();
+
+            // Decode HTML entities ONLY for registry lookup
+            // DO NOT use decoded version for final output
+            const decodedForLookup = mathContent
+              .replace(/&amp;/g, "&")
+              .replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'");
+
+            // Normalize for registry lookup
+            const normalized = decodedForLookup
+              .replace(/\\\\/g, "\\\\")
+              .replace(/\s+/g, " ")
+              .trim();
+
+            // Look up original environment from registry
+            const envData = this.environmentRegistry.get(normalized);
+
+            if (envData) {
+              const originalEnv = envData.name;
+
+              // CRITICAL FIX: Use ORIGINAL mathContent (with HTML entities) for output
+              // This preserves proper escaping (< stays as &lt;, > stays as &gt;)
+              const restoredContent = `\\begin{${originalEnv}}\n${mathContent}\n\\end{${originalEnv}}`;
+              span.textContent = restoredContent;
+
+              // CRITICAL: Only add numbered-env class for numbered environments
+              if (envData.numbered) {
+                span.classList.remove("display");
+                span.classList.add("numbered-env");
+                logDebug(
+                  `✅ Restored NUMBERED ${originalEnv} wrapper (Pandoc used ${pandocEnvName})`
+                );
+              } else {
+                // Keep as display for unnumbered environments
+                span.classList.add("display");
+                span.classList.remove("numbered-env");
+                logDebug(
+                  `✅ Restored UNNUMBERED ${originalEnv} wrapper (Pandoc used ${pandocEnvName})`
+                );
+              }
+
+              span.setAttribute("data-math-env", originalEnv);
+              span.setAttribute("data-numbered", envData.numbered.toString());
+
+              restoredCount++;
+              return; // Done with this span
+            }
           }
 
-          const pandocEnvName = pandocEnvMatch[1]; // 'aligned' or 'gathered'
-          const mathContent = pandocEnvMatch[2].trim();
+          // CASE 2: Pandoc-stripped environments (equation → bare content in \[...\])
+          // For these, Pandoc removes the environment wrapper completely
+          // We need to check if the content matches something in our registry
 
-          // ✅ PHASE 1F PART B FIX: Decode HTML entities before normalization
-          const decoded = mathContent
+          // Decode HTML entities ONLY for registry lookup
+          const decodedForLookup = innerContent
             .replace(/&amp;/g, "&")
             .replace(/&lt;/g, "<")
             .replace(/&gt;/g, ">")
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'");
 
-          // Normalize decoded content for registry lookup
-          const normalized = decoded
+          // Normalize for registry lookup
+          const normalizedInner = decodedForLookup
             .replace(/\\\\/g, "\\\\")
             .replace(/\s+/g, " ")
             .trim();
 
-          // Look up original environment from registry
-          const originalEnv = this.environmentRegistry.get(normalized);
+          // Try to find this content in the registry
+          const envData = this.environmentRegistry.get(normalizedInner);
 
-          if (originalEnv) {
-            // Restore original environment wrapper
-            // Use decoded content (not encoded) for consistency
-            const restoredContent = `\\begin{${originalEnv}}\n${decoded}\n\\end{${originalEnv}}`;
+          if (envData) {
+            const registeredEnv = envData.name;
+
+            // CRITICAL FIX: Use ORIGINAL innerContent (with HTML entities) for output
+            // This preserves proper escaping throughout the export pipeline
+            const restoredContent = `\\begin{${registeredEnv}}\n${innerContent}\n\\end{${registeredEnv}}`;
             span.textContent = restoredContent;
 
-            // ✅ PHASE 1F PART C FIX: Change span class to enable MathJax numbering
-            // MathJax treats "math display" as unnumbered display mode
-            // Change to "math numbered-env" so MathJax processes it as a numbered environment
-            span.classList.remove("display");
-            span.classList.add("numbered-env");
+            // CRITICAL: Only add numbered-env class for numbered environments
+            if (envData.numbered) {
+              span.classList.remove("display");
+              span.classList.add("numbered-env");
+              logDebug(
+                `✅ Restored NUMBERED ${registeredEnv} wrapper (Pandoc stripped environment)`
+              );
+            } else {
+              // Keep as display for unnumbered environments
+              span.classList.add("display");
+              span.classList.remove("numbered-env");
+              logDebug(
+                `✅ Restored UNNUMBERED ${registeredEnv} wrapper (Pandoc stripped environment)`
+              );
+            }
 
-            // Also add data attribute for environment type (helps with debugging/styling)
-            span.setAttribute("data-math-env", originalEnv);
+            span.setAttribute("data-math-env", registeredEnv);
+            span.setAttribute("data-numbered", envData.numbered.toString());
 
             restoredCount++;
-
-            logDebug(
-              `✅ Restored ${originalEnv} wrapper (Pandoc used ${pandocEnvName}) + changed class`
-            );
           } else {
             logDebug(
-              `⚠️ No registry entry for content: "${normalized.substring(
+              `⚠️ No registry entry for content: "${normalizedInner.substring(
                 0,
                 30
               )}..."`
@@ -827,13 +962,66 @@ const MathJaxManager = (function () {
 
         if (restoredCount > 0) {
           logInfo(
-            `✅ Restored ${restoredCount} environment wrapper(s) for numbering (with class changes)`
+            `✅ Restored ${restoredCount} environment wrapper(s) for numbering`
           );
         }
 
         return doc.body.innerHTML;
       } catch (error) {
         logError("Error restoring environment wrappers:", error);
+        return html; // Return original on error
+      }
+    }
+
+    /**
+     * Wrap restored environment content in MathJax delimiters
+     * After restoreEnvironmentWrappersInHTML puts \begin{equation}...\end{equation} in spans,
+     * this method wraps them in \[...\] so MathJax will process them.
+     * This enables MathJax to render the underbrace and other LaTeX commands inside.
+     *
+     * @param {string} html - HTML with restored environments
+     * @returns {string} - HTML with delimited content
+     */
+    wrapRestoredEnvironmentsForMathJax(html) {
+      if (!this.environmentRegistry || this.environmentRegistry.size === 0) {
+        logDebug("No registered environments, skipping delimiter wrapping");
+        return html;
+      }
+
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        // Find all numbered-env spans (these have restored environments)
+        const numberedEnvSpans = doc.querySelectorAll("span.math.numbered-env");
+        let wrappedCount = 0;
+
+        numberedEnvSpans.forEach((span) => {
+          const content = span.textContent;
+
+          // Check if content starts with \begin{ and ends with \end{
+          if (
+            content.trim().startsWith("\\begin{") &&
+            content.trim().includes("\\end{")
+          ) {
+            // Wrap in display math delimiters for MathJax processing
+            span.textContent = `\\[${content}\\]`;
+            wrappedCount++;
+            logDebug(
+              `Wrapped environment in delimiters for MathJax processing`
+            );
+          }
+        });
+
+        if (wrappedCount > 0) {
+          logInfo(
+            `✅ Wrapped ${wrappedCount} restored environment(s) in \\[...\\] delimiters for MathJax`
+          );
+        }
+
+        return doc.body.innerHTML;
+      } catch (error) {
+        logError("Error wrapping restored environments:", error);
         return html; // Return original on error
       }
     }
@@ -1065,12 +1253,21 @@ const MathJaxManager = (function () {
         if (!latex) return false;
 
         // Look up environment from registry based on content
-        const envName = this.lookupEnvironment(latex);
+        // CRITICAL FIX: lookupEnvironment returns object {name, numbered}, not string
+        const envData = this.lookupEnvironment(latex);
 
-        if (envName) {
+        if (envData) {
+          // Extract environment name from returned object
+          const envName = envData.name;
           container.setAttribute("data-latex-env", envName);
+
+          // Also store numbering status for potential future use
+          container.setAttribute("data-numbered", envData.numbered.toString());
+
           logDebug(
-            `✅ Tagged container with environment: ${envName} (from registry)`
+            `✅ Tagged container with environment: ${envName} (${
+              envData.numbered ? "numbered" : "unnumbered"
+            }) from registry`
           );
           return true;
         } else {

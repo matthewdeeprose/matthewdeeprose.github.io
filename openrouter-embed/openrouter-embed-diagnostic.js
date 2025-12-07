@@ -819,14 +819,4 @@ const hello = 'world';
       return null;
     }
   };
-
-  // Log initialisation
-  console.log("✅ OpenRouter Embed Diagnostics loaded");
-  console.log("Run: await window.testEmbedDiagnostics()");
-  console.log(
-    'Or test specific component: await window.testEmbedComponent("client")'
-  );
-  console.log(
-    "Available components: availability, client, request, results, file, notifications, parameters, markdown, integration"
-  );
 })();

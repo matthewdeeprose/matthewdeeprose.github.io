@@ -1543,13 +1543,14 @@ This prevents broken exports with missing font data.
    * @returns {string} Object.base64BoldItalic - OpenDyslexic bold-italic variant Base64
    * @returns {string} Object.base64AnnotationMonoVF - AnnotationMono variable font Base64
    */
-  async function loadFontDataDirect() {
+async function loadFontDataDirect() {
     const fontFiles = {
       base64Regular: "fonts/opendyslexic-regular.txt",
       base64Bold: "fonts/opendyslexic-bold.txt",
       base64Italic: "fonts/opendyslexic-italic.txt",
       base64BoldItalic: "fonts/opendyslexic-bold-italic.txt",
       base64AnnotationMonoVF: "fonts/AnnotationMono-VF.txt",
+      base64AtkinsonHyperlegibleVF: "fonts/atkinson-hyperlegible-vf.txt",
     };
 
     const fontData = {};
@@ -1607,24 +1608,44 @@ This prevents broken exports with missing font data.
       fontData.base64BoldItalic || "YOUR_BASE64_PLACEHOLDER"
     );
 
-    // Handle variable font conditionally
-    const hasVariableFont =
+// Handle Annotation Mono variable font conditionally
+    const hasAnnotationMono =
       fontData.base64AnnotationMonoVF &&
       fontData.base64AnnotationMonoVF !== "YOUR_BASE64_PLACEHOLDER";
-    if (hasVariableFont) {
+    if (hasAnnotationMono) {
       rendered = rendered.replace(/\{\{#if hasFontNameVariable\}\}/g, "");
-      rendered = rendered.replace(/\{\{\/if\}\}/g, "");
       rendered = rendered.replace(
         /\{\{fontNameVariableBase64\}\}/g,
         fontData.base64AnnotationMonoVF
       );
     } else {
-      // Remove variable font section if not available
+      // Remove Annotation Mono section if not available
       rendered = rendered.replace(
         /\{\{#if hasFontNameVariable\}\}[\s\S]*?\{\{\/if\}\}/g,
         ""
       );
     }
+
+    // Handle Atkinson Hyperlegible variable font conditionally
+    const hasAtkinson =
+      fontData.base64AtkinsonHyperlegibleVF &&
+      fontData.base64AtkinsonHyperlegibleVF !== "YOUR_BASE64_PLACEHOLDER";
+    if (hasAtkinson) {
+      rendered = rendered.replace(/\{\{#if hasAtkinsonHyperlegible\}\}/g, "");
+      rendered = rendered.replace(
+        /\{\{atkinsonHyperlegibleBase64\}\}/g,
+        fontData.base64AtkinsonHyperlegibleVF
+      );
+    } else {
+      // Remove Atkinson Hyperlegible section if not available
+      rendered = rendered.replace(
+        /\{\{#if hasAtkinsonHyperlegible\}\}[\s\S]*?\{\{\/if\}\}/g,
+        ""
+      );
+    }
+
+    // Clean up remaining {{/if}} tags
+    rendered = rendered.replace(/\{\{\/if\}\}/g, "");
 
     return rendered;
   }
@@ -1985,6 +2006,12 @@ This prevents broken exports with missing font data.
     const logError = window.ExportManager?.logError || console.error;
     const logWarn = window.ExportManager?.logWarn || console.warn;
 
+    // ✅ NEW: Lock storage during export to prevent overwrites
+    if (window.LatexStorageManager) {
+      window.LatexStorageManager.markExportStart();
+      logInfo("🔒 Export started - LaTeX storage protected from overwrites");
+    }
+
     // === VALIDATION ===
     // Get UI elements
     const outputContent = document.querySelector(".output-content");
@@ -2096,6 +2123,12 @@ This prevents broken exports with missing font data.
       if (exportButton) {
         exportButton.disabled = false;
         exportButton.innerHTML = originalButtonContent;
+      }
+
+      // ✅ NEW: Always unlock storage, even on error
+      if (window.LatexStorageManager) {
+        window.LatexStorageManager.markExportComplete();
+        logInfo("🔓 Export complete - LaTeX storage unprotected");
       }
     }
   }

@@ -29370,14 +29370,15 @@ modelRegistry.registerModel("prime-intellect/intellect-3", {
   name: "INTELLECT-3",
   category: "GeneralPurpose",
   disabled: false,
-  description: "A highly efficient 106B-parameter Mixture-of-Experts model (12B active) built from GLM-4.5-Air-Base with advanced reinforcement learning optimisation. Delivers state-of-the-art performance across mathematics, coding, scientific reasoning, and multi-step problem solving whilst maintaining efficient inference through its specialised MoE architecture.",
+  description:
+    "A highly efficient 106B-parameter Mixture-of-Experts model (12B active) built from GLM-4.5-Air-Base with advanced reinforcement learning optimisation. Delivers state-of-the-art performance across mathematics, coding, scientific reasoning, and multi-step problem solving whilst maintaining efficient inference through its specialised MoE architecture.",
   costs: {
-    input: 0.20, // Per million tokens
-    output: 1.10, // Per million tokens
+    input: 0.2, // Per million tokens
+    output: 1.1, // Per million tokens
   },
   capabilities: [
     "text",
-    "dialogue", 
+    "dialogue",
     "code",
     "mathematics",
     "reasoning",
@@ -29388,11 +29389,12 @@ modelRegistry.registerModel("prime-intellect/intellect-3", {
   fallbackTo: "anthropic/claude-3.5-sonnet",
   isFree: false,
   metadata: {
-    categoryDescription: "Advanced reasoning model optimised for complex problem-solving",
+    categoryDescription:
+      "Advanced reasoning model optimised for complex problem-solving",
     releaseDate: "2025-11-27",
     modelArchitecture: {
       parameters: "106B",
-      activeParameters: "12B", 
+      activeParameters: "12B",
       type: "mixture-of-experts",
       baseModel: "GLM-4.5-Air-Base",
       trainingMethods: ["supervised-fine-tuning", "reinforcement-learning"],
@@ -29413,7 +29415,7 @@ modelRegistry.registerModel("prime-intellect/intellect-3", {
     },
     bestFor: [
       "multi-step problem solving",
-      "mathematical reasoning", 
+      "mathematical reasoning",
       "code generation and analysis",
       "scientific analysis",
       "structured task completion",
@@ -29428,11 +29430,11 @@ modelRegistry.registerModel("prime-intellect/intellect-3", {
     supported: [
       "reasoning",
       "include_reasoning",
-      "max_tokens", 
+      "max_tokens",
       "temperature",
       "top_p",
       "frequency_penalty",
-      "presence_penalty", 
+      "presence_penalty",
       "top_k",
       "repetition_penalty",
       "tools",
@@ -29454,12 +29456,17 @@ modelRegistry.registerModel("prime-intellect/intellect-3", {
       top_k: { p10: 0, p50: 0, p90: 0 },
       top_p: { p10: 0.9, p50: 1, p90: 1 },
     },
-    features: ["reasoning-traces", "structured-outputs", "tool-calling", "system-prompt"],
+    features: [
+      "reasoning-traces",
+      "structured-outputs",
+      "tool-calling",
+      "system-prompt",
+    ],
   },
   accessibility: {
     preferredFor: [
       "mathematical-problem-solving",
-      "code-analysis-and-generation", 
+      "code-analysis-and-generation",
       "scientific-reasoning",
       "multi-step-logical-tasks",
       "structured-data-processing",
@@ -29469,11 +29476,676 @@ modelRegistry.registerModel("prime-intellect/intellect-3", {
       "Structured outputs may need careful validation for accessibility compliance",
     ],
     ariaLabels: {
-      modelSelect: "INTELLECT-3 - Advanced reasoning model with 131,072 token context",
+      modelSelect:
+        "INTELLECT-3 - Advanced reasoning model with 131,072 token context",
       parameterSection: "Parameter controls for INTELLECT-3 reasoning model",
       statusMessages: {
-        processing: "Processing complex reasoning request with INTELLECT-3", 
+        processing: "Processing complex reasoning request with INTELLECT-3",
         complete: "Reasoning response ready from INTELLECT-3",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this registration entry for DeepSeek V3.2
+modelRegistry.registerModel("deepseek/deepseek-v3.2", {
+  provider: "deepseek",
+  name: "DeepSeek V3.2",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "Advanced large language model optimised for computational efficiency and reasoning performance. Features DeepSeek Sparse Attention (DSA) for cost-effective long-context processing and reinforcement learning post-training. Achieves GPT-5 class performance with gold-medal results on 2025 IMO and IOI competitions. Specialised for agentic tool-use workflows with controllable reasoning behaviour.",
+  costs: {
+    input: 0.28,
+    output: 0.4,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "reasoning",
+    "tool_calling",
+    "mathematics",
+    "code",
+    "multilingual",
+  ],
+  maxContext: 163840,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "High-performance reasoning model with sparse attention optimisation",
+    releaseDate: "2025-12-01",
+    modelArchitecture: {
+      parameters: "Large-scale",
+      type: "instruction-tuned",
+      specialFeatures: [
+        "DeepSeek Sparse Attention (DSA)",
+        "Reinforcement learning post-training",
+        "Agentic task synthesis pipeline",
+        "Controllable reasoning behaviour",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.deepseek.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.deepseek.com/terms",
+      lastUpdated: "2025-12-01",
+    },
+    domainExpertise: {
+      mathematics: 10,
+      reasoning: 10,
+      competitiveProgramming: 10,
+      toolIntegration: 9,
+      longContextAnalysis: 9,
+    },
+    bestFor: [
+      "complex reasoning tasks",
+      "mathematical problem solving",
+      "agentic workflows",
+      "tool-integrated applications",
+      "competitive programming",
+      "long-context analysis with efficiency",
+    ],
+    accessibility: {
+      reasoningControl:
+        "Boolean parameter for enabling/disabling reasoning mode",
+      sparseAttention: "Optimised for efficient long-context processing",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "tool_choice",
+      "tools",
+      "response_format",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "logprobs",
+      "top_logprobs",
+      "seed",
+      "top_k",
+      "repetition_penalty",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "reasoning_control",
+      "sparse_attention",
+      "tool_integration",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "reasoning-tasks",
+      "mathematical-problem-solving",
+      "tool-integrated-workflows",
+      "competitive-programming",
+      "long-context-efficiency",
+    ],
+    warnings: [
+      "High computational model may have longer response times",
+      "Reasoning mode may significantly increase token usage",
+      "Tool-calling features require careful prompt structure",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "DeepSeek V3.2 - Advanced reasoning model with 163,840 context window and sparse attention optimisation",
+      parameterSection:
+        "Parameter controls for DeepSeek V3.2 including reasoning enablement",
+      statusMessages: {
+        processing:
+          "Processing request with DeepSeek V3.2 reasoning capabilities",
+        complete: "Response ready from DeepSeek V3.2 with reasoning analysis",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this registration entry for DeepSeek V3.2 Speciale
+modelRegistry.registerModel("deepseek/deepseek-v3.2-speciale", {
+  provider: "deepseek",
+  name: "DeepSeek V3.2 Speciale",
+  category: "Specialized",
+  disabled: false,
+  description:
+    "High-compute variant of DeepSeek V3.2 optimised for maximum reasoning and agentic performance. Built on DeepSeek Sparse Attention (DSA) for efficient long-context processing with scaled post-training reinforcement learning. Delivers exceptional performance on complex reasoning workloads while maintaining strong coding and tool-use reliability through large-scale agentic task synthesis.",
+  costs: {
+    input: 0.28, // Per million tokens
+    output: 0.4, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "reasoning",
+    "code",
+    "tool_calling",
+    "multilingual",
+  ],
+  maxContext: 163840, // Context window size
+  fallbackTo: "deepseek/deepseek-v3", // Base model variant
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "High-compute reasoning-optimised model with advanced agentic capabilities",
+    releaseDate: "2025-12-01",
+    modelArchitecture: {
+      parameters: "671B", // Based on DeepSeek V3 architecture
+      type: "instruction-tuned",
+      attentionMechanism: "DeepSeek Sparse Attention (DSA)",
+      specialFeatures: [
+        "scaled-post-training-rl",
+        "agentic-task-synthesis",
+        "long-context-processing",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.deepseek.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.deepseek.com/terms",
+      lastUpdated: "2025-12-01",
+    },
+    trainingData: {
+      cutoffDate: "2025-11",
+      specializedFor: ["reasoning", "agentic-tasks", "tool-use"],
+      postTraining: "scaled-reinforcement-learning",
+    },
+    languageSupport: [
+      "english",
+      "chinese",
+      "spanish",
+      "french",
+      "german",
+      "japanese",
+      "korean",
+      "russian",
+    ],
+    domainExpertise: {
+      reasoning: 10,
+      mathematics: 9,
+      coding: 9,
+      agenticTasks: 10,
+      toolUse: 9,
+      problemSolving: 10,
+    },
+    bestFor: [
+      "complex reasoning tasks",
+      "agentic workflows",
+      "advanced problem solving",
+      "tool integration",
+      "long-context analysis",
+      "research assistance",
+    ],
+    accessibility: {
+      reasoning_assistance: "Optimised for complex logical reasoning support",
+      long_context:
+        "Efficient processing of extended documents and conversations",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "logprobs",
+      "top_logprobs",
+      "system-prompt", // Always add this with hyphen
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "reasoning_control",
+      "include_reasoning",
+      "advanced_sampling",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "research-assistance",
+      "agentic-workflows",
+      "advanced-problem-solving",
+    ],
+    warnings: [
+      "High-compute model may have longer response times for complex reasoning tasks",
+      "Reasoning parameter controls may affect response structure and verbosity",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "DeepSeek V3.2 Speciale - High-compute reasoning model with 163K context window",
+      parameterSection:
+        "Parameter controls for DeepSeek V3.2 Speciale reasoning model",
+      statusMessages: {
+        processing:
+          "Processing complex reasoning request with DeepSeek V3.2 Speciale",
+        complete:
+          "Advanced reasoning response ready from DeepSeek V3.2 Speciale",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert the registration entry for Arcee AI Trinity Mini
+modelRegistry.registerModel("arcee-ai/trinity-mini", {
+  provider: "arcee_ai",
+  name: "Trinity Mini",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "A highly optimised 26B-parameter sparse mixture-of-experts model with 3B active parameters. Features 128 experts with 8 active per token, engineered for efficient reasoning over extended contexts up to 131K tokens. Specialised for robust function calling and multi-step agent workflows with advanced reasoning capabilities.",
+  costs: {
+    input: 0.045,
+    output: 0.15,
+  },
+  capabilities: ["text", "dialogue", "reasoning", "tool_calling", "code"],
+  maxContext: 131072,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Extended context model optimised for complex reasoning tasks",
+    releaseDate: "2025-12-01",
+    modelArchitecture: {
+      parameters: "26B",
+      activeParameters: "3B",
+      type: "sparse-mixture-of-experts",
+      experts: {
+        total: 128,
+        activePerToken: 8,
+      },
+      specialFeatures: [
+        "Efficient long-context reasoning",
+        "Robust function calling",
+        "Multi-step agent workflows",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "https://arcee.ai/privacy",
+      acceptableUse: "",
+      termsOfService: "https://arcee.ai/terms",
+      lastUpdated: "2025-12-01",
+    },
+    bestFor: [
+      "long-context reasoning",
+      "function calling",
+      "multi-step agents",
+      "workflow automation",
+      "complex reasoning tasks",
+    ],
+    domainExpertise: {
+      reasoning: 9,
+      agentWorkflows: 9,
+      functionCalling: 9,
+      longContext: 9,
+    },
+    accessibility: {
+      complexityLevel: "advanced",
+      recommendedFor: "experienced users requiring sophisticated reasoning",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "temperature",
+      "max_tokens",
+      "top_k",
+      "top_p",
+      "tool_choice",
+      "tools",
+      "structured_outputs",
+      "response_format",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "repetition_penalty",
+      "logit_bias",
+      "min_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "reasoning-mode",
+      "function-calling",
+      "structured-outputs",
+      "multi-step-workflows",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "agent-development",
+      "function-calling-applications",
+      "long-context-analysis",
+    ],
+    warnings: [
+      "Mixture-of-experts architecture may have variable response patterns",
+      "Advanced reasoning features require careful prompt engineering",
+      "Large context window may impact response time for very long inputs",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Trinity Mini - Sparse mixture-of-experts model with 131K context for reasoning and agent workflows",
+      parameterSection: "Parameter controls for Trinity Mini reasoning model",
+      statusMessages: {
+        processing: "Processing reasoning request with Trinity Mini",
+        complete: "Reasoning response ready from Trinity Mini",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry in model-definitions.js
+
+modelRegistry.registerModel("mistralai/mistral-large-2512", {
+  provider: "mistralai",
+  name: "Mistral Large 3 2512",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "Mistral's most capable frontier model featuring a granular mixture-of-experts architecture with 41B active parameters and 675B total parameters. Delivers enterprise-grade multimodal capabilities across text and images, with reliable long-context performance up to 256K tokens. Optimised for document analysis, coding assistance, content creation, and agentic workflows under Apache 2.0 licence.",
+  costs: {
+    input: 0.5, // Per million tokens
+    output: 1.5, // Per million tokens
+    image: 0.5, // Image processing capability
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "vision",
+    "code",
+    "multilingual",
+    "reasoning",
+    "tool_calling",
+  ],
+  maxContext: 262144,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced frontier model with multimodal and enterprise capabilities",
+    releaseDate: "2025-12-01",
+    modelArchitecture: {
+      parameters: "41B active (675B total)",
+      type: "mixture-of-experts",
+      architecture: "granular mixture-of-experts",
+      licence: "Apache 2.0",
+      activeParameters: "41B",
+      totalParameters: "675B",
+    },
+    policyLinks: {
+      privacyPolicy: "https://mistral.ai/privacy/",
+      acceptableUse: "https://mistral.ai/terms/",
+      termsOfService: "https://mistral.ai/terms/",
+      lastUpdated: "2025-12-01",
+    },
+    languageSupport: [
+      "english",
+      "french",
+      "german",
+      "spanish",
+      "italian",
+      "portuguese",
+      "russian",
+      "chinese",
+      "japanese",
+      "korean",
+      "multilingual",
+    ],
+    domainExpertise: {
+      enterprise: 9,
+      coding: 8,
+      analysis: 9,
+      reasoning: 9,
+      multimodal: 8,
+    },
+    bestFor: [
+      "document analysis and summarisation",
+      "enterprise AI assistants",
+      "agentic workflows",
+      "coding assistance",
+      "content creation",
+      "workflow automation",
+      "long-context reasoning",
+      "multimodal tasks",
+    ],
+    accessibility: {
+      longContext: "Excellent for processing lengthy documents",
+      multimodal: "Supports both text and image inputs",
+      enterprise: "Designed for professional accessibility standards",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "seed",
+      "response_format",
+      "structured_outputs",
+      "tools",
+      "tool_choice",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "structured_outputs",
+      "tool_calling",
+      "multimodal_processing",
+      "long_context",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "enterprise-workflows",
+      "long-document-analysis",
+      "multimodal-reasoning",
+      "coding-assistance",
+      "content-creation",
+      "agentic-automation",
+    ],
+    warnings: [
+      "Large context window requires careful prompt structuring for optimal performance",
+      "Multimodal capabilities may require additional processing time",
+      "Enterprise features benefit from structured input formatting",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Mistral Large 3 2512 - Advanced frontier model with 262K context and multimodal capabilities",
+      parameterSection: "Parameter controls for Mistral Large 3 2512",
+      statusMessages: {
+        processing:
+          "Processing request with Mistral Large 3 2512 frontier model",
+        complete: "Response ready from Mistral Large 3 2512",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert this model registration entry into model-definitions.js
+
+modelRegistry.registerModel("amazon/nova-2-lite-v1", {
+  provider: "amazon",
+  name: "Nova 2 Lite",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "A fast, cost-effective reasoning model optimised for everyday workloads. Processes text, images, and videos to generate text responses with standout capabilities in document processing, video information extraction, code generation, and multi-step agentic workflows.",
+  costs: {
+    input: 0.3, // Per million tokens
+    output: 2.5, // Per million tokens
+    image: 0.0, // Included in base pricing
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "vision",
+    "code",
+    "reasoning",
+    "tool_calling",
+    "multilingual",
+  ],
+  maxContext: 1000000, // 1M context window
+  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar multimodal reasoning capabilities
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Versatile multimodal model for diverse reasoning tasks",
+    releaseDate: "2025-12-02",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "multimodal-reasoning",
+      supportsVideo: true,
+      supportsImages: true,
+      agenticWorkflows: true,
+    },
+    policyLinks: {
+      privacyPolicy: "https://aws.amazon.com/privacy/",
+      acceptableUse: "https://aws.amazon.com/aup/",
+      termsOfService: "https://aws.amazon.com/service-terms/",
+      lastUpdated: "2025-12-02",
+    },
+    languageSupport: ["english", "multilingual"],
+    domainExpertise: {
+      documentProcessing: 9,
+      videoAnalysis: 8,
+      codeGeneration: 7,
+      reasoning: 8,
+      multiStepWorkflows: 9,
+    },
+    bestFor: [
+      "document processing",
+      "video information extraction",
+      "code generation",
+      "multi-step workflows",
+      "grounded question answering",
+      "everyday reasoning tasks",
+    ],
+    accessibility: {
+      visualContentDescriptions: true,
+      multimodalProcessing: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "top_k",
+      "stop",
+      "tool_choice",
+      "tools",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "reasoning",
+      "tool_calling",
+      "multimodal_processing",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "document-analysis",
+      "video-content-description",
+      "code-generation-assistance",
+      "multi-step-reasoning",
+    ],
+    warnings: [
+      "Video processing may require additional processing time",
+      "Large context window may affect response times",
+      "Tool calling capabilities require careful prompt design for accessibility",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Nova 2 Lite - Amazon's multimodal reasoning model with 1M context",
+      parameterSection: "Parameter controls for Nova 2 Lite multimodal model",
+      statusMessages: {
+        processing: "Processing multimodal request with Nova 2 Lite",
+        complete: "Multimodal response ready from Nova 2 Lite",
       },
     },
   },

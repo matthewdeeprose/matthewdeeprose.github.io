@@ -1122,12 +1122,8 @@ pre[class*="language-"] {
   border-bottom: 1px solid #00131d;
 }
 
-.mathpix-copy-btn:hover,
-.mathpix-download-btn:hover,
-.mathpix-preview-btn:hover {
-  background: #b3dbd2;
-  color: #fffff4;
-  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.2);
+.mmd-preview-container {
+  background: #00131d;
 }
 
 .mathpix-html-preview-area {

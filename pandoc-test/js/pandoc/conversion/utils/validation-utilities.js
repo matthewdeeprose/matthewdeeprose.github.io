@@ -155,6 +155,34 @@ const ValidationUtilities = (function () {
     let sanitised = rawInput;
     const removed = [];
 
+    // TIKZ PRESERVATION: Extract and preserve TikZ blocks for future rendering
+    // This prevents TikZ math (axis labels, etc.) from interfering with document math
+    if (window.TikzPreservationManager) {
+      const tikzResult =
+        window.TikzPreservationManager.extractAndPreserveTikz(sanitised);
+      if (tikzResult.extracted > 0) {
+        sanitised = tikzResult.processed;
+        removed.push({
+          count: tikzResult.extracted,
+          description: `TikZ picture environments (preserved for future rendering, ${tikzResult.statistics.totalCharacters} chars)`,
+          examples: Object.keys(tikzResult.registry)
+            .slice(0, 3)
+            .map((id) => `[${id}]`),
+        });
+        logInfo(
+          `🎨 Preserved ${tikzResult.extracted} TikZ block(s) for future rendering`
+        );
+        logInfo(
+          `   - Registry: ${Object.keys(tikzResult.registry).length} entries`
+        );
+        logInfo(`   - Statistics: ${JSON.stringify(tikzResult.statistics)}`);
+      }
+    } else {
+      logWarn(
+        "⚠️ TikzPreservationManager not available - TikZ content may cause issues"
+      );
+    }
+
     // Remove document-level LaTeX commands that cause MathJax errors
     const removalPatterns = [
       {
@@ -165,10 +193,13 @@ const ValidationUtilities = (function () {
         pattern: /\\qedhere\b/g,
         description: "qedhere commands (QED symbol positioning)",
       },
-      {
-        pattern: /\\label\{[^}]*\}\s*$/gm,
-        description: "standalone label commands",
-      },
+      // CROSS-REFERENCE FIX: DO NOT remove label commands!
+      // Labels are essential for cross-referencing and are processed by CrossReferencePreprocessor
+      // Removing them here breaks the entire cross-reference system
+      // {
+      //   pattern: /\\label\{[^}]*\}\s*$/gm,
+      //   description: "standalone label commands",
+      // },
     ];
 
     removalPatterns.forEach(({ pattern, description }) => {

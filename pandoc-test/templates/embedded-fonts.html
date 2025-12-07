@@ -32,7 +32,7 @@
       font-display: swap;
     }
   {{#if hasFontNameVariable}}
-    <!-- ✅ VARIABLE FONT - MULTIPLE FORMAT COMPATIBILITY -->
+
     @font-face {
       font-family: "Annotation Mono";
       src: url("data:font/woff2;base64,{{fontNameVariableBase64}}") format("woff2 supports variations"),
@@ -41,5 +41,16 @@
       font-weight: 100 1000;
       font-display: swap;
     }
-    {{/if}}
+  {{/if}}
+  {{#if hasAtkinsonHyperlegible}}
+
+    @font-face {
+      font-family: "Atkinson Hyperlegible";
+      src: url("data:font/woff2;base64,{{atkinsonHyperlegibleBase64}}") format("woff2 supports variations"),
+           url("data:font/woff2;base64,{{atkinsonHyperlegibleBase64}}") format("woff2-variations"),
+           url("data:font/woff2;base64,{{atkinsonHyperlegibleBase64}}") format("woff2") tech(variations);
+      font-weight: 100 900;
+      font-display: swap;
+    }
+  {{/if}}
 </style>

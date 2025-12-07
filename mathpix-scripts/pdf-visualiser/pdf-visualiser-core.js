@@ -395,7 +395,7 @@ class PDFConfidenceVisualiser {
           </div>
         </div>
 
-        <!-- Statistics sidebar -->
+<!-- Statistics sidebar -->
         <aside id="pdf-vis-stats" class="${config.STATS_PANEL}" 
                role="complementary" aria-label="${
                  PDF_VISUALISER_CONFIG.ARIA.STATS_LABEL
@@ -403,36 +403,27 @@ class PDFConfidenceVisualiser {
           <h3>Confidence Statistics</h3>
           
           <!-- Summary stats -->
-          <div id="pdf-vis-stats-summary" class="${config.STATS_SUMMARY}">
+          <dl id="pdf-vis-stats-summary" class="${config.STATS_SUMMARY}">
             <div class="${config.STAT_ITEM}">
-              <span class="${config.STAT_LABEL}">Total Lines:</span>
-              <span class="${
-                config.STAT_VALUE
-              }" id="pdf-vis-stat-total">-</span>
+              <dt class="${config.STAT_LABEL}">Total Lines</dt>
+              <dd class="${config.STAT_VALUE}" id="pdf-vis-stat-total">-</dd>
             </div>
             <div class="${config.STAT_ITEM}">
-              <span class="${config.STAT_LABEL}">Average:</span>
-              <span class="${config.STAT_VALUE}" id="pdf-vis-stat-avg">-</span>
+              <dt class="${config.STAT_LABEL}">Average</dt>
+              <dd class="${config.STAT_VALUE}" id="pdf-vis-stat-avg">-</dd>
             </div>
             <div class="${config.STAT_ITEM}">
-              <span class="${config.STAT_LABEL}">Range:</span>
-              <span class="${
-                config.STAT_VALUE
-              }" id="pdf-vis-stat-range">-</span>
+              <dt class="${config.STAT_LABEL}">Range</dt>
+              <dd class="${config.STAT_VALUE}" id="pdf-vis-stat-range">-</dd>
             </div>
-          </div>
+          </dl>
 
           <!-- Legend -->
-          <div id="pdf-vis-legend" class="${config.LEGEND}" 
-               role="list" aria-label="${
-                 PDF_VISUALISER_CONFIG.ARIA.LEGEND_LABEL
-               }">
-            <h4>Confidence Levels</h4>
+          <dl id="pdf-vis-legend" class="${config.LEGEND}" 
+              aria-label="${PDF_VISUALISER_CONFIG.ARIA.LEGEND_LABEL}">
+            <dt class="pdf-vis-legend-heading">Confidence Levels</dt>
             ${this.createLegendHTML()}
-          </div>
-
-          <!-- Breakdown by level -->
-<!-- Distribution breakdown removed - redundant with legend counts -->
+          </dl>
         </aside>
       </div>
 
@@ -474,14 +465,16 @@ class PDFConfidenceVisualiser {
         const level = levels[key];
         const cssClass = cssClassMap[key];
         return `
-        <div class="${config.LEGEND_ITEM}" role="listitem">
-          <span class="${
-            config.LEGEND_SWATCH
-          } pdf-vis-legend-swatch--${cssClass}" 
-                data-confidence-level="${cssClass}"
-                aria-hidden="true"></span>
-          <span class="${config.LEGEND_LABEL}">${level.legendLabel}</span>
-          <span id="pdf-vis-legend-count-${key.toLowerCase()}" class="pdf-vis-legend-count">0</span>
+        <div class="${config.LEGEND_ITEM}">
+          <dt>
+            <span class="${
+              config.LEGEND_SWATCH
+            } pdf-vis-legend-swatch--${cssClass}" 
+                  data-confidence-level="${cssClass}"
+                  aria-hidden="true"></span>
+            <span class="${config.LEGEND_LABEL}">${level.legendLabel}</span>
+          </dt>
+          <dd id="pdf-vis-legend-count-${key.toLowerCase()}" class="pdf-vis-legend-count">(0)</dd>
         </div>
       `;
       })

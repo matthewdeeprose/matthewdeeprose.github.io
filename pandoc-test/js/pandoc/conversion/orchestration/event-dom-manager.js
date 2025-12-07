@@ -57,6 +57,10 @@ const EventDOMManager = (function () {
         // Mark conversion as queued
         conversionManager.isConversionQueued = true;
 
+        // 🔧 CRITICAL FIX: Track when conversion was scheduled to detect stuck conversions
+        const scheduledTime = Date.now();
+        const maxWaitTime = 15000; // 15 seconds max wait
+
         // Set new timeout with tracking
         conversionManager.conversionTimeout = setTimeout(() => {
           // Remove completed timeout from tracking
@@ -64,14 +68,38 @@ const EventDOMManager = (function () {
             conversionManager.conversionTimeout
           );
 
+          // 🔧 CRITICAL FIX: Verify conversion can actually start
+          const currentlyInProgress = conversionManager.conversionInProgress;
+          const waitedTime = Date.now() - scheduledTime;
+
+          if (currentlyInProgress && waitedTime > maxWaitTime) {
+            // Conversion stuck - force reset
+            logWarn(`⚠️ Conversion stuck for ${waitedTime}ms - forcing reset`);
+            conversionManager.conversionInProgress = false;
+            conversionManager.isConversionQueued = false;
+
+            // Update status to show issue
+            if (window.StatusManager) {
+              window.StatusManager.setError(
+                "Conversion timeout - please try again"
+              );
+            }
+            return;
+          }
+
           // Only proceed if not already converting
-          if (!conversionManager.conversionInProgress) {
+          if (!currentlyInProgress) {
             conversionManager.isConversionQueued = false;
             conversionManager.convertInput();
           } else {
-            // If conversion in progress, reschedule
-            logDebug("Conversion in progress - rescheduling...");
-            conversionManager.scheduleConversion();
+            // If conversion in progress, reschedule (with limit)
+            if (waitedTime < maxWaitTime) {
+              logDebug("Conversion in progress - rescheduling...");
+              conversionManager.scheduleConversion();
+            } else {
+              logWarn("⚠️ Maximum reschedule time reached - aborting");
+              conversionManager.isConversionQueued = false;
+            }
           }
         }, conversionManager.DEBOUNCE_DELAY);
 
@@ -103,6 +131,12 @@ const EventDOMManager = (function () {
         }
 
         conversionManager.inputTextarea.addEventListener("input", (event) => {
+          // 🔧 CRITICAL DIAGNOSTIC: Log every input event
+          const currentLength = conversionManager.inputTextarea.value.length;
+          console.log(
+            `🔍 INPUT EVENT FIRED: length=${currentLength}, lastLength=${lastInputLength}`
+          );
+
           // OPTIMIZATION: Cache automatic conversions disabled check for 100ms
           const now = Date.now();
           if (now - lastAutomaticDisabledCheck > 100) {
@@ -112,21 +146,22 @@ const EventDOMManager = (function () {
             lastAutomaticDisabledCheck = now;
 
             // DEBUG: Log cache refresh
-            logDebug(
+            console.log(
               `🔄 Cache refreshed: automaticConversionsDisabled = ${cachedAutomaticDisabled}`
             );
           }
 
           if (cachedAutomaticDisabled) {
-            logDebug("Automatic conversions disabled - ignoring input event");
+            console.warn(
+              "⚠️ CONVERSION BLOCKED: Automatic conversions disabled"
+            );
             return;
           }
 
-          const currentLength = conversionManager.inputTextarea.value.length;
           const isLargeDeletion = lastInputLength > 1000 && currentLength < 100;
 
           if (isLargeDeletion) {
-            logInfo(
+            console.log(
               "🔥 Large deletion detected - implementing performance optimization"
             );
 
@@ -137,7 +172,7 @@ const EventDOMManager = (function () {
 
             // Skip expensive processing for large deletions
             if (currentLength === 0) {
-              logInfo("🚀 Complete deletion detected - using fast path");
+              console.log("🚀 Complete deletion detected - using fast path");
 
               // Fast path for complete clearing
               const outputDiv = document.getElementById("output");
@@ -165,7 +200,9 @@ const EventDOMManager = (function () {
           }
 
           lastInputLength = currentLength;
-          logDebug("Textarea input detected - scheduling conversion");
+          console.log(
+            `✅ CALLING scheduleConversion() with debounce=${conversionManager.DEBOUNCE_DELAY}ms`
+          );
           conversionManager.scheduleConversion();
         });
       }

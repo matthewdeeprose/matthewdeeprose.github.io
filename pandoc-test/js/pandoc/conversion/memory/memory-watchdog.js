@@ -10,7 +10,7 @@ const MemoryWatchdog = (function () {
   // ===========================================================================================
 
   const logger = window.LoggingSystem?.createModuleLogger("MEMORY_WATCHDOG", {
-    level: window.LoggingSystem.LOG_LEVELS.WARN,
+    level: window.LoggingSystem.LOG_LEVELS.ERROR,
   }) || {
     logError: console.error.bind(console, "[MEMORY_WATCHDOG]"),
     logWarn: console.warn.bind(console, "[MEMORY_WATCHDOG]"),

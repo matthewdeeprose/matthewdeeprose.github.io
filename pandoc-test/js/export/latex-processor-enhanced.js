@@ -82,16 +82,33 @@ const LaTeXProcessorEnhanced = (function () {
         return false;
       }
 
-      window.lastConvertedLatex = latexSource;
-      window.lastConvertedTimestamp = Date.now();
-
-      logInfo(`Stored ${latexSource.length} characters of original LaTeX`);
-      logDebug(
-        "Storage timestamp:",
-        new Date(window.lastConvertedTimestamp).toISOString()
-      );
-
-      return true;
+      // Use protected storage manager if available, fallback to legacy
+      if (window.LatexStorageManager) {
+        const stored = window.LatexStorageManager.store(latexSource);
+        if (stored) {
+          logInfo(
+            `✅ Stored ${latexSource.length} characters in protected storage`
+          );
+        } else {
+          logWarn(
+            "⚠️  Protected storage refused - may be locked or export in progress"
+          );
+          logWarn("   Falling back to legacy storage");
+          // Fallback to legacy storage
+          window.lastConvertedLatex = latexSource;
+          window.lastConvertedTimestamp = Date.now();
+        }
+        return stored;
+      } else {
+        // Legacy fallback if LatexStorageManager not available
+        logDebug("LatexStorageManager not available - using legacy storage");
+        window.lastConvertedLatex = latexSource;
+        window.lastConvertedTimestamp = Date.now();
+        logInfo(
+          `Stored ${latexSource.length} characters of original LaTeX (legacy)`
+        );
+        return true;
+      }
     } catch (error) {
       logError("Failed to store original LaTeX:", error);
       return false;
@@ -107,36 +124,85 @@ const LaTeXProcessorEnhanced = (function () {
     logDebug("getOriginalLatex() called");
 
     try {
-      if (!window.lastConvertedLatex) {
-        logWarn("No original LaTeX found in storage");
-        return null;
-      }
+      // Use protected storage manager if available
+      if (window.LatexStorageManager) {
+        const storedLatex = window.LatexStorageManager.get(10); // Max 10 minutes old
 
-      const storedLatex = window.lastConvertedLatex;
-      const timestamp = window.lastConvertedTimestamp;
+        if (!storedLatex) {
+          // Check if legacy storage has data as fallback
+          if (window.lastConvertedLatex) {
+            logWarn(
+              "⚠️  Protected storage empty, using legacy storage as fallback"
+            );
+            const ageSeconds = Math.floor(
+              (Date.now() - window.lastConvertedTimestamp) / 1000
+            );
+            const ageMinutes = Math.floor(ageSeconds / 60);
 
-      if (timestamp) {
-        const ageSeconds = Math.floor((Date.now() - timestamp) / 1000);
-        logDebug(`Retrieved LaTeX stored ${ageSeconds} seconds ago`);
+            if (ageMinutes > 10) {
+              logError(
+                `❌ Legacy storage is ${ageMinutes} minutes old - too stale to use`
+              );
+              return null;
+            }
 
-        // Warn if LaTeX is older than 5 minutes (might be stale)
-        if (ageSeconds > 300) {
-          logWarn(
-            `Stored LaTeX is ${Math.floor(
-              ageSeconds / 60
-            )} minutes old - might be stale`
-          );
+            if (ageMinutes > 5) {
+              logWarn(
+                `⚠️  Legacy storage is ${ageMinutes} minutes old - approaching stale`
+              );
+            }
+
+            return window.lastConvertedLatex;
+          }
+
+          logWarn("No original LaTeX found in storage (protected or legacy)");
+          return null;
         }
-      }
 
-      logInfo(`Retrieved ${storedLatex.length} characters of original LaTeX`);
-      return storedLatex;
+        return storedLatex;
+      } else {
+        // Legacy fallback if LatexStorageManager not available
+        logDebug("LatexStorageManager not available - using legacy retrieval");
+
+        if (!window.lastConvertedLatex) {
+          logWarn("No original LaTeX found in legacy storage");
+          return null;
+        }
+
+        const storedLatex = window.lastConvertedLatex;
+        const timestamp = window.lastConvertedTimestamp;
+
+        if (timestamp) {
+          const ageSeconds = Math.floor((Date.now() - timestamp) / 1000);
+          const ageMinutes = Math.floor(ageSeconds / 60);
+          logDebug(`Retrieved LaTeX stored ${ageSeconds} seconds ago`);
+
+          // Enforce freshness even in legacy mode
+          if (ageMinutes > 10) {
+            logError(
+              `❌ Stored LaTeX is ${ageMinutes} minutes old - too stale to use`
+            );
+            return null;
+          }
+
+          // Warn if approaching stale
+          if (ageMinutes > 5) {
+            logWarn(
+              `⚠️  Stored LaTeX is ${ageMinutes} minutes old - approaching stale threshold`
+            );
+          }
+        }
+
+        logInfo(
+          `Retrieved ${storedLatex.length} characters of original LaTeX (legacy)`
+        );
+        return storedLatex;
+      }
     } catch (error) {
       logError("Failed to retrieve original LaTeX:", error);
       return null;
     }
   }
-
   /**
    * Clear stored original LaTeX source
    * Useful for testing or manual cleanup
@@ -147,13 +213,33 @@ const LaTeXProcessorEnhanced = (function () {
     logDebug("clearOriginalLatex() called");
 
     try {
-      const hadLatex = !!window.lastConvertedLatex;
+      let clearedCount = 0;
 
-      delete window.lastConvertedLatex;
-      delete window.lastConvertedTimestamp;
+      // Clear protected storage if available
+      if (window.LatexStorageManager) {
+        const status = window.LatexStorageManager.getStatus();
+        if (status.hasData) {
+          window.LatexStorageManager.clear(
+            "Manual clear via clearOriginalLatex()"
+          );
+          clearedCount++;
+        }
+      }
 
-      if (hadLatex) {
-        logInfo("Cleared stored original LaTeX");
+      // Also clear legacy storage
+      const hadLegacyLatex = !!window.lastConvertedLatex;
+      if (hadLegacyLatex) {
+        window.lastConvertedLatex = null;
+        window.lastConvertedTimestamp = null;
+        clearedCount++;
+      }
+
+      if (clearedCount > 0) {
+        logInfo(
+          `Cleared stored LaTeX source (${clearedCount} storage location${
+            clearedCount > 1 ? "s" : ""
+          })`
+        );
       } else {
         logDebug("No stored LaTeX to clear");
       }
@@ -168,6 +254,7 @@ const LaTeXProcessorEnhanced = (function () {
   /**
    * Validate stored LaTeX and report status
    * Useful for debugging and diagnostics
+   * Now checks protected storage first, falls back to legacy
    *
    * @returns {Object} - Validation result with details
    */
@@ -184,11 +271,42 @@ const LaTeXProcessorEnhanced = (function () {
     };
 
     try {
+      // ✅ NEW: Check protected storage first
+      if (window.LatexStorageManager) {
+        const status = window.LatexStorageManager.getStatus();
+
+        if (status.hasData) {
+          validation.hasLatex = true;
+          validation.hasTimestamp = true;
+          validation.length = status.contentSize;
+          validation.ageSeconds = status.ageSeconds;
+          validation.isStale = status.isStale;
+
+          if (status.isStale) {
+            validation.errors.push(
+              `Protected storage is stale (${status.ageMinutes} minutes old)`
+            );
+          }
+
+          const statusText = validation.isStale
+            ? "❌ INVALID (stale)"
+            : "✅ VALID";
+          logInfo(`LaTeX validation (protected): ${statusText}`, validation);
+
+          return validation;
+        } else {
+          logDebug("Protected storage available but no data - checking legacy");
+        }
+      }
+
+      // Fallback to legacy storage validation
       if (window.lastConvertedLatex) {
         validation.hasLatex = true;
         validation.length = window.lastConvertedLatex.length;
       } else {
-        validation.errors.push("No LaTeX source stored");
+        validation.errors.push(
+          "No LaTeX source stored (checked both protected and legacy)"
+        );
       }
 
       if (window.lastConvertedTimestamp) {
@@ -197,12 +315,21 @@ const LaTeXProcessorEnhanced = (function () {
           (Date.now() - window.lastConvertedTimestamp) / 1000
         );
         validation.isStale = validation.ageSeconds > 300; // 5 minutes
+
+        if (validation.isStale) {
+          validation.errors.push(
+            `Legacy storage is stale (${Math.floor(
+              validation.ageSeconds / 60
+            )} minutes old)`
+          );
+        }
       } else if (validation.hasLatex) {
         validation.errors.push("LaTeX stored but no timestamp");
       }
 
-      const status = validation.hasLatex ? "✅ VALID" : "❌ INVALID";
-      logInfo(`LaTeX validation: ${status}`, validation);
+      const status =
+        validation.hasLatex && !validation.isStale ? "✅ VALID" : "❌ INVALID";
+      logInfo(`LaTeX validation (legacy): ${status}`, validation);
 
       return validation;
     } catch (error) {
@@ -675,25 +802,69 @@ const LaTeXProcessorEnhanced = (function () {
       // Step 2: Extract preamble commands
       const commands = extractPreambleCommands(originalLatex);
 
+      // ✅ NEW: Validate extraction
       if (commands.length === 0) {
         logInfo("No preamble commands found - no custom macros to inject");
       } else {
-        // Log what commands will be converted
         const commandNames = commands.map((cmd) => `\\${cmd.name}`).join(", ");
-        logInfo(`Commands to convert: ${commandNames}`);
+        logInfo(`Extracted commands: ${commandNames}`);
+
+        // ✅ Check for extraction errors
+        const invalidCommands = commands.filter(
+          (cmd) => !cmd.name || cmd.definition === undefined
+        );
+        if (invalidCommands.length > 0) {
+          logError(
+            `Found ${invalidCommands.length} invalid command(s) - skipping enhanced export`
+          );
+          logError("Invalid commands:", invalidCommands);
+          return null; // Fallback to legacy
+        }
       }
 
       // Step 3: Convert to MathJax macros
       const customMacros = convertCommandsToMacros(commands);
 
-      // Log macro conversion summary
+      // ✅ NEW: Validate conversion
+      const conversionRate =
+        commands.length > 0
+          ? (Object.keys(customMacros).length / commands.length) * 100
+          : 100;
+
+      if (commands.length > 0 && conversionRate < 100) {
+        logWarn(
+          `⚠️  Conversion incomplete: ${conversionRate.toFixed(1)}% success`
+        );
+        logWarn(
+          `   Expected ${commands.length} macros, got ${
+            Object.keys(customMacros).length
+          }`
+        );
+
+        // Find which commands failed
+        const convertedNames = new Set(Object.keys(customMacros));
+        const failedCommands = commands
+          .filter((cmd) => !convertedNames.has(cmd.name))
+          .map((cmd) => `\\${cmd.name}`);
+
+        if (failedCommands.length > 0) {
+          logError(`❌ Failed to convert: ${failedCommands.join(", ")}`);
+        }
+      }
+
+      // ✅ NEW: Log final macro list for debugging
       if (Object.keys(customMacros).length > 0) {
         logInfo(
-          `✅ Created ${
+          `✅ Successfully converted ${
             Object.keys(customMacros).length
           } MathJax macro(s) for export`
         );
         logDebug("Macro details:", customMacros);
+
+        // Detailed logging of each macro
+        Object.keys(customMacros).forEach((name) => {
+          logDebug(`   \\${name}: ${JSON.stringify(customMacros[name])}`);
+        });
       }
 
       // Step 4: Convert Pandoc HTML with rendered MathJax back to raw LaTeX delimiters

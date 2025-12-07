@@ -113,6 +113,8 @@ import MathPixModeSwitcher from "./components/mathpix-mode-switcher.js";
 
 // Phase 1D: Camera capture system
 import MathPixCameraCapture from "../core/mathpix-camera-capture.js";
+// Phase 4.0: MMD Preview system
+import MathPixMMDPreview from "./components/mathpix-mmd-preview.js";
 
 /**
  * @class MathPixController
@@ -184,6 +186,9 @@ class MathPixController {
     // Phase 1D: Camera capture system
     this.cameraCapture = null; // Initialized on demand when user switches to camera mode
 
+    // Phase 4.0: MMD Preview system
+    this.mmdPreview = null; // Lazy initialised when needed
+
     // Phase 5: Total Downloader system
     this.downloadManager = null; // Initialized in init() method
 
@@ -194,6 +199,80 @@ class MathPixController {
     logInfo(
       "MathPixController created with modular architecture including Phase 3.1 content analysis, Phase 1C strokes system, Phase 1D camera system, and Phase 5 download system"
     );
+  }
+
+  // ============================================================================
+  // Phase 4.0: MMD Preview System
+  // ============================================================================
+
+  /**
+   * Initialise MMD Preview system
+   * Called when MathPix tab is shown or when MMD content is available
+   * @returns {MathPixMMDPreview|null} Preview instance
+   * @since 4.0.0
+   */
+  initMMDPreview() {
+    if (this.mmdPreview) {
+      return this.mmdPreview;
+    }
+
+    const config = MATHPIX_CONFIG.MMD_PREVIEW;
+    if (!config) {
+      logWarn("MMD_PREVIEW config not found");
+      return null;
+    }
+
+    try {
+      this.mmdPreview = new MathPixMMDPreview(config);
+      this.mmdPreview.init();
+
+      // Phase 4.2: Register callback for PDF split activation
+      this.mmdPreview.on("onPDFSplitActivated", () => {
+        this.handlePDFSplitActivated();
+      });
+
+      logInfo("MMD Preview system initialised with PDF compare integration");
+
+      return this.mmdPreview;
+    } catch (error) {
+      logError("Failed to initialise MMD Preview", error);
+      return null;
+    }
+  }
+
+  /**
+   * Handle PDF split view activation
+   * Passes current PDF file to MMD preview for comparison rendering
+   * @private
+   * @since 4.2.0
+   */
+  handlePDFSplitActivated() {
+    // Check if we have a PDF file from the PDF handler
+    const pdfFile = this.pdfHandler?.getCurrentPDFFile();
+
+    if (!pdfFile) {
+      logWarn("No PDF file available for comparison");
+      // Could show notification to user
+      return;
+    }
+
+    // Pass PDF file to MMD preview for comparison rendering
+    if (this.mmdPreview) {
+      this.mmdPreview.loadPDFForComparison(pdfFile);
+      logInfo("PDF file passed to comparison view", { name: pdfFile.name });
+    }
+  }
+
+  /**
+   * Get MMD Preview instance, initialising if needed
+   * @returns {MathPixMMDPreview|null}
+   * @since 4.0.0
+   */
+  getMMDPreview() {
+    if (!this.mmdPreview) {
+      return this.initMMDPreview();
+    }
+    return this.mmdPreview;
   }
 
   /**
@@ -1067,6 +1146,15 @@ class MathPixController {
         this.resultRenderer.cleanup();
         logDebug("[Controller] ✓ Result renderer cleaned up");
       }
+    }
+
+    // Phase 4.0: Clear MMD preview state
+    if (this.mmdPreview) {
+      if (this.mmdPreview.cleanup) {
+        this.mmdPreview.cleanup();
+      }
+      this.mmdPreview = null;
+      logDebug("[Controller] ✓ MMD preview cleaned up");
     }
 
     // Clear debug panel display

@@ -52,7 +52,8 @@ const ConversionOrchestrator = (function () {
         statusManager,
       } = dependencies;
 
-      // ENHANCEMENT: Assess document complexity before processing
+      // ENHANCEMENT: Assess document complexity FIRST (before preprocessing)
+      // This determines whether we need chunked processing
       const complexity = assessDocumentComplexity
         ? assessDocumentComplexity(inputText)
         : {
@@ -66,6 +67,52 @@ const ConversionOrchestrator = (function () {
           complexity.score?.toFixed(1) || "unknown"
         })`
       );
+
+      // FIX: Only run preprocessing if NOT using chunked processing
+      // Chunked processing will handle preprocessing internally
+      let processedLatex = inputText;
+
+      if (complexity.requiresChunking) {
+        // Skip preprocessing - chunked processing will handle it
+        logInfo(
+          "⏭️  Skipping cross-reference preprocessing (chunked processing will handle it)"
+        );
+      } else if (window.CrossReferencePreprocessor) {
+        // Run preprocessing for non-chunked documents
+        logInfo("🔗 Running cross-reference preprocessor...");
+        const preprocessResult =
+          window.CrossReferencePreprocessor.preprocessLatex(inputText);
+
+        if (preprocessResult.success) {
+          processedLatex = preprocessResult.latex;
+          const stats = preprocessResult.statistics;
+          logInfo(
+            `✅ Cross-reference preprocessing complete: ` +
+              `${stats.anchorsInjected} anchors injected, ` +
+              `${stats.referencesFound} references found` +
+              (stats.orphanedReferences.length > 0
+                ? `, ${stats.orphanedReferences.length} orphaned`
+                : "")
+          );
+
+          if (stats.orphanedReferences.length > 0) {
+            logWarn(
+              `⚠️  Orphaned references found: ${stats.orphanedReferences.join(
+                ", "
+              )}`
+            );
+          }
+        } else {
+          logWarn(
+            "⚠️  Cross-reference preprocessing failed, using original LaTeX. " +
+              `Error: ${preprocessResult.error || "unknown"}`
+          );
+        }
+      } else {
+        logWarn(
+          "⚠️  CrossReferencePreprocessor not available, skipping preprocessing"
+        );
+      }
 
       // ENHANCED: Use EventCoordinator for start event handling
       if (window.EventCoordinator) {
@@ -111,11 +158,16 @@ const ConversionOrchestrator = (function () {
 
       if (complexity.requiresChunking && processInChunks) {
         logInfo("Document requires chunked processing due to complexity");
-        conversionResult = await processInChunks(inputText, userArgumentsText);
+        // Use processedLatex instead of inputText
+        conversionResult = await processInChunks(
+          processedLatex,
+          userArgumentsText
+        );
       } else if (performStandardConversion) {
         // Standard processing with enhanced orchestration
+        // Use processedLatex instead of inputText
         conversionResult = await executeStandardConversion(
-          inputText,
+          processedLatex,
           userArgumentsText,
           complexity,
           dependencies
@@ -182,6 +234,7 @@ const ConversionOrchestrator = (function () {
 
       // PHASE 1F PART B: Populate environment registry BEFORE Pandoc conversion
       // This ensures restoration has data to work with on first conversion
+      // NOTE: inputText parameter already contains processedLatex from orchestrateConversion
       if (window.MathJaxManagerInstance?.registerSourceEnvironments) {
         try {
           window.MathJaxManagerInstance.registerSourceEnvironments(inputText);
@@ -192,6 +245,7 @@ const ConversionOrchestrator = (function () {
       }
 
       // BREAKTHROUGH: Extract and preserve original LaTeX BEFORE Pandoc processing
+      // NOTE: inputText parameter already contains processedLatex from orchestrateConversion
       if (extractAndMapLatexExpressions) {
         logInfo(
           "🔍 Extracting original LaTeX expressions for annotation preservation..."
@@ -208,8 +262,23 @@ const ConversionOrchestrator = (function () {
         );
 
         logInfo(
-          `✅ Preserved ${orderedExpressions.length} original LaTeX expressions for clean annotations`
+          `✅ Extracted ${orderedExpressions.length} original LaTeX expressions`
         );
+
+        // CRITICAL: Replace LaTeX with annotations before Pandoc
+        if (window.LaTeXPreservationEngine?.replaceLatexWithAnnotations) {
+          // Update inputText with annotations (inputText already contains processed LaTeX)
+          inputText =
+            window.LaTeXPreservationEngine.replaceLatexWithAnnotations(
+              inputText,
+              originalLatexMap
+            );
+          logInfo("✅ Replaced LaTeX with annotations for Pandoc processing");
+        } else {
+          logWarn(
+            "⚠️ replaceLatexWithAnnotations not available - LaTeX may not render correctly"
+          );
+        }
       }
 
       // ENHANCED: Use EventCoordinator for processing events
@@ -233,6 +302,7 @@ const ConversionOrchestrator = (function () {
       }
 
       // Execute Pandoc conversion with timeout protection
+      // NOTE: inputText now contains all preprocessing (anchors + annotations)
       const output = await executeWithTimeout(
         () => pandocFunction(finalArgumentsText, inputText),
         timeoutMs,
@@ -260,17 +330,35 @@ const ConversionOrchestrator = (function () {
             );
           logInfo("✅ Restored environment wrappers for playground numbering");
 
+          // CRITICAL: Wrap restored environments in \[...\] delimiters for MathJax
+          if (
+            window.MathJaxManagerInstance?.wrapRestoredEnvironmentsForMathJax
+          ) {
+            processedOutput =
+              window.MathJaxManagerInstance.wrapRestoredEnvironmentsForMathJax(
+                processedOutput
+              );
+            logInfo(
+              "✅ Wrapped restored environments in delimiters for MathJax processing"
+            );
+          }
+
           // DEBUG: Check what we're about to set
           const tempDiv = document.createElement("div");
           tempDiv.innerHTML = processedOutput;
-          const mathSpans = tempDiv.querySelectorAll("span.math.display");
+          const mathSpans = tempDiv.querySelectorAll(
+            "span.math.display, span.math.numbered-env"
+          );
           logInfo(`🔍 About to set ${mathSpans.length} math spans to DOM`);
           mathSpans.forEach((span, i) => {
             const content = span.textContent.substring(0, 100);
             logInfo(`  Span ${i + 1}: ${content}...`);
             logInfo(
-              `    Has \\begin{align}: ${content.includes("\\begin{align}")}`
+              `    Has \\begin{equation}: ${content.includes(
+                "\\begin{equation}"
+              )}`
             );
+            logInfo(`    Has \\[ delimiter: ${content.includes("\\[")}`);
           });
         } catch (restoreError) {
           logWarn("Failed to restore environment wrappers:", restoreError);
@@ -292,27 +380,59 @@ const ConversionOrchestrator = (function () {
         });
       }
 
-      // ═══════════════════════════════════════════════════════════════════════════════════════
-      // STAGE 5 INTEGRATION: Store original LaTeX for enhanced export method
-      // ═══════════════════════════════════════════════════════════════════════════════════════
-      // Store original LaTeX after successful conversion for the enhanced processor.
-      // This enables custom command preservation in exports without impacting the conversion
-      // pipeline. Storage happens automatically and silently - failures are logged but don't
-      // break the conversion workflow.
+      // ===========================================================================================
+      // STAGE 5: OPTIONAL - Store original LaTeX for enhanced export with protection
+      // ===========================================================================================
+      // This is a NON-CRITICAL optional enhancement. If it fails, the conversion can still
+      // succeed and export will fall back to the legacy annotation-based method.
+      // NEW: Now checks if export is in progress before storing to prevent race conditions.
       try {
         if (
           typeof LaTeXProcessorEnhanced !== "undefined" &&
           LaTeXProcessorEnhanced.storeOriginalLatex
         ) {
-          const stored = LaTeXProcessorEnhanced.storeOriginalLatex(inputText);
-          if (stored) {
-            logDebug(
-              `✅ Stored ${inputText.length} characters of original LaTeX for enhanced export`
-            );
+          // ✅ NEW: Check if export is in progress
+          if (window.LatexStorageManager) {
+            const status = window.LatexStorageManager.getStatus();
+            if (status.isExportInProgress) {
+              logInfo(
+                "[Stage 5] ⚠️  Export in progress - skipping LaTeX storage"
+              );
+              logInfo(
+                "[Stage 5]    Export will use existing storage or legacy fallback"
+              );
+            } else {
+              // Safe to store - no export in progress
+              // NOTE: Store original inputText (not processedLatex) for exports
+              // The preprocessor anchors are only needed for HTML navigation
+              const stored =
+                LaTeXProcessorEnhanced.storeOriginalLatex(inputText);
+              if (stored) {
+                logDebug(
+                  `[Stage 5] ✅ Stored ${inputText.length} characters in protected storage`
+                );
+              } else {
+                logWarn(
+                  "[Stage 5] ⚠️  Protected storage refused - may be locked"
+                );
+                logWarn(
+                  "[Stage 5]    Enhanced export features may be unavailable"
+                );
+              }
+            }
           } else {
-            logWarn(
-              "[Stage 5] Failed to store original LaTeX - enhanced export features may be unavailable"
-            );
+            // Fallback to old behavior if storage manager not available
+            // NOTE: Store original inputText (not processedLatex) for exports
+            const stored = LaTeXProcessorEnhanced.storeOriginalLatex(inputText);
+            if (stored) {
+              logDebug(
+                `[Stage 5] ✅ Stored ${inputText.length} characters (legacy storage)`
+              );
+            } else {
+              logWarn(
+                "[Stage 5] Failed to store original LaTeX - enhanced export features may be unavailable"
+              );
+            }
           }
         } else {
           logDebug(
@@ -372,9 +492,31 @@ const ConversionOrchestrator = (function () {
             );
           }
 
-          // Now re-render with correct environments
+// Now re-render with correct environments
           logInfo("🔄 Re-rendering MathJax with corrected environments...");
           await renderMathJax();
+
+          // CRITICAL: Inject LaTeX annotations immediately after MathJax rendering
+          // This ensures annotations are present for export, bypassing event-based triggers
+          // that may be blocked by guards (mathjaxRenderingInProgress, deduplication)
+          // Safe to call: function is idempotent (replaces existing annotations)
+          // Independent of cross-reference system (annotations go inside MathML, not anchors)
+          if (typeof window.injectMathJaxAnnotations === "function") {
+            try {
+              logInfo("📝 Injecting LaTeX annotations into MathJax elements...");
+              const annotationCount = window.injectMathJaxAnnotations();
+              if (annotationCount && annotationCount > 0) {
+                logInfo(`✅ Successfully injected ${annotationCount} LaTeX annotation(s)`);
+              } else {
+                logDebug("Annotation injection returned no count (may already be present)");
+              }
+            } catch (annotationError) {
+              logWarn("⚠️ Annotation injection failed:", annotationError);
+              // Non-fatal - export will fall back to extractLatexFromSemanticMathML
+            }
+          } else {
+            logDebug("injectMathJaxAnnotations not available - using fallback extraction");
+          }
 
           // Verify equation numbers were created
           const equationTags = outputDiv.querySelectorAll(
@@ -399,15 +541,35 @@ const ConversionOrchestrator = (function () {
 
       // Final success status
       if (statusManager) {
-        const enhancedMode = document.getElementById(
-          "pandoc-enhanced-mode"
-        )?.checked;
-        const successMessage = enhancedMode
-          ? `🧪 Enhanced ${complexity.level} document converted. Check output for improvements.`
-          : complexity.level === "basic"
-          ? "Conversion complete! Ready for export."
-          : `${complexity.level} document converted. Ready for export.`;
-        statusManager.setReady(successMessage);
+        // PHASE 2C: Don't call setReady if chunked MathJax rendering is still in progress
+        const mathjaxInProgress =
+          dependencies.conversionManager?.mathjaxRenderingInProgress || false;
+
+        if (mathjaxInProgress) {
+          logInfo(
+            "⏸️  Deferring setReady - MathJax chunked rendering still in progress"
+          );
+} else {
+          const enhancedMode = document.getElementById(
+            "pandoc-enhanced-mode"
+          )?.checked;
+          const successMessage = enhancedMode
+            ? `🧪 Enhanced ${complexity.level} document converted. Check output for improvements.`
+            : complexity.level === "basic"
+            ? "Conversion complete! Ready for export."
+            : `${complexity.level} document converted. Ready for export.`;
+          statusManager.setReady(successMessage);
+          
+          // Post-MathJax cleanup: Fix equation links that couldn't be resolved earlier
+          // MathJax creates equation anchors (mjx-eqn:label) during rendering
+          // Now that MathJax is complete, we can use those anchors to fix remaining broken links
+          if (window.CrossReferenceFixer?.fixBrokenEquationLinks) {
+            const cleanupResults = window.CrossReferenceFixer.fixBrokenEquationLinks();
+            if (cleanupResults && cleanupResults.fixed > 0) {
+              logInfo(`✅ Post-MathJax cleanup: Fixed ${cleanupResults.fixed} equation link(s)`);
+            }
+          }
+        }
       }
 
       return true;

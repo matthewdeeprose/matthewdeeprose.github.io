@@ -2229,6 +2229,11 @@ class MathPixPDFHandler extends MathPixBaseModule {
         );
 
         console.log("🔍 DEBUG [Handler]: displayPDFResults call completed");
+
+        // Set up button event listeners for static HTML buttons (Copy/Download)
+        // This is needed because the result renderer creates dynamic buttons,
+        // but the MMD panel has static buttons that need handlers
+        this.setupResultsInterface();
       } else {
         // Fallback to old method if result renderer unavailable
         logWarn("PDF result renderer not available, using fallback method");
@@ -2473,7 +2478,15 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     downloadButtons.forEach((btn) => {
       const clickHandler = () => {
-        this.downloadFormatContent(btn.getAttribute("data-format"));
+        const format = btn.getAttribute("data-format");
+        const action = btn.getAttribute("data-action");
+
+        // Check if this is a copy button disguised as download button
+        if (action === "copy") {
+          this.copyFormatContent(format);
+        } else {
+          this.downloadFormatContent(format);
+        }
       };
       btn.addEventListener("click", clickHandler);
       // Store handler reference for cleanup

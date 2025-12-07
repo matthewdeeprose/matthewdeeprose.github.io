@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="md-scripts/css/mermaid-controls.css" />
     <link rel="stylesheet" href="mathpix-scripts/css/mathpix-main.css" />
     <link rel="stylesheet" href="mathpix-scripts/css/mathpix-pdf-preview.css" />
+    <link rel="stylesheet" href="mathpix-scripts/css/mathpix-mmd-preview.css" />
     <link
       rel="stylesheet"
       href="mathpix-scripts/pdf-visualiser/pdf-visualiser.css"
@@ -246,6 +247,24 @@
       });
     </script>
   </head>
+  <!-- Skip to section navigation -->
+  <script>
+    function skipToSection(elementId) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Focus the heading within the section for accessibility
+        const heading = element.querySelector(".mmd-panel-heading");
+        if (heading) {
+          heading.setAttribute("tabindex", "-1");
+          heading.focus();
+        } else {
+          element.setAttribute("tabindex", "-1");
+          element.focus();
+        }
+      }
+    }
+  </script>
   <body>
     <div class="page-wrap" id="start">
       <a class="skip-link" id="skipToContent" href="#main">Skip to content</a>
@@ -5146,7 +5165,6 @@ Science,91</pre
                   type="button"
                   class="mathpix-confidence-indicator mathpix-confidence-clickable"
                   id="mathpix-confidence-indicator"
-                  role="status"
                   aria-label="Recognition confidence score. Select to view detailed confidence analysis."
                   data-confidence-level="unknown"
                   onclick="window.getMathPixController()?.pdfResultRenderer?.navigateToConfidenceTab()"
@@ -5506,56 +5524,420 @@ Science,91</pre
                   role="tabpanel"
                   aria-labelledby="tab-mmd"
                 >
-                  <div class="mathpix-format-header">
-                    <h4>Markdown (MMD) Output</h4>
-                    <div class="mathpix-format-actions">
+                  <!-- ============================================================
+     MMD VIEW CONTROLS - Toggle between Code and Preview
+     ============================================================ -->
+                  <div class="mmd-view-controls">
+                    <div
+                      class="mmd-view-toggle"
+                      role="group"
+                      aria-label="MMD view options"
+                    >
                       <button
                         type="button"
-                        class="mathpix-copy-btn"
-                        data-format="mmd"
+                        id="mmd-view-code-btn"
+                        class="mmd-view-btn active"
+                        aria-pressed="true"
+                        onclick="switchMMDView('code')"
                       >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 3)"
-                          >
-                            <path
-                              d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"
-                            />
-                            <path
-                              d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"
-                            />
-                            <path d="m2.5 5.5h5" />
-                            <path d="m2.5 7.5h7" />
-                            <path d="m2.5 9.5h3" />
-                            <path d="m2.5 11.5h6" />
-                          </g>
-                        </svg>
-                        Copy
+                        <span aria-hidden="true">📝</span> Code
                       </button>
                       <button
                         type="button"
-                        class="mathpix-download-btn"
-                        data-format="mmd"
+                        id="mmd-view-preview-btn"
+                        class="mmd-view-btn"
+                        aria-pressed="false"
+                        onclick="switchMMDView('preview')"
                       >
-                        <span aria-hidden="true">📥</span> Download
+                        <span aria-hidden="true">👁️</span> Preview
+                      </button>
+                      <!-- Split View Button (Phase 4.1) -->
+                      <button
+                        type="button"
+                        id="mmd-view-split-btn"
+                        class="mmd-view-btn"
+                        aria-pressed="false"
+                        onclick="switchMMDView('split')"
+                      >
+                        <span aria-hidden="true">☰</span> Split
+                      </button>
+                      <!-- PDF Compare Button (Phase 4.2) -->
+                      <button
+                        type="button"
+                        id="mmd-view-pdf-split-btn"
+                        class="mmd-view-btn"
+                        aria-pressed="false"
+                        onclick="switchMMDView('pdf_split')"
+                      >
+                        <span aria-hidden="true">📄</span> Compare
                       </button>
                     </div>
+
+                    <!-- PDF Toggle for Split View (Phase 4.2) -->
+                    <div
+                      id="mmd-split-pdf-toggle"
+                      class="mmd-split-pdf-toggle"
+                      hidden
+                    >
+                      <label class="mmd-toggle-label">
+                        <input
+                          type="checkbox"
+                          id="mmd-split-show-pdf"
+                          class="mmd-toggle-checkbox"
+                          onchange="toggleSplitPDF(this.checked)"
+                        />
+                        <span class="mmd-toggle-text">
+                          <span aria-hidden="true">📄</span> Show PDF
+                        </span>
+                      </label>
+                    </div>
+
+                    <!-- View status for screen readers and visual feedback -->
+                    <span
+                      id="mmd-view-status"
+                      class="mmd-view-status"
+                      aria-live="polite"
+                    >
+                      Viewing code
+                    </span>
                   </div>
-                  <div class="code-block-wrapper">
-                    <pre><code id="mathpix-pdf-content-mmd" class="language-markdown"></code></pre>
+
+                  <!-- ============================================================
+     MMD CONTENT AREA - Contains all view containers
+     ============================================================ -->
+                  <div
+                    class="mmd-content-area"
+                    id="mmd-content-area"
+                    data-current-view="code"
+                    data-library-loaded="false"
+                    data-has-content="false"
+                  >
+                    <!-- --------------------------------------------------------
+       CODE VIEW CONTAINER - Syntax highlighted MMD source
+       -------------------------------------------------------- -->
+                    <div
+                      id="mmd-code-container"
+                      class="mmd-view-container mmd-code-container active"
+                      data-view="code"
+                    >
+                      <h4 class="mmd-panel-heading" hidden>MMD Code</h4>
+                      <div class="mathpix-format-content">
+                        <div class="code-block-wrapper">
+                          <pre><code id="mathpix-pdf-content-mmd" class="language-markdown"></code></pre>
+                        </div>
+                      </div>
+                      <!-- Skip links for mobile navigation -->
+                      <nav class="mmd-skip-links" aria-label="Skip to section">
+                        <button
+                          type="button"
+                          class="mmd-skip-link"
+                          onclick="skipToSection('mmd-preview-container')"
+                        >
+                          <span aria-hidden="true">↓</span> Skip to Preview
+                        </button>
+                        <button
+                          type="button"
+                          class="mmd-skip-link mmd-skip-link-pdf"
+                          onclick="skipToSection('mmd-pdf-container')"
+                        >
+                          <span aria-hidden="true">↓</span> Skip to PDF
+                        </button>
+                      </nav>
+                    </div>
+
+                    <!-- --------------------------------------------------------
+       PDF VIEW CONTAINER - Original PDF for comparison (Phase 4.2)
+       -------------------------------------------------------- -->
+                    <div
+                      id="mmd-pdf-container"
+                      class="mmd-view-container mmd-pdf-container"
+                      data-view="pdf"
+                      role="region"
+                      aria-label="Original PDF view"
+                      hidden
+                    >
+                      <h4 class="mmd-panel-heading" hidden>PDF Preview</h4>
+                      <!-- PDF Controls -->
+                      <div class="mmd-pdf-controls">
+                        <div class="mmd-pdf-navigation">
+                          <label for="mmd-pdf-page-input" class="sr-only"
+                            >Go to page</label
+                          >
+                          <input
+                            type="number"
+                            id="mmd-pdf-page-input"
+                            class="mmd-pdf-page-input"
+                            min="1"
+                            value="1"
+                            aria-label="Page number"
+                          />
+                          <span class="mmd-pdf-page-total"
+                            >/ <span id="mmd-pdf-total-pages">1</span></span
+                          >
+                        </div>
+
+                        <div class="mmd-pdf-zoom">
+                          <button
+                            type="button"
+                            id="mmd-pdf-zoom-out"
+                            class="mmd-pdf-zoom-btn"
+                            aria-label="Zoom out"
+                          >
+                            <span aria-hidden="true">−</span>
+                          </button>
+                          <span
+                            id="mmd-pdf-zoom-level"
+                            class="mmd-pdf-zoom-level"
+                            >100%</span
+                          >
+                          <button
+                            type="button"
+                            id="mmd-pdf-zoom-in"
+                            class="mmd-pdf-zoom-btn"
+                            aria-label="Zoom in"
+                          >
+                            <span aria-hidden="true">+</span>
+                          </button>
+                          <button
+                            type="button"
+                            id="mmd-pdf-zoom-fit"
+                            class="mmd-pdf-zoom-btn"
+                            aria-label="Fit to width"
+                          >
+                            <span aria-hidden="true">↔</span> &nbsp;Fit
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- PDF Scroll Container -->
+                      <div
+                        id="mmd-pdf-scroll-container"
+                        class="mmd-pdf-scroll-container"
+                        role="document"
+                        aria-label="PDF document viewer"
+                      >
+                        <!-- Page indicator (floating) -->
+                        <div
+                          id="mmd-pdf-page-indicator"
+                          class="mmd-pdf-page-indicator"
+                          role="status"
+                          aria-live="polite"
+                        >
+                          Page <span id="mmd-pdf-current-page">1</span> of
+                          <span id="mmd-pdf-total-display">1</span>
+                        </div>
+
+                        <!-- Pages rendered here by PDF.js -->
+                        <div id="mmd-pdf-pages" class="mmd-pdf-pages"></div>
+
+                        <!-- Loading state -->
+                        <div
+                          id="mmd-pdf-loading"
+                          class="mmd-pdf-loading"
+                          hidden
+                        >
+                          <div
+                            class="mmd-loading-spinner"
+                            aria-hidden="true"
+                          ></div>
+                          <p>Loading PDF...</p>
+                        </div>
+
+                        <!-- Error state -->
+                        <div
+                          id="mmd-pdf-error"
+                          class="mmd-pdf-error"
+                          role="alert"
+                          hidden
+                        >
+                          <p class="mmd-error-icon" aria-hidden="true">⚠️</p>
+                          <p id="mmd-pdf-error-message">Failed to load PDF</p>
+                        </div>
+                      </div>
+                      <!-- Skip links for mobile navigation -->
+                      <nav class="mmd-skip-links" aria-label="Skip to section">
+                        <button
+                          type="button"
+                          class="mmd-skip-link"
+                          onclick="skipToSection('mmd-code-container')"
+                        >
+                          <span aria-hidden="true">↑</span> Skip to Code
+                        </button>
+                        <button
+                          type="button"
+                          class="mmd-skip-link"
+                          onclick="skipToSection('mmd-preview-container')"
+                        >
+                          <span aria-hidden="true">↓</span> Skip to Preview
+                        </button>
+                      </nav>
+                    </div>
+
+                    <!-- --------------------------------------------------------
+       SPLIT VIEW DIVIDER - Resize handle between panes
+       -------------------------------------------------------- -->
+                    <div
+                      id="mmd-view-divider"
+                      class="mmd-view-divider"
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label="Resize divider between code and preview"
+                      aria-valuenow="50"
+                      aria-valuemin="20"
+                      aria-valuemax="80"
+                      hidden
+                    >
+                      <div class="mmd-divider-handle" aria-hidden="true"></div>
+                    </div>
+
+                    <!-- --------------------------------------------------------
+       PREVIEW VIEW CONTAINER - Rendered MMD output
+       -------------------------------------------------------- -->
+                    <div
+                      id="mmd-preview-container"
+                      class="mmd-view-container mmd-preview-container"
+                      data-view="preview"
+                      hidden
+                    >
+                      <h4 class="mmd-panel-heading" hidden>MMD Preview</h4>
+                      <!-- Loading State -->
+                      <div
+                        id="mmd-preview-loading"
+                        class="mmd-preview-state mmd-preview-loading"
+                        role="status"
+                        aria-live="polite"
+                        hidden
+                      >
+                        <div
+                          class="mmd-loading-spinner"
+                          aria-hidden="true"
+                        ></div>
+                        <p class="mmd-loading-text">
+                          Loading preview renderer...
+                        </p>
+                      </div>
+
+                      <!-- Error State -->
+                      <div
+                        id="mmd-preview-error"
+                        class="mmd-preview-state mmd-preview-error"
+                        role="alert"
+                        hidden
+                      >
+                        <p class="mmd-error-icon" aria-hidden="true">⚠️</p>
+                        <p class="mmd-error-message" id="mmd-error-message">
+                          Failed to load preview renderer
+                        </p>
+                        <button
+                          type="button"
+                          id="mmd-preview-retry-btn"
+                          class="mmd-retry-btn"
+                          onclick="retryMMDPreviewLoad()"
+                        >
+                          <span aria-hidden="true">🔄</span> Retry
+                        </button>
+                      </div>
+
+                      <!-- Rendered Preview Content -->
+                      <div
+                        id="mmd-preview-content"
+                        class="mmd-preview-content"
+                        role="document"
+                        aria-label="Rendered MMD preview"
+                      >
+                        <!-- Rendered HTML inserted here by mathpix-markdown-it -->
+                        <!-- Skip links for mobile navigation -->
+                        <nav
+                          class="mmd-skip-links"
+                          aria-label="Skip to section"
+                        >
+                          <a href="#mmd-code-container" class="mmd-skip-link">
+                            <span aria-hidden="true">↑</span> Skip to Code
+                          </a>
+                          <a
+                            href="#mmd-pdf-container"
+                            class="mmd-skip-link mmd-skip-link-pdf"
+                          >
+                            <span aria-hidden="true">↓</span> Skip to PDF
+                          </a>
+                        </nav>
+                      </div>
+                    </div>
+                    <!-- Skip links for mobile navigation -->
+                    <nav class="mmd-skip-links" aria-label="Skip to section">
+                      <button
+                        type="button"
+                        class="mmd-skip-link"
+                        onclick="skipToSection('mmd-code-container')"
+                      >
+                        <span aria-hidden="true">↑</span> Skip to Code
+                      </button>
+                      <button
+                        type="button"
+                        class="mmd-skip-link mmd-skip-link-pdf"
+                        onclick="skipToSection('mmd-pdf-container')"
+                      >
+                        <span aria-hidden="true">↓</span> Skip to PDF
+                      </button>
+                    </nav>
+                  </div>
+
+                  <!-- ============================================================
+     EXPORT ACTIONS - Copy and Download buttons
+     ============================================================ -->
+                  <div class="mathpix-export-actions" id="mmd-export-actions">
+                    <button
+                      type="button"
+                      class="mathpix-download-btn"
+                      data-format="mmd"
+                      data-action="copy"
+                    >
+                      <svg
+                        height="21"
+                        viewBox="0 0 21 21"
+                        width="21"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                      >
+                        <g
+                          fill="none"
+                          fill-rule="evenodd"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          transform="translate(4 3)"
+                        >
+                          <path
+                            d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"
+                          />
+                          <path
+                            d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"
+                          />
+                          <path d="m2.5 5.5h5" />
+                          <path d="m2.5 7.5h7" />
+                          <path d="m2.5 9.5h3" />
+                          <path d="m2.5 11.5h6" />
+                        </g>
+                      </svg>
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      class="mathpix-download-btn"
+                      data-format="mmd"
+                    >
+                      <span aria-hidden="true">📥</span> Download
+                    </button>
                   </div>
                 </div>
+
+                <!-- Screen Reader Announcements for MMD Preview -->
+                <div
+                  id="mmd-preview-announcements"
+                  class="sr-only"
+                  aria-live="polite"
+                  aria-atomic="true"
+                ></div>
 
                 <!-- MD Results Panel (Feature 3) -->
                 <div
@@ -6998,6 +7380,15 @@ Science,91</pre
 
     <script
       type="module"
+      src="mathpix-scripts/ui/components/mathpix-mmd-preview.js"
+    ></script>
+    <script
+      type="module"
+      src="mathpix-scripts/ui/components/mathpix-mmd-pdf-compare.js"
+    ></script>
+
+    <script
+      type="module"
       src="mathpix-scripts/pdf-visualiser/pdf-visualiser-config.js"
     ></script>
 
@@ -7119,6 +7510,8 @@ Science,91</pre
     <script src="js/testing/openrouter-embed-stage6-phase7-tests.js"></script>
     <script src="js/testing/openrouter-embed-stage6-phase8-tests.js"></script>
 
+    <script src="js/testing/mathpix-mmd-preview-tests.js"></script>
+
     <!-- Image Describer Prompts (must load before controller) -->
     <script src="image-describer/prompts/prompt-loader.js"></script>
 
@@ -7183,6 +7576,22 @@ Science,91</pre
       function bottomFunction() {
         window.scrollTo(0, document.body.scrollHeight);
         document.getElementById("rssA").focus();
+      }
+
+      function skipToSection(elementId) {
+        const element = document.getElementById(elementId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+          // Focus the heading within the section for accessibility
+          const heading = element.querySelector(".mmd-panel-heading");
+          if (heading) {
+            heading.setAttribute("tabindex", "-1");
+            heading.focus();
+          } else {
+            element.setAttribute("tabindex", "-1");
+            element.focus();
+          }
+        }
       }
 
       // Theme Functions

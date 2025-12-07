@@ -32,30 +32,33 @@ const EventCoordinator = (function () {
    * @param {Object} dependencies - Required dependencies for event handling
    * @returns {Promise<boolean>} - Success/failure of event coordination
    */
-  async function coordinateConversionEvent(phase, eventData = {}, dependencies = {}) {
+  async function coordinateConversionEvent(
+    phase,
+    eventData = {},
+    dependencies = {}
+  ) {
     logDebug(`Coordinating conversion event: ${phase}`, eventData);
 
     try {
       const { statusManager, conversionInProgress } = dependencies;
 
       switch (phase) {
-        case 'start':
+        case "start":
           return await handleConversionStart(eventData, dependencies);
-        
-        case 'processing':
+
+        case "processing":
           return await handleConversionProcessing(eventData, dependencies);
-        
-        case 'completion':
+
+        case "completion":
           return await handleConversionCompletion(eventData, dependencies);
-        
-        case 'error':
+
+        case "error":
           return await handleConversionError(eventData, dependencies);
-        
+
         default:
           logWarn(`Unknown conversion phase: ${phase}`);
           return false;
       }
-
     } catch (error) {
       logError(`Error coordinating conversion event ${phase}:`, error);
       return false;
@@ -74,28 +77,34 @@ const EventCoordinator = (function () {
     const { statusManager, complexity = {} } = eventData;
     const { conversionManager } = dependencies;
 
-try {
-  // Check if conversion is already in progress (avoid double-setting)
-  if (conversionManager && !conversionManager.conversionInProgress) {
-    conversionManager.conversionInProgress = true;
-    logDebug("Conversion state set to in progress via EventCoordinator");
-  } else if (conversionManager && conversionManager.conversionInProgress) {
-    logDebug("Conversion already in progress - state coordination successful");
-  }
+    try {
+      // Check if conversion is already in progress (avoid double-setting)
+      if (conversionManager && !conversionManager.conversionInProgress) {
+        conversionManager.conversionInProgress = true;
+        logDebug("Conversion state set to in progress via EventCoordinator");
+      } else if (conversionManager && conversionManager.conversionInProgress) {
+        logDebug(
+          "Conversion already in progress - state coordination successful"
+        );
+      }
 
-  // Update status with complexity information
-  if (statusManager) {
-    const complexityMessage = complexity.requiresChunking
-      ? `Processing complex ${complexity.level} document...`
-      : `Converting ${complexity.level} document...`;
-    
-    statusManager.updateConversionStatus("CONVERT_START", 10);
-    statusManager.setLoading(complexityMessage, 15);
-  }
+      // Update status with complexity information
+      if (statusManager) {
+        const complexityMessage = complexity.requiresChunking
+          ? `Processing complex ${complexity.level} document...`
+          : `Converting ${complexity.level} document...`;
+
+        statusManager.updateConversionStatus("CONVERT_START", 10);
+        statusManager.setLoading(complexityMessage, 15);
+      }
 
       // Log complexity assessment
       if (complexity.level) {
-        logInfo(`Document complexity: ${complexity.level} (score: ${complexity.score?.toFixed(1) || 'unknown'})`);
+        logInfo(
+          `Document complexity: ${complexity.level} (score: ${
+            complexity.score?.toFixed(1) || "unknown"
+          })`
+        );
       }
 
       // Small delay to allow UI to update
@@ -103,7 +112,6 @@ try {
 
       logInfo("✅ Conversion start event handled successfully");
       return true;
-
     } catch (error) {
       logError("Error handling conversion start event:", error);
       return false;
@@ -125,7 +133,7 @@ try {
     try {
       if (statusManager && stage) {
         statusManager.updateConversionStatus(stage, progress || 50);
-        
+
         if (message) {
           statusManager.setLoading(message, progress || 50);
         }
@@ -133,24 +141,23 @@ try {
 
       // Standard processing milestones
       switch (stage) {
-        case 'CONVERT_MATH':
+        case "CONVERT_MATH":
           logDebug("Processing mathematical expressions...");
           break;
-        
-        case 'CONVERT_CLEAN':
+
+        case "CONVERT_CLEAN":
           logDebug("Cleaning Pandoc output...");
           break;
-        
-        case 'CONVERT_MATHJAX':
+
+        case "CONVERT_MATHJAX":
           logDebug("Rendering MathJax...");
           break;
-        
+
         default:
           logDebug(`Processing stage: ${stage}`);
       }
 
       return true;
-
     } catch (error) {
       logError("Error handling conversion processing event:", error);
       return false;
@@ -176,29 +183,48 @@ try {
       }
 
       if (success && statusManager) {
-        // Generate success message based on complexity and enhancement mode
-        const enhancedMode = enhanced || document.getElementById("pandoc-enhanced-mode")?.checked;
-        
-        let successMessage;
-        if (enhancedMode) {
-          successMessage = `🧪 Enhanced ${complexity.level || 'document'} converted. Check output for improvements.`;
-        } else if (complexity.level === "basic") {
-          successMessage = "Conversion complete! Ready for export.";
+        // PHASE 2C: Don't call setReady if chunked MathJax rendering is still in progress
+        const mathjaxInProgress =
+          conversionManager?.mathjaxRenderingInProgress || false;
+
+        if (mathjaxInProgress) {
+          logInfo(
+            "⏸️  Deferring setReady - MathJax chunked rendering still in progress"
+          );
         } else {
-          successMessage = `${complexity.level || 'Document'} converted. Ready for export.`;
-        }
+          // Generate success message based on complexity and enhancement mode
+          const enhancedMode =
+            enhanced ||
+            document.getElementById("pandoc-enhanced-mode")?.checked;
 
-        statusManager.setReady(successMessage);
+          let successMessage;
+          if (enhancedMode) {
+            successMessage = `🧪 Enhanced ${
+              complexity.level || "document"
+            } converted. Check output for improvements.`;
+          } else if (complexity.level === "basic") {
+            successMessage = "Conversion complete! Ready for export.";
+          } else {
+            successMessage = `${
+              complexity.level || "Document"
+            } converted. Ready for export.`;
+          }
 
-        // Trigger export button enablement if available
-        if (window.AppStateManager?.enableExportButtons) {
-          window.AppStateManager.enableExportButtons("Conversion completed successfully");
+statusManager.setReady(successMessage);
+
+          // Trigger export button enablement if available
+          // Note: fixBrokenEquationLinks is called inside enableExportButtons
+          // after a settling delay, ensuring MathJax anchors exist
+          if (window.AppStateManager?.enableExportButtons) {
+            window.AppStateManager.enableExportButtons(
+              "Conversion completed successfully"
+            );
+          }
         }
       }
 
       logInfo("✅ Conversion completion event handled successfully");
       return true;
-
     } catch (error) {
       logError("Error handling conversion completion event:", error);
       return false;
@@ -225,7 +251,8 @@ try {
 
       // Update status with error information
       if (statusManager) {
-        const displayMessage = userFriendlyMessage || errorMessage || "Conversion failed";
+        const displayMessage =
+          userFriendlyMessage || errorMessage || "Conversion failed";
         statusManager.setError(`Conversion failed: ${displayMessage}`);
       }
 
@@ -236,7 +263,6 @@ try {
 
       logInfo("✅ Conversion error event handled successfully");
       return true;
-
     } catch (eventError) {
       logError("Error handling conversion error event:", eventError);
       return false;
@@ -262,15 +288,14 @@ try {
 
       // Emit progress event if event manager available
       if (window.EventManager?.emitEvent) {
-        window.EventManager.emitEvent('conversionProgress', {
+        window.EventManager.emitEvent("conversionProgress", {
           milestone,
           progress,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
 
       return true;
-
     } catch (error) {
       logError("Error tracking conversion progress:", error);
       return false;
@@ -303,7 +328,6 @@ try {
 
       logWarn(`Conversion timeout: ${operation} exceeded ${timeoutMs}ms limit`);
       return true;
-
     } catch (error) {
       logError("Error handling conversion timeout:", error);
       return false;
@@ -325,7 +349,7 @@ try {
       conversionManager: conversionManager,
       statusManager: window.StatusManager,
       eventManager: window.EventManager,
-      appStateManager: window.AppStateManager
+      appStateManager: window.AppStateManager,
     };
   }
 
@@ -337,13 +361,16 @@ try {
     const tests = {
       moduleExists: () => !!window.EventCoordinator,
 
-      hasMainCoordinationFunction: () => typeof coordinateConversionEvent === "function",
+      hasMainCoordinationFunction: () =>
+        typeof coordinateConversionEvent === "function",
 
       hasStartHandler: () => typeof handleConversionStart === "function",
 
-      hasProcessingHandler: () => typeof handleConversionProcessing === "function",
+      hasProcessingHandler: () =>
+        typeof handleConversionProcessing === "function",
 
-      hasCompletionHandler: () => typeof handleConversionCompletion === "function",
+      hasCompletionHandler: () =>
+        typeof handleConversionCompletion === "function",
 
       hasErrorHandler: () => typeof handleConversionError === "function",
 

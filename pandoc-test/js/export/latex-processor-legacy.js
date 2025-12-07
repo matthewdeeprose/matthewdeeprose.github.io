@@ -71,12 +71,47 @@ const LaTeXProcessorLegacy = (function () {
    * @returns {string} - Wrapped LaTeX with appropriate delimiters/environment
    */
   function wrapInAppropriateEnvironment(latex, isDisplay, container = null) {
-    // PHASE 1F PART B: PRIORITY 1 - Check for stored environment data
-    if (container && container.getAttribute) {
-      const storedEnv = container.getAttribute("data-latex-env");
-      if (storedEnv) {
-        logDebug(`✅ Using stored environment from registry: ${storedEnv}`);
-        return `\\begin{${storedEnv}}\n${latex}\n\\end{${storedEnv}}`;
+    // PHASE 1F PART D: PRIORITY 1 - Check for stored environment data
+    if (container) {
+      let envName = null;
+
+      // The container might be mjx-container, but attributes are on parent span
+      // Check both the container and its parent
+      const elementsToCheck = [container, container.parentElement];
+
+      for (const element of elementsToCheck) {
+        if (!element || !element.getAttribute) continue;
+
+        // Try data-math-env attribute (new attribute name)
+        let attrValue = element.getAttribute("data-math-env");
+
+        // Try data-latex-env attribute for backwards compatibility
+        if (!attrValue) {
+          attrValue = element.getAttribute("data-latex-env");
+        }
+
+        if (attrValue && attrValue !== null && typeof attrValue === "string") {
+          // getAttribute always returns a string, so we use it directly
+          // Validate it's not empty and not a JSON stringified object
+          if (
+            attrValue &&
+            attrValue.length > 0 &&
+            !attrValue.startsWith("{") &&
+            !attrValue.startsWith("[")
+          ) {
+            envName = attrValue;
+            logDebug(`✅ Using stored environment from registry: ${envName}`);
+            break;
+          } else {
+            logWarn(`⚠️ Invalid attribute value: "${attrValue}"`);
+          }
+        }
+      }
+
+      if (envName) {
+        return `\\begin{${envName}}\n${latex}\n\\end{${envName}}`;
+      } else {
+        logDebug(`⚠️ No environment data found on container or parent`);
       }
     }
 
@@ -125,22 +160,83 @@ const LaTeXProcessorLegacy = (function () {
    *
    * IMPORTANT: Keep this IDENTICAL to original - no improvements, no changes!
    */
-  function convertMathJaxToLatex(content) {
-    // PASTE EXACT COPY HERE from latex-processor.js lines 53-191
-    // Change only the log prefix in first line to indicate legacy module
-
+  function convertMathJaxToLatex(content, useLiveDOM = false) {
     logInfo("Converting pre-rendered MathJax elements back to LaTeX...");
+
+    let tempDiv = null; // Track temp div for cleanup
 
     try {
       let processedContent = content;
       let conversionCount = 0;
+      let doc;
+      let mathContainers;
 
-      // Find all mjx-container elements
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(content, "text/html");
-      const mathContainers = doc.querySelectorAll("mjx-container");
+      // CRITICAL FIX: Use live DOM when available to preserve expression order
+      // DOMParser can scramble large documents (200KB+)
+      if (useLiveDOM && document.getElementById("output")) {
+        logInfo(
+          "✅ USING LIVE DOM for extraction (preserves order in large documents)"
+        );
 
-      mathContainers.forEach((container) => {
+        // Work directly with the output div to preserve order
+        const outputDiv = document.getElementById("output");
+
+        // Clone it so we don't modify the visible page
+        const clone = outputDiv.cloneNode(true);
+
+        // Create a temporary container
+        tempDiv = document.createElement("div");
+        tempDiv.appendChild(clone);
+        document.body.appendChild(tempDiv);
+        tempDiv.style.display = "none";
+        tempDiv.id = "temp-export-processing-" + Date.now(); // Unique ID
+
+        // Get containers from the live DOM clone (preserves document order)
+        mathContainers = tempDiv.querySelectorAll("mjx-container");
+
+        logInfo(
+          `✅ Found ${mathContainers.length} expressions in live DOM (order preserved)`
+        );
+
+        // We'll work with the clone and extract processed HTML at the end
+        doc = { body: tempDiv };
+      } else {
+        // Find all mjx-container elements via DOMParser (old method)
+        if (useLiveDOM) {
+          logWarn(
+            "⚠️ Live DOM requested but output div not found, using DOMParser"
+          );
+        } else {
+          logInfo("Using DOMParser for extraction");
+        }
+
+        const parser = new DOMParser();
+        doc = parser.parseFromString(content, "text/html");
+        mathContainers = doc.querySelectorAll("mjx-container");
+      }
+
+      // CRITICAL FIX: Convert NodeList to Array to prevent iteration issues
+      // When we modify outerHTML, it changes the DOM structure which can
+      // affect NodeList iteration and cause expression reordering
+      const mathContainersArray = Array.from(mathContainers);
+      logDebug(`Processing ${mathContainersArray.length} math containers...`);
+
+      // MARK AND REPLACE STRATEGY: Mark containers with data attributes, then replace all at once
+      // This prevents DOM reference invalidation when modifying outerHTML
+      const markerId = `latex-export-${Date.now()}`;
+      let markerCount = 0;
+
+      // PASS 1: Mark all containers with unique IDs and replacement LaTeX
+      mathContainersArray.forEach((container, index) => {
+        // CRITICAL: Skip TikZ placeholders - these contain preserved content for future rendering
+        if (
+          container.closest('[data-skip-latex-export="true"]') ||
+          container.hasAttribute("data-tikz-math")
+        ) {
+          logDebug(`⏭️ Skipping TikZ placeholder at index ${index}`);
+          return; // Don't process TikZ content
+        }
+
         // Check if it has assistive MathML
         const mathML = container.querySelector("mjx-assistive-mml math");
         if (mathML) {
@@ -169,10 +265,34 @@ const LaTeXProcessorLegacy = (function () {
                 isDisplay,
                 container
               );
-              container.outerHTML = wrappedLatex;
-              conversionCount++;
+
+              // CRITICAL FIX: Escape HTML entities before setting as HTML
+              const escapeHTML = (str) =>
+                str
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;");
+
+              const safeWrappedLatex = escapeHTML(wrappedLatex);
+
+              // MARK container with unique ID and store replacement text
+              const uniqueId = `${markerId}-${markerCount++}`;
+              container.setAttribute("data-replacement-id", uniqueId);
+              container.setAttribute("data-replacement-text", safeWrappedLatex);
+
+              // NEW: Add parent tracking for stability against index shifting
+              const containerParent = container.parentElement;
+              if (
+                containerParent &&
+                !containerParent.hasAttribute("data-math-parent-id")
+              ) {
+                const parentId = `parent-${markerId}-${markerCount}`;
+                containerParent.setAttribute("data-math-parent-id", parentId);
+                logDebug(`🔗 Parent tracking: ${parentId} for index ${index}`);
+              }
+
               logDebug(
-                `✅ Converted equation ${conversionCount}: ${latex.substring(
+                `📝 Marked equation ${markerCount} (index ${index}): ${latex.substring(
                   0,
                   50
                 )}...`
@@ -196,10 +316,39 @@ const LaTeXProcessorLegacy = (function () {
                 isDisplay,
                 container
               );
-              container.outerHTML = wrappedLatex;
-              conversionCount++;
+
+              // CRITICAL FIX: Escape HTML entities (same as above)
+              const escapeHTML = (str) =>
+                str
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;");
+
+              const safeWrappedLatex = escapeHTML(wrappedLatex);
+
+              // MARK container with unique ID and store replacement text
+              const uniqueId = `${markerId}-${markerCount++}`;
+              container.setAttribute("data-replacement-id", uniqueId);
+              container.setAttribute("data-replacement-text", safeWrappedLatex);
+
+              // NEW: Add parent tracking for stability against index shifting
+              const containerParentAlt = container.parentElement;
+              if (
+                containerParentAlt &&
+                !containerParentAlt.hasAttribute("data-math-parent-id")
+              ) {
+                const parentId = `parent-${markerId}-${markerCount}`;
+                containerParentAlt.setAttribute(
+                  "data-math-parent-id",
+                  parentId
+                );
+                logDebug(
+                  `🔗 Parent tracking (semantic): ${parentId} for index ${index}`
+                );
+              }
+
               logDebug(
-                `✅ Converted equation ${conversionCount} using semantic extraction: ${texContent}`
+                `📝 Marked equation ${markerCount} (index ${index}) using semantic extraction: ${texContent}`
               );
             } else {
               logWarn(
@@ -212,9 +361,52 @@ const LaTeXProcessorLegacy = (function () {
         }
       });
 
+      // PASS 2: Replace all marked containers IN REVERSE ORDER
+      // CRITICAL: Process from last to first so earlier elements' positions stay stable
+      logInfo(
+        `🔄 Replacing ${markerCount} marked containers (reverse order)...`
+      );
+      const markedContainers = doc.body
+        ? doc.body.querySelectorAll(`[data-replacement-id^="${markerId}"]`)
+        : doc.querySelectorAll(`[data-replacement-id^="${markerId}"]`);
+
+      // Convert to array and reverse to process from last to first
+      const markedArray = Array.from(markedContainers).reverse();
+
+      markedArray.forEach((container, reverseIndex) => {
+        const replacement = container.getAttribute("data-replacement-text");
+        if (replacement) {
+          container.outerHTML = replacement;
+          conversionCount++;
+          // Log actual position (inverse of reverse index)
+          const actualIndex = markedArray.length - reverseIndex - 1;
+          logDebug(`✅ Converted marked equation at position ${actualIndex}`);
+        }
+      });
+
       // Also look for any span.math elements (older format)
-      const mathSpans = doc.querySelectorAll("span.math");
-      mathSpans.forEach((span) => {
+      // CRITICAL FIX: Convert to array before iteration
+      const mathSpans = doc.body
+        ? doc.body.querySelectorAll("span.math")
+        : doc.querySelectorAll("span.math");
+      const mathSpansArray = Array.from(mathSpans);
+      logDebug(`Processing ${mathSpansArray.length} span.math elements...`);
+
+      // MARK AND REPLACE STRATEGY: Mark spans with data attributes, then replace all at once
+      const spanMarkerId = `span-latex-export-${Date.now()}`;
+      let spanMarkerCount = 0;
+
+      // PASS 1: Mark all spans that need conversion
+      mathSpansArray.forEach((span, index) => {
+        // CRITICAL: Skip TikZ placeholders - these contain preserved content for future rendering
+        if (
+          span.closest('[data-skip-latex-export="true"]') ||
+          span.hasAttribute("data-tikz-math")
+        ) {
+          logDebug(`⏭️ Skipping TikZ placeholder at index ${index}`);
+          return; // Don't process TikZ content
+        }
+
         const mathContainer = span.querySelector("mjx-container");
         if (!mathContainer) {
           // Already has raw LaTeX, keep it
@@ -244,18 +436,68 @@ const LaTeXProcessorLegacy = (function () {
                 isDisplay,
                 mathContainer
               );
-              span.innerHTML = wrappedLatex;
-              conversionCount++;
+
+              // MARK span with unique ID and store replacement text
+              const uniqueId = `${spanMarkerId}-${spanMarkerCount++}`;
+              span.setAttribute("data-replacement-id", uniqueId);
+              span.setAttribute("data-replacement-text", wrappedLatex);
+
+              // NEW: Add parent tracking for stability against index shifting
+              const spanParent = span.parentElement;
+              if (
+                spanParent &&
+                !spanParent.hasAttribute("data-math-parent-id")
+              ) {
+                const parentId = `parent-span-${spanMarkerId}-${spanMarkerCount}`;
+                spanParent.setAttribute("data-math-parent-id", parentId);
+                logDebug(`🔗 Parent tracking: ${parentId} for index ${index}`);
+              }
+
               logDebug(
-                `✅ Converted span equation: ${latex.substring(0, 50)}...`
+                `📝 Marked span equation (index ${index}): ${latex.substring(
+                  0,
+                  50
+                )}...`
               );
             }
           }
         }
       });
 
+      // PASS 2: Replace all marked spans IN REVERSE ORDER
+      // CRITICAL: Process from last to first so earlier elements' positions stay stable
+      logInfo(
+        `🔄 Replacing ${spanMarkerCount} marked span elements (reverse order)...`
+      );
+      const markedSpans = doc.body
+        ? doc.body.querySelectorAll(`[data-replacement-id^="${spanMarkerId}"]`)
+        : doc.querySelectorAll(`[data-replacement-id^="${spanMarkerId}"]`);
+
+      // Convert to array and reverse to process from last to first
+      const markedSpansArray = Array.from(markedSpans).reverse();
+
+      markedSpansArray.forEach((span, reverseIndex) => {
+        const replacement = span.getAttribute("data-replacement-text");
+        if (replacement) {
+          span.innerHTML = replacement;
+          conversionCount++;
+          // Log actual position (inverse of reverse index)
+          const actualIndex = markedSpansArray.length - reverseIndex - 1;
+          logDebug(
+            `✅ Converted marked span equation at position ${actualIndex}`
+          );
+        }
+      });
+
       // Get the processed HTML
       processedContent = doc.body.innerHTML;
+
+      // CRITICAL FIX: Clean up temporary div if it was created
+      if (tempDiv && tempDiv.parentNode) {
+        logDebug("Cleaning up temporary DOM element...");
+        tempDiv.parentNode.removeChild(tempDiv);
+        logDebug("✅ Temporary DOM element removed");
+      }
 
       logInfo(
         `✅ Successfully converted ${conversionCount} pre-rendered MathJax elements back to LaTeX`
@@ -285,6 +527,13 @@ const LaTeXProcessorLegacy = (function () {
       return processedContent;
     } catch (error) {
       logError("Error converting MathJax to LaTeX:", error);
+
+      // CRITICAL FIX: Ensure cleanup even on error
+      if (tempDiv && tempDiv.parentNode) {
+        logDebug("Cleaning up temporary DOM element after error...");
+        tempDiv.parentNode.removeChild(tempDiv);
+      }
+
       // Return original content if conversion fails
       return content;
     }
@@ -488,7 +737,14 @@ const LaTeXProcessorLegacy = (function () {
     logDebug("Content cleaned, length:", cleanedContent.length);
 
     // Step 3: Process with legacy annotation-based method
-    let processedContent = convertMathJaxToLatex(cleanedContent);
+    // CRITICAL FIX: Use live DOM when available to preserve order in large documents
+    const useLiveDOM = document.getElementById("output") !== null;
+    if (useLiveDOM) {
+      logInfo(
+        "🎯 Export context detected - using live DOM for order preservation"
+      );
+    }
+    let processedContent = convertMathJaxToLatex(cleanedContent, useLiveDOM);
 
     // PHASE 1F PART B: Check for invalid nesting and clean if enabled
     // CRITICAL: This runs AFTER conversion when we have actual LaTeX to check

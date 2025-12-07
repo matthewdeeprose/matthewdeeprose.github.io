@@ -1,0 +1,583 @@
+/* ==========================================================================
+   MathPix MMD Preview Styles
+   Version: 1.0.0
+   
+   Colour Strategy: Uses currentColor and inherits from parent theme.
+   Dark mode styling handled separately.
+   ========================================================================== */
+
+/* ==========================================================================
+   COLOUR DEFINITIONS
+   All colour-related properties consolidated here for easy theming
+   ========================================================================== */
+
+.mmd-view-controls {
+  border-bottom: 1px solid currentcolor;
+}
+
+#mmd-preview-content {
+  font-size: 0.85rem;
+}
+
+.mmd-view-btn {
+  font-size: 0.85rem;
+}
+
+.mmd-view-btn.active,
+.mmd-view-btn[aria-pressed="true"] {
+  background: white;
+  color: black;
+}
+
+.mmd-preview-container {
+  border: 1px solid currentcolor;
+}
+
+.mmd-loading-spinner {
+  border: 3px solid rgba(128, 128, 128, 0.2);
+  border-top-color: currentColor;
+}
+
+.mmd-preview-error {
+  border: 1px solid rgba(200, 0, 0, 0.3);
+  background: rgba(200, 0, 0, 0.05);
+}
+
+.mmd-preview-content th,
+.mmd-preview-content td {
+  border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+.mmd-preview-content th {
+  background: rgba(128, 128, 128, 0.05);
+}
+
+/* Override MathPix inline table styles for theme compatibility */
+.mmd-preview-content table,
+.mmd-preview-content .table_tabular,
+.mmd-preview-content .inline-tabular,
+.mmd-preview-content .inline-tabular table,
+.mmd-preview-content .inline-tabular td,
+.mmd-preview-content .inline-tabular th {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: inherit !important;
+  border-color: transparent !important;
+}
+
+/* Force table cell borders to use current colour */
+.mmd-preview-content #tabular td,
+.mmd-preview-content #tabular th,
+.mmd-preview-content .inline-tabular td,
+.mmd-preview-content .inline-tabular th {
+  border-top-color: currentColor !important;
+  border-right-color: currentColor !important;
+  border-bottom-color: currentColor !important;
+  border-left-color: currentColor !important;
+}
+
+/* Ensure MathJax SVGs inherit colour */
+.mmd-preview-content mjx-container svg {
+  color: inherit;
+}
+
+.mmd-preview-content mjx-container svg [stroke="currentColor"] {
+  stroke: currentColor;
+}
+
+.mmd-preview-content mjx-container svg [fill="currentColor"] {
+  fill: currentColor;
+}
+
+.mmd-preview-content code {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.mmd-preview-content blockquote {
+  border-left: 3px solid currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mmd-loading-spinner {
+    border-top-color: transparent;
+    border-right-color: currentColor;
+  }
+}
+
+/* ==========================================================================
+   STRUCTURAL STYLES
+   Layout, spacing, typography and non-colour properties
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   View Controls
+   -------------------------------------------------------------------------- */
+
+.mmd-view-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  margin-bottom: 0.75rem;
+}
+
+.mmd-view-toggle {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.125rem;
+  border-radius: 4px;
+}
+
+.mmd-view-btn.active,
+.mmd-view-btn[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.mmd-view-status {
+  font-size: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Content Area - Supports Split View
+   -------------------------------------------------------------------------- */
+
+.mmd-content-area {
+  display: flex;
+  gap: 1rem;
+  min-height: 200px;
+  position: relative;
+}
+
+/* Single view mode - container takes full width */
+.mmd-content-area[data-current-view="code"] .mmd-code-container,
+.mmd-content-area[data-current-view="preview"] .mmd-preview-container {
+  flex: 1;
+  width: 100%;
+}
+
+/* Future: Split view mode - 50/50 layout */
+.mmd-content-area[data-current-view="split"] {
+  /* flex-direction: row; */
+}
+
+.mmd-content-area[data-current-view="split"] .mmd-code-container,
+.mmd-content-area[data-current-view="split"] .mmd-preview-container {
+  flex: 1;
+  max-width: 50%;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+   View Containers
+   -------------------------------------------------------------------------- */
+
+.mmd-view-container {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mmd-view-container.active,
+.mmd-view-container:not([hidden]) {
+  display: flex;
+}
+
+/* --------------------------------------------------------------------------
+   Code Container
+   -------------------------------------------------------------------------- */
+
+.mmd-code-container .mathpix-format-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.mmd-code-container .code-block-wrapper {
+  height: 100%;
+}
+
+.mmd-code-container pre {
+  margin: 0;
+  border-radius: 4px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Preview Container
+   -------------------------------------------------------------------------- */
+
+.mmd-preview-container {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Preview States
+   -------------------------------------------------------------------------- */
+
+.mmd-preview-state {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  min-height: 200px;
+}
+
+.mmd-preview-state:not([hidden]) {
+  display: flex;
+}
+
+/* Loading State */
+.mmd-preview-loading {
+  opacity: 0.7;
+}
+
+.mmd-loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+  animation: mmd-spin 0.8s linear infinite;
+}
+
+@keyframes mmd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mmd-loading-text {
+  margin: 0;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/* Error State */
+.mmd-preview-error {
+  border-radius: 4px;
+  margin: 1rem;
+  padding: 1.5rem;
+}
+
+.mmd-error-icon {
+  font-size: 2rem;
+  margin: 0 0 0.5rem;
+  line-height: 1;
+}
+
+.mmd-error-message {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+}
+
+.mmd-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* --------------------------------------------------------------------------
+   Preview Content
+   -------------------------------------------------------------------------- */
+
+.mmd-preview-content {
+  padding: 1.5rem;
+  line-height: 1.6;
+  overflow: auto;
+  max-height: 60vh;
+}
+
+.mmd-preview-content:empty {
+  display: none;
+}
+
+/* No content message */
+.mmd-preview-content .mmd-no-content {
+  text-align: center;
+  opacity: 0.6;
+  font-style: italic;
+  padding: 2rem;
+}
+
+/* Headings in preview */
+.mmd-preview-content h1,
+.mmd-preview-content h2,
+.mmd-preview-content h3,
+.mmd-preview-content h4,
+.mmd-preview-content h5,
+.mmd-preview-content h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.mmd-preview-content h1:first-child,
+.mmd-preview-content h2:first-child,
+.mmd-preview-content h3:first-child {
+  margin-top: 0;
+}
+
+/* Paragraphs in preview */
+.mmd-preview-content p {
+  margin: 0 0 1rem;
+}
+
+/* Math in preview */
+.mmd-preview-content .math-inline {
+  display: inline;
+}
+
+.mmd-preview-content .math-display {
+  display: block;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+/* Tables in preview */
+.mmd-preview-content table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+  font-size: 0.9em;
+}
+
+.mmd-preview-content th,
+.mmd-preview-content td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.mmd-preview-content th {
+  font-weight: 600;
+}
+
+/* Code in preview */
+.mmd-preview-content code {
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+}
+
+.mmd-preview-content pre code {
+  display: block;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* Lists in preview */
+.mmd-preview-content ul,
+.mmd-preview-content ol {
+  margin: 0 0 1rem;
+  padding-left: 1.5rem;
+}
+
+.mmd-preview-content li {
+  margin-bottom: 0.25rem;
+}
+
+/* Blockquotes in preview */
+.mmd-preview-content blockquote {
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  opacity: 0.8;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced Motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .mmd-loading-spinner {
+    animation: none;
+  }
+
+  .mmd-view-btn,
+  .mmd-retry-btn {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Print Styles
+   -------------------------------------------------------------------------- */
+
+@media print {
+  .mmd-view-controls {
+    display: none;
+  }
+
+  .mmd-preview-container,
+  .mmd-code-container {
+    border: none;
+    max-height: none;
+  }
+
+  .mmd-preview-content,
+  .mmd-code-container pre {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Responsive - Mobile
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .mmd-view-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .mmd-view-toggle {
+    width: 100%;
+  }
+
+  .mmd-view-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .mmd-view-status {
+    align-self: flex-end;
+  }
+
+  /* Force single column on mobile even in split mode */
+  .mmd-content-area[data-current-view="split"] {
+    flex-direction: column;
+  }
+
+  .mmd-content-area[data-current-view="split"] .mmd-code-container,
+  .mmd-content-area[data-current-view="split"] .mmd-preview-container {
+    max-width: 100%;
+  }
+
+  .mmd-preview-content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-code-container,
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-preview-container,
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-pdf-container {
+    max-width: 100%;
+    max-height: 100%;
+    min-height: 100%;
+  }
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-code-container
+    pre,
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-preview-content,
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-pdf-scroll-container {
+    max-height: 100%;
+  }
+  .mmd-content-area[data-current-view="split"] .mmd-code-container pre,
+  .mmd-content-area[data-current-view="split"] .mmd-preview-content {
+    max-height: 100% !important;
+    overflow: auto;
+  }
+  .mmd-content-area[data-current-view="pdf_split"] .mmd-pdf-scroll-container,
+  .mmd-content-area[data-current-view="pdf_split"] .mmd-preview-content {
+    max-height: 100% !important;
+    overflow: auto;
+  }
+}
+/* --------------------------------------------------------------------------
+   Skip Links - Mobile navigation between stacked panels
+   -------------------------------------------------------------------------- */
+.mmd-skip-links {
+  display: none;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  justify-content: center;
+  border-top: 1px solid currentColor;
+  opacity: 0.3;
+}
+.mmd-skip-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  transition: opacity 0.15s ease;
+}
+.mmd-skip-link:hover,
+.mmd-skip-link:focus {
+  opacity: 1;
+  text-decoration: none;
+}
+.mmd-skip-link:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+/* Hide PDF skip link by default */
+.mmd-skip-link-pdf {
+  display: none;
+}
+/* Show skip links only on mobile in split/compare modes */
+@media (max-width: 768px) {
+  /* Show skip links in split view */
+  .mmd-content-area[data-current-view="split"] .mmd-skip-links {
+    display: flex;
+  }
+  /* Show skip links in compare view */
+  .mmd-content-area[data-current-view="pdf_split"] .mmd-skip-links {
+    display: flex;
+  }
+  /* Show PDF skip link when PDF is visible in split mode */
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-skip-link-pdf {
+    display: inline-flex;
+  }
+  /* Show PDF skip link in compare mode */
+  .mmd-content-area[data-current-view="pdf_split"] .mmd-skip-link-pdf {
+    display: inline-flex;
+  }
+  /* Hide PDF skip links from PDF container itself */
+  .mmd-pdf-container .mmd-skip-link-pdf {
+    display: none;
+  }
+}
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .mmd-skip-link {
+    transition: none;
+  }
+}
+.mmd-skip-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.mmd-code-container,
+.mmd-pdf-container {
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+}
+
+#mmd-code-container pre[class*="language-"] {
+  border: 0;
+}

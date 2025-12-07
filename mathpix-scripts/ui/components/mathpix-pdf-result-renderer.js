@@ -646,6 +646,12 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         return;
       }
 
+      // Phase 4.0: Handle MMD format specially to preserve preview structure
+      if (format === "mmd") {
+        await this.populateMMDFormatWithPreview(panelElement, content);
+        return;
+      }
+
       // Create format content container
       const formatContent = document.createElement("div");
       formatContent.className = "mathpix-format-content";
@@ -938,6 +944,113 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
       this.displayStates.html = { populated: false, highlighted: false };
       throw error;
+    }
+  }
+
+  /**
+   * @method populateMMDFormatWithPreview
+   * @description Populates MMD format whilst preserving preview toggle structure
+   *
+   * Phase 4.0: Instead of replacing the entire panel content, this method
+   * populates the existing code element to preserve the view toggle controls
+   * and preview container structure.
+   *
+   * @param {HTMLElement} panelElement - Panel to populate
+   * @param {string} content - MMD content to display
+   * @returns {Promise<void>}
+   * @private
+   * @since 4.0.0
+   */
+  async populateMMDFormatWithPreview(panelElement, content) {
+    logDebug("Populating MMD format with preview structure preservation", {
+      hasContent: !!content,
+      contentLength: content?.length || 0,
+    });
+
+    // Find the existing code element within the preserved structure
+    const codeElement = document.getElementById("mathpix-pdf-content-mmd");
+
+    if (codeElement) {
+      // Populate the existing code element (preserves view controls and preview container)
+      codeElement.textContent = content;
+
+      // Apply syntax highlighting
+      if (window.Prism && window.Prism.highlightElement) {
+        try {
+          window.Prism.highlightElement(codeElement);
+          const tokensFound = codeElement.querySelectorAll(".token").length;
+          logDebug("MMD Prism highlighting applied", { tokensFound });
+          this.displayStates.mmd = {
+            populated: true,
+            highlighted: tokensFound > 0,
+          };
+        } catch (highlightError) {
+          logWarn("MMD Prism highlighting failed", highlightError);
+          this.displayStates.mmd = { populated: true, highlighted: false };
+        }
+      } else {
+        this.displayStates.mmd = { populated: true, highlighted: false };
+      }
+
+      // Phase 4.0: Pass content to MMD Preview module
+      try {
+        const controller = window.getMathPixController?.();
+        const mmdPreview = controller?.getMMDPreview?.();
+
+        if (mmdPreview) {
+          mmdPreview.setContent(content);
+          logDebug("MMD content passed to preview module", {
+            length: content?.length,
+          });
+        }
+      } catch (e) {
+        logWarn("Failed to pass content to MMD preview module", e);
+        // Non-critical - preview will read from DOM as fallback
+      }
+
+      logInfo("MMD format populated with preview structure preserved");
+      return;
+    }
+
+    // Fallback: If the preview structure doesn't exist, use standard population
+    logWarn("MMD preview structure not found, using standard population");
+
+    // Create format content container
+    const formatContent = document.createElement("div");
+    formatContent.className = "mathpix-format-content";
+
+    // Create code block with syntax highlighting
+    const codeWrapper = document.createElement("pre");
+    codeWrapper.className = this.getLanguageClassForFormat("mmd");
+    codeWrapper.tabIndex = 0;
+
+    const newCodeElement = document.createElement("code");
+    newCodeElement.className = this.getLanguageClassForFormat("mmd");
+    newCodeElement.id = "mathpix-pdf-content-mmd";
+    newCodeElement.textContent = content;
+
+    codeWrapper.appendChild(newCodeElement);
+    formatContent.appendChild(codeWrapper);
+
+    // Add export actions
+    const exportActions = this.createFormatExportActions("mmd");
+    formatContent.appendChild(exportActions);
+
+    // Clear and populate panel
+    panelElement.innerHTML = "";
+    panelElement.appendChild(formatContent);
+
+    // Apply syntax highlighting
+    if (window.Prism && window.Prism.highlightElement) {
+      try {
+        window.Prism.highlightElement(newCodeElement);
+        this.displayStates.mmd = { populated: true, highlighted: true };
+      } catch (highlightError) {
+        logWarn("Fallback MMD Prism highlighting failed", highlightError);
+        this.displayStates.mmd = { populated: true, highlighted: false };
+      }
+    } else {
+      this.displayStates.mmd = { populated: true, highlighted: false };
     }
   }
 

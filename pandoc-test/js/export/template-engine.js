@@ -374,24 +374,72 @@ const TemplateEngine = (function () {
       this.templates.set(
         "embedded-fonts",
         `
+    <!-- OpenDyslexic Font Family - Embedded for Offline Use -->
     {{#if base64Regular}}
     <style>
-    @font-face {
-      font-family: 'OpenDyslexic';
-      src: url(data:font/truetype;charset=utf-8;base64,{{base64Regular}}) format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }
+        @font-face {
+          font-family: "OpenDyslexic";
+          src: url("data:font/woff2;base64,{{base64Regular}}") format("woff2");
+          font-weight: normal;
+          font-style: normal;
+          font-display: swap;
+        }
+    {{/if}}
+
     {{#if base64Bold}}
-    @font-face {
-      font-family: 'OpenDyslexic';
-      src: url(data:font/truetype;charset=utf-8;base64,{{base64Bold}}) format('truetype');
-      font-weight: bold;
-      font-style: normal;
-    }
+        @font-face {
+          font-family: "OpenDyslexic";
+          src: url("data:font/woff2;base64,{{base64Bold}}") format("woff2");
+          font-weight: bold;
+          font-style: normal;
+          font-display: swap;
+        }
+    {{/if}}
+
+    {{#if base64Italic}}
+        @font-face {
+          font-family: "OpenDyslexic";
+          src: url("data:font/woff2;base64,{{base64Italic}}") format("woff2");
+          font-weight: normal;
+          font-style: italic;
+          font-display: swap;
+        }
+    {{/if}}
+
+    {{#if base64BoldItalic}}
+        @font-face {
+          font-family: "OpenDyslexic";
+          src: url("data:font/woff2;base64,{{base64BoldItalic}}") format("woff2");
+          font-weight: bold;
+          font-style: italic;
+          font-display: swap;
+        }
+    {{/if}}
+
+{{#if hasFontNameVariable}}
+        <!-- Annotation Mono Variable Font -->
+        @font-face {
+          font-family: "Annotation Mono";
+          src: url("data:font/woff2;base64,{{fontNameVariableBase64}}") format("woff2 supports variations"),
+               url("data:font/woff2;base64,{{fontNameVariableBase64}}") format("woff2-variations"),
+               url("data:font/woff2;base64,{{fontNameVariableBase64}}") format("woff2") tech(variations);
+          font-weight: 100 1000;
+          font-display: swap;
+        }
+    {{/if}}
+
+    {{#if hasAtkinsonHyperlegible}}
+        <!-- Atkinson Hyperlegible Variable Font - High Readability -->
+        @font-face {
+          font-family: "Atkinson Hyperlegible";
+          src: url("data:font/woff2;base64,{{atkinsonHyperlegibleBase64}}") format("woff2 supports variations"),
+               url("data:font/woff2;base64,{{atkinsonHyperlegibleBase64}}") format("woff2-variations"),
+               url("data:font/woff2;base64,{{atkinsonHyperlegibleBase64}}") format("woff2") tech(variations);
+          font-weight: 100 900;
+          font-display: swap;
+        }
     {{/if}}
     </style>
-    {{/if}}
   `
       );
 
@@ -2315,10 +2363,19 @@ const TemplateEngine = (function () {
               label: "Trebuchet MS (sans-serif)",
               selected: false,
             },
-            {
+{
               value: "OpenDyslexic, sans-serif",
               label: "OpenDyslexic ('dyslexia-friendly')",
               selected: false,
+            },
+            // ✅ Atkinson Hyperlegible - High readability variable font
+            {
+              value: "'Atkinson Hyperlegible', sans-serif",
+              label: "Atkinson Hyperlegible (high readability)",
+              selected: false,
+              isVariable: true,
+              weightRange: "100-900",
+              supportsItalic: true,
             },
             // ✅ VARIABLE FONT with weight options
             {

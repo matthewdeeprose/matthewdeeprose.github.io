@@ -1,0 +1,46 @@
+% test-document-minimal.tex
+% Minimal test document covering all three bugs
+
+% PREAMBLE: Custom commands (Bug #1)
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\abs}[1]{\left|#1\right|}
+
+% DOCUMENT
+\title{Test Document - Export Bugs}
+\author{Tester}
+\date{\today}
+
+\section{Introduction}
+
+This document tests all three export bugs.
+
+\section{Bug 1: Custom Commands}
+
+The real numbers $\R$, complex numbers $\C$, and natural numbers $\N$ are important.
+
+The absolute value function is defined as $\abs{x}$.
+
+\section{Bug 2: Align Environment}
+
+Solving a system of equations:
+
+\begin{align}
+x + y &= 5 \\
+2x - y &= 1
+\end{align}
+
+\section{Bug 3: Gather Environment}
+
+Some equations:
+
+\begin{gather}
+a = b + c \\
+d = e + f \\
+g = h + i
+\end{gather}
+
+\section{Conclusion}
+
+All three bugs should be visible in the export.

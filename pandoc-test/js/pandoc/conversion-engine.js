@@ -477,19 +477,19 @@ const ConversionEngine = (function () {
             this.outputDiv.innerHTML = chunkingResult.output;
           }
 
-          if (window.StatusManager) {
-            window.StatusManager.setLoading(
-              "Rendering mathematical expressions...",
-              90
-            );
-          }
-
           await this.renderMathJax();
 
-          if (window.StatusManager) {
-            const successMessage = `Complex document processed successfully! (${chunkingResult.chunksProcessed} sections processed, ${chunkingResult.chunksSucceeded} succeeded)`;
-            window.StatusManager.setReady(successMessage);
-          }
+          // Note: Annotation injection now handled by index.html via MathJax event system
+          // This ensures it runs AFTER MathJax creates containers (not before)
+          // The index.html system includes the optimized offset map and status updates
+
+          logInfo(
+            "✅ MathJax rendering complete - annotation injection will be triggered by MathJax event system"
+          );
+
+          logInfo(
+            "ChunkedProcessingEngine completed - waiting for annotation injection"
+          );
 
           logInfo("ChunkedProcessingEngine completed successfully");
           return true;
@@ -717,18 +717,56 @@ const ConversionEngine = (function () {
      * Convert input using Pandoc with robust error handling and complexity assessment
      */
     async convertInput() {
+      // OPTIMIZATION: Clear duplicate prevention flags on new conversion
+      // This ensures each conversion starts fresh without cached state from previous conversions
+      window._lastRegisteredContent = null;
+      window._crossRefFixingInProgress = false;
+
       const engineStatus = this._getCachedStatus();
       const isCurrentlyReady = engineStatus ? engineStatus.ready : this.isReady;
       const isCurrentlyInProgress = engineStatus
         ? engineStatus.conversionInProgress
         : this.conversionInProgress;
 
+      // 🔧 CRITICAL FIX: Log detailed state for debugging stuck conversions
       if (!isCurrentlyReady || !this.pandocFunction || isCurrentlyInProgress) {
-        logDebug(
-          "Conversion skipped - engine not ready or conversion in progress"
-        );
+        logDebug("Conversion skipped:");
+        logDebug(`  - Engine ready: ${isCurrentlyReady}`);
+        logDebug(`  - Pandoc function: ${!!this.pandocFunction}`);
+        logDebug(`  - Conversion in progress: ${isCurrentlyInProgress}`);
+
+        // 🔧 CRITICAL FIX: If stuck in "in progress" for too long, reset
+        if (isCurrentlyInProgress) {
+          if (!this._conversionStartTime) {
+            this._conversionStartTime = Date.now();
+          }
+
+          const elapsedTime = Date.now() - this._conversionStartTime;
+          const maxConversionTime = 30000; // 30 seconds
+
+          if (elapsedTime > maxConversionTime) {
+            logError(
+              `⚠️ Conversion stuck for ${elapsedTime}ms - forcing reset!`
+            );
+            this.conversionInProgress = false;
+            this._conversionStartTime = null;
+
+            if (window.StatusManager) {
+              window.StatusManager.setError(
+                "Conversion timeout - attempting recovery..."
+              );
+            }
+
+            // Try again after reset
+            setTimeout(() => this.convertInput(), 100);
+          }
+        }
+
         return;
       }
+
+      // 🔧 CRITICAL FIX: Reset conversion start time for new conversion
+      this._conversionStartTime = Date.now();
 
       const rawInputText = this.inputTextarea?.value?.trim() || "";
       const argumentsText = this.argumentsInput?.value?.trim() || "";
@@ -813,11 +851,42 @@ const ConversionEngine = (function () {
           if (conversionResult) {
             logInfo("ConversionOrchestrator completed successfully");
 
-            // ✅ CRITICAL FIX: Store LaTeX for enhanced export processor
+            // ✅ CRITICAL FIX: Store LaTeX with export protection
             if (window.LaTeXProcessorEnhanced && rawInputText) {
               try {
-                window.LaTeXProcessorEnhanced.storeOriginalLatex(rawInputText);
-                logDebug("✅ Stored LaTeX for enhanced export (auto-capture)");
+                // Check if export is in progress before allowing storage
+                if (window.LatexStorageManager) {
+                  const status = window.LatexStorageManager.getStatus();
+                  if (status.isExportInProgress) {
+                    logWarn("⚠️  Export in progress - deferring LaTeX storage");
+                    logWarn("   Storage will use legacy fallback if needed");
+                    // Don't store - let protected storage block it naturally
+                    // Export will use existing storage or legacy fallback
+                  } else {
+                    // Safe to store - no export in progress
+                    const stored =
+                      window.LaTeXProcessorEnhanced.storeOriginalLatex(
+                        rawInputText
+                      );
+                    if (stored) {
+                      logDebug(
+                        "✅ Stored LaTeX in protected storage (auto-capture)"
+                      );
+                    } else {
+                      logWarn(
+                        "⚠️  Protected storage refused - using legacy fallback"
+                      );
+                    }
+                  }
+                } else {
+                  // Fallback to old behavior if storage manager not available
+                  window.LaTeXProcessorEnhanced.storeOriginalLatex(
+                    rawInputText
+                  );
+                  logDebug(
+                    "✅ Stored LaTeX for enhanced export (auto-capture, legacy)"
+                  );
+                }
               } catch (storageError) {
                 logWarn(
                   "Failed to store LaTeX for enhanced export:",
@@ -921,6 +990,9 @@ const ConversionEngine = (function () {
      * Render MathJax on the output
      */
     async renderMathJax() {
+      // PHASE 2C: Initialize flag to prevent race conditions
+      this.mathjaxRenderingInProgress = false;
+
       if (
         !window.MathJax ||
         !window.MathJax.typesetPromise ||
@@ -933,8 +1005,17 @@ const ConversionEngine = (function () {
       try {
         logInfo("Starting MathJax typeset...");
 
+        // Count equations to show progress
+        const equations = this.outputDiv.querySelectorAll(
+          '.math.display, .math.inline, mjx-container, [class*="math"]'
+        );
+        const equationCount = equations.length;
+
         if (window.StatusManager) {
-          window.StatusManager.updateConversionStatus("CONVERT_MATHJAX", 90);
+          window.StatusManager.setLoading(
+            `Rendering ${equationCount} mathematical expressions...`,
+            20 // Start at 20%, will animate to 70%
+          );
         }
 
         // PHASE 1F PART B FIX: Clear MathJax processing state before rendering
@@ -951,8 +1032,160 @@ const ConversionEngine = (function () {
           );
         }
 
-        await window.MathJax.typesetPromise([this.outputDiv]);
+        // UNDERBRACE FIX: Clear state for restored numbered environments
+        // After delimiter wrapping, these spans still have class="math" which tells MathJax
+        // they're already processed. We need to clear that state so MathJax re-processes them.
+        if (window.MathJax?.typesetClear) {
+          const numberedEnvSpans = this.outputDiv.querySelectorAll(
+            "span.math.numbered-env"
+          );
+          if (numberedEnvSpans.length > 0) {
+            const clearStart = performance.now();
+            logInfo(
+              `🔄 Clearing MathJax state for ${numberedEnvSpans.length} restored environments...`
+            );
+
+            window.MathJax.typesetClear(Array.from(numberedEnvSpans));
+
+            const clearTime = performance.now() - clearStart;
+            logInfo(
+              `✅ Numbered environment state cleared in ${clearTime.toFixed(
+                2
+              )}ms`
+            );
+
+            if (clearTime > 100) {
+              logWarn(
+                `⚠️ State clearing took ${clearTime.toFixed(
+                  2
+                )}ms (>100ms warning threshold)`
+              );
+            }
+          } else {
+            logDebug(
+              "No numbered-env spans found - skipping targeted state clearing"
+            );
+          }
+        }
+
+        // PHASE 2C: Chunked rendering with CSS animation feedback
+        const CHUNK_SIZE = 250; // Process 250 equations at a time
+        const USE_CHUNKING = equationCount > 500; // Only chunk large documents
+        const progressBarElement = document.getElementById("statusProgressBar");
+
+        // CRITICAL: Set flag to prevent premature completion during chunked rendering
+        if (USE_CHUNKING) {
+          this.mathjaxRenderingInProgress = true;
+          logInfo(
+            `🔒 Locked completion - chunked MathJax rendering in progress`
+          );
+        }
+
+        // Add CSS animation class for visual feedback
+        if (progressBarElement && USE_CHUNKING) {
+          progressBarElement.classList.add("processing");
+          logInfo(
+            `🎬 Enabled CSS pulse animation for ${equationCount} equations`
+          );
+        }
+
+        const startTime = Date.now();
+
+        try {
+          if (USE_CHUNKING) {
+            // Chunked rendering for large documents
+            logInfo(
+              `📦 Using chunked rendering: ${equationCount} equations in ${Math.ceil(
+                equationCount / CHUNK_SIZE
+              )} chunks`
+            );
+
+            // Get all math elements that need rendering (including restored numbered environments)
+            const mathElements = Array.from(
+              this.outputDiv.querySelectorAll(
+                ".math.display, .math.inline, .math.numbered-env"
+              )
+            );
+
+            // Process in chunks
+            for (let i = 0; i < mathElements.length; i += CHUNK_SIZE) {
+              const chunk = mathElements.slice(i, i + CHUNK_SIZE);
+              const chunkIndex = Math.floor(i / CHUNK_SIZE) + 1;
+              const totalChunks = Math.ceil(mathElements.length / CHUNK_SIZE);
+
+              // Calculate progress within MathJax range (20% → 70%)
+              const progress = 20 + Math.floor((i / mathElements.length) * 50);
+
+              if (window.StatusManager) {
+                window.StatusManager.setLoading(
+                  `Rendering equations ${i + 1}-${Math.min(
+                    i + CHUNK_SIZE,
+                    mathElements.length
+                  )} of ${equationCount}...`,
+                  progress
+                );
+              }
+
+              logDebug(
+                `Processing chunk ${chunkIndex}/${totalChunks}: ${chunk.length} equations`
+              );
+
+              // Render this chunk
+              await window.MathJax.typesetPromise(chunk);
+
+              // Yield to event loop between chunks (allows progress animation to update)
+              await Promise.resolve();
+
+              // Small delay to ensure DOM updates are visible
+              await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            logInfo(
+              `✅ Chunked rendering complete: ${
+                mathElements.length
+              } equations in ${Date.now() - startTime}ms`
+            );
+          } else {
+            // Small document - render all at once (original behaviour)
+            logInfo(
+              `⚡ Rendering all ${equationCount} equations at once (document < 500 equations)`
+            );
+            await window.MathJax.typesetPromise([this.outputDiv]);
+          }
+        } finally {
+          // Remove CSS animation class
+          if (progressBarElement && USE_CHUNKING) {
+            progressBarElement.classList.remove("processing");
+            logInfo("🎬 Disabled CSS pulse animation");
+          }
+
+          // CRITICAL: Clear flag to allow completion now that all chunks are done
+          if (USE_CHUNKING) {
+            this.mathjaxRenderingInProgress = false;
+            logInfo(`🔓 Unlocked completion - all MathJax chunks complete`);
+
+            // PHASE 2C FIX: Trigger annotation injection now that chunking is complete
+            if (window.triggerAnnotationInjection) {
+              logInfo(
+                "🎯 Triggering deferred annotation injection after MathJax completion"
+              );
+              // Small delay to ensure DOM is stable and flag is cleared
+              setTimeout(() => {
+                window.triggerAnnotationInjection("MathJax-Complete");
+              }, 100);
+            }
+          }
+        }
+
         logInfo("✅ MathJax typeset complete");
+
+        // Update status immediately after MathJax completes
+        if (window.StatusManager) {
+          window.StatusManager.setLoading(
+            "Finalising mathematical rendering...",
+            70 // Matches end of MathJax animation
+          );
+        }
 
         // Verify equation numbers were created (for numbered environments)
         const equationTags = this.outputDiv.querySelectorAll(
@@ -994,9 +1227,16 @@ const ConversionEngine = (function () {
       } catch (error) {
         logError("MathJax rendering error:", error);
         // Don't throw - conversion can continue without MathJax
+      } finally {
+        // PHASE 2C: Ensure flag is always cleared, even on error
+        if (this.mathjaxRenderingInProgress) {
+          this.mathjaxRenderingInProgress = false;
+          logInfo(
+            "🔓 Cleared mathjaxRenderingInProgress flag (cleanup after error/completion)"
+          );
+        }
       }
     }
-
     /**
      * Set empty output message
      */
@@ -1111,12 +1351,24 @@ const ConversionEngine = (function () {
   // ===========================================================================================
 
   // Delegate to ConversionAPIManager for public API creation
-  return (
-    window.ConversionAPIManager?.createPublicAPI(conversionManager) || {
-      error: "ConversionAPIManager not available - API creation failed",
-      manager: conversionManager,
-    }
-  );
+  const publicAPI = window.ConversionAPIManager?.createPublicAPI(
+    conversionManager
+  ) || {
+    error: "ConversionAPIManager not available - API creation failed",
+    manager: conversionManager,
+  };
+
+  // PHASE 2C FIX: Expose mathjaxRenderingInProgress flag for coordination with annotation system
+  // This allows index.html's triggerAnnotationInjection to check the flag
+  Object.defineProperty(publicAPI, "mathjaxRenderingInProgress", {
+    get: function () {
+      return conversionManager.mathjaxRenderingInProgress || false;
+    },
+    enumerable: true,
+    configurable: false,
+  });
+
+  return publicAPI;
 })();
 
 // Make globally available for other modules

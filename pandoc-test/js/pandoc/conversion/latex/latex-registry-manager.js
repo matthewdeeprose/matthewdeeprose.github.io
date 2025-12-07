@@ -60,6 +60,7 @@ const LatexRegistryManager = (function () {
 
   /**
    * Store LaTeX expressions in global registries for annotation injection
+   * ENHANCED: Now supports dual registry (main content + footnotes)
    */
   function storeInGlobalRegistries(latexMap, orderedExpressions) {
     if (!latexMap || !orderedExpressions) {
@@ -96,6 +97,43 @@ const LatexRegistryManager = (function () {
       logDebug(
         `Position array length: ${window.originalLatexByPosition.length}`
       );
+
+      // PHASE 2: Store footnote expressions from temporary storage
+      if (
+        window._footnoteExpressionsRaw &&
+        Array.isArray(window._footnoteExpressionsRaw)
+      ) {
+        const footnoteExpressions = window._footnoteExpressionsRaw;
+
+        // Create footnote registry
+        const footnoteRegistry = {};
+        footnoteExpressions.forEach((expr, index) => {
+          footnoteRegistry[index] = {
+            ...expr,
+            index: index,
+          };
+        });
+
+        // Store footnote registry globally
+        window.footnoteLatexRegistry = footnoteRegistry;
+        window.footnoteLatexByPosition = footnoteExpressions.map(
+          (expr) => expr.latex
+        );
+
+        logInfo(
+          `✅ Stored ${footnoteExpressions.length} footnote expressions in separate registry`
+        );
+        logDebug(
+          `Footnote registry created with ${
+            Object.keys(footnoteRegistry).length
+          } entries`
+        );
+
+        // Clean up temporary storage
+        delete window._footnoteExpressionsRaw;
+      } else {
+        logDebug("No footnote expressions found in temporary storage");
+      }
 
       return true;
     } catch (error) {
@@ -409,4 +447,7 @@ const LatexRegistryManager = (function () {
   };
 })();
 
+window.LatexRegistryManager = LatexRegistryManager;
+// Add alias with correct LaTeX casing for backward compatibility
+window.LaTeXRegistryManager = LatexRegistryManager;
 window.LatexRegistryManager = LatexRegistryManager;

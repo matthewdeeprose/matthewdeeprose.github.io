@@ -42,6 +42,38 @@ const OutputCleaner = (function () {
 
     let cleanOutput = output;
 
+    // TIKZ PLACEHOLDER REPLACEMENT: Convert text markers to proper HTML
+    // This must happen BEFORE any other cleaning to ensure TikZ placeholders are in DOM
+    if (
+      window.TikzPreservationManager &&
+      cleanOutput.includes("[[TIKZ_PLACEHOLDER_")
+    ) {
+      const registry = window.TikzPreservationManager.getRegistry();
+      let replacedCount = 0;
+
+      Object.entries(registry).forEach(([tikzId, tikzData]) => {
+        const marker = `[[TIKZ_PLACEHOLDER_${tikzId}]]`;
+
+        if (cleanOutput.includes(marker)) {
+          // Create proper HTML placeholder based on context
+          const htmlPlaceholder =
+            tikzData.context === "figure"
+              ? `<div class="tikz-placeholder" data-tikz-id="${tikzId}" data-tikz-context="figure" data-skip-latex-export="true">
+  <p><em>TikZ graphic will be rendered here when TikZ support is enabled.</em></p>
+</div>`
+              : `<span class="tikz-placeholder" data-tikz-id="${tikzId}" data-tikz-context="inline" data-skip-latex-export="true">[TikZ graphic]</span>`;
+
+          cleanOutput = cleanOutput.replace(marker, htmlPlaceholder);
+          replacedCount++;
+          logDebug(`Replaced TikZ marker ${tikzId} with HTML placeholder`);
+        }
+      });
+
+      if (replacedCount > 0) {
+        logInfo(`✅ Replaced ${replacedCount} TikZ placeholder(s) with HTML`);
+      }
+    }
+
     // Extract only the body content if Pandoc generated a complete HTML document
     if (output.includes("<html") && output.includes("<body")) {
       const bodyMatch = output.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
@@ -67,19 +99,35 @@ const OutputCleaner = (function () {
     // TIMING FIX: Defer cross-reference fixing to next tick to ensure DOM is ready
     const finalOutput = cleanOutput.trim();
 
-    // Schedule cross-reference fixing to run after DOM is updated
+// Schedule cross-reference fixing to run after DOM is updated
+    // OPTIMIZATION: Add guard to prevent duplicate fixing
     setTimeout(() => {
-      if (window.CrossReferenceFixer) {
+      if (window.CrossReferenceFixer && !window._crossRefFixingInProgress) {
+        window._crossRefFixingInProgress = true; // Set flag
         logInfo("🔗 Running deferred cross-reference fixing...");
-        const fixResults =
-          window.CrossReferenceFixer.fixCrossReferences(originalLatexInput);
+        const fixResults = window.CrossReferenceFixer.fixCrossReferences(
+          originalLatexInput,
+          {
+            skipAnchorCreation: true, // Preprocessor already created anchors via \hypertarget{}
+          }
+        );
         if (fixResults && fixResults.fixed > 0) {
           logInfo(
             `✅ Deferred cross-reference fixing: ${fixResults.fixed} anchors created`
           );
         }
+        // Clear flag after a short delay to allow for new conversions
+        setTimeout(() => {
+          window._crossRefFixingInProgress = false;
+        }, 100);
+      } else if (window._crossRefFixingInProgress) {
+        logInfo(
+          "⏭️ Skipping duplicate cross-reference fixing (already in progress)"
+        );
       }
     }, 200); // Small delay to ensure MathJax and DOM are ready
+
+
 
     logDebug(`Output cleaning complete: ${finalOutput.length} characters`);
     return finalOutput;
@@ -117,8 +165,12 @@ const OutputCleaner = (function () {
 
         // Apply cross-reference fixing if module is available
         if (window.CrossReferenceFixer) {
-          const fixResults =
-            window.CrossReferenceFixer.fixCrossReferences(originalLatexInput);
+          const fixResults = window.CrossReferenceFixer.fixCrossReferences(
+            originalLatexInput,
+            {
+              skipAnchorCreation: true, // Preprocessor already created anchors via \hypertarget{}
+            }
+          );
 
           if (fixResults && fixResults.fixed > 0) {
             logInfo(

@@ -1079,7 +1079,7 @@ const TemplateGenerator = (function () {
         // Load font data from external files or use provided data
         const resolvedFontData = await this.loadFontData(fontData);
 
-        //  Map AnnotationMonoVF data to template variables
+//  Map font data to template variables
         const templateData = {
           // OpenDyslexic (existing static font - direct mapping)
           base64Regular: resolvedFontData.base64Regular,
@@ -1090,14 +1090,23 @@ const TemplateGenerator = (function () {
           //  AnnotationMonoVF variable font mapping
           fontNameVariableBase64: resolvedFontData.base64AnnotationMonoVF,
 
-          //  Conditional flag for template
+          //  Conditional flag for AnnotationMono template
           hasFontNameVariable:
             !!resolvedFontData.base64AnnotationMonoVF &&
             resolvedFontData.base64AnnotationMonoVF !==
               "YOUR_BASE64_PLACEHOLDER",
+
+          // Atkinson Hyperlegible variable font mapping
+          atkinsonHyperlegibleBase64: resolvedFontData.base64AtkinsonHyperlegibleVF,
+
+          // Conditional flag for Atkinson Hyperlegible template
+          hasAtkinsonHyperlegible:
+            !!resolvedFontData.base64AtkinsonHyperlegibleVF &&
+            resolvedFontData.base64AtkinsonHyperlegibleVF !==
+              "YOUR_BASE64_PLACEHOLDER",
         };
 
-        logDebug("ðŸŽ¨ Template data prepared:", {
+        logDebug("Template data prepared:", {
           staticFonts: 4,
           variableFonts: templateData.hasFontNameVariable ? 1 : 0,
           annotationMonoVFLength: templateData.fontNameVariableBase64
@@ -1188,13 +1197,14 @@ const TemplateGenerator = (function () {
     async loadFontData(overrideFontData = {}) {
       // ✅ OPTIMIZATION 1: Removed duplicate logging (use module-level)
 
-      // Font file mapping
+// Font file mapping
       const fontFiles = {
         regular: "fonts/opendyslexic-regular.txt",
         bold: "fonts/opendyslexic-bold.txt",
         italic: "fonts/opendyslexic-italic.txt",
         boldItalic: "fonts/opendyslexic-bold-italic.txt",
         AnnotationMonoVF: "fonts/AnnotationMono-VF.txt",
+        AtkinsonHyperlegibleVF: "fonts/atkinson-hyperlegible-vf.txt",
       };
 
       // ✅ OPTIMIZATION 1: Parallel font loading (5x faster)
@@ -1261,10 +1271,10 @@ const TemplateGenerator = (function () {
         }
       });
 
-      logInfo(
+logInfo(
         `🎨 Font data loading complete: ${
           Object.keys(fontData).length
-        }/5 variants loaded`
+        }/6 variants loaded`
       );
       return fontData;
     }

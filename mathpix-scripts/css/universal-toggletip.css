@@ -475,7 +475,6 @@ button.universal-toggletip-trigger:focus,
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.025em;
   color: var(--toggletip-neutral-accent);
   margin-bottom: 0.25rem;

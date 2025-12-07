@@ -69,7 +69,61 @@
     />
     <meta name="twitter:image:alt" content="" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- Global Logging Utility - Must load first -->
+    <script>
+      // Global logging configuration for all inline scripts
+      window.LogConfig = {
+        LEVELS: {
+          ERROR: 0,
+          WARN: 1,
+          INFO: 2,
+          DEBUG: 3,
+        },
+        DEFAULT_LEVEL: 1, // WARN level by default
+        ENABLE_ALL: false,
+        DISABLE_ALL: false,
+      };
 
+      window.Logger = {
+        shouldLog(level) {
+          if (window.LogConfig.DISABLE_ALL) return false;
+          if (window.LogConfig.ENABLE_ALL) return true;
+          return level <= window.LogConfig.DEFAULT_LEVEL;
+        },
+
+        error(message, ...args) {
+          if (this.shouldLog(window.LogConfig.LEVELS.ERROR)) {
+            console.error(message, ...args);
+          }
+        },
+
+        warn(message, ...args) {
+          if (this.shouldLog(window.LogConfig.LEVELS.WARN)) {
+            console.warn(message, ...args);
+          }
+        },
+
+        info(message, ...args) {
+          if (this.shouldLog(window.LogConfig.LEVELS.INFO)) {
+            console.log(message, ...args);
+          }
+        },
+
+        debug(message, ...args) {
+          if (this.shouldLog(window.LogConfig.LEVELS.DEBUG)) {
+            console.log(message, ...args);
+          }
+        },
+      };
+
+      // Convenience aliases for shorter typing
+      window.logError = window.Logger.error.bind(window.Logger);
+      window.logWarn = window.Logger.warn.bind(window.Logger);
+      window.logInfo = window.Logger.info.bind(window.Logger);
+      window.logDebug = window.Logger.debug.bind(window.Logger);
+
+      console.log("✅ Global logging utility initialised");
+    </script>
     <!-- Enhanced MathJax Configuration with Accessibility Module Loading -->
     <script>
       console.log("=== ENHANCED MATHJAX CONFIG LOADING ===");
@@ -150,148 +204,211 @@
 
         startup: {
           ready() {
-            console.log("=== ENHANCED MATHJAX STARTUP READY ===");
-            console.log("MathJax enhanced startup initiated");
+            logInfo("=== ENHANCED MATHJAX STARTUP READY ===");
+            logDebug("MathJax enhanced startup initiated");
             MathJax.startup.defaultReady();
-            console.log("MathJax default ready complete");
+            logDebug("MathJax default ready complete");
 
             // Phase 3: Event-Driven Annotation Injection
             // Wait for conversion engine completion instead of immediate injection
-            console.log(
+            logInfo(
               "🔗 Setting up conversion completion listener for annotation injection..."
             );
 
             // Create a global function to inject annotations when content is ready
             window.injectMathJaxAnnotations = function () {
               try {
-                console.log(
+                logInfo(
                   "=== PHASE 3: CONVERSION-TRIGGERED ANNOTATION INJECTION ==="
                 );
+
+                // TIME-BASED: Annotations are 1.2% of work, but include 25% for hidden gaps
+                if (window.StatusManager) {
+                  window.StatusManager.setLoading(
+                    `Finalizing document structure...`,
+                    85
+                  );
+                }
 
                 const MATHML_NS = "http://www.w3.org/1998/Math/MathML";
                 const assistiveMathElements = document.querySelectorAll(
                   "mjx-assistive-mml > math"
                 );
-                let annotationCount = 0;
+                let mainAnnotationCount = 0;
+                let footnoteAnnotationCount = 0;
 
-                console.log(
-                  `Found ${assistiveMathElements.length} assistive MathML elements to process`
+                const totalElements = assistiveMathElements.length;
+                logInfo(
+                  `Found ${totalElements} assistive MathML elements to process`
                 );
 
-                assistiveMathElements.forEach((mathElement, index) => {
+                // PHASE 1: Calculate footnote positions for offset calculation
+                const footnotePositions = [];
+                assistiveMathElements.forEach((math, idx) => {
+                  if (
+                    math.closest(
+                      'aside.footnote, .footnotes, section.footnotes, li[id^="fn"]'
+                    )
+                  ) {
+                    footnotePositions.push(idx);
+                  }
+                });
+
+                logDebug(
+                  `🔍 Found ${footnotePositions.length} footnote elements at positions:`,
+                  footnotePositions.slice(0, 10),
+                  footnotePositions.length > 10 ? "..." : ""
+                );
+
+                // 🚀 PERFORMANCE FIX: Pre-calculate offset map (O(n) once vs O(n×m) repeated)
+                // This eliminates the repeated filter() calls that were causing 30-45 second delays
+                const offsetMap = new Map();
+                let footnoteCount = 0;
+                for (let i = 0; i < totalElements; i++) {
+                  if (footnotePositions.includes(i)) {
+                    footnoteCount++;
+                  }
+                  offsetMap.set(i, i - footnoteCount);
+                }
+                logDebug(
+                  `✅ Created offset map with ${offsetMap.size} entries, ${footnoteCount} footnotes excluded`
+                );
+
+                // Track footnote index separately
+                let footnoteIndexCounter = 0;
+
+                // PHASE 2: Process each element with index-based matching
+                assistiveMathElements.forEach((mathElement, domIndex) => {
+                  // Update status every 100 elements for user feedback
+                  if (domIndex % 100 === 0 && window.StatusManager) {
+                    const progress =
+                      85 + Math.floor((domIndex / totalElements) * 15); // 85% → 100%
+                    window.StatusManager.setLoading(
+                      `Finalizing document: ${domIndex}/${totalElements} (${progress}%)`,
+                      progress
+                    );
+                  }
+
                   try {
-                    // 🎯 BREAKTHROUGH: Use preserved original LaTeX instead of synthetic generation
-                    let texContent = "unknown";
-                    const elementText = mathElement.textContent;
+                    // Check if this element is in a footnote
+                    const isInFootnote = footnotePositions.includes(domIndex);
 
-                    // Use preserved original LaTeX from conversion engine
-                    if (
-                      window.originalLatexByPosition &&
-                      window.originalLatexByPosition[index]
-                    ) {
-                      texContent = window.originalLatexByPosition[index];
-                      console.log(
-                        `✅ Using preserved LaTeX for element ${index}: ${texContent.substring(
-                          0,
-                          50
-                        )}...`
-                      );
-                    } else if (window.originalLatexRegistry) {
-                      // Fallback: try to find matching expression by content similarity
-                      const registryEntries = Object.values(
-                        window.originalLatexRegistry
-                      );
-                      const matchingEntry = registryEntries.find((entry) => {
-                        const entryText = entry.latex
-                          .replace(/[^a-zA-Z0-9]/g, "")
-                          .toLowerCase();
-                        const elementTextClean = elementText
-                          .replace(/[^a-zA-Z0-9]/g, "")
-                          .toLowerCase();
-                        return (
-                          entryText.includes(
-                            elementTextClean.substring(0, 10)
-                          ) ||
-                          elementTextClean.includes(entryText.substring(0, 10))
+                    if (isInFootnote) {
+                      // PROCESS FOOTNOTE (don't skip!)
+                      const footnoteLatex =
+                        window.footnoteLatexRegistry?.[footnoteIndexCounter]
+                          ?.latex;
+
+                      if (!footnoteLatex) {
+                        logWarn(
+                          `No footnote LaTeX found for index ${footnoteIndexCounter}`
                         );
-                      });
+                        footnoteIndexCounter++;
+                        return;
+                      }
 
-                      if (matchingEntry) {
-                        texContent = matchingEntry.latex;
-                        console.log(
-                          `✅ Found matching preserved LaTeX for element ${index}: ${texContent.substring(
+                      // Get or create semantics wrapper (footnotes often don't have one)
+                      let semantics = mathElement.querySelector("semantics");
+                      if (!semantics) {
+                        // CREATE semantics wrapper for footnote
+                        semantics = document.createElementNS(
+                          MATHML_NS,
+                          "semantics"
+                        );
+                        while (mathElement.firstChild) {
+                          semantics.appendChild(mathElement.firstChild);
+                        }
+                        mathElement.appendChild(semantics);
+                        logDebug(
+                          `📦 Created <semantics> wrapper for footnote ${footnoteIndexCounter}`
+                        );
+                      }
+
+                      // Get or create annotation
+                      let annotation = semantics.querySelector(
+                        'annotation[encoding="application/x-tex"]'
+                      );
+
+                      if (annotation) {
+                        // Replace existing (unlikely for footnotes, but handle it)
+                        annotation.textContent = footnoteLatex;
+                        footnoteAnnotationCount++;
+                        logDebug(
+                          `🔄 Replaced footnote annotation [${footnoteIndexCounter}]: ${footnoteLatex.substring(
                             0,
                             50
                           )}...`
                         );
                       } else {
-                        console.warn(
-                          `⚠️ No preserved LaTeX found for element ${index}, using fallback patterns`
+                        // CREATE annotation (most common case for footnotes)
+                        annotation = document.createElementNS(
+                          MATHML_NS,
+                          "annotation"
                         );
-
-                        // Enhanced fallback system (improved from original)
-                        if (
-                          elementText.includes("x") &&
-                          elementText.includes("y") &&
-                          elementText.includes("z")
-                        ) {
-                          texContent = "x^2 + y^2 = z^2";
-                        } else if (elementText.includes("∑")) {
-                          texContent = "\\sum_{i=1}^{n} x_i";
-                        } else if (elementText.includes("∫")) {
-                          texContent = "\\int_{a}^{b} f(x) dx";
-                        } else if (elementText.includes("√")) {
-                          texContent = "\\sqrt{x}";
-                        } else if (
-                          elementText.includes("α") ||
-                          elementText.includes("β")
-                        ) {
-                          texContent = "\\alpha + \\beta";
-                        } else {
-                          // Clean the element text of semantic artifacts for fallback
-                          texContent = elementText
-                            .replace(/⁢/g, "") // Remove invisible times
-                            .replace(/\u2062/g, "") // Remove invisible times (Unicode)
-                            .replace(/\s+/g, " ")
-                            .trim()
-                            .substring(0, 50);
-                        }
+                        annotation.setAttribute(
+                          "encoding",
+                          "application/x-tex"
+                        );
+                        annotation.textContent = footnoteLatex;
+                        semantics.appendChild(annotation);
+                        footnoteAnnotationCount++;
+                        logDebug(
+                          `➕ Created footnote annotation [${footnoteIndexCounter}]: ${footnoteLatex.substring(
+                            0,
+                            50
+                          )}...`
+                        );
                       }
-                    } else {
-                      console.warn(
-                        `⚠️ No LaTeX preservation system found, using enhanced fallback for element ${index}`
-                      );
 
-                      // Enhanced fallback system when no preservation system available
-                      if (
-                        elementText.includes("x") &&
-                        elementText.includes("y") &&
-                        elementText.includes("z")
-                      ) {
-                        texContent = "x^2 + y^2 = z^2";
-                      } else if (elementText.includes("∑")) {
-                        texContent = "\\sum_{i=1}^{n} x_i";
-                      } else if (elementText.includes("∫")) {
-                        texContent = "\\int_{a}^{b} f(x) dx";
-                      } else if (elementText.includes("√")) {
-                        texContent = "\\sqrt{x}";
-                      } else if (
-                        elementText.includes("α") ||
-                        elementText.includes("β")
-                      ) {
-                        texContent = "\\alpha + \\beta";
-                      } else {
-                        // Clean the element text of semantic artifacts for fallback
-                        texContent = elementText
-                          .replace(/⁢/g, "") // Remove invisible times
-                          .replace(/\u2062/g, "") // Remove invisible times (Unicode)
-                          .replace(/\s+/g, " ")
-                          .trim()
-                          .substring(0, 50);
-                      }
+                      footnoteIndexCounter++;
+                      return;
                     }
 
-                    // Apply proven injection technique
+                    // PROCESS MAIN CONTENT (existing working logic)
+                    // 🚀 PERFORMANCE FIX: Use pre-calculated offset map instead of filter
+                    // This is O(1) lookup vs O(n) filter - critical for 2,751 elements
+                    const registryIndex = offsetMap.get(domIndex);
+
+                    if (registryIndex === undefined) {
+                      logWarn(`⚠️ No offset found for domIndex ${domIndex}`);
+                      return;
+                    }
+
+                    // Get LaTeX from registry using calculated index
+                    let texContent = null;
+
+                    if (
+                      window.originalLatexRegistry &&
+                      window.originalLatexRegistry[registryIndex]
+                    ) {
+                      texContent =
+                        window.originalLatexRegistry[registryIndex].latex;
+                      logDebug(
+                        `✅ Index-matched [DOM:${domIndex} → Registry:${registryIndex}]: ${texContent.substring(
+                          0,
+                          50
+                        )}...`
+                      );
+                    } else if (
+                      window.originalLatexByPosition &&
+                      window.originalLatexByPosition[registryIndex]
+                    ) {
+                      texContent =
+                        window.originalLatexByPosition[registryIndex];
+                      logDebug(
+                        `⚠️ Position-matched [${registryIndex}]: ${texContent.substring(
+                          0,
+                          50
+                        )}...`
+                      );
+                    } else {
+                      logWarn(
+                        `❌ No registry match for DOM:${domIndex} → Registry:${registryIndex}`
+                      );
+                      return; // Skip if no registry entry found
+                    }
+
+                    // Get or create semantics element
                     let semantics = mathElement.querySelector("semantics");
                     if (!semantics) {
                       semantics = document.createElementNS(
@@ -304,36 +421,82 @@
                       mathElement.appendChild(semantics);
                     }
 
-                    // Add annotation if not present
-                    if (
-                      !semantics.querySelector(
-                        'annotation[encoding="application/x-tex"]'
-                      )
-                    ) {
-                      const annotation = document.createElementNS(
+                    // CRITICAL FIX: REPLACE existing annotation instead of skipping
+                    let annotation = semantics.querySelector(
+                      'annotation[encoding="application/x-tex"]'
+                    );
+
+                    if (annotation) {
+                      // Replace existing annotation content
+                      const oldContent = annotation.textContent;
+                      annotation.textContent = texContent;
+                      mainAnnotationCount++;
+
+                      // Log first few replacements for debugging
+                      if (
+                        mainAnnotationCount <= 5 ||
+                        (mainAnnotationCount >= 100 &&
+                          mainAnnotationCount <= 105)
+                      ) {
+                        logDebug(
+                          `🔄 Replaced [${domIndex}]: "${oldContent.substring(
+                            0,
+                            30
+                          )}..." → "${texContent.substring(0, 30)}..."`
+                        );
+                      }
+                    } else {
+                      // Create new annotation (shouldn't happen often, but handle it)
+                      annotation = document.createElementNS(
                         MATHML_NS,
                         "annotation"
                       );
                       annotation.setAttribute("encoding", "application/x-tex");
                       annotation.textContent = texContent;
                       semantics.appendChild(annotation);
-                      annotationCount++;
+                      mainAnnotationCount++;
+                      logDebug(
+                        `➕ Created new annotation [${domIndex}]: ${texContent.substring(
+                          0,
+                          50
+                        )}...`
+                      );
                     }
                   } catch (error) {
-                    console.error(
-                      `Error injecting annotation for element ${index}:`,
-                      error
-                    );
+                    logError(`Error processing element ${domIndex}:`, error);
                   }
                 });
 
-                console.log(
-                  `🎯 Conversion-triggered annotation injection completed: ${annotationCount} annotations added`
-                );
+                const totalAnnotations =
+                  mainAnnotationCount + footnoteAnnotationCount;
+                logInfo(`🎯 Annotation injection completed:`);
+                logInfo(`   Main content: ${mainAnnotationCount} annotations`);
+                logInfo(`   Footnotes: ${footnoteAnnotationCount} annotations`);
+                logInfo(`   Total: ${totalAnnotations} annotations`);
 
-                return annotationCount;
+                // PHASE 2C FIX: Use setReady to trigger final completion
+                // Small delay to ensure DOM is fully updated with annotations
+                setTimeout(() => {
+                  if (window.StatusManager) {
+                    window.StatusManager.setReady(
+                      "Document complete (" +
+                        totalAnnotations +
+                        " annotations processed). Ready for export!",
+                      100
+                    );
+                  }
+
+                  // Fixed: Use correct path to enableExportButtons method
+                  if (window.AppStateManager?.manager?.enableExportButtons) {
+                    window.AppStateManager.manager.enableExportButtons(
+                      "Document complete and ready for export"
+                    );
+                  }
+                }, 150);
+
+                return totalAnnotations;
               } catch (error) {
-                console.error(
+                logError(
                   "❌ Error during conversion-triggered injection:",
                   error
                 );
@@ -342,7 +505,7 @@
             };
 
             // Set up optimized annotation injection with deduplication
-            console.log("🔗 Setting up annotation injection system...");
+            logDebug("🔗 Setting up annotation injection system...");
 
             // Global state for preventing duplicate injections
             window.annotationInjectionState = {
@@ -355,6 +518,17 @@
             window.triggerAnnotationInjection = function (source = "unknown") {
               const now = Date.now();
               const state = window.annotationInjectionState;
+
+              // PHASE 2C FIX: Check if MathJax chunked rendering is in progress
+              const mathjaxChunkingInProgress =
+                window.ConversionEngine?.mathjaxRenderingInProgress || false;
+
+              if (mathjaxChunkingInProgress) {
+                logDebug(
+                  `⏸️  Deferring annotation injection from ${source} - MathJax chunked rendering still in progress`
+                );
+                return; // Skip injection until chunking completes
+              }
 
               // Prevent duplicate injections within 1 second
               if (state.isInjecting || now - state.lastInjectionTime < 1000) {
@@ -369,6 +543,16 @@
               state.injectionTimeout = setTimeout(() => {
                 if (state.isInjecting) return;
 
+                // Double-check flag before executing (in case it changed during timeout)
+                const stillChunking =
+                  window.ConversionEngine?.mathjaxRenderingInProgress || false;
+                if (stillChunking) {
+                  logDebug(
+                    `⏸️  Annotation injection cancelled - chunking still active`
+                  );
+                  return;
+                }
+
                 state.isInjecting = true;
                 state.lastInjectionTime = now;
 
@@ -376,17 +560,17 @@
                   if (window.injectMathJaxAnnotations) {
                     const count = window.injectMathJaxAnnotations();
                     if (count > 0) {
-                      console.log(
+                      logInfo(
                         `✅ Phase 3: ${count} annotations successfully injected via ${source}`
                       );
                     }
                   }
                 } catch (error) {
-                  console.error("❌ Error during annotation injection:", error);
+                  logError("❌ Error during annotation injection:", error);
                 } finally {
                   state.isInjecting = false;
                 }
-              }, 150);
+              }, 50); // Reduced from 150ms to 50ms
             };
 
             // Approach 1: MathJax event system
@@ -406,7 +590,7 @@
                       return result;
                     });
                 };
-                console.log("✅ MathJax event listener ready");
+                logDebug("✅ MathJax event listener ready");
               });
             }
 
@@ -442,16 +626,16 @@
                 childList: true,
                 subtree: true,
               });
-              console.log("✅ DOM observer ready");
+              logDebug("✅ DOM observer ready");
             }
 
-            console.log(
-              "✅ Annotation injection system initialized with deduplication"
+            logInfo(
+              "✅ Annotation injection system initialised with deduplication"
             );
 
             // 🧪 TESTING: Add verification functions for LaTeX preservation system
             window.testLatexPreservation = function () {
-              console.log("=== LATEX PRESERVATION SYSTEM TEST ===");
+              logInfo("=== LATEX PRESERVATION SYSTEM TEST ===");
 
               const registryCount = window.originalLatexRegistry
                 ? Object.keys(window.originalLatexRegistry).length
@@ -460,10 +644,10 @@
                 ? window.originalLatexByPosition.length
                 : 0;
 
-              console.log(
+              logInfo(
                 `📊 Original LaTeX Registry: ${registryCount} expressions`
               );
-              console.log(
+              logInfo(
                 `📊 Position-ordered expressions: ${positionCount} expressions`
               );
 
@@ -471,11 +655,11 @@
                 window.originalLatexByPosition &&
                 window.originalLatexByPosition.length > 0
               ) {
-                console.log("📋 Sample preserved expressions:");
+                logInfo("📋 Sample preserved expressions:");
                 window.originalLatexByPosition
                   .slice(0, 5)
                   .forEach((latex, index) => {
-                    console.log(
+                    logInfo(
                       `  ${index}: ${latex.substring(0, 50)}${
                         latex.length > 50 ? "..." : ""
                       }`
@@ -491,7 +675,7 @@
             };
 
             window.checkAnnotationQuality = function () {
-              console.log("=== ANNOTATION QUALITY CHECK ===");
+              logInfo("=== ANNOTATION QUALITY CHECK ===");
 
               const annotations = Array.from(
                 document.querySelectorAll(
@@ -513,17 +697,17 @@
                   ? Math.round((cleanAnnotations / totalAnnotations) * 100)
                   : 0;
 
-              console.log(`📊 Total annotations: ${totalAnnotations}`);
-              console.log(`✅ Clean annotations: ${cleanAnnotations}`);
-              console.log(
+              logInfo(`📊 Total annotations: ${totalAnnotations}`);
+              logInfo(`✅ Clean annotations: ${cleanAnnotations}`);
+              logInfo(
                 `❌ Annotations with artifacts: ${artifactAnnotations.length}`
               );
-              console.log(`🎯 Quality percentage: ${qualityPercentage}%`);
+              logInfo(`🎯 Quality percentage: ${qualityPercentage}%`);
 
               if (artifactAnnotations.length > 0) {
-                console.log("🔍 Sample problematic annotations:");
+                logInfo("🔍 Sample problematic annotations:");
                 artifactAnnotations.slice(0, 3).forEach((ann, index) => {
-                  console.log(`  ${index}: "${ann.textContent}"`);
+                  logInfo(`  ${index}: "${ann.textContent}"`);
                 });
               }
 
@@ -536,7 +720,7 @@
             };
 
             window.verifyLatexPreservationSystem = function () {
-              console.log("=== COMPLETE LATEX PRESERVATION VERIFICATION ===");
+              logInfo("=== COMPLETE LATEX PRESERVATION VERIFICATION ===");
 
               const preservationTest = window.testLatexPreservation();
               const qualityTest = window.checkAnnotationQuality();
@@ -545,10 +729,10 @@
                 preservationTest.hasPreservation &&
                 qualityTest.qualityPercentage >= 95;
 
-              console.log(
+              logInfo(
                 `🎯 Overall Success: ${success ? "✅ PASSED" : "❌ FAILED"}`
               );
-              console.log(
+              logInfo(
                 `📈 Improvement: Target is 0% artifacts, currently ${
                   100 - qualityTest.qualityPercentage
                 }%`
@@ -570,7 +754,7 @@
                 const a11yModules = Object.keys(
                   (MathJax._ && MathJax._.a11y) || {}
                 );
-                console.log(
+                logDebug(
                   "♿ A11Y Modules loaded:",
                   a11yModules.length,
                   a11yModules
@@ -587,14 +771,14 @@
                 );
 
                 if (missingModules.length > 0) {
-                  console.warn("⚠️ Missing A11Y modules:", missingModules);
-                  console.log("🔄 Attempting to load missing modules...");
+                  logWarn("⚠️ Missing A11Y modules:", missingModules);
+                  logInfo("🔄 Attempting to load missing modules...");
 
                   const modulePromises = missingModules.map((module) => {
                     return MathJax.loader
                       .load("[a11y]/" + module)
                       .catch((error) => {
-                        console.error("❌ Failed to load", module, error);
+                        logError("❌ Failed to load", module, error);
                         return null;
                       });
                   });
@@ -603,30 +787,28 @@
                     const finalModules = Object.keys(
                       (MathJax._ && MathJax._.a11y) || {}
                     );
-                    console.log(
+                    logDebug(
                       "✅ Final A11Y modules:",
                       finalModules.length,
                       finalModules
                     );
 
                     if (finalModules.length >= 4) {
-                      console.log("🎉 Educational accessibility: READY");
+                      logInfo("🎉 Educational accessibility: READY");
                     } else {
-                      console.warn("🚨 Educational accessibility: COMPROMISED");
-                      console.log(
+                      logWarn("🚨 Educational accessibility: COMPROMISED");
+                      logInfo(
                         "💡 Run diagnostic: window.runMathJaxDiagnostic()"
                       );
                     }
                   });
                 } else {
-                  console.log(
-                    "🎉 All accessibility modules loaded successfully"
-                  );
-                  console.log("✅ Educational accessibility: READY");
+                  logInfo("🎉 All accessibility modules loaded successfully");
+                  logInfo("✅ Educational accessibility: READY");
                 }
               } catch (error) {
-                console.error("❌ A11Y verification failed:", error);
-                console.log("💡 Run diagnostic: window.runMathJaxDiagnostic()");
+                logError("❌ A11Y verification failed:", error);
+                logInfo("💡 Run diagnostic: window.runMathJaxDiagnostic()");
               }
 
               if (window.LayoutDebugger && window.LayoutDebugger.isEnabled()) {
@@ -638,7 +820,7 @@
           },
         },
       };
-      console.log("Enhanced MathJax config set");
+      logDebug("Enhanced MathJax config set");
     </script>
     <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?version=3.98.0&features=es6"></script>
     <!-- JSZip for SCORM package generation -->
@@ -1634,40 +1816,6 @@
       (function () {
         "use strict";
 
-        // Logging configuration
-        const LOG_LEVELS = {
-          ERROR: 0,
-          WARN: 1,
-          INFO: 2,
-          DEBUG: 3,
-        };
-
-        const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
-        const ENABLE_ALL_LOGGING = false;
-        const DISABLE_ALL_LOGGING = false;
-
-        function shouldLog(level) {
-          if (DISABLE_ALL_LOGGING) return false;
-          if (ENABLE_ALL_LOGGING) return true;
-          return level <= DEFAULT_LOG_LEVEL;
-        }
-
-        function logError(message, ...args) {
-          if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
-        }
-
-        function logWarn(message, ...args) {
-          if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
-        }
-
-        function logInfo(message, ...args) {
-          if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
-        }
-
-        function logDebug(message, ...args) {
-          if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
-        }
-
         // Theme configuration
         const THEME_CONFIG = {
           defaultTheme: "light",
@@ -2271,38 +2419,6 @@
         }
       }
       // Logging configuration for file operations
-      const LOG_LEVELS = {
-        ERROR: 0,
-        WARN: 1,
-        INFO: 2,
-        DEBUG: 3,
-      };
-
-      const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
-      const ENABLE_ALL_LOGGING = false;
-      const DISABLE_ALL_LOGGING = false;
-
-      function shouldLog(level) {
-        if (DISABLE_ALL_LOGGING) return false;
-        if (ENABLE_ALL_LOGGING) return true;
-        return level <= DEFAULT_LOG_LEVEL;
-      }
-
-      function logError(message, ...args) {
-        if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
-      }
-
-      function logWarn(message, ...args) {
-        if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
-      }
-
-      function logInfo(message, ...args) {
-        if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
-      }
-
-      function logDebug(message, ...args) {
-        if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
-      }
 
       /**
        * 📁 Load LaTeX file into editor with full Live LaTeX Editor integration
@@ -2742,6 +2858,7 @@
     <script src="./js/export/scorm-export-manager.js"></script>
     <script src="js/export/source-viewer.js"></script>
     <script src="./js/export/export-diagnostics.js"></script>
+    <script src="./js/export/latex-export-verifier.js"></script>
     <!-- Export orchestration -->
 
     <!-- Application Feature Modules -->
@@ -2751,6 +2868,7 @@
     <!-- Status indicators -->
     <!-- NEW: Utility Functions (Phase 2) -->
     <script src="./js/pandoc/conversion/utils/output-cleaner.js"></script>
+    <script src="./js/pandoc/conversion/tikz/tikz-preservation-manager.js"></script>
     <script src="./js/pandoc/conversion/utils/validation-utilities.js"></script>
     <script src="./js/pandoc/conversion/utils/performance-monitor.js"></script>
     <script src="./js/pandoc/conversion/memory/memory-watchdog.js"></script>
@@ -2759,6 +2877,8 @@
     <script src="./js/pandoc/conversion/latex/latex-preservation-engine.js"></script>
     <script src="./js/pandoc/conversion/latex/latex-expression-mapper.js"></script>
     <script src="./js/pandoc/conversion/latex/latex-registry-manager.js"></script>
+    <script src="./js/pandoc/conversion/utils/cross-reference-preprocessor.js"></script>
+    <script src="./js/pandoc/conversion/latex/latex-storage-manager.js"></script>
     <script src="./js/pandoc/conversion/processing/processing-strategy-manager.js"></script>
     <script src="./js/pandoc/conversion/processing/chunked-processing-engine.js"></script>
     <script src="./js/pandoc/conversion/processing/pandoc-argument-enhancer.js"></script>
@@ -2841,6 +2961,8 @@
     <script src="./js/testing/individual/test-latex-processor-enhanced.js"></script>
     <script src="./js/testing/individual/test-latex-processor-coordinator.js"></script>
 
+    <script src="./js/testing/individual/test-cross-references.js"></script>
+
     <script src="js/testing/enhanced/test-mathematical-consistency.js"></script>
     <script src="js/testing/enhanced/test-accessibility-restoration.js"></script>
     <script src="js/testing/enhanced/test-comprehensive-integration.js"></script>
@@ -2850,6 +2972,9 @@
     <script src="./js/testing/comprehensive/test-runner.js"></script>
     <!-- Individual Module Tests -->
     <script src="./js/testing/individual/test-template-generator.js"></script>
+    <script src="./js/testing/individual/test-cross-ref-anchors.js"></script>
+    <script src="./js/testing/individual/chunked-anchor-diagnostic.js"></script>
+
     <!-- JS Migration testing -->
     <script src="./js/testing/migration/test-initialization-js-migration.js"></script>
     <script src="./js/testing/migration/test-mathjax-controls-js-migration.js"></script>
@@ -3127,43 +3252,6 @@
         // LOGGING CONFIGURATION (IIFE SCOPE)
         // ===========================================================================================
 
-        const LOG_LEVELS = {
-          ERROR: 0,
-          WARN: 1,
-          INFO: 2,
-          DEBUG: 3,
-        };
-
-        const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
-        const ENABLE_ALL_LOGGING = false;
-        const DISABLE_ALL_LOGGING = false;
-
-        function shouldLog(level) {
-          if (DISABLE_ALL_LOGGING) return false;
-          if (ENABLE_ALL_LOGGING) return true;
-          return level <= DEFAULT_LOG_LEVEL;
-        }
-
-        function logError(message, ...args) {
-          if (shouldLog(LOG_LEVELS.ERROR))
-            console.error("[SCROLLBARS]", message, ...args);
-        }
-
-        function logWarn(message, ...args) {
-          if (shouldLog(LOG_LEVELS.WARN))
-            console.warn("[SCROLLBARS]", message, ...args);
-        }
-
-        function logInfo(message, ...args) {
-          if (shouldLog(LOG_LEVELS.INFO))
-            console.log("[SCROLLBARS]", message, ...args);
-        }
-
-        function logDebug(message, ...args) {
-          if (shouldLog(LOG_LEVELS.DEBUG))
-            console.log("[SCROLLBARS]", message, ...args);
-        }
-
         // ===========================================================================================
         // SCROLLBARS TOGGLE IMPLEMENTATION
         // ===========================================================================================
@@ -3412,6 +3500,453 @@
 
         logInfo("Scrollbars toggle system loaded");
       })();
+    </script>
+
+    <!-- Diagnostic utilities for troubleshooting macro extraction -->
+    <script>
+      /**
+       * Diagnostic Tools Namespace
+       * Provides troubleshooting utilities for macro extraction and storage
+       * Namespaced to avoid conflicts with existing functions
+       */
+      window.DiagnosticTools = window.DiagnosticTools || {};
+
+      /**
+       * Comprehensive diagnostic function for macro extraction troubleshooting
+       * Usage: DiagnosticTools.analyzeMacroExtractionPipeline()
+       * Returns detailed information about storage, extraction, and conversion
+       */
+      window.DiagnosticTools.analyzeMacroExtractionPipeline = function () {
+        console.log("=== MACRO EXTRACTION PIPELINE DIAGNOSTICS ===\n");
+
+        // 1. Check storage status (check protected storage first, then legacy)
+        console.log("📦 STORAGE STATUS:");
+
+        let latexSourceContent = null;
+        let storageType = null;
+        let storageStatus = null;
+
+        // Check protected storage first
+        if (window.LatexStorageManager) {
+          storageStatus = window.LatexStorageManager.getStatus();
+          if (storageStatus.hasData) {
+            console.log(`   ✅ Protected storage found`);
+            console.log(
+              `   Size: ${storageStatus.contentSize.toLocaleString()} characters`
+            );
+            console.log(
+              `   Age: ${storageStatus.ageSeconds}s (${
+                storageStatus.ageMinutes
+              } minute${storageStatus.ageMinutes !== 1 ? "s" : ""})`
+            );
+            console.log(
+              `   Locked: ${
+                storageStatus.isLocked
+                  ? `Yes (${storageStatus.lockReason})`
+                  : "No"
+              }`
+            );
+            console.log(
+              `   Export in progress: ${
+                storageStatus.isExportInProgress ? "Yes" : "No"
+              }`
+            );
+
+            if (storageStatus.isStale) {
+              console.warn(
+                `   ⚠️  Data is ${storageStatus.ageMinutes} minutes old - STALE (max: 10m)`
+              );
+            } else if (storageStatus.isApproachingStale) {
+              console.warn(
+                `   ⚠️  Data is ${storageStatus.ageMinutes} minutes old - approaching stale threshold`
+              );
+            }
+
+            // Get the actual LaTeX content
+            latexSourceContent = window.LatexStorageManager.get(10);
+            storageType = "protected";
+
+            // Also check if legacy storage exists
+            if (window.lastConvertedLatex) {
+              const legacyAge = Math.floor(
+                (Date.now() - window.lastConvertedTimestamp) / 1000
+              );
+              console.log(
+                `   ℹ️  Legacy storage also present (${window.lastConvertedLatex.length.toLocaleString()} chars, ${Math.floor(
+                  legacyAge / 60
+                )}m old)`
+              );
+            }
+          }
+        }
+
+        // Fallback to legacy storage if protected storage empty or unavailable
+        if (!latexSourceContent && window.lastConvertedLatex) {
+          console.log(
+            `   ⚠️  Protected storage ${
+              window.LatexStorageManager ? "empty" : "unavailable"
+            } - using legacy storage`
+          );
+          console.log(
+            `   Size: ${window.lastConvertedLatex.length.toLocaleString()} characters`
+          );
+          const ageSeconds = Math.floor(
+            (Date.now() - window.lastConvertedTimestamp) / 1000
+          );
+          const ageMinutes = Math.floor(ageSeconds / 60);
+          console.log(
+            `   Age: ${ageSeconds}s (${ageMinutes} minute${
+              ageMinutes !== 1 ? "s" : ""
+            })`
+          );
+
+          if (ageMinutes > 10) {
+            console.warn(
+              `   ⚠️  Data is ${ageMinutes} minutes old - STALE (max: 10m)`
+            );
+          } else if (ageMinutes > 5) {
+            console.warn(
+              `   ⚠️  Data is ${ageMinutes} minutes old - approaching stale threshold`
+            );
+          }
+
+          latexSourceContent = window.lastConvertedLatex;
+          storageType = "legacy";
+        }
+
+        // No storage found at all
+        if (!latexSourceContent) {
+          console.error("   ❌ No LaTeX storage found (protected or legacy)");
+          console.log(
+            "   💡 Try: Convert a document first, then run this diagnostic"
+          );
+          return;
+        }
+
+        console.log(`   📍 Using: ${storageType} storage`);
+        console.log("");
+
+        // 2. Check system availability
+        console.log("🔧 SYSTEM AVAILABILITY:");
+        console.log(
+          `   LaTeXProcessorEnhanced: ${
+            !!window.LaTeXProcessorEnhanced ? "✅" : "❌"
+          }`
+        );
+        console.log(
+          `   extractPreambleCommands: ${
+            typeof window.LaTeXProcessorEnhanced?.extractPreambleCommands ===
+            "function"
+              ? "✅"
+              : "❌"
+          }`
+        );
+        console.log(
+          `   convertCommandsToMacros: ${
+            typeof window.LaTeXProcessorEnhanced?.convertCommandsToMacros ===
+            "function"
+              ? "✅"
+              : "❌"
+          }`
+        );
+        console.log("");
+
+        if (!window.LaTeXProcessorEnhanced) {
+          console.error("❌ LaTeXProcessorEnhanced module not available");
+          return;
+        }
+
+        // 3. Test extraction
+        console.log("🔍 EXTRACTION TEST:");
+        try {
+          // latexSourceContent already retrieved from storage check above
+          const extractedCommands =
+            window.LaTeXProcessorEnhanced.extractPreambleCommands(
+              latexSourceContent
+            );
+
+          console.log(
+            `   Found ${extractedCommands.length} preamble command(s)`
+          );
+
+          if (extractedCommands.length === 0) {
+            console.log("   ℹ️  No custom commands found in preamble");
+            console.log(
+              "   💡 This is normal if document doesn't use \\newcommand or \\renewcommand"
+            );
+          } else {
+            console.log("   Commands extracted:");
+            extractedCommands.forEach((cmd, idx) => {
+              const defPreview =
+                cmd.definition.length > 40
+                  ? cmd.definition.substring(0, 40) + "..."
+                  : cmd.definition;
+              const argsInfo = cmd.args
+                ? `[${cmd.args} arg${cmd.args !== 1 ? "s" : ""}]`
+                : "[0 args]";
+              console.log(
+                `      ${idx + 1}. \\${cmd.name}${argsInfo} → ${defPreview}`
+              );
+            });
+          }
+          console.log("");
+
+          // 4. Test conversion
+          console.log("🔄 CONVERSION TEST:");
+          const convertedMacros =
+            window.LaTeXProcessorEnhanced.convertCommandsToMacros(
+              extractedCommands
+            );
+          const convertedMacroCount = Object.keys(convertedMacros).length;
+
+          console.log(
+            `   Converted ${convertedMacroCount}/${extractedCommands.length} command(s) to MathJax macros`
+          );
+
+          if (convertedMacroCount > 0) {
+            console.log("   Macros created:");
+            Object.entries(convertedMacros).forEach(
+              ([macroName, macroDef], idx) => {
+                console.log(
+                  `      ${idx + 1}. ${macroName}: ${JSON.stringify(macroDef)}`
+                );
+              }
+            );
+          }
+          console.log("");
+
+          // 5. Check for conversion failures
+          if (
+            extractedCommands.length > 0 &&
+            convertedMacroCount !== extractedCommands.length
+          ) {
+            console.error("⚠️  CONVERSION MISMATCH DETECTED!");
+            console.error(
+              `   Expected ${extractedCommands.length} macros, got ${convertedMacroCount}`
+            );
+
+            const convertedMacroNames = new Set(Object.keys(convertedMacros));
+            const failedCommandsList = extractedCommands.filter(
+              (cmd) => !convertedMacroNames.has(cmd.name)
+            );
+
+            if (failedCommandsList.length > 0) {
+              console.error("   Failed to convert:");
+              failedCommandsList.forEach((cmd, idx) => {
+                console.error(
+                  `      ${idx + 1}. \\${
+                    cmd.name
+                  } (definition: ${cmd.definition.substring(0, 30)}...)`
+                );
+              });
+            }
+            console.log("");
+          } else if (extractedCommands.length > 0) {
+            console.log("✅ SUCCESS: All commands successfully converted");
+            console.log("");
+          }
+
+          // 6. Simulate export preview
+          console.log("📤 EXPORT PREVIEW:");
+          console.log(
+            "   If you export now, the following config will be generated:"
+          );
+          console.log("   ```javascript");
+          console.log("   window.MathJax = {");
+          console.log("       tex: {");
+          console.log("           macros: {");
+          console.log("               // Default macros:");
+          console.log(
+            "               widecheck: ['\\\\overset{\\\\vee}{#1}', 1],"
+          );
+          console.log("               coloneqq: ['\\\\mathrel{:=}', 0],");
+
+          if (convertedMacroCount > 0) {
+            console.log("               // Custom macros from your document:");
+            Object.entries(convertedMacros).forEach(
+              ([macroName, macroDef], idx) => {
+                const isLastEntry = idx === convertedMacroCount - 1;
+                console.log(
+                  `               ${macroName}: ${JSON.stringify(macroDef)}${
+                    isLastEntry ? "" : ","
+                  }`
+                );
+              }
+            );
+          } else {
+            console.log("               // (no custom macros)");
+          }
+
+          console.log("           }");
+          console.log("       }");
+          console.log("   };");
+          console.log("   ```");
+          console.log("");
+
+          // 7. Summary
+          console.log("📊 SUMMARY:");
+          console.log(
+            `   Storage: ✅ ${
+              storageStatus?.contentSize?.toLocaleString() ||
+              latexSourceContent.length.toLocaleString()
+            } chars (${storageType})`
+          );
+          console.log(
+            `   Extraction: ${extractedCommands.length > 0 ? "✅" : "ℹ️"} ${
+              extractedCommands.length
+            } command(s)`
+          );
+          console.log(
+            `   Conversion: ${
+              convertedMacroCount === extractedCommands.length ? "✅" : "⚠️"
+            } ${convertedMacroCount}/${extractedCommands.length} macro(s)`
+          );
+          console.log(
+            `   Export Ready: ${
+              convertedMacroCount === extractedCommands.length ||
+              extractedCommands.length === 0
+                ? "✅ YES"
+                : "⚠️ PARTIAL"
+            }`
+          );
+
+          if (
+            convertedMacroCount === extractedCommands.length &&
+            extractedCommands.length > 0
+          ) {
+            console.log(
+              "\n🎉 All systems nominal - export will include all custom macros!"
+            );
+          } else if (extractedCommands.length === 0) {
+            console.log(
+              "\nℹ️  Document has no custom commands - export will use default macros only"
+            );
+          } else {
+            console.log(
+              "\n⚠️  Some commands failed conversion - export may be incomplete"
+            );
+            console.log(
+              "💡 Check the CONVERSION MISMATCH section above for details"
+            );
+          }
+        } catch (diagError) {
+          console.error("❌ DIAGNOSTIC ERROR:", diagError.message);
+          console.error("Stack trace:", diagError.stack);
+          console.log(
+            "\n💡 This indicates a problem with the extraction or conversion system"
+          );
+        }
+      };
+
+      /**
+       * Quick storage status check
+       * Usage: DiagnosticTools.checkStorageStatus()
+       */
+      window.DiagnosticTools.checkStorageStatus = function () {
+        if (window.lastConvertedLatex) {
+          const ageInSeconds = Math.floor(
+            (Date.now() - window.lastConvertedTimestamp) / 1000
+          );
+          const ageInMinutes = Math.floor(ageInSeconds / 60);
+          console.log(
+            `📦 Storage: ${window.lastConvertedLatex.length.toLocaleString()} chars, ${ageInMinutes}m ${
+              ageInSeconds % 60
+            }s old`
+          );
+        } else {
+          console.log("📦 Storage: Empty");
+        }
+      };
+
+      /**
+       * Quick registry status check
+       * Usage: DiagnosticTools.checkRegistryStatus()
+       */
+      window.DiagnosticTools.checkRegistryStatus = function () {
+        const mainRegistrySize = Object.keys(
+          window.originalLatexRegistry || {}
+        ).length;
+        const footnoteRegistrySize = Object.keys(
+          window.footnoteLatexRegistry || {}
+        ).length;
+        console.log(
+          `📚 Main registry: ${mainRegistrySize.toLocaleString()} entries`
+        );
+        console.log(
+          `📚 Footnote registry: ${footnoteRegistrySize.toLocaleString()} entries`
+        );
+        console.log(
+          `📚 Total: ${(
+            mainRegistrySize + footnoteRegistrySize
+          ).toLocaleString()} LaTeX expressions`
+        );
+      };
+
+      /**
+       * Check conversion engine state
+       * Usage: DiagnosticTools.checkEngineState()
+       */
+      window.DiagnosticTools.checkEngineState = function () {
+        console.log("🔧 CONVERSION ENGINE STATE:");
+
+        if (window.ConversionEngine?.manager) {
+          const engineMgr = window.ConversionEngine.manager;
+          console.log(
+            `   MathJax rendering in progress: ${!!engineMgr.mathjaxRenderingInProgress}`
+          );
+          console.log(
+            `   Conversion in progress: ${!!engineMgr.conversionInProgress}`
+          );
+
+          // Check if engine is ready
+          if (typeof engineMgr.isEngineReady === "function") {
+            console.log(`   Engine ready: ${engineMgr.isEngineReady()}`);
+          }
+        } else {
+          console.log("   ❌ ConversionEngine not available");
+        }
+
+        // Check flags
+        console.log("\n🚩 GLOBAL FLAGS:");
+        console.log(
+          `   _lastRegisteredContent: ${
+            window._lastRegisteredContent ? "Set" : "Not set"
+          }`
+        );
+        console.log(
+          `   _crossRefFixingInProgress: ${!!window._crossRefFixingInProgress}`
+        );
+      };
+
+      /**
+       * Full system health check
+       * Usage: DiagnosticTools.fullHealthCheck()
+       */
+      window.DiagnosticTools.fullHealthCheck = function () {
+        console.log("=== FULL SYSTEM HEALTH CHECK ===\n");
+        this.checkStorageStatus();
+        console.log("");
+        this.checkRegistryStatus();
+        console.log("");
+        this.checkEngineState();
+      };
+
+      console.log("🔧 Diagnostic tools loaded - Available commands:");
+      console.log(
+        "  - DiagnosticTools.analyzeMacroExtractionPipeline() - Full macro extraction diagnostic"
+      );
+      console.log(
+        "  - DiagnosticTools.checkStorageStatus() - Quick storage check"
+      );
+      console.log(
+        "  - DiagnosticTools.checkRegistryStatus() - Quick registry check"
+      );
+      console.log(
+        "  - DiagnosticTools.checkEngineState() - Engine state check"
+      );
+      console.log(
+        "  - DiagnosticTools.fullHealthCheck() - Complete health check"
+      );
     </script>
   </body>
 </html>

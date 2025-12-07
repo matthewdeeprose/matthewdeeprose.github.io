@@ -17,7 +17,7 @@ const AppStateManager = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -75,7 +75,7 @@ const AppStateManager = (function () {
         "ExportManager",
         "AppStateManager", // FIXED: Include self (brings count to 11)
       ];
-      // 🔧 MEMORY MANAGEMENT: Track polling timeouts for cleanup
+// 🔧 MEMORY MANAGEMENT: Track polling timeouts for cleanup
       this.pollingTimeouts = new Set();
 
       // Optional development modules (tracked but not required)
@@ -84,6 +84,256 @@ const AppStateManager = (function () {
         "TestCommands",
         "LiveLaTeXEditor",
       ];
+
+      // 🔧 VISIBILITY TRACKING: For visibility-aware watchdog
+      // Prevents false timeout warnings when user switches tabs during conversion
+      this._isTabVisible = true;
+      this._backgroundTimeAccumulated = 0;
+      this._lastHiddenTime = null;
+      this._watchdogRemainingTime = null;
+      this._visibilityTrackingInitialised = false;
+    }
+
+    /**
+     * Calculate appropriate timeout based on document complexity
+     * @param {string} purpose - 'watchdog' or 'settling' to determine timeout type
+     * @returns {number} - Timeout in milliseconds
+     */
+    calculateDynamicTimeout(purpose = 'watchdog') {
+      // Get current input content
+      const inputContent = window.ConversionEngine?.getCurrentInput?.() || 
+                          document.getElementById('input-hidden')?.value || '';
+      
+      const contentLength = inputContent.length;
+      const contentKB = contentLength / 1024;
+      
+      // Count equations (rough estimate using common LaTeX patterns)
+      const equationPatterns = [
+        /\$\$[\s\S]*?\$\$/g,           // Display math $$...$$
+        /\\\[[\s\S]*?\\\]/g,           // Display math \[...\]
+        /\\begin\{equation\}/gi,        // equation environment
+        /\\begin\{align\}/gi,           // align environment
+        /\\begin\{eqnarray\}/gi,        // eqnarray environment
+        /\\begin\{gather\}/gi,          // gather environment
+        /\\begin\{multline\}/gi,        // multline environment
+        /\$[^$]+\$/g                    // Inline math $...$
+      ];
+      
+      let equationCount = 0;
+      for (const pattern of equationPatterns) {
+        const matches = inputContent.match(pattern);
+        if (matches) {
+          equationCount += matches.length;
+        }
+      }
+      
+      // Count cross-references
+      const crossRefPatterns = [
+        /\\ref\{[^}]+\}/g,
+        /\\eqref\{[^}]+\}/g,
+        /\\pageref\{[^}]+\}/g,
+        /\\autoref\{[^}]+\}/g
+      ];
+      
+      let crossRefCount = 0;
+      for (const pattern of crossRefPatterns) {
+        const matches = inputContent.match(pattern);
+        if (matches) {
+          crossRefCount += matches.length;
+        }
+      }
+      
+      logDebug(`Document analysis: ${contentKB.toFixed(1)}KB, ~${equationCount} equations, ~${crossRefCount} cross-refs`);
+      
+      if (purpose === 'watchdog') {
+        // Watchdog timeout: generous to avoid false positives
+        // Base: 15 seconds
+        // Per KB: +2 seconds
+        // Per equation: +100ms
+        // Per cross-ref: +50ms
+        // Minimum: 15 seconds, Maximum: 120 seconds
+        const baseTimeout = 15000;
+        const perKBTimeout = contentKB * 2000;
+        const perEquationTimeout = equationCount * 100;
+        const perCrossRefTimeout = crossRefCount * 50;
+        
+        const calculatedTimeout = baseTimeout + perKBTimeout + perEquationTimeout + perCrossRefTimeout;
+        const finalTimeout = Math.max(15000, Math.min(120000, calculatedTimeout));
+        
+        logDebug(`Watchdog timeout calculated: ${(finalTimeout / 1000).toFixed(1)}s`);
+        return finalTimeout;
+        
+      } else if (purpose === 'settling') {
+        // Settling delay: time for MathJax DOM to stabilise
+        // Base: 100ms
+        // Per equation: +10ms
+        // Minimum: 100ms, Maximum: 3000ms
+        const baseDelay = 100;
+        const perEquationDelay = equationCount * 10;
+        
+        const calculatedDelay = baseDelay + perEquationDelay;
+        const finalDelay = Math.max(100, Math.min(3000, calculatedDelay));
+        
+        logDebug(`Settling delay calculated: ${finalDelay}ms`);
+        return finalDelay;
+      }
+      
+// Default fallback
+      return purpose === 'watchdog' ? 20000 : 100;
+    }
+
+    /**
+     * 🔧 Setup visibility tracking for tab-aware watchdog behaviour
+     * Handles browser tab visibility changes to prevent false timeout warnings
+     * when user switches tabs during long conversions
+     */
+    _setupVisibilityTracking() {
+      if (this._visibilityTrackingInitialised) {
+        logDebug("⏭️ Visibility tracking already initialised");
+        return;
+      }
+
+      // Bind handler to preserve 'this' context
+      this._boundVisibilityHandler = this._handleVisibilityChange.bind(this);
+      
+      document.addEventListener('visibilitychange', this._boundVisibilityHandler);
+      
+      // Set initial state based on current visibility
+      this._isTabVisible = !document.hidden;
+      
+      this._visibilityTrackingInitialised = true;
+      logInfo(`👁️ Visibility tracking initialised (tab ${this._isTabVisible ? 'visible' : 'hidden'})`);
+    }
+
+    /**
+     * 🔧 Handle visibility change events
+     * Pauses watchdog when tab is hidden, resumes when visible
+     */
+    _handleVisibilityChange() {
+      const wasVisible = this._isTabVisible;
+      this._isTabVisible = !document.hidden;
+
+      if (wasVisible && !this._isTabVisible) {
+        // Tab was just hidden
+        this._pauseWatchdog();
+      } else if (!wasVisible && this._isTabVisible) {
+        // Tab was just shown
+        this._resumeWatchdog();
+      }
+    }
+
+    /**
+     * ⏸️ Pause watchdog timer when tab becomes hidden
+     * Records the time hidden and remaining watchdog time
+     */
+    _pauseWatchdog() {
+      // Only pause if we're currently processing (buttons disabled)
+      if (!this._buttonsDisabledTime || !this._buttonWatchdogTimeout) {
+        logDebug("⏭️ Tab hidden but no active watchdog to pause");
+        return;
+      }
+
+      // Record when we went hidden
+      this._lastHiddenTime = Date.now();
+
+      // Calculate remaining watchdog time
+      const elapsed = Date.now() - this._buttonsDisabledTime - this._backgroundTimeAccumulated;
+      const totalTimeout = this._expectedWatchdogTimeout || 20000;
+      this._watchdogRemainingTime = Math.max(0, totalTimeout - elapsed);
+
+      // Clear the current timeout
+      clearTimeout(this._buttonWatchdogTimeout);
+      this._buttonWatchdogTimeout = null;
+
+      logInfo(`⏸️ Watchdog paused - tab hidden (${(this._watchdogRemainingTime / 1000).toFixed(1)}s remaining)`);
+    }
+
+    /**
+     * ▶️ Resume watchdog timer when tab becomes visible
+     * Calculates time spent hidden and adjusts watchdog accordingly
+     */
+    _resumeWatchdog() {
+      // Calculate how long we were hidden
+      if (this._lastHiddenTime) {
+        const hiddenDuration = Date.now() - this._lastHiddenTime;
+        this._backgroundTimeAccumulated += hiddenDuration;
+        
+        logInfo(`▶️ Tab visible again - was hidden for ${(hiddenDuration / 1000).toFixed(1)}s`);
+        this._lastHiddenTime = null;
+      }
+
+      // Only resume if we were processing and have remaining time
+      if (!this._buttonsDisabledTime) {
+        logDebug("⏭️ Tab visible but no active processing to resume watchdog for");
+        return;
+      }
+
+      // Check if conversion completed while we were away
+      if (this.exportButton && !this.exportButton.disabled) {
+        logInfo("✅ Conversion completed while tab was hidden - no watchdog needed");
+        return;
+      }
+
+// Notify user if they were away for a while and still processing
+      if (this._backgroundTimeAccumulated > 5000) {
+        const stillProcessing = this.exportButton && this.exportButton.disabled;
+        
+        if (stillProcessing) {
+          const hiddenSeconds = Math.round(this._backgroundTimeAccumulated / 1000);
+          logInfo("📢 Notifying user that processing continued while tab was hidden");
+          
+          // Use toast notification if available (more visible)
+          if (window.UniversalNotifications && window.UniversalNotifications.info) {
+            window.UniversalNotifications.info(
+              `Processing continued while you were away (${hiddenSeconds}s). Please wait...`,
+              { duration: 4000 }
+            );
+          } else if (window.StatusManager) {
+            // Fallback to status message
+            window.StatusManager.showProcessing("Processing continued while tab was hidden...");
+          }
+        }
+      }
+
+      // Resume watchdog with remaining time if we have any
+      if (this._watchdogRemainingTime && this._watchdogRemainingTime > 0) {
+        logInfo(`▶️ Watchdog resumed with ${(this._watchdogRemainingTime / 1000).toFixed(1)}s remaining (background time excluded)`);
+        
+        this._buttonWatchdogTimeout = setTimeout(() => {
+          // Use active time calculation (excluding background time)
+          const totalElapsed = Date.now() - this._buttonsDisabledTime;
+          const activeTime = totalElapsed - this._backgroundTimeAccumulated;
+          const timeoutThreshold = this._expectedWatchdogTimeout || 20000;
+
+          if (
+            this.exportButton &&
+            this.exportButton.disabled &&
+            activeTime > timeoutThreshold
+          ) {
+            logError(
+              `⚠️ Export buttons stuck disabled for ${(activeTime / 1000).toFixed(1)}s active time (${(totalElapsed / 1000).toFixed(1)}s total, ${(this._backgroundTimeAccumulated / 1000).toFixed(1)}s in background) - forcing recovery!`
+            );
+
+            // Force enable buttons and reset state
+            this.enableExportButtons("Recovery after timeout");
+
+            // Also reset conversion engine state
+            if (window.ConversionEngine) {
+              window.ConversionEngine.conversionInProgress = false;
+              window.ConversionEngine.isConversionQueued = false;
+            }
+
+            // Notify user
+            if (window.StatusManager) {
+              window.StatusManager.setError(
+                "Processing timeout - please try your action again"
+              );
+            }
+          }
+        }, this._watchdogRemainingTime + 1000);
+      }
+
+      this._watchdogRemainingTime = null;
     }
 
     /**
@@ -538,7 +788,7 @@ const AppStateManager = (function () {
       }
     }
 
-    /**
+/**
      * Finalize initialization and mark application as ready
      */
     finalizeInitialization() {
@@ -557,6 +807,9 @@ const AppStateManager = (function () {
         if (window.AppConfig && window.AppConfig.AppState) {
           window.AppConfig.AppState.set("isReady", true);
         }
+
+        // 🔧 Setup visibility tracking for tab-aware watchdog
+        this._setupVisibilityTracking();
 
         // Set final status
         if (window.StatusManager) {
@@ -779,7 +1032,7 @@ const AppStateManager = (function () {
     /**
      * ✅ ENHANCED: Control button states and processing overlay with smart messaging
      */
-    disableExportButtons(reason = "Processing...", customDetail = null) {
+disableExportButtons(reason = "Processing...", customDetail = null) {
       logInfo(`🔒 Disabling export buttons: ${reason}`);
 
       if (this.exportButton) {
@@ -789,6 +1042,62 @@ const AppStateManager = (function () {
       if (this.scormExportButton) {
         this.scormExportButton.disabled = true;
       }
+
+      // 🔧 CRITICAL FIX: Track when buttons were disabled to detect stuck state
+      this._buttonsDisabledTime = Date.now();
+      this._lastDisableReason = reason;
+
+      // 🔧 VISIBILITY TRACKING: Reset background time for new conversion
+      this._backgroundTimeAccumulated = 0;
+      this._lastHiddenTime = null;
+      this._watchdogRemainingTime = null;
+
+// 🔧 CRITICAL FIX: Set up watchdog to detect if conversion never completes
+      if (this._buttonWatchdogTimeout) {
+        clearTimeout(this._buttonWatchdogTimeout);
+      }
+
+      // Calculate dynamic timeout based on document complexity
+      const watchdogTimeout = this.calculateDynamicTimeout('watchdog');
+      this._expectedWatchdogTimeout = watchdogTimeout;
+      
+      logInfo(`🕐 Watchdog timeout set to ${(watchdogTimeout / 1000).toFixed(1)}s based on document complexity`);
+
+this._buttonWatchdogTimeout = setTimeout(() => {
+        // 🔧 VISIBILITY-AWARE: Use active time (excluding background time)
+        const totalElapsed = Date.now() - this._buttonsDisabledTime;
+        const activeTime = totalElapsed - this._backgroundTimeAccumulated;
+        const timeoutThreshold = this._expectedWatchdogTimeout || 20000;
+
+        if (
+          this.exportButton &&
+          this.exportButton.disabled &&
+          activeTime > timeoutThreshold
+        ) {
+          logError(
+            `⚠️ Export buttons stuck disabled for ${(activeTime / 1000).toFixed(1)}s active time (${(totalElapsed / 1000).toFixed(1)}s total, ${(this._backgroundTimeAccumulated / 1000).toFixed(1)}s in background) - forcing recovery!`
+          );
+
+          // Force enable buttons and reset state
+          this.enableExportButtons("Recovery after timeout");
+
+          // Also reset conversion engine state
+          if (window.ConversionEngine) {
+            window.ConversionEngine.conversionInProgress = false;
+            window.ConversionEngine.isConversionQueued = false;
+          }
+
+          // Notify user
+          if (window.StatusManager) {
+            window.StatusManager.setError(
+              "Processing timeout - please try your action again"
+            );
+          }
+        } else if (this._backgroundTimeAccumulated > 0) {
+          // Tab was hidden during processing but active time hasn't exceeded threshold
+          logDebug(`⏳ Watchdog check: ${(activeTime / 1000).toFixed(1)}s active time (${(this._backgroundTimeAccumulated / 1000).toFixed(1)}s excluded) - within threshold`);
+        }
+      }, watchdogTimeout + 1000); // Check 1 second after expected timeout
 
       // Determine appropriate detail message if not provided
       let detailMessage = customDetail;
@@ -808,7 +1117,7 @@ const AppStateManager = (function () {
             if (!hasContent) {
               detail.textContent =
                 "Clearing output and preparing interface. Ready for your input.";
-              logInfo("📝 Updated overlay message for empty content");
+              logInfo("🔍 Updated overlay message for empty content");
             } else {
               const hasMath = /\$|\\\[|\\begin\{/.test(currentInput);
               if (hasMath) {
@@ -817,7 +1126,7 @@ const AppStateManager = (function () {
                 detail.textContent = "Please wait while we convert the content";
               }
               logInfo(
-                `📝 Updated overlay message for content (hasMath: ${hasMath})`
+                `🔍 Updated overlay message for content (hasMath: ${hasMath})`
               );
             }
           }
@@ -833,31 +1142,161 @@ const AppStateManager = (function () {
       }
     }
 
-    enableExportButtons(reason = "Ready") {
+enableExportButtons(reason = "Ready") {
       logInfo(`🔓 Preparing to enable export buttons: ${reason}`);
+
+      // 🔧 Guard: If buttons already enabled or stabilization in progress, skip
+      if (this._stabilizationInProgress) {
+        logDebug(`⏭️ Skipping enableExportButtons - stabilisation already in progress`);
+        return;
+      }
+      
+      if (this.exportButton && !this.exportButton.disabled) {
+        logDebug(`⏭️ Skipping enableExportButtons - buttons already enabled`);
+        return;
+      }
+
+// 🔧 CRITICAL FIX: Clear watchdog timeout since we're enabling buttons
+      if (this._buttonWatchdogTimeout) {
+        clearTimeout(this._buttonWatchdogTimeout);
+        this._buttonWatchdogTimeout = null;
+      }
+
+      this._buttonsDisabledTime = null;
+      this._lastDisableReason = null;
+      this._stabilizationInProgress = true; // Mark stabilization as started
+
+      // 🔧 VISIBILITY TRACKING: Clear tracking state on completion
+      this._backgroundTimeAccumulated = 0;
+      this._lastHiddenTime = null;
+      this._watchdogRemainingTime = null;
 
       // First update the status and give it time to render
       if (window.StatusManager) {
         window.StatusManager.setReady("Ready! Export buttons enabled.");
       }
 
-      // Hide processing overlay first
-      this.hideProcessingOverlay();
+      // 🔧 MathJax DOM Stabilization - PASSIVE OBSERVATION ONLY
+      // We count mjx-container elements and wait for the count to stabilize
+      // This avoids calling any MathJax methods which could trigger re-rendering loops
+      this._waitForMathJaxStabilization().then(() => {
+        // Post-MathJax cleanup: Fix equation links that couldn't be resolved earlier
+        // This runs after MathJax has created mjx-eqn: anchors
+        if (window.CrossReferenceFixer?.fixBrokenEquationLinks) {
+          try {
+            const cleanupResults = window.CrossReferenceFixer.fixBrokenEquationLinks();
+            if (cleanupResults && cleanupResults.fixed > 0) {
+              logInfo(`✅ Post-MathJax cleanup: Fixed ${cleanupResults.fixed} equation link(s)`);
+            }
+          } catch (cleanupError) {
+            logWarn("Post-MathJax cleanup encountered an error:", cleanupError);
+          }
+        }
 
-      // Small delay to ensure status update renders before enabling buttons
-      setTimeout(() => {
+        // Hide processing overlay
+        this.hideProcessingOverlay();
+
+        // Enable the buttons
         if (this.exportButton) {
           this.exportButton.disabled = false;
-          logInfo("✅ Export button enabled after status update");
+          logInfo("✅ Export button enabled after MathJax stabilisation");
         }
 
         if (this.scormExportButton) {
           this.scormExportButton.disabled = false;
-          logInfo("✅ SCORM export button enabled after status update");
+          logInfo("✅ SCORM export button enabled after MathJax stabilisation");
         }
 
         logInfo("🎉 All export buttons now enabled and ready for use");
-      }, 100); // Small delay to allow DOM update to render
+      });
+    }
+
+    /**
+     * 🔧 PASSIVE MathJax DOM Stabilization
+     * Waits for mjx-container count to stabilize without calling any MathJax methods
+     * This prevents the infinite loop that occurred when using typesetPromise()
+     * 
+     * @returns {Promise<void>} Resolves when DOM is stable or safety timeout reached
+     */
+    _waitForMathJaxStabilization() {
+      return new Promise((resolve) => {
+        const CHECK_INTERVAL = 100;       // Check every 100ms
+        const REQUIRED_STABLE_CHECKS = 3; // Need 3 consecutive stable readings
+        const SAFETY_TIMEOUT = 5000;      // Maximum 5 seconds total wait
+        
+        const startTime = Date.now();
+        let lastContainerCount = -1;
+        let stableCheckCount = 0;
+        
+        // Get dynamic settling delay based on document complexity
+        const settlingDelay = this.calculateDynamicTimeout('settling');
+        
+        // Initial count of containers (passive DOM read)
+        const initialCount = document.querySelectorAll('mjx-container').length;
+        
+// Edge case: No equations at all - resolve immediately
+        if (initialCount === 0) {
+          logInfo("⏭️ No MathJax containers detected - skipping stabilisation");
+          this._stabilizationInProgress = false;
+          resolve();
+          return;
+        }
+        
+        logInfo(`⏳ Waiting for MathJax DOM stabilisation...`);
+        logInfo(`📊 Settling delay: ${settlingDelay}ms, requiring ${REQUIRED_STABLE_CHECKS} stable checks`);
+        logInfo(`🔍 Initial container count: ${initialCount}`);
+        
+        // Wait for initial settling delay before starting stability checks
+        const initialDelay = Math.min(settlingDelay / 3, 500); // At least 1/3 of settling, max 500ms
+        
+        setTimeout(() => {
+          const checkStability = () => {
+            const elapsed = Date.now() - startTime;
+            
+// Safety timeout - resolve anyway after 5 seconds
+            if (elapsed >= SAFETY_TIMEOUT) {
+              const currentCount = document.querySelectorAll('mjx-container').length;
+              logWarn(`⚠️ MathJax stabilisation safety timeout reached (${SAFETY_TIMEOUT}ms) - proceeding with ${currentCount} containers`);
+              this._stabilizationInProgress = false;
+              resolve();
+              return;
+            }
+            
+            // Count containers (passive DOM read only - no MathJax calls!)
+            const currentCount = document.querySelectorAll('mjx-container').length;
+            
+            if (currentCount === lastContainerCount) {
+              // Count is stable
+              stableCheckCount++;
+              logDebug(`🔍 Stability check: ${currentCount} containers (stable: ${stableCheckCount}/${REQUIRED_STABLE_CHECKS})`);
+              
+         if (stableCheckCount >= REQUIRED_STABLE_CHECKS) {
+                // DOM has been stable for required number of checks
+                const totalTime = Date.now() - startTime;
+                logInfo(`✅ MathJax stabilised: ${currentCount} containers after ${totalTime}ms`);
+                this._stabilizationInProgress = false;
+                resolve();
+                return;
+              }
+            } else {
+              // Count changed - reset stability counter
+              if (lastContainerCount !== -1) {
+                logDebug(`🔄 Container count changed: ${lastContainerCount} → ${currentCount} (resetting stability counter)`);
+              }
+              stableCheckCount = 0;
+              lastContainerCount = currentCount;
+            }
+            
+            // Schedule next check
+            setTimeout(checkStability, CHECK_INTERVAL);
+          };
+          
+          // Start stability checking
+          lastContainerCount = document.querySelectorAll('mjx-container').length;
+          checkStability();
+          
+        }, initialDelay);
+      });
     }
 
     /**
