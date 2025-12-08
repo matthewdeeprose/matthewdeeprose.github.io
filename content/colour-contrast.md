@@ -1,5 +1,62 @@
 **Human impact**: Low-vision users rely on sufficient contrast to read text and identify interactive elements. Colour-blind users - approximately 8 per cent of men and 0.5 per cent of women - cannot distinguish elements differentiated by colour alone. Poor contrast causes eye strain for everyone in bright environments, on lower-quality screens, or when viewing in direct sunlight. When we get contrast right, content becomes more readable for everyone.
 
+
+
+### Understanding Contrast Ratios
+
+Before examining specific requirements, it helps to understand what contrast ratios measure and where the numbers come from.
+
+**What contrast ratio means**
+
+Contrast ratio compares the relative luminance (perceived brightness) of two colours. The scale runs from 1:1 (identical colours, no contrast) to 21:1 (pure black against pure white, maximum contrast). The first number represents the lighter colour's luminance plus 0.05, divided by the darker colour's luminance plus 0.05.
+
+| Ratio | Perception |
+|-------|------------|
+| 1:1 | Identical colours — invisible |
+| 2:1 | Barely distinguishable |
+| 3:1 | Minimum for large text and UI components |
+| 4.5:1 | Minimum for body text |
+| 7:1 | Enhanced contrast (AAA level) |
+| 21:1 | Maximum possible (black on white) |
+
+**How the calculation works**
+
+You do not need to calculate contrast ratios manually — tools handle this. However, understanding the principle helps when troubleshooting.
+
+1. Convert each colour from sRGB to relative luminance (a value from 0 to 1, where 0 is black and 1 is white)
+2. Apply the formula: `(L1 + 0.05) / (L2 + 0.05)` where L1 is the lighter colour
+3. The result is expressed as a ratio against 1
+
+For example, Marine 1 (#005C84) has a relative luminance of approximately 0.092. White (#FFFFFF) has a luminance of 1.0. The contrast ratio is `(1.0 + 0.05) / (0.092 + 0.05)` = 7.39:1.
+
+**Why these specific thresholds?**
+
+WCAG's contrast requirements stem from vision research. The 4.5:1 ratio for text ensures readability for people with moderately low vision (approximately 20/40 acuity) without requiring assistive technology. The 3:1 ratio for large text and UI components reflects that larger elements are easier to perceive at lower contrast.
+
+| Threshold | Applies to | Rationale |
+|-----------|------------|-----------|
+| 4.5:1 | Normal text (<24px or <18.5px bold) | Readable at 20/40 vision |
+| 3:1 | Large text (24px+ or 18.5px+ bold) | Size compensates for lower contrast |
+| 3:1 | UI component boundaries | Identifiable without reading text |
+| 3:1 | Focus indicators | Visible for keyboard navigation |
+
+**Practical implications**
+
+- Contrast is always measured between two specific colours — there is no "inherently accessible" colour
+- The same colour can pass or fail depending on what it sits against
+- Small changes in colour can significantly affect the ratio near threshold boundaries
+- Transparency, gradients, and images complicate measurement — always check the worst-case combination
+
+**Tools for measuring contrast**
+
+| Tool | Best for |
+|------|----------|
+| [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/) | Quick checks with known hex values |
+| [Colour Contrast Analyser](https://www.tpgi.com/color-contrast-checker/) | Picking colours directly from screen |
+| [Who Can Use](https://www.whocanuse.com/) | Understanding impact on different vision types |
+| Browser DevTools (Inspect → Colour picker) | Checking contrast in situ during development |
+
+
 ---
 
 ### 2.1 Text Contrast
