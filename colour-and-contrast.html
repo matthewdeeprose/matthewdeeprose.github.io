@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <!-- CUSTOMISE THESE FOR YOUR PAGE -->
+    <meta
+      name="description"
+      content="WCAG Colour and contrast training for senior developers"
+    />
+    <meta name="keywords" content="accessibility, contrast, colour" />
+    <meta name="author" content="Matthew Deeprose" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Page Title - Matthew Deeprose</title>
+
+    <!-- Core Stylesheets -->
+    <link
+      rel="stylesheet"
+      id="lightCSS"
+      href="light.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link rel="stylesheet" id="mainCSS" href="main.css" media="all" />
+    <link
+      rel="stylesheet"
+      id="darkCSS"
+      href="dark.css"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="stylesheet" id="printCSS" href="print.css" media="print" />
+
+    <!-- Markdown rendering styles -->
+    <link rel="stylesheet" href="md-scripts/css/sortable-table.css" />
+    <link rel="stylesheet" href="md-scripts/css/mermaid-controls.css" />
+    <link rel="stylesheet" href="md-scripts/css/mermaid-theme.css" />
+    <link rel="stylesheet" href="md-scripts/css/chart-controls.css" />
+    <link rel="stylesheet" href="md-scripts/css/markdown-editor.css" />
+    <link rel="stylesheet" href="md-scripts/css/mermaid-view-controls.css" />
+    <link rel="stylesheet" href="md-scripts/css/chart-view-controls.css" />
+    <link
+      rel="stylesheet"
+      href="md-scripts/css/mermaid-description-styles.css"
+    />
+
+    <!-- Open Graph / Social Media Meta -->
+    <meta
+      property="og:title"
+      content="WCAG Colour and contrast training for senior developers - Matthew Deeprose"
+    />
+    <meta
+      property="og:description"
+      content="WCAG Colour and contrast training for senior developers"
+    />
+    <meta
+      property="og:image"
+      content="https://matthewdeeprose.github.io/image.png"
+    />
+    <meta property="og:image:width" content="2500" />
+    <meta property="og:image:height" content="1306" />
+    <meta property="og:image:alt" content="" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://matthewdeeprose.github.io/colour-and-contrast.html"
+    />
+
+    <!-- Twitter Card Meta -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Page Title - Matthew Deeprose" />
+    <meta name="twitter:description" content="Page description goes here" />
+    <meta name="twitter:creator" content="@VLEguru" />
+    <meta name="twitter:site" content="@VLEguru" />
+    <meta
+      name="twitter:image"
+      content="https://matthewdeeprose.github.io/image.png"
+    />
+    <meta name="twitter:image:alt" content="" />
+
+    <!-- Theme colours -->
+    <meta
+      name="theme-color"
+      content="#231F20"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#FFFFF4"
+      media="(prefers-color-scheme: light)"
+    />
+
+    <!-- Favicon and RSS -->
+    <link rel="icon" href="favicon.ico" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="RSS Feed for matthewdeeprose.github.io"
+      href="https://matthewdeeprose.github.io/feed.rss"
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+    <!-- MathJax for mathematical notation -->
+    <script
+      type="text/javascript"
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
+    ></script>
+
+    <style>
+      .page-wrap > * {
+        grid-column: 1/-1 !important;
+        grid-row: auto !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="page-wrap" id="start">
+      <a class="skip-link" id="skipToContent" href="#main">Skip to content</a>
+
+      <!-- ============================================
+           HEADER
+           ============================================ -->
+      <header class="page-header">
+        <div id="banner">
+          <div id="logo">
+            <button
+              id="modeToggle"
+              aria-label="Change between light and dark theme"
+              aria-pressed="false"
+              onclick="toggle(this.id);"
+            >
+              <svg
+                id="logoSVG"
+                height="45"
+                viewBox="0 0 21 21"
+                width="45"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-labelledby="svgTitle svgDesc"
+                role="img"
+              >
+                <title id="svgTitle">Change theme</title>
+                <desc id="svgDesc">Select to switch to light theme</desc>
+                <g
+                  fill="none"
+                  fill-rule="evenodd"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  transform="translate(2 1)"
+                >
+                  <path d="m6.5 17.5h4" />
+                  <path
+                    d="m8.5 4c2.4852814 0 4.5 2.01471863 4.5 4.5 0 1.7663751-1.017722 3.2950485-2.4987786 4.031633l-.0012214.968367c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.9678653c-1.48160351-.7363918-2.49978782-2.2653584-2.49978782-4.0321347 0-2.48528137 2.01471863-4.5 4.5-4.5z"
+                  />
+                  <path d="m8.5 1.5v-1" />
+                  <path d="m13.5 3.5 1-1" />
+                  <path d="m2.5 3.5 1-1" transform="matrix(-1 0 0 1 6 0)" />
+                  <path d="m13.5 13.5 1-1" transform="matrix(1 0 0 -1 0 26)" />
+                  <path d="m2.5 13.5 1-1" transform="matrix(-1 0 0 -1 6 26)" />
+                  <path d="m1.5 7.5h-1" />
+                  <path d="m16.5 7.5h-1" />
+                </g>
+              </svg>
+              <svg
+                id="logoSVG-Off"
+                height="45"
+                viewBox="0 0 21 21"
+                width="45"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-labelledby="svgTitleX svgDescX"
+              >
+                <title id="svgTitleX">Change theme</title>
+                <desc id="svgDescX">Select to switch to dark theme</desc>
+                <g
+                  fill="none"
+                  fill-rule="evenodd"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  transform="translate(6 5)"
+                >
+                  <path d="m2.5 13.5h4" />
+                  <path
+                    d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"
+                  />
+                </g>
+              </svg>
+            </button>
+          </div>
+          <span
+            role="alert"
+            class="hidden"
+            aria-live="polite"
+            id="lightDark"
+          ></span>
+          <div id="titleLink">Matthew Deeprose</div>
+        </div>
+      </header>
+
+      <!-- ============================================
+           NAVIGATION
+           ============================================ -->
+      <div id="main-navigation" class="page-nav">
+        <nav aria-label="Main menu" class="topnav" id="myTopnav">
+          <button
+            id="menu"
+            aria-controls="myTopnav"
+            aria-labelledby="myTopnav"
+            aria-expanded="false"
+            class="icon"
+            aria-haspopup="menu"
+            onclick="menuAction()"
+          >
+            <span id="hamburger">
+              <svg
+                id="hamSVG"
+                viewBox="0 0 100 80"
+                width="20"
+                height="20"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                focusable="false"
+                role="img"
+              >
+                <title id="hamSVGTitle">Menu</title>
+                <desc id="hamSVGDesc">
+                  Select to expand or collapse the menu
+                </desc>
+                <rect width="100" height="20"></rect>
+                <rect y="30" width="100" height="20"></rect>
+                <rect y="60" width="100" height="20"></rect>
+              </svg>
+            </span>
+            <span id="arrow">
+              <svg
+                width="20"
+                height="20"
+                xmlns="http://www.w3.org/2000/svg"
+                role="img"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <title id="arrowSVGTitle">Menu</title>
+                <desc id="arrowSVGDesc">
+                  Select to expand or collapse the menu
+                </desc>
+                <g
+                  stroke-width="4"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                  stroke="currentColor"
+                  fill-rule="evenodd"
+                  fill="none"
+                >
+                  <path d="m7.499,6.497l-3.999,4.002l4,4.001" />
+                  <path d="m16.5,10.5l-13,0" />
+                </g>
+              </svg>
+            </span>
+          </button>
+          <a id="homeMenu" href="index.html">Home</a>
+          <a href="presentations.html">Presentations</a>
+          <a href="posts.html">Blog Posts</a>
+          <a href="projects.html">Projects</a>
+          <a href="about.html">About</a>
+        </nav>
+      </div>
+
+      <!-- ============================================
+           MAIN CONTENT
+           Change data-markdown-src to point to your markdown file
+           Remember to also update the noscript link below!
+           ============================================ -->
+      <main class="page-main" id="main">
+        <h1>Section 2: Colour and Contrast Accessibility</h1>
+        <article
+          class="standard"
+          data-markdown-src="content/colour-contrast.md"
+        >
+          <p class="markdown-loading" role="status" aria-live="polite">
+            Loading content…
+          </p>
+          <noscript>
+            <p class="noscript-fallback">
+              This page requires JavaScript to render the content. You can
+              <a href="content/example.md">view the source markdown file</a>
+              directly.
+            </p>
+          </noscript>
+        </article>
+        <section aria-label="CodePen example">
+          <h2>CodePen Example: WCAG Contrast Requirements</h2>
+          <p>
+            The content of this codepen aims to summarise everything we covered
+            in this article.
+          </p>
+          <p
+            class="codepen"
+            data-height="900"
+            data-slug-hash="MYyZgrM"
+            data-pen-title="WCAG Contrast Requirements (University of Southampton)"
+            data-preview="true"
+            data-editable="true"
+            data-user="matthewdeeprose"
+            style="
+              height: 900px;
+              box-sizing: border-box;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              border: 2px solid;
+              margin: 1em 0;
+              padding: 1em;
+            "
+          >
+            <span
+              >See the Pen
+              <a href="https://codepen.io/matthewdeeprose/pen/MYyZgrM">
+                WCAG Contrast Requirements (University of Southampton)</a
+              >
+              by matthewdeeprose (<a href="https://codepen.io/matthewdeeprose"
+                >@matthewdeeprose</a
+              >) on <a href="https://codepen.io">CodePen</a>.</span
+            >
+          </p>
+          <script
+            async
+            src="https://public.codepenassets.com/embed/index.js"
+          ></script>
+        </section>
+        <!-- Top/Bottom navigation panel -->
+        <div id="panel">
+          <button class="panelButton" onclick="topFunction()" id="myBtn">
+            <svg
+              id="svgUP"
+              height="50"
+              viewBox="0 0 21 21"
+              width="50"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-labelledby="svgTitle2 svgDesc2"
+            >
+              <title id="svgTitle2">Top.</title>
+              <desc id="svgDesc2">Move to the top of the page.</desc>
+              <g
+                fill="none"
+                fill-rule="evenodd"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(2 2)"
+              >
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m11.5 7.5-3-3-3 3" />
+                <path d="m8.5 4.5v8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnTop" class="panelLabel">Top</span>
+          </button>
+          <button class="panelButton" onclick="bottomFunction()" id="myBtn2">
+            <svg
+              id="svgDOWN"
+              height="50"
+              viewBox="0 0 21 21"
+              width="50"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-labelledby="svgTitle3 svgDesc3"
+            >
+              <title id="svgTitle3">Bottom.</title>
+              <desc id="svgDesc3">Move to the bottom of the page.</desc>
+              <g
+                fill="none"
+                fill-rule="evenodd"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(3 2)"
+              >
+                <circle cx="8.5" cy="8.5" r="8" />
+                <path d="m5.5 9.5 3 3 3-3" />
+                <path d="m8.5 12.5v-8" />
+              </g>
+            </svg>
+            <br />
+            <span id="myBtnBottom" class="panelLabel">Bottom</span>
+          </button>
+        </div>
+      </main>
+
+      <!-- ============================================
+           SIDEBAR (Optional - remove if not needed)
+           ============================================ -->
+      <aside class="page-sidebar related">
+        <section class="related">
+          <h2>Related content</h2>
+        </section>
+        <section class="related">
+          <h3>Presentations</h3>
+          <ul class="relUL">
+            <li><a href="#">Related Link 1</a></li>
+            <li><a href="#">Related Link 2</a></li>
+            <li><a href="#">Related Link 3</a></li>
+          </ul>
+        </section>
+        <section class="related">
+          <h3>Blog posts</h3>
+          <ul class="relUL">
+            <li><a href="#">Related Post 1</a></li>
+            <li><a href="#">Related Post 2</a></li>
+            <li><a href="#">Related Post 3</a></li>
+          </ul>
+        </section>
+      </aside>
+
+      <!-- ============================================
+           FOOTER
+           ============================================ -->
+      <footer class="page-footer">
+        <div id="RSS"><a id="rssA" href="feed.rss">RSS</a></div>
+        <div id="SiteMap"><a href="siteMap.html">Site Map</a></div>
+        <div id="AccessibilityFoot">
+          <a href="Accessibility_Statement.html">Accessibility Statement</a>
+        </div>
+        <div id="twitterFoot">
+          <a href="https://twitter.com/vleguru?ref_src=twsrc%5Etfw"
+            >Follow on Twitter</a
+          >
+        </div>
+        <div id="YouTubeChannelFoot">
+          <a href="https://www.youtube.com/channel/UCKypjo59GE79UEjoLtzKEtQ"
+            >YouTube Channel</a
+          >
+        </div>
+        <div id="aboutCodePen">
+          <a href="https://codepen.io/matthewdeeprose/">CodePen</a>
+        </div>
+        <div id="aboutFoot">
+          <a href="https://www.linkedin.com/in/mattdeeprose/"
+            >&#169; Matthew Deeprose</a
+          >
+        </div>
+      </footer>
+    </div>
+
+    <!-- ============================================
+         SCRIPTS - Navigation and UI
+         ============================================ -->
+
+    <!-- Menu toggle -->
+    <script>
+      function menuAction() {
+        let menuSwitch = document.getElementById("myTopnav");
+        if (menuSwitch.className === "topnav") {
+          menuSwitch.className += " responsive";
+        } else {
+          menuSwitch.className = "topnav";
+        }
+        let menuAriaAttrib = document
+          .getElementById("menu")
+          .getAttribute("aria-expanded");
+        if (menuAriaAttrib === "true") {
+          menuAriaAttrib = "false";
+        } else {
+          menuAriaAttrib = "true";
+        }
+        document
+          .getElementById("menu")
+          .setAttribute("aria-expanded", menuAriaAttrib);
+      }
+    </script>
+
+    <!-- Top/Bottom scroll buttons -->
+    <script>
+      let mybutton = document.getElementById("myBtn");
+      let mybutton2 = document.getElementById("myBtn2");
+
+      window.onscroll = function () {
+        scrollFunction();
+      };
+
+      function scrollFunction() {
+        if (
+          document.body.scrollTop > 660 ||
+          document.documentElement.scrollTop > 660
+        ) {
+          mybutton.style.display = "block";
+          mybutton2.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+          mybutton2.style.display = "none";
+        }
+      }
+
+      function topFunction() {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.getElementById("skipToContent").focus();
+      }
+
+      function bottomFunction() {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.getElementById("rssA").focus();
+      }
+    </script>
+
+    <!-- Theme toggle -->
+    <script>
+      let themePref = localStorage.getItem("theme");
+
+      function setLight() {
+        let theButton = document.getElementById("modeToggle");
+        const d = matchMedia("(prefers-color-scheme: dark)");
+        let dt;
+        if (d.matches) {
+          dt = "dark";
+        } else {
+          dt = "light";
+        }
+        if (dt == "dark" && themePref == "Dark") {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == "light" && themePref == "Dark") {
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (dt == "dark" && !themePref) {
+          theButton.setAttribute("aria-pressed", "true");
+        } else {
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      setLight();
+
+      function toggle(btnID) {
+        let theButton = document.getElementById(btnID);
+        if (theButton.getAttribute("aria-pressed") == "true") {
+          theButton.setAttribute("aria-pressed", "false");
+          document.getElementById("lightCSS").href = "light.css";
+          document.getElementById("darkCSS").href = "light.css";
+          localStorage.setItem("theme", "Light");
+          document.getElementById("lightDark").innerHTML =
+            "Light theme enabled, the button is now";
+          let toggleButton = document.getElementById("modeToggle");
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "false");
+
+          // Update Mermaid diagrams for theme change
+          if (
+            window.MermaidThemes &&
+            typeof window.MermaidThemes.updateDiagramsForThemeChange ===
+              "function"
+          ) {
+            window.MermaidThemes.updateDiagramsForThemeChange();
+          }
+        } else {
+          theButton.setAttribute("aria-pressed", "true");
+          document.getElementById("lightCSS").href = "dark.css";
+          document.getElementById("darkCSS").href = "dark.css";
+          localStorage.setItem("theme", "Dark");
+          document.getElementById("lightDark").innerHTML =
+            "Dark theme enabled, the button is now";
+          let toggleButton = document.getElementById("modeToggle");
+          toggleButton.removeAttribute("aria-pressed");
+          toggleButton.setAttribute("aria-pressed", "true");
+
+          // Update Mermaid diagrams for theme change
+          if (
+            window.MermaidThemes &&
+            typeof window.MermaidThemes.updateDiagramsForThemeChange ===
+              "function"
+          ) {
+            window.MermaidThemes.updateDiagramsForThemeChange();
+          }
+        }
+      }
+
+      function applyThemePreference() {
+        if (themePref == "Dark") {
+          let theButton = document.getElementById("modeToggle");
+          document.getElementById("lightCSS").href = "dark.css";
+          document.getElementById("darkCSS").href = "dark.css";
+          theButton.setAttribute("aria-pressed", "true");
+        } else if (themePref == "Light") {
+          let theButton = document.getElementById("modeToggle");
+          document.getElementById("lightCSS").href = "light.css";
+          document.getElementById("darkCSS").href = "light.css";
+          theButton.setAttribute("aria-pressed", "false");
+        }
+      }
+      applyThemePreference();
+    </script>
+
+    <!-- Details polyfill and print handler -->
+    <script src="scripts/jquery-3.7.1.min.js"></script>
+    <script>
+      // Fallback to CDN if local jQuery not found
+      if (typeof jQuery === "undefined") {
+        document.write(
+          '<script src="https://code.jquery.com/jquery-3.7.1.min.js"><\/script>'
+        );
+      }
+    </script>
+    <script src="scripts/details.js"></script>
+    <script>
+      // Only run if jQuery and details plugin loaded
+      if (typeof jQuery !== "undefined") {
+        window.console || (window.console = { log: alert });
+        $(function () {
+          if ($.fn.details) {
+            $("html").addClass($.fn.details.support ? "details" : "no-details");
+            $("details").details();
+          }
+        });
+      }
+    </script>
+    <script>
+      // Expand details/summary when printing
+      window.matchMedia("print").addEventListener("change", (evt) => {
+        if (evt.matches) {
+          elms = document.body.querySelectorAll("details:not([open])");
+          for (e of elms) {
+            e.setAttribute("open", "");
+            e.dataset.wasclosed = "";
+          }
+        } else {
+          elms = document.body.querySelectorAll("details[data-wasclosed]");
+          for (e of elms) {
+            e.removeAttribute("open");
+            delete e.dataset.wasclosed;
+          }
+        }
+      });
+    </script>
+
+    <!-- ============================================
+         SCRIPTS - Markdown-it and plugins
+         ============================================ -->
+
+    <!-- Core markdown-it -->
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it.min.js"></script>
+
+    <!-- Markdown-it plugins -->
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-sub.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-sup.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-footnote.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-deflist.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-abbr.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-emoji.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-ins.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-mark.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-task-lists.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-container.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdownItAnchor.umd.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdownItTocDoneRight.umd.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-attrs.browser.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-multimd-table.min.js"></script>
+    <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-tab-handler.js"></script>
+
+    <!-- Chart.js for charts -->
+    <script src="https://matthewdeeprose.github.io/markdownit/chart.min.js"></script>
+
+    <!-- Mermaid for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js"></script>
+    <script>
+      // Initialise Mermaid
+      if (window.mermaid) {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "default",
+          securityLevel: "loose",
+        });
+      }
+    </script>
+
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://matthewdeeprose.github.io/prism/prism.js"></script>
+
+    <!-- Sortable tables -->
+    <script src="md-scripts/markdown-utils/markdown-it-sortable-tables-combined.js"></script>
+
+    <!-- Code copy functionality -->
+    <script src="md-scripts/markdown-utils/markdown-code-copy.js"></script>
+
+    <!-- Mermaid theme must load early (before controls) -->
+    <script src="md-scripts/mermaid/mermaid-theme.js"></script>
+
+    <!-- Chart controls - statistics/trends/performance must load BEFORE accessibility -->
+    <script src="md-scripts/charts/chart-controls.js"></script>
+    <script src="md-scripts/charts/chart-statistics.js"></script>
+    <script src="md-scripts/charts/chart-trends.js"></script>
+    <script src="md-scripts/charts/chart-performance.js"></script>
+    <script src="md-scripts/charts/chart-accessibility.js"></script>
+    <script src="md-scripts/charts/chart-accessibility-export-utils.js"></script>
+    <script src="md-scripts/charts/chart-view-controls.js"></script>
+
+    <!-- Mermaid controls (optional - for diagram interactivity) -->
+    <script src="md-scripts/mermaid/mermaid-controls.js"></script>
+    <script src="md-scripts/mermaid/mermaid-pan-zoom.js"></script>
+    <script src="md-scripts/mermaid/mermaid-view-controls.js"></script>
+
+    <!-- Mermaid accessibility (for descriptions, export, themes) -->
+    <script src="md-scripts/mermaid/mermaid-accessibility-utils.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-export-utils.js"></script>
+    <script src="md-scripts/mermaid/mermaid-diagram-detection.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-common.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-core.js"></script>
+    <script src="md-scripts/mermaid/mermaid-export-utils.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-flowchart.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-flowchart-complex.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-sequence.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-pie.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-gantt.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-state.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-mindmap.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-timeline.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-user-journey.js"></script>
+
+    <!-- THE MARKDOWN PAGE LOADER - This does the magic -->
+    <script src="md-scripts/markdown-utils/markdown-page-loader.js"></script>
+  </body>
+</html>

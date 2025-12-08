@@ -116,6 +116,21 @@
   };
 
   // ============================================================================
+  // PERSISTENCE CONFIGURATION (Stage 4)
+  // ============================================================================
+
+  const PREFERENCE_CONFIG = {
+    // localStorage key for model preference
+    STORAGE_KEY: "imgdesc_model_preference",
+
+    // Preference expiry in days
+    EXPIRY_DAYS: 90,
+
+    // Schema version for future migrations
+    VERSION: "1.0.0",
+  };
+
+  // ============================================================================
   // PROGRESS STAGES (Phase 2A)
   // ============================================================================
 
@@ -169,6 +184,9 @@
     currentStage: null,
     lastElapsedTime: null, // Stores final time for display after completion
 
+    // Cost estimation state (Stage 3)
+    lastEstimatedCost: null, // Stores last calculated cost for debug panel
+
     // Memory management
     previewBlobUrls: new Set(), // Track blob URLs for cleanup
 
@@ -221,11 +239,23 @@
           logWarn("Prompt loader not available - prompts may not be loaded");
         }
 
+        // Populate model selector (Stage 2)
+        this.populateModelSelector();
+
+        // Enhance model selector keyboard navigation (Stage 6)
+        this.enhanceModelSelectorKeyboard();
+
         // Bind event listeners
         this.bindEvents();
 
         // Bind clipboard paste handler (Phase 2E)
         this.bindClipboardPaste();
+
+        // Bind remember checkbox (Stage 4)
+        this.bindRememberCheckbox();
+
+        // Bind show all models checkbox
+        this.bindShowAllModelsCheckbox();
 
         // Set initial button states
         this.updateButtonStates();
@@ -268,6 +298,13 @@
         styleOptions: document.getElementById("imgdesc-style-options"),
         checkboxOptions: document.getElementById("imgdesc-checkbox-options"),
 
+        // Model selection (Stage 1)
+        modelSection: document.getElementById("imgdesc-model-section"),
+        modelSelector: document.getElementById("imgdesc-model"),
+        costEstimate: document.getElementById("imgdesc-cost-estimate"),
+        rememberModel: document.getElementById("imgdesc-remember-model"),
+        showAllModels: document.getElementById("imgdesc-show-all-models"),
+
         // Layout panels (Phase 2B.2)
         configPanel: document.getElementById("imgdesc-config-panel"),
         generateArea: document.getElementById("imgdesc-generate-area"),
@@ -300,6 +337,10 @@
         debugElements: {
           // Request details
           model: document.getElementById("imgdesc-debug-model"),
+          selectedModel: document.getElementById(
+            "imgdesc-debug-selected-model"
+          ),
+          modelCost: document.getElementById("imgdesc-debug-model-cost"),
           temperature: document.getElementById("imgdesc-debug-temperature"),
           maxTokens: document.getElementById("imgdesc-debug-max-tokens"),
           systemLength: document.getElementById("imgdesc-debug-system-length"),
@@ -356,6 +397,9 @@
             "imgdesc-debug-user-char-count"
           ),
         },
+
+        // Health indicator (Stage 7 - optional)
+        healthIndicator: document.getElementById("imgdesc-health-indicator"),
       };
 
       // Validate critical elements
@@ -367,6 +411,1293 @@
       } else {
         logDebug("All DOM elements cached successfully");
       }
+    },
+
+    // ========================================================================
+    // MODEL SELECTION (Stage 2)
+    // ========================================================================
+
+    /**
+     * Populate the model selector dropdown from the model registry
+     * Filters for vision-capable models and groups by cost tier
+     * Enhanced with loading states and error handling (Stage 6)
+     * @param {boolean} showAllModels - If true, show all models regardless of vision capability
+     */
+    populateModelSelector(showAllModels = false) {
+      logInfo(`Populating model selector... (showAll: ${showAllModels})`);
+
+      const selector = this.elements.modelSelector;
+      if (!selector) {
+        logWarn("Model selector element not found");
+        return;
+      }
+
+      // Show loading state (Stage 6)
+      this.showModelLoadingState();
+
+      // Check for model registry
+      if (!window.modelRegistry) {
+        logWarn("Model registry not available - disabling model selection");
+        this.handleModelRegistryError(new Error("Model registry unavailable"));
+        return;
+      }
+
+      try {
+        // Get all models from registry
+        let allModels = [];
+        if (typeof window.modelRegistry.getAllModels === "function") {
+          allModels = window.modelRegistry.getAllModels();
+        } else {
+          logWarn("modelRegistry.getAllModels() not available");
+          this.handleModelRegistryError(new Error("Cannot retrieve models"));
+          return;
+        }
+
+        if (!allModels || allModels.length === 0) {
+          logWarn("No models found in registry");
+          this.handleModelRegistryError(new Error("No models available"));
+          return;
+        }
+
+        logDebug(`Found ${allModels.length} total models in registry`);
+
+        // Filter models based on showAllModels setting
+        let filteredModels = [];
+
+        if (showAllModels) {
+          // Show all models regardless of vision capability
+          filteredModels = allModels;
+          logInfo(`Showing all ${filteredModels.length} models (unfiltered)`);
+        } else {
+          // Filter for vision-capable models
+          // Try EmbedModelSelector first (more robust capability checking)
+          if (window.EmbedModelSelector) {
+            try {
+              const modelSelector = new window.EmbedModelSelector();
+              const visionModelIds = modelSelector.getModelsWithCapabilities([
+                "vision",
+              ]);
+              filteredModels = allModels.filter((m) =>
+                visionModelIds.includes(m.id)
+              );
+              logDebug(
+                `EmbedModelSelector found ${filteredModels.length} vision models`
+              );
+            } catch (error) {
+              logWarn("EmbedModelSelector failed, using fallback:", error);
+              filteredModels = this.filterVisionModelsFallback(allModels);
+            }
+          } else {
+            // Fallback: check model properties directly
+            filteredModels = this.filterVisionModelsFallback(allModels);
+          }
+
+          if (filteredModels.length === 0) {
+            logWarn("No vision-capable models found");
+            this.handleModelRegistryError(
+              new Error("No vision models available")
+            );
+            return;
+          }
+
+          logInfo(`Found ${filteredModels.length} vision-capable models`);
+        }
+
+        // Group models by cost tier
+        const groupedModels = this.groupModelsByCostTier(filteredModels);
+
+        // Clear loading state and existing options (Stage 6)
+        this.clearModelLoadingState();
+        selector.innerHTML = "";
+
+        // Create optgroups for each tier
+        const tierLabels = {
+          low: "💰 Low Cost (Economical)",
+          medium: "⚖️ Medium Cost (Balanced)",
+          high: "🚀 High Cost (Premium)",
+        };
+
+        const tierOrder = ["low", "medium", "high"];
+
+        tierOrder.forEach((tier) => {
+          const models = groupedModels[tier];
+          if (!models || models.length === 0) return;
+
+          const optgroup = document.createElement("optgroup");
+          optgroup.label = tierLabels[tier];
+
+          // Sort models alphabetically within tier
+          const sortedModels = [...models].sort((a, b) =>
+            (a.name || a.id).localeCompare(b.name || b.id)
+          );
+
+          sortedModels.forEach((model) => {
+            const option = document.createElement("option");
+            option.value = model.id;
+
+            // Display name with provider
+            const displayName = model.name || model.id.split("/").pop();
+            const provider = model.provider || model.id.split("/")[0];
+            option.textContent = `${displayName} (${provider})`;
+
+            // Add data attributes for cost calculation (Stage 3)
+            if (model.costs) {
+              option.dataset.inputCost = model.costs.input || 0;
+              option.dataset.outputCost = model.costs.output || 0;
+            }
+            option.dataset.provider = provider;
+            option.dataset.costTier = tier;
+
+            optgroup.appendChild(option);
+          });
+
+          selector.appendChild(optgroup);
+        });
+
+        logInfo(
+          `Model selector populated with ${filteredModels.length} models in ${
+            Object.keys(groupedModels).filter(
+              (k) => groupedModels[k].length > 0
+            ).length
+          } tiers${showAllModels ? " (showing all)" : " (vision only)"}`
+        );
+
+        // Bind change event
+        selector.addEventListener("change", () => this.onModelChange());
+
+        // Restore preference or set default (Stage 4 stub will handle this)
+        this.restoreModelPreference();
+
+        // Update cost estimate for initial selection
+        this.updateCostEstimate();
+      } catch (error) {
+        // Enhanced error handling (Stage 6)
+        this.handleModelRegistryError(error);
+      }
+    },
+
+    /**
+     * Fallback method to filter vision models when EmbedModelSelector unavailable
+     * @param {Array} models - All models from registry
+     * @returns {Array} Vision-capable models
+     */
+    filterVisionModelsFallback(models) {
+      // Known vision-capable models that OpenRouter may not flag correctly
+      // These are confirmed to support image input
+      const KNOWN_VISION_MODELS = [
+        // Anthropic Claude models (all recent versions support vision)
+        "anthropic/claude-3-opus",
+        "anthropic/claude-3-sonnet",
+        "anthropic/claude-3-haiku",
+        "anthropic/claude-3.5-sonnet",
+        "anthropic/claude-3.5-haiku",
+        "anthropic/claude-3.7-sonnet",
+        "anthropic/claude-sonnet-4",
+        "anthropic/claude-sonnet-4.5",
+        "anthropic/claude-opus-4",
+        "anthropic/claude-opus-4.1",
+        "anthropic/claude-opus-4.5",
+        "anthropic/claude-haiku-4",
+        "anthropic/claude-haiku-4.5",
+        // OpenAI GPT-4 vision models
+        "openai/gpt-4-vision-preview",
+        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
+        "openai/gpt-4-turbo",
+        // Google Gemini models
+        "google/gemini-pro-vision",
+        "google/gemini-1.5-pro",
+        "google/gemini-1.5-flash",
+        "google/gemini-2.0-flash-001",
+        "google/gemini-2.5-pro-preview",
+        "google/gemini-2.5-flash-preview",
+      ];
+
+      return models.filter((model) => {
+        // Check if in known vision models list
+        if (KNOWN_VISION_MODELS.includes(model.id)) return true;
+
+        // Check various ways vision capability might be indicated
+        if (model.supportsImages === true) return true;
+        if (model.capabilities?.includes("vision")) return true;
+        if (model.capabilities?.includes("image")) return true;
+
+        // Check model ID patterns commonly associated with vision
+        const id = (model.id || "").toLowerCase();
+        if (id.includes("vision") || id.includes("-v")) return true;
+
+        return false;
+      });
+    },
+
+    /**
+     * Group models by cost tier
+     * @param {Array} models - Array of model objects
+     * @returns {Object} Models grouped by tier: { low: [], medium: [], high: [] }
+     */
+    groupModelsByCostTier(models) {
+      const grouped = {
+        low: [],
+        medium: [],
+        high: [],
+      };
+
+      models.forEach((model) => {
+        const tier = this.getModelCostTier(model);
+        grouped[tier].push(model);
+      });
+
+      logDebug(
+        `Grouped models: ${grouped.low.length} low, ${grouped.medium.length} medium, ${grouped.high.length} high`
+      );
+
+      return grouped;
+    },
+
+    /**
+     * Determine cost tier for a single model
+     * Uses same thresholds as EmbedModelSelector for consistency
+     * @param {Object} model - Model object with costs property
+     * @returns {'low'|'medium'|'high'} Cost tier
+     */
+    getModelCostTier(model) {
+      // Free models are always low tier
+      if (model.isFree === true) {
+        return "low";
+      }
+
+      // Calculate average cost (weighted towards output as it's typically more)
+      if (!model.costs) {
+        return "medium"; // Default when no cost info
+      }
+
+      const inputCost = model.costs.input || 0;
+      const outputCost = model.costs.output || 0;
+
+      // Use same formula as EmbedModelSelector: (input + output*2) / 3
+      const avgCost = (inputCost + outputCost * 2) / 3;
+
+      // Cost tier thresholds (per 1M tokens)
+      // These match EmbedModelSelector for consistency
+      const LOW_MAX = 1.0; // < $1 per 1M tokens
+      const MEDIUM_MAX = 10.0; // $1-10 per 1M tokens
+
+      if (avgCost < LOW_MAX) {
+        return "low";
+      } else if (avgCost < MEDIUM_MAX) {
+        return "medium";
+      } else {
+        return "high";
+      }
+    },
+
+    /**
+     * Disable model selection with a message
+     * Used when registry is unavailable or no models found
+     * @param {string} reason - Reason for disabling
+     */
+    disableModelSelection(reason) {
+      const selector = this.elements.modelSelector;
+      if (!selector) return;
+
+      // Clear and add disabled option
+      selector.innerHTML = "";
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = reason || "Model selection unavailable";
+      option.disabled = true;
+      selector.appendChild(option);
+      selector.disabled = true;
+
+      // Update cost estimate to show unavailable
+      if (this.elements.costEstimate) {
+        this.elements.costEstimate.textContent = "Cost estimate: Not available";
+        this.elements.costEstimate.classList.remove(
+          "imgdesc-cost-low",
+          "imgdesc-cost-medium",
+          "imgdesc-cost-high"
+        );
+      }
+
+      // Hide remember checkbox since there's nothing to remember
+      if (this.elements.rememberModel) {
+        this.elements.rememberModel.closest(
+          ".imgdesc-model-preference"
+        ).hidden = true;
+      }
+
+      logWarn(`Model selection disabled: ${reason}`);
+    },
+
+    /**
+     * Handle model selection change
+     * Updates cost estimate, announces to screen readers, and optionally saves preference
+     * Enhanced with accessibility announcements (Stage 6)
+     */
+    onModelChange() {
+      const selector = this.elements.modelSelector;
+      if (!selector) return;
+
+      const selectedValue = selector.value;
+      const selectedOption = selector.options[selector.selectedIndex];
+
+      logInfo(`Model changed to: ${selectedValue}`);
+
+      // Update cost estimate (Stage 3)
+      this.updateCostEstimate();
+
+      // Announce to screen readers (Stage 6)
+      if (selectedOption && selectedValue) {
+        const modelName = selectedOption.textContent || selectedValue;
+        const costText = this.elements.costEstimate?.textContent || "";
+        this.announceModelSelection(modelName, costText);
+      }
+
+      // Save preference if checkbox is checked (Stage 4)
+      if (this.elements.rememberModel?.checked) {
+        this.saveModelPreference();
+      }
+
+      // Log selection details for debugging
+      if (selectedOption) {
+        logDebug("Selected model details:", {
+          value: selectedValue,
+          text: selectedOption.textContent,
+          inputCost: selectedOption.dataset.inputCost,
+          outputCost: selectedOption.dataset.outputCost,
+          provider: selectedOption.dataset.provider,
+          costTier: selectedOption.dataset.costTier,
+        });
+      }
+    },
+
+    // ========================================================================
+    // COST ESTIMATION (Stage 3)
+    // ========================================================================
+
+    /**
+     * Token estimation constants for typical image description
+     * Based on analysis of real-world usage patterns
+     */
+    TOKEN_ESTIMATES: {
+      SYSTEM_PROMPT: 500, // System prompt tokens
+      USER_PROMPT: 100, // User prompt tokens
+      IMAGE: 1000, // Image encoding tokens (varies by size/complexity)
+      OUTPUT: 300, // Expected output tokens
+      get INPUT_TOTAL() {
+        return this.SYSTEM_PROMPT + this.USER_PROMPT + this.IMAGE;
+      },
+    },
+
+    /**
+     * Currency conversion rate (USD to GBP)
+     * Model costs are in USD, we display in GBP
+     */
+    USD_TO_GBP: 0.8,
+
+    /**
+     * Update cost estimate display based on selected model
+     * Calculates cost from data attributes and formats appropriately
+     */
+    updateCostEstimate() {
+      const selector = this.elements.modelSelector;
+      const costDisplay = this.elements.costEstimate;
+
+      if (!selector || !costDisplay) {
+        logWarn("Cost estimate elements not available");
+        return;
+      }
+
+      const selectedOption = selector.options[selector.selectedIndex];
+
+      if (!selectedOption || !selectedOption.value) {
+        costDisplay.textContent = "Estimated cost: Select a model";
+        this.applyCostTierStyling(costDisplay, null);
+        this.lastEstimatedCost = null;
+        return;
+      }
+
+      // Get cost data from data attributes (set in Stage 2)
+      const inputCostPer1M = parseFloat(selectedOption.dataset.inputCost) || 0;
+      const outputCostPer1M =
+        parseFloat(selectedOption.dataset.outputCost) || 0;
+      const costTier = selectedOption.dataset.costTier || "medium";
+
+      // Calculate costs in USD
+      const inputCostUSD =
+        (inputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.INPUT_TOTAL;
+      const outputCostUSD =
+        (outputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.OUTPUT;
+      const totalCostUSD = inputCostUSD + outputCostUSD;
+
+      // Convert to GBP
+      const totalCostGBP = totalCostUSD * this.USD_TO_GBP;
+
+      // Store for debug panel
+      this.lastEstimatedCost = totalCostGBP;
+
+      // Format the display text
+      const formattedCost = this.formatCostDisplay(totalCostGBP);
+      const tierNote = this.getCostTierNote(costTier);
+
+      costDisplay.textContent = `Estimated cost: ${formattedCost}${tierNote}`;
+
+      // Apply tier-based styling
+      this.applyCostTierStyling(costDisplay, costTier);
+
+      logDebug(`Cost estimate updated: ${formattedCost} (tier: ${costTier})`, {
+        inputCostPer1M,
+        outputCostPer1M,
+        totalCostUSD: totalCostUSD.toFixed(6),
+        totalCostGBP: totalCostGBP.toFixed(6),
+        costTier,
+      });
+    },
+
+    /**
+     * Format cost for display in appropriate units (pence or pounds)
+     * @param {number} costGBP - Cost in British Pounds
+     * @returns {string} Formatted cost string
+     */
+    formatCostDisplay(costGBP) {
+      if (costGBP === 0) {
+        return "Free";
+      }
+
+      // Convert to pence for easier threshold comparisons
+      const costPence = costGBP * 100;
+
+      if (costPence < 0.1) {
+        // Very cheap: show decimal pence (e.g., "~0.05p per description")
+        return `~${costPence.toFixed(2)}p per description`;
+      } else if (costPence < 1) {
+        // Cheap: show pence with one decimal (e.g., "~0.5p per description")
+        return `~${costPence.toFixed(1)}p per description`;
+      } else if (costPence < 10) {
+        // Moderate: show whole pence (e.g., "~4p per description")
+        return `~${Math.round(costPence)}p per description`;
+      } else {
+        // Expensive: show pounds (e.g., "~£0.15 per description")
+        return `~£${costGBP.toFixed(2)} per description`;
+      }
+    },
+
+    /**
+     * Get contextual note based on cost tier
+     * @param {string} tier - Cost tier ('low', 'medium', 'high')
+     * @returns {string} Note to append to cost display
+     */
+    getCostTierNote(tier) {
+      switch (tier) {
+        case "low":
+          return " (economical)";
+        case "high":
+          return " (premium quality)";
+        default:
+          return "";
+      }
+    },
+
+    /**
+     * Apply cost tier styling to the cost display element
+     * @param {HTMLElement} element - The cost display element
+     * @param {string|null} tier - Cost tier or null to remove all
+     */
+    applyCostTierStyling(element, tier) {
+      if (!element) return;
+
+      // Remove all tier classes first
+      element.classList.remove(
+        "imgdesc-cost-low",
+        "imgdesc-cost-medium",
+        "imgdesc-cost-high"
+      );
+
+      // Add appropriate class if tier specified
+      if (tier && ["low", "medium", "high"].includes(tier)) {
+        element.classList.add(`imgdesc-cost-${tier}`);
+      }
+    },
+
+    /**
+     * Get detailed cost breakdown for debugging
+     * @returns {Object} Detailed cost breakdown object
+     */
+    getCostBreakdown() {
+      const selector = this.elements.modelSelector;
+
+      if (!selector) {
+        return { error: "Model selector not available" };
+      }
+
+      const selectedOption = selector.options[selector.selectedIndex];
+
+      if (!selectedOption || !selectedOption.value) {
+        return { error: "No model selected" };
+      }
+
+      const inputCostPer1M = parseFloat(selectedOption.dataset.inputCost) || 0;
+      const outputCostPer1M =
+        parseFloat(selectedOption.dataset.outputCost) || 0;
+      const costTier = selectedOption.dataset.costTier || "medium";
+      const provider = selectedOption.dataset.provider || "unknown";
+
+      // Calculate detailed costs
+      const inputCostUSD =
+        (inputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.INPUT_TOTAL;
+      const outputCostUSD =
+        (outputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.OUTPUT;
+      const totalCostUSD = inputCostUSD + outputCostUSD;
+      const totalCostGBP = totalCostUSD * this.USD_TO_GBP;
+
+      return {
+        model: {
+          id: selectedOption.value,
+          name: selectedOption.textContent,
+          provider: provider,
+          costTier: costTier,
+        },
+        pricing: {
+          inputCostPer1M_USD: inputCostPer1M,
+          outputCostPer1M_USD: outputCostPer1M,
+        },
+        tokenEstimates: {
+          systemPrompt: this.TOKEN_ESTIMATES.SYSTEM_PROMPT,
+          userPrompt: this.TOKEN_ESTIMATES.USER_PROMPT,
+          image: this.TOKEN_ESTIMATES.IMAGE,
+          inputTotal: this.TOKEN_ESTIMATES.INPUT_TOTAL,
+          output: this.TOKEN_ESTIMATES.OUTPUT,
+        },
+        calculatedCosts: {
+          inputCostUSD: inputCostUSD,
+          outputCostUSD: outputCostUSD,
+          totalCostUSD: totalCostUSD,
+          totalCostGBP: totalCostGBP,
+          totalCostPence: totalCostGBP * 100,
+        },
+        formatted: this.formatCostDisplay(totalCostGBP),
+        conversionRate: this.USD_TO_GBP,
+      };
+    },
+
+    // ========================================================================
+    // PERSISTENCE METHODS (Stage 4)
+    // ========================================================================
+
+    /**
+     * Restore model preference from localStorage
+     * Validates preference, checks expiry, and handles missing models gracefully
+     */
+    restoreModelPreference() {
+      logDebug("Restoring model preference from localStorage...");
+
+      try {
+        const saved = localStorage.getItem(PREFERENCE_CONFIG.STORAGE_KEY);
+
+        if (!saved) {
+          logDebug("No saved preference found - using default");
+          this.setDefaultModel();
+          return;
+        }
+
+        const preference = JSON.parse(saved);
+
+        // Validate preference structure
+        if (!preference.modelId || !preference.savedAt) {
+          logWarn("Invalid preference structure - clearing and using default");
+          this.clearModelPreference();
+          this.setDefaultModel();
+          return;
+        }
+
+        // Check if preference has expired (older than 90 days)
+        const ageInDays =
+          (Date.now() - preference.savedAt) / (1000 * 60 * 60 * 24);
+        if (ageInDays > PREFERENCE_CONFIG.EXPIRY_DAYS) {
+          logInfo(
+            `Preference expired (${Math.round(ageInDays)} days old) - clearing`
+          );
+          this.clearModelPreference();
+          this.setDefaultModel();
+
+          // Notify user if notification system available
+          if (typeof window.notifyInfo === "function") {
+            window.notifyInfo(
+              "Your saved model preference has expired and been reset."
+            );
+          }
+          return;
+        }
+
+        // Check if saved model still exists in dropdown
+        const modelExists = Array.from(
+          this.elements.modelSelector.options
+        ).some((opt) => opt.value === preference.modelId);
+
+        if (!modelExists) {
+          logWarn(
+            `Saved model no longer available: ${preference.modelId} - using default`
+          );
+          this.clearModelPreference();
+          this.setDefaultModel();
+
+          // Notify user that their preferred model is no longer available
+          if (typeof window.notifyWarning === "function") {
+            window.notifyWarning(
+              `Your previously saved model "${
+                preference.modelName || preference.modelId
+              }" is no longer available. Using default model.`
+            );
+          }
+          return;
+        }
+
+        // Restore the selection
+        this.elements.modelSelector.value = preference.modelId;
+
+        // Check the "Remember" checkbox since we have a valid preference
+        if (this.elements.rememberModel) {
+          this.elements.rememberModel.checked = true;
+        }
+
+        // Update cost estimate for restored selection
+        this.updateCostEstimate();
+
+        logInfo(
+          `Restored model preference: ${
+            preference.modelName || preference.modelId
+          }`
+        );
+
+        // Notify user of successful restoration (subtle feedback)
+        if (typeof window.notifySuccess === "function") {
+          window.notifySuccess(
+            `Restored your preferred model: ${
+              preference.modelName || preference.modelId
+            }`
+          );
+        }
+      } catch (error) {
+        logError("Failed to restore model preference:", error);
+        this.clearModelPreference();
+        this.setDefaultModel();
+      }
+    },
+
+    /**
+     * Save model preference to localStorage
+     * Only saves if "Remember" checkbox is checked
+     */
+    saveModelPreference() {
+      // Check if remember checkbox is checked
+      if (!this.elements.rememberModel?.checked) {
+        logDebug("Remember checkbox not checked - clearing preference instead");
+        this.clearModelPreference();
+        return;
+      }
+
+      const selector = this.elements.modelSelector;
+      if (!selector || !selector.value) {
+        logWarn("Cannot save preference - no model selected");
+        return;
+      }
+
+      const selectedOption = selector.options[selector.selectedIndex];
+      const modelId = selector.value;
+      const modelName = selectedOption?.textContent?.trim() || modelId;
+
+      const preference = {
+        modelId: modelId,
+        modelName: modelName,
+        savedAt: Date.now(),
+        version: PREFERENCE_CONFIG.VERSION,
+      };
+
+      try {
+        localStorage.setItem(
+          PREFERENCE_CONFIG.STORAGE_KEY,
+          JSON.stringify(preference)
+        );
+
+        logInfo(`Model preference saved: ${modelName}`);
+
+        // Subtle success feedback (if available)
+        if (typeof window.notifySuccess === "function") {
+          window.notifySuccess(`Model preference saved: ${modelName}`);
+        }
+      } catch (error) {
+        logError("Failed to save model preference:", error);
+
+        if (typeof window.notifyError === "function") {
+          window.notifyError("Failed to save model preference");
+        }
+      }
+    },
+
+    /**
+     * Clear model preference from localStorage
+     */
+    clearModelPreference() {
+      try {
+        localStorage.removeItem(PREFERENCE_CONFIG.STORAGE_KEY);
+        logDebug("Model preference cleared from localStorage");
+      } catch (error) {
+        logError("Failed to clear model preference:", error);
+      }
+    },
+
+    /**
+     * Bind remember checkbox events (Stage 4)
+     * Sets up checkbox to save/clear preferences on change
+     */
+    bindRememberCheckbox() {
+      const checkbox = this.elements.rememberModel;
+      if (!checkbox) {
+        logWarn("Remember checkbox not found - persistence disabled");
+        return;
+      }
+
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          // Save current selection when checked
+          this.saveModelPreference();
+          logInfo("Remember model enabled - preference saved");
+
+          if (window.notifySuccess) {
+            window.notifySuccess("Model preference saved");
+          }
+        } else {
+          // Clear saved preference when unchecked
+          this.clearModelPreference();
+          logInfo("Remember model disabled - preference cleared");
+
+          if (window.notifyInfo) {
+            window.notifyInfo("Model preference cleared");
+          }
+        }
+      });
+
+      logDebug("Remember checkbox bound");
+    },
+
+    /**
+     * Bind show all models checkbox events
+     * Repopulates model selector when toggled
+     */
+    bindShowAllModelsCheckbox() {
+      const checkbox = this.elements.showAllModels;
+      if (!checkbox) {
+        logDebug("Show all models checkbox not found - feature disabled");
+        return;
+      }
+
+      checkbox.addEventListener("change", () => {
+        const showAll = checkbox.checked;
+        logInfo(`Show all models: ${showAll ? "enabled" : "disabled"}`);
+
+        // Remember current selection if possible
+        const currentSelection = this.elements.modelSelector?.value;
+
+        // Repopulate with new filter
+        this.populateModelSelector(showAll);
+
+        // Try to restore selection
+        if (currentSelection) {
+          const optionExists = Array.from(
+            this.elements.modelSelector.options
+          ).some((opt) => opt.value === currentSelection);
+          if (optionExists) {
+            this.elements.modelSelector.value = currentSelection;
+          }
+        }
+
+        // Update cost estimate
+        this.updateCostEstimate();
+
+        if (showAll && window.notifyWarning) {
+          window.notifyWarning(
+            "Showing all models. Some may not support image input."
+          );
+        }
+      });
+
+      logDebug("Show all models checkbox bound");
+    },
+
+    // ========================================================================
+    // MODEL SELECTION INTEGRATION (Stage 5)
+    // ========================================================================
+
+    /**
+     * Get currently selected model ID (Stage 5)
+     * Falls back to config default if no model selected
+     * @returns {string} Model ID
+     */
+    getSelectedModel() {
+      const selector = this.elements.modelSelector;
+
+      // Return selected value if available and valid
+      if (selector && selector.value) {
+        logDebug("Using selected model:", selector.value);
+        return selector.value;
+      }
+
+      // Fallback to config default
+      logDebug(
+        "No model selected, using config default:",
+        CONTROLLER_CONFIG.model
+      );
+      return CONTROLLER_CONFIG.model;
+    },
+
+    /**
+     * Get selected model details from registry (Stage 5)
+     * @returns {Object|null} Model object or null if not found
+     */
+    getSelectedModelDetails() {
+      const modelId = this.getSelectedModel();
+
+      // Check if registry is available
+      if (!window.modelRegistry) {
+        logWarn("Model registry not available");
+        return null;
+      }
+
+      // Get model from registry
+      if (typeof window.modelRegistry.getModel === "function") {
+        const model = window.modelRegistry.getModel(modelId);
+        if (model) {
+          logDebug("Model details retrieved:", model.name || modelId);
+          return model;
+        }
+      }
+
+      logWarn("Model not found in registry:", modelId);
+      return null;
+    },
+
+    // ========================================================================
+    // ACCESSIBILITY & POLISH (Stage 6)
+    // ========================================================================
+
+    /**
+     * Announce model selection to screen readers (Stage 6)
+     * Uses window.a11y?.announceStatus if available, graceful degradation otherwise
+     * @param {string} modelName - Name of selected model
+     * @param {string} costEstimate - Cost estimate text
+     */
+    announceModelSelection(modelName, costEstimate) {
+      // Build announcement message
+      const message = `Model changed to ${modelName}. ${costEstimate}`;
+
+      // Try to use a11y helper if available
+      if (window.a11y?.announceStatus) {
+        try {
+          window.a11y.announceStatus(message);
+          logDebug("Announced model selection via a11y helper:", message);
+          return;
+        } catch (error) {
+          logWarn("a11y.announceStatus failed, using fallback:", error);
+        }
+      }
+
+      // Fallback: Update the cost estimate element's aria-live region
+      // (This should already be set up with role="status" and aria-live="polite")
+      // The update in updateCostEstimate() will trigger the announcement
+      logDebug("Model selection announced via aria-live region:", message);
+    },
+
+    /**
+     * Enhance keyboard navigation for model selector (Stage 6)
+     * Adds Ctrl+Home (first option) and Ctrl+End (last option) shortcuts
+     */
+    enhanceModelSelectorKeyboard() {
+      const selector = this.elements.modelSelector;
+      if (!selector) {
+        logWarn("Cannot enhance keyboard - model selector not found");
+        return;
+      }
+
+      selector.addEventListener("keydown", (event) => {
+        // Only handle Ctrl+Home and Ctrl+End
+        if (!event.ctrlKey) return;
+
+        const options = Array.from(selector.options).filter(
+          (opt) => opt.value && !opt.disabled
+        );
+
+        if (options.length === 0) return;
+
+        let handled = false;
+
+        if (event.key === "Home") {
+          // Ctrl+Home: Jump to first option
+          selector.value = options[0].value;
+          handled = true;
+          logDebug("Keyboard: Jumped to first option");
+        } else if (event.key === "End") {
+          // Ctrl+End: Jump to last option
+          selector.value = options[options.length - 1].value;
+          handled = true;
+          logDebug("Keyboard: Jumped to last option");
+        }
+
+        if (handled) {
+          event.preventDefault();
+          // Dispatch change event to update cost estimate
+          selector.dispatchEvent(new Event("change"));
+        }
+      });
+
+      logDebug("Model selector keyboard navigation enhanced");
+    },
+
+    /**
+     * Show loading state whilst populating models (Stage 6)
+     */
+    showModelLoadingState() {
+      const selector = this.elements.modelSelector;
+      const costDisplay = this.elements.costEstimate;
+
+      if (selector) {
+        // Clear and add loading option
+        selector.innerHTML = "";
+        const loadingOption = document.createElement("option");
+        loadingOption.value = "";
+        loadingOption.textContent = "Loading models...";
+        loadingOption.disabled = true;
+        selector.appendChild(loadingOption);
+        selector.disabled = true;
+        selector.setAttribute("aria-busy", "true");
+      }
+
+      if (costDisplay) {
+        costDisplay.textContent = "Loading...";
+        costDisplay.setAttribute("aria-busy", "true");
+      }
+
+      // Hide remember checkbox during loading
+      if (this.elements.rememberModel) {
+        const preferenceContainer = this.elements.rememberModel.closest(
+          ".imgdesc-model-preference"
+        );
+        if (preferenceContainer) {
+          preferenceContainer.hidden = true;
+        }
+      }
+
+      logDebug("Model loading state shown");
+    },
+
+    /**
+     * Clear loading state after models loaded (Stage 6)
+     */
+    clearModelLoadingState() {
+      const selector = this.elements.modelSelector;
+      const costDisplay = this.elements.costEstimate;
+
+      if (selector) {
+        selector.disabled = false;
+        selector.removeAttribute("aria-busy");
+      }
+
+      if (costDisplay) {
+        costDisplay.removeAttribute("aria-busy");
+      }
+
+      // Show remember checkbox again
+      if (this.elements.rememberModel) {
+        const preferenceContainer = this.elements.rememberModel.closest(
+          ".imgdesc-model-preference"
+        );
+        if (preferenceContainer) {
+          preferenceContainer.hidden = false;
+        }
+      }
+
+      logDebug("Model loading state cleared");
+    },
+
+    /**
+     * Handle model registry errors gracefully (Stage 6)
+     * Updates UI to error state and notifies user
+     * @param {Error} error - The error that occurred
+     */
+    handleModelRegistryError(error) {
+      logError("Model registry error:", error);
+
+      const selector = this.elements.modelSelector;
+      const costDisplay = this.elements.costEstimate;
+
+      // Update selector to error state
+      if (selector) {
+        selector.innerHTML = "";
+        const errorOption = document.createElement("option");
+        errorOption.value = "";
+        errorOption.textContent = "Unable to load models";
+        errorOption.disabled = true;
+        selector.appendChild(errorOption);
+        selector.disabled = true;
+        selector.removeAttribute("aria-busy");
+        selector.setAttribute("aria-invalid", "true");
+      }
+
+      // Update cost display
+      if (costDisplay) {
+        costDisplay.textContent = "Model loading failed";
+        costDisplay.removeAttribute("aria-busy");
+        costDisplay.classList.remove(
+          "imgdesc-cost-low",
+          "imgdesc-cost-medium",
+          "imgdesc-cost-high"
+        );
+      }
+
+      // Hide remember checkbox since there's nothing to remember
+      if (this.elements.rememberModel) {
+        const preferenceContainer = this.elements.rememberModel.closest(
+          ".imgdesc-model-preference"
+        );
+        if (preferenceContainer) {
+          preferenceContainer.hidden = true;
+        }
+      }
+
+      // Notify user if notification system available
+      if (typeof window.notifyError === "function") {
+        window.notifyError(
+          "Failed to load AI models. Please refresh the page or try again later."
+        );
+      }
+    },
+
+    /**
+     * Set default model (economical option like Claude Haiku)
+     * Used when no saved preference exists or preference is invalid
+     * Prefers the configured default, falls back to newest Haiku, then first available
+     */
+    setDefaultModel() {
+      if (!this.elements.modelSelector) return;
+
+      const options = this.elements.modelSelector.options;
+      if (options.length === 0) return;
+
+      const optionsArray = Array.from(options).filter(
+        (opt) => opt.value && !opt.disabled
+      );
+
+      // Priority 1: Try to find the configured default model
+      const configDefault = optionsArray.find(
+        (opt) => opt.value === CONTROLLER_CONFIG.model
+      );
+
+      if (configDefault) {
+        this.elements.modelSelector.value = configDefault.value;
+        logInfo(
+          `Default model set to configured default: ${CONTROLLER_CONFIG.model}`
+        );
+        this.onModelChange();
+        return;
+      }
+
+      // Priority 2: Try to find Claude Haiku 4.5 specifically
+      const haiku45 = optionsArray.find(
+        (opt) => opt.value === "anthropic/claude-haiku-4.5"
+      );
+
+      if (haiku45) {
+        this.elements.modelSelector.value = haiku45.value;
+        logInfo("Default model set to Claude Haiku 4.5");
+        this.onModelChange();
+        return;
+      }
+
+      // Priority 3: Try to find any Haiku model (prefer newer versions)
+      const haikuModels = optionsArray.filter((opt) =>
+        opt.value.toLowerCase().includes("haiku")
+      );
+
+      if (haikuModels.length > 0) {
+        // Sort to prefer higher version numbers (4.5 > 4 > 3.5 > 3)
+        haikuModels.sort((a, b) => {
+          // Extract version numbers if present
+          const getVersion = (id) => {
+            const match = id.match(/(\d+\.?\d*)/g);
+            return match ? parseFloat(match[match.length - 1]) : 0;
+          };
+          return getVersion(b.value) - getVersion(a.value);
+        });
+
+        this.elements.modelSelector.value = haikuModels[0].value;
+        logInfo(`Default model set to: ${haikuModels[0].value}`);
+        this.onModelChange();
+        return;
+      }
+
+      // Priority 4: Fall back to first available option
+      if (optionsArray.length > 0) {
+        this.elements.modelSelector.value = optionsArray[0].value;
+        logInfo(
+          `Default model set to first available: ${optionsArray[0].value}`
+        );
+        this.onModelChange();
+      }
+    },
+    // ========================================================================
+    // RELIABILITY FEATURES (Stage 7)
+    // ========================================================================
+
+    /**
+     * Handle retry attempts (Stage 7)
+     * Shows user feedback during retry operations
+     * Gracefully degrades if notification system unavailable
+     * @param {number} attempt - Current retry attempt (1-based)
+     * @param {number} delay - Delay before next retry in ms
+     * @param {Error} error - Error that triggered retry
+     */
+    handleRetryAttempt(attempt, delay, error) {
+      const delaySeconds = Math.round(delay / 1000);
+      const errorMessage = error?.message || "Unknown error";
+
+      logWarn(`Retry attempt ${attempt} after error: ${errorMessage}`);
+      logDebug(`Retrying in ${delaySeconds}s...`);
+
+      // Update progress message if in generation phase
+      if (this.isGenerating && this.elements.progressStage) {
+        this.elements.progressStage.innerHTML = `<span aria-hidden="true">🔄</span> Retrying (attempt ${attempt})...`;
+      }
+
+      // Show notification for first retry (user awareness)
+      if (attempt === 1 && typeof window.notifyWarning === "function") {
+        window.notifyWarning(
+          `Request failed, retrying automatically... (${delaySeconds}s delay)`
+        );
+      }
+
+      // Show notification for final retry attempt
+      if (attempt === 3 && typeof window.notifyWarning === "function") {
+        window.notifyWarning(`Final retry attempt in ${delaySeconds}s...`);
+      }
+
+      // Log to debug panel if available
+      if (this.elements.debugElements?.model) {
+        const debugLog = document.getElementById("imgdesc-debug-retry-log");
+        if (debugLog) {
+          const timestamp = new Date().toLocaleTimeString();
+          debugLog.textContent = `${timestamp}: Retry ${attempt} (${errorMessage})`;
+        }
+      }
+    },
+
+    /**
+     * Handle health status changes (Stage 7)
+     * Provides user feedback about connection quality
+     * Gracefully degrades if health monitor unavailable
+     * @param {Object} status - Health status object with status, previousStatus, timestamp
+     */
+    handleHealthStatusChange(status) {
+      const { status: currentStatus, previousStatus } = status;
+
+      logInfo(`Health status changed: ${previousStatus} → ${currentStatus}`);
+
+      // Update health indicator if element exists
+      const indicator = this.elements.healthIndicator;
+      if (indicator) {
+        this.updateHealthIndicator(indicator, status);
+      }
+
+      // Show notifications for significant status changes
+      if (currentStatus === "unhealthy" && previousStatus !== "unhealthy") {
+        if (typeof window.notifyError === "function") {
+          window.notifyError(
+            "Connection to AI service appears unstable. Requests may take longer or fail."
+          );
+        }
+      } else if (currentStatus === "degraded" && previousStatus === "healthy") {
+        if (typeof window.notifyWarning === "function") {
+          window.notifyWarning(
+            "Connection quality has degraded. Some requests may be slower."
+          );
+        }
+      } else if (currentStatus === "healthy" && previousStatus !== "healthy") {
+        if (typeof window.notifySuccess === "function") {
+          window.notifySuccess("Connection to AI service restored.");
+        }
+      }
+
+      // Log to debug panel if available
+      const debugLog = document.getElementById("imgdesc-debug-health-log");
+      if (debugLog) {
+        const timestamp = new Date().toLocaleTimeString();
+        debugLog.textContent = `${timestamp}: ${previousStatus} → ${currentStatus}`;
+      }
+    },
+
+    /**
+     * Update health indicator UI element (Stage 7)
+     * Updates visual appearance and ARIA attributes
+     * @param {HTMLElement} indicator - Health indicator element
+     * @param {Object} status - Health status object
+     */
+    updateHealthIndicator(indicator, status) {
+      if (!indicator) return;
+
+      const { status: currentStatus } = status;
+
+      // Remove existing status classes
+      indicator.classList.remove(
+        "health-healthy",
+        "health-degraded",
+        "health-unhealthy",
+        "health-unknown"
+      );
+
+      // Status configuration
+      const statusConfig = {
+        healthy: {
+          class: "health-healthy",
+          icon: "🟢",
+          text: "Connection: Good",
+          ariaLabel: "Connection status: Good",
+        },
+        degraded: {
+          class: "health-degraded",
+          icon: "🟡",
+          text: "Connection: Slow",
+          ariaLabel: "Connection status: Degraded - requests may be slower",
+        },
+        unhealthy: {
+          class: "health-unhealthy",
+          icon: "🔴",
+          text: "Connection: Issues",
+          ariaLabel: "Connection status: Unstable - requests may fail",
+        },
+        unknown: {
+          class: "health-unknown",
+          icon: "⚪",
+          text: "Connection: Checking...",
+          ariaLabel: "Connection status: Checking",
+        },
+      };
+
+      const config = statusConfig[currentStatus] || statusConfig.unknown;
+
+      // Apply new status
+      indicator.classList.add(config.class);
+      indicator.setAttribute("aria-label", config.ariaLabel);
+
+      // Update content
+      const iconSpan = indicator.querySelector("[aria-hidden]");
+      const textSpan = indicator.querySelector(".imgdesc-health-text");
+
+      if (iconSpan) {
+        iconSpan.textContent = config.icon;
+      }
+      if (textSpan) {
+        textSpan.textContent = config.text;
+      }
+
+      logDebug(`Health indicator updated: ${currentStatus}`);
     },
 
     /**
@@ -1599,9 +2930,17 @@
 
         logInfo("Generation complete in", this.formatElapsedTime(finalTime));
 
-        // Update debug panel with generation details (Phase 2C)
+        // Stage 5: Get selected model details for debug panel
+        const selectedModel = this.getSelectedModel();
+        const modelDetails = this.getSelectedModelDetails();
+        const costBreakdown = this.getCostBreakdown();
+
+        // Update debug panel with generation details (Phase 2C + Stage 5)
         this.updateDebugPanel({
-          model: CONTROLLER_CONFIG.model,
+          model: selectedModel,
+          selectedModelName: modelDetails?.name || selectedModel,
+          selectedModelCost:
+            costBreakdown?.calculated?.formatted || "Not available",
           temperature: CONTROLLER_CONFIG.temperature,
           maxTokens: CONTROLLER_CONFIG.maxTokens,
           systemPrompt: systemPrompt,
@@ -1648,16 +2987,21 @@
 
       logInfo("Creating OpenRouter Embed instance with compression...");
 
-      this.embedInstance = new window.OpenRouterEmbed({
+      // Stage 5: Use selected model instead of config default
+      const selectedModel = this.getSelectedModel();
+      logInfo("Creating OpenRouter Embed with model:", selectedModel);
+
+      // Build configuration object
+      const embedConfig = {
         containerId: "imgdesc-output",
-        model: CONTROLLER_CONFIG.model,
+        model: selectedModel,
         temperature: CONTROLLER_CONFIG.temperature,
         max_tokens: CONTROLLER_CONFIG.maxTokens,
         showNotifications: true,
         showStreamingProgress: false, // Disabled - we have Phase 2A progress indicator
         progressStyle: "minimal", // Minimal style as fallback
 
-        // 🆕 COMPRESSION CONFIGURATION
+        // COMPRESSION CONFIGURATION
         // Based on performance testing: 92.17 ms/KB latency
         // Enable automatic image compression for optimal performance
         enableCompression: true,
@@ -1665,9 +3009,55 @@
         compressionMaxWidth: 1200, // Max dimensions for AI analysis
         compressionMaxHeight: 900,
         compressionQuality: 0.7, // 70% JPEG quality (optimal from testing)
-      });
+      };
+
+      // STAGE 7: Add retry configuration if handler available
+      // Graceful degradation - only add if EmbedRetryHandler is loaded
+      if (window.EmbedRetryHandler || window.EmbedRetryHandlerClass) {
+        embedConfig.retry = {
+          enabled: true,
+          maxRetries: 3,
+          baseDelay: 1000, // 1 second initial delay
+          maxDelay: 10000, // 10 second maximum delay
+          backoffMultiplier: 2, // Exponential: 1s, 2s, 4s, 8s...
+          jitter: true, // Add randomness to prevent thundering herd
+          retryableStatuses: [408, 429, 500, 502, 503, 504],
+          onRetry: (attempt, delay, error) => {
+            this.handleRetryAttempt(attempt, delay, error);
+          },
+        };
+        logInfo("Retry configuration enabled (Stage 7)");
+      } else {
+        logDebug("EmbedRetryHandler not available - retry disabled");
+      }
+
+      // STAGE 7: Add health monitoring if monitor available
+      // Graceful degradation - only add if EmbedHealthMonitor is loaded
+      if (window.EmbedHealthMonitor || window.EmbedHealthMonitorClass) {
+        embedConfig.health = {
+          enabled: true,
+          checkInterval: 60000, // Check every 60 seconds
+          timeout: 5000, // 5 second timeout for health checks
+          onStatusChange: (status) => {
+            this.handleHealthStatusChange(status);
+          },
+        };
+        logInfo("Health monitoring enabled (Stage 7)");
+      } else {
+        logDebug(
+          "EmbedHealthMonitor not available - health monitoring disabled"
+        );
+      }
+
+      this.embedInstance = new window.OpenRouterEmbed(embedConfig);
 
       logInfo("OpenRouter Embed instance created with compression enabled");
+
+      // Show health indicator now that monitoring is active (Stage 7)
+      if (this.elements.healthIndicator) {
+        this.elements.healthIndicator.hidden = false;
+        logDebug("Health indicator shown");
+      }
 
       return this.embedInstance;
     },
@@ -2165,6 +3555,12 @@
 
       // Request details
       setText(d.model, data.model || CONTROLLER_CONFIG.model);
+      // Stage 5: Selected model name and cost
+      setText(
+        d.selectedModel,
+        data.selectedModelName || data.model || CONTROLLER_CONFIG.model
+      );
+      setText(d.modelCost, data.selectedModelCost || "-");
       setText(d.temperature, data.temperature || CONTROLLER_CONFIG.temperature);
       setText(d.maxTokens, data.maxTokens || CONTROLLER_CONFIG.maxTokens);
       setText(

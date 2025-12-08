@@ -1,5 +1,35 @@
 /*Light mode */
 
+/* =============================================
+   COLOUR DEFINITIONS
+   ============================================= */
+
+/* Error state - colours */
+.markdown-load-error {
+  border-color: #8d3970;
+  background-color: #ffebee;
+}
+
+.markdown-load-error h2 {
+  color: #8d3970;
+}
+
+.markdown-load-error code {
+  background-color: #f5f5f5;
+}
+
+.imgdesc-cost-estimate.imgdesc-cost-low {
+  border-left-color: #005051;
+}
+
+.imgdesc-cost-estimate.imgdesc-cost-medium {
+  border-left-color: #8d3970;
+}
+
+.imgdesc-cost-estimate.imgdesc-cost-high {
+  border-left-color: #e73037;
+}
+
 /* Main container colours */
 .pdf-vis-container {
   background-color: #f0f2e8;
@@ -1379,6 +1409,20 @@ dialog {
 /* task lists ends */
 
 /* Streaming options */
+/* Loading state */
+.markdown-loading {
+  color: #231f20;
+}
+.markdown-loading::before {
+  border: 3px solid #9fb1bd;
+  border-top-color: #8d3970;
+}
+
+/* No JavaScript fallback */
+.noscript-fallback {
+  border-color: #00131d;
+  background-color: #f0f2e8;
+}
 
 /* COLOUR SECTION */
 .streaming-options {
@@ -1386,7 +1430,7 @@ dialog {
 }
 
 .streaming-choice:hover {
-  border-colour: #00131d;
+  border-color: #00131d;
   box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);
 }
 
@@ -3224,4 +3268,32 @@ footer a:focus:not(:focus-visible) {
 }
 pre.language-json {
   border: 1px solid currentColor;
+}
+
+.task-list-item:not(.task-completed) {
+  background-color: #f0f2e8;
+  border-color: #005c84;
+}
+
+.task-list-checkbox {
+  background-color: #fff;
+  border-color: #5a5a5a;
+}
+
+.task-list-checkbox:checked {
+  background-color: #005051;
+  border-color: #005051;
+}
+
+.task-list-checkbox:checked::after {
+  border-color: #fffff4;
+}
+
+.task-list-checkbox:not(:checked) {
+  background-color: #fffff4;
+  border-color: #d5007f;
+}
+
+.task-complete .task-list-label {
+  color: #495961;
 }

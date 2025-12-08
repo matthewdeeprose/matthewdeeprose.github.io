@@ -6864,6 +6864,87 @@ Science,91</pre
                         </div>
                       </div>
                     </details>
+
+                    <!-- Model Selection Section (Stage 1) -->
+                    <details
+                      class="imgdesc-options-group"
+                      id="imgdesc-model-section"
+                    >
+                      <summary>
+                        <span aria-hidden="true">🤖</span> AI Model Selection
+                      </summary>
+                      <div class="imgdesc-option-content">
+                        <div class="imgdesc-field">
+                          <label for="imgdesc-model">
+                            Select AI Model
+                            <span class="imgdesc-optional"
+                              >(Choose quality vs. cost)</span
+                            >
+                          </label>
+                          <select
+                            id="imgdesc-model"
+                            class="imgdesc-model-selector"
+                            aria-describedby="imgdesc-cost-estimate"
+                            aria-label="Select AI model for image description"
+                          >
+                            <option value="">Loading models...</option>
+                          </select>
+                        </div>
+
+                        <div
+                          id="imgdesc-cost-estimate"
+                          class="imgdesc-cost-estimate"
+                          role="status"
+                          aria-live="polite"
+                          aria-atomic="true"
+                        >
+                          Estimated cost: Calculating...
+                        </div>
+                        <!-- Health Indicator (Stage 7 - Optional) -->
+                        <div
+                          id="imgdesc-health-indicator"
+                          class="imgdesc-health-indicator health-unknown"
+                          role="status"
+                          aria-live="polite"
+                          aria-label="Connection status: Checking"
+                          hidden
+                        >
+                          <span aria-hidden="true">⚪</span>
+                          <span class="imgdesc-health-text"
+                            >Connection: Checking...</span
+                          >
+                        </div>
+
+                        <div
+                          class="imgdesc-option-group imgdesc-model-preference"
+                        >
+                          <label class="imgdesc-checkbox-label">
+                            <input
+                              type="checkbox"
+                              id="imgdesc-remember-model"
+                              aria-describedby="imgdesc-remember-hint"
+                            />
+                            <span>Remember my choice</span>
+                          </label>
+                          <span
+                            id="imgdesc-remember-hint"
+                            class="imgdesc-hint-text"
+                          >
+                            Your model preference will be saved for future
+                            sessions
+                          </span>
+                        </div>
+                        <div class="imgdesc-show-all-models">
+                          <input type="checkbox" id="imgdesc-show-all-models" />
+                          <label for="imgdesc-show-all-models"
+                            >Show all models
+                            <span class="imgdesc-hint"
+                              >(including those not confirmed for vision)</span
+                            ></label
+                          >
+                        </div>
+                      </div>
+                    </details>
                   </fieldset>
                 </section>
               </div>
@@ -7001,6 +7082,12 @@ Science,91</pre
                       <dl class="imgdesc-debug-list">
                         <dt>Model</dt>
                         <dd id="imgdesc-debug-model">-</dd>
+
+                        <dt>Model Used</dt>
+                        <dd id="imgdesc-debug-selected-model">-</dd>
+
+                        <dt>Model Cost (Estimated)</dt>
+                        <dd id="imgdesc-debug-model-cost">-</dd>
 
                         <dt>Temperature</dt>
                         <dd id="imgdesc-debug-temperature">-</dd>
@@ -7511,6 +7598,8 @@ Science,91</pre
     <script src="js/testing/openrouter-embed-stage6-phase8-tests.js"></script>
 
     <script src="js/testing/mathpix-mmd-preview-tests.js"></script>
+
+    <script src="js/testing/image-describer-tests.js"></script>
 
     <!-- Image Describer Prompts (must load before controller) -->
     <script src="image-describer/prompts/prompt-loader.js"></script>

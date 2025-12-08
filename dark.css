@@ -1,4 +1,73 @@
 /* Dark mode */
+/* =============================================
+   COLOUR DEFINITIONS
+   ============================================= */
+
+.task-list-item:not(.task-completed) {
+  background-color: #00131d;
+  border-color: #fcbc00;
+}
+
+.task-list-checkbox {
+  background-color: #fff;
+  border-color: #5a5a5a;
+}
+
+.task-list-checkbox:checked {
+  background-color: #c1d100;
+  border-color: #c1d100;
+}
+
+.task-list-checkbox:checked::after {
+  border-color: #00131d;
+}
+
+.task-list-checkbox:not(:checked) {
+  background-color: #fffff4;
+  border-color: #00131d;
+}
+
+.task-complete .task-list-label {
+  color: #9fb1bd;
+}
+
+.markdown-loading {
+  color: #9fb1bd;
+}
+.markdown-loading::before {
+  border-color: #231f20;
+  border-top-color: #c1d100;
+}
+
+.noscript-fallback {
+  background: #00131d;
+  border-color: #e1e8ec;
+}
+
+.markdown-load-error {
+  background: #00131d;
+  border-color: #ef7d00;
+}
+
+.markdown-load-error h2 {
+  color: #ef7d00;
+}
+
+.markdown-load-error code {
+  background: #231f20;
+}
+
+.imgdesc-cost-estimate.imgdesc-cost-low {
+  border-left-color: #c1d100;
+}
+
+.imgdesc-cost-estimate.imgdesc-cost-medium {
+  border-left-color: #fcbc00;
+}
+
+.imgdesc-cost-estimate.imgdesc-cost-high {
+  border-left-color: #e73037;
+}
 
 /* ===========================================
    PDF CONFIDENCE VISUALISER UI (Phase 3.2)

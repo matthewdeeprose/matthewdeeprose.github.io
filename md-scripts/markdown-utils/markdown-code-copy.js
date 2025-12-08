@@ -381,3 +381,6 @@ const MarkdownCodeCopy = (function () {
     addCopyButton: addCopyButton,
   };
 })();
+
+// Expose to window for external access
+window.MarkdownCodeCopy = MarkdownCodeCopy;
