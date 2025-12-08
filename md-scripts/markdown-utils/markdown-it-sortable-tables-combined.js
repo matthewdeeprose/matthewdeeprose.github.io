@@ -225,18 +225,19 @@
 
   /**
    * Extract table data from DOM table element
+   * Preserves HTML content (for links, formatting) whilst storing text for sorting
    */
   function extractTableData(table) {
     const headers = [];
     const rows = [];
 
-    // Get headers
+    // Get headers (text only - used as keys)
     const headerCells = table.querySelectorAll("thead th");
     headerCells.forEach((th) => {
       headers.push(th.textContent.trim());
     });
 
-    // Get row data
+    // Get row data - store both HTML and text content
     const dataRows = table.querySelectorAll("tbody tr");
     dataRows.forEach((tr, rowIndex) => {
       const rowData = {};
@@ -244,7 +245,11 @@
 
       cells.forEach((td, cellIndex) => {
         if (headers[cellIndex]) {
-          rowData[headers[cellIndex]] = td.textContent.trim();
+          const headerKey = headers[cellIndex];
+          // Store HTML content for display (preserves links, formatting)
+          rowData[headerKey] = td.innerHTML.trim();
+          // Store text content for sorting comparisons
+          rowData[`_sortText_${headerKey}`] = td.textContent.trim();
         }
       });
 
@@ -501,7 +506,8 @@
           const td = document.createElement("td");
           td.setAttribute("role", "cell");
           td.setAttribute("data-label", header);
-          td.textContent = row[header] || "";
+          // Use innerHTML to preserve links and formatting
+          td.innerHTML = row[header] || "";
           tr.appendChild(td);
         });
 
@@ -803,10 +809,13 @@
 
     sortData(columnIndex, direction) {
       const columnHeader = this.headers[columnIndex];
+      // Use the text-only key for sorting comparisons
+      const sortKey = `_sortText_${columnHeader}`;
 
       this.data.sort((a, b) => {
-        let aVal = a[columnHeader];
-        let bVal = b[columnHeader];
+        // Use stored text content for sorting (falls back to HTML content if not available)
+        let aVal = a[sortKey] !== undefined ? a[sortKey] : a[columnHeader];
+        let bVal = b[sortKey] !== undefined ? b[sortKey] : b[columnHeader];
 
         // Handle different data types
 
