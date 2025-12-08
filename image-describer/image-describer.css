@@ -1135,6 +1135,9 @@
 .imgdesc-cost-estimate {
   padding: 0.75rem;
   border-left: 4px solid currentColor;
+  border-top: 1px solid currentcolor;
+  border-right: 1px solid currentcolor;
+  border-bottom: 1px solid currentcolor;
   border-radius: 4px;
   font-size: 0.9rem;
   margin-bottom: 1rem;
@@ -1183,50 +1186,26 @@
     transition: none;
   }
 }
-
 /* ============================================================================
    HEALTH INDICATOR (Stage 7)
    ============================================================================ */
+
+/* --- Colours --- */
+
+.imgdesc-health-indicator {
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* --- Layout --- */
 
 .imgdesc-health-indicator {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0.75rem;
-  border-radius: 1rem;
+  border-radius: 4px;
   font-size: 0.875rem;
   font-weight: 500;
-  background-color: var(--surface-color, #f5f5f5);
-  border: 1px solid var(--border-color, #ddd);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-/* Healthy state - green */
-.imgdesc-health-indicator.health-healthy {
-  background-color: #d4edda;
-  border-color: #28a745;
-  color: #155724;
-}
-
-/* Degraded state - yellow/amber */
-.imgdesc-health-indicator.health-degraded {
-  background-color: #fff3cd;
-  border-color: #ffc107;
-  color: #856404;
-}
-
-/* Unhealthy state - red */
-.imgdesc-health-indicator.health-unhealthy {
-  background-color: #f8d7da;
-  border-color: #dc3545;
-  color: #721c24;
-}
-
-/* Unknown state - grey */
-.imgdesc-health-indicator.health-unknown {
-  background-color: #e9ecef;
-  border-color: #6c757d;
-  color: #495057;
 }
 
 /* Health indicator text */
@@ -1241,33 +1220,6 @@
   }
 }
 
-/* Dark theme support (if using CSS custom properties) */
-@media (prefers-color-scheme: dark) {
-  .imgdesc-health-indicator.health-healthy {
-    background-color: #1e4620;
-    border-color: #28a745;
-    color: #d4edda;
-  }
-
-  .imgdesc-health-indicator.health-degraded {
-    background-color: #533f03;
-    border-color: #ffc107;
-    color: #fff3cd;
-  }
-
-  .imgdesc-health-indicator.health-unhealthy {
-    background-color: #491217;
-    border-color: #dc3545;
-    color: #f8d7da;
-  }
-
-  .imgdesc-health-indicator.health-unknown {
-    background-color: #343a40;
-    border-color: #6c757d;
-    color: #e9ecef;
-  }
-}
-
 /* Ensure hidden attribute works */
 .imgdesc-health-indicator[hidden] {
   display: none;
@@ -1279,6 +1231,4 @@
 
 .imgdesc-hint {
   font-size: 0.85em;
-  color: var(--text-muted, #666);
-  font-style: italic;
 }

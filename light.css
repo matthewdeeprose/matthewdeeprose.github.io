@@ -30,6 +30,39 @@
   border-left-color: #e73037;
 }
 
+.imgdesc-health-indicator {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+}
+
+/* Healthy state - green */
+.imgdesc-health-indicator.health-healthy {
+  background-color: #d4edda;
+  border-color: #005051;
+  color: #005051;
+}
+
+/* Degraded state - yellow/amber */
+.imgdesc-health-indicator.health-degraded {
+  background-color: #f0f2e8;
+  border-color: #8d3970;
+  color: #8d3970;
+}
+
+/* Unhealthy state - red */
+.imgdesc-health-indicator.health-unhealthy {
+  background-color: #f8d7da;
+  border-color: #e73037;
+  color: #d5007f;
+}
+
+/* Unknown state - grey */
+.imgdesc-health-indicator.health-unknown {
+  background-color: #e1e8ec;
+  border-color: #495961;
+  color: #00131d;
+}
+
 /* Main container colours */
 .pdf-vis-container {
   background-color: #f0f2e8;

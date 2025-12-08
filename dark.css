@@ -69,6 +69,38 @@
   border-left-color: #e73037;
 }
 
+.imgdesc-health-indicator {
+  background-color: #00131d;
+  border: 1px solid #e1e8ec;
+}
+
+/* Healthy state - green */
+.imgdesc-health-indicator.health-healthy {
+  background-color: #00131d;
+  border-color: #c1d100;
+  color: #c1d100;
+}
+
+/* Degraded state - yellow/amber */
+.imgdesc-health-indicator.health-degraded {
+  background-color: #00131d;
+  border-color: #fcbc00;
+  color: #fcbc00;
+}
+
+/* Unhealthy state - red */
+.imgdesc-health-indicator.health-unhealthy {
+  background-color: #00131d;
+  border-color: #ef7d00;
+  color: #ef7d00;
+}
+
+/* Unknown state - grey */
+.imgdesc-health-indicator.health-unknown {
+  background-color: #00131d;
+  border-color: #9fb1bd;
+  color: #9fb1bd;
+}
 /* ===========================================
    PDF CONFIDENCE VISUALISER UI (Phase 3.2)
    =========================================== */
