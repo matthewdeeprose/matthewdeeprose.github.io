@@ -2,7 +2,7 @@
 
 
 
-### Understanding Contrast Ratios
+## Understanding Contrast Ratios
 
 Before examining specific requirements, it helps to understand what contrast ratios measure and where the numbers come from.
 
@@ -59,7 +59,7 @@ WCAG's contrast requirements stem from vision research. The 4.5:1 ratio for text
 
 ---
 
-### 2.1 Text Contrast
+## 2.1 Text Contrast
 
 **WCAG**: 1.4.3 Contrast (Minimum) - AA
 
@@ -112,7 +112,7 @@ Then the contrast ratio is at least 4.5:1
 
 ---
 
-### 2.2 Non-text Contrast (UI Components)
+## 2.2 Non-text Contrast (UI Components)
 
 **WCAG**: 1.4.11 Non-text Contrast - AA
 
@@ -172,7 +172,7 @@ Then that boundary has at least 3:1 contrast against adjacent colours
 
 ---
 
-### 2.3 State Changes (Hover, Focus, Selected)
+## 2.3 State Changes (Hover, Focus, Selected)
 
 **WCAG**: 1.4.11 Non-text Contrast - AA
 
@@ -277,7 +277,7 @@ Then the difference is distinguishable without relying on colour alone
 
 ---
 
-### 2.4 Colour as Sole Indicator
+## 2.4 Colour as Sole Indicator
 
 **WCAG**: 1.4.1 Use of Colour - A
 
@@ -323,7 +323,7 @@ Then the information remains distinguishable through text, icons, patterns, or p
 
 ---
 
-### 2.5 Complete Example: Accessible Button
+## 2.5 Complete Example: Accessible Button
 
 This example ties together all contrast requirements for a single component.
 
