@@ -555,6 +555,50 @@ const MarkdownEditor = (function () {
     }
   }
 
+  // Custom image renderer for enhanced figure output with accessibility
+  function setupImageRenderer(md) {
+    md.renderer.rules.image = function (tokens, idx, options, env, self) {
+      const token = tokens[idx];
+      const src = token.attrGet("src") || "";
+      const alt = token.content || "";
+      const title = token.attrGet("title") || "";
+
+      // Escape HTML entities for safety
+      const escapeHtml = (str) => {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      };
+
+      const escapedSrc = escapeHtml(src);
+      const escapedAlt = escapeHtml(alt);
+      const escapedTitle = escapeHtml(title);
+
+      // Build figure with enhanced classes
+      let html = '<figure class="demoImage">';
+      html += `<img class="demoImg" src="${escapedSrc}" alt="${escapedAlt}"`;
+
+      if (title) {
+        html += ` title="${escapedTitle}"`;
+      }
+
+      html += ' loading="lazy">';
+
+      // Add figcaption only if title is provided
+      if (title) {
+        html += `<figcaption class="borders">${escapedTitle}</figcaption>`;
+      }
+
+      html += "</figure>";
+
+      return html;
+    };
+
+    Logger.debug("Custom image renderer configured");
+  }
+
   // Initialize markdown-it with plugins
   function initializeMarkdownIt() {
     const md = window.markdownit({
@@ -712,7 +756,6 @@ const MarkdownEditor = (function () {
       { name: "toc", plugin: window.markdownItTocDoneRight },
       { name: "attrs", plugin: window.markdownitAttrs },
       { name: "multimd-table", plugin: window.markdownitMultimdTable },
-      { name: "implicit-figures", plugin: window.markdownitImplicitFigures },
       { name: "tab", plugin: window.markdownitTab },
     ];
 
@@ -762,13 +805,6 @@ const MarkdownEditor = (function () {
                 "alt",
               ],
             });
-          } else if (name === "implicit-figures") {
-            md.use(plugin, {
-              figcaption: true,
-              dataType: false,
-              tabindex: false,
-              copyAttrs: false,
-            });
           } else if (name === "tab") {
             md.use(plugin, {
               name: "tabs",
@@ -784,6 +820,9 @@ const MarkdownEditor = (function () {
 
     // Setup custom task lists (bypassing the plugin)
     setupCustomTaskLists(md);
+
+    // Custom image renderer for enhanced figures
+    setupImageRenderer(md);
 
     // Custom chart renderer
     md.renderer.rules.fence = createFenceRenderer(md);
@@ -1010,6 +1049,60 @@ const MarkdownEditor = (function () {
     }
   }
 
+  // Post-processing for figure images - adds aspect-ratio on load
+  function enhanceFigureImages(container) {
+    const figures = container.querySelectorAll("figure.demoImage");
+
+    figures.forEach((figure) => {
+      const img = figure.querySelector("img.demoImg");
+      if (!img) return;
+
+      // Handle successful image load
+      img.addEventListener(
+        "load",
+        function () {
+          const width = this.naturalWidth;
+          const height = this.naturalHeight;
+
+          if (width && height) {
+            figure.style.aspectRatio = `${width} / ${height}`;
+            Logger.debug(`Image loaded: ${width}x${height}, aspect-ratio set`);
+          }
+        },
+        { once: true }
+      );
+
+      // Handle image load failure
+      img.addEventListener(
+        "error",
+        function () {
+          // Remove aspect-ratio for minimal error display
+          figure.style.aspectRatio = "auto";
+
+          // Replace image with minimal error message
+          const errorMessage = document.createElement("span");
+          errorMessage.className = "demoImg-error";
+          errorMessage.setAttribute("role", "img");
+          errorMessage.setAttribute(
+            "aria-label",
+            this.alt || "Image failed to load"
+          );
+          errorMessage.textContent = "⚠ Image not found";
+
+          this.replaceWith(errorMessage);
+          Logger.warn(`Image failed to load: ${this.src}`);
+        },
+        { once: true }
+      );
+
+      // Check if image is already loaded (cached)
+      if (img.complete && img.naturalWidth) {
+        figure.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+        Logger.debug("Image already cached, aspect-ratio set immediately");
+      }
+    });
+  }
+
   // Debounced render function
   const debounce = (func, wait) => {
     let timeout;
@@ -1089,6 +1182,9 @@ const MarkdownEditor = (function () {
           window.mathPixEnhanceMathJax();
         }
       }
+
+      // Enhance figure images with aspect-ratio
+      enhanceFigureImages(elements.output);
 
       // Initialize sortable tables
       if (typeof window.initSortableTables === "function") {

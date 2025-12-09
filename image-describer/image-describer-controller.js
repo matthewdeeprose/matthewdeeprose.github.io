@@ -1595,41 +1595,56 @@
      * Gracefully degrades if health monitor unavailable
      * @param {Object} status - Health status object with status, previousStatus, timestamp
      */
+/**
+     * Handle health status changes from the embed instance (Stage 7)
+     * Updates the health indicator UI and notifies user of significant changes
+     * @param {string} status - New health status ('healthy', 'degraded', 'unhealthy')
+     */
     handleHealthStatusChange(status) {
-      const { status: currentStatus, previousStatus } = status;
+      const previousStatus = this._lastHealthStatus;
+      this._lastHealthStatus = status;
 
-      logInfo(`Health status changed: ${previousStatus} → ${currentStatus}`);
+const statusValue = typeof status === 'object' ? status.status : status;
+const prevValue = typeof previousStatus === 'object' ? previousStatus?.status : previousStatus;
+logInfo(`Health status changed: ${prevValue} → ${statusValue}`);
 
-      // Update health indicator if element exists
-      const indicator = this.elements.healthIndicator;
-      if (indicator) {
-        this.updateHealthIndicator(indicator, status);
+
+      // Update health indicator UI
+      if (this.elements.healthIndicator) {
+        this.updateHealthIndicator(this.elements.healthIndicator, status);
+        logDebug("Health indicator updated:", status);
       }
 
-      // Show notifications for significant status changes
-      if (currentStatus === "unhealthy" && previousStatus !== "unhealthy") {
-        if (typeof window.notifyError === "function") {
-          window.notifyError(
-            "Connection to AI service appears unstable. Requests may take longer or fail."
-          );
-        }
-      } else if (currentStatus === "degraded" && previousStatus === "healthy") {
-        if (typeof window.notifyWarning === "function") {
+      // Only notify on SIGNIFICANT transitions (not initial check)
+      // Skip notification if previous status was undefined (first check)
+      if (previousStatus === undefined) {
+        logDebug("Skipping notification for initial health check");
+        return;
+      }
+
+      // Notify user of significant status changes
+      if (status === "degraded" && previousStatus === "healthy") {
+        if (window.notifyWarning) {
           window.notifyWarning(
-            "Connection quality has degraded. Some requests may be slower."
+            "Connection to AI is experiencing issues. Requests may be slower."
           );
         }
-      } else if (currentStatus === "healthy" && previousStatus !== "healthy") {
-        if (typeof window.notifySuccess === "function") {
-          window.notifySuccess("Connection to AI service restored.");
+      } else if (status === "unhealthy" && previousStatus !== "unhealthy") {
+        if (window.notifyError) {
+          window.notifyError(
+            "Connection to AI lost. Will retry automatically."
+          );
+        }
+      } else if (status === "healthy" && previousStatus === "unhealthy") {
+        // Only notify restoration if we were previously unhealthy
+        if (window.notifySuccess) {
+          window.notifySuccess("Connection to AI restored.");
         }
       }
 
       // Log to debug panel if available
-      const debugLog = document.getElementById("imgdesc-debug-health-log");
-      if (debugLog) {
-        const timestamp = new Date().toLocaleTimeString();
-        debugLog.textContent = `${timestamp}: ${previousStatus} → ${currentStatus}`;
+      if (this.elements.debugPanel && this.logToDebugPanel) {
+        this.logToDebugPanel(`Health: ${status}`);
       }
     },
 
@@ -3088,8 +3103,8 @@
 
     /**
      * Adjust heading levels in rendered output (Phase 2B.3)
-     * Shifts all headings down by TWO levels (h1→h3, h2→h4, etc.)
-     * This ensures proper heading hierarchy after the H2 "Generated Description" section heading
+     * Normalises heading hierarchy to start at h3 and be sequential without gaps
+     * This ensures proper WCAG-compliant heading hierarchy
      * Does NOT affect the raw markdown/HTML stored for clipboard
      * @param {HTMLElement} container - The container with rendered content
      */
@@ -3099,11 +3114,46 @@
         return;
       }
 
-      // Process in reverse order (h4→h6 first) to avoid double-shifting
-      for (let level = 4; level >= 1; level--) {
-        const headings = container.querySelectorAll(`h${level}`);
-        headings.forEach((heading) => {
-          const newLevel = Math.min(level + 2, 6); // Shift by 2, cap at h6
+      // Get all headings in document order
+      const allHeadings = container.querySelectorAll("h1, h2, h3, h4, h5, h6");
+      
+      if (allHeadings.length === 0) {
+        logDebug("No headings found to adjust");
+        return;
+      }
+
+      // Build a mapping of original levels to normalised levels
+      // Goal: Start at h3, maintain relative hierarchy, no gaps
+      const targetStartLevel = 3; // Start at h3 (below our page h1 and section h2)
+      
+      // Find all unique levels used in the content (in order of first appearance for hierarchy)
+      const levelsUsed = [];
+      allHeadings.forEach((heading) => {
+        const level = parseInt(heading.tagName.charAt(1), 10);
+        if (!levelsUsed.includes(level)) {
+          levelsUsed.push(level);
+        }
+      });
+      
+      // Sort levels to understand the hierarchy (h1=1, h2=2, etc.)
+      levelsUsed.sort((a, b) => a - b);
+      
+      // Create mapping: original level → new level (sequential from h3)
+      const levelMapping = {};
+      levelsUsed.forEach((originalLevel, index) => {
+        const newLevel = Math.min(targetStartLevel + index, 6); // Cap at h6
+        levelMapping[originalLevel] = newLevel;
+      });
+      
+      logDebug("Heading level mapping:", levelMapping);
+
+      // Apply the mapping to all headings
+      allHeadings.forEach((heading) => {
+        const originalLevel = parseInt(heading.tagName.charAt(1), 10);
+        const newLevel = levelMapping[originalLevel];
+        
+        // Only change if level is different
+        if (originalLevel !== newLevel) {
           const newHeading = document.createElement(`h${newLevel}`);
 
           // Copy all attributes
@@ -3116,15 +3166,20 @@
 
           // Replace original
           heading.replaceWith(newHeading);
-        });
-      }
+        }
+      });
 
-      logDebug("Heading levels adjusted for accessibility (shifted by 2)");
+      logDebug("Heading levels normalised for accessibility", {
+        originalLevels: levelsUsed,
+        startLevel: targetStartLevel,
+        mappings: levelMapping
+      });
     },
 
-    /**
+/**
      * Extract alt text from generated description (Phase 2E)
-     * Looks for <h4>Alt Text</h4> and extracts the following text
+     * Searches for any heading containing "Alt Text" (case-insensitive)
+     * and extracts the following paragraph content
      */
     extractAndApplyAltText() {
       if (!this.elements.output) {
@@ -3133,13 +3188,15 @@
       }
 
       try {
-        // Find the "Alt Text" heading (H4 after adjustment)
-        const headings = this.elements.output.querySelectorAll("h4");
+        // Find any heading containing "alt text" (case-insensitive)
+        const allHeadings = this.elements.output.querySelectorAll("h1, h2, h3, h4, h5, h6");
         let altTextHeading = null;
 
-        for (const heading of headings) {
-          if (heading.textContent.trim() === "Alt Text") {
+        for (const heading of allHeadings) {
+          const headingText = heading.textContent.trim().toLowerCase();
+          if (headingText === "alt text" || headingText.includes("alt text")) {
             altTextHeading = heading;
+            logDebug(`Found alt text heading: <${heading.tagName.toLowerCase()}>`);
             break;
           }
         }
@@ -3149,17 +3206,17 @@
           return;
         }
 
-        // Extract text after the heading until next heading or end
+        // Extract text after the heading until next heading, <hr>, or end
         let altText = "";
         let currentNode = altTextHeading.nextElementSibling;
 
         while (currentNode) {
-          // Stop at next heading
-          if (currentNode.tagName.match(/^H[1-6]$/)) {
+          // Stop at next heading or horizontal rule (section divider)
+          if (currentNode.tagName.match(/^H[1-6]$/) || currentNode.tagName === "HR") {
             break;
           }
 
-          // Accumulate text content
+          // Accumulate text content from paragraphs and other text elements
           const text = currentNode.textContent.trim();
           if (text) {
             altText += (altText ? " " : "") + text;
@@ -3173,8 +3230,8 @@
           return;
         }
 
-        // Clean up the alt text
-        altText = altText.trim();
+        // Clean up the alt text (remove excessive whitespace)
+        altText = altText.replace(/\s+/g, " ").trim();
 
         // Store for later use
         this.extractedAltText = altText;

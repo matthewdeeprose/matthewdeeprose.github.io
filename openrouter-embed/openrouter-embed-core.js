@@ -235,12 +235,16 @@ class OpenRouterEmbed {
       logWarn("EmbedFileUtils not available - file attachment disabled");
     }
 
-    // Streaming state (Stage 3)
+// Streaming state (Stage 3)
     this.isStreaming = false;
     this.streamAbortController = null;
     this.streamBuffer = "";
     this.currentStreamId = null;
     this.streamCancelled = false; // Track user-initiated cancellations
+
+    // Screen reader announcement throttling (accessibility improvement)
+    this.lastScreenReaderAnnouncement = 0;
+    this.screenReaderAnnouncementInterval = 5000; // 5 seconds minimum between streaming updates
 
     // Throttling for chunk processing
     this.lastRenderTime = 0;
@@ -1415,7 +1419,7 @@ class OpenRouterEmbed {
   // CONTENT INJECTION
   // ==========================================================================
 
-  /**
+/**
    * Inject processed content into container
    * @param {string} html - HTML content to inject
    * @throws {Error} If container not available
@@ -1450,8 +1454,20 @@ class OpenRouterEmbed {
       logDebug("Progress indicator preserved during content injection");
     }
 
-    // Announce content update to screen readers
-    this.announceToScreenReader("Content updated");
+    // Announce content update to screen readers (throttled during streaming)
+    // Frequent announcements during streaming overwhelm screen reader users
+    const now = Date.now();
+    if (this.isStreaming) {
+      // During streaming: announce at most every 5 seconds
+      if (now - this.lastScreenReaderAnnouncement > this.screenReaderAnnouncementInterval) {
+        this.announceToScreenReader("Content updating");
+        this.lastScreenReaderAnnouncement = now;
+      }
+    } else {
+      // Not streaming: always announce (final content injection)
+      this.announceToScreenReader("Content updated");
+      this.lastScreenReaderAnnouncement = now;
+    }
 
     // Focus management - set focus to container for keyboard navigation
     // Only if container doesn't already have focusable elements
@@ -2100,10 +2116,10 @@ class OpenRouterEmbed {
       let compressionResult = null;
       const originalSize = file.size;
 
-      if (
+if (
         isImage &&
-        this.fileUtils.shouldCompressImage &&
-        this.fileUtils.shouldCompressImage(file)
+        this.fileUtils.shouldCompress &&
+        this.fileUtils.shouldCompress(file)
       ) {
         logInfo("Image exceeds threshold, compressing...");
 
@@ -2160,23 +2176,7 @@ class OpenRouterEmbed {
         throw sizeError;
       }
 
-      // Validate PROCESSED file size (after compression or original file)
-      try {
-        this.fileUtils.validateFileSize(
-          processedFile,
-          compressionResult ? originalSize : null
-        );
-        logDebug("File size validation passed", {
-          size: processedFile.size,
-          wasCompressed: !!compressionResult,
-        });
-      } catch (sizeError) {
-        logError("File size validation failed", {
-          size: processedFile.size,
-          maxSize: processedFile.type.startsWith("image/") ? "10MB" : "25MB",
-        });
-        throw sizeError;
-      }
+
 
       // Analyse file (cost, pages, etc.) using PROCESSED file
       const analysis = await this.fileUtils.analyzeFile(processedFile);
