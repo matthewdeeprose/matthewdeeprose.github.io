@@ -415,11 +415,11 @@ const UniversalModal = (function () {
         </svg>`,
       };
 
-      if (typeIcons[type]) {
+if (typeIcons[type]) {
         const icon = document.createElement("span");
         icon.className = "universal-modal-icon";
         icon.innerHTML = typeIcons[type];
-        icon.setAttribute("aria-label", `${type} icon`);
+        icon.setAttribute("aria-hidden", "true");
         header.appendChild(icon);
       }
 
@@ -451,9 +451,10 @@ const UniversalModal = (function () {
       return header;
     }
 
-    createBody(content, templateConfig, modalId) {
+createBody(content, templateConfig, modalId) {
       const body = document.createElement("div");
       body.className = "universal-modal-body";
+      body.setAttribute("tabindex", "0");
 
       // Add legacy classes for backward compatibility
       body.classList.add("modal-body");
