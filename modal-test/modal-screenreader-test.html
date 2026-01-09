@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modal Screen Reader Test - Inert Background Verification</title>
+    <style>
+      /* Base styles */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 2rem;
+        background-color: #f5f5f5;
+        color: #1a1a1a;
+      }
+
+      /* Background page content - should NOT be announced when modal is open */
+      .page-header {
+        background-color: #2c3e50;
+        color: #fff;
+        padding: 1.5rem;
+        margin: -2rem -2rem 2rem -2rem;
+      }
+
+      .page-header h1 {
+        margin: 0 0 0.5rem 0;
+      }
+
+      main {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .content-section {
+        background-color: #fff;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .content-section h2 {
+        margin-top: 0;
+        color: #2c3e50;
+      }
+
+      .test-list {
+        background-color: #e8f4f8;
+        padding: 1rem 1rem 1rem 2.5rem;
+        border-radius: 4px;
+      }
+
+      .test-list li {
+        margin-bottom: 0.5rem;
+      }
+
+      .reopen-button {
+        background-color: #1d4ed8;
+        color: #fff;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 1rem;
+      }
+
+      .reopen-button:hover {
+        background-color: #1e40af;
+      }
+
+      .reopen-button:focus {
+        outline: 3px solid #f39c12;
+        outline-offset: 2px;
+      }
+
+      /* Universal Modal Styles */
+      .universal-modal {
+        border: none;
+        border-radius: 12px;
+        padding: 0;
+        max-width: 90vw;
+        max-height: 90vh;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        background: #fff;
+      }
+
+      .universal-modal::backdrop {
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+      }
+
+      .universal-modal-small {
+        width: min(400px, 90vw);
+      }
+
+      .universal-modal-medium {
+        width: min(600px, 90vw);
+      }
+
+      .universal-modal-large {
+        width: min(800px, 90vw);
+      }
+
+      .universal-modal-container {
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+        overflow: hidden;
+      }
+
+      .universal-modal-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #e5e5e5;
+        background: #fafafa;
+        border-radius: 12px 12px 0 0;
+      }
+
+      .universal-modal-icon {
+        flex-shrink: 0;
+        color: #3498db;
+      }
+
+      .universal-modal-icon svg {
+        width: 32px;
+        height: 32px;
+      }
+
+      .universal-modal-heading {
+        flex: 1;
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+
+      .universal-modal-heading:focus {
+        outline: 2px solid #3498db;
+        outline-offset: 2px;
+      }
+
+      .universal-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.75rem;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        color: #666;
+        border-radius: 4px;
+      }
+
+      .universal-modal-close:hover {
+        background: #e5e5e5;
+        color: #1a1a1a;
+      }
+
+      .universal-modal-close:focus {
+        outline: 2px solid #3498db;
+        outline-offset: 2px;
+      }
+
+      .universal-modal-body {
+        padding: 1.5rem;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .universal-modal-body p {
+        margin: 0 0 1rem 0;
+      }
+
+      .universal-modal-body p:last-child {
+        margin-bottom: 0;
+      }
+
+      .universal-modal-footer {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e5e5e5;
+        background: #fafafa;
+        border-radius: 0 0 12px 12px;
+      }
+
+      .universal-modal-button {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+
+      .universal-modal-button:focus {
+        outline: 2px solid #3498db;
+        outline-offset: 2px;
+      }
+
+      .universal-modal-button-primary {
+        background: #3498db;
+        color: #fff;
+      }
+
+      .universal-modal-button-primary:hover {
+        background: #2980b9;
+      }
+
+      .universal-modal-button-secondary {
+        background: #e5e5e5;
+        color: #1a1a1a;
+      }
+
+      .universal-modal-button-secondary:hover {
+        background: #d5d5d5;
+      }
+
+      /* Status area */
+      .universal-modal-status {
+        display: none;
+        padding: 0.75rem 1rem;
+        border-top: 1px solid #e5e5e5;
+      }
+
+      .universal-modal-status.show {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      /* Closing animation */
+      .universal-modal[closing] {
+        animation: modal-close 0.2s ease-out forwards;
+      }
+
+      @keyframes modal-close {
+        to {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+      }
+
+      /* Test instructions within modal */
+      .modal-test-content h2 {
+        margin-top: 0;
+        font-size: 1.1rem;
+        color: #2c3e50;
+      }
+
+      .modal-test-content ol {
+        margin: 0;
+        padding-left: 1.5rem;
+      }
+
+      .modal-test-content li {
+        margin-bottom: 0.5rem;
+      }
+
+      .expected-result {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+      }
+
+      .expected-result strong {
+        color: #155724;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 
+        BACKGROUND CONTENT - This should NOT be announced by screen readers
+        when the modal is open because the inert attribute should be applied
+    -->
+    <header class="page-header">
+      <h1>Background Page Header - Should NOT Be Announced</h1>
+      <p>
+        If your screen reader announces this content when the modal opens, the
+        inert attribute is not working correctly.
+      </p>
+    </header>
+
+    <main>
+      <section class="content-section">
+        <h2>Background Section One - Should NOT Be Announced</h2>
+        <p>
+          This paragraph contains background content that should be hidden from
+          assistive technology when the modal is active. The modal system uses
+          the <code>inert</code> attribute to prevent screen readers from
+          accessing this content.
+        </p>
+        <p>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        </p>
+      </section>
+
+      <section class="content-section">
+        <h2>Background Section Two - Should NOT Be Announced</h2>
+        <p>
+          More background content here. If you can hear this being read when the
+          modal first opens, there may be an issue with the modal's
+          accessibility implementation.
+        </p>
+        <ul class="test-list">
+          <li>Background list item one - should not be announced</li>
+          <li>Background list item two - should not be announced</li>
+          <li>Background list item three - should not be announced</li>
+        </ul>
+      </section>
+
+      <section class="content-section">
+        <h2>Test Controls</h2>
+        <p>After closing the modal, you can reopen it to test again.</p>
+        <button type="button" class="reopen-button" onclick="openTestModal()">
+          <span aria-hidden="true">🔄</span> Reopen Test Modal
+        </button>
+      </section>
+
+      <section class="content-section">
+        <h2>What to Test</h2>
+        <ol class="test-list">
+          <li>On page load, the modal should open automatically</li>
+          <li>Screen reader should announce the modal title first</li>
+          <li>Screen reader should NOT announce any background content</li>
+          <li>Tab key should cycle only through modal elements</li>
+          <li>Escape key should close the modal</li>
+          <li>After closing, focus should return to the page</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="content-section">
+      <h2>Background Footer - Should NOT Be Announced</h2>
+      <p>Footer content that should also be inert when modal is open.</p>
+    </footer>
+
+    <!-- Load the Universal Modal script -->
+    <script src="universal-modal.js"></script>
+
+    <script>
+      // Logging configuration
+      const LOG_LEVELS = {
+        ERROR: 0,
+        WARN: 1,
+        INFO: 2,
+        DEBUG: 3,
+      };
+
+      const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
+      const ENABLE_ALL_LOGGING = false;
+      const DISABLE_ALL_LOGGING = false;
+
+      function shouldLog(level) {
+        if (DISABLE_ALL_LOGGING) return false;
+        if (ENABLE_ALL_LOGGING) return true;
+        return level <= DEFAULT_LOG_LEVEL;
+      }
+
+      function logError(message, ...args) {
+        if (shouldLog(LOG_LEVELS.ERROR))
+          console.error(`[ModalTest ERROR]: ${message}`, ...args);
+      }
+
+      function logWarn(message, ...args) {
+        if (shouldLog(LOG_LEVELS.WARN))
+          console.warn(`[ModalTest WARN]: ${message}`, ...args);
+      }
+
+      function logInfo(message, ...args) {
+        if (shouldLog(LOG_LEVELS.INFO))
+          console.log(`[ModalTest INFO]: ${message}`, ...args);
+      }
+
+      function logDebug(message, ...args) {
+        if (shouldLog(LOG_LEVELS.DEBUG))
+          console.log(`[ModalTest DEBUG]: ${message}`, ...args);
+      }
+
+      /**
+       * Opens the test modal with screen reader testing instructions
+       */
+      function openTestModal() {
+        logInfo("Opening test modal for screen reader verification");
+
+        const modalContent = `
+                <div class="modal-test-content">
+                    <h2>Screen Reader Test Modal</h2>
+                    <p>This modal opened automatically on page load. If your screen reader is working correctly with this modal system, you should have heard:</p>
+                    <ol>
+                        <li>The modal title "Screen Reader Accessibility Test"</li>
+                        <li>This content being read</li>
+                        <li>NO background page content</li>
+                    </ol>
+                    <div class="expected-result">
+                        <strong>Expected Result:</strong> The background content (headers, paragraphs, lists) should NOT have been announced because the <code>inert</code> attribute hides them from assistive technology.
+                    </div>
+                    <p>Use Tab to navigate within this modal. Press Escape or click the close button to close it.</p>
+                </div>
+            `;
+
+        UniversalModal.show({
+          title: "Screen Reader Accessibility Test",
+          content: modalContent,
+          type: "info",
+          size: "medium",
+          buttons: [{ text: "Close Modal", type: "primary", action: "close" }],
+          options: {
+            allowBackgroundClose: true,
+          },
+        }).then(function (result) {
+          logInfo("Modal closed with result:", result);
+        });
+      }
+
+      // Open modal immediately on page load - no delay
+      // The delay was causing screen readers to announce background content first
+      document.addEventListener("DOMContentLoaded", function () {
+        logInfo("Page loaded, opening modal immediately");
+        openTestModal();
+      });
+    </script>
+  </body>
+</html>
