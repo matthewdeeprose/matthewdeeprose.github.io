@@ -1,379 +1,434 @@
 <!DOCTYPE html>
 <html lang="en-GB">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modal Screen Reader Test - Inert Background Verification</title>
-    
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Page title</title>
+
     <!-- Universal Modal structural styles -->
-    <link rel="stylesheet" href="https://matthewdeeprose.github.io/md-scripts/css/modal.css">
-    
+    <link
+      rel="stylesheet"
+      href="https://matthewdeeprose.github.io/md-scripts/css/modal.css"
+    />
+
     <style>
-        /* ===== TEST PAGE STYLES ===== */
-        
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-        }
-.universal-modal-button{
-margin-top:10px}
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 2rem;
-            background-color: #f5f5f5;
-            color: #1a1a1a;
-        }
+      /* ===== TEST PAGE STYLES ===== */
 
-        .page-header {
-            background-color: #1e3a5f;
-            color: #fff;
-            padding: 1.5rem;
-            margin: -2rem -2rem 2rem -2rem;
-        }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      .universal-modal-button {
+        margin-top: 10px;
+      }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 2rem;
+        background-color: #f5f5f5;
+        color: #1a1a1a;
+      }
 
-        .page-header h1 {
-            margin: 0 0 0.5rem 0;
-        }
+      .page-header {
+        background-color: #002e3b;
+        color: #fffff4;
+        padding: 1.5rem;
+        margin: -2rem -2rem 2rem -2rem;
+      }
 
-        main {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+      .page-header h1 {
+        margin: 0 0 0.5rem 0;
+      }
 
-        .content-section {
-            background-color: #fff;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
+      main {
+        max-width: 800px;
+        margin: 0 auto;
+      }
 
-        .content-section h2 {
-            margin-top: 0;
-            color: #1e3a5f;
-        }
+      .content-section {
+        background-color: #fffff4;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
 
-        .test-list {
-            background-color: #e8f4f8;
-            padding: 1rem 1rem 1rem 2.5rem;
-            border-radius: 4px;
-        }
+      .content-section h2 {
+        margin-top: 0;
+        color: #002e3b;
+      }
 
-        .test-list li {
-            margin-bottom: 0.5rem;
-        }
+      .test-list {
+        background-color: #e8f4f8;
+        padding: 1rem 1rem 1rem 2.5rem;
+        border-radius: 4px;
+      }
 
-        .reopen-button {
-            background-color: #1e40af;
-            color: #fff;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 1rem;
-        }
+      .test-list li {
+        margin-bottom: 0.5rem;
+      }
 
-        .reopen-button:hover {
-            background-color: #1e3a8a;
-        }
+      .reopen-button {
+        background-color: #005c84;
+        color: #fffff4;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 1rem;
+      }
 
-        .reopen-button:focus {
-            outline: 3px solid #b45309;
-            outline-offset: 2px;
-        }
+      .reopen-button:hover {
+        background-color: #002e3b;
+      }
 
-        /* ===== UNIVERSAL MODAL COLOUR THEME (WCAG AAA - 7:1 Contrast) ===== */
-        
-        /* Backdrop */
-        .universal-modal::backdrop {
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(4px);
-        }
+      .reopen-button:focus-visible {
+        outline: 3px solid #00131d;
+        outline-offset: 2px;
+      }
 
-        /* Container */
-        .universal-modal-container {
-            background: #fff;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
+      /* ===== UNIVERSAL MODAL COLOUR THEME (WCAG AAA - 7:1 Contrast) ===== */
 
-        /* Header */
-        .universal-modal-header {
-            background: #fafafa;
-            border-bottom: 1px solid #d1d5db;
-        }
+      /* Backdrop */
+      .universal-modal::backdrop {
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+      }
 
-        /* Heading - meets 7:1 with #fafafa background */
-        .universal-modal-heading {
-            color: #1f2937;
-        }
+      /* Container */
+      .universal-modal-container {
+        background: #fffff4;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      }
 
-        .universal-modal-heading:focus {
-            outline: 2px solid #1e40af;
-            outline-offset: 2px;
-        }
+      /* Header */
+      .universal-modal-header {
+        background: #fafafa;
+        border-bottom: 1px solid #d1d5db;
+      }
 
-        /* Close button - meets 7:1 */
-        .universal-modal-close {
-            color: #374151;
-            border-color: transparent;
-        }
+      /* Heading - meets 7:1 with #fafafa background */
+      .universal-modal-heading {
+        color: #1f2937;
+      }
 
-        .universal-modal-close:hover {
-            background: #e5e7eb;
-            color: #111827;
-        }
+      .universal-modal-heading:focus-visible {
+        outline: 2px solid #005c84;
+        outline-offset: 2px;
+      }
 
-        .universal-modal-close:focus {
-            outline: 2px solid #1e40af;
-            outline-offset: 2px;
-        }
+      /* Close button - meets 7:1 */
+      .universal-modal-close {
+        color: #374151;
+        border-color: transparent;
+      }
 
-        /* Body */
-        .universal-modal-body {
-            color: #1f2937;
-        }
+      .universal-modal-close:hover {
+        background: #e5e7eb;
+        color: #111827;
+      }
 
-        /* Footer */
-        .universal-modal-footer {
-            background: #fafafa;
-            border-top: 1px solid #d1d5db;
-        }
+      .universal-modal-close:focus-visible {
+        outline: 2px solid #005c84;
+        outline-offset: 2px;
+      }
 
-        /* Primary button - 7:1 contrast (white on #1e40af = 7.8:1) */
-        .universal-modal-button-primary {
-            background-color: #1e40af;
-            color: #fff;
-            border: 1px solid #1e40af;
-        }
+      /* Body */
+      .universal-modal-body {
+        color: #1f2937;
+      }
 
-        .universal-modal-button-primary:hover {
-            background-color: #1e3a8a;
-            border-color: #1e3a8a;
-        }
+      /* Footer */
+      .universal-modal-footer {
+        background: #fafafa;
+        border-top: 1px solid #d1d5db;
+      }
 
-        .universal-modal-button-primary:focus {
-            outline: 2px solid #b45309;
-            outline-offset: 2px;
-        }
+      /* Primary button - 7:1 contrast (white on #005C84 = 7.8:1) */
+      .universal-modal-button-primary {
+        background-color: #005c84;
+        color: #fffff4;
+        border: 1px solid #005c84;
+      }
 
-        /* Secondary button - 7:1 contrast (#1f2937 on #e5e7eb = 10.5:1) */
-        .universal-modal-button-secondary {
-            background-color: #e5e7eb;
-            color: #1f2937;
-            border: 1px solid #9ca3af;
-        }
+      .universal-modal-button-primary:hover {
+        background-color: #002e3b;
+        border-color: #002e3b;
+      }
 
-        .universal-modal-button-secondary:hover {
-            background-color: #d1d5db;
-        }
+      .universal-modal-button-primary:focus-visible {
+        outline: 2px solid #00131d;
+        outline-offset: 2px;
+      }
 
-        .universal-modal-button-secondary:focus {
-            outline: 2px solid #1e40af;
-            outline-offset: 2px;
-        }
+      /* Secondary button - 7:1 contrast (#1f2937 on #e5e7eb = 10.5:1) */
+      .universal-modal-button-secondary {
+        background-color: #e5e7eb;
+        color: #1f2937;
+        border: 1px solid #9ca3af;
+      }
 
-        /* Input */
-        .universal-modal-input {
-            border: 1px solid #6b7280;
-            color: #1f2937;
-            background-color: #fff;
-        }
+      .universal-modal-button-secondary:hover {
+        background-color: #d1d5db;
+      }
 
-        .universal-modal-input:focus {
-            outline: 2px solid #1e40af;
-            border-color: #1e40af;
-        }
+      .universal-modal-button-secondary:focus-visible {
+        outline: 2px solid #005c84;
+        outline-offset: 2px;
+      }
 
-        /* Icon colours by type */
-        .universal-modal-icon {
-            color: #1e40af;
-        }
+      /* Input */
+      .universal-modal-input {
+        border: 1px solid #6b7280;
+        color: #1f2937;
+        background-color: #fffff4;
+      }
 
-        /* Status area colours */
-        .universal-modal-status {
-            background: rgba(255, 255, 255, 0.95);
-            border-top: 1px solid #d1d5db;
-            color: #1f2937;
-        }
+      .universal-modal-input:focus-visible {
+        outline: 2px solid #005c84;
+        border-color: #005c84;
+      }
 
-        .universal-modal-status.status-success {
-            background: rgba(220, 252, 231, 0.95);
-            border-top-color: #166534;
-            color: #14532d;
-        }
+      /* Icon colours by type */
+      .universal-modal-icon {
+        color: #005c84;
+      }
 
-        .universal-modal-status.status-error {
-            background: rgba(254, 226, 226, 0.95);
-            border-top-color: #991b1b;
-            color: #7f1d1d;
-        }
+      /* Status area colours */
+      .universal-modal-status {
+        background: rgba(255, 255, 255, 0.95);
+        border-top: 1px solid #d1d5db;
+        color: #1f2937;
+      }
 
-        .universal-modal-status.status-warning {
-            background: rgba(254, 243, 199, 0.95);
-            border-top-color: #92400e;
-            color: #78350f;
-        }
+      .universal-modal-status.status-success {
+        background: rgba(220, 252, 231, 0.95);
+        border-top-color: #166534;
+        color: #14532d;
+      }
 
-        .universal-modal-status.status-info {
-            background: rgba(219, 234, 254, 0.95);
-            border-top-color: #1e40af;
-            color: #1e3a8a;
-        }
+      .universal-modal-status.status-error {
+        background: rgba(254, 226, 226, 0.95);
+        border-top-color: #d5007f;
+        color: #7f1d1d;
+      }
 
-        .universal-modal-status.status-loading {
-            background: rgba(243, 244, 246, 0.95);
-            color: #374151;
-        }
+      .universal-modal-status.status-warning {
+        background: rgba(254, 243, 199, 0.95);
+        border-top-color: #d5007f;
+        color: #78350f;
+      }
 
-        .universal-modal-status-dismiss {
-            color: inherit;
-        }
+      .universal-modal-status.status-info {
+        background: rgba(219, 234, 254, 0.95);
+        border-top-color: #005c84;
+        color: #002e3b;
+      }
 
-        .universal-modal-status-dismiss:hover {
-            background: rgba(0, 0, 0, 0.1);
-        }
+      .universal-modal-status.status-loading {
+        background: rgba(243, 244, 246, 0.95);
+        color: #374151;
+      }
 
-        .universal-modal-status-dismiss:focus {
-            outline: 2px solid currentColor;
-        }
+      .universal-modal-status-dismiss {
+        color: inherit;
+      }
 
-        .universal-modal-spinner {
-            border: 2px solid #d1d5db;
-            border-top-color: #1e40af;
-        }
+      .universal-modal-status-dismiss:hover {
+        background: rgba(0, 0, 0, 0.1);
+      }
 
-        /* ===== TEST CONTENT WITHIN MODAL ===== */
-        
-        .modal-test-content h2 {
-            margin-top: 0;
-            font-size: 1.1rem;
-            color: #1e3a5f;
-        }
+      .universal-modal-status-dismiss:focus-visible {
+        outline: 2px solid currentColor;
+      }
 
-        .modal-test-content ol {
-            margin: 0;
-            padding-left: 1.5rem;
-        }
+      .universal-modal-spinner {
+        border: 2px solid #d1d5db;
+        border-top-color: #005c84;
+      }
 
-        .modal-test-content li {
-            margin-bottom: 0.5rem;
-        }
+      /* ===== TEST CONTENT WITHIN MODAL ===== */
 
-        .expected-result {
-            background-color: #dcfce7;
-            border: 1px solid #166534;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-top: 1rem;
-        }
+      .modal-test-content h2 {
+        margin-top: 0;
+        font-size: 1.1rem;
+        color: #002e3b;
+      }
 
-        .expected-result strong {
-            color: #14532d;
-        }
+      .modal-test-content ol {
+        margin: 0;
+        padding-left: 1.5rem;
+      }
+
+      .modal-test-content li {
+        margin-bottom: 0.5rem;
+      }
+
+      .expected-result {
+        background-color: #dcfce7;
+        border: 1px solid #166534;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+      }
+
+      .expected-result strong {
+        color: #14532d;
+      }
+      .reopen-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5em;
+      }
+
+      .reopen-button svg {
+        flex-shrink: 0;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <!-- 
         BACKGROUND CONTENT - This should NOT be announced by screen readers
         when the modal is open because the inert attribute should be applied
     -->
     <header class="page-header">
-        <h1>Background Page Header - Should NOT Be Announced</h1>
-        <p>If your screen reader announces this content when the modal opens, the inert attribute is not working correctly.</p>
+      <h1>Background Page Header - Should NOT Be Announced</h1>
+      <p>
+        If your screen reader announces this content when the modal opens, the
+        inert attribute is not working correctly.
+      </p>
     </header>
 
     <main>
-        <section class="content-section">
-            <h2>Background Section One - Should NOT Be Announced</h2>
-            <p>This paragraph contains background content that should be hidden from assistive technology when the modal is active. The modal system uses the <code>inert</code> attribute to prevent screen readers from accessing this content.</p>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-        </section>
+      <section class="content-section">
+        <h2>Background Section One - Should NOT Be Announced</h2>
+        <p>
+          This paragraph contains background content that should be hidden from
+          assistive technology when the modal is active. The modal system uses
+          the <code>inert</code> attribute to prevent screen readers from
+          accessing this content.
+        </p>
+        <p>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        </p>
+      </section>
 
-        <section class="content-section">
-            <h2>Background Section Two - Should NOT Be Announced</h2>
-            <p>More background content here. If you can hear this being read when the modal first opens, there may be an issue with the modal's accessibility implementation.</p>
-            <ul class="test-list">
-                <li>Background list item one - should not be announced</li>
-                <li>Background list item two - should not be announced</li>
-                <li>Background list item three - should not be announced</li>
-            </ul>
-        </section>
+      <section class="content-section">
+        <h2>Background Section Two - Should NOT Be Announced</h2>
+        <p>
+          More background content here. If you can hear this being read when the
+          modal first opens, there may be an issue with the modal's
+          accessibility implementation.
+        </p>
+        <ul class="test-list">
+          <li>Background list item one - should not be announced</li>
+          <li>Background list item two - should not be announced</li>
+          <li>Background list item three - should not be announced</li>
+        </ul>
+      </section>
 
-        <section class="content-section">
-            <h2>Test Controls</h2>
-            <p>After closing the modal, you can reopen it to test again.</p>
-            <button type="button" class="reopen-button" onclick="openTestModal()">
-                <span aria-hidden="true">🔄</span> Reopen Test Modal
-            </button>
-        </section>
+      <section class="content-section">
+        <h2>Test Controls</h2>
+        <p>After closing the modal, you can reopen it to test again.</p>
+        <button type="button" class="reopen-button" onclick="openTestModal()">
+          <span aria-hidden="true"
+            ><svg
+              height="21"
+              viewBox="0 0 21 21"
+              width="21"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <g
+                fill="none"
+                fill-rule="evenodd"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(2 1)"
+              >
+                <path
+                  d="m1.5 5.5c1.37786776-2.41169541 4.02354835-4 7-4 4.418278 0 8 3.581722 8 8m-1 4c-1.4081018 2.2866288-4.1175492 4-7 4-4.418278 0-8-3.581722-8-8"
+                />
+                <path d="m6.5 5.5h-5v-5" />
+                <path d="m10.5 13.5h5v5" />
+              </g></svg
+          ></span>
+          Reopen Test Modal
+        </button>
+      </section>
 
-        <section class="content-section">
-            <h2>What to Test</h2>
-            <ol class="test-list">
-                <li>On page load, the modal should open automatically</li>
-                <li>Screen reader should announce the modal title first</li>
-                <li>Screen reader should NOT announce any background content</li>
-                <li>Tab key should cycle only through modal elements</li>
-                <li>Escape key should close the modal</li>
-                <li>After closing, focus should return to the page</li>
-            </ol>
-        </section>
+      <section class="content-section">
+        <h2>What to Test</h2>
+        <ol class="test-list">
+          <li>On page load, the modal should open automatically</li>
+          <li>Screen reader should announce the modal title first</li>
+          <li>Screen reader should NOT announce any background content</li>
+          <li>Tab key should cycle only through modal elements</li>
+          <li>Escape key should close the modal</li>
+          <li>After closing, focus should return to the page</li>
+        </ol>
+      </section>
     </main>
 
     <footer class="content-section">
-        <h2>Background Footer - Should NOT Be Announced</h2>
-        <p>Footer content that should also be inert when modal is open.</p>
+      <h2>Background Footer - Should NOT Be Announced</h2>
+      <p>Footer content that should also be inert when modal is open.</p>
     </footer>
 
     <!-- Load the Universal Modal script -->
     <script src="universal-modal.js"></script>
 
     <script>
-        // Logging configuration
-        const LOG_LEVELS = {
-            ERROR: 0,
-            WARN: 1,
-            INFO: 2,
-            DEBUG: 3
-        };
+      // Logging configuration
+      const LOG_LEVELS = {
+        ERROR: 0,
+        WARN: 1,
+        INFO: 2,
+        DEBUG: 3,
+      };
 
-        const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
-        const ENABLE_ALL_LOGGING = false;
-        const DISABLE_ALL_LOGGING = false;
+      const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
+      const ENABLE_ALL_LOGGING = false;
+      const DISABLE_ALL_LOGGING = false;
 
-        function shouldLog(level) {
-            if (DISABLE_ALL_LOGGING) return false;
-            if (ENABLE_ALL_LOGGING) return true;
-            return level <= DEFAULT_LOG_LEVEL;
-        }
+      function shouldLog(level) {
+        if (DISABLE_ALL_LOGGING) return false;
+        if (ENABLE_ALL_LOGGING) return true;
+        return level <= DEFAULT_LOG_LEVEL;
+      }
 
-        function logError(message, ...args) {
-            if (shouldLog(LOG_LEVELS.ERROR)) console.error(`[ModalTest ERROR]: ${message}`, ...args);
-        }
+      function logError(message, ...args) {
+        if (shouldLog(LOG_LEVELS.ERROR))
+          console.error(`[ModalTest ERROR]: ${message}`, ...args);
+      }
 
-        function logWarn(message, ...args) {
-            if (shouldLog(LOG_LEVELS.WARN)) console.warn(`[ModalTest WARN]: ${message}`, ...args);
-        }
+      function logWarn(message, ...args) {
+        if (shouldLog(LOG_LEVELS.WARN))
+          console.warn(`[ModalTest WARN]: ${message}`, ...args);
+      }
 
-        function logInfo(message, ...args) {
-            if (shouldLog(LOG_LEVELS.INFO)) console.log(`[ModalTest INFO]: ${message}`, ...args);
-        }
+      function logInfo(message, ...args) {
+        if (shouldLog(LOG_LEVELS.INFO))
+          console.log(`[ModalTest INFO]: ${message}`, ...args);
+      }
 
-        function logDebug(message, ...args) {
-            if (shouldLog(LOG_LEVELS.DEBUG)) console.log(`[ModalTest DEBUG]: ${message}`, ...args);
-        }
+      function logDebug(message, ...args) {
+        if (shouldLog(LOG_LEVELS.DEBUG))
+          console.log(`[ModalTest DEBUG]: ${message}`, ...args);
+      }
 
-        /**
-         * Opens the test modal with screen reader testing instructions
-         */
-        function openTestModal() {
-            logInfo('Opening test modal for screen reader verification');
+      /**
+       * Opens the test modal with screen reader testing instructions
+       */
+      function openTestModal() {
+        logInfo("Opening test modal for screen reader verification");
 
-            const modalContent = `
+        const modalContent = `
                 <div class="modal-test-content">
                     <h2>Screen Reader Test Modal</h2>
                     <p>This modal opened automatically on page load. If your screen reader is working correctly with this modal system, you should have heard:</p>
@@ -389,28 +444,26 @@ margin-top:10px}
                 </div>
             `;
 
-            UniversalModal.show({
-                title: 'Screen Reader Accessibility Test',
-                content: modalContent,
-                type: 'info',
-                size: 'medium',
-                buttons: [
-                    { text: 'Close Modal', type: 'primary', action: 'close' }
-                ],
-                options: {
-                    allowBackgroundClose: true
-                }
-            }).then(function(result) {
-                logInfo('Modal closed with result:', result);
-            });
-        }
-
-        // Open modal immediately on page load - no delay
-        // A delay causes screen readers to announce background content first
-        document.addEventListener('DOMContentLoaded', function() {
-            logInfo('Page loaded, opening modal immediately');
-            openTestModal();
+        UniversalModal.show({
+          title: "Screen Reader Accessibility Test",
+          content: modalContent,
+          type: "info",
+          size: "medium",
+          buttons: [{ text: "Close Modal", type: "primary", action: "close" }],
+          options: {
+            allowBackgroundClose: true,
+          },
+        }).then(function (result) {
+          logInfo("Modal closed with result:", result);
         });
+      }
+
+      // Open modal immediately on page load - no delay
+      // A delay causes screen readers to announce background content first
+      document.addEventListener("DOMContentLoaded", function () {
+        logInfo("Page loaded, opening modal immediately");
+        openTestModal();
+      });
     </script>
-</body>
+  </body>
 </html>
