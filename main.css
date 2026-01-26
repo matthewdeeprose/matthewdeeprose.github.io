@@ -1369,13 +1369,6 @@ mark {
   scroll-behavior: smooth;
 }
 
-/* Style for different message types */
-.status-item.error {
-}
-
-.status-item.success {
-}
-
 /* parameter failover warning */
 .parameter-warning {
   padding: 0.5rem;
@@ -1432,18 +1425,11 @@ mark {
   font-weight: bold;
 }
 
-.token-count.warning {
-}
-
 .token-count.warning .token-count-number {
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
 }
 
-.system-prompt-container {
-  /* Make it span full width regardless of grid layout */
-  /* grid-column: 1 / -1; */
-}
 .system-prompt-container .preset-prompts {
   margin-top: 1rem;
 }
@@ -1574,18 +1560,12 @@ mark {
     opacity: 0.9;
   }
 
-  .progress-fill.completion-glow {
-  }
-
   .progress-container.completed::after {
     opacity: 1;
   }
 
   .progress-container.completed {
     border-color: var(--accent-color);
-  }
-
-  .step[data-step="complete"].completed {
   }
 }
 
@@ -3991,4 +3971,162 @@ a:hover {
 
 .noscript-fallback a {
   font-weight: bold;
+}
+
+/* Image load error fallback */
+.demoImg-error {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* Disable hover effect for image error messages */
+.demoImg-error:hover {
+  background-color: inherit !important;
+  border-color: transparent !important;
+}
+/* ==========================================================================
+   Tool Selection Fieldset - Responsive Layout
+   ========================================================================== */
+
+#toolSelection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 3.5rem;
+  width: 100%;
+}
+
+@media (max-width: 1280px) {
+  #toolSelection {
+    width: auto;
+    justify-content: flex-start;
+    gap: 0.5rem 1.5rem;
+  }
+}
+
+.mathpix-mode-option,
+#toolSelection .tool-option-wrapper {
+  border: 3px solid;
+}
+
+#toolSelection .tool-option-wrapper {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.625rem 1rem;
+  border-width: 3px;
+  border-style: solid;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  min-height: 44px; /* WCAG touch target */
+  box-sizing: border-box;
+}
+
+#toolSelection .tool-option-wrapper:has(input:focus-visible) {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+#toolSelection label.radio {
+  cursor: pointer;
+  line-height: 24px;
+  margin: 0;
+}
+
+#toolSelection .tool-icon {
+  flex-shrink: 0;
+  width: 21px;
+  height: 21px;
+}
+/* Stacked layout: full width buttons */
+@media (max-width: 500px) {
+  #toolSelection {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  #toolSelection .tool-option-wrapper {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* Stack to single column at narrow viewports */
+@media (max-width: 500px) {
+  #toolSelection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  #toolSelection .tool-option-wrapper {
+    justify-content: flex-start;
+  }
+}
+fieldset.mathpix-mode-switcher,
+fieldset.boiler {
+  border: 0px;
+}
+/* MathJax Display Math Overflow Fix - Scoped to #output */
+#output mjx-container[display="true"] {
+  display: block;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 0.5em 0;
+}
+#mathjax-status {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+@media print {
+  #mathjax-status {
+    display: none;
+  }
+}
+
+#mathjax-status-value {
+  font-weight: 600;
+}
+
+#mathjax-status[data-ready="false"] .mathjax-label {
+  opacity: 0.7;
+}
+
+#mathjax-status[data-ready="true"] .mathjax-label {
+  opacity: 1;
+}
+@media screen and (max-width: 350px) {
+  #mathjax-status {
+    display: none;
+  }
+}
+
+.tool-selection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }

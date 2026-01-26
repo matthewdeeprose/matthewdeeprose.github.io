@@ -1,0 +1,120 @@
+/**
+ * SVG Icon Base Styles
+ * Companion stylesheet for icon-library.js
+ * 
+ * Icons inherit colour from their parent element via currentColor
+ * Size is controlled by em units for contextual scaling
+ */
+
+/* Base icon styling */
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
+
+/* Prevent icons from affecting line height */
+.icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Icon spacing in buttons and labels */
+button .icon,
+.btn .icon,
+label .icon,
+a .icon {
+  margin-right: 0.25em;
+}
+
+/* Icon-only buttons (no right margin needed) */
+button .icon:only-child,
+.btn .icon:only-child {
+  margin-right: 0;
+}
+
+/* Icons in headings - slightly larger */
+h1 .icon,
+h2 .icon,
+h3 .icon,
+h4 .icon,
+h5 .icon,
+h6 .icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+/* Size variants */
+.icon-sm {
+  width: 0.875em;
+  height: 0.875em;
+}
+
+.icon-lg {
+  width: 1.25em;
+  height: 1.25em;
+}
+
+.icon-xl {
+  width: 1.5em;
+  height: 1.5em;
+}
+
+/* Fixed pixel sizes when needed */
+.icon-16 {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-18 {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-21 {
+  width: 21px;
+  height: 21px;
+}
+
+.icon-24 {
+  width: 24px;
+  height: 24px;
+}
+
+/* Ensure icons in flex containers behave */
+.icon-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Animation utilities */
+.icon-spin {
+  animation: icon-spin 1s linear infinite;
+}
+
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Pulse animation for loading states */
+.icon-pulse {
+  animation: icon-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes icon-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

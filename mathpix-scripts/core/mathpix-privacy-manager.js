@@ -26,6 +26,31 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+// =============================================================================
+// SVG Icon Registry for Privacy Consent Modal
+// Icons use currentColor for theme compatibility (except EU flag)
+// =============================================================================
+const PRIVACY_ICONS = {
+  lock: `<svg class="icon icon-lock" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(4 1)"><path d="m2.5 8.5-.00586729-1.99475098c-.00728549-4.00349935 1.32800361-6.00524902 4.00586729-6.00524902s4.0112203 2.00174967 4.0000699 6.00524902v1.99475098m-8.0000699 0h8.0225317c1.0543618 0 1.9181652.81587779 1.9945143 1.8507377l.0054778.1548972-.0169048 6c-.0031058 1.1023652-.8976224 1.9943651-1.999992 1.9943651h-8.005627c-1.1045695 0-2-.8954305-2-2v-6c0-1.1045695.8954305-2 2-2z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="13.5" fill="currentColor" r="1.5"/></g></svg>`,
+
+  clipboard: `<svg class="icon icon-clipboard" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"/><path d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"/><path d="m2.5 5.5h5"/><path d="m2.5 7.5h7"/><path d="m2.5 9.5h3"/><path d="m2.5 11.5h6"/></g></svg>`,
+
+  chart: `<svg class="icon icon-chart" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"/><path d="m4.5 11.435v-7.935"/><path d="m7.5 11.485v-3.985"/><path d="m10.5 11.5v-6"/></g></svg>`,
+
+  warning: `<svg class="icon icon-warning" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg>`,
+
+  euFlag: `<svg class="icon icon-eu-flag" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="4" width="17" height="13" rx="2" fill="#039"/><g fill="#fc0" transform="translate(10.5, 10.5)"><circle r="1" transform="translate(0, -4.5)"/><circle r="1" transform="rotate(30) translate(0, -4.5)"/><circle r="1" transform="rotate(60) translate(0, -4.5)"/><circle r="1" transform="rotate(90) translate(0, -4.5)"/><circle r="1" transform="rotate(120) translate(0, -4.5)"/><circle r="1" transform="rotate(150) translate(0, -4.5)"/><circle r="1" transform="rotate(180) translate(0, -4.5)"/><circle r="1" transform="rotate(210) translate(0, -4.5)"/><circle r="1" transform="rotate(240) translate(0, -4.5)"/><circle r="1" transform="rotate(270) translate(0, -4.5)"/><circle r="1" transform="rotate(300) translate(0, -4.5)"/><circle r="1" transform="rotate(330) translate(0, -4.5)"/></g></svg>`,
+};
+
+/**
+ * Get SVG icon by name
+ * @param {string} name - Icon name from PRIVACY_ICONS registry
+ * @returns {string} SVG markup or empty string if not found
+ */
+function getIcon(name) {
+  return PRIVACY_ICONS[name] || "";
+}
+
 import MATHPIX_CONFIG from "./mathpix-config.js";
 
 /**
@@ -212,7 +237,7 @@ class MathPixPrivacyManager {
       </div>
 
       <div class="consent-section">
-        <h3><span aria-hidden="true">📋</span> What Will Happen:</h3>
+        <h3>${getIcon("clipboard")} What Will Happen:</h3>
         <ul>
           <li>Your ${fileType} will be securely processed to extract mathematical expressions</li>
           <li>Content converted to LaTeX, MathML, AsciiMath, and other formats</li>
@@ -220,8 +245,8 @@ class MathPixPrivacyManager {
         </ul>
       </div>
 
-      <div class="consent-section privacy-protection">
-        <h3><span aria-hidden="true">🔒</span> Enhanced EU Privacy Protection:</h3>
+<div class="consent-section privacy-protection">
+        <h3>${getIcon("lock")} Enhanced EU Privacy Protection:</h3>
         <ul>
           <li><strong>Data retention:</strong> DISABLED (files deleted within 24 hours)</li>
           <li><strong>Data improvement:</strong> DISABLED (your content won't train their models)</li>
@@ -232,7 +257,7 @@ class MathPixPrivacyManager {
       </div>
 
       <div class="consent-section gdpr-compliance">
-        <h3><span aria-hidden="true">🇪🇺</span> GDPR Compliance Enhanced:</h3>
+        <h3>${getIcon("euFlag")} GDPR Compliance Enhanced:</h3>
         <ul>
           <li>All processing occurs within EU data centres</li>
           <li>EU-specific API endpoint ensures data sovereignty</li>
@@ -242,7 +267,7 @@ class MathPixPrivacyManager {
       </div>
 
       <div class="consent-section data-rights">
-        <h3><span aria-hidden="true">📊</span> Your Data Rights:</h3>
+        <h3>${getIcon("chart")} Your Data Rights:</h3>
         <ul>
           <li>Processing is temporary and for conversion only</li>
           <li>No permanent storage of your mathematical content</li>
@@ -252,7 +277,7 @@ class MathPixPrivacyManager {
       </div>
 
       <div class="consent-section important-notes">
-        <h3><span aria-hidden="true">⚠️</span> Important Notes:</h3>
+        <h3>${getIcon("warning")} Important Notes:</h3>
         <ul>
           <li>This is your <strong>${
             this.sessionConsent.fileCount + 1

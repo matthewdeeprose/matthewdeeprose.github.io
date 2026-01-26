@@ -250,6 +250,7 @@ const PDF_VISUALISER_CONFIG = {
     SHOW_OVERLAYS_DEFAULT: true,
     LABEL_FONT_SIZE: 11,
     LABEL_FONT_FAMILY: "system-ui, -apple-system, sans-serif",
+    LABEL_TEXT_COLOUR: "#00131D", // Fixed colour for confidence labels (set to null to use confidence-level colours)
     LABEL_PADDING: 2,
     MIN_BOX_SIZE_FOR_LABEL: 30, // Minimum box dimension to show label
   },

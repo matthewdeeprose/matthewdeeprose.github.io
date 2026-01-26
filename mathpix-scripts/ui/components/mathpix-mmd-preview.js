@@ -166,6 +166,10 @@ class MathPixMMDPreview {
       onPDFSplitActivated: null, // Phase 4.2: PDF comparison activated
     };
 
+    // MathJax recovery tracking
+    this.mathJaxRecoveryUnsubscribe = null;
+    this.pendingMathJaxRender = false; // True if MathJax failed during last render
+
     // Initialisation flag
     this.isInitialised = true;
 
@@ -421,7 +425,7 @@ class MathPixMMDPreview {
 
     const retryMessage = this.config.MESSAGES.RETRY_ATTEMPT.replace(
       "{current}",
-      (this.loadAttempts + 1).toString()
+      (this.loadAttempts + 1).toString(),
     ).replace("{max}", this.maxRetries.toString());
 
     logInfo(retryMessage);
@@ -462,7 +466,7 @@ class MathPixMMDPreview {
       content !== this.lastRenderedContent
     ) {
       logDebug(
-        "Content changed while in preview mode, will re-render on next view"
+        "Content changed while in preview mode, will re-render on next view",
       );
       // Don't auto-render here to avoid unexpected re-renders
       // User can switch away and back, or we can add a refresh mechanism later
@@ -472,6 +476,40 @@ class MathPixMMDPreview {
       length: content?.length || 0,
       hasContent: !!content,
     });
+  }
+
+  /**
+   * Update MMD content and re-render preview if visible (Phase 5.1)
+   * Called by MMD Editor when content changes during editing
+   * @param {string} mmdContent - Updated MMD content
+   * @returns {Promise<void>}
+   * @since 5.1.0
+   */
+  async updateContent(mmdContent) {
+    // Store the new content
+    this.currentContent = mmdContent;
+
+    // Update data attribute
+    if (this.elements.contentArea) {
+      this.elements.contentArea.dataset.hasContent = (!!mmdContent).toString();
+    }
+
+    // If preview is visible (preview or split view), re-render
+    const currentView = this.getCurrentView();
+    if (
+      currentView === this.config.VIEW_MODES.PREVIEW ||
+      currentView === this.config.VIEW_MODES.SPLIT
+    ) {
+      logDebug("Preview visible, re-rendering with updated content");
+
+      // Reset lastRenderedContent to force re-render
+      this.lastRenderedContent = null;
+
+      // Render to preview
+      await this.ensurePreviewRendered();
+    } else {
+      logDebug("Preview not visible, content stored for later render");
+    }
   }
 
   /**
@@ -519,7 +557,7 @@ class MathPixMMDPreview {
     try {
       const html = window.markdownToHTML(
         mmdContent,
-        this.config.RENDER_OPTIONS
+        this.config.RENDER_OPTIONS,
       );
       logDebug("Content rendered to string", {
         inputLength: mmdContent.length,
@@ -584,33 +622,86 @@ class MathPixMMDPreview {
       // Check if CDN already rendered math (look for mjx-container elements)
       const hasRenderedMath = targetElement.querySelector("mjx-container");
 
-      if (hasRenderedMath) {
-        // CDN already rendered the math - just apply enhancements
+      // Check if there's unrendered LaTeX in the content (raw delimiters that weren't processed)
+      const hasUnrenderedMath = this.detectUnrenderedMath(targetElement);
+
+      if (hasRenderedMath && !hasUnrenderedMath) {
+        // CDN already rendered ALL the math - just apply enhancements
         logDebug("CDN already rendered math, skipping MathJax typeset");
+        this.pendingMathJaxRender = false; // Clear any pending flag
 
         // Apply MathPix enhancements to existing math elements
         if (typeof window.mathPixEnhanceMathJax === "function") {
           window.mathPixEnhanceMathJax();
         }
       } else {
-        // CDN did not render math - use page MathJax
-        // Wait for MathJax readiness (from MathJax Manager)
-        if (window.MathJax?.typesetPromise) {
-          // Wait for MathJax enhancement ready flag
-          if (!window.MathJaxEnhancementReady) {
-            logDebug("Waiting for MathJax readiness...");
-            await this.waitForMathJaxReady();
-          }
+        // CDN did not render math (or only partial) - need page MathJax
+        const needsMathJax = hasUnrenderedMath || !hasRenderedMath;
 
-          try {
-            await window.MathJax.typesetPromise([targetElement]);
-            logDebug("MathJax typeset complete");
-          } catch (typesetError) {
-            // Log but don't throw - content is still displayed
+        logDebug("Math rendering status", {
+          hasRenderedMath,
+          hasUnrenderedMath,
+          needsMathJax,
+          mathJaxDisabled: !!window.MathJaxDisabled,
+        });
+
+        if (needsMathJax) {
+          // Check if MathJax is disabled due to repeated failures
+          if (window.MathJaxDisabled) {
             logWarn(
-              "MathJax typeset failed (content still displayed)",
-              typesetError
+              "MathJax disabled, skipping typeset - registering for recovery",
             );
+            this.pendingMathJaxRender = true;
+
+            // Register element for re-rendering when MathJax recovers
+            if (window.mathJaxManager?.registerPendingElement) {
+              window.mathJaxManager.registerPendingElement(targetElement, {
+                source: "mmd-preview",
+                reason: "mathjax-disabled",
+                content: mmdContent?.substring(0, 100),
+              });
+            }
+          } else if (window.MathJax?.typesetPromise) {
+            // Wait for MathJax enhancement ready flag
+            if (!window.MathJaxEnhancementReady) {
+              logDebug("Waiting for MathJax readiness...");
+              await this.waitForMathJaxReady();
+            }
+
+            try {
+              await window.MathJax.typesetPromise([targetElement]);
+              logDebug("MathJax typeset complete");
+              this.pendingMathJaxRender = false; // Clear pending flag on success
+            } catch (typesetError) {
+              // Log but don't throw - content is still displayed
+              logWarn(
+                "MathJax typeset failed (content still displayed)",
+                typesetError,
+              );
+
+              // Track that we have pending math to render
+              this.pendingMathJaxRender = true;
+
+              // Register element for re-rendering when MathJax recovers
+              if (window.mathJaxManager?.registerPendingElement) {
+                window.mathJaxManager.registerPendingElement(targetElement, {
+                  source: "mmd-preview",
+                  reason: "typeset-error",
+                  error: typesetError.message,
+                });
+              }
+            }
+          } else {
+            // MathJax not available at all - mark for recovery
+            logWarn("MathJax not available - registering for recovery");
+            this.pendingMathJaxRender = true;
+
+            if (window.mathJaxManager?.registerPendingElement) {
+              window.mathJaxManager.registerPendingElement(targetElement, {
+                source: "mmd-preview",
+                reason: "mathjax-unavailable",
+              });
+            }
           }
         }
       }
@@ -652,6 +743,40 @@ class MathPixMMDPreview {
     }
   }
 
+  /**
+   * Detect if there's unrendered LaTeX math in the content
+   * Looks for common LaTeX delimiters that weren't processed
+   * @param {HTMLElement} element - Element to check
+   * @returns {boolean} True if unrendered math detected
+   * @private
+   */
+  detectUnrenderedMath(element) {
+    if (!element) return false;
+
+    const textContent = element.textContent || "";
+
+    // Common LaTeX delimiters that should have been rendered
+    const mathPatterns = [
+      /\$\$.+?\$\$/s, // Display math: $$...$$
+      /\\\[.+?\\\]/s, // Display math: \[...\]
+      /(?<!\$)\$(?!\$).+?(?<!\$)\$(?!\$)/s, // Inline math: $...$ (not $$)
+      /\\\(.+?\\\)/s, // Inline math: \(...\)
+      /\\begin\{(equation|align|gather|multline)/, // LaTeX environments
+    ];
+
+    for (const pattern of mathPatterns) {
+      if (pattern.test(textContent)) {
+        logDebug("Unrendered math detected", {
+          pattern: pattern.toString(),
+          sample: textContent.substring(0, 100),
+        });
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   // ============================================================================
   // DOM Initialisation (Stage 4)
   // ============================================================================
@@ -676,12 +801,109 @@ class MathPixMMDPreview {
       }
     }
 
+    // Subscribe to MathJax recovery events
+    this.subscribeToMathJaxRecovery();
+
     this.domInitialised = true;
 
     logInfo("MathPixMMDPreview DOM initialised", {
       currentView: this.currentView,
       elementsAvailable: this.elementsCached,
     });
+  }
+
+  /**
+   * Subscribe to MathJax Manager recovery events
+   * Re-renders content when MathJax recovers from failure
+   * @private
+   */
+  subscribeToMathJaxRecovery() {
+    // Check if MathJax Manager is available
+    if (
+      !window.mathJaxManager ||
+      typeof window.mathJaxManager.onRecovery !== "function"
+    ) {
+      logDebug("MathJax Manager not available for recovery subscription");
+      return;
+    }
+
+    // Unsubscribe if already subscribed
+    if (this.mathJaxRecoveryUnsubscribe) {
+      this.mathJaxRecoveryUnsubscribe();
+    }
+
+    // Subscribe to recovery events
+    this.mathJaxRecoveryUnsubscribe = window.mathJaxManager.onRecovery(
+      async (eventData) => {
+        logInfo("MathJax recovery notification received", eventData);
+
+        // Only re-render if we had a pending failed render
+        if (this.pendingMathJaxRender && eventData.healthy) {
+          logInfo("Re-rendering MMD content after MathJax recovery...");
+          await this.handleMathJaxRecovery();
+        }
+      },
+    );
+
+    logDebug("Subscribed to MathJax recovery events");
+  }
+
+  /**
+   * Handle MathJax recovery by re-rendering content
+   * Also retries CDN library load if it wasn't loaded previously
+   * @private
+   */
+  async handleMathJaxRecovery() {
+    // Reset pending flag
+    this.pendingMathJaxRender = false;
+
+    // Check if we're in a view that shows preview
+    const currentView = this.getCurrentView();
+    const showsPreview = [
+      this.config.VIEW_MODES.PREVIEW,
+      this.config.VIEW_MODES.SPLIT,
+      this.config.VIEW_MODES.PDF_SPLIT,
+    ].includes(currentView);
+
+    if (!showsPreview) {
+      logDebug("Not in preview mode, skipping recovery re-render");
+      return;
+    }
+
+    // NEW: If CDN library wasn't loaded, retry now that MathJax is healthy
+    if (!this.isLibraryAvailable()) {
+      logInfo("🔄 CDN library not loaded - retrying after MathJax recovery...");
+
+      // Reset load state to allow retry
+      this.loadState = this.config.LOAD_STATES.IDLE;
+      this.loadAttempts = 0;
+      this.loadError = null;
+
+      try {
+        await this.loadLibrary();
+        logInfo("✅ CDN library loaded successfully after MathJax recovery");
+      } catch (cdnError) {
+        logWarn(
+          "CDN library retry failed, will use fallback rendering:",
+          cdnError.message,
+        );
+        // Continue anyway - ensurePreviewRendered will use fallback
+      }
+    }
+
+    // Force re-render by clearing last rendered content
+    this.lastRenderedContent = null;
+
+    // Re-render preview
+    try {
+      await this.ensurePreviewRendered();
+      logInfo("✅ MMD content re-rendered after MathJax recovery");
+
+      // Announce to screen readers
+      this.announceToScreenReader("Mathematical content has been rendered");
+    } catch (error) {
+      logError("Failed to re-render after MathJax recovery", error);
+    }
   }
 
   /**
@@ -834,8 +1056,12 @@ class MathPixMMDPreview {
       case this.config.VIEW_MODES.PDF_SPLIT:
         await this.showPDFSplitView();
         break;
+    }
 
-      // Future: handle edit mode
+    // Update edit button visibility based on view (Phase 5.1)
+    const editor = window.getMathPixMMDEditor?.();
+    if (editor) {
+      editor.updateButtonVisibility(viewMode);
     }
 
     // Fire callback
@@ -844,7 +1070,7 @@ class MathPixMMDPreview {
     // Announce to screen readers
     const announcement = this.config.ARIA.VIEW_CHANGED_ANNOUNCEMENT.replace(
       "{view}",
-      viewMode
+      viewMode,
     );
     this.announceToScreenReader(announcement);
 
@@ -1119,6 +1345,7 @@ class MathPixMMDPreview {
     const announcement = show ? "PDF column shown" : "PDF column hidden";
     this.announceToScreenReader(announcement);
   }
+
   /**
    * Ensure preview content is rendered (lazy render on first view)
    * @private
@@ -1187,9 +1414,36 @@ class MathPixMMDPreview {
 
       // Show error state
       this.showPreviewState("error");
+
+      // Register for recovery if this was a MathJax-related failure
+      // or if the library failed to load (which might be due to MathJax conflicts)
+      const isMathJaxRelated =
+        error.message?.includes("MathJax") ||
+        error.message?.includes("loader") ||
+        error.message?.includes("typeset") ||
+        window.MathJaxDisabled;
+
+      if (isMathJaxRelated) {
+        logInfo("Registering for MathJax recovery due to render failure");
+        this.pendingMathJaxRender = true;
+
+        // Register the preview element for re-rendering when MathJax recovers
+        if (
+          window.mathJaxManager?.registerPendingElement &&
+          this.elements.previewContent
+        ) {
+          window.mathJaxManager.registerPendingElement(
+            this.elements.previewContent,
+            {
+              source: "mmd-preview-ensureRendered",
+              reason: "library-or-render-failure",
+              error: error.message,
+            },
+          );
+        }
+      }
     }
   }
-
   /**
    * Get MMD content from the code element in DOM
    * @returns {string|null} MMD content or null if not available
@@ -1384,6 +1638,12 @@ class MathPixMMDPreview {
    * Call this when the preview system is no longer needed.
    */
   cleanup() {
+    // Unsubscribe from MathJax recovery events
+    if (this.mathJaxRecoveryUnsubscribe) {
+      this.mathJaxRecoveryUnsubscribe();
+      this.mathJaxRecoveryUnsubscribe = null;
+    }
+
     // Remove script if we loaded it
     if (this.scriptElement) {
       this.scriptElement.remove();
@@ -1397,6 +1657,7 @@ class MathPixMMDPreview {
     this.loadPromise = null;
     this.currentContent = null;
     this.lastRenderedContent = null;
+    this.pendingMathJaxRender = false;
 
     // Reset DOM state (Stage 4)
     this.elements = {};
@@ -1597,35 +1858,35 @@ window.validateMMDPreviewIntegration = async () => {
 
   test(
     "Switch to code: currentView updated",
-    preview.getCurrentView() === "code"
+    preview.getCurrentView() === "code",
   );
   test(
     "Switch to code: data-current-view updated",
-    preview.elements.contentArea?.dataset.currentView === "code"
+    preview.elements.contentArea?.dataset.currentView === "code",
   );
   test(
     "Switch to code: code container visible",
-    !preview.elements.codeContainer?.hidden
+    !preview.elements.codeContainer?.hidden,
   );
   test(
     "Switch to code: preview container hidden",
-    preview.elements.previewContainer?.hidden === true
+    preview.elements.previewContainer?.hidden === true,
   );
   test(
     "Switch to code: code button active",
-    preview.elements.codeBtn?.classList.contains("active")
+    preview.elements.codeBtn?.classList.contains("active"),
   );
   test(
     'Switch to code: code button aria-pressed="true"',
-    preview.elements.codeBtn?.getAttribute("aria-pressed") === "true"
+    preview.elements.codeBtn?.getAttribute("aria-pressed") === "true",
   );
   test(
     "Switch to code: preview button not active",
-    !preview.elements.previewBtn?.classList.contains("active")
+    !preview.elements.previewBtn?.classList.contains("active"),
   );
   test(
     'Switch to code: preview button aria-pressed="false"',
-    preview.elements.previewBtn?.getAttribute("aria-pressed") === "false"
+    preview.elements.previewBtn?.getAttribute("aria-pressed") === "false",
   );
 
   // Switch to preview
@@ -1642,34 +1903,34 @@ window.validateMMDPreviewIntegration = async () => {
 
     test(
       "Switch to preview: currentView updated",
-      preview.getCurrentView() === "preview"
+      preview.getCurrentView() === "preview",
     );
     test(
       "Switch to preview: data-current-view updated",
-      preview.elements.contentArea?.dataset.currentView === "preview"
+      preview.elements.contentArea?.dataset.currentView === "preview",
     );
     test(
       "Switch to preview: preview container visible",
-      !preview.elements.previewContainer?.hidden
+      !preview.elements.previewContainer?.hidden,
     );
     test(
       "Switch to preview: code container hidden",
-      preview.elements.codeContainer?.hidden === true
+      preview.elements.codeContainer?.hidden === true,
     );
     test(
       "Switch to preview: preview button active",
-      preview.elements.previewBtn?.classList.contains("active")
+      preview.elements.previewBtn?.classList.contains("active"),
     );
     test(
       "Switch to preview: code button not active",
-      !preview.elements.codeBtn?.classList.contains("active")
+      !preview.elements.codeBtn?.classList.contains("active"),
     );
 
     // Check library loaded
     test("Library loaded", preview.isReady());
     test(
       "data-library-loaded updated",
-      preview.elements.contentArea?.dataset.libraryLoaded === "true"
+      preview.elements.contentArea?.dataset.libraryLoaded === "true",
     );
 
     // Check content rendered
@@ -1677,7 +1938,7 @@ window.validateMMDPreviewIntegration = async () => {
     test("Preview content rendered", previewHtml && previewHtml.length > 0);
     test(
       "Preview contains heading",
-      previewHtml?.includes("<h1") || previewHtml?.includes("Test Heading")
+      previewHtml?.includes("<h1") || previewHtml?.includes("Test Heading"),
     );
   } catch (error) {
     test("Switch to preview succeeded", false);
@@ -1712,7 +1973,7 @@ window.validateMMDPreviewIntegration = async () => {
   await preview.switchView("preview");
   test(
     "Content cache used (no re-render)",
-    preview.lastRenderedContent === cachedContent
+    preview.lastRenderedContent === cachedContent,
   );
 
   // ============================================================
@@ -1751,7 +2012,7 @@ window.testMMDPreviewToggle = async () => {
 
   preview.init();
   preview.setContent(
-    "# Hello World\n\n$$E = mc^2$$\n\nThis is a preview test."
+    "# Hello World\n\n$$E = mc^2$$\n\nThis is a preview test.",
   );
 
   console.log("1. Switching to preview...");
@@ -1807,7 +2068,7 @@ window.validateMMDPreviewLoader = async () => {
   // Test 1: Class exists
   test(
     "MathPixMMDPreview class exists",
-    typeof window.MathPixMMDPreview === "function"
+    typeof window.MathPixMMDPreview === "function",
   );
 
   // Test 2: Config available
@@ -1833,7 +2094,7 @@ window.validateMMDPreviewLoader = async () => {
   // Test 4: Initial state is IDLE
   test(
     "Initial state is IDLE",
-    preview.getLoadState() === config.LOAD_STATES.IDLE
+    preview.getLoadState() === config.LOAD_STATES.IDLE,
   );
 
   // Test 5: isReady returns false initially
@@ -1846,7 +2107,7 @@ window.validateMMDPreviewLoader = async () => {
   // Test 7: hasContentChanged works
   test(
     "hasContentChanged() returns true before render",
-    preview.hasContentChanged() === true
+    preview.hasContentChanged() === true,
   );
 
   // Test 8: Load library
@@ -1855,7 +2116,7 @@ window.validateMMDPreviewLoader = async () => {
     await preview.loadLibrary();
     test(
       "Library loads successfully",
-      preview.getLoadState() === config.LOAD_STATES.READY
+      preview.getLoadState() === config.LOAD_STATES.READY,
     );
   } catch (e) {
     test("Library loads successfully", false);
@@ -1868,11 +2129,11 @@ window.validateMMDPreviewLoader = async () => {
   // Test 10: Global functions available
   test(
     "window.markdownToHTML available",
-    typeof window.markdownToHTML === "function"
+    typeof window.markdownToHTML === "function",
   );
   test(
     "window.loadMathJax available",
-    typeof window.loadMathJax === "function"
+    typeof window.loadMathJax === "function",
   );
 
   // Test 11: Can render to string
@@ -1882,7 +2143,7 @@ window.validateMMDPreviewLoader = async () => {
       test("renderToString produces output", html && html.length > 0);
       test(
         "renderToString contains heading",
-        html.includes("<h1") || html.includes("Hello")
+        html.includes("<h1") || html.includes("Hello"),
       );
     } catch (e) {
       test("renderToString produces output", false);
@@ -1893,7 +2154,7 @@ window.validateMMDPreviewLoader = async () => {
   // Test 12: View mode validation
   test(
     "getCurrentView returns default",
-    preview.getCurrentView() === config.DEFAULTS.INITIAL_VIEW
+    preview.getCurrentView() === config.DEFAULTS.INITIAL_VIEW,
   );
 
   // Test 13: Event callbacks
@@ -1927,29 +2188,29 @@ window.validateMMDPreviewLoader = async () => {
   // Test 17: Global functions exist
   test(
     "window.switchMMDView exists",
-    typeof window.switchMMDView === "function"
+    typeof window.switchMMDView === "function",
   );
   test(
     "window.retryMMDPreviewLoad exists",
-    typeof window.retryMMDPreviewLoad === "function"
+    typeof window.retryMMDPreviewLoad === "function",
   );
   test(
     "window.getMathPixMMDPreview exists",
-    typeof window.getMathPixMMDPreview === "function"
+    typeof window.getMathPixMMDPreview === "function",
   );
 
   // Test 18: getLoadAttempts works
   test(
     "getLoadAttempts returns number",
     typeof preview.getLoadAttempts() === "number" &&
-      preview.getLoadAttempts() >= 1
+      preview.getLoadAttempts() >= 1,
   );
 
   // Test 19: Cleanup works
   preview.cleanup();
   test(
     "Cleanup resets state",
-    preview.getLoadState() === config.LOAD_STATES.IDLE
+    preview.getLoadState() === config.LOAD_STATES.IDLE,
   );
 
   // Test 20: Cleanup resets content
@@ -2027,7 +2288,7 @@ window.testMMDPreviewSplit = async () => {
   const config = window.MATHPIX_CONFIG?.MMD_PREVIEW;
   test(
     "Split view feature enabled in config",
-    config?.FEATURES?.SPLIT_VIEW_ENABLED === true
+    config?.FEATURES?.SPLIT_VIEW_ENABLED === true,
   );
 
   // Test 5: Switch to split view
@@ -2053,7 +2314,7 @@ window.testMMDPreviewSplit = async () => {
   const contentArea = document.getElementById("mmd-content-area");
   test(
     "Content area data-current-view is 'split'",
-    contentArea?.dataset.currentView === "split"
+    contentArea?.dataset.currentView === "split",
   );
 
   // Test 9: Split button has active class
@@ -2062,7 +2323,7 @@ window.testMMDPreviewSplit = async () => {
   // Test 10: Split button aria-pressed is true
   test(
     "Split button aria-pressed='true'",
-    splitBtn?.getAttribute("aria-pressed") === "true"
+    splitBtn?.getAttribute("aria-pressed") === "true",
   );
 
   // Test 11: Other buttons not active
@@ -2070,11 +2331,11 @@ window.testMMDPreviewSplit = async () => {
   const previewBtn = document.getElementById("mmd-view-preview-btn");
   test(
     "Code button not active in split",
-    !codeBtn?.classList.contains("active")
+    !codeBtn?.classList.contains("active"),
   );
   test(
     "Preview button not active in split",
-    !previewBtn?.classList.contains("active")
+    !previewBtn?.classList.contains("active"),
   );
 
   // Test 12: Switch back to code view
@@ -2083,7 +2344,7 @@ window.testMMDPreviewSplit = async () => {
   test("Divider hidden after switch to code", divider?.hidden === true);
   test(
     "Preview container hidden after switch to code",
-    previewContainer?.hidden === true
+    previewContainer?.hidden === true,
   );
 
   // Test 13: Switch to preview then split
@@ -2151,7 +2412,7 @@ window.demoMMDSplitView = async () => {
 
   console.log("\n✅ Split view demo complete!");
   console.log(
-    "💡 Try resizing the browser window to see responsive behaviour."
+    "💡 Try resizing the browser window to see responsive behaviour.",
   );
 };
 
@@ -2192,7 +2453,7 @@ window.testMMDPreviewPDFCompare = async () => {
   // Test 1: PDF.js available (may not be loaded yet)
   test(
     "PDF.js library check (optional)",
-    typeof window.pdfjsLib !== "undefined" || true
+    typeof window.pdfjsLib !== "undefined" || true,
   );
 
   const preview = window.getMathPixMMDPreview?.();
@@ -2223,7 +2484,7 @@ window.testMMDPreviewPDFCompare = async () => {
   // Test 7: onPDFSplitActivated callback registered in callbacks object
   test(
     "onPDFSplitActivated callback exists",
-    "onPDFSplitActivated" in preview.callbacks
+    "onPDFSplitActivated" in preview.callbacks,
   );
 
   // Test 8: Switch to PDF split view
@@ -2232,7 +2493,7 @@ window.testMMDPreviewPDFCompare = async () => {
     await preview.switchView("pdf_split");
     test(
       "Switch to PDF split view succeeds",
-      preview.getCurrentView() === "pdf_split"
+      preview.getCurrentView() === "pdf_split",
     );
   } catch (e) {
     test("Switch to PDF split view succeeds", false);
@@ -2254,19 +2515,19 @@ window.testMMDPreviewPDFCompare = async () => {
   const contentArea = document.getElementById("mmd-content-area");
   test(
     "Content area data-current-view is 'pdf_split'",
-    contentArea?.dataset.currentView === "pdf_split"
+    contentArea?.dataset.currentView === "pdf_split",
   );
 
   // Test 13: PDF Split button active
   test(
     "PDF Split button has active class",
-    pdfSplitBtn?.classList.contains("active")
+    pdfSplitBtn?.classList.contains("active"),
   );
 
   // Test 14: PDF Split button aria-pressed
   test(
     "PDF Split button aria-pressed='true'",
-    pdfSplitBtn?.getAttribute("aria-pressed") === "true"
+    pdfSplitBtn?.getAttribute("aria-pressed") === "true",
   );
 
   // Test 15: Divider visible
@@ -2277,14 +2538,14 @@ window.testMMDPreviewPDFCompare = async () => {
   await preview.switchView("code");
   test(
     "PDF container hidden after switch to code",
-    pdfContainer?.hidden === true
+    pdfContainer?.hidden === true,
   );
 
   // Test 17: Switch to split view keeps PDF container hidden
   await preview.switchView("split");
   test(
     "PDF container hidden in code+preview split",
-    pdfContainer?.hidden === true
+    pdfContainer?.hidden === true,
   );
 
   // Test 18: Switch to preview view keeps PDF container hidden
@@ -2294,7 +2555,7 @@ window.testMMDPreviewPDFCompare = async () => {
   // Test 19: loadPDFForComparison method exists
   test(
     "loadPDFForComparison method exists",
-    typeof preview.loadPDFForComparison === "function"
+    typeof preview.loadPDFForComparison === "function",
   );
 
   // Reset to code view
@@ -2366,7 +2627,7 @@ window.testPhase42Complete = async () => {
     }
   } else {
     console.log(
-      "⚠️ PDF Compare Module tests not available (script may not be loaded)"
+      "⚠️ PDF Compare Module tests not available (script may not be loaded)",
     );
   }
 

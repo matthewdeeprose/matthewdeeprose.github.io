@@ -91,6 +91,14 @@ const UniversalNotifications = (function () {
         loading: 0, // No auto-dismiss for loading
       };
 
+      // Duplicate notification suppression
+      this.lastNotification = {
+        message: null,
+        type: null,
+        timestamp: 0,
+      };
+      this.duplicateWindowMs = 2000; // 2 second window to suppress duplicates
+
       logInfo(
         "Notification manager created (container will be initialised when needed)"
       );
@@ -211,9 +219,24 @@ const UniversalNotifications = (function () {
      * Main show method that determines display mode
      * If modal is active, use in-modal notification
      * Otherwise, show as toast
-     * @returns {string|null} Toast ID if toast shown, null if in-modal notification
+     * @returns {string|null} Toast ID if toast shown, null if in-modal notification or duplicate suppressed
      */
     show(message, type = "info", options = {}) {
+      // Check for duplicate notification within time window
+      const now = Date.now();
+      const isDuplicate =
+        this.lastNotification.message === message &&
+        this.lastNotification.type === type &&
+        now - this.lastNotification.timestamp < this.duplicateWindowMs;
+
+      if (isDuplicate) {
+        logDebug(`Duplicate notification suppressed: ${type} - ${message}`);
+        return null;
+      }
+
+      // Update last notification tracking
+      this.lastNotification = { message, type, timestamp: now };
+
       // If modal is active, use in-modal notification
       if (this.isModalActive()) {
         this.showInModalNotification(message, type, options);
@@ -279,7 +302,8 @@ const UniversalNotifications = (function () {
         message,
         type,
         dismissible,
-        duration
+        duration,
+        { allowHtml: options.allowHtml }
       );
 
       // Store reference
@@ -312,8 +336,16 @@ const UniversalNotifications = (function () {
 
     /**
      * Create toast DOM element using existing GB classes and structure
+     * @param {Object} options - Additional options including allowHtml
      */
-    createToast(toastId, message, type, dismissible, duration = 0) {
+    createToast(
+      toastId,
+      message,
+      type,
+      dismissible,
+      duration = 0,
+      options = {}
+    ) {
       const toast = document.createElement("div");
       toast.id = toastId;
       // Use existing Graph Builder classes
@@ -338,7 +370,9 @@ const UniversalNotifications = (function () {
 
       toast.innerHTML = `
         <div class="gb-toast-icon" aria-hidden="true">${icon}</div>
-        <div class="gb-toast-content">${this.escapeHtml(message)}</div>
+<div class="gb-toast-content">${
+        options.allowHtml ? message : this.escapeHtml(message)
+      }</div>
         ${
           dismissible
             ? `

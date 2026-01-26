@@ -107,6 +107,48 @@ import { PDFUploadVerification } from "../../pdf-preview/pdf-preview-upload-veri
 import { PDFPreviewAccessibility } from "../../pdf-preview/pdf-preview-accessibility.js";
 
 /**
+ * SVG Icon Registry for PDF Handler
+ * Uses currentColor to inherit text colour from parent elements
+ * All icons are 21x21 for consistent sizing
+ * @constant {Object}
+ */
+const ICONS = {
+  upload:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m11.5 4.5-3.978-4-4.022 4"/><path d="m7.522.521v11.979"/><path d="m.5 9v4.5c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2v-4.5"/></g></svg>',
+  search:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="8.5" r="5"/><path d="m17.571 17.5-5.571-5.5"/></g></svg>',
+  hourglass:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="matrix(-1 0 0 1 19 2)"><circle cx="8.5" cy="8.5" r="8"/><path d="m8.5 5.5v4h-3.5"/></g></svg>',
+  gear: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m7.5.5c.35132769 0 .69661025.02588228 1.03404495.07584411l.50785434 1.53911115c.44544792.12730646.86820077.30839026 1.26078721.53578009l1.4600028-.70360861c.5166435.39719686.9762801.86487779 1.3645249 1.388658l-.7293289 1.44720284c.2201691.39604534.3936959.82158734.5131582 1.2692035l1.5298263.5338186c.0390082.29913986.0591302.60421522.0591302.91399032 0 .35132769-.0258823.69661025-.0758441 1.03404495l-1.5391112.50785434c-.1273064.44544792-.3083902.86820077-.5357801 1.26078721l.7036087 1.4600028c-.3971969.5166435-.8648778.9762801-1.388658 1.3645249l-1.4472029-.7293289c-.39604532.2201691-.82158732.3936959-1.26920348.5131582l-.5338186 1.5298263c-.29913986.0390082-.60421522.0591302-.91399032.0591302-.35132769 0-.69661025-.0258823-1.03404495-.0758441l-.50785434-1.5391112c-.44544792-.1273064-.86820077-.3083902-1.26078723-.5357801l-1.46000277.7036087c-.51664349-.3971969-.97628006-.8648778-1.36452491-1.388658l.72932886-1.4472029c-.2203328-.39633993-.39395403-.82222042-.51342462-1.27020241l-1.52968981-.53381682c-.03892294-.29882066-.05900023-.60356226-.05900023-.91299317 0-.35132769.02588228-.69661025.07584411-1.03404495l1.53911115-.50785434c.12730646-.44544792.30839026-.86820077.53578009-1.26078723l-.70360861-1.46000277c.39719686-.51664349.86487779-.97628006 1.388658-1.36452491l1.44720284.72932886c.39633995-.2203328.82222044-.39395403 1.27020243-.51342462l.53381682-1.52968981c.29882066-.03892294.60356226-.05900023.91299317-.05900023z" stroke-width=".933"/><circle cx="7.5" cy="7.5" r="3"/></g></svg>',
+  inbox:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2.5 1.5)"><path d="m10 3h2.3406038c.4000282 0 .7615663.23839685.9191451.6060807l2.7402511 6.3939193v4c0 1.1045695-.8954305 2-2 2h-12c-1.1045695 0-2-.8954305-2-2v-4l2.74025113-6.3939193c.15757879-.36768385.51911692-.6060807.91914503-.6060807h2.34060384"/><path d="m11 6.086-3 2.914-3-2.914"/><path d="m8 0v9"/><path d="m0 10h4c.55228475 0 1 .4477153 1 1v1c0 .5522847.44771525 1 1 1h4c.5522847 0 1-.4477153 1-1v-1c0-.5522847.4477153-1 1-1h4"/></g></svg>',
+  checkCircle:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><circle cx="8.5" cy="8.5" r="8"/><path d="m5.5 9.5 2 2 5-5"/></g></svg>',
+  document:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m12.5 12.5v-7l-5-5h-5c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"/><path d="m2.5 7.5h5"/><path d="m2.5 9.5h7"/><path d="m2.5 11.5h3"/><path d="m7.5.5v3c0 1.1045695.8954305 2 2 2h3"/></g></svg>',
+};
+
+/**
+ * Get an SVG icon by name with accessibility attributes
+ * @param {string} name - Icon name from ICONS registry
+ * @param {Object} [options] - Options
+ * @param {string} [options.className] - Additional CSS class
+ * @returns {string} SVG HTML string with aria-hidden
+ */
+function getIcon(name, options = {}) {
+  const svg = ICONS[name];
+  if (!svg) {
+    logWarn(`Unknown icon requested: ${name}`);
+    return "";
+  }
+
+  const className = options.className
+    ? ` class="icon ${options.className}"`
+    : ' class="icon"';
+  return svg.replace("<svg", `<svg aria-hidden="true"${className}`);
+}
+
+/**
  * @class MathPixPDFHandler
  * @extends MathPixBaseModule
  * @description Manages all PDF-specific operations for MathPix document processing
@@ -451,6 +493,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
       // Step 4: User confirmed - store file and continue with processing workflow
       this.currentPDFFile = pdfFile;
 
+      // Step 4b: Check for existing session with matching filename
+      const persistence = window.getMathPixMMDPersistence?.();
+      if (persistence) {
+        persistence.checkForExistingSession(pdfFile.name);
+      }
+
       // Step 5: Display PDF processing options interface
       this.displayPDFOptions(pdfFile);
 
@@ -750,7 +798,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // ✅ ACTION POINT 2: Scroll to start of PDF options after user confirms upload
     // Force instant scroll due to simultaneous show/hide operations that make smooth scroll look janky
     setTimeout(() => {
-      pdfOptionsContainer.scrollIntoView({ behavior: "auto", block: "start" });
+      pdfOptionsContainer.scrollIntoView({
+        behavior: "instant",
+        block: "start",
+      });
       logDebug(
         "Scrolled to PDF options interface (instant scroll due to layout changes)"
       );
@@ -1644,7 +1695,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           id: "upload",
           name: "Upload",
           duration: 5000,
-          icon: "📤",
+          icon: "upload",
           messages: [
             "Uploading document...",
             "Validating file format...",
@@ -1655,7 +1706,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           id: "validation",
           name: "Validation",
           duration: 3000,
-          icon: "🔍",
+          icon: "search",
           messages: [
             "Analyzing document structure...",
             "Checking compatibility...",
@@ -1666,7 +1717,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           id: "queue",
           name: "Queue",
           duration: 2000,
-          icon: "⏳",
+          icon: "hourglass",
           messages: [
             "Entering processing queue...",
             "Waiting for available resources...",
@@ -1677,7 +1728,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           id: "processing",
           name: "Processing",
           duration: 20000,
-          icon: "⚙️",
+          icon: "gear",
           messages: [
             "OCR processing initiated...",
             "Extracting content...",
@@ -1689,7 +1740,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           id: "download",
           name: "Results",
           duration: 4000,
-          icon: "📥",
+          icon: "inbox",
           messages: [
             "Preparing results...",
             "Finalising formats...",
@@ -1742,20 +1793,14 @@ class MathPixPDFHandler extends MathPixBaseModule {
     this.updateStageIndicators();
 
     // ✅ ACTION POINT 3: Scroll to start of progress section after clicking process
-    // Respect user's motion preferences for accessibility
+    // Use instant scroll to avoid jarring rapid movements during multi-step workflow
     if (enhancedContainer) {
       setTimeout(() => {
-        const prefersReducedMotion = window.matchMedia(
-          "(prefers-reduced-motion: reduce)"
-        ).matches;
-        const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
         enhancedContainer.scrollIntoView({
-          behavior: scrollBehavior,
+          behavior: "instant",
           block: "start",
         });
-        logDebug("Scrolled to enhanced progress interface", {
-          reducedMotion: prefersReducedMotion,
-        });
+        logDebug("Scrolled to enhanced progress interface");
       }, 150);
     }
   }
@@ -1897,15 +1942,16 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
   /**
    * @method updateProgressIcon
-   * @description Updates the progress icon display
-   * @param {string} icon - Icon to display
+   * @description Updates the progress icon display with SVG support
+   * @param {string} icon - SVG icon HTML string to display
    * @returns {void}
    * @since 3.1.0
+   * @updated 4.1.0 - Changed from textContent to innerHTML for SVG support
    */
   updateProgressIcon(icon) {
     const iconElement = document.getElementById("pdf-progress-icon");
     if (iconElement) {
-      iconElement.textContent = icon;
+      iconElement.innerHTML = icon;
     }
   }
 
@@ -1935,23 +1981,24 @@ class MathPixPDFHandler extends MathPixBaseModule {
         const iconElement = indicator.querySelector(".stage-icon");
 
         if (nameElement) nameElement.textContent = stage.name;
-        if (iconElement) iconElement.textContent = stage.icon;
+        if (iconElement) iconElement.innerHTML = getIcon(stage.icon);
       }
     });
   }
 
   /**
    * @method getStageIcon
-   * @description Gets the icon for a specific stage
+   * @description Gets the SVG icon HTML for a specific stage
    * @param {string} stage - Stage identifier
-   * @returns {string} Icon character
+   * @returns {string} SVG icon HTML string
    * @since 3.1.0
+   * @updated 4.1.0 - Returns SVG icon HTML via getIcon()
    */
   getStageIcon(stage) {
-    if (!this.progressState) return "⚙️";
+    if (!this.progressState) return getIcon("gear");
 
     const stageData = this.progressState.stages.find((s) => s.id === stage);
-    return stageData ? stageData.icon : "⚙️";
+    return stageData ? getIcon(stageData.icon) : getIcon("gear");
   }
 
   /**
@@ -2138,7 +2185,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     this.updateProgressText("Processing Complete!");
     this.updateDetailedStatus("Your document has been successfully processed.");
     this.updateCurrentStage("download");
-    this.updateProgressIcon("✅");
+    this.updateProgressIcon(getIcon("checkCircle"));
 
     // Mark all stages as completed
     this.progressState.stageIndex = this.progressState.stages.length - 1;
@@ -2606,7 +2653,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // Smooth scroll to top of content when collapsing
     if (!isExpanded) {
-      container.scrollIntoView({ behavior: "smooth", block: "start" });
+      container.scrollIntoView({ behavior: "instant", block: "start" });
     }
 
     logDebug("HTML preview toggled", { expanded: isExpanded });
@@ -3057,7 +3104,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       previewArea.style.display = "block";
 
       // Scroll preview area into view
-      previewArea.scrollIntoView({ behavior: "smooth", block: "start" });
+      previewArea.scrollIntoView({ behavior: "instant", block: "start" });
 
       logInfo("HTML preview displayed");
     }
@@ -3547,7 +3594,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
    */
   async showSimpleFilePreview(file, formatInfo) {
     const formatName = formatInfo?.displayName || "Document";
-    const icon = formatInfo?.icon || "📄";
+    const icon = formatInfo?.icon || getIcon("document");
     const sizeFormatted = this.formatFileSize(file.size);
 
     logInfo("Showing simple file confirmation", {

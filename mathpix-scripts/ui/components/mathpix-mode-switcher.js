@@ -118,7 +118,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     super(controller);
 
     /**
-     * Current active mode ('upload', 'draw', or 'camera')
+     * Current active mode ('upload', 'draw', 'camera', or 'convert')
      * @type {string}
      */
     this.currentMode = "upload"; // Default to upload mode
@@ -142,6 +142,18 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     this.cameraContainer = null;
 
     /**
+     * Convert mode container element (Phase 6.3)
+     * @type {HTMLElement|null}
+     */
+    this.convertContainer = null;
+
+    /**
+     * Resume mode container element (Phase 8.2)
+     * @type {HTMLElement|null}
+     */
+    this.resumeContainer = null;
+
+    /**
      * Upload mode radio button
      * @type {HTMLInputElement|null}
      */
@@ -158,6 +170,18 @@ class MathPixModeSwitcher extends MathPixBaseModule {
      * @type {HTMLInputElement|null}
      */
     this.cameraRadio = null;
+
+    /**
+     * Convert mode radio button (Phase 6.3)
+     * @type {HTMLInputElement|null}
+     */
+    this.convertRadio = null;
+
+    /**
+     * Resume mode radio button (Phase 8.2)
+     * @type {HTMLInputElement|null}
+     */
+    this.resumeRadio = null;
 
     /**
      * Flag indicating if event listeners are attached
@@ -226,6 +250,22 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     this.drawRadio = uiElements.drawRadio;
     this.cameraRadio = uiElements.cameraRadio;
 
+    // Phase 6.3: Convert mode elements (optional - graceful fallback)
+    this.convertContainer =
+      uiElements.convertContainer ||
+      document.getElementById("mathpix-convert-mode-container");
+    this.convertRadio =
+      uiElements.convertRadio ||
+      document.getElementById("mathpix-convert-mode-radio");
+
+    // Phase 8.2: Resume mode elements (optional - graceful fallback)
+    this.resumeContainer =
+      uiElements.resumeContainer ||
+      document.getElementById("mathpix-resume-mode-container");
+    this.resumeRadio =
+      uiElements.resumeRadio ||
+      document.getElementById("mathpix-resume-mode-radio");
+
     // Attach event listeners
     this.attachEventListeners();
 
@@ -237,7 +277,6 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     return true;
   }
-
   /**
    * Attaches event listeners to radio buttons
    *
@@ -298,11 +337,15 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     if (this.uploadContainer) this.uploadContainer.style.display = "";
     if (this.drawContainer) this.drawContainer.style.display = "none";
     if (this.cameraContainer) this.cameraContainer.style.display = "none";
+    if (this.convertContainer) this.convertContainer.style.display = "none";
+    if (this.resumeContainer) this.resumeContainer.style.display = "none";
 
     // Update radio button state
     if (this.uploadRadio) this.uploadRadio.checked = true;
     if (this.drawRadio) this.drawRadio.checked = false;
     if (this.cameraRadio) this.cameraRadio.checked = false;
+    if (this.convertRadio) this.convertRadio.checked = false;
+    if (this.resumeRadio) this.resumeRadio.checked = false;
 
     // Notify user
     this.showNotification("Upload mode active", "info");
@@ -342,11 +385,15 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     if (this.uploadContainer) this.uploadContainer.style.display = "none";
     if (this.drawContainer) this.drawContainer.style.display = "";
     if (this.cameraContainer) this.cameraContainer.style.display = "none";
+    if (this.convertContainer) this.convertContainer.style.display = "none";
+    if (this.resumeContainer) this.resumeContainer.style.display = "none";
 
     // Update radio button state
     if (this.uploadRadio) this.uploadRadio.checked = false;
     if (this.drawRadio) this.drawRadio.checked = true;
     if (this.cameraRadio) this.cameraRadio.checked = false;
+    if (this.convertRadio) this.convertRadio.checked = false;
+    if (this.resumeRadio) this.resumeRadio.checked = false;
 
     // Notify user
     this.showNotification(
@@ -389,11 +436,15 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     if (this.uploadContainer) this.uploadContainer.style.display = "none";
     if (this.drawContainer) this.drawContainer.style.display = "none";
     if (this.cameraContainer) this.cameraContainer.style.display = "";
+    if (this.convertContainer) this.convertContainer.style.display = "none";
+    if (this.resumeContainer) this.resumeContainer.style.display = "none";
 
     // Update radio button state
     if (this.uploadRadio) this.uploadRadio.checked = false;
     if (this.drawRadio) this.drawRadio.checked = false;
     if (this.cameraRadio) this.cameraRadio.checked = true;
+    if (this.convertRadio) this.convertRadio.checked = false;
+    if (this.resumeRadio) this.resumeRadio.checked = false;
 
     // Notify user
     this.showNotification(
@@ -405,6 +456,115 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     this.triggerModeChangeCallback("camera");
 
     logInfo("Switched to camera mode");
+  }
+
+  /**
+   * Switches to convert mode (Phase 6.3)
+   *
+   * @returns {void}
+   *
+   * @description
+   * Transitions interface to convert mode, showing MMD input interface
+   * and hiding other mode containers.
+   *
+   * @example
+   * modeSwitcher.switchToConvertMode();
+   *
+   * @accessibility Announces mode change to screen readers
+   *
+   * @since Phase 6.3
+   */
+  switchToConvertMode() {
+    logDebug("Switching to convert mode");
+
+    // ✅ Clear any previous results before switching
+    this.clearPreviousResults();
+
+    // Update state
+    this.currentMode = "convert";
+
+    // Update UI visibility (using style.display to override inline styles)
+    if (this.uploadContainer) this.uploadContainer.style.display = "none";
+    if (this.drawContainer) this.drawContainer.style.display = "none";
+    if (this.cameraContainer) this.cameraContainer.style.display = "none";
+    if (this.convertContainer) this.convertContainer.style.display = "";
+    if (this.resumeContainer) this.resumeContainer.style.display = "none";
+
+    // Update radio button state
+    if (this.uploadRadio) this.uploadRadio.checked = false;
+    if (this.drawRadio) this.drawRadio.checked = false;
+    if (this.cameraRadio) this.cameraRadio.checked = false;
+    if (this.convertRadio) this.convertRadio.checked = true;
+    if (this.resumeRadio) this.resumeRadio.checked = false;
+
+    // Notify user
+    this.showNotification(
+      "Convert mode active. Paste or upload MMD content to convert.",
+      "info"
+    );
+
+    // Trigger mode change callback if available
+    this.triggerModeChangeCallback("convert");
+
+    logInfo("Switched to convert mode");
+  }
+
+  /**
+   * Switches to resume mode (Phase 8.2)
+   *
+   * @returns {void}
+   *
+   * @description
+   * Transitions interface to resume mode, showing ZIP upload interface
+   * for restoring previous MathPix sessions.
+   *
+   * @example
+   * modeSwitcher.switchToResumeMode();
+   *
+   * @accessibility Announces mode change to screen readers
+   *
+   * @since Phase 8.2
+   */
+  switchToResumeMode() {
+    logDebug("Switching to resume mode");
+
+    // Clear any previous results before switching
+    this.clearPreviousResults();
+
+    // Update state
+    this.currentMode = "resume";
+
+    // Update UI visibility (using style.display to override inline styles)
+    if (this.uploadContainer) this.uploadContainer.style.display = "none";
+    if (this.drawContainer) this.drawContainer.style.display = "none";
+    if (this.cameraContainer) this.cameraContainer.style.display = "none";
+    if (this.convertContainer) this.convertContainer.style.display = "none";
+    if (this.resumeContainer) this.resumeContainer.style.display = "";
+    if (this.resumeContainer) this.resumeContainer.style.display = "none";
+
+    // Update radio button state
+    if (this.uploadRadio) this.uploadRadio.checked = false;
+    if (this.drawRadio) this.drawRadio.checked = false;
+    if (this.cameraRadio) this.cameraRadio.checked = false;
+    if (this.convertRadio) this.convertRadio.checked = false;
+    if (this.resumeRadio) this.resumeRadio.checked = true;
+
+    // Show session restorer
+    const restorer = window.getMathPixSessionRestorer?.();
+    if (restorer) {
+      restorer.show();
+    }
+
+    // Notify user
+    this.showNotification(
+      "Resume mode active. Upload a ZIP archive to restore a previous session.",
+      "info"
+    );
+
+    // Trigger mode change callback if available
+    this.triggerModeChangeCallback("resume");
+
+    logInfo("Switched to resume mode");
   }
 
   /**
@@ -542,6 +702,38 @@ class MathPixModeSwitcher extends MathPixBaseModule {
   }
 
   /**
+   * Checks if currently in convert mode
+   *
+   * @returns {boolean} True if in convert mode
+   *
+   * @example
+   * if (modeSwitcher.isConvertMode()) {
+   *   console.log('Currently in convert mode');
+   * }
+   *
+   * @since Phase 6.3
+   */
+  isConvertMode() {
+    return this.currentMode === "convert";
+  }
+
+  /**
+   * Checks if currently in resume mode
+   *
+   * @returns {boolean} True if in resume mode
+   *
+   * @example
+   * if (modeSwitcher.isResumeMode()) {
+   *   console.log('Currently in resume mode');
+   * }
+   *
+   * @since Phase 8.2
+   */
+  isResumeMode() {
+    return this.currentMode === "resume";
+  }
+
+  /**
    * Sets mode programmatically
    *
    * @param {string} mode - Mode to set ('upload', 'draw', or 'camera')
@@ -555,9 +747,15 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    * @since 1.0.0
    */
   setMode(mode) {
-    if (mode !== "upload" && mode !== "draw" && mode !== "camera") {
+    if (
+      mode !== "upload" &&
+      mode !== "draw" &&
+      mode !== "camera" &&
+      mode !== "convert" &&
+      mode !== "resume"
+    ) {
       throw new Error(
-        `Invalid mode: ${mode}. Must be 'upload', 'draw', or 'camera'`
+        `Invalid mode: ${mode}. Must be 'upload', 'draw', 'camera', 'convert', or 'resume'`
       );
     }
 
@@ -570,13 +768,16 @@ class MathPixModeSwitcher extends MathPixBaseModule {
       this.switchToUploadMode();
     } else if (mode === "draw") {
       this.switchToDrawMode();
-    } else {
+    } else if (mode === "camera") {
       this.switchToCameraMode();
+    } else if (mode === "convert") {
+      this.switchToConvertMode();
+    } else if (mode === "resume") {
+      this.switchToResumeMode();
     }
 
     return true;
   }
-
   /**
    * Validates mode switcher configuration
    *
@@ -594,9 +795,13 @@ class MathPixModeSwitcher extends MathPixBaseModule {
         this.uploadContainer &&
         this.drawContainer &&
         this.cameraContainer &&
+        this.convertContainer &&
+        this.resumeContainer &&
         this.uploadRadio &&
         this.drawRadio &&
         this.cameraRadio &&
+        this.convertRadio &&
+        this.resumeRadio &&
         this.isInitialised
       )
     );
@@ -635,12 +840,18 @@ class MathPixModeSwitcher extends MathPixBaseModule {
       hasUploadContainer: !!this.uploadContainer,
       hasDrawContainer: !!this.drawContainer,
       hasCameraContainer: !!this.cameraContainer,
+      hasConvertContainer: !!this.convertContainer,
+      hasResumeContainer: !!this.resumeContainer,
       hasUploadRadio: !!this.uploadRadio,
       hasDrawRadio: !!this.drawRadio,
       hasCameraRadio: !!this.cameraRadio,
+      hasConvertRadio: !!this.convertRadio,
+      hasResumeRadio: !!this.resumeRadio,
       uploadRadioChecked: this.uploadRadio?.checked || false,
       drawRadioChecked: this.drawRadio?.checked || false,
       cameraRadioChecked: this.cameraRadio?.checked || false,
+      convertRadioChecked: this.convertRadio?.checked || false,
+      resumeRadioChecked: this.resumeRadio?.checked || false,
       hasEventListeners: this.hasEventListeners,
     };
   }

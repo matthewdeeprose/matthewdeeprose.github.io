@@ -56,6 +56,9 @@ export class PDFUploadVerification {
     this.confirmCallback = null;
     this.cancelCallback = null;
 
+    // Track current render task to prevent concurrent renders
+    this.currentRenderTask = null;
+
     // Element cache
     this.elements = {
       container: null,
@@ -145,19 +148,13 @@ export class PDFUploadVerification {
       this.setupConfirmationHandlers();
 
       // ✅ ACTION POINT 1: Scroll to "Verify Your Upload" section after upload
-      // Respect user's motion preferences for accessibility
+      // Use instant scroll to avoid jarring rapid movements during multi-step workflow
       setTimeout(() => {
-        const prefersReducedMotion = window.matchMedia(
-          "(prefers-reduced-motion: reduce)"
-        ).matches;
-        const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
         this.elements.container.scrollIntoView({
-          behavior: scrollBehavior,
+          behavior: "instant",
           block: "start",
         });
-        logDebug("Scrolled to upload verification section", {
-          reducedMotion: prefersReducedMotion,
-        });
+        logDebug("Scrolled to upload verification section");
       }, 150);
 
       logInfo("Upload preview displayed successfully");
@@ -234,6 +231,18 @@ export class PDFUploadVerification {
     logDebug("Rendering first page");
 
     try {
+      // Cancel any existing render task to prevent concurrent render error
+      if (this.currentRenderTask) {
+        logDebug("Cancelling previous render task");
+        try {
+          this.currentRenderTask.cancel();
+        } catch (cancelError) {
+          // Ignore cancellation errors - task may have already completed
+          logDebug("Previous render task cancellation:", cancelError.message);
+        }
+        this.currentRenderTask = null;
+      }
+
       // Get first page
       const page = await this.pdfDocument.getPage(1);
 
@@ -245,6 +254,9 @@ export class PDFUploadVerification {
       const canvas = this.elements.canvas;
       const context = canvas.getContext("2d");
 
+      // Clear canvas before setting new dimensions
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
       canvas.height = viewport.height;
       canvas.width = viewport.width;
 
@@ -254,7 +266,13 @@ export class PDFUploadVerification {
         viewport: viewport,
       };
 
-      await page.render(renderContext).promise;
+      // Store render task so it can be cancelled if needed
+      this.currentRenderTask = page.render(renderContext);
+
+      await this.currentRenderTask.promise;
+
+      // Clear reference after successful completion
+      this.currentRenderTask = null;
 
       logInfo("First page rendered successfully");
 
@@ -266,6 +284,15 @@ export class PDFUploadVerification {
         );
       }
     } catch (error) {
+      // Clear render task reference on error
+      this.currentRenderTask = null;
+
+      // Don't log cancellation as an error - it's expected when user uploads new file quickly
+      if (error.name === "RenderingCancelledException") {
+        logDebug("Render cancelled (expected during rapid file changes)");
+        return; // Don't throw - this is normal behaviour
+      }
+
       logError("Failed to render first page", error);
       throw error;
     }
@@ -355,6 +382,16 @@ export class PDFUploadVerification {
    * Clean up resources
    */
   cleanup() {
+    // Cancel any pending render task first
+    if (this.currentRenderTask) {
+      try {
+        this.currentRenderTask.cancel();
+      } catch (e) {
+        // Ignore - task may have completed
+      }
+      this.currentRenderTask = null;
+    }
+
     this.pdfFile = null;
     this.confirmCallback = null;
     this.cancelCallback = null;

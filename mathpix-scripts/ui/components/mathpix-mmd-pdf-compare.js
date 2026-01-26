@@ -587,7 +587,7 @@ class MathPixMMDPDFCompare {
 
     const pageEl = pagesContainer.querySelector(`[data-page="${pageNum}"]`);
     if (pageEl) {
-      pageEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      pageEl.scrollIntoView({ behavior: "instant", block: "start" });
     }
   }
 

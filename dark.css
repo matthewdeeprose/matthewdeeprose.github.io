@@ -1,7 +1,1373 @@
 /* Dark mode */
+
+/* ally */
+
+/* ========== COLOUR DEFINITIONS ========== */
+section.ally-cache-entries {
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+}
+
+.ally-cache-usage-bar {
+  background-color: #231f20;
+  border: 1px solid currentcolor;
+}
+
+.ally-cache-usage-fill {
+  background-color: #74c9e5;
+}
+
+.ally-cache-usage-fill.ally-cache-usage-warning {
+  background-color: #fcbc00;
+}
+
+.ally-cache-usage-fill.ally-cache-usage-critical {
+  background-color: #ef7d00;
+}
+
+.ally-cache-entry {
+  border-bottom: 1px solid #495961;
+}
+
+.ally-cache-entry:last-child {
+  border-bottom: none;
+}
+
+.ally-cache-entry-icon {
+  color: currentcolor;
+}
+
+.ally-cache-entry-meta {
+  color: #9fb1bd;
+}
+
+.ally-cache-empty {
+  color: #9fb1bd;
+}
+
+.ally-cache-banner-cached {
+  border: 1px solid currentcolor;
+}
+
+.ally-cache-banner-error {
+  border: 1px solid currentcolor;
+}
+
+.ally-cache-refresh-btn {
+  border: 1px solid currentColor;
+  background: transparent;
+}
+
+.ally-cache-banner-update {
+  border: 1px solid currentColor;
+}
+
+.ally-cache-offline-banner {
+  border: 1px solid currentColor;
+}
+
+/* Highlight animation keyframes */
+@keyframes ally-credentials-attention {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(60, 186, 198, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(60, 186, 198, 0.3);
+  }
+}
+
+/* High contrast keyframes */
+@keyframes ally-credentials-attention-hc {
+  0%,
+  100% {
+    outline: 0 solid transparent;
+  }
+  50% {
+    outline: 4px solid currentColor;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ally-credentials-details.ally-credentials-highlight {
+    outline: 3px solid #74c9e5;
+  }
+}
+
+/* CTA border */
+.ally-test-connection-cta::before {
+  border: 2px dashed #74c9e5;
+}
+
+.ally-btn-help-text {
+  color: #9fb1bd;
+}
+
+.ally-primary-btn[data-api-required][disabled] {
+  opacity: 0.6;
+}
+
+.ally-primary-btn[data-api-required][data-api-not-ready="true"]::after {
+  background-color: #fcbc00;
+  border-color: #00131d;
+}
+
+.ally-api-progress-bar {
+  background-color: #231f20;
+  border: 1px solid currentColor;
+}
+
+.ally-api-progress-fill {
+  background-color: #fcbc00;
+  border: 1px solid #231f20;
+}
+
+.ally-api-progress-bar[data-state="WARMING"] .ally-api-progress-fill {
+  background-color: #fcbc00;
+  background-image: linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+}
+
+.ally-api-progress-bar[data-state="READY"] .ally-api-progress-fill {
+  background-color: #c1d100;
+  border: 1px solid #231f20;
+}
+
+.ally-api-progress-bar[data-state="ERROR"] .ally-api-progress-fill {
+  background-color: #ef7d00;
+  border: 1px solid #231f20;
+}
+
+.ally-api-status-hint {
+  color: #9fb1bd;
+}
+.ally-config-section {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+.ally-config-actions {
+  border-top: 1px solid currentcolor;
+}
+.ally-query-section {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+.ally-token-toggle[aria-pressed="true"] {
+  color: #b3dbd2;
+}
+.ally-token-toggle[aria-pressed="true"]:hover,
+.ally-token-toggle[aria-pressed="true"]:focus-visible {
+  color: currentcolor;
+}
+.ally-endpoint-fieldset {
+  border: 1px solid currentcolor;
+}
+.ally-endpoint-option {
+  border: 2px solid transparent;
+}
+.ally-endpoint-option:hover {
+  background: #231f20;
+}
+.ally-endpoint-option:has(input:checked) {
+  background: #231f20;
+  border-color: #c1d100;
+}
+.ally-endpoint-option:has(input:focus-visible-visible) {
+  box-shadow: 0 0 0 3px rgba(0, 92, 132, 0.4);
+}
+.ally-endpoint-desc {
+  color: #e1e8ec;
+}
+.ally-quick-filters {
+  border: 1px solid currentcolor;
+}
+.ally-query-actions {
+  border-top: 1px solid currentcolor;
+}
+.ally-progress-section,
+.ally-sp-progress {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+.ally-progress-bar,
+.ally-sp-progress-bar {
+  background: #231f20;
+  border: 1px solid currentcolor;
+}
+.ally-progress-fill,
+.ally-sp-progress-fill {
+  background: #c1d100;
+  border: 1px solid #00131d;
+}
+.ally-progress-message,
+.ally-sp-progress-message {
+  color: #e1e8ec;
+}
+.ally-results-section {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+.ally-results-summary {
+  border-bottom: 1px solid currentcolor;
+}
+.ally-table-container pre {
+  border: 1px solid currentcolor;
+}
+.ally-form-group input[type="text"],
+.ally-form-group input[type="password"],
+.ally-form-group select {
+  color: currentcolor;
+  background: #231f20;
+}
+.ally-form-group input:focus-visible,
+.ally-form-group select:focus-visible {
+  outline-offset: 0.2rem;
+}
+.ally-help-text {
+  color: #9fb1bd;
+}
+.score-excellent {
+  color: #4bb694;
+}
+.score-good {
+  color: #b3dbd2;
+}
+.score-fair {
+  color: #74c9e5;
+}
+.score-poor {
+  color: #fcbc00;
+}
+.score-very-poor {
+  color: #ef7d00;
+}
+.score-unknown {
+  color: #e1e8ec;
+}
+
+/* Filters */
+.ally-filter-builder {
+  background: #231f20;
+  border: 1px solid currentcolor;
+}
+.ally-filter-row {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+.ally-filter-field,
+.ally-filter-operator,
+.ally-filter-value {
+  border: 1px solid currentcolor;
+  background: #00131d;
+  color: currentcolor;
+}
+.ally-filter-field:focus-visible,
+.ally-filter-operator:focus-visible,
+.ally-filter-value:focus-visible {
+  border-color: #c1d100;
+  box-shadow: 0 0 0 3px rgba(193, 209, 0, 0.8);
+}
+.ally-filter-field:disabled,
+.ally-filter-operator:disabled,
+.ally-filter-value:disabled {
+  background: #9fb1bd;
+  color: #00131d;
+}
+.ally-filter-value::-webkit-input-placeholder {
+  color: #9fb1bd;
+}
+
+.ally-filter-value::-moz-placeholder {
+  color: #9fb1bd;
+  opacity: 1;
+}
+
+.ally-filter-value:-ms-input-placeholder {
+  color: #9fb1bd;
+}
+
+.ally-filter-value::placeholder {
+  color: #9fb1bd;
+  opacity: 1;
+}
+
+/* ========================================================================
+   4. Course Search Styles - COLOURS
+   ======================================================================== */
+.ally-course-search-input {
+  border: 1px solid currentcolor;
+}
+.ally-course-search-results {
+  background: #00131d;
+  border: 1px solid currentcolor;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.ally-course-search-option {
+  border-bottom: 1px solid currentcolor;
+}
+.ally-course-search-option:last-child {
+  border-bottom: none;
+}
+.ally-course-search-option:hover,
+.ally-course-search-option.ally-course-option-active {
+  background: #231f20;
+}
+.ally-course-search-option[aria-selected="true"] {
+  background: #231f20;
+}
+.ally-course-option-name {
+  color: currentcolor;
+}
+.ally-course-option-code {
+  color: #c1d100;
+}
+.ally-course-option-term {
+  color: #fcbc00;
+}
+.ally-search-highlight {
+  background: #fff3cd;
+  color: #212529;
+}
+.ally-course-selected {
+  background: #231f20;
+  border: 1px solid currentcolor;
+  color: currentcolor;
+}
+/* ========================================================================
+   Debug Panel Styles - Developer Information
+   ======================================================================== */
+/* Colour Definitions */
+.ally-debug-panel {
+  background: #231f20;
+  border: 1px solid currentcolor;
+}
+.ally-debug-panel-summary:focus-visible {
+  outline: 2px solid #c1d100;
+  outline-offset: -2px;
+}
+.ally-debug-section h4 {
+  border-bottom: 1px solid currentcolor;
+}
+.ally-debug-stats dt {
+  color: #9fb1bd;
+}
+.ally-debug-stats dd {
+  color: currentcolor;
+}
+.ally-debug-code-container pre {
+  background: #fffff4;
+  border: 1px solid currentcolor;
+}
+/* ========================================================================
+   API Status Indicator - Colours
+   ======================================================================== */
+.ally-api-status-dot {
+  border: 2px solid #00131d;
+}
+/* Status dot colours by state */
+.ally-api-status-dot[data-state="UNKNOWN"] {
+  background-color: #e1e8ec;
+}
+.ally-api-status-dot[data-state="WARMING"] {
+  background-color: #fcbc00;
+}
+.ally-api-status-dot[data-state="READY"] {
+  background-color: #c1d100;
+}
+.ally-api-status-dot[data-state="IDLE"] {
+  background-color: #ef7d00;
+}
+.ally-api-status-dot[data-state="ERROR"] {
+  background-color: #d5007f;
+}
+/* ========================================================================
+   Results Section - Phase 5 Styles
+   ======================================================================== */
+.ally-view-btn[aria-checked="true"] {
+  background-color: #231f20;
+  color: currentcolor;
+  border-color: #c1d100;
+  border-style: dotted;
+}
+/* Column Selector - Colours */
+.ally-column-selector {
+  border-color: #dee2e6;
+}
+.ally-column-options {
+  border-top-color: currentcolor;
+}
+.ally-column-group-title {
+  border-bottom-color: currentcolor;
+}
+.ally-column-option:hover {
+  color: #8d3970;
+}
+/* Issue Severity - Colours */
+.ally-severity-severe,
+.ally-severity-major,
+.ally-severity-minor,
+.ally-severity-none {
+  color: #00131d;
+}
+
+/* Issue Severity - Colours */
+.ally-cr-severity-bar-label .ally-severity-severe {
+  color: #ef7d00;
+}
+
+.ally-cr-severity-bar-label .ally-severity-major {
+  color: #fcbc00;
+}
+.ally-cr-severity-bar-label .ally-severity-minor {
+  color: #9fb1bd;
+}
+.ally-cr-severity-bar-label .ally-severity-none {
+  color: #9fb1bd;
+}
+
+/* Summary - Colours */
+.ally-summary-scores,
+.ally-summary-issues {
+  background-color: #231f20;
+  border: 1px solid currentcolor;
+}
+/* No Results - Colours */
+.ally-no-results {
+  color: #e1e8ec;
+}
+/* Chart Container - Colours */
+.ally-chart-container {
+  background-color: #231f20;
+  border-color: currentcolor;
+}
+/* High Contrast Mode - Colours */
+@media (prefers-contrast: high) {
+  .ally-view-btn[aria-checked="true"] {
+    border-color: currentColor;
+  }
+}
+/* Print - Colours */
+@media print {
+  .ally-results-table th {
+    background-color: transparent;
+    border-bottom-color: #000000;
+  }
+}
+/* ========================================================================
+   Credentials Details - Collapsible Section
+   ======================================================================== */
+/* Colours */
+.ally-credentials-details {
+  border: 1px solid currentcolor;
+  background-color: #231f20;
+}
+
+.ally-credentials-summary:focus-visible {
+  outline: 2px solid #c1d100;
+  outline-offset: -2px;
+}
+
+/* Endpoint Options */
+.ally-endpoint-option:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px rgba(193, 209, 0, 0.4);
+}
+/* Sort & Pagination Fieldset */
+fieldset.ally-sort-pagination {
+  background: #231f20;
+  border: 1px solid currentcolor;
+}
+/* Debug Panel */
+.ally-debug-code a.token.url-link {
+  color: inherit;
+}
+/* ========================================================================
+   Chart View - Phase 6 Styles (Dashboard Charts)
+   ======================================================================== */
+/* Individual Chart Wrapper - Colours */
+.ally-chart-wrapper {
+  background-color: #231f20;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+/* Ally Chart Inner Container - Colours */
+.ally-chart-wrapper .chart-container.ally-chart-container-inner {
+  background-color: #231f20;
+}
+.ally-chart-wrapper .chart-container canvas {
+  background-color: transparent !important;
+}
+/* Chart Description - Colours */
+.ally-chart-description {
+  background-color: #231f20;
+  border-left: 5px solid #c1d100;
+}
+/* High Contrast Mode - Colours */
+@media (prefers-contrast: high) {
+  .ally-chart-description {
+    color: inherit;
+    background-color: transparent;
+  }
+}
+/* Print Styles - Colours */
+@media print {
+  .ally-chart-wrapper {
+    border: 1px solid #000000;
+    box-shadow: none;
+  }
+}
+/* ========================================================================
+   Report Type Switcher - Phase 7
+   ======================================================================== */
+.ally-report-switcher {
+  border-color: currentColor;
+  background-color: #00131d;
+}
+.ally-report-option {
+  border-color: currentcolor;
+}
+.ally-report-option:hover {
+  background-color: #231f20;
+  border-style: dotted;
+}
+.ally-report-option:has(input:checked) {
+  background-color: #231f20;
+  border-color: #c1d100;
+}
+.ally-report-option:has(input:focus-visible) {
+  border-style: dotted;
+}
+.ally-filter-field,
+.ally-filter-operator,
+.ally-filter-value {
+  border: 1px solid currentcolor;
+  background: #231f20;
+  color: currentcolor;
+}
+/* Override global input styles for filter text inputs */
+.ally-filter-builder .ally-filter-row input.ally-filter-value,
+.ally-filter-builder .ally-filter-row input.ally-filter-value[type="text"],
+.ally-filter-builder .ally-filter-row input.ally-filter-value[type="number"] {
+  border: 1px solid currentcolor !important;
+  background: #231f20 !important;
+  color: currentcolor !important;
+}
+.ally-filter-field:focus-visible,
+.ally-filter-operator:focus-visible,
+.ally-filter-value:focus-visible {
+  border-color: #c1d100;
+  box-shadow: 0 0 0 3px rgba(0, 92, 132, 0.4);
+}
+/* Override focus styles for filter inputs */
+.ally-filter-builder .ally-filter-row input.ally-filter-value:focus-visible {
+  border-color: #c1d100 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(0, 92, 132, 0.4) !important;
+}
+.ally-filter-field:disabled,
+.ally-filter-operator:disabled,
+.ally-filter-value:disabled {
+  background: #9fb1bd;
+  color: #00131d;
+}
+/* Override disabled state for filter inputs */
+.ally-filter-builder .ally-filter-row input.ally-filter-value:disabled {
+  background: #9fb1bd !important;
+  color: #00131d !important;
+}
+/* ========================================================================
+   COLOUR DEFINITIONS
+   ======================================================================== */
+.ally-course-search-fieldset {
+  background-color: #00131d;
+}
+.ally-selected-course-term {
+  background-color: #e1e8ec;
+}
+.ally-cr-results-container {
+  background-color: #00131d;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid currentcolor;
+}
+.ally-selected-course-code {
+  color: #8d3970;
+  background: #e1e8ec;
+}
+.ally-selected-course-term {
+  color: #002e3b;
+}
+/* Report Header */
+.ally-cr-header {
+  border-bottom: 1px solid currentcolor;
+}
+.ally-cr-course-link a {
+  color: #c1d100;
+}
+/* Sections */
+.ally-cr-section {
+  border: 1px solid currentcolor;
+  background: #231f20;
+}
+.ally-cr-score-meter {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+.ally-cr-score-meter-fill {
+  border: 1px solid #00131d;
+}
+.ally-cr-score-meter-fill.score-excellent {
+  background: #c1d100;
+}
+.ally-cr-score-meter-fill.score-good {
+  background: #4bb694;
+}
+.ally-cr-score-meter-fill.score-fair {
+  background: #fcbc00;
+}
+.ally-cr-score-meter-fill.score-poor {
+  background: #ef7d00;
+}
+.ally-cr-score-meter-fill.score-very-poor {
+  background: #e73037;
+}
+/* Content Inventory - Summary Definition List */
+.ally-cr-inventory-summary {
+  background: #00131d;
+  border-left: 6px solid #c1d100;
+}
+.ally-cr-file-table th,
+.ally-cr-file-table td {
+  border-bottom: 1px solid #e0e0e0;
+}
+.ally-cr-file-table th {
+  background: #f0f0f0;
+}
+.ally-cr-total-row {
+  background: #f0f0f0;
+}
+/* Severity Summary */
+.ally-cr-severity-bar-outer {
+  background: #00131d;
+}
+.ally-cr-severity-bar-inner.ally-severity-severe {
+  background: #ef7d00;
+  border: 1px solid #00131d;
+}
+.ally-cr-severity-bar-inner.ally-severity-major {
+  background: #fcbc00;
+  border: 1px solid #00131d;
+}
+.ally-cr-severity-bar-inner.ally-severity-minor {
+  background: #9fb1bd;
+  border: 1px solid #00131d;
+}
+.ally-cr-severity-bar-inner,
+.ally-cr-severity-bar-outer {
+  border: 1px solid currentcolor;
+}
+/* Issue Categories */
+.ally-cr-category-details {
+  border: 1px solid #231f20;
+}
+.ally-cr-category-summary {
+  background: #231f20;
+}
+.ally-cr-category-summary:hover {
+  background: #00131d;
+}
+.ally-cr-category-badge {
+  background: #b3dbd2;
+  color: #00131d;
+}
+.ally-cr-category-summary .ally-cr-category-badge {
+  display: inline-block;
+  text-transform: none !important;
+}
+
+.ally-cr-mini-badge.ally-severity-severe {
+  display: none;
+}
+.ally-cr-mini-badge.ally-severity-major {
+  display: none;
+}
+.ally-cr-mini-badge.ally-severity-minor {
+  display: none;
+}
+
+.ally-cr-issue-severity {
+  border: solid 1px currentcolor;
+}
+
+/* Issue severity badges (used in tables) */
+.ally-cr-issue-severity.ally-severity-severe {
+  background: #ef7d00;
+}
+.ally-cr-issue-severity.ally-severity-major {
+  background: #fcbc00;
+}
+.ally-cr-issue-severity.ally-severity-minor {
+  background: #9fb1bd;
+}
+/* Legacy issue list styles */
+.ally-cr-issue-item {
+  border-bottom: 1px solid #eee;
+}
+
+/* Issue Tabs */
+.ally-cr-issues-tabs {
+  border-bottom: 2px solid currentcolor;
+}
+.ally-cr-tab {
+  outline: 0.2rem solid #231f20 !important;
+  border: 0.2rem solid #fffff4;
+  margin-right: 10px;
+  border-radius: 4px !important;
+}
+.ally-cr-tab-active {
+  color: #74c9e5;
+}
+/* Severity Details (By Severity view) */
+.ally-cr-no-issues {
+  color: #e1e8ec;
+}
+/* Library References */
+.ally-cr-library-refs {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+
+/* Error Display */
+.ally-cr-error {
+  background: #ffebee;
+  border: 1px solid #ef9a9a;
+  color: #c62828;
+}
+.ally-cr-error h4 {
+  color: #b71c1c;
+}
+/* Data Freshness Warning */
+.ally-cr-data-warning,
+.ally-sp-freshness-warning {
+  background: #231f20;
+  border: 2px dotted #ef7d00;
+  border-left: 4px solid #ef7d00;
+}
+.ally-cr-warning-icon,
+.ally-sp-freshness-warning .ally-sp-warning-icon {
+  color: #ef7d00;
+}
+
+input[type="text"].ally-course-search-input,
+input[type="number"].ally-course-search-input {
+  border: 0.2rem solid #00131d !important;
+  outline: 0.2rem solid #e1e8ec !important;
+}
+
+input[type="text"].ally-course-search-input:hover,
+input[type="number"].ally-course-search-input:focus-visible {
+  border: 0.2rem solid #e1e8ec !important;
+  outline: 0.2rem solid #00131d !important;
+}
+
+/* Accessibility statements */
+
+.ally-sp-warning {
+  border: 4px solid currentcolor;
+  background-color: #00131d;
+}
+.ally-sp-disclosure-button {
+  background: transparent;
+  color: #fcbc00;
+  font-weight: normal;
+  box-shadow: 0 0 0 0.3rem #00131d !important;
+  outline: 0rem solid #00131d !important;
+  border: 0.2rem solid #00131d !important;
+}
+.ally-sp-disclosure-button:hover {
+  color: #b3dbd2;
+  background-color: #231f20;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
+  border: 0.2rem solid #231f20 !important;
+}
+.ally-sp-disclosure-button:focus-visible {
+  background-color: #231f20;
+  color: #fcbc00;
+}
+.ally-sp-expandable-content a:focus-visible {
+  outline: 3px solid #fcbc00;
+  background-color: #fcbc00;
+  color: #0b0c0c;
+}
+.ally-sp-success {
+  border: 4px solid #005051;
+}
+.ally-sp-success-icon {
+  color: #005051;
+}
+.ally-sp-course-details {
+  border: 1px solid currentcolor;
+}
+.ally-sp-course-details summary {
+  background-color: #231f20;
+}
+.ally-sp-course-details summary:focus-visible {
+  outline: 3px solid #fcbc00;
+}
+.ally-sp-error {
+  border: 4px solid #d5007f;
+  background-color: #fef7f6;
+}
+.ally-sp-error-icon {
+  color: #d5007f;
+}
+.ally-sp-breakdown-field {
+  color: #e1e8ec;
+}
+.ally-sp-breakdown-value {
+  color: #e1e8ec;
+}
+.ally-sp-breakdown-value-nonzero {
+  color: #b3dbd2;
+}
+
+/* Debug status states */
+.ally-debug-stats dd.ally-debug-status-success {
+  color: #4bb694;
+}
+
+.ally-debug-stats dd.ally-debug-status-error {
+  color: #fcbc00;
+}
+
+summary .ally-severity-severe {
+  color: #ef7d00;
+}
+
+summary .ally-severity-major {
+  color: #fcbc00;
+}
+
+summary .ally-severity-minor {
+  color: #9fb1bd;
+}
+
+/* ========================================
+   COLOUR DEFINITIONS
+   ======================================== */
+
+.convert-source-pane.fullscreen .convert-pane-header {
+  background: #231f20;
+}
+
+.convert-upload-label {
+  border: 0.2rem solid #e1e8ec;
+  background: none;
+  color: #e1e8ec;
+}
+.convert-upload-label:hover,
+.convert-upload-label:focus-visible {
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
+  border: 0.2rem solid #231f20 !important;
+}
+mjx-container[data-mathpix-enhanced]:hover {
+  background-color: rgba(193, 209, 0, 0.05);
+}
+
+mjx-container[data-mathpix-enhanced]:focus-visible {
+  outline-color: #c1d100;
+  background-color: rgba(193, 209, 0, 0.102);
+}
+
+/* Tab panel focus */
+#mathpix-output-container .mathpix-tab-panel:focus-visible {
+  outline: 3px solid #c1d100 !important;
+  outline-offset: -10px !important;
+}
+
+/* ALL pre elements with tabindex - including dynamically created ones */
+pre.code-block-container:focus-visible,
+pre.code-block-container.language-latex:focus-visible,
+pre[tabindex="0"]:focus-visible,
+div.code-block-wrapper pre:focus-visible,
+div[data-latex-addition="true"] pre:focus-visible,
+#mathpix-output-latex pre:focus-visible {
+  outline: 3px solid #c1d100 !important;
+  outline-offset: -8px !important;
+}
+
+/* Check icon - success indicator */
+.line-data-details-list .icon-check {
+  color: #c1d100;
+}
+
+/* Warning icon - exclusion indicator */
+.line-data-details-list .icon-warning {
+  color: #fcbc00;
+}
+
+#mathjax-status {
+  background: #00131d;
+  border: #9fb1bd solid 1px;
+  box-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
+}
+
+#mathjax-status[data-ready="false"] #mathjax-status-value {
+  color: #fcbc00;
+}
+
+#mathjax-status[data-ready="true"] #mathjax-status-value {
+  color: #4bb694;
+}
+
+/* Shared interactive option styles */
+#toolSelection .tool-option-wrapper,
+.mathpix-mode-option {
+  border-color: solid #e1e8ec;
+}
+
+#toolSelection .tool-option-wrapper:hover,
+.mathpix-mode-option:hover {
+  border-color: #74c9e5;
+  background-color: rgba(116, 201, 229, 0.051);
+}
+
+#toolSelection .tool-option-wrapper:has(input:checked),
+.mathpix-mode-option:has(input:checked) {
+  border-color: #c1d100;
+  background-color: rgba(193, 209, 0, 0.051);
+}
+
+#toolSelection .tool-option-wrapper:has(input:focus-visible),
+.mathpix-mode-option:has(input:focus-visible) {
+  outline-color: #c1d100;
+}
+
+/* Edit selection separator */
+.edit-options-separator {
+  color: currentcolor;
+}
+
+.edit-options-separator::before,
+.edit-options-separator::after {
+  border-bottom: 1px solid currentcolor;
+}
+
+/* Original option styling */
+.resume-edit-option-original {
+  background: #231f20;
+  border-color: currentcolor;
+}
+
+/* Badge variants */
+.edit-option-badge-original {
+  background: #005c84;
+  color: #fffff4;
+}
+
+.edit-option-badge-imported {
+  background: #8d3970;
+  color: #fffff4;
+}
+
+.edit-option-badge-saved {
+  background: #005051;
+  color: #fffff4;
+}
+
+.edit-option-badge-edit {
+  background: #495961;
+  color: #fffff4;
+}
+
+.edit-option-badge-recent {
+  background: #d5007f;
+  color: #fffff4;
+}
+
+/* confidence toggle */
+
+.mmd-confidence-toggle {
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
+}
+
+.mmd-confidence-toggle {
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
+}
+
+.mmd-confidence-toggle:hover,
+.mmd-confidence-toggle:focus-visible {
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
+  border: 0.2rem solid #231f20 !important;
+}
+
+input#mmd-split-show-pdf:focus-visible,
+input#resume-mmd-split-show-pdf:focus-visible {
+  outline: 3px solid #e1e8ec;
+}
+
+/* Focus mode */
+
+body.resume-focus-mode #mathpix-resume-mode-container {
+  background: #161415;
+}
+
+body.resume-focus-mode .mathpix-tab-headers {
+  border-bottom: 1px solid currentcolor;
+}
+
+/* -----------------------------------------------------------------------------
+   Line Structure Colours
+   ----------------------------------------------------------------------------- */
+.mmd-editor-line {
+  border-bottom: 1px solid currentcolor;
+}
+.mmd-editor-line .line-confidence {
+  border-right: 1px solid currentcolor;
+}
+/* -----------------------------------------------------------------------------
+       Focus State Colours
+       ----------------------------------------------------------------------------- */
+.mmd-editor-line .line-content:focus {
+  background: rgba(0, 92, 132, 0.078);
+  box-shadow: inset 0 0 0 2px rgba(0, 92, 132, 0.302);
+}
+.mmd-editor-line .line-content:focus-visible {
+  outline: 2px solid #74c9e5;
+}
+.mmd-editor-line:has(.line-content:focus) {
+  background-color: rgba(0, 92, 132, 0.031);
+}
+/* -----------------------------------------------------------------------------
+       Confidence Level Colours
+       ----------------------------------------------------------------------------- */
+/* High confidence (≥95%) */
+.mmd-editor-line.mmd-confidence--high {
+  background: rgba(34, 197, 94, 0.05);
+}
+.mmd-editor-line.mmd-confidence--high .line-confidence {
+  background: rgba(34, 197, 94, 0.2);
+}
+/* Medium confidence (80-94%) */
+.mmd-editor-line.mmd-confidence--medium {
+  background: rgba(250, 204, 21, 0.05);
+}
+.mmd-editor-line.mmd-confidence--medium .line-confidence {
+  background: rgba(250, 204, 21, 0.2);
+}
+/* Low confidence (60-79%) */
+.mmd-editor-line.mmd-confidence--low {
+  background: rgba(249, 115, 22, 0.05);
+}
+.mmd-editor-line.mmd-confidence--low .line-confidence {
+  background: rgba(249, 115, 22, 0.2);
+}
+/* Very low confidence (<60%) */
+.mmd-editor-line.mmd-confidence--very-low {
+  background: rgba(239, 68, 68, 0.05);
+}
+.mmd-editor-line.mmd-confidence--very-low .line-confidence {
+  background: rgba(239, 68, 68, 0.2);
+}
+/* No confidence data */
+.mmd-editor-line.mmd-confidence--none {
+  background: transparent;
+}
+.mmd-editor-line.mmd-confidence--none .line-confidence {
+  background: rgba(128, 128, 128, 0.1);
+}
+/* Edited line - confidence no longer applicable */
+.mmd-editor-line.mmd-confidence--edited {
+  background: rgba(128, 128, 128, 0.03);
+}
+.mmd-editor-line.mmd-confidence--edited .line-confidence {
+  background: rgba(128, 128, 128, 0.12);
+}
 /* =============================================
    COLOUR DEFINITIONS
    ============================================= */
+.resume-auto-restored-banner {
+  background: #00131d;
+  border-color: currentcolor;
+  color: currentcolor;
+}
+
+.resume-session-banner {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.mmd-pdf-scroll-container {
+  background: #00131d;
+}
+
+#resume-session-banner-message {
+  color: #e1e8ec;
+}
+
+.resume-session-options {
+  border-color: currentcolor;
+  background: #231f20;
+}
+
+.resume-session-option:hover {
+  background: rgba(80, 224, 236, 0.2);
+}
+
+.resume-session-option:has(input:checked) {
+  background: rgba(173, 227, 173, 0.25);
+}
+
+.resume-session-option:has(input:focus-visible) {
+  outline-color: #c1d100;
+}
+
+.resume-session-badge {
+  background: #231f20;
+  color: #c1d100;
+  border: 1px solid currentcolor;
+}
+
+.resume-session-option-newest {
+  border-left-color: #c1d100;
+}
+
+.resume-pdf-error {
+  color: #d5007f;
+}
+
+#resume-drop-zone:hover,
+#resume-drop-zone:focus {
+  border: solid;
+}
+
+#resume-drop-zone.drag-over {
+  border: 2px solid;
+}
+
+.resume-validation-messages.has-errors {
+  background-color: rgba(213, 0, 127, 0.09);
+  border: 1px solid #ef7d00;
+}
+
+.resume-validation-messages.has-warnings {
+  background-color: rgba(141, 57, 112, 0.09);
+  border: 1px solid #fcbc00;
+}
+
+.resume-loading-spinner {
+  border: 3px solid currentColor;
+  border-top-color: transparent;
+}
+
+.resume-edit-selection {
+  background: #00131d;
+  border: 2px solid currentcolor;
+}
+
+.resume-session-header {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+
+.resume-session-status {
+  background: #dcfce7;
+  color: #00131d;
+  border: 1px solid #00131d;
+}
+
+.resume-session-status[data-state="modified"] {
+  background-color: #d5007f;
+  border-color: #d5007f;
+  color: #fffff4;
+}
+
+.resume-download-all-section {
+  border-top: 1px solid currentcolor;
+}
+
+.resume-session-banner {
+  background: #00131d;
+  border: 1px solid currentcolor;
+}
+.resume-session-banner p {
+  color: #b3dbd2;
+}
+.resume-session-options-divider {
+  color: currentcolor;
+}
+
+.resume-session-options-divider::before,
+.resume-session-options-divider::after {
+  background: currentcolor;
+}
+
+.resume-session-option-zip {
+  border-left-color: #b3dbd2;
+}
+
+.resume-session-option-current {
+  background: rgba(40, 167, 69, 0.1);
+}
+
+.resume-session-badge-current {
+  background: #74c9e5;
+  color: #231f20;
+}
+.resume-session-preview {
+  color: #e1e8ec;
+}
+
+.resume-session-option-current .resume-session-preview {
+  color: #e1e8ec;
+}
+/* Colours */
+.resume-session-option-zip-edit {
+  border-left-color: #ef7d00;
+}
+
+.resume-session-option-zip-edit:hover {
+  background: rgba(108, 92, 231, 0.1);
+}
+
+#resume-mmd-code-container.fullscreen,
+.mmd-code-container.fullscreen {
+  background: #231f20 !important;
+}
+
+.mathpix-convert-section {
+  border: 4px solid currentcolor;
+  background-color: #231f20;
+}
+
+.mathpix-convert-format-selection legend {
+  background-color: #231f20;
+  color: #e1e8ec;
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+}
+
+.mathpix-convert-progress {
+  border: 1px solid currentcolor;
+}
+
+.mathpix-progress-item {
+  border: 1px solid currentcolor;
+}
+
+.mathpix-progress-status {
+  color: #fcbc00;
+}
+
+.mathpix-convert-downloads {
+  border: 2px solid currentcolor;
+}
+
+.mathpix-convert-errors {
+  border: 1px solid currentcolor;
+}
+
+.mathpix-convert-errors h4 {
+  color: #ef7d00;
+}
+
+.mathpix-convert-error-list {
+  color: #ef7d00;
+}
+
+/* ===========================================
+   COLOUR DEFINITIONS
+   =========================================== */
+
+.mmd-split-pdf-toggle {
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
+}
+
+.mmd-split-pdf-toggle:hover,
+.mmd-split-pdf-toggle:focus-visible {
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
+  border: 0.2rem solid #231f20 !important;
+}
+
+input#mmd-split-show-pdf:focus-visible,
+input#resume-mmd-split-show-pdf:focus-visible {
+  outline: 3px solid #e1e8ec;
+}
+
+.mmd-session-banner {
+  border: 1px solid #e1e8ec;
+  background-color: #00131d;
+}
+
+.mmd-session-status[data-state="saved"] {
+  background-color: #c1d100;
+  border-color: #c1d100;
+  color: #00131d;
+}
+
+.mmd-view-btn.active,
+.mmd-view-btn[aria-pressed="true"] {
+  background: #00131d;
+  color: #e1e8ec;
+}
+
+.mmd-session-status[data-state="saved"] {
+  background-color: #c1d100;
+  border-color: #c1d100;
+  color: #00131d;
+}
+
+.mmd-session-status[data-state="modified"] {
+  background-color: #fcbc00;
+  border-color: #fcbc00;
+  color: #00131d;
+}
+
+.mmd-session-status[data-state="saving"] {
+  background-color: #b3dbd2;
+  border-color: #b3dbd2;
+  color: #00131d;
+}
+
+.universal-toggletip-canvas-region-button:hover {
+  background: transparent;
+}
+
+.mmd-upload-label {
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
+}
+
+.mmd-upload-label:hover,
+.mmd-upload-label:focus-visible {
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
+  border: 0.2rem solid #231f20 !important;
+}
 
 .task-list-item:not(.task-completed) {
   background-color: #00131d;
@@ -449,7 +1815,7 @@ pre[class*="language-"] {
 }
 
 .mathpix-status-indicator {
-  border: 1px solid currentcolor;
+  border: 0px solid currentcolor;
 }
 
 /* ============================================
@@ -463,7 +1829,7 @@ pre[class*="language-"] {
 
 .endpoint-option {
   border: 1px solid currentcolor;
-  background: #495961;
+  background: none;
 }
 
 .endpoint-option:hover {
@@ -568,8 +1934,10 @@ pre[class*="language-"] {
 }
 
 .mathpix-fullscreen-container {
-  color: #231f20;
+  color: #e1e8ec;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  background: #231f20;
+  border: 1px solid currentcolor;
 }
 
 .mathpix-fullscreen-header {
@@ -795,15 +2163,28 @@ pre[class*="language-"] {
 }
 
 .mathpix-progress-label {
+  color: currentColor;
+}
+
+.mathpix-download-buttons a {
+  color: #e1e8ec;
+  background: #231f20;
+  border: 0.2rem solid #e1e8ec !important;
+}
+
+.mathpix-download-buttons a:hover,
+.mathpix-download-buttons a:focus-visible {
+  background-color: #e1e8ec;
   color: #00131d;
+  box-shadow: 0 0 0 0.3rem #c1d100 !important;
+  outline: 0rem solid #161415 !important;
+  border: 0.2rem solid #231f20 !important;
 }
 
 .mathpix-comparison-container {
   border: 1px solid currentcolor;
 }
-.mathpix-tab-headers {
-  border-bottom: 2px solid #e1e8ec;
-}
+
 .mathpix-comparison-panel {
   border: 1px solid currentcolor;
   background: #00131d;
@@ -1105,7 +2486,7 @@ pre[class*="language-"] {
   background: #00131d;
 }
 
-.mathpix-custom-range input:focus {
+.mathpix-custom-range input:focus-visible {
   border-color: #74c9e5;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
 }
@@ -1216,7 +2597,6 @@ pre[class*="language-"] {
 .mathpix-tab-panel {
   background: #231f20;
   border: 4px solid currentcolor;
-  border-top: none;
 }
 
 .mathpix-format-actions {
@@ -1398,7 +2778,7 @@ pre[class*="language-"] {
 }
 
 .mathpix-status-indicator {
-  border: 1px solid #e1e8ec;
+  border: 0px solid #e1e8ec;
 }
 .mathpix-nav-button {
   background: #0066cc;
@@ -1598,12 +2978,12 @@ universal-modal-button-primary {
 
 /* Success modals - the trophy looks brilliant in green */
 .universal-modal:has([class*="success"]) .universal-modal-icon svg {
-  color: #005051;
+  color: #c1d100;
 }
 
 /* Warning modals - the trophy looks brilliant in green */
 .universal-modal:has([class*="warning"]) .universal-modal-icon svg {
-  color: #8d3970;
+  color: #fcbc00;
 }
 
 .universal-modal-container {
@@ -3186,7 +4566,7 @@ summary {
 button {
   color: #e1e8ec;
   background: #231f20;
-  border: 0.2rem solid #e1e8ec !important;
+  border: 0.2rem solid #e1e8ec;
 }
 
 button:hover,
@@ -3346,7 +4726,7 @@ a.bookmarklet {
   border: 2px solid #e1e8ec;
 }
 
-input:focus {
+input:focus-visible {
   outline: 3px solid #c1d100;
 }
 
@@ -3356,12 +4736,12 @@ input:focus {
 }
 
 /*focus styles*/
-.wrapper input:focus + label::before {
+.wrapper input:focus-visible + label::before {
   box-shadow: 0 0 0 3px #c1d100;
 }
 
 /*focus styles*/
-.wrapper2 input:focus + label::before {
+.wrapper2 input:focus-visible + label::before {
   box-shadow: 0 0 0 3px #c1d100;
 }
 
@@ -3395,8 +4775,8 @@ figcaption a:focus:not(:focus-visible) {
   @media (forced-colors: none), (forced-colors: active) {
     :root {
       --prism-a11y-border-radius: 0.3em;
-      --prism-a11y-font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono",
-        monospace;
+      --prism-a11y-font-family:
+        Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
       --prism-a11y-line-height: 1.5;
       --prism-a11y-code-block-margin: 0.5em 0;
       --prism-a11y-code-block-padding: 1em;
@@ -3475,45 +4855,45 @@ figcaption a:focus:not(:focus-visible) {
     }
 
     :where(
-        .token.property,
-        .token.tag,
-        .token.constant,
-        .token.symbol,
-        .token.deleted
-      ) {
+      .token.property,
+      .token.tag,
+      .token.constant,
+      .token.symbol,
+      .token.deleted
+    ) {
       color: var(--prism-a11y-color-text-red);
     }
 
     :where(
-        .token.operator,
-        .token.entity,
-        .token.url,
-        .language-css .token.string,
-        .style .token.string,
-        .token.variable,
-        .token.keyword
-      ) {
+      .token.operator,
+      .token.entity,
+      .token.url,
+      .language-css .token.string,
+      .style .token.string,
+      .token.variable,
+      .token.keyword
+    ) {
       color: var(--prism-a11y-color-text-blue);
     }
 
     :where(
-        .token.selector,
-        .token.attr-name,
-        .token.string,
-        .token.char,
-        .token.builtin,
-        .token.inserted
-      ) {
+      .token.selector,
+      .token.attr-name,
+      .token.string,
+      .token.char,
+      .token.builtin,
+      .token.inserted
+    ) {
       color: var(--prism-a11y-color-text-green);
     }
 
     :where(
-        .token.atrule,
-        .token.attr-value,
-        .token.function,
-        .token.regex,
-        .token.important
-      ) {
+      .token.atrule,
+      .token.attr-value,
+      .token.function,
+      .token.regex,
+      .token.important
+    ) {
       color: var(--prism-a11y-color-text-yellow);
     }
 

@@ -507,6 +507,15 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         this.controller.downloadManager.showDownloadButton("pdf");
         logInfo("✓ Download button shown for PDF results");
       }
+
+      // Phase 5.2: Check for existing editing session with matching filename
+      const persistence = window.getMathPixMMDPersistence?.();
+      if (persistence && documentInfo?.name) {
+        persistence.checkForExistingSession(documentInfo.name);
+        logDebug("Checked for existing editing session", {
+          filename: documentInfo.name,
+        });
+      }
     } catch (error) {
       logError("Failed to display PDF results", {
         error: error.message,
@@ -1008,6 +1017,32 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         // Non-critical - preview will read from DOM as fallback
       }
 
+      // Phase 5.1: Notify controller that MMD content is available for editing
+      if (
+        this.controller &&
+        typeof this.controller.notifyMMDContentAvailable === "function"
+      ) {
+        this.controller.notifyMMDContentAvailable();
+        logDebug("Controller notified of MMD content availability for editing");
+      }
+
+      // Phase 6.2: Show convert section when MMD content is available
+      try {
+        const convertUI = window.getMathPixConvertUI?.();
+        if (convertUI) {
+          convertUI.init();
+          convertUI.show();
+          // Set base filename from document info if available
+          if (this.documentInfo?.name) {
+            convertUI.setBaseFilename(this.documentInfo.name);
+            logDebug("Convert UI base filename set:", this.documentInfo.name);
+          }
+          logDebug("Convert UI shown for MMD content");
+        }
+      } catch (e) {
+        logWarn("Failed to show convert UI:", e);
+      }
+
       logInfo("MMD format populated with preview structure preserved");
       return;
     }
@@ -1138,7 +1173,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
         // Smooth scroll to top when collapsing
         setTimeout(() => {
-          container.scrollIntoView({ behavior: "smooth", block: "start" });
+          container.scrollIntoView({ behavior: "instant", block: "start" });
         }, 100);
       }
 
@@ -2150,17 +2185,12 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           "mathpix-doc-proc-results"
         );
         if (resultsHeading) {
-          const prefersReducedMotion = window.matchMedia(
-            "(prefers-reduced-motion: reduce)"
-          ).matches;
-          const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
+          // Use instant scroll to avoid jarring rapid movements during multi-step workflow
           resultsHeading.scrollIntoView({
-            behavior: scrollBehavior,
+            behavior: "instant",
             block: "start",
           });
-          logDebug("Scrolled to document processing results heading", {
-            reducedMotion: prefersReducedMotion,
-          });
+          logDebug("Scrolled to document processing results heading");
         } else {
           logWarn(
             "Document processing results heading not found (id: mathpix-document-processing-results)"
@@ -3931,10 +3961,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           format === "mmd"
             ? `# Page ${pageNum}\n\n`
             : format === "html"
-            ? `<h1>Page ${pageNum}</h1>\n`
-            : format === "latex"
-            ? `\\section{Page ${pageNum}}\n\n`
-            : "";
+              ? `<h1>Page ${pageNum}</h1>\n`
+              : format === "latex"
+                ? `\\section{Page ${pageNum}}\n\n`
+                : "";
         return header + page.trim();
       });
   }
@@ -4007,10 +4037,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         format === "mmd"
           ? `# Page ${pageNum}\n\n`
           : format === "html"
-          ? `<h1>Page ${pageNum}</h1>\n`
-          : format === "latex"
-          ? `\\section{Page ${pageNum}}\n\n`
-          : "";
+            ? `<h1>Page ${pageNum}</h1>\n`
+            : format === "latex"
+              ? `\\section{Page ${pageNum}}\n\n`
+              : "";
       return header + page;
     });
   }

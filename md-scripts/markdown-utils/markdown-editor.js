@@ -1103,7 +1103,7 @@ const MarkdownEditor = (function () {
     });
   }
 
-  // Debounced render function
+  // Debounce utility
   const debounce = (func, wait) => {
     let timeout;
     return function executedFunction(...args) {
@@ -1115,6 +1115,116 @@ const MarkdownEditor = (function () {
       timeout = setTimeout(later, wait);
     };
   };
+
+  /**
+   * Fix WCAG 4.1.2: Ensure aria-hidden elements contain no focusable content
+   * MathJax generates mjx-assistive-mml with aria-hidden="true" but these
+   * may contain focusable elements which violates accessibility guidelines
+   * @param {HTMLElement} container - Container to process
+   */
+  function fixMathJaxAccessibility(container) {
+    if (!container) return;
+
+    // Find all mjx-assistive-mml elements (hidden MathML for screen readers)
+    const assistiveMml = container.querySelectorAll("mjx-assistive-mml");
+    let fixedCount = 0;
+
+    assistiveMml.forEach((mml) => {
+      // Remove tabindex from the container itself
+      mml.setAttribute("tabindex", "-1");
+
+      // Find and fix all potentially focusable descendants
+      // Must include mjx-container explicitly as MathJax nests these
+      const focusableSelectors = [
+        '[tabindex]:not([tabindex="-1"])',
+        '[role="application"]',
+        "mjx-container",
+        "a[href]",
+        "button",
+        "input",
+        "select",
+        "textarea",
+        "math",
+      ].join(", ");
+
+      const focusables = mml.querySelectorAll(focusableSelectors);
+      focusables.forEach((el) => {
+        // Set tabindex to -1 to remove from tab order
+        el.setAttribute("tabindex", "-1");
+
+        // For elements with role="application", also neutralise the role
+        // as this role implies interactivity which shouldn't exist in aria-hidden
+        if (el.getAttribute("role") === "application") {
+          el.setAttribute("role", "presentation");
+        }
+
+        fixedCount++;
+      });
+    });
+
+    if (fixedCount > 0) {
+      Logger.debug(
+        `[Accessibility] Fixed ${fixedCount} focusable elements in ${assistiveMml.length} mjx-assistive-mml containers`
+      );
+    }
+  }
+  /**
+   * Protect math blocks from markdown-it processing
+   * Prevents plugins like markdown-it-sup from corrupting LaTeX syntax
+   * @param {string} text - Raw markdown text
+   * @returns {{text: string, mathMap: Map}} Protected text and restoration map
+   */
+  function protectMathBlocks(text) {
+    const mathMap = new Map();
+    let counter = 0;
+
+    // Protect display math first ($$...$$) - greedy but non-greedy content
+    // Must handle multi-line blocks
+    let protectedText = text.replace(/\$\$([\s\S]*?)\$\$/g, (match) => {
+      const placeholder = `%%MATHBLOCK_${counter}%%`;
+      mathMap.set(placeholder, match);
+      counter++;
+      return placeholder;
+    });
+
+    // Protect inline math ($...$) - single line, avoid currency like $50
+    // Match $ followed by non-space, content, non-space, then $
+    // Negative lookbehind for digit (avoid $50) and lookahead for non-digit
+    protectedText = protectedText.replace(
+      /\$([^\s$](?:[^$]*[^\s$])?)\$/g,
+      (match, content) => {
+        // Skip if it looks like currency (just digits, commas, periods)
+        if (/^[\d,.\s]+$/.test(content)) {
+          return match;
+        }
+        const placeholder = `%%MATHBLOCK_${counter}%%`;
+        mathMap.set(placeholder, match);
+        counter++;
+        return placeholder;
+      }
+    );
+
+    Logger.debug(`[Math Protection] Protected ${counter} math blocks`);
+    return { text: protectedText, mathMap };
+  }
+
+  /**
+   * Restore protected math blocks after markdown-it processing
+   * @param {string} html - Processed HTML
+   * @param {Map} mathMap - Map of placeholders to original math content
+   * @returns {string} HTML with math blocks restored
+   */
+  function restoreMathBlocks(html, mathMap) {
+    let restoredHtml = html;
+
+    for (const [placeholder, original] of mathMap) {
+      // The placeholder might be wrapped in <p> tags, handle that
+      restoredHtml = restoredHtml.split(placeholder).join(original);
+    }
+
+    Logger.debug(`[Math Protection] Restored ${mathMap.size} math blocks`);
+    return restoredHtml;
+  }
 
   // Main render function
   const renderMarkdown = debounce(async function () {
@@ -1132,7 +1242,13 @@ const MarkdownEditor = (function () {
     try {
       const markdownText = elements.markdownInput.value;
       const md = initializeMarkdownIt();
-      let htmlResult = md.render(markdownText);
+
+      // Protect math blocks from markdown-it plugins (especially sup)
+      const { text: protectedText, mathMap } = protectMathBlocks(markdownText);
+      let htmlResult = md.render(protectedText);
+
+      // Restore math blocks after markdown processing
+      htmlResult = restoreMathBlocks(htmlResult, mathMap);
 
       // Enhance header anchors for accessibility
       htmlResult = enhanceHeaderAnchors(htmlResult);
@@ -1181,6 +1297,9 @@ const MarkdownEditor = (function () {
           );
           window.mathPixEnhanceMathJax();
         }
+
+        // Fix WCAG 4.1.2: Remove focusability from aria-hidden MathJax elements
+        fixMathJaxAccessibility(elements.output);
       }
 
       // Enhance figure images with aspect-ratio

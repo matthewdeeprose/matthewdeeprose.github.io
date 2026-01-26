@@ -625,8 +625,8 @@ class PDFVisualiserOverlays {
       textHeight + padding
     );
 
-    // Draw text
-    ctx.fillStyle = colours.text;
+    // Draw text - use config colour if set, otherwise fall back to confidence-level colour
+    ctx.fillStyle = config.LABEL_TEXT_COLOUR || colours.text;
     ctx.fillText(labelText, labelX, labelY);
 
     ctx.restore();

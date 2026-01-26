@@ -367,7 +367,7 @@ button.universal-toggletip-trigger:focus,
   /* Transparent, focusable button positioned over canvas region */
   position: absolute;
   background: transparent;
-  border: 2px solid transparent;
+  border: 1px solid #231f20;
   border-radius: 2px;
   padding: 0;
   margin: 0;
@@ -548,4 +548,7 @@ button.universal-toggletip-trigger:focus,
   .universal-toggletip {
     font-size: 0.875rem;
   }
+}
+.toggletip-confidence-value {
+  margin-left: 10px;
 }

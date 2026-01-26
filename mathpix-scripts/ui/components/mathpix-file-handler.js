@@ -255,7 +255,7 @@ class MathPixFileHandler extends MathPixBaseModule {
       ) {
         this.showNotification(
           "Please configure your MathPix API credentials first.",
-          "error"
+          "error",
         );
         return false;
       }
@@ -270,7 +270,7 @@ class MathPixFileHandler extends MathPixBaseModule {
 
         this.showNotification(
           `File "${file.name}" ready for processing. Click "Process with MathPix" to continue.`,
-          "info"
+          "info",
         );
 
         // Processing continues when user clicks confirmation button
@@ -364,12 +364,12 @@ class MathPixFileHandler extends MathPixBaseModule {
     try {
       // Locate required DOM elements for preview display
       const previewContainer = document.getElementById(
-        "mathpix-image-preview-container"
+        "mathpix-image-preview-container",
       );
       const imageElement = document.getElementById("mathpix-image-preview");
       const fileInfoElement = document.getElementById("mathpix-file-info");
       const openOriginalBtn = document.getElementById(
-        "mathpix-open-original-btn"
+        "mathpix-open-original-btn",
       );
 
       if (
@@ -402,10 +402,10 @@ class MathPixFileHandler extends MathPixBaseModule {
           <span class="sr-only">Filename: </span>${file.name}
         </strong><br>
         <span class="sr-only">File size: </span>${this.formatFileSize(
-          file.size
+          file.size,
         )} | <span class="sr-only">File type: </span>${this.getFileTypeDescription(
-        file.type
-      )}
+          file.type,
+        )}
       `;
 
       // Configure buttons based on confirmation workflow settings
@@ -421,7 +421,7 @@ class MathPixFileHandler extends MathPixBaseModule {
         openOriginalBtn.onclick = () => this.openOriginalInNewWindow(file);
         openOriginalBtn.setAttribute(
           "aria-label",
-          `Open original ${file.name} in new window`
+          `Open original ${file.name} in new window`,
         );
       }
 
@@ -501,21 +501,41 @@ class MathPixFileHandler extends MathPixBaseModule {
    * @since 1.0.0
    */
   openOriginalInNewWindow(file) {
+    // Validate input - must be a File or Blob object
+    const fileToOpen =
+      file instanceof File || file instanceof Blob
+        ? file
+        : this.currentUploadedFile;
+
+    if (
+      !fileToOpen ||
+      !(fileToOpen instanceof File || fileToOpen instanceof Blob)
+    ) {
+      logError("Cannot open original file - no valid file available", {
+        providedType: file ? typeof file : "undefined",
+        providedValue: file,
+        currentUploadedFile: this.currentUploadedFile,
+      });
+      this.showNotification("No file available to display", "warning");
+      return;
+    }
+
     logInfo("Opening original file in new window", {
-      fileName: file.name,
-      fileSize: file.size,
+      fileName: fileToOpen.name || "unnamed",
+      fileSize: fileToOpen.size,
     });
 
     try {
       // Create blob URL for original file access
-      const originalUrl = URL.createObjectURL(file);
+      const originalUrl = URL.createObjectURL(fileToOpen);
 
       // Open in new window/tab with accessibility support
       const newWindow = window.open(originalUrl, "_blank");
 
       if (newWindow) {
         // Set descriptive window title for screen reader users
-        newWindow.document.title = `Original: ${file.name}`;
+        const fileName = fileToOpen.name || "Original File";
+        newWindow.document.title = `Original: ${fileName}`;
 
         // Clean up blob URL after window loads to prevent memory leaks
         newWindow.addEventListener("load", () => {
@@ -529,7 +549,7 @@ class MathPixFileHandler extends MathPixBaseModule {
         // Handle popup blocking with user-friendly feedback
         this.showNotification(
           "Please allow popups to view original file",
-          "warning"
+          "warning",
         );
         logWarn("Failed to open new window - popup may be blocked");
       }
@@ -569,7 +589,7 @@ class MathPixFileHandler extends MathPixBaseModule {
 
     // Check for existing button to avoid duplicates
     let confirmBtn = previewContainer.querySelector(
-      ".mathpix-process-confirm-btn"
+      ".mathpix-process-confirm-btn",
     );
 
     if (!confirmBtn) {
@@ -581,7 +601,7 @@ class MathPixFileHandler extends MathPixBaseModule {
 
       // Locate actions container for proper layout integration
       const actionsContainer = previewContainer.querySelector(
-        ".mathpix-preview-actions"
+        ".mathpix-preview-actions",
       );
       if (actionsContainer) {
         actionsContainer.appendChild(confirmBtn);
@@ -605,7 +625,7 @@ Process with MathPix
 `;
     confirmBtn.setAttribute(
       "aria-label",
-      `Process ${file.name} with MathPix OCR`
+      `Process ${file.name} with MathPix OCR`,
     );
     confirmBtn.onclick = (e) => {
       e.preventDefault();
@@ -712,7 +732,7 @@ Process with MathPix
 
     // Hide preview elements to maintain clean UI state
     const previewContainer = document.getElementById(
-      "mathpix-image-preview-container"
+      "mathpix-image-preview-container",
     );
     if (previewContainer) {
       previewContainer.style.display = "none";
@@ -774,7 +794,7 @@ Process with MathPix
       try {
         const transformedFile = await this.imageTransformer.applyTransforms(
           this.currentUploadedFile,
-          this.previewTransforms
+          this.previewTransforms,
         );
 
         // Cache transformed file to avoid redundant processing
@@ -794,7 +814,7 @@ Process with MathPix
         logError("Failed to apply transforms to file", error);
         this.showNotification(
           `Transform application failed: ${error.message}. Using original file.`,
-          "warning"
+          "warning",
         );
 
         // Fallback: return original file if transform fails
@@ -921,7 +941,7 @@ Process with MathPix
         if (item.type.startsWith("image/")) {
           imageItem = item;
           logDebug(
-            `[MathPixFileHandler] Found image in clipboard: ${item.type}`
+            `[MathPixFileHandler] Found image in clipboard: ${item.type}`,
           );
           break;
         }
@@ -931,7 +951,7 @@ Process with MathPix
         logWarn("[MathPixFileHandler] No image found in clipboard data");
         this.showNotification(
           "Please paste an image (no image found in clipboard)",
-          "warning"
+          "warning",
         );
         return;
       }
@@ -942,7 +962,7 @@ Process with MathPix
         logError("[MathPixFileHandler] Failed to get file from clipboard item");
         this.showNotification(
           "Failed to extract image from clipboard",
-          "error"
+          "error",
         );
         return;
       }
@@ -958,7 +978,7 @@ Process with MathPix
       });
 
       logInfo(
-        `[MathPixFileHandler] Created file from clipboard: ${fileName} (${blob.type}, ${blob.size} bytes)`
+        `[MathPixFileHandler] Created file from clipboard: ${fileName} (${blob.type}, ${blob.size} bytes)`,
       );
 
       // Announce to screen readers for accessibility
@@ -1118,7 +1138,7 @@ Process with MathPix
     logInfo(`Preview rotated to ${this.previewTransforms.rotation}°`);
     this.showNotification(
       `Preview rotated to ${this.previewTransforms.rotation}°`,
-      "info"
+      "info",
     );
   }
 
@@ -1168,7 +1188,7 @@ Process with MathPix
 
     const cssTransform = this.imageTransformer.getCSSTransform(
       this.previewTransforms.rotation,
-      this.previewTransforms.flipped
+      this.previewTransforms.flipped,
     );
 
     preview.style.transform = cssTransform;
@@ -1218,7 +1238,7 @@ Process with MathPix
 
     const description = this.imageTransformer.getTransformDescription(
       this.previewTransforms.rotation,
-      this.previewTransforms.flipped
+      this.previewTransforms.flipped,
     );
 
     stateDisplay.textContent = description;

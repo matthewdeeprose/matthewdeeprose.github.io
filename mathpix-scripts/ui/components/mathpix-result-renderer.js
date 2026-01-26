@@ -31,6 +31,37 @@ import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
 import { LaTeXTransformer } from "../../core/mathpix-latex-transformer.js";
 
+// =============================================================================
+// SVG ICON REGISTRY
+// =============================================================================
+
+/**
+ * SVG icons for UI elements
+ * All icons use currentColor for theme compatibility
+ */
+const ICONS = {
+  bullet:
+    '<svg class="icon icon-bullet" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="10.5" r="3" fill="currentColor"/></svg>',
+  check:
+    '<svg class="icon icon-check" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m.5 5.5 3 3 8.028-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 6)"/></svg>',
+  warning:
+    '<svg class="icon icon-warning" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg>',
+};
+
+/**
+ * Get an SVG icon by name
+ * @param {string} name - Icon name from ICONS registry (bullet, check, warning)
+ * @returns {string} SVG HTML string with aria-hidden attribute
+ */
+function getIcon(name) {
+  const svg = ICONS[name];
+  if (!svg) {
+    logWarn(`Unknown icon requested: ${name}`);
+    return "";
+  }
+  return svg;
+}
+
 /**
  * MathPix Result Renderer Module
  * Handles all result display, format switching, and MathJax integration
@@ -53,12 +84,143 @@ class MathPixResultRenderer extends MathPixBaseModule {
     ];
     this.currentFormat = "latex"; // Default format
 
+    // MathJax recovery integration
+    this.pendingMathJaxRender = false;
+    this.mathJaxRecoveryUnsubscribe = null;
+    this.lastRenderedElement = null; // Track element for re-render
+
     this.isInitialised = true;
+
+    // Subscribe to MathJax recovery events
+    this.subscribeToMathJaxRecovery();
 
     logInfo("MathPix Result Renderer initialised", {
       supportedFormats: this.supportedFormats,
       defaultFormat: this.currentFormat,
+      mathJaxRecoverySubscribed: !!this.mathJaxRecoveryUnsubscribe,
     });
+  }
+
+  // =============================================================================
+  // MATHJAX RECOVERY INTEGRATION
+  // =============================================================================
+
+  /**
+   * Subscribe to MathJax recovery events from MathJax Manager
+   * When MathJax recovers from failures, this will trigger re-rendering
+   * of any pending mathematical content
+   * @private
+   */
+  subscribeToMathJaxRecovery() {
+    // Check if MathJax Manager is available
+    if (!window.mathJaxManager?.onRecovery) {
+      logDebug(
+        "MathJax Manager not available for recovery subscription - will retry later",
+      );
+
+      // Retry subscription after a delay (MathJax Manager may load later)
+      setTimeout(() => {
+        if (
+          window.mathJaxManager?.onRecovery &&
+          !this.mathJaxRecoveryUnsubscribe
+        ) {
+          this.subscribeToMathJaxRecovery();
+        }
+      }, 2000);
+      return;
+    }
+
+    // Subscribe to recovery events
+    this.mathJaxRecoveryUnsubscribe = window.mathJaxManager.onRecovery(
+      (eventData) => {
+        logInfo("MathJax recovery notification received in Result Renderer", {
+          healthy: eventData.healthy,
+          pendingMathJaxRender: this.pendingMathJaxRender,
+          hasCurrentResult: !!this.currentResult,
+        });
+
+        // Re-render if we have pending math content
+        if (this.pendingMathJaxRender && eventData.healthy) {
+          this.handleMathJaxRecovery();
+        }
+      },
+    );
+
+    logInfo("Result Renderer subscribed to MathJax recovery events");
+  }
+
+  /**
+   * Handle MathJax recovery by re-rendering the processed output panel
+   * @private
+   */
+  async handleMathJaxRecovery() {
+    logInfo("Handling MathJax recovery in Result Renderer");
+
+    // Check if we have content to re-render
+    if (!this.currentResult) {
+      logDebug("No current result to re-render after MathJax recovery");
+      this.pendingMathJaxRender = false;
+      return;
+    }
+
+    const renderedOutput = document.getElementById("mathpix-rendered-output");
+    if (!renderedOutput) {
+      logWarn("Rendered output element not found for MathJax recovery");
+      this.pendingMathJaxRender = false;
+      return;
+    }
+
+    // Check if the element still has the fallback class (meaning it needs re-rendering)
+    if (!renderedOutput.classList.contains("mathjax-fallback")) {
+      logDebug("Rendered output already has MathJax - no recovery needed");
+      this.pendingMathJaxRender = false;
+      return;
+    }
+
+    try {
+      logInfo("Re-rendering processed output after MathJax recovery");
+
+      // Re-populate the processed output panel
+      this.populateProcessedOutputPanel(this.currentResult);
+
+      // Clear the pending flag
+      this.pendingMathJaxRender = false;
+
+      // Announce to screen readers
+      this.announceToScreenReader("Mathematical content has been rendered");
+
+      logInfo("✅ MathJax recovery re-render completed successfully");
+    } catch (error) {
+      logError("Failed to re-render after MathJax recovery", error);
+      // Keep pendingMathJaxRender true so we can try again
+    }
+  }
+
+  /**
+   * Announce message to screen readers using ARIA live region
+   * @param {string} message - Message to announce
+   * @private
+   */
+  announceToScreenReader(message) {
+    // Look for existing live region or create one
+    let liveRegion = document.getElementById("mathpix-sr-announcements");
+
+    if (!liveRegion) {
+      liveRegion = document.createElement("div");
+      liveRegion.id = "mathpix-sr-announcements";
+      liveRegion.setAttribute("aria-live", "polite");
+      liveRegion.setAttribute("aria-atomic", "true");
+      liveRegion.className = "sr-only";
+      liveRegion.style.cssText =
+        "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;";
+      document.body.appendChild(liveRegion);
+    }
+
+    // Clear and set message (clearing first ensures re-announcement)
+    liveRegion.textContent = "";
+    setTimeout(() => {
+      liveRegion.textContent = message;
+    }, 100);
   }
 
   /**
@@ -131,7 +293,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
         this.populateFormatContent("table-markdown", result.tableMarkdown);
         // Show Table (Markdown) tab
         const tableMarkdownTab = document.getElementById(
-          "mathpix-tab-table-markdown"
+          "mathpix-tab-table-markdown",
         );
         if (tableMarkdownTab) {
           tableMarkdownTab.style.display = "";
@@ -165,7 +327,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
           `Table detected! Available in ${formatList.join(", ")} format${
             formatList.length > 1 ? "s" : ""
           }.`,
-          "success"
+          "success",
         );
       }
 
@@ -222,27 +384,24 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     // Show HTML preview if HTML content is available
     if (result.html && this.elements.htmlPreview) {
-      // Unhide asciimath tags for currency/simple math display
-      // Keep mathml and latex hidden to prevent triple display
-      let previewHtml = result.html;
-
-      // Unhide asciimath for clean currency display
-      previewHtml = previewHtml.replace(
-        /<asciimath\s+style="display:\s*none;"/gi,
-        '<asciimath style="display: inline;"'
-      );
-
-      // Parse HTML and hide mathml/latex tags to prevent duplicates
+      // Show MathML for proper browser-native mathematics rendering
+      // Hide asciimath and latex (plain text representations)
       const parser = new DOMParser();
-      const previewDoc = parser.parseFromString(previewHtml, "text/html");
+      const previewDoc = parser.parseFromString(result.html, "text/html");
 
-      // Hide mathml tags
+      // Show mathml tags - browsers render MathML natively
       const mathmlTags = previewDoc.querySelectorAll("mathml");
       mathmlTags.forEach((tag) => {
+        tag.setAttribute("style", "display: inline;");
+      });
+
+      // Hide asciimath tags - plain text, not rendered
+      const asciimathTags = previewDoc.querySelectorAll("asciimath");
+      asciimathTags.forEach((tag) => {
         tag.setAttribute("style", "display: none;");
       });
 
-      // Hide latex tags
+      // Hide latex tags - plain text, not rendered
       const latexTags = previewDoc.querySelectorAll("latex");
       latexTags.forEach((tag) => {
         tag.setAttribute("style", "display: none;");
@@ -250,10 +409,10 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
       this.elements.htmlPreview.innerHTML = previewDoc.body.innerHTML;
 
-      logDebug("HTML preview populated with currency visibility fix", {
+      logDebug("HTML preview populated with MathML rendering", {
         originalLength: result.html.length,
-        asciimathUnhidden: true,
-        mathmlHidden: mathmlTags.length,
+        mathmlShown: mathmlTags.length,
+        asciimathHidden: asciimathTags.length,
         latexHidden: latexTags.length,
       });
     }
@@ -279,7 +438,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       logWarn("No originalFile provided, using currentUploadedFile directly");
       this.displayResponsiveComparison(
         this.controller.fileHandler.currentUploadedFile,
-        result
+        result,
       );
     }
 
@@ -294,7 +453,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
         {
           lineCount: result.line_data.length,
           types: [...new Set(result.line_data.map((line) => line.type))],
-        }
+        },
       );
       this.displayLineData(result.line_data);
     } else {
@@ -407,7 +566,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       this.controller.prismBridge?.applySyntaxHighlighting(
         contentElement,
         format,
-        content
+        content,
       );
 
     // Prepare for existing MarkdownCodeCopy system
@@ -452,11 +611,11 @@ class MathPixResultRenderer extends MathPixBaseModule {
       if (wrapper) {
         // Remove any elements we added previously (marked with data attribute)
         const previousAdditions = wrapper.querySelectorAll(
-          '[data-latex-addition="true"]'
+          '[data-latex-addition="true"]',
         );
         previousAdditions.forEach((element) => element.remove());
         logDebug(
-          `Cleaned up ${previousAdditions.length} previous LaTeX format additions`
+          `Cleaned up ${previousAdditions.length} previous LaTeX format additions`,
         );
       }
 
@@ -468,7 +627,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       this.controller.prismBridge?.applySyntaxHighlighting(
         contentElement,
         "latex",
-        transformed.original
+        transformed.original,
       );
 
       // Set up copy for original
@@ -504,13 +663,13 @@ class MathPixResultRenderer extends MathPixBaseModule {
             userDelimiterFormat = prefs.delimiterFormat || "latex";
             logDebug(
               "[Result Renderer] User delimiter preference:",
-              userDelimiterFormat
+              userDelimiterFormat,
             );
           }
         } catch (e) {
           logWarn(
             "[Result Renderer] Could not retrieve delimiter preference, assuming LaTeX",
-            e
+            e,
           );
         }
       }
@@ -553,7 +712,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
         this.controller.prismBridge?.applySyntaxHighlighting(
           dollarCode,
           "latex",
-          transformed.dollarFormat
+          transformed.dollarFormat,
         );
 
         dollarPre.appendChild(dollarCode);
@@ -618,7 +777,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
         this.controller.prismBridge?.applySyntaxHighlighting(
           doubleCode,
           "latex",
-          transformed.doubleDollarFormat
+          transformed.doubleDollarFormat,
         );
 
         doublePre.appendChild(doubleCode);
@@ -635,7 +794,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
             const originalContent = doubleCopyBtn.innerHTML;
             try {
               await navigator.clipboard.writeText(
-                transformed.doubleDollarFormat
+                transformed.doubleDollarFormat,
               );
               // Match MarkdownCodeCopy behavior
               doubleCopyBtn.innerHTML = `${
@@ -662,11 +821,11 @@ class MathPixResultRenderer extends MathPixBaseModule {
         wrapper.appendChild(doubleWrapper);
 
         logInfo(
-          "Added dollar and double-dollar LaTeX formats with labels and copy buttons (LaTeX delimiters selected)"
+          "Added dollar and double-dollar LaTeX formats with labels and copy buttons (LaTeX delimiters selected)",
         );
       } else {
         logInfo(
-          "Skipped MS Word conversion section - Markdown delimiters already selected by user"
+          "Skipped MS Word conversion section - Markdown delimiters already selected by user",
         );
       }
     } catch (error) {
@@ -689,7 +848,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       this.controller.prismBridge?.applySyntaxHighlighting(
         contentElement,
         "latex",
-        latexContent
+        latexContent,
       );
 
     // Set up copy button
@@ -738,7 +897,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     try {
       // Clean up previous content
       const previousAdditions = wrapper.querySelectorAll(
-        '[data-table-addition="true"]'
+        '[data-table-addition="true"]',
       );
       previousAdditions.forEach((el) => el.remove());
 
@@ -797,7 +956,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       this.controller.prismBridge?.applySyntaxHighlighting(
         contentElement,
         "html",
-        content
+        content,
       );
 
     // Prepare for existing MarkdownCodeCopy system
@@ -833,7 +992,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     if (isLargeTable) {
       this.showNotification(
         `Large table detected (${rowCount} rows). Preview may take a moment to render.`,
-        "info"
+        "info",
       );
     }
 
@@ -903,11 +1062,11 @@ class MathPixResultRenderer extends MathPixBaseModule {
         .queueTypeset(previewContainer)
         .then(() => logDebug("MathJax processed table format preview"))
         .catch((error) =>
-          logWarn("Failed to process math in table format preview", error)
+          logWarn("Failed to process math in table format preview", error),
         );
     } else if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise([previewContainer]).catch((error) =>
-        logWarn("Failed to process math in table format preview", error)
+        logWarn("Failed to process math in table format preview", error),
       );
     }
 
@@ -924,7 +1083,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     this.controller.prismBridge?.applySyntaxHighlighting(
       contentElement,
       "html",
-      sourceHtml
+      sourceHtml,
     );
 
     // Set up copy functionality (uses processed HTML)
@@ -949,7 +1108,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     this.controller.prismBridge?.applySyntaxHighlighting(
       contentElement,
       "markdown",
-      content
+      content,
     );
 
     const preElement = contentElement.parentElement;
@@ -1063,7 +1222,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       // Add keyboard navigation hint
       table.setAttribute(
         "aria-label",
-        "Use arrow keys to navigate table cells"
+        "Use arrow keys to navigate table cells",
       );
 
       logDebug("Table accessibility enhanced", {
@@ -1132,7 +1291,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
           // Keep: structural, semantic, utility classes
           // Remove: presentation-specific classes
           return !cls.match(
-            /(border|padding|margin|color|background|text-align|width|height)/i
+            /(border|padding|margin|color|background|text-align|width|height)/i,
           );
         });
 
@@ -1150,7 +1309,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
         cleanedLength: cleanHtml.length,
         stylesRemoved: removedCount,
         reductionPercent: Math.round(
-          (1 - cleanHtml.length / tableHtml.length) * 100
+          (1 - cleanHtml.length / tableHtml.length) * 100,
         ),
       });
 
@@ -1169,7 +1328,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
    */
   getProcessedTableHtml(originalHtml) {
     const preserveStylesCheckbox = document.getElementById(
-      "mathpix-preserve-table-styles"
+      "mathpix-preserve-table-styles",
     );
     const shouldPreserveStyles = preserveStylesCheckbox
       ? preserveStylesCheckbox.checked
@@ -1265,8 +1424,8 @@ class MathPixResultRenderer extends MathPixBaseModule {
       format === "table-html"
         ? "html"
         : format === "table-markdown"
-        ? "md"
-        : "tsv";
+          ? "md"
+          : "tsv";
 
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -1278,7 +1437,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     this.showNotification(
       `Table downloaded as ${extension.toUpperCase()}`,
-      "success"
+      "success",
     );
   }
 
@@ -1302,13 +1461,15 @@ class MathPixResultRenderer extends MathPixBaseModule {
   showFormat(format) {
     logInfo(`Switching to format: ${format}`);
 
-    // Update all tabs - set aria-selected
+    // Update all tabs - set aria-selected and tabindex for keyboard navigation
     const allTabs = document.querySelectorAll(
-      '.mathpix-format-tab[role="tab"]'
+      '.mathpix-tab-header[role="tab"]',
     );
     allTabs.forEach((tab) => {
       const isSelected = tab.dataset.format === format;
       tab.setAttribute("aria-selected", isSelected.toString());
+      // WCAG: Only selected tab should be in tab order
+      tab.setAttribute("tabindex", isSelected ? "0" : "-1");
       if (isSelected) {
         tab.classList.add("selected");
       } else {
@@ -1398,7 +1559,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
   selectFirstAvailableFormat() {
     // Find first available format tab and select it
     const availableTab = document.querySelector(
-      '.mathpix-tab-header[role="tab"]:not([aria-disabled="true"]):not([style*="display: none"])'
+      '.mathpix-tab-header[role="tab"]:not([aria-disabled="true"]):not([style*="display: none"])',
     );
     if (availableTab) {
       const format = availableTab.dataset.format;
@@ -1466,10 +1627,10 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     // Get line data section element
     const lineDataSection = document.getElementById(
-      "mathpix-line-data-section"
+      "mathpix-line-data-section",
     );
     const lineDataContent = document.getElementById(
-      "mathpix-line-data-content"
+      "mathpix-line-data-content",
     );
 
     if (!lineDataSection || !lineDataContent) {
@@ -1524,7 +1685,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     // Calculate statistics
     const totalLines = lineData.length;
     const includedLines = lineData.filter(
-      (line) => line.conversion_output
+      (line) => line.conversion_output,
     ).length;
     const excludedLines = totalLines - includedLines;
 
@@ -1573,11 +1734,11 @@ class MathPixResultRenderer extends MathPixBaseModule {
       const typeLabel = this.getTypeLabel(type);
 
       if (excluded > 0) {
-        item.innerHTML = `<span aria-hidden="true">•</span> ${count} ${typeLabel}${
+        item.innerHTML = `${getIcon("bullet")} ${count} ${typeLabel}${
           count > 1 ? "s" : ""
         } (${included} included, ${excluded} excluded)`;
       } else {
-        item.innerHTML = `<span aria-hidden="true">•</span> ${count} ${typeLabel}${
+        item.innerHTML = `${getIcon("bullet")} ${count} ${typeLabel}${
           count > 1 ? "s" : ""
         } (all included)`;
       }
@@ -1630,16 +1791,16 @@ class MathPixResultRenderer extends MathPixBaseModule {
       item.style.borderBottom = "1px solid var(--border-color, #e0e0e0)";
 
       // Status indicator and type
-      const statusIcon = line.conversion_output ? "✓" : "⚠";
+      const statusIcon = line.conversion_output
+        ? getIcon("check")
+        : getIcon("warning");
       const statusText = line.conversion_output ? "Included" : "Excluded";
       const typeLabel = this.getTypeLabel(line.type, line.subtype);
 
       const header = document.createElement("div");
       header.style.fontWeight = "600";
       header.style.marginBottom = "0.25rem";
-      header.innerHTML = `<span aria-hidden="true">${statusIcon}</span> Line ${
-        index + 1
-      }: ${typeLabel}`;
+      header.innerHTML = `${statusIcon} Line ${index + 1}: ${typeLabel}`;
 
       // Add screen reader text for status
       const srStatus = document.createElement("span");
@@ -1743,7 +1904,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       this.controller.prismBridge.applySyntaxHighlighting(
         contentElement,
         "markup",
-        formattedContent
+        formattedContent,
       );
     }
 
@@ -1879,7 +2040,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       confidence: result.confidence,
       resultFormats: Object.keys(result).filter(
         (key) =>
-          result[key] && typeof result[key] === "string" && result[key].trim()
+          result[key] && typeof result[key] === "string" && result[key].trim(),
       ),
     });
 
@@ -1927,7 +2088,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     if (!container) {
       logWarn(
-        "Comparison container not found in DOM - this should be present in boilerplate.html"
+        "Comparison container not found in DOM - this should be present in boilerplate.html",
       );
       return null;
     }
@@ -1974,10 +2135,10 @@ class MathPixResultRenderer extends MathPixBaseModule {
       <span class="sr-only">Filename: </span>${originalFile.name}
     </strong><br>
     <span class="sr-only">File size: </span>${this.controller.fileHandler.formatFileSize(
-      originalFile.size
+      originalFile.size,
     )} | <span class="sr-only">File type: </span>${this.controller.fileHandler.getFileTypeDescription(
-          originalFile.type
-        )}
+      originalFile.type,
+    )}
   `;
       } else {
         originalInfo.innerHTML = `<strong><span class="sr-only">Filename: </span>${originalFile.name}</strong>`;
@@ -2013,7 +2174,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     // Won't match LaTeX expressions like $x$ or $\frac{1}{2}$ or $x^2$
     const protectedHtml = html.replace(
       /\$(\s*\d+(?:\.\d{2})?)/g,
-      '<span class="tex2jax_ignore">$$$1</span>'
+      '<span class="tex2jax_ignore">$$$1</span>',
     );
 
     logDebug("Protected currency dollar signs from MathJax", {
@@ -2043,7 +2204,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
         // Protect currency values from MathJax while allowing real math to be processed
         let processedTableHtml = this.protectCurrencyFromMathJax(
-          result.tableHtml
+          result.tableHtml,
         );
 
         // Remove display:none from mathml tags only so MathJax renders are visible
@@ -2051,7 +2212,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
         // Keep <latex> and <asciimath> hidden since they contain raw text strings
         processedTableHtml = processedTableHtml.replace(
           /<mathml\s+style="display:\s*none;"/gi,
-          '<mathml style="display: inline;"'
+          '<mathml style="display: inline;"',
         );
 
         renderedOutput.innerHTML = processedTableHtml;
@@ -2066,13 +2227,13 @@ class MathPixResultRenderer extends MathPixBaseModule {
             .queueTypeset(renderedOutput)
             .then(() => logDebug("MathJax processed equations in table cells"))
             .catch((error) =>
-              logWarn("Failed to process math in table cells", error)
+              logWarn("Failed to process math in table cells", error),
             );
         } else if (window.MathJax && window.MathJax.typesetPromise) {
           window.MathJax.typesetPromise([renderedOutput])
             .then(() => logDebug("MathJax processed table cells (direct)"))
             .catch((error) =>
-              logWarn("Failed to process math in table cells", error)
+              logWarn("Failed to process math in table cells", error),
             );
         }
 
@@ -2110,7 +2271,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       this.renderContentWithMathJax(
         contentToRender,
         renderType,
-        renderedOutput
+        renderedOutput,
       );
 
       return true;
@@ -2141,7 +2302,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       confidenceBadge.classList.remove(
         "mathpix-confidence-high",
         "mathpix-confidence-medium",
-        "mathpix-confidence-low"
+        "mathpix-confidence-low",
       );
 
       // Apply appropriate confidence class based on percentage
@@ -2159,7 +2320,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       confidenceBadge.classList.add(confidenceClass);
       confidenceBadge.setAttribute(
         "aria-label",
-        `Confidence: ${confidencePercent}% (${confidenceLabel})`
+        `Confidence: ${confidencePercent}% (${confidenceLabel})`,
       );
 
       logDebug("Confidence indicator updated", {
@@ -2181,7 +2342,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
    */
   hideResponsiveComparison() {
     const comparisonContainer = document.getElementById(
-      "mathpix-comparison-container"
+      "mathpix-comparison-container",
     );
 
     if (comparisonContainer) {
@@ -2204,7 +2365,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       renderedOutput.classList.remove(
         "mathjax-rendered",
         "mathjax-fallback",
-        "no-mathjax"
+        "no-mathjax",
       );
     }
 
@@ -2215,7 +2376,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       confidenceBadge.classList.remove(
         "mathpix-confidence-high",
         "mathpix-confidence-medium",
-        "mathpix-confidence-low"
+        "mathpix-confidence-low",
       );
     }
 
@@ -2232,7 +2393,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     // Hide the image preview container since we now have comparison panel
     const previewContainer = document.getElementById(
-      "mathpix-image-preview-container"
+      "mathpix-image-preview-container",
     );
     if (previewContainer) {
       previewContainer.style.display = "none";
@@ -2257,7 +2418,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
   relocateOpenOriginalButton() {
     const originalBtn = document.getElementById("mathpix-open-original-btn");
     const originalImagePanel = document.querySelector(
-      ".mathpix-comparison-panel:first-child"
+      ".mathpix-comparison-panel:first-child",
     );
 
     if (
@@ -2267,14 +2428,15 @@ class MathPixResultRenderer extends MathPixBaseModule {
     ) {
       // Check if button already exists in comparison panel
       let comparisonBtn = document.getElementById(
-        "mathpix-comparison-open-btn"
+        "mathpix-comparison-open-btn",
       );
 
       if (comparisonBtn) {
         // Button already exists - just update its onclick handler and ensure visibility
+        // Use currentUploadedFile directly (synchronous) - getCurrentFile() is async
         comparisonBtn.onclick = () =>
           this.controller.fileHandler.openOriginalInNewWindow(
-            this.controller.fileHandler.getCurrentFile()
+            this.controller.fileHandler.currentUploadedFile,
           );
         comparisonBtn.style.display = "inline-flex";
 
@@ -2287,9 +2449,10 @@ class MathPixResultRenderer extends MathPixBaseModule {
         const newBtn = originalBtn.cloneNode(true);
         newBtn.id = "mathpix-comparison-open-btn"; // Unique ID for comparison panel
         newBtn.style.display = "inline-flex";
+        // Use currentUploadedFile directly (synchronous) - getCurrentFile() is async
         newBtn.onclick = () =>
           this.controller.fileHandler.openOriginalInNewWindow(
-            this.controller.fileHandler.getCurrentFile()
+            this.controller.fileHandler.currentUploadedFile,
           );
 
         // CRITICAL: Remove aria-hidden from button (WCAG 2.2 AA compliance)
@@ -2299,33 +2462,33 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
         // Find the file info div in the comparison panel
         const originalInfo = originalImagePanel.querySelector(
-          "#mathpix-original-info"
+          "#mathpix-original-info",
         );
 
         if (originalInfo) {
           // Insert button after the file info div
           originalInfo.insertAdjacentElement("afterend", newBtn);
           logDebug(
-            "Open original button relocated to comparison panel after file info"
+            "Open original button relocated to comparison panel after file info",
           );
         } else {
           // Fallback - try to find the title and add after it
           const comparisonTitle = originalImagePanel.querySelector(
-            ".mathpix-comparison-title"
+            ".mathpix-comparison-title",
           );
           if (comparisonTitle) {
             comparisonTitle.insertAdjacentElement("afterend", newBtn);
             logDebug(
-              "Open original button relocated to comparison panel after title (fallback)"
+              "Open original button relocated to comparison panel after title (fallback)",
             );
           } else {
             // Final fallback - add to beginning of panel
             originalImagePanel.insertBefore(
               newBtn,
-              originalImagePanel.firstChild
+              originalImagePanel.firstChild,
             );
             logDebug(
-              "Open original button added to comparison panel (final fallback)"
+              "Open original button added to comparison panel (final fallback)",
             );
           }
         }
@@ -2394,7 +2557,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       targetElement.classList.remove(
         "mathjax-rendered",
         "mathjax-fallback",
-        "no-mathjax"
+        "no-mathjax",
       );
 
       // Ensure the element is visible and in the DOM before rendering
@@ -2431,9 +2594,8 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
         // Render using MathJax Manager queue system
         try {
-          const renderSuccess = await this.renderWithMathJaxManager(
-            targetElement
-          );
+          const renderSuccess =
+            await this.renderWithMathJaxManager(targetElement);
 
           if (renderSuccess) {
             logInfo("✅ MathJax rendering completed successfully", {
@@ -2450,7 +2612,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
             // Verify MathJax actually processed the content
             const hasMathJaxElements = targetElement.querySelector(
-              ".MathJax, mjx-container, .MathJax_Display, mjx-math"
+              ".MathJax, mjx-container, .MathJax_Display, mjx-math",
             );
 
             if (hasMathJaxElements) {
@@ -2460,14 +2622,14 @@ class MathPixResultRenderer extends MathPixBaseModule {
               });
             } else {
               logWarn(
-                "⚠️ MathJax completed but no MathJax elements found - trying alternatives"
+                "⚠️ MathJax completed but no MathJax elements found - trying alternatives",
               );
 
               // Try alternative rendering approach
               await this.tryAlternativeMathJaxRendering(
                 content,
                 type,
-                targetElement
+                targetElement,
               );
             }
           } else {
@@ -2488,6 +2650,21 @@ class MathPixResultRenderer extends MathPixBaseModule {
             targetElement.innerHTML = `<pre class="math-fallback">${content}</pre>`;
           }
           targetElement.classList.add("mathjax-fallback");
+
+          // Register for MathJax recovery
+          this.pendingMathJaxRender = true;
+          this.lastRenderedElement = targetElement;
+
+          // Register element with MathJax Manager for recovery notification
+          if (window.mathJaxManager?.registerPendingElement) {
+            window.mathJaxManager.registerPendingElement(targetElement, {
+              source: "mathpix-result-renderer",
+              reason: "mathjax-rendering-failed",
+              error: error.message,
+              contentType: type,
+            });
+            logInfo("Registered rendered output for MathJax recovery");
+          }
         }
       };
 
@@ -2635,7 +2812,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     await Promise.race([
       window.MathJax.typesetPromise([element]),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Direct rendering timeout")), 10000)
+        setTimeout(() => reject(new Error("Direct rendering timeout")), 10000),
       ),
     ]);
 
@@ -2755,7 +2932,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
               {
                 delimiter: altContent.substring(0, 10) + "...",
                 fullContent: altContent,
-              }
+              },
             );
 
             // Set content and clear previous state
@@ -2764,7 +2941,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
               "mathjax-rendered",
               "mathjax-fallback",
               "mathjax-alternative",
-              "delimiter-failed"
+              "delimiter-failed",
             );
 
             // Clear MathJax state
@@ -2773,9 +2950,8 @@ class MathPixResultRenderer extends MathPixBaseModule {
             }
 
             // Process with MathJax using queue system
-            const renderSuccess = await this.renderWithMathJaxManager(
-              targetElement
-            );
+            const renderSuccess =
+              await this.renderWithMathJaxManager(targetElement);
 
             if (!renderSuccess) {
               throw new Error("Alternative rendering failed");
@@ -2783,7 +2959,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
             // Check if rendering was successful
             const hasMathJaxElements = targetElement.querySelector(
-              ".MathJax, mjx-container, .MathJax_Display, mjx-math"
+              ".MathJax, mjx-container, .MathJax_Display, mjx-math",
             );
 
             if (hasMathJaxElements) {
@@ -2793,16 +2969,16 @@ class MathPixResultRenderer extends MathPixBaseModule {
                   i === 0
                     ? "Display \\[...\\]"
                     : i === 1
-                    ? "Double dollar $$...$$"
-                    : i === 2
-                    ? "Inline \\(...\\)"
-                    : "Single dollar $...$",
+                      ? "Double dollar $$...$$"
+                      : i === 2
+                        ? "Inline \\(...\\)"
+                        : "Single dollar $...$",
                 mathJaxElementType: hasMathJaxElements.tagName,
               });
 
               targetElement.classList.add(
                 "mathjax-rendered",
-                "mathjax-alternative"
+                "mathjax-alternative",
               );
               return true; // Success!
             } else {
@@ -2840,7 +3016,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
         try {
           await window.MathJax.typesetPromise([targetElement]);
           const hasMathJaxElements = targetElement.querySelector(
-            ".MathJax, mjx-container, .MathJax_Display, mjx-math"
+            ".MathJax, mjx-container, .MathJax_Display, mjx-math",
           );
 
           if (hasMathJaxElements) {
@@ -2855,7 +3031,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
       // Method 3: Last resort - show formatted LaTeX source
       logDebug(
-        "All MathJax rendering attempts failed, showing formatted source"
+        "All MathJax rendering attempts failed, showing formatted source",
       );
 
       const formattedContent = content
@@ -2902,7 +3078,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     try {
       // Find all MathJax elements in the target
       const mathJaxElements = targetElement.querySelectorAll(
-        ".MathJax, mjx-container, .MathJax_Display, mjx-math"
+        ".MathJax, mjx-container, .MathJax_Display, mjx-math",
       );
 
       mathJaxElements.forEach((mathElement, index) => {
@@ -2915,7 +3091,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
           // If MathJax set aria-hidden, don't add tabindex to avoid focus conflicts
           // Instead, make the parent container focusable
           const parentContainer = mathElement.closest(
-            ".mathpix-rendered-output"
+            ".mathpix-rendered-output",
           );
           if (parentContainer && !parentContainer.hasAttribute("tabindex")) {
             parentContainer.setAttribute("tabindex", "0");
@@ -2924,7 +3100,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
               "aria-label",
               `Mathematical expression ${
                 index + 1
-              }. Click to zoom or right-click for options.`
+              }. Click to zoom or right-click for options.`,
             );
           }
         } else {
@@ -2940,7 +3116,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
             `Mathematical expression ${index + 1}`;
           mathElement.setAttribute(
             "aria-label",
-            `${mathContent}. Click to zoom or right-click for options.`
+            `${mathContent}. Click to zoom or right-click for options.`,
           );
         }
 
@@ -2958,7 +3134,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       // Add keyboard event handlers for enhanced navigation
       targetElement.addEventListener(
         "keydown",
-        this.handleMathJaxKeyboard.bind(this)
+        this.handleMathJaxKeyboard.bind(this),
       );
 
       logInfo("🎯 MathPix MathJax enhancements applied", {
@@ -2977,7 +3153,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
    */
   handleMathJaxKeyboard(event) {
     const mathElement = event.target.closest(
-      ".MathJax, mjx-container, mjx-math"
+      ".MathJax, mjx-container, mjx-math",
     );
 
     if (!mathElement) return;
@@ -3027,6 +3203,17 @@ class MathPixResultRenderer extends MathPixBaseModule {
    * Clean up result renderer resources
    */
   cleanup() {
+    // Unsubscribe from MathJax recovery events
+    if (this.mathJaxRecoveryUnsubscribe) {
+      this.mathJaxRecoveryUnsubscribe();
+      this.mathJaxRecoveryUnsubscribe = null;
+      logDebug("Unsubscribed from MathJax recovery events");
+    }
+
+    // Reset recovery state
+    this.pendingMathJaxRender = false;
+    this.lastRenderedElement = null;
+
     // Hide comparison panel
     this.hideResponsiveComparison();
 

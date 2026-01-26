@@ -20,13 +20,7 @@
 }
 
 .mmd-view-btn {
-  font-size: 0.85rem;
-}
-
-.mmd-view-btn.active,
-.mmd-view-btn[aria-pressed="true"] {
-  background: white;
-  color: black;
+  font-size: 0.7rem;
 }
 
 .mmd-preview-container {
@@ -54,11 +48,16 @@
 
 /* Override MathPix inline table styles for theme compatibility */
 .mmd-preview-content table,
+.mathpix-rendered-content table,
 .mmd-preview-content .table_tabular,
+.mathpix-rendered-content .table_tabular,
 .mmd-preview-content .inline-tabular,
 .mmd-preview-content .inline-tabular table,
 .mmd-preview-content .inline-tabular td,
-.mmd-preview-content .inline-tabular th {
+.mmd-preview-content .inline-tabular th,
+.mathpix-rendered-content .inline-tabular th,
+.mathpix-rendered-content .inline-tabular table,
+.mathpix-rendered-content .inline-tabular td {
   background: transparent !important;
   background-color: transparent !important;
   color: inherit !important;
@@ -115,19 +114,21 @@
 
 .mmd-view-controls {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
   padding: 0.5rem 0;
   margin-bottom: 0.75rem;
 }
 
 .mmd-view-toggle {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.25rem;
   padding: 0.125rem;
   border-radius: 4px;
 }
-
 .mmd-view-btn.active,
 .mmd-view-btn[aria-pressed="true"] {
   opacity: 1;
@@ -155,11 +156,6 @@
   width: 100%;
 }
 
-/* Future: Split view mode - 50/50 layout */
-.mmd-content-area[data-current-view="split"] {
-  /* flex-direction: row; */
-}
-
 .mmd-content-area[data-current-view="split"] .mmd-code-container,
 .mmd-content-area[data-current-view="split"] .mmd-preview-container {
   flex: 1;
@@ -175,6 +171,11 @@
   display: none;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Ensure hidden attribute is always respected */
+.mmd-view-container[hidden] {
+  display: none !important;
 }
 
 .mmd-view-container.active,
@@ -429,16 +430,17 @@
   .mmd-view-controls {
     flex-direction: column;
     gap: 0.5rem;
-    align-items: flex-start;
+    align-items: stretch;
   }
-
   .mmd-view-toggle {
     width: 100%;
   }
 
   .mmd-view-btn {
-    flex: 1;
+    flex: 0 1 auto;
     justify-content: center;
+    white-space: nowrap;
+    min-height: 2.5rem;
   }
 
   .mmd-view-status {
@@ -460,37 +462,6 @@
   }
 }
 
-@media (max-width: 768px) {
-  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
-    .mmd-code-container,
-  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
-    .mmd-preview-container,
-  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
-    .mmd-pdf-container {
-    max-width: 100%;
-    max-height: 100%;
-    min-height: 100%;
-  }
-  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
-    .mmd-code-container
-    pre,
-  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
-    .mmd-preview-content,
-  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
-    .mmd-pdf-scroll-container {
-    max-height: 100%;
-  }
-  .mmd-content-area[data-current-view="split"] .mmd-code-container pre,
-  .mmd-content-area[data-current-view="split"] .mmd-preview-content {
-    max-height: 100% !important;
-    overflow: auto;
-  }
-  .mmd-content-area[data-current-view="pdf_split"] .mmd-pdf-scroll-container,
-  .mmd-content-area[data-current-view="pdf_split"] .mmd-preview-content {
-    max-height: 100% !important;
-    overflow: auto;
-  }
-}
 /* --------------------------------------------------------------------------
    Skip Links - Mobile navigation between stacked panels
    -------------------------------------------------------------------------- */
@@ -501,29 +472,8 @@
   padding: 0.5rem;
   justify-content: center;
   border-top: 1px solid currentColor;
-  opacity: 0.3;
 }
-.mmd-skip-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  text-decoration: none;
-  color: inherit;
-  border: 1px solid currentColor;
-  border-radius: 0.25rem;
-  transition: opacity 0.15s ease;
-}
-.mmd-skip-link:hover,
-.mmd-skip-link:focus {
-  opacity: 1;
-  text-decoration: none;
-}
-.mmd-skip-link:focus {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
+
 /* Hide PDF skip link by default */
 .mmd-skip-link-pdf {
   display: none;
@@ -562,15 +512,36 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.375rem 0.75rem;
+
   font-size: 0.75rem;
   text-decoration: none;
-  color: inherit;
-  background: transparent;
-  border: 1px solid currentColor;
-  border-radius: 0.25rem;
+
   cursor: pointer;
   transition: opacity 0.15s ease;
+}
+
+/* Override .mmd-skip-link class styling for bypass skip links */
+a#resume-mmd-preview-skip.mmd-skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 6px 0;
+  transform: translateY(-100%);
+  transition: transform 0.2s ease;
+  background-color: Canvas;
+  color: CanvasText;
+  border: 2px solid currentColor;
+}
+
+a#resume-mmd-preview-skip.mmd-skip-link:focus {
+  transform: translateY(0);
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
 }
 .mmd-code-container,
 .mmd-pdf-container {
@@ -580,4 +551,1080 @@
 
 #mmd-code-container pre[class*="language-"] {
   border: 0;
+}
+
+/* Clear Session button hidden - functionality covered by Restore Original */
+#mmd-clear-session-btn {
+  display: none;
+}
+
+/* ==========================================================================
+   COLOURS SECTION
+   All colour-related properties consolidated here for easy theming
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Phase 4.2: PDF Compare - Colours
+   -------------------------------------------------------------------------- */
+
+.mmd-pdf-controls {
+  border-top: 1px solid currentColor;
+  font-size: 0.7rem;
+}
+
+.mmd-pdf-page-input {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: currentColor;
+}
+
+.mmd-pdf-page-input:focus {
+  outline: 2px solid currentColor;
+}
+
+.mmd-pdf-page {
+  box-shadow: 0 2px 8px rgba(128, 128, 128, 0.3);
+}
+
+.mmd-pdf-page-indicator {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+}
+
+/* --------------------------------------------------------------------------
+     Phase 5.1: MMD Editor - Colours
+     -------------------------------------------------------------------------- */
+
+.mmd-editor-textarea {
+  border: 2px solid transparent;
+  background-color: inherit;
+  color: inherit;
+}
+
+.mmd-editor-textarea:focus {
+  border-color: currentColor;
+  box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.2);
+}
+
+.mmd-code-container[data-editing="true"]::before {
+  background-color: rgba(128, 128, 128, 0.2);
+  color: inherit;
+  border: 1px solid currentColor;
+}
+
+/* --------------------------------------------------------------------------
+     Phase 5.2: MMD Editor Persistence - Colours
+     -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+     Phase 5.3: MMD File Operations - Colours
+     -------------------------------------------------------------------------- */
+
+.mmd-upload-label:focus {
+  outline: 2px solid currentColor;
+}
+
+.mmd-upload-label:focus-within {
+  outline: 2px solid currentColor;
+}
+
+/* ==========================================================================
+     LAYOUT & STRUCTURE SECTION
+     ========================================================================== */
+
+/* ==========================================================================
+     Phase 5.1: MMD Editor Styles - Layout & Structure
+     ========================================================================== */
+
+/* --------------------------------------------------------------------------
+     Edit Button Styling
+     -------------------------------------------------------------------------- */
+
+.mmd-edit-btn {
+  margin-left: 0.5rem;
+}
+
+.mmd-edit-btn[aria-pressed="true"] {
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+     Editor Wrapper - Hidden textarea container
+     -------------------------------------------------------------------------- */
+
+.mmd-editor-wrapper {
+  display: none;
+  flex: 1;
+  min-height: 300px;
+  position: relative;
+}
+
+/* Show wrapper when editing */
+.mmd-code-container[data-editing="true"] .mmd-editor-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide code block when editing */
+.mmd-code-container[data-editing="true"] .code-block-wrapper {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+     Editor Textarea
+     -------------------------------------------------------------------------- */
+
+.mmd-editor-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 600px;
+  padding: 1rem;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  border-radius: 4px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mmd-editor-textarea:focus {
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+     Edit Mode Visual Indicator
+     -------------------------------------------------------------------------- */
+
+.mmd-code-container[data-editing="true"] {
+  position: relative;
+}
+
+/* Base styles for Editing badge */
+.mmd-code-container[data-editing="true"]::before {
+  content: "Editing";
+  position: absolute;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Code view positioning */
+.mmd-content-area[data-current-view="code"]
+  .mmd-code-container[data-editing="true"]::before {
+  top: 0.5rem;
+  right: 2.5rem;
+}
+
+/* Split view positioning */
+.mmd-content-area[data-current-view="split"]
+  .mmd-code-container[data-editing="true"]::before {
+  top: 2.5rem;
+  right: 1.5rem;
+}
+
+/* --------------------------------------------------------------------------
+     Edit Mode in Split View
+     -------------------------------------------------------------------------- */
+
+@media (min-width: 769px) {
+  .mmd-content-area[data-current-view="split"],
+  .mmd-code-container[data-editing="true"],
+  .mmd-editor-wrapper {
+    max-height: calc(60vh - 2rem);
+    overflow: hidden;
+  }
+
+  .mmd-content-area[data-current-view="split"] .mmd-editor-textarea {
+    max-height: calc(60vh - 3rem);
+    overflow: auto;
+  }
+}
+
+/* Scroll margin for anchor navigation */
+.mmd-view-container {
+  scroll-margin-top: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+     Reduced Motion Support
+     -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .mmd-editor-textarea {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+     Print Styles - Hide Editor in Print
+     -------------------------------------------------------------------------- */
+
+@media print {
+  .mmd-editor-wrapper,
+  .mmd-edit-btn,
+  .mmd-code-container[data-editing="true"]::before {
+    display: none !important;
+  }
+
+  /* Show code block in print even if editing */
+  .mmd-code-container[data-editing="true"] .code-block-wrapper {
+    display: block !important;
+  }
+}
+
+/* ==========================================================================
+     Phase 5.2: MMD Editor Persistence & Undo - Layout & Structure
+     ========================================================================== */
+
+/* --------------------------------------------------------------------------
+     Session Controls Container
+     -------------------------------------------------------------------------- */
+
+.mmd-session-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.75rem;
+  padding-left: 0.75rem;
+  border-left-width: 1px;
+  border-left-style: solid;
+  opacity: 0.9;
+}
+
+.mmd-session-controls[hidden] {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+     Session Status Indicator
+     -------------------------------------------------------------------------- */
+
+.mmd-session-status {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  min-width: 4rem;
+  text-align: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* --------------------------------------------------------------------------
+     Session Toolbar Buttons
+     -------------------------------------------------------------------------- */
+
+.mmd-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+     Session Restore Banner (shown on page load if session exists)
+     -------------------------------------------------------------------------- */
+
+.mmd-session-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.mmd-session-banner[hidden] {
+  display: none;
+}
+
+.mmd-session-banner-text {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mmd-session-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+     Undo Stack Counter (optional visual indicator)
+     -------------------------------------------------------------------------- */
+
+.mmd-undo-counter {
+  font-size: 0.65rem;
+  opacity: 0.7;
+  margin-left: 0.25rem;
+}
+
+/* --------------------------------------------------------------------------
+     Mobile Responsive
+     -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .mmd-session-controls {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
+  }
+
+  .mmd-toolbar-btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .mmd-session-status {
+    font-size: 0.7rem;
+    min-width: 3.5rem;
+  }
+
+  .mmd-session-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mmd-session-banner-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* --------------------------------------------------------------------------
+     Reduced Motion Support
+     -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .mmd-session-status,
+  .mmd-toolbar-btn {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+     Print Styles - Hide Session Controls
+     -------------------------------------------------------------------------- */
+
+@media print {
+  .mmd-session-controls,
+  .mmd-session-banner {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+     Phase 5.3: MMD File Operations - Layout & Structure
+     ========================================================================== */
+
+/* --------------------------------------------------------------------------
+     File Controls Container
+     -------------------------------------------------------------------------- */
+
+.mmd-file-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.75rem;
+  padding-left: 0.75rem;
+}
+
+.mmd-file-controls[hidden] {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+     Upload Label Styled as Button
+     -------------------------------------------------------------------------- */
+
+.mmd-upload-label {
+  cursor: pointer;
+  position: relative;
+}
+
+.mmd-upload-label:focus {
+  outline-offset: 2px;
+}
+
+.mmd-upload-label:focus-within {
+  outline-offset: 2px;
+}
+
+/* Ensure hidden file input doesn't affect layout */
+.mmd-upload-label input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+     Mobile Responsive
+     -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .mmd-file-controls {
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
+    gap: 0.35rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+     Print Styles - Hide File Controls
+     -------------------------------------------------------------------------- */
+
+@media print {
+  .mmd-file-controls {
+    display: none !important;
+  }
+}
+/* ==========================================================================
+     Phase 5.3 Update: Editor Toolbar - Second Row Layout
+     ========================================================================== */
+
+/* --------------------------------------------------------------------------
+     Editor Toolbar Container (Row 2)
+     -------------------------------------------------------------------------- */
+
+.mmd-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid currentcolor;
+}
+
+.mmd-editor-toolbar[hidden] {
+  display: none;
+}
+
+/* Status indicator - pushed to far right of toolbar */
+.mmd-editor-toolbar > .mmd-session-status {
+  margin-left: auto;
+  padding-left: 0.75rem;
+}
+
+.mmd-session-status {
+  border: 1px solid currentcolor;
+}
+
+/* --------------------------------------------------------------------------
+       Session Controls - Remove left border when in toolbar
+       -------------------------------------------------------------------------- */
+
+.mmd-editor-toolbar .mmd-session-controls {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: none;
+}
+
+/* --------------------------------------------------------------------------
+       File Controls - Adjust separator in toolbar layout
+       -------------------------------------------------------------------------- */
+
+.mmd-editor-toolbar .mmd-file-controls {
+  margin-left: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+       Mobile Responsive - Stack controls vertically
+       -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .mmd-editor-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .mmd-editor-toolbar .mmd-session-controls {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .mmd-editor-toolbar .mmd-file-controls {
+    width: 100%;
+    margin-left: 0;
+    padding-left: 0;
+    padding-top: 0.5rem;
+    border-left: none;
+    border-top: 1px solid currentColor;
+  }
+}
+
+/* --------------------------------------------------------------------------
+       Small Mobile - Further adjustments
+       -------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .mmd-editor-toolbar .mmd-toolbar-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .mmd-editor-toolbar .mmd-session-controls,
+  .mmd-editor-toolbar .mmd-file-controls {
+    gap: 0.35rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+       Print Styles - Hide Editor Toolbar
+       -------------------------------------------------------------------------- */
+
+@media print {
+  .mmd-editor-toolbar {
+    display: none !important;
+  }
+}
+/* ==========================================================================
+   Phase 5.3 Update: Toolbar Button Grouping
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Toolbar Groups - Visual separation between action types
+   -------------------------------------------------------------------------- */
+
+.mmd-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Add separator between groups */
+.mmd-toolbar-group + .mmd-toolbar-group {
+  margin-left: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+/* Status indicator - pushed to far right */
+.mmd-session-controls .mmd-session-status {
+  margin-left: auto;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+   View Status - Position in row 1
+   -------------------------------------------------------------------------- */
+
+.mmd-view-toggle .mmd-view-status {
+  margin-left: auto;
+  padding-left: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Mobile Responsive - Stack groups
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .mmd-toolbar-group + .mmd-toolbar-group {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  /* Hide status badge on mobile - button states communicate session status */
+  .mmd-editor-toolbar > .mmd-session-status {
+    display: none;
+  }
+}
+/* ==========================================================================
+   Phase 4.2: Split View PDF Toggle
+   ========================================================================== */
+
+.mmd-split-pdf-toggle[hidden] {
+  display: none;
+}
+
+.mmd-split-pdf-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .mmd-split-pdf-toggle {
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+}
+@media (max-width: 768px) {
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-code-container,
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-preview-container,
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-pdf-container {
+    max-width: 100%;
+    max-height: 100%;
+    min-height: 100%;
+  }
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-code-container
+    pre,
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-preview-content,
+  .mmd-content-area[data-current-view="split"][data-show-pdf="true"]
+    .mmd-pdf-scroll-container {
+    max-height: 100%;
+  }
+  .mmd-content-area[data-current-view="split"] .mmd-code-container pre,
+  .mmd-content-area[data-current-view="split"] .mmd-preview-content {
+    max-height: 100% !important;
+    overflow: auto;
+  }
+  .mmd-content-area[data-current-view="pdf_split"] .mmd-pdf-scroll-container,
+  .mmd-content-area[data-current-view="pdf_split"] .mmd-preview-content {
+    max-height: 100% !important;
+    overflow: auto;
+  }
+}
+
+.mmd-upload-label {
+  border-radius: 4px;
+  vertical-align: middle;
+  padding: 0.4rem 1rem;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+/* ===========================================
+   LAYOUT & STRUCTURE
+   =========================================== */
+
+.mmd-split-pdf-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+  border-radius: 4px;
+  vertical-align: middle;
+  padding: 0.4rem 1rem;
+  text-align: center;
+  margin: 0.5rem 0.3rem 0.5rem 0;
+}
+
+/* ==========================================================================
+   Phase 5.4: Fullscreen Edit Mode
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Fullscreen Toggle Button (in view toggle row)
+   -------------------------------------------------------------------------- */
+
+.mmd-fullscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+
+  transition: opacity 0.15s ease;
+}
+
+/* --------------------------------------------------------------------------
+   Fullscreen Button Visibility - Show Only When Editing
+   -------------------------------------------------------------------------- */
+
+/* Hide fullscreen button by default */
+#mmd-fullscreen-btn {
+  display: none;
+}
+
+/* Show fullscreen button when edit button is pressed (editing mode active) */
+#mmd-edit-btn[aria-pressed="true"] ~ #mmd-fullscreen-btn {
+  display: inline-flex;
+}
+
+/* --------------------------------------------------------------------------
+   MMD Code Container - Fullscreen Mode
+   -------------------------------------------------------------------------- */
+
+.mmd-code-container.fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important; /* Override the 70vh from mathpix-resume.css */
+  min-height: 100vh !important;
+  z-index: 9999 !important;
+  max-width: none !important;
+  min-width: 100vw !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+
+  overflow: hidden !important;
+  /* Override any split view constraints */
+  flex: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+/* Override Code view max-height constraint when fullscreen */
+.mmd-content-area[data-current-view="code"] #mmd-code-container.fullscreen {
+  max-height: 100vh !important;
+  height: 100vh !important;
+}
+/* --------------------------------------------------------------------------
+   Fullscreen Header Bar
+   -------------------------------------------------------------------------- */
+
+.mmd-fullscreen-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid currentColor;
+  flex-shrink: 0;
+  min-height: 60px;
+  box-sizing: border-box;
+}
+
+.mmd-code-container.fullscreen .mmd-fullscreen-header {
+  display: flex;
+}
+
+.mmd-fullscreen-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Fullscreen header button styling */
+.mmd-fullscreen-header .mmd-fullscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  font-size: 0.7rem;
+}
+
+/* --------------------------------------------------------------------------
+   Fullscreen Content Area
+   -------------------------------------------------------------------------- */
+
+.mmd-code-container.fullscreen .mathpix-format-content {
+  flex: 1 1 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: calc(100vh - 60px) !important; /* Viewport minus header */
+  max-height: calc(100vh - 60px) !important;
+  overflow: hidden !important;
+}
+
+.mmd-code-container.fullscreen .mmd-editor-wrapper {
+  flex: 1 1 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.mmd-code-container.fullscreen .mmd-editor-textarea {
+  flex: 1 1 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 1.5rem !important;
+  font-family: "Consolas", "Monaco", "Courier New", monospace !important;
+  font-size: 1rem !important;
+  line-height: 1.6 !important;
+  resize: none !important;
+  border: none !important;
+
+  box-sizing: border-box !important;
+  overflow: auto !important; /* Textarea handles its own scrolling */
+}
+
+.mmd-code-container.fullscreen .mmd-editor-textarea:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.mmd-code-container.fullscreen .code-block-wrapper {
+  display: none !important; /* Hide code display in fullscreen edit mode */
+}
+
+/* --------------------------------------------------------------------------
+   Prevent Page Scroll When Fullscreen
+   -------------------------------------------------------------------------- */
+
+/* Modern browsers with :has() support */
+html:has(.mmd-code-container.fullscreen),
+body:has(.mmd-code-container.fullscreen) {
+  overflow: hidden !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+/* Fallback for browsers that don't support :has() */
+html.mmd-fullscreen-active,
+body.mmd-fullscreen-active {
+  overflow: hidden !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+/* --------------------------------------------------------------------------
+   Hide Elements in Fullscreen
+   -------------------------------------------------------------------------- */
+
+.mmd-code-container.fullscreen .mmd-skip-links {
+  display: none;
+}
+
+.mmd-code-container.fullscreen .mmd-panel-heading {
+  display: none;
+}
+
+/* Hide the "Editing" badge in fullscreen mode */
+.mmd-code-container.fullscreen[data-editing="true"]::before {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced Motion Support
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .mmd-fullscreen-btn {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Print Styles - Hide Fullscreen Elements
+   -------------------------------------------------------------------------- */
+
+@media print {
+  .mmd-fullscreen-btn,
+  .mmd-fullscreen-header,
+  .resume-fullscreen-header {
+    display: none !important;
+  }
+
+  .mmd-code-container.fullscreen,
+  .resume-mmd-code-container.fullscreen {
+    position: static;
+    max-width: 100%;
+  }
+}
+/* --------------------------------------------------------------------------
+   Hide External UI Elements When Fullscreen
+   -------------------------------------------------------------------------- */
+
+/* Hide any editing status badges/indicators that float outside the container */
+.mmd-code-container.fullscreen ~ .mmd-editing-status,
+.mmd-code-container.fullscreen ~ [class*="editing"],
+body:has(.mmd-code-container.fullscreen) .mmd-editing-indicator,
+body:has(.mmd-code-container.fullscreen) #mmd-editing-status {
+  display: none !important;
+}
+/* --------------------------------------------------------------------------
+   Fullscreen Override - High Specificity Rules
+   These MUST come last and use high specificity to override other rules
+   -------------------------------------------------------------------------- */
+
+/* Override the 60vh media query constraint on editor wrapper */
+@media (min-width: 769px) {
+  .mmd-code-container.fullscreen .mmd-editor-wrapper,
+  .mmd-code-container.fullscreen[data-editing="true"] .mmd-editor-wrapper,
+  #mmd-code-container.fullscreen .mmd-editor-wrapper,
+  #mmd-code-container.fullscreen[data-editing="true"] .mmd-editor-wrapper {
+    max-height: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .mmd-code-container.fullscreen .mmd-editor-textarea,
+  .mmd-code-container.fullscreen[data-editing="true"] .mmd-editor-textarea,
+  #mmd-code-container.fullscreen .mmd-editor-textarea,
+  #mmd-code-container.fullscreen[data-editing="true"] .mmd-editor-textarea {
+    max-height: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+}
+
+/* Ensure formatContent fills available space in fullscreen */
+#mmd-code-container.fullscreen .mathpix-format-content,
+.mmd-code-container.fullscreen .mathpix-format-content {
+  height: calc(100vh - 60px) !important;
+  max-height: calc(100vh - 60px) !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+/* Ensure editor wrapper and textarea fill formatContent */
+#mmd-code-container.fullscreen .mmd-editor-wrapper,
+.mmd-code-container.fullscreen .mmd-editor-wrapper {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#mmd-code-container.fullscreen .mmd-editor-textarea,
+.mmd-code-container.fullscreen .mmd-editor-textarea {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: auto !important;
+  resize: none !important;
+}
+/* ==========================================================================
+   BYPASS BLOCK SKIP LINKS (WCAG 2.4.1)
+   These are hidden-until-focused skip links for bypassing preview content.
+   Different from .mmd-skip-link which is used for mobile section navigation.
+   ========================================================================== */
+
+/* Position context for bypass skip links */
+#convert-preview-rendered,
+#mmd-preview-container,
+#resume-mmd-preview-container {
+  position: relative;
+}
+
+/* Bypass skip link base styles - visually hidden until focused */
+#mmd-preview-skip,
+#convert-preview-skip,
+#resume-mmd-preview-skip {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+
+  /* Styles for when visible (on focus) */
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Visible when focused */
+#mmd-preview-skip:focus,
+#convert-preview-skip:focus,
+#resume-mmd-preview-skip:focus {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  width: auto;
+  height: auto;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  border-radius: 0 0 6px 0;
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+
+  /* Theme-adaptive colours */
+  background-color: Canvas;
+  color: CanvasText;
+  border: 2px solid currentColor;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  #mmd-preview-skip,
+  #convert-preview-skip,
+  #resume-mmd-preview-skip {
+    transition: none;
+  }
+}
+
+/* Print - hide bypass skip links */
+@media print {
+  #mmd-preview-skip,
+  #convert-preview-skip,
+  #resume-mmd-preview-skip {
+    display: none !important;
+  }
+}
+/* --------------------------------------------------------------------------
+     Mobile Responsive
+     -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .mmd-editor-textarea {
+    min-height: 200px;
+    font-size: 0.85rem;
+  }
+
+  .mmd-content-area[data-current-view="split"] .mmd-editor-textarea {
+    max-height: calc(35vh - 2rem);
+  }
+}
+#mmd-file-controls .mmd-toolbar-btn,
+#mmd-file-controls #mmd-upload-label {
+  padding: 0.5rem 1rem 0.5rem 1rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+/* ==========================================================================
+   SVG Icon Styles
+   Base styles for inline SVG icons used in buttons and controls
+   ========================================================================== */
+
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
+
+/* Ensure icons in buttons align properly */
+button .icon,
+.mmd-view-btn .icon,
+.mmd-toolbar-btn .icon {
+  margin-right: 0.25em;
+}
+
+/* Icon-only buttons (no margin needed) */
+button:has(.icon:only-child) .icon,
+.mmd-fullscreen-btn .icon {
+  margin-right: 0;
 }

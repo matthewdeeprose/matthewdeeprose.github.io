@@ -655,6 +655,8 @@ const MATHPIX_CONFIG = {
       SOURCE: "source",
       RESULTS: "results",
       DATA: "data",
+      EDITS: "edits",
+      CONVERTED: "converted",
     },
 
     // Progress messages (British spelling)
@@ -945,6 +947,217 @@ const MATHPIX_CONFIG = {
       LOADING: "loading",
       READY: "ready",
       ERROR: "error",
+    },
+  },
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {Object}
+   * @description Phase 6.1: Convert API configuration for MMD to document format conversion
+   *
+   * The Convert API enables conversion of MMD (Mathpix Markdown) content to various
+   * document formats including DOCX, PDF, LaTeX, and PowerPoint. This configuration
+   * provides endpoint settings, polling parameters, format metadata, and default options.
+   *
+   * Key Features:
+   * - Asynchronous conversion with status polling
+   * - Seven output formats: md, docx, tex.zip, html, pdf, latex.pdf, pptx
+   * - British English defaults for document generation
+   * - Configurable polling intervals and timeout limits
+   * - Format-specific customisation options
+   *
+   * @property {string} ENDPOINT - Convert API endpoint URL
+   * @property {number} POLL_INTERVAL_MS - Milliseconds between status checks
+   * @property {number} MAX_POLL_ATTEMPTS - Maximum polling attempts before timeout
+   * @property {number} MAX_MMD_SIZE_BYTES - Maximum MMD content size (10MB)
+   * @property {Object} FORMATS - Format metadata with labels, extensions, and MIME types
+   * @property {Object} DEFAULT_OPTIONS - Format-specific default conversion options
+   * @property {Object} MESSAGES - User-facing messages with British spelling
+   *
+   * @example
+   * // Start a conversion
+   * const client = getMathPixConvertClient();
+   * const result = await client.convertAndDownload(mmdContent, ['docx', 'pdf']);
+   *
+   * @accessibility All generated documents maintain semantic structure for accessibility
+   * @since 6.1.0
+   */
+  CONVERT: {
+    /**
+     * Convert API endpoint
+     * @type {string}
+     * @description Uses the main MathPix API endpoint (not EU-specific as Convert API
+     * may not be available in all regions - documentation does not specify regional endpoints)
+     */
+    ENDPOINT: "https://api.mathpix.com/v3/converter",
+
+    /**
+     * Polling configuration
+     * @type {number}
+     * @description Interval between status checks when waiting for conversion completion
+     */
+    POLL_INTERVAL_MS: 2000, // 2 seconds between status checks
+
+    /**
+     * Maximum polling attempts
+     * @type {number}
+     * @description 60 attempts × 2 seconds = 2 minutes maximum wait time
+     */
+    MAX_POLL_ATTEMPTS: 60,
+
+    /**
+     * Maximum MMD content size
+     * @type {number}
+     * @description API limit is 10MB for the JSON request body
+     */
+    MAX_MMD_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
+
+    /**
+     * Available conversion formats with metadata
+     * @type {Object}
+     * @description Each format includes label, extension, binary flag, MIME type, and priority
+     *
+     * Priority values determine display order in UI (lower = higher priority):
+     * 1 = DOCX (most commonly requested)
+     * 2 = PDF (standard document format)
+     * 3 = LaTeX ZIP (academic use)
+     * 4 = LaTeX PDF (academic PDF)
+     * 5 = HTML (web use)
+     * 6 = Markdown (plain text)
+     * 7 = PowerPoint (presentations)
+     */
+    FORMATS: {
+      docx: {
+        label: "Word Document",
+        extension: ".docx",
+        binary: true,
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        priority: 1,
+        description: "Microsoft Word format with full formatting",
+      },
+      pdf: {
+        label: "PDF",
+        extension: ".pdf",
+        binary: true,
+        mimeType: "application/pdf",
+        priority: 2,
+        description: "PDF rendered from HTML",
+      },
+      "tex.zip": {
+        label: "LaTeX (ZIP)",
+        extension: ".tex.zip",
+        binary: true,
+        mimeType: "application/zip",
+        priority: 3,
+        description: "LaTeX source files in ZIP archive",
+      },
+      "latex.pdf": {
+        label: "LaTeX PDF",
+        extension: ".pdf",
+        binary: true,
+        mimeType: "application/pdf",
+        priority: 4,
+        description: "PDF rendered via LaTeX (higher quality maths)",
+      },
+      html: {
+        label: "HTML",
+        extension: ".html",
+        binary: false,
+        mimeType: "text/html",
+        priority: 5,
+        description: "Web page with MathML rendering",
+      },
+      md: {
+        label: "Markdown",
+        extension: ".md",
+        binary: false,
+        mimeType: "text/markdown",
+        priority: 6,
+        description: "Standard Markdown format",
+      },
+      pptx: {
+        label: "PowerPoint",
+        extension: ".pptx",
+        binary: true,
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        priority: 7,
+        description: "Microsoft PowerPoint format",
+      },
+      "mmd.zip": {
+        label: "MMD (ZIP)",
+        extension: ".mmd.zip",
+        binary: true,
+        mimeType: "application/zip",
+        priority: 8,
+        description: "MMD source files in ZIP archive",
+      },
+      "md.zip": {
+        label: "Markdown (ZIP)",
+        extension: ".md.zip",
+        binary: true,
+        mimeType: "application/zip",
+        priority: 9,
+        description: "Markdown files in ZIP archive",
+      },
+      "html.zip": {
+        label: "HTML (ZIP)",
+        extension: ".html.zip",
+        binary: true,
+        mimeType: "application/zip",
+        priority: 10,
+        description: "HTML files in ZIP archive",
+      },
+    },
+
+    /**
+     * Default conversion options per format
+     * @type {Object}
+     * @description British English defaults for document generation
+     *
+     * DOCX options:
+     * - font: Georgia (clear, readable serif font)
+     * - fontSize: 22 (readable body text size)
+     * - language: English (UK) (British spelling)
+     * - orientation: portrait (standard document layout)
+     *
+     * PDF options:
+     * - fontSize: 14 (clear reading size)
+     * - margin: 70 (generous margins for readability)
+     */
+    DEFAULT_OPTIONS: {
+      docx: {
+        font: "Georgia",
+        fontSize: "22",
+        language: "English (UK)",
+        orientation: "portrait",
+      },
+      pdf: {
+        fontSize: "14",
+        margin: "70",
+      },
+    },
+
+    /**
+     * User-facing messages with British spelling
+     * @type {Object}
+     * @description Status and progress messages for the conversion workflow
+     */
+    MESSAGES: {
+      STARTING: "Starting conversion...",
+      POLLING: "Converting: {format}...",
+      POLLING_PROGRESS: "Converting ({completed}/{total} formats complete)...",
+      COMPLETED: "Conversion complete!",
+      ERROR: "Conversion failed: {error}",
+      TIMEOUT: "Conversion timed out after {seconds} seconds",
+      DOWNLOADING: "Downloading {format}...",
+      DOWNLOAD_COMPLETE: "{format} ready for download",
+      VALIDATION_ERROR: "Invalid MMD content",
+      SIZE_ERROR: "MMD content exceeds 10MB limit",
+      FORMAT_ERROR: "Unsupported format: {format}",
+      PARTIAL_SUCCESS: "{completed} of {total} formats converted successfully",
+      CANCELLED: "Conversion cancelled",
     },
   },
 

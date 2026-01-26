@@ -74,6 +74,37 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+// =============================================================================
+// SVG ICON REGISTRY
+// =============================================================================
+/**
+ * Centralised SVG icon definitions for consistent UI elements
+ * All icons use currentColor to inherit text colour from parent
+ * @constant {Object}
+ */
+const ICONS = {
+  checkboxChecked:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><rect height="14" rx="2" width="14" x=".5" y=".5"/><path d="m4.5 7.5 2 2 4-4"/></g></svg>',
+  checkboxUnchecked:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><rect height="14" rx="2" width="14" x=".5" y=".5"/></g></svg>',
+  refresh:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)"><path d="m1.5 5.5c1.37786776-2.41169541 4.02354835-4 7-4 4.418278 0 8 3.581722 8 8m-1 4c-1.4081018 2.2866288-4.1175492 4-7 4-4.418278 0-8-3.581722-8-8"/><path d="m6.5 5.5h-5v-5"/><path d="m10.5 13.5h5v5"/></g></svg>',
+};
+
+/**
+ * Get an SVG icon by name with accessibility attributes
+ * @param {string} name - Icon name from ICONS registry
+ * @returns {string} SVG HTML string with aria-hidden and icon class
+ */
+function getIcon(name) {
+  const svg = ICONS[name];
+  if (!svg) {
+    logWarn(`Unknown icon requested: ${name}`);
+    return "";
+  }
+  return svg.replace("<svg", '<svg aria-hidden="true" class="icon"');
+}
+
 import MathPixAPIClient from "../core/mathpix-api-client.js";
 import MATHPIX_CONFIG, {
   getEndpointConfig,
@@ -273,6 +304,25 @@ class MathPixController {
       return this.initMMDPreview();
     }
     return this.mmdPreview;
+  }
+
+  /**
+   * Notify that MMD content is now available for editing (Phase 5.1)
+   * Called by PDF result renderer after populating MMD content in the code element.
+   * Shows the edit button if the current view allows editing.
+   * @returns {void}
+   * @since 5.1.0
+   */
+  notifyMMDContentAvailable() {
+    const editor = window.getMathPixMMDEditor?.();
+    if (editor) {
+      editor.showEditButton();
+      logDebug(
+        "MMD Editor notified of content availability - edit button shown"
+      );
+    } else {
+      logDebug("MMD Editor not available - edit button not shown");
+    }
   }
 
   /**
@@ -1246,7 +1296,9 @@ class MathPixController {
 
     // Update icon
     if (toggleIcon) {
-      toggleIcon.textContent = newState ? "☑" : "☐";
+      toggleIcon.innerHTML = newState
+        ? getIcon("checkboxChecked")
+        : getIcon("checkboxUnchecked");
     }
 
     // Update button text
@@ -1960,9 +2012,7 @@ class MathPixController {
     }
 
     // Configure button
-    confirmBtn.innerHTML = `
-    <span aria-hidden="true">🔄</span> Process with MathPix
-  `;
+    confirmBtn.innerHTML = `${getIcon("refresh")} Process with MathPix`;
     confirmBtn.setAttribute(
       "aria-label",
       `Process ${file.name} with MathPix OCR`
@@ -2855,11 +2905,56 @@ class MathPixController {
             logError("Camera system initialisation error on mode change", err);
           });
       }
+    } else if (newMode === "convert") {
+      // Initialize convert mode system (Phase 6.3)
+      const convertMode = window.getMathPixConvertMode?.();
+      if (convertMode) {
+        convertMode.init();
+        convertMode.show();
+        logInfo("Convert mode activated");
+      } else {
+        logWarn("Convert mode controller not available");
+      }
+      // Stop camera if it was active
+      if (this.cameraCapture && this.cameraCapture.isCameraActive) {
+        this.cameraCapture.stopCamera();
+        logInfo("Camera stopped when switching to convert mode");
+      }
     } else if (newMode === "upload") {
       // Stop camera if returning to upload mode
       if (this.cameraCapture && this.cameraCapture.isCameraActive) {
         this.cameraCapture.stopCamera();
         logInfo("Camera stopped when switching to upload mode");
+      }
+      // Hide convert mode if switching away from it
+      const convertMode = window.getMathPixConvertMode?.();
+      if (convertMode) {
+        convertMode.hide();
+      }
+      // Hide resume mode if switching away from it
+      const restorer = window.getMathPixSessionRestorer?.();
+      if (restorer) {
+        restorer.hide();
+      }
+    } else if (newMode === "resume") {
+      // Phase 8.2: Resume session mode
+      // Stop camera if it was active
+      if (this.cameraCapture && this.cameraCapture.isCameraActive) {
+        this.cameraCapture.stopCamera();
+        logInfo("Camera stopped when switching to resume mode");
+      }
+      // Hide convert mode
+      const convertMode = window.getMathPixConvertMode?.();
+      if (convertMode) {
+        convertMode.hide();
+      }
+      // Show session restorer
+      const restorer = window.getMathPixSessionRestorer?.();
+      if (restorer) {
+        restorer.show();
+        logInfo("Session restorer shown for resume mode");
+      } else {
+        logWarn("Session restorer not available");
       }
     }
   }
@@ -2954,71 +3049,21 @@ export function getMathPixController() {
 // =============================================================================
 
 /**
- * @function mathPixEnhanceMathJax
- * @description Global function for applying MathPix enhancements to MathJax elements
+ * MathJax enhancement is now handled by boilerplate.html's comprehensive implementation.
+ * That version includes:
+ * - enhanceSingleMathElement() for individual math element enhancement
+ * - Proper tabindex and ARIA label management
+ * - Keyboard focus support with visible indicators
+ * - Theme-aware styling (light/dark mode)
+ * - MutationObserver for dynamic content
+ * - WCAG 4.1.2 compliance for aria-hidden focus handling
  *
- * Adds interactive features, accessibility support, and visual enhancements to
- * MathJax-rendered mathematical content throughout the application. Automatically
- * called after MathJax rendering completes.
- *
- * Features added:
- * - Hover effects with visual feedback
- * - Keyboard focus support with visible focus indicators
- * - Enhanced accessibility for screen readers
- * - Theme-aware styling (light/dark mode support)
- * - Click-to-zoom functionality
- * - Right-click context menu access
- *
- * @global
- * @returns {void}
- *
- * @example
- * // Called automatically by MathJax system
- * window.mathPixEnhanceMathJax();
- *
- * @accessibility Adds tabindex, ARIA labels, and keyboard interaction to MathJax elements
- * @since 1.0.0
+ * This module delegates to that implementation rather than overwriting it.
+ * @see boilerplate.html - window.mathPixEnhanceMathJax and enhanceSingleMathElement
+ * @since 1.0.0 - Refactored to use centralised implementation
  */
-window.mathPixEnhanceMathJax = function () {
-  console.log("🎯 Applying global MathPix MathJax enhancements...");
-
-  // Add global styles for enhanced MathJax
-  const style = document.createElement("style");
-  style.textContent = `
-    /* MathPix MathJax Enhancements */
-    mjx-container[data-mathpix-enhanced] {
-      transition: transform 0.2s ease;
-      border-radius: 4px;
-      padding: 2px 4px;
-    }
-    
-    mjx-container[data-mathpix-enhanced]:hover {
-      background-color: rgba(0, 92, 132, 0.05);
-      transform: scale(1.02);
-    }
-    
-    mjx-container[data-mathpix-enhanced]:focus {
-      outline: 2px solid #005c84;
-      outline-offset: 2px;
-      background-color: rgba(0, 92, 132, 0.1);
-    }
-    
-    /* Dark theme support */
-    @media (prefers-color-scheme: dark) {
-      mjx-container[data-mathpix-enhanced]:hover {
-        background-color: rgba(255, 255, 244, 0.05);
-      }
-      
-      mjx-container[data-mathpix-enhanced]:focus {
-        outline-color: #00a8cc;
-        background-color: rgba(255, 255, 244, 0.1);
-      }
-    }
-  `;
-
-  document.head.appendChild(style);
-  console.log("✅ Global MathPix MathJax enhancements applied");
-};
+// NOTE: window.mathPixEnhanceMathJax is defined in boilerplate.html
+// Do not redefine here to avoid overwriting the complete implementation
 
 // =============================================================================
 // GLOBAL DEBUG PANEL FUNCTIONS (PHASE 3)

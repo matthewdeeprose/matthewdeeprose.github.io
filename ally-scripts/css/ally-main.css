@@ -1,0 +1,3386 @@
+/**
+ * Ally Accessibility Reporting Tool - Main Stylesheet
+ * 
+ * WCAG 2.2 AA compliant styling.
+ * 
+ * Sections:
+ * 1. Colour Declarations
+ * 2. Layout and Structure
+ */
+
+/* API Retry Button - shown on ERROR state */
+.ally-api-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  font-size: 0.8rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  margin-top: 0.25rem;
+  align-self: flex-start;
+}
+
+.ally-api-retry-btn[hidden] {
+  display: none;
+}
+
+.ally-debug-status-pending {
+  color: inherit;
+}
+
+/* ========================================================================
+     2. Layout and Structure
+     ======================================================================== */
+
+#ally-reporting-app {
+  max-width: 80vw;
+  margin: 0 auto;
+}
+
+#ally-reporting-app h1 {
+  margin-bottom: 1.5rem;
+}
+
+#ally-reporting-app h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.ally-config-section {
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.ally-config-actions {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+}
+
+.ally-token-group {
+  position: relative;
+}
+
+.ally-token-input-wrapper {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.ally-token-input-wrapper input {
+  flex: 1;
+}
+
+.ally-token-toggle {
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.ally-query-section {
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.ally-endpoint-fieldset {
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ally-endpoint-fieldset legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+}
+
+.ally-endpoint-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ally-endpoint-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+.ally-endpoint-option input {
+  margin-top: 0.2em;
+}
+
+.ally-endpoint-label {
+  font-weight: 600;
+  flex-basis: 100%;
+  margin-left: 1.75rem;
+}
+
+/* Make the label clickable area cover the entire option */
+.ally-endpoint-label::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.ally-endpoint-desc {
+  font-size: 0.875rem;
+  flex-basis: 100%;
+  margin-left: 1.75rem;
+}
+
+.ally-quick-filters {
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ally-quick-filters legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+}
+
+.ally-sort-pagination {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ally-query-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.ally-progress-section {
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.ally-progress-container {
+  margin-bottom: 1rem;
+}
+
+.ally-progress-bar {
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ally-progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  width: 0;
+}
+
+.ally-progress-message {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.ally-results-section {
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.ally-results-summary {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+.ally-results-summary p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.ally-table-container {
+  overflow-x: auto;
+}
+
+.ally-table-container pre {
+  border-radius: 4px;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.ally-table-container details {
+  margin-top: 1rem;
+}
+
+.ally-table-container summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.ally-table-container summary:hover {
+  text-decoration: underline;
+}
+
+.ally-form-group {
+  margin-bottom: 1rem;
+}
+
+.ally-form-group label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.ally-form-group input[type="text"],
+.ally-form-group input[type="password"],
+.ally-form-group select {
+  width: 90%;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  border-radius: 4px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.ally-form-group input:focus,
+.ally-form-group select:focus {
+  outline: none;
+}
+
+.ally-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ally-checkbox-group label {
+  display: inline;
+  margin-bottom: 0;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.ally-checkbox-group input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.ally-help-text {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.ally-primary-btn,
+.ally-secondary-btn,
+.ally-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+
+  cursor: pointer;
+}
+
+/* ========================================================================
+   Execute Button State Management - Stage 2 Warm-Up UX
+   ======================================================================== */
+
+/* Help text for buttons */
+.ally-btn-help-text {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.ally-btn-help-text:empty {
+  display: none;
+}
+
+/* When button is disabled due to API not ready */
+.ally-primary-btn[data-api-required][disabled] {
+  cursor: not-allowed;
+}
+
+/* Visual indicator for API-dependent buttons when API not ready */
+.ally-primary-btn[data-api-required][data-api-not-ready="true"] {
+  position: relative;
+}
+
+.ally-primary-btn[data-api-required][data-api-not-ready="true"]::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border-width: 2px;
+  border-style: solid;
+  animation: ally-btn-indicator-pulse 1.5s ease-in-out infinite;
+}
+@keyframes ally-btn-indicator-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+/* Remove indicator animation for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ally-primary-btn[data-api-required][data-api-not-ready="true"]::after {
+    animation: none;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  .ally-btn-help-text {
+    color: currentColor;
+  }
+
+  .ally-primary-btn[data-api-required][data-api-not-ready="true"]::after {
+    border-width: 2px;
+    border-color: currentColor;
+  }
+}
+
+.score-excellent,
+.score-good {
+  font-weight: 600;
+}
+
+.score-fair,
+.score-poor,
+.score-very-poor {
+  font-weight: 600;
+}
+
+.score-unknown {
+  font-style: italic;
+}
+
+.score-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Screen reader only */
+#ally-reporting-app .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Visually hidden but focusable */
+#ally-reporting-app .sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ========================================================================
+     Responsive Adjustments
+     ======================================================================== */
+
+@media (max-width: 600px) {
+  #ally-reporting-app {
+    padding: 0.5rem;
+  }
+
+  .ally-config-section,
+  .ally-query-section,
+  .ally-progress-section,
+  .ally-results-section {
+    padding: 1rem;
+  }
+
+  .ally-sort-pagination {
+    grid-template-columns: 1fr;
+  }
+
+  .ally-query-actions {
+    flex-direction: column;
+  }
+
+  .ally-query-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ally-endpoint-options {
+    gap: 1rem;
+  }
+}
+
+/* Ensure minimum touch target size (44x44px) */
+@media (pointer: coarse) {
+  .ally-form-group input[type="text"],
+  .ally-form-group input[type="password"],
+  .ally-form-group select {
+    min-height: 44px;
+  }
+
+  .ally-primary-btn,
+  .ally-secondary-btn,
+  .ally-cancel-btn {
+    min-height: 44px;
+    padding: 1rem 1.5rem;
+  }
+
+  .ally-checkbox-group input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .ally-form-group input,
+  .ally-form-group select,
+  .ally-primary-btn,
+  .ally-secondary-btn,
+  .ally-cancel-btn {
+    border-width: 2px;
+  }
+
+  .ally-progress-bar {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .ally-progress-fill {
+    transition: none;
+  }
+
+  .ally-token-toggle,
+  .ally-form-group input,
+  .ally-form-group select,
+  .ally-primary-btn,
+  .ally-secondary-btn,
+  .ally-cancel-btn {
+    transition: none;
+  }
+}
+/* Filters */
+
+.ally-advanced-filters {
+  margin-bottom: 1.5rem;
+}
+
+.ally-advanced-filters summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+
+.ally-advanced-filters summary:hover {
+  text-decoration: underline;
+}
+
+.ally-advanced-filters summary:focus {
+  outline-offset: 2px;
+}
+
+.ally-filter-builder {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.ally-filter-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ally-filter-rows:empty {
+  display: none;
+}
+
+.ally-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: start;
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+/* Override global input styles for filter text inputs */
+.ally-filter-builder .ally-filter-row input.ally-filter-value,
+.ally-filter-builder .ally-filter-row input.ally-filter-value[type="text"],
+.ally-filter-builder .ally-filter-row input.ally-filter-value[type="number"] {
+  outline: none !important;
+  padding: 8px 16px !important;
+  font-family: monospace, monospace !important;
+  font-size: 1.2rem !important;
+  line-height: normal !important;
+  height: auto !important;
+  box-sizing: content-box !important;
+}
+
+.ally-filter-value-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ally-filter-hint {
+  font-size: 0.75rem;
+}
+
+.ally-remove-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.ally-remove-filter-btn:hover {
+  border-style: solid;
+}
+
+.ally-remove-filter-btn:focus {
+  outline: none;
+}
+
+.ally-add-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-style 0.2s;
+}
+
+.ally-add-filter-btn:hover {
+  border-style: solid;
+}
+
+.ally-add-filter-btn:focus {
+  outline: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ally-filter-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .ally-filter-value-container {
+    grid-column: 1 / -1;
+  }
+
+  .ally-remove-filter-btn {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 480px) {
+  .ally-filter-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .ally-filter-field,
+  .ally-filter-operator {
+    grid-column: 1;
+  }
+
+  .ally-filter-value-container {
+    grid-column: 1;
+  }
+
+  .ally-remove-filter-btn {
+    grid-row: 1;
+    grid-column: 2;
+  }
+}
+
+/* Touch target size for mobile */
+@media (pointer: coarse) {
+  .ally-filter-field,
+  .ally-filter-operator,
+  .ally-filter-value {
+    min-height: 44px;
+  }
+
+  .ally-remove-filter-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ally-add-filter-btn {
+    min-height: 44px;
+    padding: 0.75rem 1.25rem;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ally-remove-filter-btn,
+  .ally-add-filter-btn {
+    transition: none;
+  }
+}
+/* ========================================================================
+   4. Course Search Styles - LAYOUT & STRUCTURE
+   ======================================================================== */
+.ally-course-search-fieldset {
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ally-course-search-fieldset legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+}
+
+.ally-course-search-container {
+  position: relative;
+}
+
+.ally-course-search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ally-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ally-course-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem;
+  padding-left: 2.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+}
+
+.ally-course-search-input:focus {
+  outline: none;
+}
+
+.ally-course-search-clear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ally-course-search-clear:focus {
+  outline: none;
+}
+
+.ally-course-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  margin-top: 0.25rem;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ally-course-search-listbox {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ally-course-search-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}
+
+.ally-course-option-name {
+  font-weight: 500;
+}
+
+.ally-course-option-code {
+  font-size: 0.875rem;
+  font-family: monospace;
+}
+
+.ally-course-option-term {
+  font-size: 0.75rem;
+}
+
+.ally-search-highlight {
+  padding: 0 0.125rem;
+  border-radius: 2px;
+}
+
+.ally-course-selected {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+}
+
+.ally-selected-course-dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+}
+
+.ally-selected-course-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+}
+
+.ally-selected-course-item dt {
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  letter-spacing: 0.025em;
+}
+
+.ally-selected-course-item dd {
+  margin: 0;
+}
+
+.ally-selected-course-primary {
+  flex-basis: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.ally-selected-course-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.ally-selected-course-code,
+.ally-selected-course-term {
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+}
+
+.ally-selected-course-label {
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .ally-course-search-fieldset {
+    padding: 0.75rem;
+  }
+  .ally-course-search-results {
+    max-height: 250px;
+  }
+}
+
+/* Touch targets */
+@media (pointer: coarse) {
+  .ally-course-search-input {
+    min-height: 44px;
+  }
+  .ally-course-search-option {
+    padding: 1rem;
+  }
+  .ally-course-search-clear {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  .ally-course-search-fieldset {
+    border-width: 3px;
+  }
+  .ally-course-search-input {
+    border-width: 2px;
+  }
+  .ally-course-selected {
+    border-width: 2px;
+  }
+}
+/* Hide operator dropdown for fields that don't support operators */
+.ally-filter-operator-hidden {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ========================================================================
+   Debug Panel Styles - Developer Information
+   ======================================================================== */
+
+/* Layout and Structure */
+.ally-debug-panel {
+  margin-top: 2rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ally-debug-panel-summary {
+  padding: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ally-debug-panel-content {
+  padding: 1.5rem;
+}
+
+.ally-debug-section {
+  margin-bottom: 2rem;
+}
+
+.ally-debug-section:last-child {
+  margin-bottom: 0;
+}
+
+.ally-debug-section h4 {
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.ally-debug-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.ally-debug-stats dt {
+  font-weight: 600;
+}
+
+.ally-debug-stats dd {
+  margin: 0;
+  font-family: "Courier New", monospace;
+}
+
+.ally-debug-code-container {
+  position: relative;
+  margin-top: 0.75rem;
+}
+
+.ally-debug-code-container .code-copy-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 1.5rem;
+  z-index: 10;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.ally-debug-code-container pre {
+  max-height: 400px;
+  overflow: auto;
+  margin: 0;
+  padding: 1rem;
+  padding-top: 3rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.ally-debug-code-container code {
+  font-family: "Courier New", monospace;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ally-debug-stats {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .ally-debug-stats dt {
+    margin-top: 0.75rem;
+  }
+
+  .ally-debug-stats dt:first-child {
+    margin-top: 0;
+  }
+
+  .ally-debug-code-container pre {
+    max-height: 300px;
+    font-size: 0.8rem;
+  }
+
+  .ally-debug-panel-content {
+    padding: 1rem;
+  }
+
+  .ally-debug-section {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  .ally-debug-panel {
+    border-width: 2px;
+  }
+
+  .ally-debug-panel-summary {
+    font-weight: 700;
+  }
+
+  .ally-debug-code-container .code-copy-button {
+    border-width: 2px;
+  }
+}
+
+/* Print */
+@media print {
+  .ally-debug-panel {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .ally-debug-panel-summary {
+    display: none;
+  }
+
+  .ally-debug-panel-content {
+    display: block !important;
+  }
+
+  .ally-debug-code-container .code-copy-button {
+    display: none;
+  }
+
+  .ally-debug-code-container pre {
+    max-height: none;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ally-debug-panel-summary,
+  .ally-debug-code-container .code-copy-button {
+    transition: none;
+  }
+}
+/* Hide auto-generated copy buttons in debug panel (our buttons don't have type="button") */
+.ally-debug-code-container .code-copy-button[type="button"] {
+  display: none;
+}
+
+/* ========================================================================
+   API Status Indicator - Layout
+   ======================================================================== */
+.ally-api-status-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.ally-api-status-label {
+  font-weight: 600;
+}
+
+.ally-api-status-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ally-api-status-text {
+  flex: 1;
+}
+
+/* ========================================================================
+   API Status Progress Bar - Stage 1 Warm-Up UX
+   ======================================================================== */
+
+.ally-api-status-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ally-api-progress-container {
+  width: 100%;
+  max-width: 300px;
+}
+
+.ally-api-progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ally-api-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+}
+
+.ally-api-progress-bar[data-state="READY"] .ally-api-progress-fill {
+  width: 100%;
+}
+
+.ally-api-progress-bar[data-state="WARMING"] .ally-api-progress-fill {
+  background-size: 20px 20px;
+  animation: ally-progress-stripe 1s linear infinite;
+}
+
+@keyframes ally-progress-stripe {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 0;
+  }
+}
+
+.ally-api-status-hint {
+  font-size: 0.8rem;
+}
+
+.ally-api-status-hint:empty {
+  display: none;
+}
+
+/* Pulsing animation for WARMING state */
+.ally-api-status-dot[data-state="WARMING"] {
+  animation: ally-status-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ally-status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ally-api-status-dot[data-state="WARMING"] {
+    animation: none;
+  }
+
+  .ally-api-progress-bar[data-state="WARMING"] .ally-api-progress-fill {
+    animation: none;
+    background-image: none;
+  }
+}
+
+/* High contrast - layout */
+@media (prefers-contrast: high) {
+  .ally-api-status-container {
+    border-width: 2px;
+  }
+
+  .ally-api-status-dot {
+    border-width: 2px;
+    border-style: solid;
+  }
+
+  .ally-api-progress-bar {
+    border: 2px solid currentColor;
+  }
+
+  .ally-api-status-hint {
+    color: currentColor;
+    font-style: normal;
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .ally-api-status-container {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .ally-api-status-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .ally-api-progress-container {
+    max-width: 100%;
+  }
+
+  .ally-api-status-hint {
+    font-size: 0.75rem;
+  }
+}
+/* ========================================================================
+   Credentials Details - Collapsible Section
+   ======================================================================== */
+
+/* Layout */
+.ally-credentials-details {
+  margin-top: 1rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ally-credentials-summary {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.ally-credentials-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ally-credentials-details form {
+  padding: 1rem;
+}
+
+/* Move status container above details */
+.ally-config-section .ally-api-status-container {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  .ally-credentials-details {
+    border-width: 2px;
+  }
+
+  .ally-credentials-summary {
+    font-weight: 700;
+  }
+}
+
+/* ========================================================================
+   Credentials Section Highlight - Stage 3 Warm-Up UX
+   ======================================================================== */
+
+/* Highlight animation timing */
+.ally-credentials-details.ally-credentials-highlight {
+  animation: ally-credentials-attention 0.6s ease-in-out 3;
+}
+
+/* High contrast animation timing */
+@media (prefers-contrast: high) {
+  .ally-credentials-details.ally-credentials-highlight {
+    animation: ally-credentials-attention-hc 0.6s ease-in-out 3;
+  }
+
+  @keyframes ally-credentials-attention-hc {
+    50% {
+      outline-offset: 2px;
+    }
+  }
+}
+
+/* Reduced motion - layout values */
+@media (prefers-reduced-motion: reduce) {
+  .ally-credentials-details.ally-credentials-highlight {
+    animation: none;
+    outline-offset: 2px;
+  }
+}
+
+/* CTA positioning and structure */
+.ally-test-connection-cta {
+  position: relative;
+}
+
+.ally-test-connection-cta::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 6px;
+  animation: ally-cta-border 1s ease-in-out infinite;
+}
+
+@keyframes ally-cta-border {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ally-test-connection-cta::before {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ========================================================================
+   Endpoint Options - Refactored Structure (div instead of label wrapper)
+   ======================================================================== */
+
+.ally-endpoint-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 0 0.5rem;
+  align-items: start;
+  padding: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ally-endpoint-option input[type="radio"] {
+  grid-row: 1 / 3;
+  margin-top: 0.2rem;
+}
+
+.ally-endpoint-option .ally-endpoint-label {
+  grid-column: 2;
+  grid-row: 1;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ally-endpoint-option .ally-endpoint-desc {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.875rem;
+}
+
+/* ========================================================================
+   Sort & Pagination Fieldset
+   ======================================================================== */
+
+fieldset.ally-sort-pagination {
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+fieldset.ally-sort-pagination legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+}
+
+.ally-sort-pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.ally-sort-pagination-controls .ally-form-group {
+  flex: 1;
+  min-width: 150px;
+}
+
+@media (max-width: 600px) {
+  .ally-sort-pagination-controls {
+    flex-direction: column;
+  }
+
+  .ally-sort-pagination-controls .ally-form-group {
+    min-width: 100%;
+  }
+}
+
+@media (prefers-contrast: high) {
+  fieldset.ally-sort-pagination {
+    border-width: 2px;
+  }
+}
+
+/* ========================================================================
+   Debug Panel - Disable Auto-linked URLs
+   ======================================================================== */
+
+.ally-debug-code a.token.url-link {
+  pointer-events: none;
+  cursor: text;
+  text-decoration: none;
+}
+
+.ally-debug-code a.token.url-link:focus {
+  outline: none;
+}
+
+/* ========================================================================
+   Results Section - Phase 5 Styles
+   ======================================================================== */
+
+/* ========================================================================
+   STRUCTURAL DEFINITIONS
+   ======================================================================== */
+
+/* View Toggle - Structure */
+.ally-view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.ally-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+/* Column Selector - Structure */
+.ally-column-selector {
+  margin-bottom: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+}
+
+.ally-column-selector summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+
+.ally-column-selector summary:focus {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: -2px;
+}
+
+.ally-column-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  border-top-width: 1px;
+  border-top-style: solid;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ally-column-group {
+  margin-bottom: 0.5rem;
+}
+
+.ally-column-group-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  padding-bottom: 0.25rem;
+}
+
+.ally-column-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.ally-column-option input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+/* Export Actions - Structure */
+.ally-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Results Table - Structure */
+.ally-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ally-results-table th,
+.ally-results-table td {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+}
+
+.ally-results-table th {
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.ally-results-table a {
+  text-decoration: none;
+}
+
+.ally-results-table a:hover {
+  text-decoration: underline;
+}
+
+.ally-results-table a:focus {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+/* Score Badge - Structure */
+.score-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* Issue Severity - Structure */
+.ally-severity-severe {
+  font-weight: 600;
+}
+
+/* Summary - Structure */
+.ally-summary-scores,
+.ally-summary-issues {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+
+.ally-summary-scores ul,
+.ally-summary-issues ul {
+  margin: 0.5rem 0 0 1.5rem;
+  padding: 0;
+}
+
+.ally-summary-scores li,
+.ally-summary-issues li {
+  margin-bottom: 0.25rem;
+}
+
+/* Show More Button Container - Structure */
+.ally-show-more-container {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+/* No Results - Structure */
+.ally-no-results {
+  padding: 2rem;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Chart Container - Structure */
+.ally-chart-container {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-width: 1px;
+  border-style: dashed;
+  border-radius: 4px;
+}
+
+/* Respect hidden attribute (overrides display: flex above) */
+.ally-chart-container[hidden] {
+  display: none;
+}
+
+/* ========================================================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================================================== */
+
+@media (max-width: 768px) {
+  .ally-view-toggle {
+    flex-wrap: wrap;
+  }
+
+  .ally-column-options {
+    grid-template-columns: 1fr;
+    max-height: 200px;
+  }
+
+  .ally-export-actions {
+    flex-direction: column;
+  }
+
+  .ally-export-actions button {
+    width: 100%;
+  }
+
+  .ally-results-table {
+    font-size: 0.85rem;
+  }
+
+  .ally-results-table th,
+  .ally-results-table td {
+    padding: 0.5rem 0.25rem;
+  }
+}
+
+/* ========================================================================
+   HIGH CONTRAST MODE
+   ======================================================================== */
+
+@media (prefers-contrast: high) {
+  .ally-view-btn {
+    border-width: 2px;
+  }
+
+  .ally-column-selector {
+    border-width: 2px;
+  }
+
+  .ally-results-table th,
+  .ally-results-table td {
+    border-width: 2px;
+  }
+
+  .ally-severity-severe,
+  .ally-severity-major,
+  .ally-severity-minor {
+    font-weight: 700;
+  }
+}
+
+/* ========================================================================
+   PRINT STYLES
+   ======================================================================== */
+
+@media print {
+  .ally-view-toggle,
+  .ally-column-selector,
+  .ally-export-actions,
+  .ally-show-more-container {
+    display: none;
+  }
+
+  .ally-results-table {
+    font-size: 0.8rem;
+  }
+
+  .ally-results-table th {
+    border-bottom-width: 2px;
+    border-bottom-style: solid;
+  }
+}
+
+/* ========================================================================
+   REDUCED MOTION
+   ======================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .ally-view-btn {
+    transition: none;
+  }
+}
+
+/* ========================================================================
+   Chart View - Phase 6 Styles (Updated for Dashboard)
+   ======================================================================== */
+
+/* Chart Grid Layout */
+.ally-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+/* Individual Chart Wrapper - Layout */
+.ally-chart-wrapper {
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* Ally Chart Inner Container - Layout */
+.ally-chart-wrapper .chart-container.ally-chart-container-inner {
+  width: 100%;
+  min-height: 300px;
+  position: relative;
+}
+
+/* Chart Controls Toolbar - Layout */
+.ally-chart-wrapper .chart-controls {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  border-radius: 0 0 4px 4px;
+}
+
+.ally-chart-wrapper .chart-view-controls {
+  display: none !important;
+}
+
+/* Chart Description - Layout */
+.ally-chart-description {
+  font-size: 0.875rem;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+/* Hide auto-generated figcaptions (we use ally-chart-description paragraphs instead) */
+.ally-chart-wrapper figcaption.chart-figcaption {
+  display: none !important;
+}
+
+/* Ensure Ally description stays visible */
+p.ally-chart-description {
+  display: block !important;
+}
+
+/* No Results - Layout */
+#ally-chart-container .ally-no-results {
+  text-align: center;
+  padding: 3rem 1rem;
+  font-style: italic;
+}
+
+/* High Contrast Mode - Layout */
+@media (prefers-contrast: high) {
+  .ally-chart-wrapper {
+    border-width: 2px;
+  }
+
+  .ally-chart-description {
+    border-left-width: 4px;
+  }
+}
+
+/* Print Styles - Layout */
+@media print {
+  .ally-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ally-chart-wrapper {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .ally-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ally-chart-container-inner {
+    height: 250px;
+  }
+}
+
+/* Removing buttons unneeded in this context */
+.ally-chart-wrapper button[aria-label="Copy chart code to clipboard"],
+.ally-chart-wrapper button[aria-label="Download chart as PNG"],
+.ally-chart-wrapper button[aria-label="Download data as CSV"],
+.ally-cr-inventory-section button[aria-label="Show data table"] {
+  display: none;
+}
+
+.ally-cr-tab-panels button[aria-label="Copy chart code to clipboard"],
+.ally-cr-tab-panels button[aria-label="Download chart as PNG"],
+.ally-cr-tab-panels button[aria-label="Download data as CSV"] {
+  display: none;
+}
+
+.ally-cr-chart-area button[aria-label="Copy chart code to clipboard"],
+.ally-cr-chart-area button[aria-label="Download chart as PNG"],
+.ally-cr-chart-area button[aria-label="Download data as CSV"] {
+  display: none;
+}
+
+.ally-cr-tab-panels .chart-view-controls,
+.ally-cr-chart-area .chart-view-controls {
+  display: none !important;
+}
+
+/* ========================================================================
+   Report Type Switcher - Phase 7
+   ======================================================================== */
+
+/* Navigation wrapper */
+.ally-report-switcher-nav {
+  margin-bottom: 1.5rem;
+}
+
+/* Fieldset */
+.ally-report-switcher {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.ally-report-switcher legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+}
+
+/* Options container */
+.ally-report-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Individual option */
+.ally-report-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+/* Hide native radio, style via label */
+.ally-report-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Icon */
+.ally-report-option .report-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+/* Label text */
+.ally-report-option .report-label {
+  font-weight: 500;
+}
+
+/* Report sections - hidden by default */
+.ally-report-section[hidden] {
+  display: none;
+}
+
+/* Placeholder text for future phases */
+.ally-placeholder-text {
+  font-style: italic;
+  padding: 1rem;
+  border-width: 1px;
+  border-style: dashed;
+  border-radius: 4px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------------
+   Responsive
+   ------------------------------------------------------------------------ */
+
+@media (max-width: 600px) {
+  .ally-report-options {
+    flex-direction: column;
+  }
+
+  .ally-report-option {
+    width: 100%;
+  }
+}
+
+/* ------------------------------------------------------------------------
+   High Contrast
+   ------------------------------------------------------------------------ */
+
+@media (prefers-contrast: high) {
+  .ally-report-switcher {
+    border-width: 2px;
+  }
+
+  .ally-report-option:has(input:checked) {
+    border-width: 3px;
+  }
+}
+
+/* ------------------------------------------------------------------------
+   Reduced Motion
+   ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .ally-report-option {
+    transition: none;
+  }
+}
+/* ========================================================================
+   COURSE REPORT STYLES (Phase 7A)
+   STRUCTURAL / LAYOUT DEFINITIONS
+   ======================================================================== */
+
+/* Results Container */
+.ally-cr-results-container {
+  margin-top: 1.5rem;
+}
+
+/* Report Header */
+.ally-cr-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+.ally-cr-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.5rem;
+}
+
+.ally-cr-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.ally-cr-meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ally-cr-course-link {
+  margin-top: 0.75rem;
+}
+
+/* Sections */
+.ally-cr-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.ally-cr-section-heading {
+  margin: 0 0 1rem 0;
+}
+
+.ally-cr-subsection-heading {
+  margin: 1rem 0 0.5rem 0;
+}
+
+/* Score Meters */
+.ally-cr-scores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.ally-cr-score-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ally-cr-score-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ally-cr-score-meter-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ally-cr-score-meter {
+  flex: 1;
+  height: 1.25rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ally-cr-score-meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.ally-cr-score-value {
+  font-weight: 700;
+  font-size: 1.125rem;
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+.ally-cr-score-rating {
+  display: none;
+}
+
+/* Content Inventory - Summary Definition List */
+.ally-cr-inventory-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  margin: 0 0 1.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.25rem;
+}
+
+.ally-cr-summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.ally-cr-inventory-summary dt {
+  font-weight: 500;
+}
+
+.ally-cr-inventory-summary dd {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.ally-cr-file-category {
+  margin-bottom: 1.5rem;
+}
+
+.ally-cr-file-category-heading {
+  margin: 0 0 0.25rem 0;
+}
+
+.ally-cr-file-category-desc {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.ally-cr-file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ally-cr-file-table th,
+.ally-cr-file-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.ally-cr-file-table th {
+  font-weight: 600;
+}
+
+.ally-cr-count-col {
+  text-align: right;
+  width: 80px;
+}
+
+.ally-cr-total-row {
+  font-weight: 600;
+}
+
+.ally-cr-severity-total {
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin: 0 0 1rem 0;
+}
+
+.ally-cr-severity-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ally-cr-severity-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ally-cr-severity-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.ally-cr-severity-count {
+  font-weight: 600;
+}
+
+.ally-cr-severity-bar-outer {
+  height: 0.5rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ally-cr-severity-bar-inner {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Severity Text */
+.ally-severity-severe,
+.ally-severity-major,
+.ally-severity-minor {
+  font-weight: 600;
+}
+
+/* Issue Categories */
+.ally-cr-issue-categories {
+  margin-top: 1.5rem;
+}
+
+.ally-cr-category-details {
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ally-cr-category-summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ally-cr-category-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ally-cr-category-summary-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ally-cr-category-icon {
+  font-size: 1.1rem;
+}
+
+.ally-cr-category-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.ally-cr-category-badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ally-cr-mini-badge {
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ally-cr-category-content {
+  padding: 1rem;
+}
+
+.ally-cr-category-desc {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+}
+
+/* Issue Tables (sortable) */
+.ally-cr-issue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.ally-cr-issue-table th,
+.ally-cr-issue-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.ally-cr-issue-table th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ally-cr-issue-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Issue severity badges (used in tables) */
+.ally-cr-issue-severity {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 50px;
+  text-align: center;
+}
+
+/* Legacy issue list styles (kept for backwards compatibility) */
+.ally-cr-issue-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ally-cr-issue-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.ally-cr-issue-item:last-child {
+  border-bottom: none;
+}
+
+.ally-cr-issue-count {
+  font-weight: 700;
+  min-width: 40px;
+  text-align: right;
+}
+
+.ally-cr-issue-desc {
+  font-size: 0.9rem;
+}
+
+/* Issue Tabs */
+.ally-cr-issues-tabs-container {
+  margin-top: 1rem;
+}
+
+.ally-cr-issues-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+}
+
+.ally-cr-tab {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.ally-cr-tab-active::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+.ally-cr-tab-panels {
+  min-height: 200px;
+}
+
+.ally-cr-tab-panel {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Severity Details (By Severity view) */
+.ally-cr-severity-details {
+  margin-bottom: 0.75rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.ally-cr-severity-summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ally-cr-severity-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ally-cr-severity-summary-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ally-cr-expand-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.ally-cr-severity-details[open]
+  > .ally-cr-severity-summary
+  .ally-cr-expand-icon {
+  transform: rotate(90deg);
+}
+
+.ally-cr-severity-label {
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+}
+
+.ally-cr-severity-content {
+  padding: 1rem;
+}
+
+/* Chart Layout - Stacked vertically */
+.ally-cr-table-chart-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ally-cr-table-wrapper {
+  min-width: 0;
+}
+
+/* Chart wrapper and container */
+.ally-cr-chart-wrapper {
+  position: relative;
+}
+
+.ally-cr-chart-area {
+  min-height: 280px;
+}
+
+.ally-cr-chart-container {
+  height: 480px;
+  min-width: 280px;
+}
+
+/* Issues by Category chart (horizontal bar) */
+.ally-cr-issues-chart-area {
+  min-height: 420px;
+  max-width: 820px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1.5rem;
+}
+
+.ally-cr-issues-chart-area .ally-cr-chart-container {
+  height: 420px;
+}
+
+/* Issues by Severity chart (doughnut) */
+.ally-cr-severity-chart-area {
+  min-height: 320px;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1.5rem;
+}
+
+.ally-cr-severity-chart-area .ally-cr-chart-container {
+  height: 320px;
+}
+
+/* ========================================================================
+   Side Controls Layout (modifier class)
+   Add .ally-cr-chart-area--controls-side to chart area for right-aligned controls
+   ======================================================================== */
+
+.ally-cr-chart-area--controls-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.ally-cr-chart-area--controls-side .ally-cr-chart-wrapper {
+  flex: 1 1 auto;
+  min-width: 280px;
+}
+
+.ally-cr-chart-area--controls-side .chart-controls {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  min-width: 140px;
+  max-width: 160px;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.ally-cr-chart-area--controls-side .chart-controls select,
+.ally-cr-chart-area--controls-side .chart-controls button {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Revert to stacked layout on narrow screens */
+@media (max-width: 600px) {
+  .ally-cr-chart-area--controls-side {
+    flex-direction: column;
+  }
+
+  .ally-cr-chart-area--controls-side .chart-controls {
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-width: none;
+    min-width: auto;
+  }
+
+  .ally-cr-chart-area--controls-side .chart-controls select,
+  .ally-cr-chart-area--controls-side .chart-controls button {
+    width: auto;
+  }
+}
+
+/* Ensure chart controls fit in the course report layout */
+.ally-cr-chart-container .chart-controls {
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.ally-cr-chart-container .chart-controls select {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.ally-cr-chart-container .chart-controls button {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+@media (max-width: 320px) {
+  .ally-cr-chart-container,
+  .ally-cr-chart-area {
+    display: none;
+  }
+}
+/* Responsive chart layout */
+@media (max-width: 768px) {
+  .ally-cr-chart-area {
+    min-height: 240px;
+  }
+
+  .ally-cr-chart-container {
+    height: 240px;
+  }
+
+  .ally-cr-issues-chart-area {
+    min-height: 300px;
+  }
+
+  .ally-cr-issues-chart-area .ally-cr-chart-container {
+    height: 300px;
+  }
+}
+
+/* Print: Hide charts */
+@media print {
+  .ally-cr-chart-container {
+    display: none;
+  }
+
+  .ally-cr-table-chart-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ally-cr-no-issues {
+  padding: 1rem;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Library References */
+.ally-cr-library-refs {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.ally-cr-library-refs h5 {
+  margin: 0 0 0.5rem 0;
+}
+
+.ally-cr-library-refs p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Export Actions */
+.ally-cr-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Error Display */
+.ally-cr-error {
+  padding: 1.5rem;
+  border-radius: 4px;
+}
+
+.ally-cr-error h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.ally-cr-error p {
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .ally-cr-scores-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ally-cr-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .ally-cr-meta dt {
+    margin-top: 0.5rem;
+  }
+
+  .ally-cr-export-actions {
+    flex-direction: column;
+  }
+
+  .ally-cr-export-actions button {
+    width: 100%;
+  }
+
+  .ally-cr-issue-item {
+    flex-wrap: wrap;
+  }
+
+  .ally-cr-issue-desc {
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+}
+
+/* Print styles for Course Report */
+@media print {
+  .ally-cr-export-actions {
+    display: none;
+  }
+
+  .ally-cr-section {
+    break-inside: avoid;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+
+  .ally-cr-category-details {
+    border: none;
+  }
+
+  .ally-cr-category-details[open] .ally-cr-category-content {
+    display: block;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ally-cr-score-meter-fill,
+  .ally-cr-severity-bar-inner,
+  .ally-cr-category-summary::before {
+    transition: none;
+  }
+}
+
+/* Data Freshness Warning */
+.ally-cr-data-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1rem 0 1.5rem 0;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.ally-cr-warning-icon {
+  flex-shrink: 0;
+}
+
+.ally-cr-warning-content {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.ally-cr-warning-content time {
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .mdSortableTable-data-table td .ally-cr-category-icon {
+    display: none;
+  }
+}
+/**
+ * Ally Statement Preview Styles
+ * Phase 7B - Dedicated styling for accessibility statement preview
+ * 
+ * Design approach:
+ * - Maintains GOV.UK-inspired warning aesthetic from prototype
+ * - Subtle integration with existing ally styles (4px border-radius)
+ * - Responsive design
+ * - Respects user preferences (reduced motion, high contrast)
+ */
+
+/* ========================================================================
+   Container & Layout
+   ======================================================================== */
+
+.ally-sp-results-container {
+  margin-top: 1.5rem;
+}
+
+/* ========================================================================
+   Introduction Section
+   ======================================================================== */
+
+.ally-sp-intro {
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.ally-sp-intro p {
+  margin-bottom: 1rem;
+}
+
+.ally-sp-intro ul {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.ally-sp-intro li {
+  margin-bottom: 0.25rem;
+}
+
+/* ========================================================================
+   Data Freshness Warning
+   ======================================================================== */
+
+.ally-sp-freshness-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 0 4px 4px 0;
+}
+
+.ally-sp-freshness-warning .ally-sp-warning-icon {
+  flex-shrink: 0;
+}
+
+.ally-sp-warning-content {
+  flex: 1;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.ally-sp-warning-content time {
+  font-weight: 600;
+}
+
+/* ========================================================================
+   Accessibility Warning Component
+   ======================================================================== */
+
+.ally-sp-warning {
+  border-radius: 4px;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.ally-sp-warning-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ally-sp-warning-icon {
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* Larger icons to match prototype emoticons */
+.ally-sp-warning-icon .icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.ally-sp-warning h3 {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.ally-sp-warning > p {
+  margin: 1rem 0;
+  line-height: 1.6;
+}
+
+/* ========================================================================
+   Disclosure Widget
+   ======================================================================== */
+
+.ally-sp-disclosure-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.ally-sp-disclosure-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  border: none;
+
+  font-family: inherit;
+
+  text-align: left;
+}
+
+.ally-sp-disclosure-button:hover {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  border: none;
+
+  font-family: inherit;
+
+  text-align: left;
+}
+
+.ally-sp-disclosure-button:focus-visible {
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid transparent !important;
+}
+span.ally-sp-disclosure-text {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.ally-sp-chevron {
+  font-size: 0.875rem;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.ally-sp-disclosure-button[aria-expanded="true"] .ally-sp-chevron {
+  transform: rotate(180deg);
+}
+
+/* Visual reordering when expanded - button moves below content */
+.ally-sp-disclosure-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.ally-sp-expandable-content {
+  margin-top: 1.5rem;
+  /* Note: Visual order now handled by DOM manipulation in toggleDisclosure() 
+     to ensure focus order matches visual order (WCAG 2.4.3) */
+}
+
+.ally-sp-disclosure-button[aria-expanded="true"] {
+  /* When expanded, button is moved after content in DOM */
+  margin-top: 1rem;
+}
+
+/* Expandable content styling */
+.ally-sp-expandable-content h4 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ally-sp-expandable-content h4:first-child {
+  margin-top: 0;
+}
+
+.ally-sp-expandable-content ul {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.ally-sp-expandable-content li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.ally-sp-expandable-content ul ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ally-sp-expandable-content a:focus-visible {
+  outline-offset: 0;
+}
+
+/* ========================================================================
+   Success State
+   ======================================================================== */
+
+.ally-sp-success {
+  border-radius: 4px;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.ally-sp-success-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ally-sp-success-icon {
+  flex-shrink: 0;
+}
+
+.ally-sp-success-icon .icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.ally-sp-success h3 {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.ally-sp-success p {
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ========================================================================
+   Progress Indicator
+   ======================================================================== */
+
+.ally-sp-progress {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.ally-sp-progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ally-sp-progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  width: 0;
+}
+
+.ally-sp-progress-message {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  font-size: 0.875rem;
+}
+
+/* ========================================================================
+   Course Details Section (Collapsible)
+   ======================================================================== */
+
+.ally-sp-course-details {
+  margin-top: 2rem;
+  border-radius: 4px;
+}
+
+.ally-sp-course-details summary {
+  padding: 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+.ally-sp-course-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.ally-sp-course-details summary::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.ally-sp-course-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.ally-sp-course-details summary:focus-visible {
+  outline-offset: -3px;
+}
+
+.ally-sp-metadata-list {
+  padding: 1rem;
+  margin: 0;
+}
+
+.ally-sp-metadata-list dt {
+  margin-top: 0.75rem;
+}
+
+.ally-sp-metadata-list dt:first-child {
+  margin-top: 0;
+}
+
+.ally-sp-metadata-list dd {
+  margin-left: 0;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* ========================================================================
+   Error State
+   ======================================================================== */
+
+.ally-sp-error {
+  border-radius: 4px;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.ally-sp-error-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ally-sp-error-icon {
+  flex-shrink: 0;
+}
+
+.ally-sp-error-icon .icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.ally-sp-error h3 {
+  font-size: 1.25rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.ally-sp-error p {
+  line-height: 1.6;
+  margin: 0.5rem 0 0 0;
+}
+
+/* ========================================================================
+   Responsive Design
+   ======================================================================== */
+
+@media (max-width: 600px) {
+  .ally-sp-warning,
+  .ally-sp-success,
+  .ally-sp-error {
+    padding: 1rem;
+  }
+
+  .ally-sp-warning h3,
+  .ally-sp-success h3 {
+    font-size: 1.25rem;
+  }
+
+  .ally-sp-warning-icon .icon,
+  .ally-sp-success-icon .icon,
+  .ally-sp-error-icon .icon {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .ally-sp-disclosure-button {
+    padding: 0.75rem 0;
+  }
+
+  .ally-sp-intro h3 {
+    font-size: 1.25rem;
+  }
+}
+
+/* ========================================================================
+   User Preferences
+   ======================================================================== */
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ally-sp-chevron {
+    transition: none;
+  }
+
+  .ally-sp-progress-fill {
+    transition: none;
+  }
+
+  .ally-sp-course-details summary::before {
+    transition: none;
+  }
+}
+
+/* High contrast */
+@media (forced-colors: active) {
+  .ally-sp-warning,
+  .ally-sp-success,
+  .ally-sp-error {
+    border-width: 3px;
+  }
+
+  .ally-sp-disclosure-button:focus-visible {
+    outline-width: 4px;
+  }
+
+  .ally-sp-freshness-warning {
+    border-left-width: 6px;
+  }
+}
+
+/* ========================================================================
+   Print Styles
+   ======================================================================== */
+
+@media print {
+  .ally-sp-disclosure-button {
+    display: none;
+  }
+
+  .ally-sp-expandable-content {
+    display: block !important;
+  }
+
+  .ally-sp-expandable-content[hidden] {
+    display: block !important;
+  }
+
+  .ally-sp-warning,
+  .ally-sp-success,
+  .ally-sp-error {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .ally-sp-course-details {
+    break-inside: avoid;
+  }
+
+  .ally-sp-course-details[open] {
+    /* Keep details open when printing */
+  }
+}
+
+/* ========================================================================
+   Hidden Utility (Ensure consistency)
+   ======================================================================== */
+
+[hidden] {
+  display: none !important;
+}
+
+/* ========================================================================
+   Theme Breakdown Section
+   ======================================================================== */
+
+.ally-sp-theme-breakdown {
+  margin-top: 1rem;
+}
+
+.ally-sp-breakdown-content {
+  padding: 1rem;
+}
+
+.ally-sp-breakdown-section {
+  margin-bottom: 1.5rem;
+}
+
+.ally-sp-breakdown-section:last-child {
+  margin-bottom: 0;
+}
+
+.ally-sp-breakdown-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.ally-sp-breakdown-list {
+  display: grid;
+  grid-template-columns: minmax(12rem, auto) auto;
+  justify-content: start;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.ally-sp-breakdown-field {
+  font-weight: normal;
+  min-width: 12rem;
+}
+
+.ally-sp-breakdown-value {
+  text-align: right;
+}
+
+.ally-sp-breakdown-value-nonzero {
+  font-weight: 600;
+}
+
+/* ally cache */
+/**
+ * Ally Cache UI Styling
+ * @description Styles for cache status, manager panel, banners, and browser
+ * @version 1.0.0
+ */
+
+/* ========== LAYOUT & STRUCTURE ========== */
+
+/* Cache Status Indicator */
+
+.ally-cache-status-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.ally-cache-status-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Cache Manager Panel */
+
+.ally-cache-manager-panel {
+  margin: 0.75rem 0;
+}
+
+.ally-cache-usage {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.ally-cache-usage-bar {
+  flex: 1;
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.ally-cache-usage-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* Cache Entries List */
+
+.ally-cache-entries {
+  max-height: 250px;
+  overflow-y: auto;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Cache entry list */
+.ally-cache-entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ally-cache-entry {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.5rem;
+}
+
+.ally-cache-entry-icon {
+  flex-shrink: 0;
+  width: 1.5rem;
+  margin-right: 0.5rem;
+}
+
+.ally-cache-entry-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ally-cache-entry-name {
+  display: block;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ally-cache-entry-meta {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 0.125rem;
+}
+
+.ally-cache-entry-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.ally-cache-entry-load {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.ally-cache-entry-remove {
+  padding: 0.25rem;
+
+  border-radius: 0.25rem;
+}
+
+.ally-cache-empty {
+  padding: 1rem;
+}
+
+/* Cached Data Banner */
+
+.ally-cache-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.9rem;
+}
+
+.ally-cache-banner-icon {
+  flex-shrink: 0;
+}
+
+.ally-cache-banner-text {
+  flex: 1;
+}
+
+.ally-cache-banner-age {
+  font-weight: 600;
+}
+
+.ally-cache-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: inherit;
+}
+
+.ally-cache-refresh-btn:focus {
+  outline-offset: 2px;
+}
+
+/* Update Available Banner */
+
+.ally-cache-apply-btn {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.ally-cache-apply-btn:focus {
+  outline-offset: 2px;
+}
+
+/* Offline Banner */
+
+.ally-cache-offline-count {
+  margin: 0.5rem 0;
+}
+
+/* Cache Browser */
+
+.ally-cache-browser {
+  margin: 0.75rem 0;
+}
+
+.ally-cache-browser-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: 0.25rem;
+  margin: 0.5rem 0 0.25rem 0;
+}
+
+/* ========== Reduced Motion ========== */
+
+@media (prefers-reduced-motion: reduce) {
+  .ally-cache-usage-fill {
+    transition: none;
+  }
+}
+
+/* ========== Print ========== */
+
+@media print {
+  .ally-cache-status-container,
+  .ally-cache-manager-panel,
+  .ally-cache-offline-banner,
+  .ally-cache-browser,
+  .ally-cache-banner {
+    display: none !important;
+  }
+}

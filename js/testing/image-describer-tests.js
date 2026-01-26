@@ -1534,23 +1534,4 @@
   window.clearModelPreference = clearModelPreference;
 
   logInfo("Image Describer Test Suite loaded");
-  console.log("Available commands:");
-  console.log("  testImageDescriberStage1() - Test Stage 1 (Foundation)");
-  console.log("  testImageDescriberStage2() - Test Stage 2 (Model Registry)");
-  console.log("  testImageDescriberStage3() - Test Stage 3 (Cost Estimation)");
-  console.log("  testImageDescriberStage4() - Test Stage 4 (Persistence)");
-  console.log(
-    "  testImageDescriberStage5() - Test Stage 5 (OpenRouter Integration)"
-  );
-  console.log(
-    "  testImageDescriberStage6() - Test Stage 6 (Accessibility & Polish)"
-  );
-  console.log(
-    "  testImageDescriberStage7() - Test Stage 7 (Reliability Features)"
-  );
-  console.log("  testImageDescriberAll()    - Run all tests");
-  console.log("  viewCostBreakdown()        - View current cost breakdown");
-  console.log("  viewModelPreference()      - View saved model preference");
-  console.log("  clearModelPreference()     - Clear saved model preference");
-  console.log("  testModelCost('model-id')  - Test specific model cost");
 })();

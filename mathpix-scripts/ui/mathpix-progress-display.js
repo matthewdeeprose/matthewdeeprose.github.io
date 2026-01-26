@@ -26,6 +26,41 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+// ============================================================================
+// SVG ICON REGISTRY
+// ============================================================================
+
+/**
+ * SVG icons for consistent cross-platform rendering
+ * All icons use currentColor for stroke/fill to inherit text colour
+ * @constant {Object.<string, string>}
+ */
+const ICONS = {
+  check:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m.5 5.5 3 3 8.028-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 6)"/></svg>',
+};
+
+/**
+ * Get an SVG icon by name with accessibility attributes
+ * @param {string} name - Icon name from ICONS registry
+ * @param {Object} [options] - Options
+ * @param {string} [options.className] - Additional CSS class(es)
+ * @returns {string} SVG HTML string with aria-hidden="true"
+ */
+function getIcon(name, options = {}) {
+  const svg = ICONS[name];
+  if (!svg) {
+    logWarn(`Unknown icon requested: ${name}`);
+    return "";
+  }
+
+  const className = options.className
+    ? ` class="icon ${options.className}"`
+    : ' class="icon"';
+
+  return svg.replace("<svg", `<svg aria-hidden="true"${className}`);
+}
+
 /**
  * MathPix Progress Display System - Enhanced for Visual Progress Bar (Stage 2)
  * Provides clean visual feedback during mathematical content processing
@@ -358,8 +393,8 @@ class MathPixProgressDisplay {
       // Minimal success notification (reduced notification spam)
       const availableFormats = this.extractAvailableFormats(result);
       const formatCount = availableFormats.length;
-      const successMessage = `✓ Mathematics converted successfully! ${formatCount} formats available (${totalTime})`;
-      this.notifications.success(successMessage);
+      const successMessage = `Mathematics converted successfully! ${formatCount} formats available (${totalTime})`;
+      this.notifications.success(successMessage, { allowHtml: true });
 
       logInfo("Processing completed successfully with visual indication", {
         formats: availableFormats,

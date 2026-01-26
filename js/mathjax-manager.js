@@ -18,7 +18,7 @@ const LOG_LEVELS = {
   DEBUG: 3,
 };
 
-const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
@@ -27,6 +27,10 @@ function shouldLog(level) {
   if (ENABLE_ALL_LOGGING) return true;
   return level <= DEFAULT_LOG_LEVEL;
 }
+
+// Notification configuration
+// Set to true to show user-facing notifications (e.g., MathJax disabled warnings)
+const SHOW_USER_NOTIFICATIONS = false;
 
 function logError(message, ...args) {
   if (shouldLog(LOG_LEVELS.ERROR))
@@ -62,6 +66,10 @@ class MathJaxManager {
     this.healthCheckFrequency = 10000; // Check every 10 seconds
     this.isHealthy = false;
     this.initializationPromise = null;
+
+    // Recovery subscription system for MMD Preview integration
+    this.recoveryCallbacks = new Set();
+    this.pendingElements = new Set(); // Track elements that need re-rendering on recovery
   }
 
   /**
@@ -80,7 +88,7 @@ class MathJaxManager {
     // If initialization in progress AND we're not demanding to wait, return existing promise
     if (this.initializationPromise && !waitForMathJax) {
       logDebug(
-        "Initialization already in progress, returning existing promise"
+        "Initialization already in progress, returning existing promise",
       );
       return this.initializationPromise;
     }
@@ -104,12 +112,33 @@ class MathJaxManager {
         // This prevents DOM corruption from premature health checks
         await this._waitForDOMStability();
 
+        // NEW: If startup wasn't clean, clear stale references first
+        if (window.MathJaxStartupClean === false) {
+          logWarn(
+            "Startup was not clean, clearing stale MathJax references...",
+          );
+          await this._clearStaleReferences();
+        }
+
         const isHealthy = await this.checkHealth();
 
         if (isHealthy) {
           logInfo("✅ MathJax Manager initialised successfully");
           this.startHealthMonitoring();
           this.initializationAttempts = 0; // Reset attempts on success
+
+          // NEW: Notify recovery subscribers on first successful init
+          // This allows pending elements to be re-rendered
+          if (
+            this.pendingElements.size > 0 ||
+            this.recoveryCallbacks.size > 0
+          ) {
+            logInfo(
+              "🔄 First successful init - notifying recovery subscribers...",
+            );
+            this._notifyRecoverySubscribers();
+          }
+
           return true;
         }
       }
@@ -117,7 +146,7 @@ class MathJaxManager {
       // If not waiting for MathJax, return early (lazy mode)
       if (!waitForMathJax) {
         logInfo(
-          "MathJax not yet available, deferring initialization until first use"
+          "MathJax not yet available, deferring initialization until first use",
         );
         this.initializationPromise = null; // Allow re-initialization later
         return false; // Not an error, just not ready yet
@@ -130,6 +159,15 @@ class MathJaxManager {
       // Wait for DOM stability before health check
       await this._waitForDOMStability();
 
+      // NEW: If startup wasn't clean, clear stale references and wait longer
+      if (window.MathJaxStartupClean === false) {
+        logWarn(
+          "Startup was not clean, clearing stale references and waiting longer...",
+        );
+        await this._clearStaleReferences();
+        await this._delay(1000); // Extra delay for recovery
+      }
+
       // Verify MathJax health
       const isHealthy = await this.checkHealth();
 
@@ -137,6 +175,15 @@ class MathJaxManager {
         logInfo("✅ MathJax Manager initialised successfully");
         this.startHealthMonitoring();
         this.initializationAttempts = 0; // Reset attempts on success
+
+        // NEW: Notify recovery subscribers on first successful init
+        if (this.pendingElements.size > 0 || this.recoveryCallbacks.size > 0) {
+          logInfo(
+            "🔄 First successful init - notifying recovery subscribers...",
+          );
+          this._notifyRecoverySubscribers();
+        }
+
         return true;
       } else {
         throw new Error("MathJax health check failed after initialization");
@@ -153,14 +200,14 @@ class MathJaxManager {
         logWarn(
           `Retrying initialization (attempt ${
             this.initializationAttempts + 1
-          }/${this.maxInitAttempts})...`
+          }/${this.maxInitAttempts})...`,
         );
         this.initializationPromise = null;
         await this._delay(2000 * this.initializationAttempts); // Exponential backoff
         return this.initialize(true); // Retry with waiting enabled
       } else {
         logWarn(
-          "MathJax Manager initialization deferred - will initialize on first use"
+          "MathJax Manager initialization deferred - will initialize on first use",
         );
         this.initializationPromise = null;
         this.initializationAttempts = 0; // Reset for future attempts
@@ -241,6 +288,161 @@ class MathJaxManager {
     await this._delay(500);
 
     logDebug("DOM stability achieved, proceeding with health check");
+  }
+
+  /**
+   * Clear stale element references from MathJax's internal tracking
+   * This prevents replaceChild errors caused by orphaned DOM references
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _clearStaleReferences() {
+    logDebug("Clearing stale MathJax element references...");
+
+    try {
+      const mathDoc = window.MathJax?.startup?.document;
+      if (!mathDoc) {
+        logDebug("No MathJax document to clear");
+        return;
+      }
+
+      // Clear the document's processed math list
+      // Note: mathDoc.math.list may be a LinkedList, not an array
+      if (mathDoc.math) {
+        const mathList = mathDoc.math;
+
+        // Try toArray() method first (LinkedList)
+        if (typeof mathList.toArray === "function") {
+          const items = mathList.toArray();
+          const originalCount = items.length;
+          let removedCount = 0;
+
+          // Remove items whose nodes are no longer in DOM
+          items.forEach((item) => {
+            const node = item?.start?.node;
+            if (node && !document.body.contains(node)) {
+              try {
+                mathList.remove(item);
+                removedCount++;
+              } catch (e) {
+                // Ignore removal errors
+              }
+            }
+          });
+
+          if (removedCount > 0) {
+            logInfo(`Cleared ${removedCount} stale math element references`);
+          }
+        } else if (mathList.list && Array.isArray(mathList.list)) {
+          // Fallback: Direct array access
+          const originalCount = mathList.list.length;
+          mathList.list = mathList.list.filter((item) => {
+            const node = item?.start?.node;
+            return node && document.body.contains(node);
+          });
+          const removedCount = originalCount - mathList.list.length;
+
+          if (removedCount > 0) {
+            logInfo(`Cleared ${removedCount} stale math element references`);
+          }
+        } else {
+          // Can't iterate - just log and continue
+          logDebug(
+            "Math list structure not iterable, skipping element cleanup",
+          );
+        }
+      }
+
+      // Clear any pending updates
+      if (mathDoc.clear && typeof mathDoc.clear === "function") {
+        try {
+          await mathDoc.clear();
+          logDebug("Cleared MathJax document state");
+        } catch (clearError) {
+          logWarn("Could not clear MathJax document:", clearError.message);
+        }
+      }
+
+      // Small delay for state to settle
+      await this._delay(100);
+
+      logDebug("✅ Stale reference cleanup complete");
+    } catch (error) {
+      logWarn("Error during stale reference cleanup:", error.message);
+      // Non-fatal - continue anyway
+    }
+  }
+
+  /**
+   * Scan the DOM for orphaned fallback elements and attempt to render them
+   * This catches elements that failed during MathJax downtime
+   * @private
+   */
+  async _scanAndRenderFallbacks() {
+    if (!this.isHealthy) {
+      logDebug("Skipping fallback scan - not healthy");
+      return;
+    }
+
+    // Find elements with fallback classes that need rendering
+    const fallbackSelectors = [
+      ".mathjax-fallback",
+      ".latex-fallback",
+      "pre.latex-fallback",
+    ];
+
+    const fallbackElements = document.querySelectorAll(
+      fallbackSelectors.join(", "),
+    );
+
+    if (fallbackElements.length === 0) {
+      logDebug("No fallback elements found to recover");
+      return;
+    }
+
+    logInfo(`🔍 Found ${fallbackElements.length} fallback elements to recover`);
+
+    for (const element of fallbackElements) {
+      try {
+        // Skip if element is no longer in DOM
+        if (!document.body.contains(element)) {
+          continue;
+        }
+
+        // Get the parent container that should be rendered
+        const container =
+          element.closest(
+            ".mathpix-rendered-output, .math-content, [data-math-content]",
+          ) || element.parentElement;
+
+        if (!container) {
+          continue;
+        }
+
+        // Extract LaTeX content
+        const latexContent = element.textContent?.trim();
+        if (!latexContent) {
+          continue;
+        }
+
+        logDebug("Attempting to recover fallback element", {
+          content: latexContent.substring(0, 50) + "...",
+          containerId: container.id || "anonymous",
+        });
+
+        // Replace fallback with raw content for MathJax
+        container.innerHTML = latexContent;
+        container.classList.remove("mathjax-fallback");
+
+        // Queue for rendering
+        await this.queueTypeset(container);
+
+        logInfo("✅ Recovered fallback element successfully");
+      } catch (error) {
+        logWarn("Failed to recover fallback element:", error.message);
+        // Continue with other elements
+      }
+    }
   }
 
   /**
@@ -332,8 +534,20 @@ class MathJaxManager {
 
   /**
    * Show warning when MathJax is disabled due to repeated failures
+   * Respects SHOW_USER_NOTIFICATIONS configuration
    */
   _showMathJaxDisabledWarning() {
+    // Always log to console for debugging purposes
+    logError(
+      "🚨 CRITICAL: MathJax disabled due to repeated failures. Please reload the page.",
+    );
+
+    // Only show user-facing notification if enabled
+    if (!SHOW_USER_NOTIFICATIONS) {
+      logDebug("User notifications disabled, skipping visual warning");
+      return;
+    }
+
     // Use UniversalNotifications for critical error display
     if (typeof UniversalNotifications !== "undefined") {
       UniversalNotifications.show(
@@ -342,19 +556,11 @@ class MathJaxManager {
         {
           duration: 0, // No auto-dismiss for critical errors
           dismissible: true,
-        }
+        },
       );
 
       logInfo(
-        "MathJax disabled warning shown via UniversalNotifications system"
-      );
-    } else {
-      // Fallback to console if notifications unavailable
-      logError(
-        "🚨 CRITICAL: MathJax disabled due to repeated failures. Please reload the page."
-      );
-      console.error(
-        "MathJax has been disabled to prevent infinite error loops. Reload the page to restore functionality."
+        "MathJax disabled warning shown via UniversalNotifications system",
       );
     }
   }
@@ -376,11 +582,19 @@ class MathJaxManager {
         !this.isProcessingQueue
       ) {
         logDebug("Running periodic health check...");
+        const wasHealthy = this.isHealthy;
         const isHealthy = await this.checkHealth();
 
         if (!isHealthy) {
           logWarn("Health check failed, attempting recovery...");
           await this.reinitialize();
+        } else if (!wasHealthy && isHealthy) {
+          // NEW: Transitioned from unhealthy to healthy - notify subscribers
+          logInfo("🔄 Health restored - notifying recovery subscribers...");
+          this._notifyRecoverySubscribers();
+
+          // Also scan for any orphaned fallback elements
+          this._scanAndRenderFallbacks();
         }
       }
     }, this.healthCheckFrequency);
@@ -438,6 +652,10 @@ class MathJaxManager {
 
       if (success) {
         logInfo("✅ MathJax reinitialised successfully");
+
+        // Notify subscribers about recovery
+        this._notifyRecoverySubscribers();
+
         return true;
       } else {
         logError("❌ MathJax reinitialization failed");
@@ -503,7 +721,7 @@ class MathJaxManager {
 
     this.isProcessingQueue = true;
     logDebug(
-      `📋 Processing queue (${this.operationsQueue.length} operations)...`
+      `📋 Processing queue (${this.operationsQueue.length} operations)...`,
     );
 
     while (this.operationsQueue.length > 0) {
@@ -546,11 +764,11 @@ class MathJaxManager {
 
         if (window.originalTypesetPromise) {
           logDebug(
-            `Using unwrapped typesetPromise for proper menu registration`
+            `Using unwrapped typesetPromise for proper menu registration`,
           );
         } else {
           logWarn(
-            `originalTypesetPromise not available, using wrapped version (menus may not work)`
+            `originalTypesetPromise not available, using wrapped version (menus may not work)`,
           );
         }
 
@@ -579,7 +797,7 @@ class MathJaxManager {
 
           // Clear remaining queue and reinitialize
           this.operationsQueue.forEach((op) =>
-            op.reject(new Error("Queue cleared due to critical error"))
+            op.reject(new Error("Queue cleared due to critical error")),
           );
           this.operationsQueue = [];
 
@@ -645,7 +863,128 @@ class MathJaxManager {
       initializationAttempts: this.initializationAttempts,
       lastHealthCheck: new Date(this.lastHealthCheck).toISOString(),
       healthCheckInterval: this.healthCheckInterval ? "Active" : "Inactive",
+      recoverySubscribers: this.recoveryCallbacks.size,
+      pendingElements: this.pendingElements.size,
     };
+  }
+
+  // ============================================================================
+  // Recovery Subscription System for MMD Preview Integration
+  // ============================================================================
+
+  /**
+   * Subscribe to MathJax recovery events
+   * Callback receives { healthy: boolean, timestamp: number }
+   * @param {Function} callback - Function to call on recovery
+   * @returns {Function} Unsubscribe function
+   */
+  onRecovery(callback) {
+    if (typeof callback !== "function") {
+      logWarn("onRecovery requires a function callback");
+      return () => {};
+    }
+
+    this.recoveryCallbacks.add(callback);
+    logDebug(
+      `Recovery callback registered (total: ${this.recoveryCallbacks.size})`,
+    );
+
+    // Return unsubscribe function
+    return () => {
+      this.recoveryCallbacks.delete(callback);
+      logDebug(
+        `Recovery callback unregistered (remaining: ${this.recoveryCallbacks.size})`,
+      );
+    };
+  }
+
+  /**
+   * Notify all recovery subscribers
+   * @private
+   */
+  _notifyRecoverySubscribers() {
+    if (this.recoveryCallbacks.size === 0) {
+      logDebug("No recovery subscribers to notify");
+      return;
+    }
+
+    logInfo(`Notifying ${this.recoveryCallbacks.size} recovery subscribers...`);
+
+    const eventData = {
+      healthy: this.isHealthy,
+      timestamp: Date.now(),
+      pendingElements: this.pendingElements.size,
+    };
+
+    this.recoveryCallbacks.forEach((callback) => {
+      try {
+        callback(eventData);
+      } catch (error) {
+        logError("Recovery callback error:", error);
+      }
+    });
+  }
+
+  /**
+   * Register an element for re-rendering on MathJax recovery
+   * Used by MMD Preview when MathJax fails during initial render
+   * @param {HTMLElement} element - Element that needs re-rendering
+   * @param {Object} [metadata] - Optional metadata about the element
+   */
+  registerPendingElement(element, metadata = {}) {
+    if (!element) {
+      logWarn("registerPendingElement requires an element");
+      return;
+    }
+
+    // Store element reference with metadata
+    this.pendingElements.add({
+      element,
+      metadata,
+      registeredAt: Date.now(),
+    });
+
+    logDebug(
+      `Pending element registered (total: ${this.pendingElements.size})`,
+      {
+        elementId: element.id || "anonymous",
+        metadata,
+      },
+    );
+  }
+
+  /**
+   * Get and clear all pending elements
+   * Called by MMD Preview during recovery to get elements needing re-render
+   * @returns {Array} Array of { element, metadata, registeredAt }
+   */
+  getPendingElements() {
+    const elements = Array.from(this.pendingElements);
+    this.pendingElements.clear();
+    logDebug(`Retrieved and cleared ${elements.length} pending elements`);
+    return elements;
+  }
+
+  /**
+   * Clear pending elements for a specific container
+   * @param {HTMLElement} container - Container element
+   */
+  clearPendingElementsFor(container) {
+    if (!container) return;
+
+    const before = this.pendingElements.size;
+    this.pendingElements.forEach((entry) => {
+      if (container.contains(entry.element) || entry.element === container) {
+        this.pendingElements.delete(entry);
+      }
+    });
+    const removed = before - this.pendingElements.size;
+
+    if (removed > 0) {
+      logDebug(`Cleared ${removed} pending elements for container`, {
+        containerId: container.id || "anonymous",
+      });
+    }
   }
 
   /**
@@ -662,11 +1001,47 @@ class MathJaxManager {
   clearQueue() {
     const cleared = this.operationsQueue.length;
     this.operationsQueue.forEach((op) =>
-      op.reject(new Error("Queue manually cleared"))
+      op.reject(new Error("Queue manually cleared")),
     );
     this.operationsQueue = [];
     logWarn(`🗑️ Cleared ${cleared} operations from queue`);
     return cleared;
+  }
+
+  /**
+   * Manually trigger recovery scan and notification
+   * Useful for debugging or forcing re-render after dynamic content changes
+   * @returns {Promise<{scanned: boolean, notified: boolean}>}
+   */
+  async triggerRecovery() {
+    logInfo("🔄 Manual recovery triggered");
+
+    const result = {
+      scanned: false,
+      notified: false,
+      wasHealthy: this.isHealthy,
+    };
+
+    // Check health first
+    const isHealthy = await this.checkHealth();
+
+    if (!isHealthy) {
+      logWarn("Cannot trigger recovery - MathJax not healthy");
+      return result;
+    }
+
+    // Notify subscribers
+    if (this.recoveryCallbacks.size > 0) {
+      this._notifyRecoverySubscribers();
+      result.notified = true;
+    }
+
+    // Scan for fallbacks
+    await this._scanAndRenderFallbacks();
+    result.scanned = true;
+
+    logInfo("✅ Manual recovery complete", result);
+    return result;
   }
 }
 

@@ -60,6 +60,59 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+// =============================================================================
+// SVG Icon Registry - Centralised icons for DOM elements
+// Standard icons use currentColor for theme compatibility
+// =============================================================================
+const ICONS = {
+  warning:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg>',
+  checkCircle:
+    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><circle cx="8.5" cy="8.5" r="8"/><path d="m5.5 9.5 2 2 5-5"/></g></svg>',
+};
+
+// Flag icons - retain official country colours (not currentColor)
+const FLAG_ICONS = {
+  US: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="usClip"><rect x="2" y="4" width="17" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usClip)"><rect x="2" y="4" width="17" height="13" fill="#fff"/><g fill="#b22234"><rect x="2" y="4" width="17" height="1"/><rect x="2" y="6" width="17" height="1"/><rect x="2" y="8" width="17" height="1"/><rect x="2" y="10" width="17" height="1"/><rect x="2" y="12" width="17" height="1"/><rect x="2" y="14" width="17" height="1"/><rect x="2" y="16" width="17" height="1"/></g><rect x="2" y="4" width="7" height="7" fill="#3c3b6e"/><g fill="#fff"><circle cx="3.5" cy="5.2" r="0.4"/><circle cx="5.5" cy="5.2" r="0.4"/><circle cx="7.5" cy="5.2" r="0.4"/><circle cx="4.5" cy="6.4" r="0.4"/><circle cx="6.5" cy="6.4" r="0.4"/><circle cx="3.5" cy="7.6" r="0.4"/><circle cx="5.5" cy="7.6" r="0.4"/><circle cx="7.5" cy="7.6" r="0.4"/><circle cx="4.5" cy="8.8" r="0.4"/><circle cx="6.5" cy="8.8" r="0.4"/><circle cx="3.5" cy="10" r="0.4"/><circle cx="5.5" cy="10" r="0.4"/><circle cx="7.5" cy="10" r="0.4"/></g></g></svg>',
+  EU: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="4" width="17" height="13" rx="2" fill="#039"/><g fill="#fc0" transform="translate(10.5, 10.5)"><circle r="1" transform="translate(0, -4.5)"/><circle r="1" transform="rotate(30) translate(0, -4.5)"/><circle r="1" transform="rotate(60) translate(0, -4.5)"/><circle r="1" transform="rotate(90) translate(0, -4.5)"/><circle r="1" transform="rotate(120) translate(0, -4.5)"/><circle r="1" transform="rotate(150) translate(0, -4.5)"/><circle r="1" transform="rotate(180) translate(0, -4.5)"/><circle r="1" transform="rotate(210) translate(0, -4.5)"/><circle r="1" transform="rotate(240) translate(0, -4.5)"/><circle r="1" transform="rotate(270) translate(0, -4.5)"/><circle r="1" transform="rotate(300) translate(0, -4.5)"/><circle r="1" transform="rotate(330) translate(0, -4.5)"/></g></svg>',
+  ASIA: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="sgClip"><rect x="2" y="4" width="17" height="13" rx="2"/></clipPath></defs><g clip-path="url(#sgClip)"><rect x="2" y="4" width="17" height="13" fill="#fff"/><rect x="2" y="4" width="17" height="6.5" fill="#ed2939"/><circle cx="6.5" cy="7.25" r="2.5" fill="#fff"/><circle cx="7.5" cy="7.25" r="2.5" fill="#ed2939"/><g fill="#fff"><path d="M9.5 5.5l-.35 1.08.92-.67h-1.14l.92.67z"/><path d="M11.5 6.5l-.35 1.08.92-.67h-1.14l.92.67z"/><path d="M11.5 8.5l-.35 1.08.92-.67h-1.14l.92.67z"/><path d="M9.5 9.2l-.35 1.08.92-.67h-1.14l.92.67z"/><path d="M8 8.5l-.35 1.08.92-.67h-1.14l.92.67z"/></g></g></svg>',
+};
+
+/**
+ * @function getIcon
+ * @description Returns an SVG icon with accessibility attributes and optional CSS class
+ * @param {string} name - Icon name from ICONS registry
+ * @param {Object} [options={}] - Configuration options
+ * @param {string} [options.className] - Additional CSS class to apply
+ * @returns {string} SVG markup with aria-hidden and class attributes, or empty string if not found
+ */
+function getIcon(name, options = {}) {
+  const svg = ICONS[name];
+  if (!svg) {
+    logWarn(`Unknown icon requested: ${name}`);
+    return "";
+  }
+  const className = options.className
+    ? ` class="icon ${options.className}"`
+    : ' class="icon"';
+  return svg.replace("<svg", `<svg aria-hidden="true"${className}`);
+}
+
+/**
+ * @function getFlagIcon
+ * @description Returns a flag SVG icon with accessibility attributes
+ * @param {string} region - Region code (US, EU, ASIA)
+ * @returns {string} SVG markup with aria-hidden and class attributes, or empty string if not found
+ */
+function getFlagIcon(region) {
+  const svg = FLAG_ICONS[region];
+  if (!svg) {
+    logWarn(`Unknown flag region requested: ${region}`);
+    return "";
+  }
+  return svg.replace("<svg", '<svg aria-hidden="true" class="icon icon-flag"');
+}
+
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
 
 /**
@@ -125,6 +178,16 @@ class MathPixUIManager extends MathPixBaseModule {
      * @private
      */
     this.configLoaded = false;
+
+    /**
+     * @type {boolean}
+     * @description
+     * Event listener attachment state. Prevents duplicate listener attachment
+     * when init() is called multiple times during tool switching.
+     *
+     * @private
+     */
+    this._eventListenersAttached = false;
 
     this.isInitialised = true;
 
@@ -196,6 +259,12 @@ class MathPixUIManager extends MathPixBaseModule {
       "mathpix-flip-preview-btn",
       "mathpix-transform-state",
       "mathpix-image-preview",
+      // Phase 6.3: Convert Mode Elements
+      "mathpix-convert-mode-container",
+      "mathpix-convert-mode-radio",
+      // Phase 8.2: Resume Session Mode Elements
+      "mathpix-resume-mode-container",
+      "mathpix-resume-mode-radio",
     ];
 
     // Cache basic elements with standardised naming
@@ -345,6 +414,14 @@ class MathPixUIManager extends MathPixBaseModule {
    * @since 1.0.0
    */
   attachEventListeners() {
+    // Guard against duplicate attachment (fixes multiple file dialogs issue)
+    if (this._eventListenersAttached) {
+      logDebug(
+        "Event listeners already attached, skipping duplicate attachment"
+      );
+      return;
+    }
+
     // File input change handler with smart routing (Phase 4)
     if (this.controller.elements["file-input"]) {
       const fileInputHandler = (e) => {
@@ -700,6 +777,9 @@ class MathPixUIManager extends MathPixBaseModule {
     this.attachCanvasSizeButtonListeners();
     this.attachCustomSizeHandler();
 
+    // Mark as attached to prevent duplicates
+    this._eventListenersAttached = true;
+
     logDebug("Event listeners attached", {
       trackedListeners: this.eventListeners.length,
     });
@@ -911,6 +991,85 @@ class MathPixUIManager extends MathPixBaseModule {
       );
     }
 
+    // Phase 6.3: Convert mode radio button handler
+    if (this.controller.elements["convert-mode-radio"]) {
+      const convertModeHandler = () => {
+        // Clear debug panel when switching modes
+        if (this.controller.clearDebugPanel) {
+          this.controller.clearDebugPanel();
+        }
+
+        // Switch to convert mode via mode switcher
+        if (this.controller.modeSwitcher) {
+          this.controller.modeSwitcher.switchToConvertMode();
+          logDebug("Switched to convert mode via UI");
+        } else {
+          logWarn(
+            "Mode switcher not available, using direct convert mode activation"
+          );
+          // Fallback: activate convert mode directly
+          const convertMode = window.getMathPixConvertMode?.();
+          if (convertMode) {
+            convertMode.init();
+            convertMode.show();
+            logDebug("Convert mode activated directly (fallback)");
+          } else {
+            logError("Convert mode controller not available");
+            this.showNotification("Convert mode unavailable", "error");
+          }
+        }
+      };
+
+      this.controller.elements["convert-mode-radio"].addEventListener(
+        "change",
+        convertModeHandler
+      );
+      this.trackEventListener(
+        this.controller.elements["convert-mode-radio"],
+        "change",
+        convertModeHandler
+      );
+    }
+
+    // Phase 8.2: Resume mode radio button
+    if (this.controller.elements["resume-mode-radio"]) {
+      const resumeModeHandler = () => {
+        // Clear debug panel when switching modes
+        if (this.controller.clearDebugPanel) {
+          this.controller.clearDebugPanel();
+        }
+
+        // Switch to resume mode via mode switcher
+        if (this.controller.modeSwitcher) {
+          this.controller.modeSwitcher.switchToResumeMode();
+          logDebug("Switched to resume mode via UI");
+        } else {
+          logWarn(
+            "Mode switcher not available, using direct resume mode activation"
+          );
+          // Fallback: activate session restorer directly
+          const restorer = window.getMathPixSessionRestorer?.();
+          if (restorer) {
+            restorer.show();
+            logDebug("Resume mode activated directly (fallback)");
+          } else {
+            logError("Session restorer not available");
+            this.showNotification("Resume mode unavailable", "error");
+          }
+        }
+      };
+
+      this.controller.elements["resume-mode-radio"].addEventListener(
+        "change",
+        resumeModeHandler
+      );
+      this.trackEventListener(
+        this.controller.elements["resume-mode-radio"],
+        "change",
+        resumeModeHandler
+      );
+    }
+
     logDebug("Canvas control handlers attached", {
       clearBtn: !!this.controller.elements["clear-canvas-btn"],
       undoBtn: !!this.controller.elements["undo-stroke-btn"],
@@ -918,6 +1077,8 @@ class MathPixUIManager extends MathPixBaseModule {
       uploadRadio: !!this.controller.elements["upload-mode-radio"],
       drawRadio: !!this.controller.elements["draw-mode-radio"],
       cameraRadio: !!this.controller.elements["camera-mode-radio"],
+      convertRadio: !!this.controller.elements["convert-mode-radio"],
+      resumeRadio: !!this.controller.elements["resume-mode-radio"],
     });
   }
 
@@ -2195,28 +2356,38 @@ class MathPixUIManager extends MathPixBaseModule {
     const targetConfig = MATHPIX_CONFIG.ENDPOINTS[targetEndpoint];
 
     const modalContent = `
-      <div class="mathpix-gdpr-warning">
-        <p>
-          You are switching from the <strong>EU endpoint</strong> to the 
-          <strong>${targetConfig.name} endpoint</strong> (${targetConfig.location}).
+    <div class="mathpix-gdpr-warning">
+      <p>
+        You are switching from the <strong>EU endpoint</strong> to the 
+        <strong>${targetConfig.name} endpoint</strong> (${
+      targetConfig.location
+    }).
+      </p>
+      <div class="warning-box">
+        <p style="margin: 0 0 0.5rem 0;"><strong>${getIcon(
+          "warning"
+        )} Important:</strong></p>
+        <p style="margin: 0;">
+          Data processed on non-EU servers may not comply with GDPR requirements. 
+          Your mathematical content will be processed in <strong>${
+            targetConfig.dataLocality
+          }</strong>.
         </p>
-        <div class="warning-box">
-          <p style="margin: 0 0 0.5rem 0;"><strong>⚠️ Important:</strong></p>
-          <p style="margin: 0;">
-            Data processed on non-EU servers may not comply with GDPR requirements. 
-            Your mathematical content will be processed in <strong>${targetConfig.dataLocality}</strong>.
-          </p>
-        </div>
-        <ul style="list-style: none; padding: 0; margin: 1rem 0;">
-          <li style="margin: 0.5rem 0;">✅ <strong>EU endpoint:</strong> GDPR-compliant, data processed in EU</li>
-          <li style="margin: 0.5rem 0;">⚠️ <strong>${targetConfig.name} endpoint:</strong> Data processed in ${targetConfig.dataLocality}</li>
-        </ul>
-        <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
-          <input type="checkbox" id="gdpr-dont-show-again" style="margin: 0;">
-          <span>Don't show this warning again</span>
-        </label>
       </div>
-    `;
+      <ul style="list-style: none; padding: 0; margin: 1rem 0;">
+        <li style="margin: 0.5rem 0;">${getIcon(
+          "checkCircle"
+        )} <strong>EU endpoint:</strong> GDPR-compliant, data processed in EU</li>
+        <li style="margin: 0.5rem 0;">${getIcon("warning")} <strong>${
+      targetConfig.name
+    } endpoint:</strong> Data processed in ${targetConfig.dataLocality}</li>
+      </ul>
+      <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+        <input type="checkbox" id="gdpr-dont-show-again" style="margin: 0;">
+        <span>Don't show this warning again</span>
+      </label>
+    </div>
+  `;
 
     // Show modal using UniversalModal if available
     if (window.UniversalModal) {
@@ -2399,8 +2570,15 @@ class MathPixUIManager extends MathPixBaseModule {
       return;
     }
 
-    // Update the displayed server location
-    statusElement.textContent = config.name;
+    // Get SVG flag icon for visual region indication
+    const flag = getFlagIcon(endpoint);
+
+    // Update the displayed server location with flag (SVG already has aria-hidden)
+    if (flag) {
+      statusElement.innerHTML = `${flag} ${config.name}`;
+    } else {
+      statusElement.textContent = config.name;
+    }
 
     logDebug("Status indicator updated", {
       endpoint,
@@ -2498,6 +2676,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
     this.eventListeners = [];
     this.configLoaded = false;
+    this._eventListenersAttached = false; // Reset for potential re-initialisation
 
     super.cleanup();
     logDebug("UI Manager cleanup completed", {

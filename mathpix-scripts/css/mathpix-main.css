@@ -478,11 +478,6 @@ input#custom-height {
   font-size: 0.85rem;
 }
 
-/* Output Display – layout */
-.mathpix-output-display {
-  /* margin-top: 1rem;*/
-}
-
 .mathpix-format-panel {
   display: none;
 }
@@ -1176,11 +1171,42 @@ input#custom-height {
 
 @media (max-width: 768px) {
   .mathpix-comparison-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(
+      0,
+      1fr
+    ); /* Allows column to shrink below content size */
     gap: 1rem;
     padding: 0.75rem;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
   }
 
+  .mathpix-comparison-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0; /* Critical: allows flex/grid items to shrink */
+    box-sizing: border-box;
+    min-height: auto;
+  }
+
+  /* Ensure content inside panels doesn't overflow */
+  .mathpix-comparison-panel .mathpix-comparison-title {
+    margin: 0.75rem;
+  }
+
+  .mathpix-comparison-panel .mathpix-rendered-output {
+    margin: 0 0.75rem 0.75rem 0.75rem;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .mathpix-comparison-panel .mathpix-original-image {
+    max-width: calc(100% - 1.5rem);
+    margin: 0 auto;
+  }
   .mathpix-image-preview {
     max-width: 300px;
     max-height: 250px;
@@ -2065,6 +2091,20 @@ input#custom-height {
   display: flex;
   flex-wrap: wrap;
 }
+.mathpix-tab-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mathpix-tab-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+}
 
 .mathpix-tab-header {
   padding: 0.75rem 1.5rem;
@@ -2089,7 +2129,10 @@ input#custom-height {
 }
 
 .mathpix-tab-panel {
-  padding: 1.5rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-bottom: 1.5rem;
+  padding-top: 0.4rem;
   display: none;
 }
 
@@ -2120,7 +2163,7 @@ input#custom-height {
 .mathpix-copy-btn,
 .mathpix-download-btn,
 .mathpix-preview-btn {
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -2159,7 +2202,6 @@ input#custom-height {
   font-size: 1rem;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.5rem;
 }
 
@@ -2301,19 +2343,51 @@ input#custom-height {
     grid-template-columns: 1fr;
   }
 
+  /* =========================================================
+     HORIZONTAL SCROLLING TABS - Mobile
+     Keeps tabs in a row with horizontal scroll instead of stacking
+     ========================================================= */
+
   .mathpix-tab-headers {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    gap: 0;
+    padding-bottom: 0.25rem;
+  }
+
+  .mathpix-tab-headers::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .mathpix-tab-headers::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .mathpix-tab-headers::-webkit-scrollbar-thumb {
+    background: currentColor;
+    opacity: 0.3;
+    border-radius: 2px;
   }
 
   .mathpix-tab-header {
-    border-radius: 0 !important;
-    border-right: none;
-    border-left: none;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0.6rem 0.875rem;
+    font-size: 0.85rem;
+    border-radius: 6px 6px 0 0 !important;
+    min-width: max-content;
   }
 
   .mathpix-tab-header:first-child {
-    border-top-left-radius: 8px !important;
-    border-top-right-radius: 8px !important;
+    border-top-left-radius: 6px !important;
+  }
+
+  .mathpix-tab-header:last-child {
+    border-top-right-radius: 6px !important;
   }
 
   .mathpix-format-header {
@@ -3079,7 +3153,6 @@ input#custom-height {
   user-select: none;
   align-items: center;
   gap: 0.5rem;
-  text-decoration: none;
 }
 
 .debug-panel-summary:focus {
@@ -3294,6 +3367,7 @@ input#custom-height {
 .mathpix-mode-switcher,
 .mathpix-status-indicator {
   border-radius: 4px;
+  min-height: 3.5rem;
 }
 
 #toolSelection legend,
@@ -3302,33 +3376,29 @@ input#custom-height {
   font-size: 1rem;
 }
 
-/* Default layout: inline radio buttons for #toolSelection */
-#toolSelection input[type="radio"] {
-  margin-right: 0.5rem;
-  margin-left: 1rem;
-}
-
-#toolSelection input[type="radio"]:first-of-type {
-  margin-left: 0;
-}
-
-#toolSelection label.radio {
-  margin-right: 1rem;
-  display: inline;
-}
-
 /* Default layout for .mathpix-mode-options (horizontal) */
 .mathpix-mode-options {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .mathpix-mode-option {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  white-space: nowrap;
   gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
   cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.mathpix-mode-option:has(input:focus-visible) {
+  outline-offset: 2px;
 }
 
 .mathpix-mode-option input[type="radio"] {
@@ -3342,40 +3412,19 @@ input#custom-height {
 
 .mathpix-mode-option .mode-label {
   white-space: nowrap;
+  line-height: 24px;
 }
 
 /* Mobile/Small viewport: stack radio buttons vertically */
 @media (max-width: 640px) {
-  /* #toolSelection styles */
-  #toolSelection {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.75rem;
-    align-items: center;
-  }
-
-  #toolSelection legend {
-    grid-column: 1 / -1;
-    margin-bottom: 0;
-  }
-
-  #toolSelection input[type="radio"] {
-    margin: 0;
-    justify-self: start;
-  }
-
-  #toolSelection label.radio {
-    margin: 0;
-    justify-self: start;
-  }
-
-  /* .mathpix-mode-switcher styles */
   .mathpix-mode-options {
     flex-direction: column;
+    align-items: stretch;
     gap: 0.75rem;
   }
 
   .mathpix-mode-option {
+    width: 100%;
     justify-content: flex-start;
   }
 }
@@ -3683,10 +3732,14 @@ input#custom-height {
   display: flex;
   vertical-align: middle;
 }
-.mathpix-mode-option {
-  padding-top: 7px;
-}
 .mathpix-header-row .mathpix-status-indicator {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 7px 15px 12.5px;
+
+  border-radius: 6px;
+  box-sizing: border-box;
   flex: 1 1 auto;
   min-width: 300px;
   margin: 0;
@@ -3725,6 +3778,22 @@ input#custom-height {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  /* Allow status items to wrap text on mobile */
+  .mathpix-status-indicator .status-item-mp {
+    white-space: normal;
+    flex-wrap: wrap;
+  }
+
+  /* Reduce min-width constraint on status indicator */
+  .mathpix-header-row .mathpix-status-indicator {
+    min-width: 0;
+    width: 100%;
+  }
+  .mathpix-open-original-btn {
+    text-align: left !important;
+    align-items: flex-start !important;
   }
 }
 .mathpix-header-row .mathpix-mode-switcher,
@@ -3810,11 +3879,6 @@ input#custom-height {
 /* ============================================
    MATHPIX FORMAT TABS - ARIA TABS PATTERN
    ============================================ */
-
-/* Navigation wrapper */
-.mathpix-format-selection-nav {
-  /* margin-bottom: 1.5rem;*/
-}
 
 /* Tab list container */
 .mathpix-format-tabs {
@@ -4732,7 +4796,7 @@ input#custom-height {
   width: 3rem;
   padding: 0.25rem;
   border-radius: 0.25rem;
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   text-align: center;
 }
 
@@ -4756,7 +4820,7 @@ input#custom-height {
   align-items: center;
   justify-content: center;
 
-  font-size: 0.875rem;
+  font-size: 0.7rem;
 
   transition: opacity 0.15s ease;
 }
@@ -4900,34 +4964,259 @@ input#custom-height {
   }
 }
 
+/* --------------------------------------------------------------------------
+   Fix Double Scrollbar in Code View Edit Mode
+   -------------------------------------------------------------------------- */
+
+/* When editing in Code view, disable scrolling on mathpix-format-content */
+.mmd-content-area[data-current-view="code"]
+  .mmd-code-container[data-editing="true"]
+  .mathpix-format-content {
+  overflow: hidden;
+}
+
+/* Ensure only textarea scrolls in code view */
+.mmd-content-area[data-current-view="code"]
+  .mmd-code-container[data-editing="true"]
+  .mmd-editor-textarea {
+  overflow-y: auto;
+}
+/* NEW */
 /* ==========================================================================
-   Phase 4.2: PDF Compare Styles - Colours
+   MOBILE RESPONSIVE FIX - Full Width Containers (Regardless of View Mode)
+   Applied at narrow viewports to ensure containers fill available width
    ========================================================================== */
 
-.mmd-pdf-controls {
-  border-top: 1px solid currentColor;
+@media (max-width: 768px) {
+  /* Force column layout at mobile - regardless of data-current-view value */
+  .mmd-content-area {
+    flex-direction: column !important;
+  }
+
+  /* Remove 50% width constraint from containers at mobile */
+  .mmd-code-container,
+  .mmd-preview-container,
+  .mmd-pdf-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+  }
+
+  /* Hide the vertical divider at mobile (it's meaningless when stacked) */
+  .mmd-view-divider {
+    display: none !important;
+  }
+
+  /* Skip links inside containers - consistent styling */
+  .mmd-view-container .mmd-skip-links {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Show skip links that are direct children of content-area (appears after preview) */
+  .mmd-content-area > .mmd-skip-links {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    border-top: 1px solid currentColor;
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  /* Ensure content fills width inside containers */
+  .mmd-code-container .mathpix-format-content,
+  .mmd-code-container .code-block-wrapper,
+  .mmd-code-container pre {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .mmd-preview-container .mmd-preview-content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* =========================================================
+     PDF CONTAINER - Skip links at bottom (order fix)
+     ========================================================= */
+
+  /* Ensure PDF container uses flex for ordering */
+  .mmd-pdf-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Skip links should appear at the very bottom of PDF container */
+  .mmd-pdf-container .mmd-skip-links {
+    order: 3;
+  }
+
+  /* =========================================================
+     EXPORT BUTTONS - Consistent sizing
+     ========================================================= */
+
+  .mathpix-export-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .mathpix-export-actions .mathpix-download-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+  }
+
+  /* Ensure SVG icons in buttons are consistent size */
+  .mathpix-export-actions .mathpix-download-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+}
+/* SVG Icon Base Styles for Convert Mode */
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
 }
 
-.mmd-pdf-page-input {
-  border: 1px solid currentColor;
-  background: transparent;
-  color: currentColor;
+/* Icon spacing in buttons */
+.convert-toolbar-btn .icon,
+.convert-edit-btn .icon,
+#convert-edit-btn .icon,
+#convert-fullscreen-btn .icon {
+  margin-right: 0.25em;
 }
 
-.mmd-pdf-page-input:focus {
-  outline: 2px solid currentColor;
+/* Progress item icon alignment */
+.mathpix-progress-status .icon {
+  margin-left: 0.25em;
+  vertical-align: text-bottom;
+}
+/* =============================================================================
+   SVG Icon Styles for Result Renderer
+   ============================================================================= */
+
+/* Base icon styling for line data displays */
+.line-data-summary-list .icon,
+.line-data-details-list .icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.25em;
+  flex-shrink: 0;
 }
 
-.mmd-pdf-page {
-  box-shadow: 0 2px 8px rgba(128, 128, 128, 0.3);
+/* Bullet icon - smaller for list items */
+.line-data-summary-list .icon-bullet {
+  width: 0.5em;
+  height: 0.5em;
+}
+/* =============================================================================
+   Privacy Consent Modal - SVG Icon Styles
+   ============================================================================= */
+
+/* Icon sizing in consent section headings */
+.mathpix-privacy-consent .consent-section h3 .icon {
+  width: 1.25em;
+  height: 1.25em;
+  flex-shrink: 0;
 }
 
-.mmd-pdf-page-indicator {
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
+/* EU flag icon - slightly wider to maintain flag proportions */
+.mathpix-privacy-consent .icon-eu-flag {
+  width: 1.5em;
 }
 
-/* Scroll margin for anchor navigation */
-.mmd-view-container {
-  scroll-margin-top: 1rem;
+/* High contrast mode - ensure icons remain visible */
+@media (prefers-contrast: high) {
+  .mathpix-privacy-consent .icon {
+    stroke-width: 2;
+  }
+}
+
+/* Reduced motion - remove any icon animations if added later */
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-privacy-consent .icon {
+    transition: none;
+  }
+}
+/* =============================================================================
+   Flag Icon Styles - Server Location Indicator
+   ============================================================================= */
+
+.icon-flag {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1.4em;
+  height: 1em;
+  margin-right: 0.3em;
+  /* Subtle border to define flag edges against light backgrounds */
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+}
+
+/* =============================================================================
+     GDPR Warning Modal Icon Alignment
+     ============================================================================= */
+
+.mathpix-gdpr-warning .icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.2em;
+}
+
+/* Ensure warning icons have appropriate visual weight in warning box */
+.mathpix-gdpr-warning .warning-box .icon {
+  vertical-align: text-bottom;
+}
+
+/* List item icon alignment */
+.mathpix-gdpr-warning ul .icon {
+  margin-right: 0.4em;
+}
+
+/* ============================================
+   MathPix MathJax Enhancements - Layout
+   ============================================ */
+
+mjx-container[data-mathpix-enhanced] {
+  transition: transform 0.2s ease;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+mjx-container[data-mathpix-enhanced]:hover {
+  transform: scale(1.02);
+
+  border-radius: 4px;
+}
+
+mjx-container[data-mathpix-enhanced]:focus-visible {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+/* ============================================
+     Reduced Motion Preferences
+     ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  mjx-container[data-mathpix-enhanced] {
+    transition: none;
+  }
+  mjx-container[data-mathpix-enhanced]:hover {
+    transform: none;
+  }
 }

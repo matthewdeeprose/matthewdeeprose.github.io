@@ -2566,7 +2566,14 @@ JSON (.json)
   generateProductionReadme(manifest, debugData = null) {
     logInfo("Generating production README...");
 
-    const { sourceResult, resultsResult, response, metadata } = manifest;
+    const {
+      sourceResult,
+      resultsResult,
+      editsResult,
+      convertedResult,
+      response,
+      metadata,
+    } = manifest;
 
     // Extract debug data if not provided
     if (!debugData) {
@@ -2668,6 +2675,11 @@ ${this.formatFileList(resultsResult.filesCollected, "    ")}
   - api-response.json:   Complete API response data
   - debug-info.md:       Debug information in Markdown format
   - metadata.json:       Structured processing metadata
+  ${this.generateEditsSection(editsResult)}
+  ${this.generateConvertedSection(convertedResult)}
+
+
+
 
 README.txt
   This file - Archive documentation
@@ -2809,6 +2821,59 @@ Timestamp: ${timestamp}
     }
 
     return lines.join("\n");
+  }
+
+  /**
+   * Generate edits section for README
+   * Documents user's MMD edits if present in the archive
+   * @param {Object} editsResult - Edits collection result
+   * @returns {string} Formatted edits section or empty string
+   */
+  generateEditsSection(editsResult) {
+    // Return empty string if no edits
+    if (!editsResult?.hasEdits) {
+      return "";
+    }
+
+    const charDiff = editsResult.characterDifference;
+    const charDiffStr =
+      charDiff >= 0 ? `+${charDiff} characters` : `${charDiff} characters`;
+
+    return `
+/edits/
+  User's edited MMD content:
+  - ${editsResult.filename}:  Edited version (${charDiffStr} from original)
+    Original MathPix output preserved in: results/${
+      editsResult.sourceFileName?.replace(/\.pdf$/i, ".mmd") || "mmd.mmd"
+    }
+    Last modified: ${editsResult.lastModified || "Unknown"}
+`;
+  }
+
+  /**
+   * Generate README section for converted files
+   * Phase 6.2: Convert API integration
+   * @param {Object} convertedResult - Converted files collection result
+   * @returns {string} README section content
+   */
+  generateConvertedSection(convertedResult) {
+    // Don't show section if no converted files
+    if (!convertedResult?.hasConvertedFiles) {
+      return "";
+    }
+
+    const fileList = convertedResult.files
+      .map((file) => {
+        const sizeKB = (file.size / 1024).toFixed(1);
+        return `  - ${file.filename} (${sizeKB} KB)`;
+      })
+      .join("\n");
+
+    return `
+/converted/
+  Document format conversions via MathPix Convert API:
+${fileList}
+`;
   }
 
   /**
@@ -3306,6 +3371,101 @@ Timestamp: ${timestamp}
     return stats;
   }
 
+  // =========================================================================
+  // PHASE 6.2: CONVERTED FILES COLLECTION
+  // =========================================================================
+
+  /**
+   * Collect converted files from the Convert UI
+   * Phase 6.2: Integration with MathPix Convert API
+   *
+   * @param {JSZip} convertedFolder - JSZip folder object for converted files
+   * @returns {Object} Collection result with file count and details
+   */
+  collectConvertedFiles(convertedFolder) {
+    logInfo("Collecting converted files...");
+
+    const result = {
+      fileCount: 0,
+      files: [],
+      hasConvertedFiles: false,
+    };
+
+    try {
+      // Get the Convert UI instance
+      const convertUI = window.getMathPixConvertUI?.();
+
+      if (!convertUI) {
+        logDebug("Convert UI not available - no converted files to collect");
+        return result;
+      }
+
+      // Get completed downloads with filenames
+      const completedDownloads =
+        convertUI.getCompletedDownloadsWithFilenames?.();
+
+      if (!completedDownloads || completedDownloads.length === 0) {
+        logDebug("No converted files available");
+        return result;
+      }
+
+      // Add each converted file to the folder
+      completedDownloads.forEach(({ filename, blob, format }) => {
+        convertedFolder.file(filename, blob);
+        result.files.push({
+          filename: filename,
+          format: format,
+          size: blob.size,
+        });
+        result.fileCount++;
+        logDebug(`Added converted file: ${filename} (${blob.size} bytes)`);
+      });
+
+      result.hasConvertedFiles = result.fileCount > 0;
+      logInfo(`Collected ${result.fileCount} converted files`);
+    } catch (error) {
+      logWarn("Error collecting converted files:", error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Check if converted files are available
+   * Phase 6.2: Helper for UI state
+   * @returns {boolean} True if converted files exist
+   */
+  hasConvertedFiles() {
+    try {
+      const convertUI = window.getMathPixConvertUI?.();
+      if (!convertUI) return false;
+
+      const downloads = convertUI.getCompletedDownloads?.();
+      return downloads && downloads.size > 0;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Get converted files description for README
+   * Phase 6.2: README generation helper
+   * @param {Object} convertedResult - Result from collectConvertedFiles
+   * @returns {string} Description for README
+   */
+  getConvertedDescription(convertedResult) {
+    if (!convertedResult || !convertedResult.hasConvertedFiles) {
+      return "No converted files in this archive";
+    }
+
+    const lines = convertedResult.files.map((file) => {
+      const sizeKB = (file.size / 1024).toFixed(1);
+      return `  ${file.filename} (${sizeKB} KB)`;
+    });
+
+    return lines.join("\n");
+  }
+
   /**
    * Create archive with real data (Phase 5 entry point)
    * Phase 5.5: Updated to separate formats from response
@@ -3322,6 +3482,8 @@ Timestamp: ${timestamp}
       const sourceFolder = zip.folder(this.config.DIRECTORIES.SOURCE);
       const resultsFolder = zip.folder(this.config.DIRECTORIES.RESULTS);
       const dataFolder = zip.folder(this.config.DIRECTORIES.DATA);
+      const editsFolder = zip.folder(this.config.DIRECTORIES.EDITS);
+      const convertedFolder = zip.folder(this.config.DIRECTORIES.CONVERTED);
 
       // Collect source files (Phase 2)
       const sourceResult = await this.collectSourceFiles(
@@ -3339,6 +3501,81 @@ Timestamp: ${timestamp}
         sourceResult // Pass source result for base filename extraction
       );
       logInfo("Results collection result:", resultsResult);
+
+      // Phase 8.3.1: Carry forward existing edits from resumed ZIP
+      // These preserve the edit history across multiple resume sessions
+      let existingEditsCount = 0;
+      if (data.existingEdits && data.existingEdits.length > 0) {
+        for (const edit of data.existingEdits) {
+          if (edit.filename && edit.content) {
+            editsFolder.file(edit.filename, edit.content);
+            existingEditsCount++;
+            logDebug(`Carried forward existing edit: ${edit.filename}`);
+          }
+        }
+        logInfo(`Carried forward ${existingEditsCount} existing edits`);
+      }
+
+      // Collect NEW MMD edits from current session (if any)
+      const editsResult = this.collectMMDEdits(editsFolder);
+
+      // Phase 8.4: Include manually saved MMD versions
+      let savedVersionsCount = 0;
+      if (data.savedMMDVersions && data.savedMMDVersions.length > 0) {
+        // Build list of all files already in edits folder
+        const existingFilenames = new Set();
+
+        // Add carried forward edits
+        if (data.existingEdits) {
+          data.existingEdits.forEach((edit) => {
+            if (edit.filename) existingFilenames.add(edit.filename);
+          });
+        }
+
+        // Add current edit filename
+        if (editsResult.filename) {
+          existingFilenames.add(editsResult.filename);
+        }
+
+        for (const savedVersion of data.savedMMDVersions) {
+          if (savedVersion.filename && savedVersion.content) {
+            // Check if filename already exists
+            if (existingFilenames.has(savedVersion.filename)) {
+              logDebug(
+                `Skipping saved version (filename exists): ${savedVersion.filename}`
+              );
+              continue;
+            }
+
+            // Note: We no longer skip saved versions based on content matching current edit.
+            // Users explicitly save versions as deliberate checkpoints, even if content
+            // hasn't changed since. The filename deduplication above is sufficient.
+            //
+            // Previously this checked: savedVersion.content === persistence.session.current
+            // But this incorrectly skipped intentional save points.
+
+            editsFolder.file(savedVersion.filename, savedVersion.content);
+            existingFilenames.add(savedVersion.filename);
+            savedVersionsCount++;
+            logDebug(`Added saved MMD version: ${savedVersion.filename}`);
+          }
+        }
+        logInfo(
+          `Added ${savedVersionsCount} manually saved MMD versions to edits folder`
+        );
+      }
+      // Combine counts for reporting
+      editsResult.existingEditsCarriedForward = existingEditsCount;
+      editsResult.savedVersionsIncluded = savedVersionsCount;
+      editsResult.totalEditsInArchive =
+        existingEditsCount +
+        (editsResult.hasEdits ? 1 : 0) +
+        savedVersionsCount;
+      logInfo("Edits collection result:", editsResult);
+
+      // Phase 6.2: Collect converted files if any
+      const convertedResult = this.collectConvertedFiles(convertedFolder);
+      logInfo("Converted collection result:", convertedResult);
 
       // Phase 3.2: Add lines.json for confidence visualisation (PDF only)
       if (data.linesData && data.linesData.pages) {
@@ -3366,9 +3603,12 @@ Timestamp: ${timestamp}
       logInfo("Data collection result:", dataResult);
 
       // Generate production README (Phase 4)
+      // Include edits result and converted result for README generation
       const manifest = {
         sourceResult,
         resultsResult,
+        editsResult,
+        convertedResult, // Phase 6.2: Add converted files to manifest
         response: data.response, // rawResponse for metadata
         metadata: this.generateMetadata(
           sourceResult,
@@ -3422,6 +3662,103 @@ Timestamp: ${timestamp}
     }
 
     return null; // Will use timestamp-based name
+  }
+
+  /**
+   * Generate timestamped filename for edited MMD content
+   * @param {string} sourceFileName - Original source file name
+   * @returns {string} Formatted filename with timestamp
+   */
+  generateEditsFilename(sourceFileName) {
+    // Remove .pdf extension if present
+    let baseName = sourceFileName?.replace(/\.pdf$/i, "") || "mathpix-export";
+
+    // Sanitise filename - remove unsafe characters
+    baseName = baseName.replace(/[<>:"/\\|?*]/g, "-");
+
+    // Format date: YYYY-MM-DD
+    const now = new Date();
+    const date = now.toISOString().split("T")[0];
+
+    // Format time: HH-MM
+    const time = now.toTimeString().slice(0, 5).replace(":", "-");
+
+    return `${baseName}-${date}-${time}.mmd`;
+  }
+
+  /**
+   * Collect MMD edits from the editor session
+   * @param {JSZip.folder} editsFolder - The edits folder in the ZIP
+   * @returns {Object} Collection result with edits information
+   */
+  collectMMDEdits(editsFolder) {
+    const result = {
+      hasEdits: false,
+      filename: null,
+      originalLength: 0,
+      editedLength: 0,
+      characterDifference: 0,
+      sourceFileName: null,
+      lastModified: null,
+      errors: [],
+    };
+
+    try {
+      // Access the persistence module via global function
+      const persistence = window.getMathPixMMDPersistence?.();
+
+      if (!persistence) {
+        logDebug("MMD Persistence module not available");
+        return result;
+      }
+
+      if (!persistence.hasSession?.()) {
+        logDebug("No MMD editing session active");
+        return result;
+      }
+
+      const session = persistence.session;
+
+      // Only include if content has been modified
+      if (!session.current || !session.original) {
+        logDebug("Session missing current or original content");
+        return result;
+      }
+
+      if (session.current === session.original) {
+        logDebug("MMD content not modified, skipping edits collection");
+        return result;
+      }
+
+      // Generate timestamped filename
+      const filename = this.generateEditsFilename(session.sourceFileName);
+
+      // Add edited content to ZIP
+      editsFolder.file(filename, session.current);
+
+      // Populate result
+      result.hasEdits = true;
+      result.filename = filename;
+      result.originalLength = session.original?.length || 0;
+      result.editedLength = session.current?.length || 0;
+      result.characterDifference = result.editedLength - result.originalLength;
+      result.sourceFileName = session.sourceFileName || "unknown";
+      result.lastModified = session.lastModified
+        ? new Date(session.lastModified).toISOString()
+        : new Date().toISOString();
+
+      logInfo("MMD edits collected", {
+        filename: result.filename,
+        originalLength: result.originalLength,
+        editedLength: result.editedLength,
+        characterDifference: result.characterDifference,
+      });
+    } catch (error) {
+      logError("Failed to collect MMD edits:", error);
+      result.errors.push(error.message);
+    }
+
+    return result;
   }
 
   /**

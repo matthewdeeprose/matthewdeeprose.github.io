@@ -1,0 +1,2696 @@
+/**
+ * @fileoverview MathPix Session Resume Mode Styles - Phase 8.2
+ * @module mathpix-resume.css
+ * @version 1.0.0
+ * @since 8.2.0
+ *
+ * @description
+ * Styles for the Resume Session mode that enables restoration of previous
+ * MathPix processing sessions from ZIP archives.
+ *
+ * Follows existing MathPix CSS patterns:
+ * - WCAG 2.2 AA compliant contrast and focus states
+ * - Responsive design with mobile breakpoints
+ * - Consistent with mathpix-main.css patterns
+ */
+
+.resume-session-option-zip-edit {
+  border-left-width: 3px;
+  border-left-style: solid;
+  padding-left: calc(0.75rem - 3px);
+}
+
+/* ============================================================================
+   Session Options Divider - Layout
+   ============================================================================ */
+.resume-session-options-divider {
+  display: flex;
+  align-items: center;
+  margin: 0.75rem 0;
+  font-size: 0.875rem;
+}
+
+.resume-session-options-divider::before,
+.resume-session-options-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+}
+
+.resume-session-options-divider span {
+  padding: 0 0.75rem;
+}
+
+.resume-session-option-zip {
+  border-left-width: 3px;
+  border-left-style: solid;
+  padding-left: calc(0.75rem - 3px);
+}
+
+.resume-switch-version-btn {
+  margin-right: auto;
+  font-size: 0.8rem;
+}
+
+/* ============================================================================
+      RESUME MODE CONTAINER
+      ============================================================================ */
+
+#mathpix-resume-mode-container {
+  width: 100%;
+}
+
+/* ============================================================================
+      ZIP UPLOAD SECTION - Initial state before ZIP loaded
+      ============================================================================ */
+
+.resume-upload-section {
+  padding: 1.5rem;
+}
+
+.resume-upload-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.resume-instructions {
+  margin: 0 0 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* Resume Drop Zone - Uses existing .drop-zone base styles */
+#resume-drop-zone {
+  border: 2px dashed currentColor;
+  border-radius: 8px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#resume-drop-zone:hover,
+#resume-drop-zone:focus {
+  outline: none;
+}
+
+#resume-drop-zone:focus-visible {
+  outline-offset: 2px;
+}
+
+#resume-drop-zone.drag-over {
+  transform: scale(1.01);
+}
+
+.drop-zone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.drop-zone-icon {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+#resume-drop-zone:hover .drop-zone-icon,
+#resume-drop-zone:focus .drop-zone-icon {
+  opacity: 0.9;
+}
+
+.drop-zone-text {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.drop-zone-text strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.drop-zone-text span {
+  font-size: 0.875rem;
+}
+
+.drop-zone-help {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* ============================================================================
+      VALIDATION MESSAGES
+      ============================================================================ */
+
+.resume-validation-messages {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.resume-validation-messages[hidden] {
+  display: none;
+}
+
+.resume-validation-error,
+.resume-validation-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.resume-validation-error:last-child,
+.resume-validation-warning:last-child {
+  margin-bottom: 0;
+}
+
+.resume-validation-error::before {
+  content: "❌";
+}
+
+.resume-validation-warning::before {
+  content: "⚠️";
+}
+
+/* ============================================================================
+      LOADING STATE
+      ============================================================================ */
+
+.resume-loading-state {
+  padding: 2rem;
+  text-align: center;
+}
+
+.resume-loading-spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  animation: resume-spin 0.8s linear infinite;
+}
+
+@keyframes resume-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.resume-loading-text {
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+}
+
+/* ============================================================================
+      EDIT SELECTION DIALOG
+      ============================================================================ */
+
+.resume-edit-selection {
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 500px;
+  margin: 2rem auto;
+}
+
+.resume-edit-selection[hidden] {
+  display: none;
+}
+
+.resume-edit-selection h4 {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.resume-edit-selection > p {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.resume-edit-options {
+  border: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+
+.resume-edit-options legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.resume-edit-option {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.875rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.resume-edit-option:last-child {
+  margin-bottom: 0;
+}
+
+.resume-edit-option:focus-within {
+  outline-offset: 2px;
+}
+
+.resume-edit-option input[type="radio"] {
+  margin: 0.25rem 0.75rem 0 0;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+}
+
+.edit-option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.edit-option-filename {
+  font-weight: 500;
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.edit-option-timestamp {
+  font-size: 0.8rem;
+}
+
+.edit-option-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.125rem 0.5rem;
+  border-radius: 3px;
+  margin-top: 0.375rem;
+  align-self: flex-start;
+}
+
+.resume-edit-selection-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* ============================================================================
+      SESSION HEADER
+      ============================================================================ */
+
+.resume-session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.resume-session-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.resume-source-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.resume-session-status {
+  font-size: 0.8rem;
+
+  padding: 0.125rem 0.5rem;
+  border-radius: 3px;
+}
+
+.resume-session-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ============================================================================
+      WORKING AREA
+      ============================================================================ */
+
+.resume-working-area {
+  padding: 1rem;
+}
+
+.resume-working-area[hidden] {
+  display: none;
+}
+
+/* ============================================================================
+      DOWNLOAD ALL SECTION
+      ============================================================================ */
+
+.resume-download-all-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  text-align: center;
+}
+
+.resume-download-all-btn:hover {
+  transform: translateY(-1px);
+}
+
+.resume-download-help {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+}
+
+/* ============================================================================
+      RESPONSIVE DESIGN
+      ============================================================================ */
+
+@media (max-width: 640px) {
+  .resume-edit-selection {
+    margin: 1rem;
+    padding: 1rem;
+  }
+
+  .resume-edit-selection-actions {
+    flex-direction: column;
+  }
+
+  .resume-edit-selection-actions .mathpix-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .resume-session-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .resume-session-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  #resume-drop-zone {
+    padding: 1.5rem 1rem;
+    min-height: 140px;
+  }
+}
+
+/* ============================================================================
+      HIGH CONTRAST MODE
+      ============================================================================ */
+
+@media (prefers-contrast: high) {
+  #resume-drop-zone {
+    border-width: 3px;
+  }
+
+  .resume-edit-option {
+    border-width: 2px;
+  }
+
+  .resume-session-header {
+    border-width: 2px;
+  }
+}
+
+/* ============================================================================
+      REDUCED MOTION
+      ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .resume-loading-spinner {
+    animation: none;
+    border-style: dotted;
+  }
+
+  #resume-drop-zone,
+  .resume-edit-option,
+  .mathpix-btn,
+  .resume-download-all-btn {
+    transition: none;
+  }
+
+  #resume-drop-zone.drag-over {
+    transform: none;
+  }
+
+  .resume-download-all-btn:hover {
+    transform: none;
+  }
+}
+
+/* ============================================================================
+   PDF Comparison View Styles - Layout
+   ============================================================================ */
+.mmd-pdf-scroll-container {
+  overflow-y: auto;
+  max-height: 100%;
+  padding: 1rem;
+}
+
+.mmd-pdf-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.resume-pdf-page-wrapper {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.resume-pdf-page-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.resume-pdf-page-label {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.resume-pdf-placeholder,
+.resume-pdf-loading,
+.resume-pdf-error {
+  padding: 2rem;
+  text-align: center;
+}
+
+.mmd-restore-btn {
+  font-size: 0.8rem;
+}
+
+/* ============================================================================
+   Session Restore Banner - Layout
+   ============================================================================ */
+.resume-session-banner {
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.resume-session-banner p {
+  margin: 0 0 0.75rem 0;
+}
+.resume-session-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.resume-session-banner {
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.resume-session-banner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.resume-session-banner-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.resume-session-close-btn {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+#resume-session-banner-message {
+  margin: 0 0 1rem 0;
+}
+
+.resume-session-options {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  margin: 0 0 1rem 0;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+.resume-session-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.resume-session-option:has(input:focus) {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: -2px;
+}
+
+.resume-session-option input[type="radio"] {
+  margin: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.resume-session-option-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Date + Badge stay together */
+.resume-session-option-date {
+  font-weight: 500;
+  order: 1;
+  flex-shrink: 0;
+}
+
+.resume-session-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 1rem;
+  order: 2;
+  flex-shrink: 0;
+}
+
+/* Preview: inline by default, truncates as needed */
+.resume-session-preview {
+  order: 3;
+  flex: 1 1 auto;
+  min-width: 8rem;
+  font-size: 0.85em;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Size pushed to far right */
+.resume-session-option-size {
+  font-size: 0.875rem;
+  margin-left: auto;
+  order: 4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Smaller screens: preview wraps to its own line */
+@media (max-width: 640px) {
+  .resume-session-preview {
+    flex-basis: 100%;
+    order: 5;
+  }
+
+  .resume-session-option-size {
+    order: 4;
+  }
+}
+.resume-session-option-newest {
+  border-left-width: 3px;
+  border-left-style: solid;
+  padding-left: calc(0.75rem - 3px);
+}
+
+.resume-session-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ============================================================================
+   Resume Mode Code Container - Scroll Fix
+   ============================================================================ */
+
+/* Ensure the Resume mode content area has proper height constraints */
+#resume-panel-mmd {
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow flex children to shrink */
+  max-height: 70vh;
+  overflow: hidden;
+}
+
+/* Wide viewports with short height: ensure minimum usable panel height */
+@media (min-width: 769px) {
+  #resume-panel-mmd {
+    min-height: 400px;
+    max-height: max(400px, 70vh);
+  }
+}
+
+/* ============================================================================
+   Resume Mode Code Container - Scroll Fix
+   ============================================================================ */
+
+/* Code container should use flex layout */
+#resume-mmd-code-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Only constrain height in Code view */
+#resume-mmd-content-area[data-current-view="code"] #resume-mmd-code-container {
+  max-height: 70vh;
+}
+
+/* The format content wrapper is the single scroll container */
+#resume-mmd-code-container .mathpix-format-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Code block wrapper should not constrain height */
+#resume-mmd-code-container .code-block-wrapper {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+/* Remove the max-height from pre - let parent control scrolling */
+#resume-mmd-code-container pre {
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+}
+
+/* The code element should expand to full content */
+#resume-mmd-code-container code {
+  display: block;
+}
+
+/* When editing, the editor wrapper handles scrolling instead */
+#resume-mmd-code-container[data-editing="true"] .mmd-editor-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#resume-mmd-code-container[data-editing="true"] .mmd-editor-textarea {
+  flex: 1;
+  min-height: 300px;
+  max-height: none;
+  overflow: auto;
+}
+
+/* ============================================================================
+   Resume Mode View Switching - Container Visibility
+   ============================================================================ */
+
+/* Base state: hide all view containers */
+#resume-mmd-code-container,
+#resume-mmd-preview-container,
+#resume-mmd-pdf-container {
+  display: none;
+}
+
+/* Code View: Show only code container */
+#resume-mmd-content-area[data-current-view="code"] #resume-mmd-code-container {
+  display: flex;
+}
+
+/* Preview View: Show only preview container */
+#resume-mmd-content-area[data-current-view="preview"]
+  #resume-mmd-preview-container {
+  display: block;
+}
+
+/* Split View: Show code and preview containers */
+#resume-mmd-content-area[data-current-view="split"] #resume-mmd-code-container,
+#resume-mmd-content-area[data-current-view="split"]
+  #resume-mmd-preview-container {
+  display: flex;
+}
+
+/* Responsive split view - stacked layout at narrow viewports */
+@media (max-width: 768px) {
+  #resume-mmd-content-area[data-current-view="split"] {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  #resume-mmd-content-area[data-current-view="split"]
+    #resume-mmd-code-container,
+  #resume-mmd-content-area[data-current-view="split"]
+    #resume-mmd-preview-container {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%; /* Override the 50% from side-by-side layout */
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  #resume-mmd-content-area[data-current-view="split"]
+    #resume-mmd-code-container
+    .mathpix-format-content,
+  #resume-mmd-content-area[data-current-view="split"]
+    #resume-mmd-preview-container
+    .mmd-preview-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* Textarea in editing mode - expand to content */
+  #resume-mmd-content-area[data-current-view="split"]
+    #resume-mmd-code-container
+    textarea {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    resize: vertical;
+  }
+
+  /* Fix panel overflow when split view stacks */
+  #resume-panel-mmd {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .mathpix-results-tabs {
+    overflow: visible;
+  }
+  /* Editing mode in split view - let textarea expand to content */
+  #resume-mmd-content-area[data-current-view="split"]
+    #resume-mmd-code-container[data-editing="true"]
+    .mathpix-format-content {
+    height: auto;
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  #resume-mmd-content-area[data-current-view="split"]
+    #resume-mmd-code-container[data-editing="true"]
+    .mmd-editor-wrapper {
+    height: auto;
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  #resume-mmd-content-area[data-current-view="split"]
+    #resume-mmd-code-container[data-editing="true"]
+    .mmd-editor-textarea {
+    height: auto;
+    min-height: 200px; /* Reasonable minimum */
+    max-height: none;
+    overflow: visible;
+    resize: none; /* Disable resize handle since it auto-expands */
+  }
+  /* =========================================================
+     CODE VIEW RESPONSIVE FIXES (narrow viewports)
+     ========================================================= */
+
+  /* Code view: let containers expand to content height */
+  #resume-mmd-content-area[data-current-view="code"] {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  #resume-mmd-content-area[data-current-view="code"]
+    #resume-mmd-code-container {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    flex: 0 0 auto;
+  }
+
+  #resume-mmd-content-area[data-current-view="code"]
+    #resume-mmd-code-container
+    .mathpix-format-content {
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
+    overflow-x: hidden;
+    flex: 0 0 auto;
+  }
+
+  #resume-mmd-content-area[data-current-view="code"]
+    #resume-mmd-code-container
+    .code-block-wrapper {
+    overflow: visible;
+  }
+
+  /* Horizontal wrapping for code content - prevents text overflow
+     Applies to BOTH code view AND split view at narrow viewports */
+  #resume-mmd-code-container pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
+  }
+
+  #resume-mmd-code-container code {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Textarea in code view editing mode */
+  #resume-mmd-content-area[data-current-view="code"]
+    #resume-mmd-code-container[data-editing="true"]
+    .mmd-editor-textarea {
+    flex: none;
+    overflow: visible;
+  }
+
+  /* Line editor in code view with confidence enabled */
+  #resume-mmd-content-area[data-current-view="code"] #resume-mmd-line-editor {
+    overflow: visible;
+    height: auto;
+  }
+  /* =========================================================
+     PREVIEW VIEW RESPONSIVE FIXES (narrow viewports)
+     ========================================================= */
+
+  /* Preview container: let it expand to content height */
+  #resume-mmd-preview-container {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    flex: 0 0 auto;
+  }
+
+  /* Preview content: expand to full height, clip horizontal overflow */
+  #resume-mmd-preview-content {
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
+    overflow-x: hidden;
+  }
+}
+
+#resume-mmd-content-area[data-current-view="split"]
+  #resume-mmd-preview-container {
+  display: block;
+}
+
+/* PDF Split View: Show code and PDF containers */
+#resume-mmd-content-area[data-current-view="pdf_split"]
+  #resume-mmd-code-container,
+#resume-mmd-content-area[data-current-view="pdf_split"]
+  #resume-mmd-pdf-container {
+  display: flex;
+}
+
+#resume-mmd-content-area[data-current-view="pdf_split"]
+  #resume-mmd-pdf-container {
+  display: block;
+}
+
+/* ============================================================================
+   Resume Mode Tab Panel Visibility
+   ============================================================================ */
+
+/* Hide panels by default */
+#resume-panel-mmd,
+#resume-panel-confidence {
+  display: none;
+}
+
+/* Show panel when not hidden */
+#resume-panel-mmd:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+
+#resume-panel-confidence:not([hidden]) {
+  display: block;
+}
+
+/* Ensure hidden attribute works */
+#resume-panel-mmd[hidden],
+#resume-panel-confidence[hidden] {
+  display: none !important;
+}
+
+/* ============================================================================
+   PDF Mode Code Container - Scroll Fix
+   ============================================================================ */
+
+/* Code container should use flex layout */
+#mmd-code-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Only constrain height in Code view */
+.mmd-content-area[data-current-view="code"] #mmd-code-container {
+  max-height: 70vh;
+}
+
+/* The format content wrapper is the single scroll container */
+#mmd-code-container .mathpix-format-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Code block wrapper should not constrain height */
+#mmd-code-container .code-block-wrapper {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+/* Remove the max-height from pre - let parent control scrolling */
+#mmd-code-container pre {
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+}
+
+/* The code element should expand to full content */
+#mmd-code-container code {
+  display: block;
+}
+
+/* When editing, the editor wrapper handles scrolling instead */
+#mmd-code-container[data-editing="true"] .mmd-editor-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#mmd-code-container[data-editing="true"] .mmd-editor-textarea {
+  flex: 1;
+  min-height: 300px;
+  max-height: none;
+  overflow: auto;
+}
+
+/* ============================================================================
+   Phase 5.4: Resume Mode Fullscreen Edit
+   ============================================================================ */
+
+/* --------------------------------------------------------------------------
+   Fullscreen Header - Hidden by default, visible only in fullscreen mode
+   -------------------------------------------------------------------------- */
+
+.resume-fullscreen-header {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid currentColor;
+}
+
+.resume-fullscreen-header .mmd-fullscreen-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.resume-fullscreen-header .mmd-fullscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Fullscreen Button - Hidden by default, shown via JS when editing */
+#resume-mmd-fullscreen-btn[hidden] {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Fullscreen Mode - Container Styles
+   -------------------------------------------------------------------------- */
+
+#resume-mmd-code-container.fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  min-height: 100vh !important;
+  z-index: 9999 !important;
+  max-width: none !important;
+  min-width: 100vw !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Show fullscreen header when in fullscreen mode */
+#resume-mmd-code-container.fullscreen .resume-fullscreen-header {
+  display: flex;
+  flex-shrink: 0;
+}
+
+/* Hide the "Editing" badge in fullscreen mode */
+#resume-mmd-code-container.fullscreen[data-editing="true"]::before {
+  display: none !important;
+}
+
+/* Format content fills remaining space in fullscreen */
+#resume-mmd-code-container.fullscreen .mathpix-format-content {
+  flex: 1 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: auto !important;
+}
+
+/* Editor wrapper fills available space in fullscreen */
+#resume-mmd-code-container.fullscreen .mmd-editor-wrapper {
+  flex: 1 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Textarea fills editor wrapper in fullscreen */
+#resume-mmd-code-container.fullscreen .mmd-editor-textarea {
+  flex: 1 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: 100% !important;
+  resize: none !important;
+  overflow-y: scroll !important;
+}
+
+/* ============================================================================
+   FULLSCREEN SCROLLBAR FIX
+   Parent containers must allow overflow so scrollbar is visible
+   ============================================================================ */
+
+/* Editor wrapper - allow scrollbar to show */
+#resume-mmd-code-container.fullscreen .mmd-editor-wrapper {
+  overflow: visible !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Format content - allow scrollbar to show */
+#resume-mmd-code-container.fullscreen .mathpix-format-content {
+  overflow: visible !important;
+}
+
+/* Code container itself - allow scrollbar to show */
+#resume-mmd-code-container.fullscreen {
+  overflow: visible !important;
+}
+
+/* Content area - allow scrollbar to show in fullscreen */
+.mmd-content-area:has(#resume-mmd-code-container.fullscreen) {
+  overflow: visible !important;
+}
+
+/* Panel - allow scrollbar to show in fullscreen */
+#resume-panel-mmd:has(#resume-mmd-code-container.fullscreen) {
+  overflow: visible !important;
+}
+
+/* Results tabs - allow scrollbar to show in fullscreen */
+.mathpix-results-tabs:has(#resume-mmd-code-container.fullscreen) {
+  overflow: visible !important;
+}
+
+/* Override the 70vh max-height constraint in fullscreen */
+#resume-mmd-code-container.fullscreen,
+#resume-mmd-code-container.fullscreen .mathpix-format-content,
+#resume-mmd-code-container.fullscreen .mmd-editor-wrapper,
+#resume-mmd-code-container.fullscreen .mmd-editor-textarea {
+  max-height: none !important;
+}
+
+/* High specificity override for media query constraints */
+@media (min-width: 769px) {
+  #resume-mmd-code-container.fullscreen .mmd-editor-wrapper,
+  #resume-mmd-code-container.fullscreen[data-editing="true"]
+    .mmd-editor-wrapper {
+    max-height: 100% !important;
+    height: 100% !important;
+  }
+
+  #resume-mmd-code-container.fullscreen .mmd-editor-textarea,
+  #resume-mmd-code-container.fullscreen[data-editing="true"]
+    .mmd-editor-textarea {
+    max-height: 100% !important;
+    height: 100% !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Page Scroll Prevention (both html and body needed)
+   -------------------------------------------------------------------------- */
+
+html.resume-fullscreen-active,
+body.resume-fullscreen-active {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
+/* --------------------------------------------------------------------------
+   Print Styles - Never print fullscreen state
+   -------------------------------------------------------------------------- */
+
+@media print {
+  #resume-mmd-code-container.fullscreen {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .resume-fullscreen-header {
+    display: none !important;
+  }
+
+  html.resume-fullscreen-active,
+  body.resume-fullscreen-active {
+    overflow: visible !important;
+    height: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced Motion Support
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  #resume-mmd-code-container.fullscreen {
+    transition: none;
+  }
+}
+.edit-option-badge {
+  border: 1px solid currentcolor;
+}
+
+/* ============================================================================
+   DIFF PREVIEW STYLES - Accessible change visualisation
+   WCAG 2.2 AA: Colour + text decoration + icons (not colour alone)
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   COLOUR DEFINITIONS - Suitable for light and dark mode
+   ---------------------------------------------------------------------------- */
+
+.diff-context {
+  color: currentcolor;
+}
+
+.diff-removed {
+  color: #d5007f;
+  background-color: #fee2e2;
+  text-decoration-color: #d5007f;
+}
+
+.diff-added {
+  color: #005051;
+  background-color: #dcfce7;
+  text-decoration-color: #005051;
+}
+
+.diff-arrow {
+  color: currentcolor;
+}
+
+.diff-more {
+  color: currentcolor;
+}
+
+.diff-stats {
+  color: currentcolor;
+}
+
+.diff-preview-identical {
+  color: #15803d;
+}
+
+.diff-preview-text {
+  color: currentcolor;
+}
+
+/* localStorage sessions */
+.resume-session-option-localstorage {
+  border-left-color: #d5007f;
+}
+
+/* Stats hint shown after diff */
+.diff-stats-hint {
+  color: currentcolor;
+}
+
+/* ----------------------------------------------------------------------------
+   STRUCTURAL STYLES
+   ---------------------------------------------------------------------------- */
+
+.diff-preview {
+  display: inline;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.diff-removed {
+  text-decoration: line-through;
+  padding-inline: 0.125em;
+  border-radius: 2px;
+}
+
+.diff-added {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  padding-inline: 0.125em;
+  border-radius: 2px;
+}
+
+.diff-arrow {
+  margin-inline: 0.25em;
+  font-weight: 500;
+}
+
+.diff-more {
+  font-size: 0.8125rem;
+  margin-inline-start: 0.375em;
+}
+
+.diff-badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  margin-inline-end: 0.375em;
+  vertical-align: middle;
+}
+
+.diff-stats {
+  font-size: 0.8125rem;
+}
+
+.diff-preview .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================================
+   SESSION SOURCE INDICATORS - localStorage vs ZIP alignment
+   ============================================================================ */
+
+/* Source icon (💾, ✏️, 📦) - fixed width for alignment */
+.resume-session-source-icon {
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+}
+
+/* Stats hint shown after diff */
+.diff-stats-hint {
+  font-size: 0.8em;
+  margin-left: 0.5em;
+  white-space: nowrap;
+}
+/* ============================================================================
+   PREVIEW ALIGNMENT - Right-align on desktop
+   ============================================================================ */
+
+@media (min-width: 641px) {
+  .resume-session-preview {
+    text-align: right;
+  }
+
+  /* Ensure diff elements inside preview also align right */
+  .resume-session-preview .diff-preview {
+    justify-content: flex-end;
+  }
+}
+/* ============================================================================
+   Auto-Restored Banner - Phase 8.2 Enhancement
+   Informational banner shown after auto-restoring localStorage session
+   ============================================================================ */
+
+/* ============================================================================
+   STRUCTURAL DEFINITIONS - Layout, Spacing, Typography
+   ============================================================================ */
+
+.resume-auto-restored-banner {
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.resume-auto-restored-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.resume-auto-restored-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+#resume-auto-restored-message {
+  margin: 0 0 1rem 0;
+  line-height: 1.5;
+}
+
+#resume-auto-restored-message time {
+  font-weight: 600;
+}
+
+.resume-auto-restored-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.resume-auto-restored-actions .resume-btn-primary {
+  border-style: solid;
+}
+
+.resume-auto-restored-actions .resume-btn-secondary {
+  border-style: solid;
+}
+.resume-btn {
+  font-size: 0.8rem;
+}
+
+/* ============================================================================
+   High Contrast Mode Support
+   ============================================================================ */
+
+@media (prefers-contrast: high) {
+  .resume-auto-restored-banner {
+    border-width: 3px;
+  }
+
+  .resume-auto-restored-actions .resume-btn-primary,
+  .resume-auto-restored-actions .resume-btn-secondary,
+  .resume-btn-tertiary {
+    border-width: 3px;
+  }
+}
+
+/* ============================================================================
+   Reduced Motion Support
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .resume-auto-restored-actions .resume-btn-primary,
+  .resume-auto-restored-actions .resume-btn-secondary,
+  .resume-btn-tertiary {
+    transition: none;
+  }
+}
+
+/* ============================================================================
+   Mobile Responsive Adjustments
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  .resume-auto-restored-banner {
+    padding: 0.875rem;
+  }
+
+  .resume-auto-restored-header h3 {
+    font-size: 1rem;
+  }
+
+  #resume-auto-restored-message {
+    font-size: 0.9rem;
+  }
+
+  .resume-auto-restored-actions {
+    flex-direction: column;
+  }
+
+  .resume-auto-restored-actions .resume-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .resume-btn-tertiary {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ============================================================================
+   PHASE 8.3.3: FOCUS MODE - Page Fullscreen for Immersive Editing
+   ============================================================================ */
+
+/**
+ * Focus Mode provides a distraction-free editing experience by:
+ * - Showing ONLY the tab headers and active tab panel
+ * - Hiding all other UI (session header, download, convert, page chrome)
+ * - Content fills viewport completely - no internal scrolling
+ * - True "application" feel for focused work
+ */
+
+/* ============================================================================
+   COLOURS
+   ============================================================================ */
+
+/* ============================================================================
+   Focus Mode Button - Positioning in Tab Headers
+   ============================================================================ */
+
+.resume-focus-mode-btn {
+  margin-left: auto;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  min-height: 2rem;
+}
+
+/* Keyboard shortcut hint on hover (desktop only) */
+.resume-focus-mode-btn::after {
+  content: " (Ctrl+Shift+F)";
+  font-size: 0.75em;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+@media (hover: hover) and (min-width: 768px) {
+  .resume-focus-mode-btn:hover::after,
+  .resume-focus-mode-btn:focus::after {
+    opacity: 0.7;
+  }
+}
+
+/* ============================================================================
+   Focus Mode Active - Body State
+   ============================================================================ */
+
+body.resume-focus-mode {
+  overflow: hidden;
+}
+
+/* ============================================================================
+   Focus Mode Active - Hide Non-Essential Elements
+   ============================================================================ */
+
+body.resume-focus-mode .page-header,
+body.resume-focus-mode #toolSelection,
+body.resume-focus-mode .mathpix-mode-switcher,
+body.resume-focus-mode .mathpix-header-row,
+body.resume-focus-mode .page-footer,
+body.resume-focus-mode .resume-upload-section,
+body.resume-focus-mode .resume-session-header,
+body.resume-focus-mode .resume-session-banner,
+body.resume-focus-mode .resume-download-all-section,
+body.resume-focus-mode #resume-convert-section,
+body.resume-focus-mode .mathpix-privacy-info,
+body.resume-focus-mode #resume-auto-restored-banner {
+  display: none !important;
+}
+
+/* ============================================================================
+   Focus Mode Active - Container Fills Viewport
+   ============================================================================ */
+
+body.resume-focus-mode #mathpix-resume-mode-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Working area fills available space */
+body.resume-focus-mode .resume-working-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Results tabs container fills space */
+body.resume-focus-mode .mathpix-results-tabs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   Focus Mode Active - Tab Headers Bar
+   ============================================================================ */
+
+body.resume-focus-mode .mathpix-tab-headers {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ============================================================================
+   Focus Mode Active - Tab Panel Fills Remaining Space
+   ============================================================================ */
+
+body.resume-focus-mode #resume-panel-mmd,
+body.resume-focus-mode #resume-panel-confidence {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+body.resume-focus-mode #resume-panel-mmd[hidden],
+body.resume-focus-mode #resume-panel-confidence[hidden] {
+  display: none !important;
+}
+
+/* MMD content area fills panel */
+body.resume-focus-mode #resume-mmd-content-area {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* View controls bar - fixed height */
+body.resume-focus-mode .mmd-view-controls {
+  flex-shrink: 0;
+}
+
+/* Code container fills content area */
+body.resume-focus-mode #resume-mmd-code-container {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Format content wrapper */
+body.resume-focus-mode #resume-mmd-code-container .mathpix-format-content {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Preview container fills content area */
+body.resume-focus-mode #resume-mmd-preview-container {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Preview content expands fully */
+body.resume-focus-mode #resume-mmd-preview-content {
+  min-height: 100%;
+}
+
+/* Editor textarea fills available space */
+body.resume-focus-mode #resume-mmd-editor-textarea {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+  resize: none;
+}
+
+/* Editor wrapper needs flex too */
+body.resume-focus-mode .mmd-editor-wrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Confidence panel content fills space */
+body.resume-focus-mode #resume-panel-confidence .pdf-visualiser-container {
+  height: 100%;
+}
+
+/* ============================================================================
+   Focus Mode Active - Button State Change
+   ============================================================================ */
+
+/* Change icon to exit arrow */
+body.resume-focus-mode .resume-focus-mode-btn span[aria-hidden="true"] {
+  display: none;
+}
+
+body.resume-focus-mode .resume-focus-mode-btn::before {
+  content: "← ";
+}
+
+/* Hide keyboard hint when in focus mode */
+body.resume-focus-mode .resume-focus-mode-btn::after {
+  display: none;
+}
+
+/* ============================================================================
+   Focus Mode - Responsive Adjustments
+   ============================================================================ */
+
+/* Hide Focus Mode button on tablets and smaller - layout works well without it */
+@media (max-width: 1024px) {
+  .resume-focus-mode-btn {
+    display: none !important;
+  }
+}
+
+/* ============================================================================
+   Tab Headers - Responsive Improvements (768px and below)
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  body.resume-focus-mode .mathpix-tab-headers {
+    padding: 0.375rem 0.5rem;
+    gap: 0.25rem;
+  }
+
+  .resume-focus-mode-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  /* Hide keyboard shortcut hint on mobile */
+  .resume-focus-mode-btn::after {
+    display: none !important;
+  }
+
+  /* Even more compact tabs on mobile */
+  #mathpix-resume-mode-container .mathpix-tab-header {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Force horizontal layout - override mathpix-main.css flex-direction: column */
+  #mathpix-resume-mode-container .mathpix-tab-headers {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 0 !important;
+    padding: 0.5rem !important;
+    align-items: stretch !important;
+  }
+
+  /* Make tabs equal width and visually connected */
+  #mathpix-resume-mode-container .mathpix-tab-header {
+    flex: 1 1 auto !important;
+    padding: 0.625rem 0.75rem !important;
+    font-size: 0.9rem !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+    text-align: center !important;
+  }
+
+  /* First tab - rounded left corners */
+  #mathpix-resume-mode-container .mathpix-tab-header:first-of-type {
+    border-radius: 6px 0 0 6px !important;
+  }
+
+  /* Second tab - rounded right corners (focus button is hidden) */
+  #mathpix-resume-mode-container .mathpix-tab-header:nth-of-type(2) {
+    border-radius: 0 6px 6px 0 !important;
+    border-left: none !important;
+  }
+
+  /* Active tab styling */
+  #mathpix-resume-mode-container .mathpix-tab-header.active {
+    border: solid currentColor !important;
+  }
+
+  /* Inactive tab - lighter styling without jarring contrast */
+  #mathpix-resume-mode-container .mathpix-tab-header:not(.active) {
+    background: transparent !important;
+    border: 1px solid currentColor !important;
+    opacity: 0.6 !important;
+  }
+
+  #mathpix-resume-mode-container .mathpix-tab-header:not(.active):hover,
+  #mathpix-resume-mode-container .mathpix-tab-header:not(.active):focus {
+    opacity: 1 !important;
+  }
+}
+
+/* ============================================================================
+   Focus Mode - Accessibility
+   ============================================================================ */
+
+.resume-focus-mode-btn:focus-visible {
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resume-focus-mode-btn,
+  .resume-focus-mode-btn::after {
+    transition: none;
+  }
+}
+
+/* ============================================================================
+   Focus Mode - Print (exit focus mode visually)
+   ============================================================================ */
+
+@media print {
+  body.resume-focus-mode #mathpix-resume-mode-container {
+    position: static;
+    overflow: visible;
+  }
+
+  .resume-focus-mode-btn {
+    display: none !important;
+  }
+}
+/* ============================================================================
+   Focus Mode - Code View Height Overrides
+   ============================================================================ */
+
+/* Remove max-height constraints in Focus Mode */
+body.resume-focus-mode #resume-panel-mmd {
+  max-height: none !important;
+}
+
+body.resume-focus-mode #resume-mmd-content-area {
+  max-height: none !important;
+}
+
+body.resume-focus-mode #resume-mmd-code-container {
+  max-height: none !important;
+}
+
+/* The scrollable content area should fill available space */
+body.resume-focus-mode #resume-mmd-code-container .mathpix-format-content {
+  max-height: none !important;
+  height: calc(100vh - 140px);
+  overflow: auto;
+}
+
+/* Edit mode: format content becomes flex container */
+body.resume-focus-mode
+  #resume-mmd-code-container[data-editing="true"]
+  .mathpix-format-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Edit mode: editor wrapper fills the format content */
+/* Edit mode: editor wrapper fills the format content */
+body.resume-focus-mode
+  #resume-mmd-code-container[data-editing="true"]
+  #resume-mmd-editor-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: none !important;
+  height: 100%;
+}
+
+/* Edit mode: textarea fills the wrapper */
+body.resume-focus-mode
+  #resume-mmd-code-container[data-editing="true"]
+  #resume-mmd-editor-textarea {
+  flex: 1;
+  min-height: 0;
+  max-height: none !important;
+  resize: none;
+}
+/* ============================================================================
+   Focus Mode - Split View Layout (Side by Side)
+   ============================================================================ */
+
+/* Force horizontal layout for split views in Focus Mode */
+body.resume-focus-mode #resume-mmd-content-area[data-current-view="split"],
+body.resume-focus-mode #resume-mmd-content-area[data-current-view="pdf_split"] {
+  flex-direction: row !important;
+}
+
+/* Ensure child containers share space horizontally */
+body.resume-focus-mode
+  #resume-mmd-content-area[data-current-view="split"]
+  > .mmd-view-container,
+body.resume-focus-mode
+  #resume-mmd-content-area[data-current-view="pdf_split"]
+  > .mmd-view-container,
+body.resume-focus-mode
+  #resume-mmd-content-area[data-current-view="split"]
+  > .mmd-pdf-container,
+body.resume-focus-mode
+  #resume-mmd-content-area[data-current-view="pdf_split"]
+  > .mmd-pdf-container {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  width: auto;
+}
+
+/* Divider should not grow */
+body.resume-focus-mode
+  #resume-mmd-content-area[data-current-view="split"]
+  > .mmd-view-divider,
+body.resume-focus-mode
+  #resume-mmd-content-area[data-current-view="pdf_split"]
+  > .mmd-view-divider {
+  flex: 0 0 auto;
+}
+
+/* ============================================================================
+   Focus Mode - Compare Mode (PDF Split) Layout
+   ============================================================================ */
+
+/* PDF container must fill height and use column flex */
+body.resume-focus-mode #resume-mmd-pdf-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: none !important;
+}
+
+/* Ensure hidden attribute is respected in Focus Mode */
+body.resume-focus-mode #resume-mmd-pdf-container[hidden] {
+  display: none !important;
+}
+
+/* Controls bar stays at top */
+body.resume-focus-mode #resume-mmd-pdf-container .mmd-pdf-controls {
+  flex: 0 0 auto;
+}
+
+/* Scroll container fills remaining space */
+body.resume-focus-mode #resume-mmd-pdf-scroll-container {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none !important;
+  height: 100%;
+  overflow: auto;
+}
+
+/* PDF pages container fills scroll container */
+body.resume-focus-mode #resume-mmd-pdf-pages {
+  min-height: 100%;
+}
+
+/* ============================================================================
+   Focus Mode - Responsive: Stack on narrow screens
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  /* On mobile, allow vertical stacking */
+  body.resume-focus-mode #resume-mmd-content-area[data-current-view="split"],
+  body.resume-focus-mode
+    #resume-mmd-content-area[data-current-view="pdf_split"] {
+    flex-direction: column !important;
+  }
+}
+/* ============================================================================
+   PHASE 8.3.4: CONFIDENCE GUTTER INDICATORS
+   ============================================================================
+   
+   Provides visual confidence indicators in the MMD code view gutter.
+   Helps users identify uncertain OCR regions that may need correction.
+   
+   Colour scheme aligned with PDF Visualiser for consistency:
+   - High (≥95%): Green
+   - Medium (80-94%): Yellow/Amber
+   - Low (60-79%): Orange
+   - Very Low (<60%): Red
+   ============================================================================ */
+
+/* =============================================================================
+   LAYOUT & STRUCTURE
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Confidence Toggle Control
+   ----------------------------------------------------------------------------- */
+
+.mmd-confidence-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+  border-radius: 4px;
+  vertical-align: middle;
+  padding: 0.4rem 1rem;
+  text-align: center;
+  margin: 0.5rem 0.3rem 0.5rem 0;
+}
+
+.mmd-confidence-toggle input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.mmd-confidence-toggle .confidence-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Hide toggle when not applicable (non-PDF or no lines data) */
+.mmd-confidence-toggle[hidden] {
+  display: none !important;
+}
+
+/* -----------------------------------------------------------------------------
+   Confidence Gutter Container (inside scrollable area)
+   ----------------------------------------------------------------------------- */
+
+.mmd-confidence-gutter {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  min-height: 100%;
+
+  user-select: none;
+  z-index: 5;
+  display: none; /* Hidden by default, shown via JS */
+}
+
+/* Show gutter when confidence is enabled */
+#resume-mmd-code-container.mmd-confidence-enabled .mmd-confidence-gutter {
+  display: block;
+}
+
+/* The format-content needs relative positioning for the absolute gutter */
+#resume-mmd-code-container.mmd-confidence-enabled .mathpix-format-content {
+  position: relative;
+  padding-left: 36px;
+}
+
+/* Ensure the code-block-wrapper also has padding */
+#resume-mmd-code-container.mmd-confidence-enabled .code-block-wrapper {
+  position: relative;
+}
+
+/* Editor wrapper needs same padding */
+#resume-mmd-code-container.mmd-confidence-enabled .mmd-editor-wrapper {
+  padding-left: 36px;
+}
+/* -----------------------------------------------------------------------------
+   Confidence Indicators (Individual Line Markers)
+   ----------------------------------------------------------------------------- */
+
+.mmd-confidence-indicator {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border-width: 2px;
+  border-style: solid;
+  cursor: help;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.mmd-confidence-indicator:hover,
+.mmd-confidence-indicator:focus {
+  transform: translateX(-50%) scale(1.2);
+  z-index: 10;
+}
+
+.mmd-confidence-indicator:focus {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+/* Stale state - reduced opacity */
+.mmd-confidence-gutter.mmd-confidence--stale .mmd-confidence-indicator {
+  opacity: 0.5;
+}
+
+/* Stale warning indicator */
+.mmd-confidence-gutter.mmd-confidence--stale::before {
+  content: "⚠️";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  z-index: 20;
+}
+
+/* -----------------------------------------------------------------------------
+   Confidence Tooltip
+   ----------------------------------------------------------------------------- */
+
+.mmd-confidence-tooltip {
+  position: absolute;
+  left: 100%;
+  margin-left: 8px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.15s ease;
+}
+
+.mmd-confidence-indicator:hover .mmd-confidence-tooltip,
+.mmd-confidence-indicator:focus .mmd-confidence-tooltip {
+  opacity: 1;
+}
+
+.mmd-confidence-tooltip strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.mmd-confidence-tooltip small {
+  opacity: 0.8;
+}
+
+/* -----------------------------------------------------------------------------
+   Confidence Legend (Mini legend in gutter header)
+   ----------------------------------------------------------------------------- */
+
+.mmd-confidence-legend {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.25rem;
+  background: inherit;
+  border-top-width: 1px;
+  border-top-style: solid;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mmd-confidence-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.625rem;
+  line-height: 1;
+}
+
+.mmd-confidence-legend-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   Stats Badge (Shows count of low-confidence lines)
+   ----------------------------------------------------------------------------- */
+
+.mmd-confidence-stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Reduced Motion Support
+   ----------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .mmd-confidence-indicator,
+  .mmd-confidence-tooltip,
+  .mmd-confidence-toggle {
+    transition: none !important;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Focus Mode Adjustments
+   ----------------------------------------------------------------------------- */
+
+body.resume-focus-mode
+  #resume-mmd-code-container.mmd-confidence-enabled
+  .mmd-confidence-gutter {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+}
+
+/* -----------------------------------------------------------------------------
+   Print: Hide Confidence Gutter
+   ----------------------------------------------------------------------------- */
+
+@media print {
+  .mmd-confidence-gutter,
+  .mmd-confidence-toggle {
+    display: none !important;
+  }
+
+  #resume-mmd-code-container.mmd-confidence-enabled .mathpix-format-content,
+  #resume-mmd-code-container.mmd-confidence-enabled .mmd-editor-wrapper {
+    padding-left: 0;
+  }
+}
+/* ============================================================================
+   New attempt at confidence...
+   ============================================================================ */
+/* =============================================================================
+   LINE-BASED CONFIDENCE EDITOR (Phase 8.3.5)
+   Replaces gutter-based approach with integrated line display
+   ============================================================================= */
+
+/* Pencil icon for edited lines */
+.mmd-editor-line.mmd-confidence--edited .line-confidence svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+}
+
+/* -----------------------------------------------------------------------------
+   Print Colours
+   ----------------------------------------------------------------------------- */
+
+@media print {
+  #resume-mmd-line-editor {
+    border: none;
+  }
+
+  .mmd-editor-line {
+    border-bottom: none;
+    background: transparent !important;
+  }
+}
+
+/* =============================================================================
+   STRUCTURAL DEFINITIONS
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Container Structure
+   ----------------------------------------------------------------------------- */
+
+#resume-mmd-line-editor {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  border-radius: 4px;
+}
+
+/* -----------------------------------------------------------------------------
+   Line Structure
+   ----------------------------------------------------------------------------- */
+
+.mmd-editor-line {
+  display: flex;
+  align-items: stretch;
+  min-height: 1.6em;
+}
+
+.mmd-editor-line .line-confidence {
+  flex-shrink: 0;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+/* Content area */
+.mmd-editor-line .line-content {
+  flex: 1;
+  padding: 0 8px;
+  white-space: pre;
+  overflow-x: visible; /* Let container handle horizontal scroll */
+  outline: none;
+  min-height: var(--mmd-line-height);
+  display: flex;
+  align-items: center;
+}
+
+/* Editable state cursor */
+.mmd-editor-line .line-content[contenteditable="true"] {
+  cursor: text;
+}
+
+.mmd-editor-line .line-content[contenteditable="false"] {
+  cursor: default;
+}
+
+/* -----------------------------------------------------------------------------
+   Focus Structure
+   ----------------------------------------------------------------------------- */
+
+.mmd-editor-line .line-content:focus-visible {
+  outline-offset: -2px;
+}
+
+/* -----------------------------------------------------------------------------
+   Visually Hidden (Screen Reader Only)
+   ----------------------------------------------------------------------------- */
+
+#resume-mmd-line-editor .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   Print Structure
+   ----------------------------------------------------------------------------- */
+
+@media print {
+  #resume-mmd-line-editor .line-confidence {
+    display: none;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Reduced Motion
+   ----------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  #resume-mmd-line-editor,
+  .mmd-editor-line,
+  .mmd-editor-line .line-content {
+    transition: none !important;
+  }
+}
+/* Override gutter padding when using line-based editor */
+#resume-mmd-code-container.mmd-confidence-enabled
+  .mathpix-format-content:has(#resume-mmd-line-editor) {
+  padding-left: 0;
+}
+
+/* =================================================================
+   EDIT MODE - Single scrollbar fix (all viewports)
+   When editing, textarea expands to content, format-content scrolls
+   ================================================================= */
+
+/* Editor wrapper expands to content when editing */
+#resume-mmd-code-container[data-editing="true"] .mmd-editor-wrapper {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  flex: none;
+}
+
+/* Textarea has no internal scrollbar when editing - format-content handles scroll */
+#resume-mmd-code-container[data-editing="true"] .mmd-editor-textarea {
+  flex: none;
+  overflow: hidden;
+}
+
+/* =================================================================
+   FULLSCREEN EDIT MODE - Textarea must scroll independently
+   When fullscreen, the container fills viewport and textarea scrolls
+   This MUST appear after the general editing rule to override it
+   ================================================================= */
+
+/* Fullscreen + editing: parents must not clip the scrollbar */
+#resume-mmd-code-container.fullscreen[data-editing="true"]
+  .mathpix-format-content {
+  overflow: visible !important;
+}
+
+#resume-mmd-code-container.fullscreen[data-editing="true"] .mmd-editor-wrapper {
+  overflow: visible !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+/* Fullscreen + editing: textarea needs room for scrollbar and must scroll */
+#resume-mmd-code-container.fullscreen[data-editing="true"]
+  .mmd-editor-textarea {
+  flex: 1 1 auto !important;
+  overflow-y: scroll !important;
+  height: calc(100vh - 120px) !important;
+  max-height: calc(100vh - 120px) !important;
+  width: calc(100% - 20px) !important; /* Leave room for scrollbar */
+  max-width: calc(100vw - 20px) !important;
+}
+.mmd-preview-content:focus-visible {
+  border: 2px solid currentcolor;
+}
+/* ==========================================================================
+   MathJax Accessibility Focus Styles (WCAG 2.1.1 / 2.4.7)
+   Ensures visible focus indicators for keyboard navigation
+   ========================================================================== */
+
+/* Base focus style for all math containers */
+mjx-container:focus,
+.MathJax:focus {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Enhanced focus-visible for keyboard-only focus */
+mjx-container:focus-visible,
+.MathJax:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 2px;
+  /* Subtle background highlight for extra visibility */
+  background-color: rgba(128, 128, 128, 0.1);
+}
+
+/* Remove outline on mouse click (focus-visible handles keyboard) */
+mjx-container:focus:not(:focus-visible),
+.MathJax:focus:not(:focus-visible) {
+  outline: none;
+  background-color: transparent;
+}
+
+/* Display math blocks - larger offset for block equations */
+mjx-container[display="true"]:focus-visible {
+  outline-offset: 5px;
+}
+
+/* Hover state to indicate interactivity */
+mjx-container:hover,
+.MathJax:hover {
+  background-color: rgba(128, 128, 128, 0.05);
+  border-radius: 2px;
+}
+
+/* Active/pressed state */
+mjx-container:active,
+.MathJax:active {
+  background-color: rgba(128, 128, 128, 0.15);
+}
+
+/* Reduced motion: simpler focus without transitions */
+@media (prefers-reduced-motion: reduce) {
+  mjx-container:focus-visible,
+  .MathJax:focus-visible {
+    transition: none;
+  }
+}
+
+/* Print: hide focus indicators */
+@media print {
+  mjx-container:focus,
+  mjx-container:focus-visible,
+  .MathJax:focus,
+  .MathJax:focus-visible {
+    outline: none;
+    background-color: transparent;
+  }
+}
+/* =============================================================================
+   BYPASS BLOCK SKIP LINKS (WCAG 2.4.1)
+   Hidden-until-focused links for skipping preview content regions.
+   Uses specific IDs to avoid conflicts with .mmd-skip-link mobile navigation.
+   ============================================================================= */
+
+/* Position context for bypass skip links */
+#resume-mmd-preview-container,
+#mmd-preview-container,
+#convert-preview-rendered {
+  position: relative;
+}
+
+/* Bypass skip link base styles - hidden until focused */
+#resume-mmd-preview-skip,
+#mmd-preview-skip,
+#convert-preview-skip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 6px 0;
+  transform: translateY(-100%);
+  transition: transform 0.2s ease;
+
+  /* Theme-adaptive colours */
+  background-color: Canvas;
+  color: CanvasText;
+  border: 2px solid currentColor;
+}
+
+/* Visible when focused */
+#resume-mmd-preview-skip:focus,
+#mmd-preview-skip:focus,
+#convert-preview-skip:focus {
+  transform: translateY(0);
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  #resume-mmd-preview-skip,
+  #mmd-preview-skip,
+  #convert-preview-skip {
+    transition: none;
+  }
+}
+
+/* Print - hide bypass skip links */
+@media print {
+  #resume-mmd-preview-skip,
+  #mmd-preview-skip,
+  #convert-preview-skip {
+    display: none !important;
+  }
+}
+/* ============================================================================
+   RESUME MODE FILE CONTROLS - Save/Load MMD
+   ============================================================================ */
+
+/* File controls container */
+#resume-mmd-file-controls {
+  display: none; /* Hidden by default, shown via JS */
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  margin-top: 0.5rem;
+  border-top: 1px solid currentColor;
+}
+
+/* Show when editing is enabled */
+#resume-mmd-code-container[data-editing="true"] #resume-mmd-file-controls {
+  display: flex;
+}
+
+/* Also show based on view mode via JS-added class */
+#resume-mmd-file-controls.visible {
+  display: flex;
+}
+
+/* Normalize button and label heights in file controls */
+#resume-mmd-file-controls .mmd-toolbar-btn,
+#resume-mmd-file-controls label.mmd-toolbar-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #resume-mmd-file-controls .mmd-toolbar-btn,
+  #resume-mmd-file-controls label.mmd-toolbar-btn {
+    padding: 0.4rem 1rem;
+    font-size: 0.7rem;
+    line-height: 1.5;
+  }
+}
+
+/* ========================================
+   LAYOUT & STRUCTURE
+   ======================================== */
+
+/* Edit selection separator */
+.edit-options-separator {
+  display: flex;
+  align-items: center;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+}
+
+.edit-options-separator::before,
+.edit-options-separator::after {
+  content: "";
+  flex: 1;
+}
+
+.edit-options-separator span {
+  padding: 0 0.75rem;
+  font-weight: 500;
+}
+
+/* Badge container */
+.edit-option-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+/* Original filename display for imported files */
+.edit-option-original-filename {
+  display: block;
+  font-size: 0.85em;
+  margin-top: 0.25rem;
+}
+/* ============================================================================
+   SVG ICON STYLES (Phase 8.2 Enhancement)
+   Consistent styling for SVG icons replacing emoticons
+   ============================================================================ */
+
+/* Base icon styles */
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
+
+/* Icon spacing in buttons and badges */
+.resume-btn .icon,
+.edit-option-badge .icon,
+.resume-session-badge .icon,
+.resume-session-source-icon .icon {
+  margin-right: 0.25em;
+}
+
+/* Icons in headings */
+h3 .icon,
+h4 .icon {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+/* Icons in session options */
+.resume-session-option .icon {
+  vertical-align: -0.1em;
+}
+
+/* Icons in progress items */
+.resume-progress-item .icon,
+.progress-icon .icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+/* Icons in close buttons - slightly smaller */
+.resume-session-close-btn .icon {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+/* Icons in diff preview */
+.diff-preview .icon,
+.diff-arrow .icon {
+  vertical-align: -0.15em;
+}
+
+/* Remove CSS content emoticons - now handled by JS */
+.resume-validation-error::before,
+.resume-validation-warning::before {
+  content: none;
+}
+
+/* Validation message icon spacing */
+.resume-validation-error .icon,
+.resume-validation-warning .icon {
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
