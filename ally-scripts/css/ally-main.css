@@ -2409,7 +2409,7 @@ p.ally-chart-description {
 
 .ally-cr-chart-area--controls-side {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
   gap: 1rem;
 }
@@ -2417,29 +2417,81 @@ p.ally-chart-description {
 .ally-cr-chart-area--controls-side .ally-cr-chart-wrapper {
   flex: 1 1 auto;
   min-width: 280px;
+  max-width: calc(
+    100% - 180px
+  ); /* Leave room for controls (160px) + gap (1rem) */
+}
+
+.ally-cr-chart-area--controls-side > .chart-controls {
+  flex: 0 0 auto; /* Don't grow or shrink */
+  align-self: flex-start; /* Stay at top, don't stretch with wrapper height */
+}
+.ally-cr-chart-area--controls-side .chart-container {
+  /* Remove padding-bottom added for absolute-positioned controls */
+  padding-bottom: 1rem;
+  /* Ensure rounded corners only on left when controls are beside */
+  border-radius: 4px 0 0 4px;
+  /* Remove right margin so chart sits flush against controls */
+  margin-right: 0;
 }
 
 .ally-cr-chart-area--controls-side .chart-controls {
+  /* Override absolute positioning from chart-controls.css */
+  position: static;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  /* Side layout styling */
   flex-direction: column;
   align-items: stretch;
-  gap: 0.5rem;
-  min-width: 140px;
-  max-width: 160px;
-  padding: 0.5rem;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
+  justify-content: center;
+  gap: 0.75rem;
+  min-width: 160px;
+  max-width: 200px;
+  padding: 1rem 0.75rem;
+  background: #b8c5cc; /* Match the grey from original footer */
+  border-radius: 0 4px 4px 0; /* Round right corners only */
+  margin: 1.5rem 0; /* Match chart-container margin */
 }
 
-.ally-cr-chart-area--controls-side .chart-controls select,
+/* Keep palette container as a row for compact layout */
+.ally-cr-chart-area--controls-side .chart-palette-container {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0;
+  width: 100%;
+}
+
+.ally-cr-chart-area--controls-side .chart-palette-label {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.4rem;
+  flex-shrink: 0;
+}
+
+.ally-cr-chart-area--controls-side .chart-palette-select {
+  flex: 1 1 auto;
+  min-width: 0; /* Allow shrinking */
+  font-size: 0.8rem;
+}
+
 .ally-cr-chart-area--controls-side .chart-controls button {
   width: 100%;
   justify-content: center;
+  font-size: 0.8rem;
+  padding: 0.5rem;
 }
 
 /* Revert to stacked layout on narrow screens */
 @media (max-width: 600px) {
   .ally-cr-chart-area--controls-side {
     flex-direction: column;
+    gap: 0;
+  }
+
+  .ally-cr-chart-area--controls-side .chart-container {
+    border-radius: 4px 4px 0 0;
   }
 
   .ally-cr-chart-area--controls-side .chart-controls {
@@ -2447,9 +2499,16 @@ p.ally-chart-description {
     flex-wrap: wrap;
     max-width: none;
     min-width: auto;
+    border-radius: 0 0 4px 4px;
+    margin-top: 0;
+    padding: 0.75rem;
   }
 
-  .ally-cr-chart-area--controls-side .chart-controls select,
+  .ally-cr-chart-area--controls-side .chart-palette-container {
+    flex-direction: row;
+    width: auto;
+  }
+
   .ally-cr-chart-area--controls-side .chart-controls button {
     width: auto;
   }

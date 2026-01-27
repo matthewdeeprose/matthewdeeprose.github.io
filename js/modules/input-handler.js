@@ -69,8 +69,9 @@ export class InputHandler {
 
     logInfo("InputHandler initialised successfully");
 
-    // Focus the input field for immediate typing
-    this.userInput.focus();
+    // Note: We no longer auto-focus the textarea on page load.
+    // This preserves natural tab order from the top of the page,
+    // which is better for keyboard and screen reader users.
 
     // Set up event listeners
     this.userInput.addEventListener("input", this.handleInput.bind(this));
@@ -87,11 +88,11 @@ export class InputHandler {
     window.dispatchEvent(
       new CustomEvent("inputhandler-ready", {
         detail: { handler: this },
-      })
+      }),
     );
 
     logInfo(
-      "[INPUT DEBUG] 🎯 InputHandler initialization complete, button state synchronized"
+      "[INPUT DEBUG] 🎯 InputHandler initialization complete, button state synchronized",
     );
   }
 
@@ -101,13 +102,13 @@ export class InputHandler {
    */
   getStreamingMode() {
     const streamingRadios = document.querySelectorAll(
-      'input[name="streaming-mode"]'
+      'input[name="streaming-mode"]',
     );
 
     logDebug(
       "[INPUT DEBUG] 🔍 Checking streaming mode - found",
       streamingRadios.length,
-      "radio buttons"
+      "radio buttons",
     );
 
     for (const radio of streamingRadios) {
@@ -124,7 +125,7 @@ export class InputHandler {
     }
 
     logWarn(
-      "[INPUT DEBUG] ⚠️ No streaming mode selected, defaulting to standard"
+      "[INPUT DEBUG] ⚠️ No streaming mode selected, defaulting to standard",
     );
     return "standard"; // Default fallback
   }
@@ -178,7 +179,7 @@ export class InputHandler {
     // If no API key, API config system owns the button state
     if (hasApiKey === false) {
       logDebug(
-        "[INPUT DEBUG] ⚠️ No API key - button state managed by config system"
+        "[INPUT DEBUG] ⚠️ No API key - button state managed by config system",
       );
       return; // API config system controls button when key missing
     }
@@ -191,11 +192,11 @@ export class InputHandler {
     // Update semantic CSS classes for enhanced styling hooks
     this.processBtn.classList.toggle(
       "button-enabled",
-      hasText && !this.isProcessing
+      hasText && !this.isProcessing,
     );
     this.processBtn.classList.toggle(
       "button-disabled",
-      !hasText || this.isProcessing
+      !hasText || this.isProcessing,
     );
 
     // Update accessibility attributes
@@ -250,7 +251,7 @@ export class InputHandler {
 
     if (this.processBtn.disabled || this.isProcessing) {
       logDebug(
-        "[INPUT DEBUG] ⛔ Button is disabled or processing, ignoring click"
+        "[INPUT DEBUG] ⛔ Button is disabled or processing, ignoring click",
       );
       return;
     }
@@ -279,7 +280,7 @@ export class InputHandler {
       // Standard streaming mode
       logInfo(
         "[INPUT DEBUG] 🌊 Routing to streaming processing, mode:",
-        streamingMode
+        streamingMode,
       );
       if (this.onStreamingProcess) {
         this.onStreamingProcess(inputText);
