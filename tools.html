@@ -33,6 +33,7 @@
     <link rel="stylesheet" href="mathpix-scripts/css/mathpix-pdf-preview.css" />
     <link rel="stylesheet" href="mathpix-scripts/css/mathpix-mmd-preview.css" />
     <link rel="stylesheet" href="mathpix-scripts/css/mathpix-convert.css" />
+    <link rel="stylesheet" href="mathpix-scripts/css/mathpix-ai-enhancer.css" />
     <link
       rel="stylesheet"
       href="mathpix-scripts/pdf-visualiser/pdf-visualiser.css"
@@ -278,6 +279,15 @@
     </script>
   </head>
   <body>
+    <script>
+      const originalFocus = HTMLElement.prototype.focus;
+      HTMLElement.prototype.focus = function () {
+        if (this.id === "user-input") {
+          console.trace("user-input.focus() called from:");
+        }
+        return originalFocus.apply(this, arguments);
+      };
+    </script>
     <!-- Skip to section navigation -->
     <script>
       function skipToSection(elementId) {
@@ -4451,6 +4461,54 @@ Science,91</pre
                           class="visually-hidden"
                         >
                           Accepts .mmd, .md, or .txt files
+                        </span>
+
+                        <!-- AI Enhancement Button (Phase 7.1) -->
+                        <button
+                          type="button"
+                          id="resume-ai-enhance-btn"
+                          class="mmd-toolbar-btn ai-enhance-btn"
+                          onclick="openAIEnhancementModal()"
+                          disabled
+                          aria-describedby="ai-enhance-btn-desc"
+                        >
+                          <svg
+                            height="21"
+                            width="21"
+                            viewBox="0 0 21 21"
+                            xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
+                          >
+                            <g
+                              transform="matrix(1.0685 0 0 .99925 .39221 2.2062)"
+                              fill="none"
+                              fill-rule="evenodd"
+                            >
+                              <path
+                                d="m0.5 15v-11.8c0-1.6 1.3-2.9 3-2.9h6.3m4.5 7.7v7c0 1.6-1.3 2.9-3 2.9h-7.8c-1.6 0-3-1.3-3-2.9"
+                                stroke="currentColor"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                              <path
+                                d="m12.2-1.9q0.7 6 6.8 6-6.1 0-6.8 6-0.7-6-6.8-6 6.1 0 6.8-6z"
+                                fill="currentColor"
+                              />
+                              <path
+                                d="m6.1 6.8q0.6 4.8 5.7 4.8-5.1 0-5.7 4.8-0.6-4.8-5.7-4.8 5.1 0 5.7-4.8z"
+                                fill="currentColor"
+                              />
+                              <path
+                                d="m15.8-1.7q0.2 1.5 1.7 1.5-1.5 0-1.7 1.5-0.2-1.5-1.7-1.5 1.5 0 1.7-1.5z"
+                                fill="currentColor"
+                              />
+                            </g>
+                          </svg>
+                          Enhance with AI
+                        </button>
+                        <span id="ai-enhance-btn-desc" class="visually-hidden">
+                          Use AI to improve OCR accuracy. Requires PDF source
+                          document.
                         </span>
                       </div>
                     </div>
@@ -9132,9 +9190,11 @@ Science,91</pre
                 <h2>Upload Image</h2>
                 <div class="imgdesc-upload-area" id="imgdesc-upload-area">
                   <label for="imgdesc-file-input" class="imgdesc-upload-label">
-                    <span class="imgdesc-upload-icon" aria-hidden="true"
-                      >📷</span
-                    >
+                    <span
+                      class="imgdesc-upload-icon"
+                      aria-hidden="true"
+                      data-icon="camera"
+                    ></span>
                     <span class="imgdesc-upload-text"
                       >Choose an image or drag and drop</span
                     >
@@ -9301,7 +9361,8 @@ Science,91</pre
                       id="imgdesc-model-section"
                     >
                       <summary>
-                        <span aria-hidden="true">🤖</span> AI Model Selection
+                        <span aria-hidden="true" data-icon="robot"></span> AI
+                        Model Selection
                       </summary>
                       <div class="imgdesc-option-content">
                         <div class="imgdesc-field">
@@ -9426,7 +9487,7 @@ Science,91</pre
                   class="imgdesc-completion-time"
                   hidden
                 >
-                  <span aria-hidden="true">⏱️</span>
+                  <span aria-hidden="true" data-icon="clock"></span>
                   <span>Completed in </span>
                   <strong id="imgdesc-final-time">0s</strong>
                 </div>
@@ -9456,7 +9517,8 @@ Science,91</pre
                       class="secondary-button"
                       aria-describedby="copy-options-label"
                     >
-                      <span aria-hidden="true">📋</span> Text
+                      <span aria-hidden="true" data-icon="clipboard"></span>
+                      Text
                     </button>
                     <button
                       type="button"
@@ -9479,20 +9541,13 @@ Science,91</pre
 
                   <!-- Action buttons group -->
                   <div class="imgdesc-button-group imgdesc-action-buttons">
-                    <button
-                      type="button"
-                      id="imgdesc-regenerate"
-                      class="secondary-button"
-                    >
+                    <button type="button" id="imgdesc-regenerate">
                       <span aria-hidden="true" data-icon="refresh"></span>
                       Regenerate
                     </button>
-                    <button
-                      type="button"
-                      id="imgdesc-new"
-                      class="primary-button"
-                    >
-                      <span aria-hidden="true">🖼️</span> Describe New Image
+                    <button type="button" id="imgdesc-new">
+                      <span aria-hidden="true" data-icon="image"></span>
+                      Describe New Image
                     </button>
                   </div>
                 </div>
@@ -9504,7 +9559,8 @@ Science,91</pre
                   open="open"
                 >
                   <summary>
-                    <span aria-hidden="true">🔧</span> Debug Information
+                    <span aria-hidden="true" data-icon="gear"></span> Debug
+                    Information
                   </summary>
 
                   <div class="imgdesc-debug-content">
@@ -9641,7 +9697,8 @@ Science,91</pre
                           class="imgdesc-debug-copy-btn"
                           data-copy-target="imgdesc-debug-system-prompt"
                         >
-                          <span aria-hidden="true">📋</span> Copy System Prompt
+                          <span aria-hidden="true" data-icon="clipboard"></span>
+                          Copy System Prompt
                         </button>
                       </details>
 
@@ -9663,7 +9720,8 @@ Science,91</pre
                           class="imgdesc-debug-copy-btn"
                           data-copy-target="imgdesc-debug-user-prompt"
                         >
-                          <span aria-hidden="true">📋</span> Copy User Prompt
+                          <span aria-hidden="true" data-icon="clipboard"></span>
+                          Copy User Prompt
                         </button>
                       </details>
                     </section>
@@ -9680,7 +9738,39 @@ Science,91</pre
                 class="primary-button"
                 disabled
               >
-                <span aria-hidden="true">✨</span> Generate Description
+                <svg
+                  height="21"
+                  width="21"
+                  viewBox="0 0 21 21"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <g
+                    transform="matrix(1.0685 0 0 .99925 .39221 2.2062)"
+                    fill="none"
+                    fill-rule="evenodd"
+                  >
+                    <path
+                      d="m0.5 15v-11.8c0-1.6 1.3-2.9 3-2.9h6.3m4.5 7.7v7c0 1.6-1.3 2.9-3 2.9h-7.8c-1.6 0-3-1.3-3-2.9"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="m12.2-1.9q0.7 6 6.8 6-6.1 0-6.8 6-0.7-6-6.8-6 6.1 0 6.8-6z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="m6.1 6.8q0.6 4.8 5.7 4.8-5.1 0-5.7 4.8-0.6-4.8-5.7-4.8 5.1 0 5.7-4.8z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="m15.8-1.7q0.2 1.5 1.7 1.5-1.5 0-1.7 1.5-0.2-1.5-1.7-1.5 1.5 0 1.7-1.5z"
+                      fill="currentColor"
+                    />
+                  </g>
+                </svg>
+                Generate Description
               </button>
             </div>
           </div>
@@ -11224,6 +11314,10 @@ Science,91</pre
       type="module"
       src="mathpix-scripts/core/mathpix-session-restorer.js"
     ></script>
+    <script
+      type="module"
+      src="mathpix-scripts/testing/mathpix-ai-enhancer-tests.js"
+    ></script>
 
     <!-- Phase 6.2: Convert UI Controller -->
     <script
@@ -11231,6 +11325,7 @@ Science,91</pre
       src="mathpix-scripts/ui/components/mathpix-convert-ui.js"
     ></script>
 
+    <script src="mathpix-scripts/ai-enhancement/mathpix-ai-enhancer.js"></script>
     <!-- OpenRouter Embed Diagnostics -->
     <script src="openrouter-embed/openrouter-embed-diagnostic.js"></script>
     <script
@@ -12342,7 +12437,7 @@ Science,91</pre
          *
          * Recommendation: 'heading' for accessibility, 'radio' for keyboard power users
          */
-        focusBehaviour: "heading",
+        focusBehaviour: "radio",
 
         /**
          * Announce tool switch to screen readers
@@ -12492,7 +12587,33 @@ Science,91</pre
           articleId: "ally-reporting-app",
           displayName: "Ally Accessibility Reporting",
           announceText: "Switched to Ally Accessibility Reporting tool",
-          init: function () {
+          courseDataLoaded: false,
+          init: async function () {
+            // Lazy load course data if not already loaded (check flag to prevent double-loading)
+            if (!this.courseDataLoaded && typeof ALLY_COURSES === "undefined") {
+              this.courseDataLoaded = true; // Set flag immediately to prevent race conditions
+              const courseDataUrl =
+                "https://blackboard.soton.ac.uk/bbcswebdav/xid-37749029_1";
+
+              try {
+                await new Promise((resolve, reject) => {
+                  const script = document.createElement("script");
+                  script.src = courseDataUrl;
+                  script.onload = resolve;
+                  script.onerror = () =>
+                    reject(new Error("Failed to load course data"));
+                  document.head.appendChild(script);
+                });
+                console.log("[AllyReporting] Course data loaded successfully");
+              } catch (error) {
+                console.warn(
+                  "[AllyReporting] Course data failed to load:",
+                  error.message,
+                );
+                this.courseDataLoaded = false; // Reset flag to allow retry on failure
+              }
+            }
+
             // Initialise Ally Reporting if controller exists
             if (
               typeof ALLY_MAIN_CONTROLLER !== "undefined" &&
@@ -13969,7 +14090,7 @@ Science,91</pre
     <script src="ally-scripts/core/ally-config.js"></script>
     <script src="ally-scripts/core/ally-cache.js"></script>
     <script src="ally-scripts/core/ally-lookup-data.js"></script>
-    <script src="ally-scripts/core/ally-courses-data.js"></script>
+    <!-- Course data loaded lazily when Ally Reporting selected -->
     <script src="ally-scripts/core/ally-api-client.js"></script>
     <script src="ally-scripts/core/ally-ui-manager.js"></script>
     <script src="ally-scripts/ui/ally-cache-ui.js"></script>

@@ -42,7 +42,7 @@ const ALLY_UI_MANAGER = (function () {
   // ========================================================================
 
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 

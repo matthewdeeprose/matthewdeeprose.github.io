@@ -67,6 +67,13 @@
   font-size: 0.875rem;
 }
 
+#imgdesc-generate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
 /* ==============================================
    PREVIEW
    ============================================== */
@@ -305,8 +312,18 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   line-height: 1.5;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif !important;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    "Open Sans",
+    "Helvetica Neue",
+    sans-serif !important;
 }
 
 .imgdesc-output:empty::before {
@@ -481,7 +498,7 @@
 }
 
 /* Desktop: Two-column grid layout */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .imgdesc-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -626,14 +643,14 @@
 }
 
 /* Desktop: constrain width when in left column */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .imgdesc-input-column .imgdesc-generate-inline {
     margin-top: 1.5rem;
   }
 }
 
 /* Mobile: full width, more prominent */
-@media (max-width: 767px) {
+@media (max-width: 1024px) {
   .imgdesc-generate-inline {
     margin-top: 1rem;
   }
@@ -644,7 +661,7 @@
    ============================================== */
 
 /* When showing output, switch to single column layout */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .imgdesc-layout.imgdesc-output-mode {
     display: block; /* Override grid with block for true single column */
     max-width: 900px;
@@ -733,13 +750,13 @@
   flex-basis: 100%;
   margin-top: 0.5rem;
 }
-
+/* Not sure why we had this
 @media (min-width: 600px) {
   #imgdesc-new {
     flex-basis: auto;
     margin-top: 0;
-  }
-}
+  } 
+}*/
 
 /* ==============================================
    OUTPUT SECTION ENHANCEMENT (Phase 2B)
@@ -886,7 +903,7 @@
 }
 
 /* Two-column layout on tablet+ */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .imgdesc-debug-content {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -970,24 +987,9 @@
 }
 
 .imgdesc-debug-copy-btn {
-  margin: 0.5rem 0.75rem 0.5rem;
-  padding: 0.4rem 0.75rem;
   font-size: 0.8rem;
-  background: var(--button-secondary-bg, transparent);
-  border: 1px solid currentColor;
-  border-radius: 4px;
-  cursor: pointer;
+
   font-family: inherit;
-  color: currentColor;
-}
-
-.imgdesc-debug-copy-btn:hover {
-  background: var(--button-secondary-hover, rgba(0, 0, 0, 0.05));
-}
-
-.imgdesc-debug-copy-btn:focus {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
 }
 
 .imgdesc-debug-copy-btn:active {
@@ -1193,7 +1195,9 @@
 /* --- Colours --- */
 
 .imgdesc-health-indicator {
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease;
 }
 
 /* --- Layout --- */

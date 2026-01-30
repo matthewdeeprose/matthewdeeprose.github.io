@@ -45,7 +45,7 @@ const ALLY_API_CLIENT = (function () {
   // ========================================================================
 
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -185,19 +185,10 @@ const ALLY_API_CLIENT = (function () {
       });
     }
 
-    // Network error (no response)
-    if (error instanceof TypeError && error.message.includes("fetch")) {
-      return createError(
-        ERROR_TYPES.NETWORK,
-        ALLY_CONFIG.MESSAGES.NETWORK_ERROR,
-        null,
-        { originalError: error.message },
-      );
-    }
-
-    // HTTP error response
+    // HTTP error response (from fetch Response object or error with status)
     if (error.status) {
       const status = error.status;
+      const statusText = error.statusText || "";
 
       // Authentication errors
       if (status === 401 || status === 403) {
@@ -205,27 +196,73 @@ const ALLY_API_CLIENT = (function () {
           ERROR_TYPES.AUTH,
           ALLY_CONFIG.MESSAGES.AUTH_ERROR,
           status,
-          { statusText: error.statusText },
+          { statusText: statusText },
         );
       }
 
-      // Server errors
+      // Proxy/Gateway errors (502, 503, 504)
+      if (status === 502) {
+        return createError(
+          ERROR_TYPES.SERVER,
+          "API server unavailable (502 Bad Gateway). The service may be temporarily down.",
+          status,
+          { statusText: statusText },
+        );
+      }
+
+      if (status === 503) {
+        return createError(
+          ERROR_TYPES.SERVER,
+          "API service unavailable (503). The service is temporarily overloaded or under maintenance.",
+          status,
+          { statusText: statusText },
+        );
+      }
+
+      if (status === 504) {
+        return createError(
+          ERROR_TYPES.SERVER,
+          "API gateway timeout (504). The service is taking too long to respond.",
+          status,
+          { statusText: statusText },
+        );
+      }
+
+      // Other server errors (5xx)
       if (status >= 500) {
         return createError(
           ERROR_TYPES.SERVER,
-          "Server error occurred. Please try again later.",
+          "API server error (" + status + "). Please try again later.",
           status,
-          { statusText: error.statusText },
+          { statusText: statusText },
         );
       }
 
-      // Client errors
+      // Client errors (4xx)
       if (status >= 400) {
         return createError(
           ERROR_TYPES.VALIDATION,
-          "Invalid request: " + (error.statusText || "Bad request"),
+          "Invalid request (" + status + "): " + (statusText || "Bad request"),
           status,
-          { statusText: error.statusText },
+          { statusText: statusText },
+        );
+      }
+    }
+
+    // Network error (fetch threw TypeError - connection failed, CORS, etc.)
+    if (error instanceof TypeError) {
+      // Check for common network-related messages
+      const msg = error.message.toLowerCase();
+      if (
+        msg.includes("fetch") ||
+        msg.includes("network") ||
+        msg.includes("failed to fetch")
+      ) {
+        return createError(
+          ERROR_TYPES.NETWORK,
+          "Unable to connect to API server. This could be a network issue or the server may be unreachable.",
+          null,
+          { originalError: error.message },
         );
       }
     }
@@ -240,7 +277,7 @@ const ALLY_API_CLIENT = (function () {
       );
     }
 
-    // Unknown error
+    // Unknown error - preserve original message
     return createError(
       ERROR_TYPES.UNKNOWN,
       error.message || "An unexpected error occurred",
@@ -490,6 +527,9 @@ const ALLY_API_CLIENT = (function () {
       // Polling loop
       let attempts = 0;
       let result = null;
+      let consecutiveErrors = 0;
+      let lastError = null;
+      const MAX_CONSECUTIVE_ERRORS = 5; // Give up after 5 consecutive errors
 
       while (attempts < ALLY_CONFIG.POLLING.MAX_ATTEMPTS) {
         attempts++;
@@ -501,80 +541,161 @@ const ALLY_API_CLIENT = (function () {
             ALLY_CONFIG.POLLING.MAX_ATTEMPTS,
         );
 
-        // Notify progress
+        // Notify progress (include error info if we've had issues)
         if (options.onProgress) {
-          options.onProgress({
+          const progressInfo = {
             attempt: attempts,
             maxAttempts: ALLY_CONFIG.POLLING.MAX_ATTEMPTS,
-            status: "polling",
+            status: consecutiveErrors > 0 ? "degraded" : "polling",
             message: ALLY_CONFIG.getPollingMessage(attempts),
-          });
-        }
+          };
 
-        // Make request
-        const response = await makeRequest(fullUrl, getSignal());
-        result = await parseResponse(response);
-
-        logDebug("Response status:", result.metadata?.status);
-
-        // Check if data is ready
-        if (result.metadata && result.metadata.status === "Successful") {
-          logInfo("Query successful after " + attempts + " attempt(s)");
-
-          // Capture debug response data
-          const requestEndTime = Date.now();
-          if (_debugData) {
-            _debugData.response = {
-              status: 200,
-              statusText: "OK",
-              metadata: result.metadata,
-              recordCount: Array.isArray(result.data) ? result.data.length : 0,
-              // Include first 3 records as sample (avoid huge debug output)
-              dataSample: Array.isArray(result.data)
-                ? result.data.slice(0, 3)
-                : null,
-              timestamp: new Date().toISOString(),
-            };
-            _debugData.timing.endTime = requestEndTime;
-            _debugData.timing.duration =
-              requestEndTime - _debugData.timing.startTime;
-            _debugData.timing.pollingAttempts = attempts;
+          // Add error context if API is having issues
+          if (consecutiveErrors > 0 && lastError) {
+            progressInfo.errorCount = consecutiveErrors;
+            progressInfo.lastError = lastError.message || "Unknown error";
+            progressInfo.message =
+              "API experiencing issues - retrying... (" +
+              consecutiveErrors +
+              " error" +
+              (consecutiveErrors > 1 ? "s" : "") +
+              ")";
           }
 
-          // Notify success
+          options.onProgress(progressInfo);
+        }
+
+        // Make request with error handling for transient failures
+        try {
+          const response = await makeRequest(fullUrl, getSignal());
+          result = await parseResponse(response);
+
+          // Successful response - reset error count
+          consecutiveErrors = 0;
+          lastError = null;
+
+          logDebug("Response status:", result.metadata?.status);
+
+          // Check if data is ready
+          if (result.metadata && result.metadata.status === "Successful") {
+            logInfo("Query successful after " + attempts + " attempt(s)");
+
+            // Capture debug response data
+            const requestEndTime = Date.now();
+            if (_debugData) {
+              _debugData.response = {
+                status: 200,
+                statusText: "OK",
+                metadata: result.metadata,
+                recordCount: Array.isArray(result.data)
+                  ? result.data.length
+                  : 0,
+                // Include first 3 records as sample (avoid huge debug output)
+                dataSample: Array.isArray(result.data)
+                  ? result.data.slice(0, 3)
+                  : null,
+                timestamp: new Date().toISOString(),
+              };
+              _debugData.timing.endTime = requestEndTime;
+              _debugData.timing.duration =
+                requestEndTime - _debugData.timing.startTime;
+              _debugData.timing.pollingAttempts = attempts;
+            }
+
+            // Notify success
+            if (options.onProgress) {
+              options.onProgress({
+                attempt: attempts,
+                maxAttempts: ALLY_CONFIG.POLLING.MAX_ATTEMPTS,
+                status: "complete",
+                message: ALLY_CONFIG.MESSAGES.SUCCESS,
+              });
+            }
+
+            if (options.onComplete) {
+              options.onComplete(result);
+            }
+
+            return result;
+          }
+
+          // Still processing - wait before next poll
+          if (result.metadata && result.metadata.status === "Processing") {
+            logDebug(
+              "API still processing, waiting " +
+                ALLY_CONFIG.POLLING.INTERVAL_MS +
+                "ms",
+            );
+            await delay(ALLY_CONFIG.POLLING.INTERVAL_MS);
+
+            // Check if cancelled during delay
+            if (getSignal().aborted) {
+              throw new DOMException("Request cancelled", "AbortError");
+            }
+          } else {
+            // Unexpected status
+            logWarn("Unexpected API status:", result.metadata?.status);
+            break;
+          }
+        } catch (pollError) {
+          // Handle transient errors during polling
+          consecutiveErrors++;
+          lastError = pollError.type ? pollError : classifyError(pollError);
+
+          // Check for cancellation - don't retry
+          if (
+            pollError.name === "AbortError" ||
+            lastError.type === "cancelled"
+          ) {
+            throw pollError;
+          }
+
+          logWarn(
+            "Polling error (attempt " +
+              attempts +
+              "/" +
+              ALLY_CONFIG.POLLING.MAX_ATTEMPTS +
+              ", consecutive errors: " +
+              consecutiveErrors +
+              "):",
+            lastError.message,
+          );
+
+          // Give up after too many consecutive errors
+          if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+            logError(
+              "Too many consecutive errors (" +
+                consecutiveErrors +
+                "), giving up",
+            );
+            if (options.onError) options.onError(lastError);
+            throw lastError;
+          }
+
+          // Notify user of degraded state
           if (options.onProgress) {
             options.onProgress({
               attempt: attempts,
               maxAttempts: ALLY_CONFIG.POLLING.MAX_ATTEMPTS,
-              status: "complete",
-              message: ALLY_CONFIG.MESSAGES.SUCCESS,
+              status: "error",
+              message:
+                "API error: " +
+                (lastError.message || "Unknown error") +
+                " - retrying in " +
+                Math.round(ALLY_CONFIG.POLLING.INTERVAL_MS / 1000) +
+                "s...",
+              errorCount: consecutiveErrors,
+              lastError: lastError.message,
             });
           }
 
-          if (options.onComplete) {
-            options.onComplete(result);
-          }
-
-          return result;
-        }
-
-        // Still processing - wait before next poll
-        if (result.metadata && result.metadata.status === "Processing") {
-          logDebug(
-            "API still processing, waiting " +
-              ALLY_CONFIG.POLLING.INTERVAL_MS +
-              "ms",
-          );
+          // Wait before retry
           await delay(ALLY_CONFIG.POLLING.INTERVAL_MS);
 
           // Check if cancelled during delay
           if (getSignal().aborted) {
             throw new DOMException("Request cancelled", "AbortError");
           }
-        } else {
-          // Unexpected status
-          logWarn("Unexpected API status:", result.metadata?.status);
-          break;
         }
       }
 

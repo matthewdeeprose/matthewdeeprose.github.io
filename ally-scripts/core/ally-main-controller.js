@@ -44,7 +44,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
   // ========================================================================
 
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -641,6 +641,85 @@ const ALLY_MAIN_CONTROLLER = (function () {
   }
 
   /**
+   * Updates warm-up progress display when API errors are occurring
+   * Shows error count and message while continuing to retry
+   * @private
+   * @param {number} attempt - Current polling attempt
+   * @param {number} maxAttempts - Maximum polling attempts
+   * @param {number} startTime - Timestamp when warm-up started
+   * @param {Object} progress - Progress object with error details
+   */
+  function updateWarmUpProgressWithError(
+    attempt,
+    maxAttempts,
+    startTime,
+    progress,
+  ) {
+    const textEl = ALLY_UI_MANAGER.getElement("ally-api-status-text");
+    const progressContainer = ALLY_UI_MANAGER.getElement(
+      "ally-api-progress-container",
+    );
+    const progressBar = ALLY_UI_MANAGER.getElement("ally-api-progress-bar");
+    const progressFill = ALLY_UI_MANAGER.getElement("ally-api-progress-fill");
+    const hintEl = ALLY_UI_MANAGER.getElement("ally-api-status-hint");
+    const dotEl = ALLY_UI_MANAGER.getElement("ally-api-status-dot");
+
+    const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+
+    // Calculate progress percentage (cap at 95% until actually complete)
+    const typicalDuration =
+      typeof ALLY_CONFIG !== "undefined"
+        ? ALLY_CONFIG.POLLING.TYPICAL_WARMUP_SECONDS
+        : 180;
+    const progressPercent = Math.min(
+      95,
+      Math.round((elapsedSeconds / typicalDuration) * 100),
+    );
+
+    // Build error-aware message
+    const errorCount = progress.errorCount || 1;
+    let message = "API issues - retrying";
+    message += " (attempt " + attempt + "/" + maxAttempts + ")";
+
+    // Update text
+    if (textEl) {
+      textEl.textContent = message;
+    }
+
+    // Show progress bar with error state
+    if (progressContainer) {
+      progressContainer.hidden = false;
+    }
+
+    if (progressBar) {
+      progressBar.setAttribute("data-state", "ERROR");
+      progressBar.setAttribute("aria-valuenow", progressPercent);
+    }
+
+    if (progressFill) {
+      progressFill.style.width = progressPercent + "%";
+    }
+
+    // Update hint with error details
+    if (hintEl) {
+      const errorMsg = progress.lastError || "Unknown error";
+      hintEl.textContent =
+        "Error: " +
+        errorMsg +
+        " (" +
+        errorCount +
+        " consecutive error" +
+        (errorCount > 1 ? "s" : "") +
+        "). Will keep trying...";
+    }
+
+    // Update dot to show error state
+    if (dotEl) {
+      dotEl.setAttribute("data-status", "ERROR");
+    }
+  }
+
+  /**
    * Starts the idle timer.
    * If KEEP_API_WARM is enabled: triggers warm-up to keep API ready
    * If KEEP_API_WARM is disabled: transitions to IDLE state (original behaviour)
@@ -831,7 +910,18 @@ const ALLY_MAIN_CONTROLLER = (function () {
           onProgress: function (progress) {
             // Update status display with time estimate
             const attempt = progress.attempt || 1;
-            updateWarmUpProgress(attempt, maxAttempts, warmUpStartTime);
+
+            // Handle degraded/error states from API issues
+            if (progress.status === "error" || progress.status === "degraded") {
+              updateWarmUpProgressWithError(
+                attempt,
+                maxAttempts,
+                warmUpStartTime,
+                progress,
+              );
+            } else {
+              updateWarmUpProgress(attempt, maxAttempts, warmUpStartTime);
+            }
           },
         });
 

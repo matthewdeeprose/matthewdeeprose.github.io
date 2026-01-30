@@ -1,0 +1,766 @@
+/* =============================================================================
+   AI ENHANCEMENT MODAL (Phase 7.1)
+   ============================================================================= */
+
+/* Skip Link */
+.ai-comparison-column .skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: #005c84;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.875rem;
+  border-radius: 0 0 4px 0;
+}
+
+.ai-comparison-column .skip-link:focus {
+  left: 0;
+  outline: 2px solid #005c84;
+  outline-offset: 2px;
+}
+
+.column-content.mmd-preview {
+  position: relative;
+}
+
+/* =============================================================================
+   COLOURS
+   ============================================================================= */
+
+/* Enhance Button (Toolbar) */
+
+/* Description */
+/* Model Selection */
+.ai-model-selection {
+  border-color: currentcolor;
+}
+.model-option {
+  border-color: transparent;
+}
+.model-option:hover {
+  background-color: #f0f2e8;
+}
+.model-option:has(input:checked) {
+  border-color: #005c84;
+  background-color: rgba(0, 92, 132, 0.09);
+}
+.model-option-description {
+  color: #495961;
+}
+.model-option-cost {
+  color: #8d3970;
+}
+/* Document Info */
+.ai-document-info {
+  background-color: #e1e8ec;
+  border-color: currentcolor;
+}
+/* Cost Estimate */
+.ai-cost-estimate {
+  background-color: rgba(141, 57, 112, 0.1);
+  border-color: #8d3970;
+}
+.ai-cost-estimate-note {
+  color: #495961;
+}
+/* Processing State */
+.processing-spinner {
+  border-color: #e1e8ec;
+  border-top-color: #005c84;
+}
+.processing-progress {
+  background-color: #e1e8ec;
+  border: 1px solid currentcolor;
+}
+.progress-fill {
+  background-color: #005c84;
+}
+.processing-text {
+  color: #495961;
+}
+/* Results - Comparison Panel */
+.comparison-column h4 {
+  border-bottom-color: #758d9a;
+}
+.comparison-content {
+  background-color: #e1e8ec;
+  border-color: currentcolor;
+}
+/* Results - Preview */
+.ai-preview-container {
+  background-color: rgba(225, 232, 236, 0.2);
+  border-color: #ddd;
+}
+/* Error Display */
+.ai-error-display .error-icon {
+  color: #d5007f;
+}
+.ai-error-display h3 {
+  color: #d5007f;
+}
+/* The container needs overflow-x for scrolling to work */
+#ai-col-preview {
+  overflow-x: auto;
+}
+
+#ai-col-preview table {
+  margin: 1rem auto; /* auto centres horizontally (replaces deprecated align="center") */
+  border-collapse: collapse;
+  width: auto;
+}
+
+#ai-col-preview th,
+#ai-col-preview td {
+  border: 1px solid #495961; /* WCAG AA contrast against white/light grey */
+  padding: 0.5rem 0.75rem;
+  text-align: center; /* truth tables typically look better centred */
+  vertical-align: middle; /* helps with MathJax SVG alignment */
+}
+
+#ai-col-preview th {
+  background-color: #9fb1bd;
+  font-weight: bold;
+}
+
+/* Optional: zebra striping for longer tables */
+#ai-col-preview tbody tr:nth-child(even) {
+  background-color: #e1e8ec;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .processing-spinner {
+    border-top-color: #ddd;
+  }
+}
+
+/* 4 column comparison grid */
+.ai-column-toggles {
+  background: #e1e8ec;
+  border-color: #768690;
+}
+
+.ai-column-toggles input[type="checkbox"]:focus-visible {
+  outline-color: #005c84;
+}
+
+.ai-comparison-column {
+  border-color: #768690;
+}
+
+.ai-comparison-column > h4 {
+  background: #e1e8ec;
+  border-bottom-color: #768690;
+}
+
+.column-content.mmd-code {
+  background: #f8f8f8;
+}
+
+.column-content.mmd-preview {
+  background: #fff;
+}
+
+.column-content.pdf-viewer {
+  background: #fff;
+}
+
+.column-content.pdf-viewer .ai-pdf-loading-spinner {
+  border-color: #e1e8ec;
+  border-top-color: #005c84;
+}
+
+.column-content.pdf-viewer .ai-pdf-error {
+  color: #d5007f;
+}
+
+.ai-pdf-page canvas {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* =============================================================================
+   STRUCTURE
+   ============================================================================= */
+
+/* Enhance Button (Toolbar) */
+
+.ai-enhance-btn [data-icon] {
+  width: 21px;
+  height: 21px;
+}
+
+/* Description */
+.ai-enhance-description {
+  margin-bottom: 1.5rem;
+}
+
+/* Model Selection */
+.ai-model-selection {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-model-selection legend {
+  font-weight: 600;
+  padding: 0 0.5rem;
+}
+
+.model-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.model-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.model-option input[type="radio"] {
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+}
+
+.model-option-content {
+  flex: 1;
+}
+
+.model-option-name {
+  font-weight: 600;
+  display: block;
+}
+
+.model-option-description {
+  font-size: 0.875rem;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.model-option-cost {
+  font-size: 0.8rem;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+/* Document Info */
+.ai-document-info {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-document-info dt {
+  font-weight: 600;
+  display: inline;
+}
+
+.ai-document-info dt::after {
+  content: ": ";
+}
+
+.ai-document-info dd {
+  display: inline;
+  margin: 0;
+}
+
+.ai-document-info dd::after {
+  content: "";
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.ai-document-info dd:last-child::after {
+  margin-bottom: 0;
+}
+
+/* Cost Estimate */
+.ai-cost-estimate {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-cost-estimate-label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.ai-cost-estimate-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.ai-cost-estimate-note {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+/* Processing State */
+.ai-processing-display {
+  text-align: center;
+  padding: 2rem;
+}
+
+.processing-spinner {
+  width: 48px;
+  height: 48px;
+  border-width: 4px;
+  border-style: solid;
+  border-radius: 50%;
+  animation: ai-enhance-spin 0.8s linear infinite;
+  margin: 0 auto 1.5rem;
+}
+
+@keyframes ai-enhance-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.processing-stage {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.processing-progress {
+  width: 100%;
+  max-width: 300px;
+  height: 8px;
+  border-radius: 4px;
+  margin: 0 auto 0.5rem;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.processing-text {
+  font-size: 0.875rem;
+}
+
+/* Column Toggles Fieldset */
+.ai-column-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.ai-column-toggles legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ai-column-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.ai-column-toggles input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.ai-column-toggles input[type="checkbox"]:focus-visible {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+/* Results Display Container */
+.ai-results-display {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+/* 4-Column Comparison Grid */
+.ai-comparison-grid {
+  display: grid;
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: stretch;
+}
+
+/* Individual Column */
+.ai-comparison-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  height: 100%;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ai-comparison-column[hidden] {
+  display: none;
+}
+
+.ai-comparison-column > h4 {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  flex-shrink: 0;
+}
+
+.ai-comparison-column > .column-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem;
+  min-height: 0;
+}
+
+/* MMD Code Content */
+.column-content.mmd-code {
+  font-family:
+    ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* MMD Preview Content */
+.column-content.mmd-preview {
+  display: flex;
+  flex-direction: column;
+}
+
+.column-content.mmd-preview > * {
+  flex-shrink: 0;
+}
+
+/* PDF Viewer Content */
+.column-content.pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.column-content.pdf-viewer .ai-pdf-loading {
+  text-align: center;
+  padding: 2rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.column-content.pdf-viewer .ai-pdf-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  border-style: solid;
+  border-radius: 50%;
+  animation: ai-enhance-spin 0.8s linear infinite;
+  margin: 0 auto 0.75rem;
+}
+
+.column-content.pdf-viewer .ai-pdf-error {
+  text-align: center;
+  padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* PDF Controls */
+.ai-pdf-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-top-width: 1px;
+  border-top-style: solid;
+  flex-shrink: 0;
+}
+
+.ai-pdf-navigation {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ai-pdf-page-input {
+  width: 3rem;
+  padding: 0.25rem 0.375rem;
+  font-size: 0.8125rem;
+  text-align: center;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 3px;
+}
+
+.ai-pdf-page-input:focus {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 1px;
+}
+
+.ai-pdf-page-total {
+  font-size: 0.8125rem;
+}
+
+.ai-pdf-zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ai-pdf-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.375rem;
+  font-size: 0.75rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.ai-pdf-zoom-btn:focus-visible {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 1px;
+}
+
+.ai-pdf-zoom-btn .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ai-pdf-zoom-level {
+  font-size: 0.75rem;
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+/* PDF Scroll Container */
+.ai-pdf-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.5rem;
+  min-height: 0;
+}
+
+/* PDF Page Container */
+.ai-pdf-pages-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ai-pdf-page {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.ai-pdf-page canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Legacy Comparison Panel (fallback) */
+.ai-comparison-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.comparison-column h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+}
+
+.comparison-content {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Legacy Preview Container */
+.ai-preview-container {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.ai-preview-container h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+/* Error Display */
+.ai-error-display {
+  text-align: center;
+  padding: 2rem;
+}
+
+.ai-error-display .error-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 1rem;
+}
+
+.ai-error-display h3 {
+  margin-bottom: 0.5rem;
+}
+
+/* Modal Actions */
+.ai-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top-width: 1px;
+  border-top-style: solid;
+}
+
+/* =============================================================================
+   RESPONSIVE
+   ============================================================================= */
+
+@media (max-width: 768px) {
+  .ai-comparison-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-content {
+    max-height: 200px;
+  }
+
+  .model-options {
+    gap: 0.5rem;
+  }
+
+  .ai-modal-actions {
+    flex-direction: column;
+  }
+
+  .ai-modal-actions button {
+    width: 100%;
+  }
+
+  /* 4-Column Grid Mobile */
+  .ai-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-column-toggles {
+    gap: 0.5rem;
+  }
+
+  .ai-column-toggles label {
+    flex: 1 1 45%;
+    min-width: 120px;
+  }
+
+  .ai-comparison-column > .column-content {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-column-toggles label {
+    flex: 1 1 100%;
+  }
+}
+
+/* =============================================================================
+   REDUCED MOTION
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .processing-spinner {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  .progress-fill {
+    transition: none;
+  }
+}
+
+/* =============================================================================
+   PRINT
+   ============================================================================= */
+
+@media print {
+  .ai-enhance-btn,
+  #ai-enhance-btn-desc {
+    display: none !important;
+  }
+}

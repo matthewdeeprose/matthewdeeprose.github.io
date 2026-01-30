@@ -510,7 +510,7 @@ class MathPixSessionRestorer {
               healthy: eventData.healthy,
               pendingPreviewRender: this.pendingPreviewRender,
               hasPendingContent: !!this.pendingContent,
-            }
+            },
           );
 
           // When MathJax becomes healthy, it's a good time to try loading the CDN too
@@ -523,7 +523,7 @@ class MathPixSessionRestorer {
               this.handleRecoveryRerender();
             }, 500);
           }
-        }
+        },
       );
       logDebug("Session Restorer subscribed to MathJax recovery events");
 
@@ -533,7 +533,7 @@ class MathPixSessionRestorer {
       this.monitorMathJaxInitialReady();
     } else {
       logDebug(
-        "MathJax Manager not available for recovery subscription - will retry"
+        "MathJax Manager not available for recovery subscription - will retry",
       );
       // Retry subscription after a delay
       setTimeout(() => {
@@ -563,7 +563,7 @@ class MathPixSessionRestorer {
       (this.pendingPreviewRender || this.pendingContent)
     ) {
       logInfo(
-        "MathJax already healthy with pending content - triggering recovery render"
+        "MathJax already healthy with pending content - triggering recovery render",
       );
       setTimeout(() => {
         this.handleRecoveryRerender();
@@ -595,7 +595,7 @@ class MathPixSessionRestorer {
           {
             checkCount,
             pendingPreviewRender: this.pendingPreviewRender,
-          }
+          },
         );
 
         // Small delay for stability
@@ -608,11 +608,11 @@ class MathPixSessionRestorer {
         // Log why we timed out
         if (!mathJaxHealthy) {
           logWarn(
-            "MathJax initial ready monitoring timeout - MathJax never became healthy"
+            "MathJax initial ready monitoring timeout - MathJax never became healthy",
           );
         } else if (!hasPendingContent) {
           logDebug(
-            "MathJax initial ready monitoring complete - no pending content needed"
+            "MathJax initial ready monitoring complete - no pending content needed",
           );
         }
       }
@@ -698,7 +698,7 @@ class MathPixSessionRestorer {
       previewElement.closest("code")
     ) {
       logWarn(
-        "Recovery re-render aborted - target is a code element, not preview"
+        "Recovery re-render aborted - target is a code element, not preview",
       );
       this.pendingPreviewRender = false;
       return;
@@ -720,7 +720,7 @@ class MathPixSessionRestorer {
 
     try {
       logInfo(
-        "Attempting recovery re-render - ensuring CDN library is loaded first"
+        "Attempting recovery re-render - ensuring CDN library is loaded first",
       );
 
       // Get MMD Preview module
@@ -807,12 +807,12 @@ class MathPixSessionRestorer {
       mmdViewPreviewBtn: document.getElementById("resume-mmd-view-preview-btn"),
       mmdViewSplitBtn: document.getElementById("resume-mmd-view-split-btn"),
       mmdViewPdfSplitBtn: document.getElementById(
-        "resume-mmd-view-pdf-split-btn"
+        "resume-mmd-view-pdf-split-btn",
       ),
       mmdEditBtn: document.getElementById("resume-mmd-edit-btn"),
       mmdFullscreenBtn: document.getElementById("resume-mmd-fullscreen-btn"),
       mmdFullscreenExitBtn: document.getElementById(
-        "resume-fullscreen-exit-btn"
+        "resume-fullscreen-exit-btn",
       ),
       mmdViewStatus: document.getElementById("resume-mmd-view-status"),
 
@@ -824,7 +824,7 @@ class MathPixSessionRestorer {
       mmdContentArea: document.getElementById("resume-mmd-content-area"),
       mmdCodeContainer: document.getElementById("resume-mmd-code-container"),
       mmdPreviewContainer: document.getElementById(
-        "resume-mmd-preview-container"
+        "resume-mmd-preview-container",
       ),
       mmdPdfContainer: document.getElementById("resume-mmd-pdf-container"),
       mmdViewDivider: document.getElementById("resume-mmd-view-divider"),
@@ -840,7 +840,7 @@ class MathPixSessionRestorer {
       pdfZoomFit: document.getElementById("resume-mmd-pdf-zoom-fit"),
       pdfZoomLevel: document.getElementById("resume-mmd-pdf-zoom-level"),
       pdfScrollContainer: document.getElementById(
-        "resume-mmd-pdf-scroll-container"
+        "resume-mmd-pdf-scroll-container",
       ),
       pdfPagesContainer: document.getElementById("resume-mmd-pdf-pages"),
 
@@ -850,7 +850,7 @@ class MathPixSessionRestorer {
       mmdRedoBtn: document.getElementById("resume-mmd-redo-btn"),
       mmdRestoreBtn: document.getElementById("resume-mmd-restore-btn"),
       mmdClearSessionBtn: document.getElementById(
-        "resume-mmd-clear-session-btn"
+        "resume-mmd-clear-session-btn",
       ),
       mmdDownloadBtn: document.getElementById("resume-mmd-download-btn"),
       mmdUploadInput: document.getElementById("resume-mmd-upload-input"),
@@ -862,18 +862,18 @@ class MathPixSessionRestorer {
       convertCancelBtn: document.getElementById("resume-convert-cancel-btn"),
       convertProgress: document.getElementById("resume-convert-progress"),
       convertProgressList: document.getElementById(
-        "resume-convert-progress-list"
+        "resume-convert-progress-list",
       ),
       convertDownloads: document.getElementById("resume-convert-downloads"),
       convertDownloadButtons: document.getElementById(
-        "resume-download-buttons"
+        "resume-download-buttons",
       ),
       convertErrors: document.getElementById("resume-convert-errors"),
       convertErrorList: document.getElementById("resume-convert-error-list"),
       convertSelectAll: document.getElementById("resume-select-all-formats"),
       convertFormatCheckboxes: null, // Populated after DOM ready
       convertDownloadAllBtn: document.getElementById(
-        "resume-download-all-converted-btn"
+        "resume-download-all-converted-btn",
       ),
 
       // Download all (main ZIP with edits)
@@ -881,7 +881,7 @@ class MathPixSessionRestorer {
 
       // Confidence visualiser (PDF tab)
       confidenceContainer: document.getElementById(
-        "resume-confidence-visualiser-container"
+        "resume-confidence-visualiser-container",
       ),
 
       // Phase 8.3.4: Confidence gutter (MMD code view)
@@ -892,7 +892,7 @@ class MathPixSessionRestorer {
 
     // Cache format checkboxes separately
     this.elements.convertFormatCheckboxes = document.querySelectorAll(
-      'input[name="resume-convert-format"]'
+      'input[name="resume-convert-format"]',
     );
 
     // Log element availability
@@ -911,16 +911,16 @@ class MathPixSessionRestorer {
     // Drop zone events
     if (this.elements.dropZone) {
       this.elements.dropZone.addEventListener("dragover", (e) =>
-        this.handleDragOver(e)
+        this.handleDragOver(e),
       );
       this.elements.dropZone.addEventListener("dragleave", (e) =>
-        this.handleDragLeave(e)
+        this.handleDragLeave(e),
       );
       this.elements.dropZone.addEventListener("drop", (e) =>
-        this.handleDrop(e)
+        this.handleDrop(e),
       );
       this.elements.dropZone.addEventListener("click", () =>
-        this.triggerFileSelect()
+        this.triggerFileSelect(),
       );
       this.elements.dropZone.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -933,87 +933,87 @@ class MathPixSessionRestorer {
     // File input change
     if (this.elements.fileInput) {
       this.elements.fileInput.addEventListener("change", (e) =>
-        this.handleFileSelect(e)
+        this.handleFileSelect(e),
       );
     }
 
     // Edit selection buttons
     if (this.elements.editConfirmBtn) {
       this.elements.editConfirmBtn.addEventListener("click", () =>
-        this.confirmEditSelection()
+        this.confirmEditSelection(),
       );
     }
     if (this.elements.editCancelBtn) {
       this.elements.editCancelBtn.addEventListener("click", () =>
-        this.cancelEditSelection()
+        this.cancelEditSelection(),
       );
     }
 
     // Focus Mode button (Phase 8.3.3)
     if (this.elements.focusModeBtn) {
       this.elements.focusModeBtn.addEventListener("click", () =>
-        this.toggleFocusMode()
+        this.toggleFocusMode(),
       );
     }
 
     // New session button
     if (this.elements.newSessionBtn) {
       this.elements.newSessionBtn.addEventListener("click", () =>
-        this.startNewSession()
+        this.startNewSession(),
       );
     }
 
     // Tab switching
     if (this.elements.tabMmd) {
       this.elements.tabMmd.addEventListener("click", () =>
-        this.switchTab("mmd")
+        this.switchTab("mmd"),
       );
     }
     if (this.elements.tabConfidence) {
       this.elements.tabConfidence.addEventListener("click", () =>
-        this.switchTab("confidence")
+        this.switchTab("confidence"),
       );
     }
 
     // MMD view controls
     if (this.elements.mmdViewCodeBtn) {
       this.elements.mmdViewCodeBtn.addEventListener("click", () =>
-        this.switchMmdView("code")
+        this.switchMmdView("code"),
       );
     }
     if (this.elements.mmdViewPreviewBtn) {
       this.elements.mmdViewPreviewBtn.addEventListener("click", () =>
-        this.switchMmdView("preview")
+        this.switchMmdView("preview"),
       );
     }
     if (this.elements.mmdViewSplitBtn) {
       this.elements.mmdViewSplitBtn.addEventListener("click", () =>
-        this.switchMmdView("split")
+        this.switchMmdView("split"),
       );
     }
     if (this.elements.mmdViewPdfSplitBtn) {
       this.elements.mmdViewPdfSplitBtn.addEventListener("click", () =>
-        this.switchMmdView("pdf_split")
+        this.switchMmdView("pdf_split"),
       );
     }
 
     // Split PDF toggle checkbox
     if (this.elements.splitPdfCheckbox) {
       this.elements.splitPdfCheckbox.addEventListener("change", (e) =>
-        this.toggleSplitPDF(e.target.checked)
+        this.toggleSplitPDF(e.target.checked),
       );
     }
 
     // Phase 8.3.4: Confidence toggle checkbox
     if (this.elements.confidenceCheckbox) {
       this.elements.confidenceCheckbox.addEventListener("change", (e) =>
-        this.toggleConfidenceHighlighting(e.target.checked)
+        this.toggleConfidenceHighlighting(e.target.checked),
       );
     }
 
     if (this.elements.mmdEditBtn) {
       this.elements.mmdEditBtn.addEventListener("click", () =>
-        this.toggleEditMode()
+        this.toggleEditMode(),
       );
     }
 
@@ -1026,29 +1026,29 @@ class MathPixSessionRestorer {
     }
     if (this.elements.mmdRestoreBtn) {
       this.elements.mmdRestoreBtn.addEventListener("click", () =>
-        this.restoreOriginal()
+        this.restoreOriginal(),
       );
     }
     if (this.elements.mmdClearSessionBtn) {
       this.elements.mmdClearSessionBtn.addEventListener("click", () =>
-        this.clearSession()
+        this.clearSession(),
       );
     }
     if (this.elements.mmdDownloadBtn) {
       this.elements.mmdDownloadBtn.addEventListener("click", () =>
-        this.downloadMmd()
+        this.downloadMmd(),
       );
     }
     if (this.elements.mmdUploadInput) {
       this.elements.mmdUploadInput.addEventListener("change", (e) =>
-        this.handleMmdUpload(e)
+        this.handleMmdUpload(e),
       );
     }
 
     // PDF controls
     if (this.elements.pdfPageInput) {
       this.elements.pdfPageInput.addEventListener("change", (e) =>
-        this.goToPage(parseInt(e.target.value, 10))
+        this.goToPage(parseInt(e.target.value, 10)),
       );
       this.elements.pdfPageInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -1059,44 +1059,44 @@ class MathPixSessionRestorer {
     }
     if (this.elements.pdfZoomOut) {
       this.elements.pdfZoomOut.addEventListener("click", () =>
-        this.zoomPDF(-0.1)
+        this.zoomPDF(-0.1),
       );
     }
     if (this.elements.pdfZoomIn) {
       this.elements.pdfZoomIn.addEventListener("click", () =>
-        this.zoomPDF(0.1)
+        this.zoomPDF(0.1),
       );
     }
     if (this.elements.pdfZoomFit) {
       this.elements.pdfZoomFit.addEventListener("click", () =>
-        this.fitPDFToWidth()
+        this.fitPDFToWidth(),
       );
     }
 
     // Editor textarea changes
     if (this.elements.mmdEditorTextarea) {
       this.elements.mmdEditorTextarea.addEventListener("input", () =>
-        this.handleMmdInput()
+        this.handleMmdInput(),
       );
     }
 
     // Download all button
     if (this.elements.downloadAllBtn) {
       this.elements.downloadAllBtn.addEventListener("click", () =>
-        this.downloadUpdatedZIP()
+        this.downloadUpdatedZIP(),
       );
     }
 
     // Convert section event listeners
     if (this.elements.convertBtn) {
       this.elements.convertBtn.addEventListener("click", () =>
-        this.handleConvert()
+        this.handleConvert(),
       );
     }
 
     if (this.elements.convertCancelBtn) {
       this.elements.convertCancelBtn.addEventListener("click", () =>
-        this.cancelConversion()
+        this.cancelConversion(),
       );
     }
 
@@ -1122,7 +1122,7 @@ class MathPixSessionRestorer {
     // Download All Converted button
     if (this.elements.convertDownloadAllBtn) {
       this.elements.convertDownloadAllBtn.addEventListener("click", () =>
-        this.downloadAllConvertedFiles()
+        this.downloadAllConvertedFiles(),
       );
     }
 
@@ -1171,7 +1171,7 @@ class MathPixSessionRestorer {
 
     try {
       const keys = Object.keys(localStorage).filter((k) =>
-        k.startsWith("mathpix-resume-session")
+        k.startsWith("mathpix-resume-session"),
       );
 
       const uploadedBaseName = sourceFilename.replace(/\.[^/.]+$/, "");
@@ -1231,7 +1231,7 @@ class MathPixSessionRestorer {
             : "") +
           (dedupedSessions.length !== matchingSessions.length
             ? ` (${matchingSessions.length} total before deduplication)`
-            : "")
+            : ""),
       );
       return sessionsWithChanges;
     } catch (error) {
@@ -1283,7 +1283,8 @@ class MathPixSessionRestorer {
         const isLegacyWithEdits = !hasBaseline; // Legacy sessions without baseline have real edits
 
         let score = 0;
-        if (hasUserEdits) score = 3; // Best: has baseline and user made changes
+        if (hasUserEdits)
+          score = 3; // Best: has baseline and user made changes
         else if (isLegacyWithEdits)
           score = 2; // Good: legacy session with edit history
         else if (hasBaseline) score = 1; // OK: has baseline but no changes yet
@@ -1303,7 +1304,7 @@ class MathPixSessionRestorer {
 
       logDebug(
         `Deduplicated ${group.length} sessions with identical content, ` +
-          `kept session with score ${scored[0].score}`
+          `kept session with score ${scored[0].score}`,
       );
     }
 
@@ -1311,13 +1312,13 @@ class MathPixSessionRestorer {
     if (removedCount > 0) {
       logDebug(
         `Deduplicated sessions: removed ${removedCount} duplicate(s), ` +
-          `keeping ${uniqueSessions.length} unique version(s)`
+          `keeping ${uniqueSessions.length} unique version(s)`,
       );
     }
 
     // Re-sort by lastModified (newest first) since Map iteration order doesn't preserve timestamp sort
     uniqueSessions.sort(
-      (a, b) => (b.lastModified || 0) - (a.lastModified || 0)
+      (a, b) => (b.lastModified || 0) - (a.lastModified || 0),
     );
 
     return uniqueSessions;
@@ -1394,7 +1395,7 @@ class MathPixSessionRestorer {
     const mostRecentItem =
       allTimestamps.length > 0
         ? allTimestamps.reduce((newest, current) =>
-            current.timestamp > newest.timestamp ? current : newest
+            current.timestamp > newest.timestamp ? current : newest,
           )
         : null;
 
@@ -1425,10 +1426,10 @@ class MathPixSessionRestorer {
         const comparisonContent = session.data?.baseline || originalMMD;
         const diffResult = this.computeDiff(
           session.data?.current,
-          comparisonContent
+          comparisonContent,
         );
         const previewHTML = `<span class="resume-session-preview">${this.renderDiffPreview(
-          diffResult
+          diffResult,
         )}</span>`;
 
         return `
@@ -1436,8 +1437,8 @@ class MathPixSessionRestorer {
           isNewest ? "resume-session-option-newest" : ""
         } ${isCurrent ? "resume-session-option-current" : ""}">
           <input type="radio" name="resume-session-choice" value="${index}" ${
-          isNewest && currentSessionIndex === null ? "checked" : ""
-        } ${isCurrent ? "checked" : ""}>
+            isNewest && currentSessionIndex === null ? "checked" : ""
+          } ${isCurrent ? "checked" : ""}>
           <span class="resume-session-option-content">
 <time class="resume-session-option-date" datetime="${isoDateTime}">
               <span class="resume-session-source-icon">${getIcon("disk")}</span>
@@ -1489,18 +1490,18 @@ class MathPixSessionRestorer {
         // Preview shows difference from original ZIP results
         const diffResult = this.computeDiff(edit.content, originalMMD);
         const previewHTML = `<span class="resume-session-preview">${this.renderDiffPreview(
-          diffResult
+          diffResult,
         )}</span>`;
 
         // Build date/time display with semantic <time> element when date is available
         const dateTimeDisplay = date
           ? `<time class="resume-session-option-date" datetime="${isoDateTime}">${getIcon(
-              "pencil"
+              "pencil",
             )} ZIP Edit: ${this.escapeHtml(dateStr)}${
               timeStr ? ` at ${this.escapeHtml(timeStr)}` : ""
             }</time>`
           : `<span class="resume-session-option-date">${getIcon(
-              "pencil"
+              "pencil",
             )} ZIP Edit: ${this.escapeHtml(dateStr)}</span>`;
 
         // Check if this ZIP edit is the globally most recent
@@ -1513,8 +1514,8 @@ class MathPixSessionRestorer {
           isCurrent ? "resume-session-option-current" : ""
         } ${isNewest ? "resume-session-option-newest" : ""}">
           <input type="radio" name="resume-session-choice" value="${editIndex}" ${
-          isCurrent ? "checked" : ""
-        }>
+            isCurrent ? "checked" : ""
+          }>
           <span class="resume-session-option-content">
             ${dateTimeDisplay}
             ${
@@ -1555,7 +1556,7 @@ class MathPixSessionRestorer {
               : ""
           }
           <span class="resume-session-preview">${getIcon(
-            "document"
+            "document",
           )} ${this.escapeHtml(zipPreview)}</span>
           <span class="resume-session-option-size">Original</span>
         </span>
@@ -1635,7 +1636,7 @@ class MathPixSessionRestorer {
     if (this.elements.workingArea) {
       this.elements.workingArea.insertBefore(
         banner,
-        this.elements.workingArea.firstChild
+        this.elements.workingArea.firstChild,
       );
     }
 
@@ -1726,7 +1727,7 @@ class MathPixSessionRestorer {
       existingBanner.remove();
     }
     const existingAutoBanner = document.getElementById(
-      "resume-auto-restored-banner"
+      "resume-auto-restored-banner",
     );
     if (existingAutoBanner) {
       existingAutoBanner.remove();
@@ -1769,8 +1770,8 @@ class MathPixSessionRestorer {
     <p id="resume-auto-restored-message">
       Your most recent edit 
       (<time datetime="${isoDateTime}">${this.escapeHtml(
-      dateStr
-    )} at ${this.escapeHtml(timeStr)}</time>) 
+        dateStr,
+      )} at ${this.escapeHtml(timeStr)}</time>) 
       was automatically loaded. Browser storage is temporary — download a ZIP 
       to save your work permanently.
     </p>
@@ -1798,7 +1799,7 @@ class MathPixSessionRestorer {
     if (this.elements.workingArea) {
       this.elements.workingArea.insertBefore(
         banner,
-        this.elements.workingArea.firstChild
+        this.elements.workingArea.firstChild,
       );
     }
 
@@ -1807,7 +1808,7 @@ class MathPixSessionRestorer {
 
     // Announce to screen readers
     this.announceToScreenReader(
-      `Your edit from ${dateStr} at ${timeStr} was automatically restored from browser storage.`
+      `Your edit from ${dateStr} at ${timeStr} was automatically restored from browser storage.`,
     );
 
     logInfo("Auto-restored banner shown for session from:", dateStr, timeStr);
@@ -1821,7 +1822,7 @@ class MathPixSessionRestorer {
   setupAutoRestoredBannerListeners(banner) {
     // Download ZIP button
     const downloadBtn = document.getElementById(
-      "resume-auto-restored-download-btn"
+      "resume-auto-restored-download-btn",
     );
     if (downloadBtn) {
       downloadBtn.addEventListener("click", () => {
@@ -1832,7 +1833,7 @@ class MathPixSessionRestorer {
 
     // Switch Version button
     const switchBtn = document.getElementById(
-      "resume-auto-restored-switch-btn"
+      "resume-auto-restored-switch-btn",
     );
     if (switchBtn) {
       switchBtn.addEventListener("click", () => {
@@ -1844,7 +1845,7 @@ class MathPixSessionRestorer {
 
     // Dismiss button
     const dismissBtn = document.getElementById(
-      "resume-auto-restored-dismiss-btn"
+      "resume-auto-restored-dismiss-btn",
     );
     if (dismissBtn) {
       dismissBtn.addEventListener("click", () => {
@@ -1893,7 +1894,7 @@ class MathPixSessionRestorer {
       logWarn("Download ZIP not available - no downloader or button found");
       this.showNotification(
         "Download is not available at this time. Please try again later.",
-        "warning"
+        "warning",
       );
     }
   }
@@ -2074,7 +2075,7 @@ class MathPixSessionRestorer {
     const actualVersion = this.getCurrentVersionType();
     if (actualVersion.index !== this._currentSessionIndex) {
       logWarn(
-        `Index mismatch in reshowSessionSelector: stored=${this._currentSessionIndex}, actual=${actualVersion.index}`
+        `Index mismatch in reshowSessionSelector: stored=${this._currentSessionIndex}, actual=${actualVersion.index}`,
       );
       this._currentSessionIndex = actualVersion.index;
     }
@@ -2093,7 +2094,7 @@ class MathPixSessionRestorer {
       {
         isReshow: true,
         currentSessionIndex: this._currentSessionIndex,
-      }
+      },
     );
   }
 
@@ -2104,7 +2105,7 @@ class MathPixSessionRestorer {
    */
   getSelectedSessionIndex() {
     const selected = document.querySelector(
-      'input[name="resume-session-choice"]:checked'
+      'input[name="resume-session-choice"]:checked',
     );
     if (selected) {
       return parseInt(selected.value, 10);
@@ -2323,7 +2324,7 @@ class MathPixSessionRestorer {
         const sourceFilename = parseResult.source?.filename || "";
         const hasAmbiguity = this.hasAmbiguousEdits(
           parseResult.edits.files,
-          sourceFilename
+          sourceFilename,
         );
 
         if (hasAmbiguity) {
@@ -2334,7 +2335,7 @@ class MathPixSessionRestorer {
           // All edits match source pattern - auto-restore most recent
           // User can access older versions via "Switch Version" button
           logInfo(
-            "Multiple edits found, all match source - auto-restoring most recent"
+            "Multiple edits found, all match source - auto-restoring most recent",
           );
           const selectedEdit = parseResult.edits.mostRecent || null;
           await this.restoreSession(parseResult, selectedEdit);
@@ -2430,14 +2431,14 @@ class MathPixSessionRestorer {
     // Add errors
     errors.forEach((error) => {
       html += `<div class="resume-validation-error" role="alert">${this.escapeHtml(
-        error
+        error,
       )}</div>`;
     });
 
     // Add warnings
     warnings.forEach((warning) => {
       html += `<div class="resume-validation-warning">${this.escapeHtml(
-        warning
+        warning,
       )}</div>`;
     });
 
@@ -2463,7 +2464,7 @@ class MathPixSessionRestorer {
       this.elements.validationMessages.hidden = true;
       this.elements.validationMessages.classList.remove(
         "has-errors",
-        "has-warnings"
+        "has-warnings",
       );
     }
   }
@@ -2575,10 +2576,10 @@ class MathPixSessionRestorer {
     const originalLines = (original || "").split("\n");
 
     const linesAdded = currentLines.filter(
-      (line) => line.trim() && !originalLines.includes(line)
+      (line) => line.trim() && !originalLines.includes(line),
     ).length;
     const linesRemoved = originalLines.filter(
-      (line) => line.trim() && !currentLines.includes(line)
+      (line) => line.trim() && !currentLines.includes(line),
     ).length;
 
     // Calculate character-level percentage change
@@ -2776,7 +2777,7 @@ class MathPixSessionRestorer {
     <span class="diff-preview diff-preview-content">
       ${getIcon("document")}
       <span class="diff-preview-text">"${this.escapeHtml(
-        diffResult.preview
+        diffResult.preview,
       )}"</span>
     </span>
   `.trim();
@@ -2791,7 +2792,7 @@ class MathPixSessionRestorer {
         diffResult.linesAdded > 0 || diffResult.linesRemoved > 0;
       const statsHint = hasLineChanges
         ? `<span class="diff-stats-hint">(${this.escapeHtml(
-            diffResult.summary
+            diffResult.summary,
           )})</span>`
         : "";
 
@@ -2802,7 +2803,7 @@ class MathPixSessionRestorer {
             ${
               fc.contextBefore
                 ? `<span class="diff-context">${this.escapeHtml(
-                    fc.contextBefore
+                    fc.contextBefore,
                   )} </span>`
                 : ""
             }
@@ -2820,7 +2821,7 @@ class MathPixSessionRestorer {
             ${
               fc.contextBefore
                 ? `<span class="diff-context">${this.escapeHtml(
-                    fc.contextBefore
+                    fc.contextBefore,
                   )} </span>`
                 : ""
             }
@@ -2837,13 +2838,13 @@ class MathPixSessionRestorer {
           ${
             fc.contextBefore
               ? `<span class="diff-context">${this.escapeHtml(
-                  fc.contextBefore
+                  fc.contextBefore,
                 )} </span>`
               : ""
           }
 <del class="diff-removed">
             <span class="visually-hidden">was </span>${this.escapeHtml(
-              fc.removed
+              fc.removed,
             )}
           </del>
           <span class="diff-arrow">${getIcon("arrowRight")}</span>
@@ -2926,7 +2927,7 @@ class MathPixSessionRestorer {
           editFile,
           index,
           isDefault,
-          editType
+          editType,
         );
       });
 
@@ -2962,7 +2963,7 @@ class MathPixSessionRestorer {
 ${getIcon("document")} Original MathPix Output
         </span>
         <span class="edit-option-timestamp">${this.escapeHtml(
-          baseName
+          baseName,
         )}${sizeInfo}</span>
         <span class="edit-option-badge edit-option-badge-original">Original</span>
       </span>
@@ -2999,7 +3000,7 @@ ${getIcon("document")} Original MathPix Output
 
     // Check if it has a timestamp pattern (saved file)
     const hasTimestamp = /-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}(-\d{2})?\.mmd$/.test(
-      filename
+      filename,
     );
 
     if (hasTimestamp) {
@@ -3097,7 +3098,7 @@ ${getIcon("document")} Original MathPix Output
     const iconName = typeBadgeIcons[editType] || "document";
     const typeInfo = typeBadgeLabels[editType] || typeBadgeLabels.edit;
     badgesHtml += `<span class="edit-option-badge ${typeInfo.class}">${getIcon(
-      iconName
+      iconName,
     )} ${typeInfo.label}</span>`;
 
     // Most Recent badge (in addition to type badge)
@@ -3110,18 +3111,18 @@ ${getIcon("document")} Original MathPix Output
     let originalFilenameHtml = "";
     if (editType === "imported" && editFile.originalFilename) {
       originalFilenameHtml = `<span class="edit-option-original-filename">Originally: ${this.escapeHtml(
-        editFile.originalFilename
+        editFile.originalFilename,
       )}</span>`;
     }
 
     return `
     <label class="resume-edit-option resume-edit-option-${editType}">
       <input type="radio" name="resume-edit-choice" value="${index}" ${
-      isDefault ? "checked" : ""
-    }>
+        isDefault ? "checked" : ""
+      }>
       <span class="edit-option-content">
         <span class="edit-option-filename">${this.escapeHtml(
-          editFile.filename
+          editFile.filename,
         )}</span>
         ${originalFilenameHtml}
         <span class="edit-option-timestamp">${this.escapeHtml(timestamp)}</span>
@@ -3140,7 +3141,7 @@ ${getIcon("document")} Original MathPix Output
 
     // Get selected edit
     const selectedRadio = document.querySelector(
-      'input[name="resume-edit-choice"]:checked'
+      'input[name="resume-edit-choice"]:checked',
     );
     if (!selectedRadio) {
       logWarn("No edit selection made");
@@ -3231,7 +3232,7 @@ ${getIcon("document")} Original MathPix Output
       // Load MMD content into editor
       this.loadMMDContent(
         this.restoredSession.currentMMD,
-        this.restoredSession.originalMMD
+        this.restoredSession.originalMMD,
       );
 
       // Integrate with MMDEditorPersistence module
@@ -3250,7 +3251,7 @@ ${getIcon("document")} Original MathPix Output
       ) {
         await this.loadConfidenceVisualiser(
           parseResult.linesData,
-          parseResult.source.blob
+          parseResult.source.blob,
         );
 
         // Phase 8.3.4: Show confidence toggle for MMD view
@@ -3261,11 +3262,14 @@ ${getIcon("document")} Original MathPix Output
       // This must happen before startPersistenceSession() to avoid finding
       // the session we're about to create
       const preExistingSessions = this.checkForMatchingSessions(
-        parseResult.source.filename
+        parseResult.source.filename,
       );
 
       // Start persistence session (creates new localStorage entry)
       this.startPersistenceSession(parseResult.source.filename);
+
+      // Update AI Enhancement button state (Phase 7.1)
+      this.updateAIEnhanceButton();
 
       // Hide upload section, show working area
       if (this.elements.uploadSection) {
@@ -3293,7 +3297,7 @@ ${getIcon("document")} Original MathPix Output
       if (selectedEdit) {
         // Find which ZIP edit index this corresponds to
         const editIndex = zipEdits.findIndex(
-          (e) => e.content === selectedEdit.content
+          (e) => e.content === selectedEdit.content,
         );
         initialSessionIndex = editIndex >= 0 ? -2 - editIndex : -2;
       } else {
@@ -3307,7 +3311,7 @@ ${getIcon("document")} Original MathPix Output
         // Filter to only sessions newer than the ZIP edit
         const zipEditTime = selectedEdit?.timestamp?.getTime() || 0;
         const newerSessions = preExistingSessions.filter(
-          (s) => s.lastModified > zipEditTime
+          (s) => s.lastModified > zipEditTime,
         );
 
         if (newerSessions.length > 0) {
@@ -3318,7 +3322,7 @@ ${getIcon("document")} Original MathPix Output
           logInfo("Auto-restoring most recent localStorage session:", {
             key: mostRecentSession.key,
             lastModified: new Date(
-              mostRecentSession.lastModified
+              mostRecentSession.lastModified,
             ).toISOString(),
             sessionCount: newerSessions.length,
           });
@@ -3363,7 +3367,7 @@ ${getIcon("document")} Original MathPix Output
       logError("Failed to restore session:", error);
       this.showNotification(
         `Failed to restore session: ${error.message}`,
-        "error"
+        "error",
       );
     }
   }
@@ -3393,6 +3397,18 @@ ${getIcon("document")} Original MathPix Output
 
       // Listen for status changes from persistence
       this.setupPersistenceStatusSync(persistence);
+    }
+  }
+
+  /**
+   * Update AI Enhancement button state after session change
+   * @since Phase 7.1
+   */
+  updateAIEnhanceButton() {
+    const enhancer = window.getMathPixAIEnhancer?.();
+    if (enhancer) {
+      enhancer.updateButtonState();
+      logDebug("AI Enhancement button state updated");
     }
   }
 
@@ -3490,7 +3506,7 @@ ${getIcon("document")} Original MathPix Output
       if (!this.elements.mmdPreviewContent.hasAttribute("aria-label")) {
         this.elements.mmdPreviewContent.setAttribute(
           "aria-label",
-          "MMD content preview - scrollable region"
+          "MMD content preview - scrollable region",
         );
       }
     }
@@ -3565,14 +3581,14 @@ ${getIcon("document")} Original MathPix Output
                 source: "session-restorer",
                 reason: "cdn-not-ready",
                 contentLength: content.length,
-              }
+              },
             );
           }
 
           // CRITICAL FIX: Trigger recovery immediately instead of waiting for monitors
           // The monitors may have already timed out if the user took time to upload
           logInfo(
-            "Triggering immediate recovery render (monitors may have timed out)"
+            "Triggering immediate recovery render (monitors may have timed out)",
           );
 
           // Use setTimeout to allow the loading message to render first
@@ -3617,7 +3633,7 @@ ${getIcon("document")} Original MathPix Output
               source: "session-restorer",
               reason: "render-failed",
               error: error.message,
-            }
+            },
           );
         }
       }
@@ -3626,7 +3642,7 @@ ${getIcon("document")} Original MathPix Output
       this.pendingPreviewRender = true;
       this.elements.mmdPreviewContent.textContent = content;
       logDebug(
-        "MMD preview module not available, using plain text - marked for recovery"
+        "MMD preview module not available, using plain text - marked for recovery",
       );
     }
   }
@@ -3718,10 +3734,10 @@ ${getIcon("document")} Original MathPix Output
 
       // Update page total indicators if present
       const totalPagesEl = document.getElementById(
-        "resume-mmd-pdf-total-pages"
+        "resume-mmd-pdf-total-pages",
       );
       const totalDisplayEl = document.getElementById(
-        "resume-mmd-pdf-total-display"
+        "resume-mmd-pdf-total-display",
       );
       if (totalPagesEl) totalPagesEl.textContent = pdfDocument.numPages;
       if (totalDisplayEl) totalDisplayEl.textContent = pdfDocument.numPages;
@@ -3732,7 +3748,7 @@ ${getIcon("document")} Original MathPix Output
 
       // Calculate scale based on container width
       const scrollContainer = document.getElementById(
-        "resume-mmd-pdf-scroll-container"
+        "resume-mmd-pdf-scroll-container",
       );
       const containerWidth = scrollContainer?.clientWidth || 600;
       const devicePixelRatio = window.devicePixelRatio || 1;
@@ -3752,7 +3768,7 @@ ${getIcon("document")} Original MathPix Output
         pageWrapper.setAttribute("data-page", pageNum);
         pageWrapper.setAttribute(
           "aria-label",
-          `Page ${pageNum} of ${pdfDocument.numPages}`
+          `Page ${pageNum} of ${pdfDocument.numPages}`,
         );
 
         // Create canvas using existing class
@@ -3795,7 +3811,7 @@ ${getIcon("document")} Original MathPix Output
       <div class="mmd-pdf-error" role="alert">
 <p class="mmd-error-icon">${getIcon("warning")}</p>
         <p id="resume-mmd-pdf-error-message">Failed to load PDF: ${this.escapeHtml(
-          error.message
+          error.message,
         )}</p>
       </div>
     `;
@@ -3957,7 +3973,7 @@ ${getIcon("document")} Original MathPix Output
       // Check if visualiser class is available
       if (typeof window.PDFConfidenceVisualiser === "undefined") {
         logWarn(
-          "PDFConfidenceVisualiser class not available - ensure pdf-visualiser-core.js is loaded"
+          "PDFConfidenceVisualiser class not available - ensure pdf-visualiser-core.js is loaded",
         );
         return;
       }
@@ -4098,7 +4114,7 @@ ${getIcon("document")} Original MathPix Output
     if (this.elements.mmdCodeContainer) {
       this.elements.mmdCodeContainer.classList.toggle(
         "active",
-        isCode || isSplit || isPdfSplit
+        isCode || isSplit || isPdfSplit,
       );
       this.elements.mmdCodeContainer.hidden =
         !isCode && !isSplit && !isPdfSplit;
@@ -4107,7 +4123,7 @@ ${getIcon("document")} Original MathPix Output
     if (this.elements.mmdPreviewContainer) {
       this.elements.mmdPreviewContainer.classList.toggle(
         "active",
-        isPreview || isSplit
+        isPreview || isSplit,
       );
       this.elements.mmdPreviewContainer.hidden = !isPreview && !isSplit;
     }
@@ -4257,7 +4273,7 @@ ${getIcon("document")} Original MathPix Output
 
     // Find and scroll to the page
     const pageElement = this.elements.pdfPagesContainer?.querySelector(
-      `[data-page="${pageNum}"]`
+      `[data-page="${pageNum}"]`,
     );
 
     if (pageElement && this.elements.pdfScrollContainer) {
@@ -4324,7 +4340,7 @@ ${getIcon("document")} Original MathPix Output
         // Update zoom level display
         if (this.elements.pdfZoomLevel) {
           this.elements.pdfZoomLevel.textContent = `${Math.round(
-            fitScale * 100
+            fitScale * 100,
           )}%`;
         }
 
@@ -4357,7 +4373,7 @@ ${getIcon("document")} Original MathPix Output
     // Re-render each page
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
       const pageWrapper = pagesContainer.querySelector(
-        `[data-page="${pageNum}"]`
+        `[data-page="${pageNum}"]`,
       );
       const canvas = pageWrapper?.querySelector("canvas");
 
@@ -4489,7 +4505,7 @@ ${getIcon("document")} Original MathPix Output
       this.elements.tabConfidence.classList.toggle("active", !isMmd);
       this.elements.tabConfidence.setAttribute(
         "aria-selected",
-        (!isMmd).toString()
+        (!isMmd).toString(),
       );
     }
 
@@ -4603,7 +4619,7 @@ ${getIcon("document")} Original MathPix Output
         : `${getIcon("pencil")} Edit MMD`;
       this.elements.mmdEditBtn.setAttribute(
         "aria-pressed",
-        enableEditing.toString()
+        enableEditing.toString(),
       );
     }
 
@@ -4789,11 +4805,11 @@ ${getIcon("document")} Original MathPix Output
     // Toggle body and html classes to prevent scrolling
     document.body.classList.toggle(
       "resume-fullscreen-active",
-      this.isFullscreen
+      this.isFullscreen,
     );
     document.documentElement.classList.toggle(
       "resume-fullscreen-active",
-      this.isFullscreen
+      this.isFullscreen,
     );
 
     // Update button label and icon
@@ -4816,7 +4832,7 @@ ${getIcon("document")} Original MathPix Output
     this.announceToScreenReader(
       this.isFullscreen
         ? "Fullscreen edit mode enabled. Press Escape to exit."
-        : "Fullscreen edit mode disabled"
+        : "Fullscreen edit mode disabled",
     );
 
     logDebug("Fullscreen mode:", this.isFullscreen);
@@ -4843,7 +4859,7 @@ ${getIcon("document")} Original MathPix Output
       if (mmdFullscreenBtn) {
         mmdFullscreenBtn.setAttribute(
           "aria-label",
-          "Toggle fullscreen edit mode"
+          "Toggle fullscreen edit mode",
         );
         mmdFullscreenBtn.innerHTML = getIcon("fullscreenEnter");
       }
@@ -4875,13 +4891,13 @@ ${getIcon("document")} Original MathPix Output
     if (this.elements.focusModeBtn) {
       this.elements.focusModeBtn.setAttribute("aria-pressed", "true");
       this.elements.focusModeBtn.innerHTML = `${getIcon(
-        "fullscreenExit"
+        "fullscreenExit",
       )} Exit Focus`;
     }
 
     // Announce to screen readers
     this.announceToScreenReader(
-      "Entered Focus Mode. Press Escape or Ctrl+Shift+F to exit."
+      "Entered Focus Mode. Press Escape or Ctrl+Shift+F to exit.",
     );
 
     logInfo("Focus Mode entered");
@@ -4908,7 +4924,7 @@ ${getIcon("document")} Original MathPix Output
     if (this.elements.focusModeBtn) {
       this.elements.focusModeBtn.setAttribute("aria-pressed", "false");
       this.elements.focusModeBtn.innerHTML = `${getIcon(
-        "fullscreenEnter"
+        "fullscreenEnter",
       )} Focus Mode`;
     }
 
@@ -5006,7 +5022,7 @@ ${getIcon("document")} Original MathPix Output
     if (this.elements.mmdCodeContainer) {
       this.elements.mmdCodeContainer.classList.toggle(
         "mmd-confidence-enabled",
-        enabled
+        enabled,
       );
     }
 
@@ -5099,7 +5115,7 @@ ${getIcon("document")} Original MathPix Output
 
     // Get the scrollable container to match gutter height to content
     const formatContent = this.elements.mmdCodeContainer?.querySelector(
-      ".mathpix-format-content"
+      ".mathpix-format-content",
     );
     if (formatContent) {
       // Set gutter height to match full scrollable content
@@ -5136,7 +5152,7 @@ ${getIcon("document")} Original MathPix Output
       const indicator = this.createConfidenceIndicator(
         lineNumber,
         data,
-        prePaddingTop
+        prePaddingTop,
       );
       fragment.appendChild(indicator);
     });
@@ -5151,7 +5167,7 @@ ${getIcon("document")} Original MathPix Output
     }
 
     logDebug(
-      `Rendered ${map.size} confidence indicators (line height: ${this.gutterLineHeight}px)`
+      `Rendered ${map.size} confidence indicators (line height: ${this.gutterLineHeight}px)`,
     );
   }
 
@@ -5179,16 +5195,16 @@ ${getIcon("document")} Original MathPix Output
 
     // Accessibility attributes
     const percentText = this.confidenceMapper.formatConfidencePercent(
-      data.confidence
+      data.confidence,
     );
     indicator.setAttribute(
       "aria-label",
-      this.confidenceMapper.buildAccessibleLabel(lineNumber)
+      this.confidenceMapper.buildAccessibleLabel(lineNumber),
     );
     indicator.setAttribute("tabindex", "0");
     indicator.setAttribute(
       "title",
-      `Line ${lineNumber}: ${percentText} (${data.level.name})`
+      `Line ${lineNumber}: ${percentText} (${data.level.name})`,
     );
     indicator.dataset.lineNumber = lineNumber;
     indicator.dataset.confidence = data.confidence;
@@ -5219,11 +5235,11 @@ ${getIcon("document")} Original MathPix Output
 
     // Accessibility attributes
     const percentText = this.confidenceMapper.formatConfidencePercent(
-      data.confidence
+      data.confidence,
     );
     indicator.setAttribute(
       "aria-label",
-      this.confidenceMapper.buildAccessibleLabel(lineNumber)
+      this.confidenceMapper.buildAccessibleLabel(lineNumber),
     );
     indicator.setAttribute("tabindex", "0");
     indicator.dataset.lineNumber = lineNumber;
@@ -5293,10 +5309,10 @@ ${getIcon("document")} Original MathPix Output
   renderLineBasedConfidenceEditor(editable = false) {
     const textarea = this.elements.mmdEditorTextarea;
     const formatContent = this.elements.mmdCodeContainer?.querySelector(
-      ".mathpix-format-content"
+      ".mathpix-format-content",
     );
     const codeBlockWrapper = this.elements.mmdCodeContainer?.querySelector(
-      ".code-block-wrapper"
+      ".code-block-wrapper",
     );
     const editorWrapper = document.getElementById("resume-mmd-editor-wrapper");
     const map = this.confidenceMapper?.confidenceMap;
@@ -5352,11 +5368,11 @@ ${getIcon("document")} Original MathPix Output
       "aria-label",
       `MMD editor with ${mmdLines.length} lines. ${
         editable ? "Edit mode active. " : ""
-      }Use arrow keys to navigate between lines.`
+      }Use arrow keys to navigate between lines.`,
     );
     editor.setAttribute(
       "aria-describedby",
-      "resume-mmd-line-editor-instructions"
+      "resume-mmd-line-editor-instructions",
     );
 
     // Add visually hidden instructions for screen readers
@@ -5481,7 +5497,7 @@ ${getIcon("document")} Original MathPix Output
 
     // Trigger input event for any listeners
     this.elements.mmdEditorTextarea.dispatchEvent(
-      new Event("input", { bubbles: true })
+      new Event("input", { bubbles: true }),
     );
   }
 
@@ -5501,7 +5517,7 @@ ${getIcon("document")} Original MathPix Output
 
     // Restore code-block-wrapper
     const codeBlockWrapper = this.elements.mmdCodeContainer?.querySelector(
-      ".code-block-wrapper"
+      ".code-block-wrapper",
     );
     if (codeBlockWrapper) {
       codeBlockWrapper.style.display = "";
@@ -5542,7 +5558,7 @@ ${getIcon("document")} Original MathPix Output
 
     const currentIndex = parseInt(activeElement.dataset.lineIndex, 10);
     const allLineContents = Array.from(
-      this.lineBasedEditor.querySelectorAll(".line-content")
+      this.lineBasedEditor.querySelectorAll(".line-content"),
     );
     const totalLines = allLineContents.length;
 
@@ -5654,22 +5670,22 @@ ${getIcon("document")} Original MathPix Output
 
     const path1 = document.createElementNS(
       "http://www.w3.org/2000/svg",
-      "path"
+      "path",
     );
     path1.setAttribute(
       "d",
-      "m14 1c.8284271.82842712.8284271 2.17157288 0 3l-9.5 9.5-4 1 1-3.9436508 9.5038371-9.55252193c.7829896-.78700064 2.0312313-.82943964 2.864366-.12506788z"
+      "m14 1c.8284271.82842712.8284271 2.17157288 0 3l-9.5 9.5-4 1 1-3.9436508 9.5038371-9.55252193c.7829896-.78700064 2.0312313-.82943964 2.864366-.12506788z",
     );
 
     const path2 = document.createElementNS(
       "http://www.w3.org/2000/svg",
-      "path"
+      "path",
     );
     path2.setAttribute("d", "m6.5 14.5h8");
 
     const path3 = document.createElementNS(
       "http://www.w3.org/2000/svg",
-      "path"
+      "path",
     );
     path3.setAttribute("d", "m12.5 3.5 1 1");
 
@@ -5770,7 +5786,7 @@ ${getIcon("document")} Original MathPix Output
         "aria-label",
         confPercent !== null
           ? `Line ${lineNum}, ${confPercent}% confidence, ${confLevelName}`
-          : `Line ${lineNum}, no confidence data`
+          : `Line ${lineNum}, no confidence data`,
       );
 
       logDebug(`Line ${lineNum} restored to original`);
@@ -5786,7 +5802,7 @@ ${getIcon("document")} Original MathPix Output
     if (originalMmd) {
       this.originalMmdLines = originalMmd.split("\n");
       logDebug(
-        `Stored ${this.originalMmdLines.length} original lines for edit tracking`
+        `Stored ${this.originalMmdLines.length} original lines for edit tracking`,
       );
     }
   }
@@ -6046,7 +6062,7 @@ ${getIcon("document")} Original MathPix Output
     // Apply content
     this.loadMMDContent(
       previousContent,
-      this.restoredSession?.originalMMD || previousContent
+      this.restoredSession?.originalMMD || previousContent,
     );
     if (this.restoredSession) {
       this.restoredSession.currentMMD = previousContent;
@@ -6097,7 +6113,7 @@ ${getIcon("document")} Original MathPix Output
     // Apply content
     this.loadMMDContent(
       nextContent,
-      this.restoredSession?.originalMMD || nextContent
+      this.restoredSession?.originalMMD || nextContent,
     );
     if (this.restoredSession) {
       this.restoredSession.currentMMD = nextContent;
@@ -6218,7 +6234,7 @@ ${getIcon("document")} Original MathPix Output
     if (this.restoredSession?.sessionKey) {
       try {
         localStorage.removeItem(
-          `mathpix-resume-session-${this.restoredSession.sessionKey}`
+          `mathpix-resume-session-${this.restoredSession.sessionKey}`,
         );
       } catch (error) {
         logWarn("Failed to remove session from localStorage:", error);
@@ -6319,7 +6335,7 @@ ${getIcon("document")} Original MathPix Output
       if (typeof window.MathPixTotalDownloader === "undefined") {
         this.showNotification(
           "ZIP downloader not available. Ensure mathpix-total-downloader.js is loaded.",
-          "error"
+          "error",
         );
         return;
       }
@@ -6328,7 +6344,7 @@ ${getIcon("document")} Original MathPix Output
       if (typeof JSZip === "undefined") {
         this.showNotification(
           "JSZip library not available. ZIP creation requires JSZip.",
-          "error"
+          "error",
         );
         return;
       }
@@ -6501,7 +6517,7 @@ ${getIcon("document")} Original MathPix Output
         persistence.session.original = originalMMD;
         persistence.session.sourceFileName = sourceFilename.replace(
           /\.[^/.]+$/,
-          ""
+          "",
         ); // Remove extension
         persistence.session.lastModified = Date.now();
 
@@ -6517,7 +6533,7 @@ ${getIcon("document")} Original MathPix Output
         });
       } else {
         logWarn(
-          "Persistence module not available - edits may not be collected separately"
+          "Persistence module not available - edits may not be collected separately",
         );
       }
     } catch (error) {
@@ -6544,7 +6560,7 @@ ${getIcon("document")} Original MathPix Output
 
     // Avoid duplicates - check if this exact content was already saved
     const isDuplicate = this.savedMMDVersions.some(
-      (v) => v.content === content
+      (v) => v.content === content,
     );
 
     if (isDuplicate) {
@@ -6628,7 +6644,7 @@ ${getIcon("document")} Original MathPix Output
 
     // Check for duplicates by content
     const isDuplicate = this.loadedMMDVersions.some(
-      (v) => v.content === content
+      (v) => v.content === content,
     );
 
     if (!isDuplicate) {
@@ -6724,7 +6740,7 @@ ${getIcon("document")} Original MathPix Output
       sourceBasename = sourceFilename.replace(/\.[^/.]+$/, "");
     } else {
       logWarn(
-        "No source filename available, using default basename for imported file"
+        "No source filename available, using default basename for imported file",
       );
     }
 
@@ -6940,7 +6956,7 @@ ${getIcon("document")} Original MathPix Output
     if (!this.elements.convertBtn) return;
 
     const hasSelection = Array.from(
-      this.elements.convertFormatCheckboxes || []
+      this.elements.convertFormatCheckboxes || [],
     ).some((cb) => cb.checked);
     const hasContent = !!this.restoredSession?.currentMMD;
 
@@ -6973,7 +6989,7 @@ ${getIcon("document")} Original MathPix Output
     if (selectedFormats.length === 0) {
       this.showNotification(
         "Please select at least one format to convert to.",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -6982,7 +6998,7 @@ ${getIcon("document")} Original MathPix Output
     if (!mmdContent) {
       this.showNotification(
         "No MMD content available for conversion.",
-        "error"
+        "error",
       );
       return;
     }
@@ -6992,7 +7008,7 @@ ${getIcon("document")} Original MathPix Output
     if (!client) {
       this.showNotification(
         "Convert API client not available. Please refresh the page.",
-        "error"
+        "error",
       );
       return;
     }
@@ -7054,7 +7070,7 @@ ${getIcon("document")} Original MathPix Output
           onError: (error) => {
             logWarn("Format error:", error.message);
           },
-        }
+        },
       );
 
       // Store results from returned Map (backup in case callbacks didn't fire)
@@ -7071,7 +7087,7 @@ ${getIcon("document")} Original MathPix Output
         this.showConvertDownloads();
         this.showNotification(
           `${this.conversionResults.size} format(s) converted successfully!`,
-          "success"
+          "success",
         );
       }
     } catch (error) {
@@ -7142,7 +7158,7 @@ ${getIcon("document")} Original MathPix Output
    */
   updateConvertProgressItem(format, status, message) {
     const item = this.elements.convertProgressList?.querySelector(
-      `.resume-progress-item[data-format="${format}"]`
+      `.resume-progress-item[data-format="${format}"]`,
     );
     if (!item) return;
 
@@ -7183,9 +7199,9 @@ ${getIcon("document")} Original MathPix Output
         ([format, formatStatus]) => {
           this.updateConvertProgressItem(
             format,
-            formatStatus.status || "processing"
+            formatStatus.status || "processing",
           );
-        }
+        },
       );
     }
   }
@@ -7431,7 +7447,7 @@ ${getIcon("document")} Original MathPix Output
     if (!this.conversionResults || this.conversionResults.size === 0) {
       this.showNotification(
         "No converted files available to download.",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -7459,7 +7475,7 @@ ${getIcon("document")} Original MathPix Output
 
       this.showNotification(
         `Downloaded ${this.conversionResults.size} converted file(s)`,
-        "success"
+        "success",
       );
     } catch (error) {
       logError("Failed to download converted files:", error);
@@ -7693,7 +7709,7 @@ window.toggleResumeMMDFullscreen = function () {
     restorer.toggleFullscreen();
   } else {
     console.warn(
-      "[SessionRestorer] Cannot toggle fullscreen - not initialised"
+      "[SessionRestorer] Cannot toggle fullscreen - not initialised",
     );
   }
 };

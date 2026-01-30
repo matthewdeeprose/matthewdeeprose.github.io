@@ -218,6 +218,10 @@
     camera:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 4)"><path d="m.5 10.5v-6c0-1.1045695.8954305-2 2-2h2l2.07861328-2h3.92016602l1.9194336 2h2.0817871c1.1045695 0 2 .8954305 2 2v6c0 1.1045695-.8954305 2-2 2h-12c-1.1045695 0-2-.8954305-2-2z"/><path d="m11.5 7.5c0-1.65685425-1.3431458-3-3-3-1.65685425 0-3 1.34314575-3 3s1.34314575 3 3 3c1.6568542 0 3-1.34314575 3-3z"/></g></svg>',
 
+    // Image/Picture (🖼️)
+    image:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(3 3)"><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"/><path d="m14.5 10.5-3-3-3 2.985"/><path d="m12.5 14.5-9-9-3 3"/></g><circle cx="11" cy="4" fill="currentColor" r="1"/></g></svg>',
+
     // Flip/Mirror (🔀)
     flip: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><path d="m8.5.5v16"/><path d="m.5 8.5h7v-7h-7z"/><path d="m9.5 8.5h7v7h-7z"/></g></svg>',
 
@@ -250,6 +254,18 @@
     // Clock/Time (🕐)
     clock:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><circle cx="8.5" cy="8.5" r="8"/><path d="m8.5 5.5v3h3"/></g></svg>',
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AI & Technology
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // AI Sparkle (✨🤖)
+    aiSparkle:
+      '<svg height="21" width="21" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1.0685 0 0 .99925 .39221 2.2062)" fill="none" fill-rule="evenodd"><path d="m0.5 15v-11.8c0-1.6 1.3-2.9 3-2.9h6.3m4.5 7.7v7c0 1.6-1.3 2.9-3 2.9h-7.8c-1.6 0-3-1.3-3-2.9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m12.2-1.9q0.7 6 6.8 6-6.1 0-6.8 6-0.7-6-6.8-6 6.1 0 6.8-6z" fill="currentColor"/><path d="m6.1 6.8q0.6 4.8 5.7 4.8-5.1 0-5.7 4.8-0.6-4.8-5.7-4.8 5.1 0 5.7-4.8z" fill="currentColor"/><path d="m15.8-1.7q0.2 1.5 1.7 1.5-1.5 0-1.7 1.5-0.2-1.5-1.7-1.5 1.5 0 1.7-1.5z" fill="currentColor"/></g></svg>',
+
+    // Robot/Model (🤖)
+    robot:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 4)"><path d="m4.5 0c.55228475 0 1 .44771525 1 1v2c0 .55228475-.44771525 1-1 1s-1-.44771525-1-1v-2c0-.55228475.44771525-1 1-1z"/><path d="m16.5 2h-11"/><path d="m3.5 2h-3"/><path d="m4.5 10c.55228475 0 1 .4477153 1 1v2c0 .5522847-.44771525 1-1 1s-1-.4477153-1-1v-2c0-.5522847.44771525-1 1-1z"/><path d="m16.5 12h-11"/><path d="m3.5 12h-3"/><path d="m12.5 5c.5522847 0 1 .44771525 1 1v2c0 .55228475-.4477153 1-1 1s-1-.44771525-1-1v-2c0-.55228475.4477153-1 1-1z"/><path d="m11.5 7h-11"/><path d="m16.5 7h-3"/></g></svg>',
   };
 
   /**

@@ -125,7 +125,7 @@ const UniversalModal = (function () {
 
       this.isScrollPrevented = true;
       logDebug(
-        `Scroll prevented at position: ${this.originalScrollPosition}px`
+        `Scroll prevented at position: ${this.originalScrollPosition}px`,
       );
     }
 
@@ -210,7 +210,7 @@ const UniversalModal = (function () {
 
           logDebug(
             `Status position updated for scrollable viewport: ${modalId}`,
-            position
+            position,
           );
         }
       } else {
@@ -347,7 +347,7 @@ const UniversalModal = (function () {
         modalId,
         title,
         type,
-        finalOptions.allowBackgroundClose !== false
+        finalOptions.allowBackgroundClose !== false,
       );
       container.appendChild(header);
 
@@ -419,7 +419,7 @@ const UniversalModal = (function () {
         const icon = document.createElement("span");
         icon.className = "universal-modal-icon";
         icon.innerHTML = typeIcons[type];
-        icon.setAttribute("aria-label", `${type} icon`);
+        icon.setAttribute("aria-hidden", "true");
         header.appendChild(icon);
       }
 
@@ -529,7 +529,7 @@ const UniversalModal = (function () {
       `;
 
       const dismissBtn = statusArea.querySelector(
-        ".universal-modal-status-dismiss"
+        ".universal-modal-status-dismiss",
       );
       dismissBtn.addEventListener("click", () => this.hideModalStatus(modalId));
 
@@ -546,13 +546,13 @@ const UniversalModal = (function () {
         : null;
 
       const iconElement = statusArea.querySelector(
-        ".universal-modal-status-icon"
+        ".universal-modal-status-icon",
       );
       const textElement = statusArea.querySelector(
-        ".universal-modal-status-text"
+        ".universal-modal-status-text",
       );
       const dismissBtn = statusArea.querySelector(
-        ".universal-modal-status-dismiss"
+        ".universal-modal-status-dismiss",
       );
 
       const icons = {
@@ -667,7 +667,7 @@ const UniversalModal = (function () {
 
       // Notify other components (like toggletips) that a modal has opened
       document.dispatchEvent(
-        new CustomEvent("modalOpened", { detail: { modalId } })
+        new CustomEvent("modalOpened", { detail: { modalId } }),
       );
 
       logInfo(`Modal ${modalId} displayed with enhanced positioning`);
@@ -724,7 +724,7 @@ const UniversalModal = (function () {
 
     trapFocus(e, modal) {
       const focusableElements = modal.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
 
       const firstElement = focusableElements[0];
@@ -745,7 +745,7 @@ const UniversalModal = (function () {
 
     makeBackgroundInert() {
       const mainElements = document.querySelectorAll(
-        "body > *:not(dialog):not(script):not(style)"
+        "body > *:not(dialog):not(script):not(style)",
       );
       mainElements.forEach((element) => {
         element.setAttribute("inert", "");
@@ -997,7 +997,7 @@ const UniversalModal = (function () {
       const modal = new Modal({
         title: title,
         content: `<div class="universal-alert-content"><p>${escapeHtml(
-          message
+          message,
         )}</p></div>`,
         size: options.size || "small",
         className: options.className || "universal-alert",
@@ -1029,10 +1029,10 @@ const UniversalModal = (function () {
           <p>${escapeHtml(message)}</p>
           <div class="universal-confirm-actions confirmation-actions">
             <button type="button" class="universal-confirm-yes modal-confirm-yes" autofocus>${escapeHtml(
-              confirmText
+              confirmText,
             )}</button>
             <button type="button" class="universal-confirm-no modal-confirm-no">${escapeHtml(
-              cancelText
+              cancelText,
             )}</button>
           </div>
         </div>
@@ -1047,10 +1047,10 @@ const UniversalModal = (function () {
         closeOnEscape: true,
         onOpen: function (modalInstance) {
           const yesButton = modalInstance.modal.querySelector(
-            ".universal-confirm-yes"
+            ".universal-confirm-yes",
           );
           const noButton = modalInstance.modal.querySelector(
-            ".universal-confirm-no"
+            ".universal-confirm-no",
           );
 
           yesButton.addEventListener("click", function () {
@@ -1100,7 +1100,7 @@ const UniversalModal = (function () {
 
     if (window.UniversalNotifications) {
       window.UniversalNotifications.warning(
-        `Modal system unavailable, using native ${type}`
+        `Modal system unavailable, using native ${type}`,
       );
     }
 
@@ -1128,13 +1128,13 @@ const UniversalModal = (function () {
       labelSource: modal.hasAttribute("aria-label")
         ? "aria-label"
         : modal.hasAttribute("aria-labelledby")
-        ? "aria-labelledby"
-        : "none",
+          ? "aria-labelledby"
+          : "none",
       labelValue: modal.hasAttribute("aria-label")
         ? modal.getAttribute("aria-label")
         : modal.hasAttribute("aria-labelledby")
-        ? modal.getAttribute("aria-labelledby")
-        : null,
+          ? modal.getAttribute("aria-labelledby")
+          : null,
 
       canReceiveFocus: (function () {
         try {
@@ -1171,7 +1171,7 @@ const UniversalModal = (function () {
 
     if (!modal) {
       logInfo(
-        "🔧 No modal currently open, creating test modal for diagnostic..."
+        "🔧 No modal currently open, creating test modal for diagnostic...",
       );
 
       const testModal = new Modal({
@@ -1198,12 +1198,12 @@ const UniversalModal = (function () {
     }
 
     const focusableElements = modal.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     const closeButtons = Array.from(focusableElements).filter(
       (el) =>
         el.classList.contains("modal-close-button") ||
-        el.classList.contains("universal-modal-close")
+        el.classList.contains("universal-modal-close"),
     );
     const compliance = checkModalCompliance(modal);
 
@@ -1218,7 +1218,7 @@ const UniversalModal = (function () {
     logInfo(
       `  Label (${compliance.labelSource}): ${
         compliance.hasLabel ? "✅" : "❌"
-      }`
+      }`,
     );
     logInfo(`  Can receive focus: ${compliance.canReceiveFocus ? "✅" : "❌"}`);
     logInfo(`  Overall compliant: ${compliance.isCompliant ? "✅" : "❌"}`);
@@ -1393,7 +1393,7 @@ window.checkModalCompliance = function () {
 
   if (!modal) {
     console.log(
-      "🔧 No modal currently open, creating test modal for compliance check..."
+      "🔧 No modal currently open, creating test modal for compliance check...",
     );
 
     const testModal = new UniversalModal.Modal({

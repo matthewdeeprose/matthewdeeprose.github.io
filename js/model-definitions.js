@@ -32654,6 +32654,132 @@ modelRegistry.registerModel("writer/palmyra-x5", {
     errorMessage: null,
   },
 });
+// Add this entry to model-definitions.js - MoonshotAI Kimi K2.5
+modelRegistry.registerModel("moonshotai/kimi-k2.5", {
+  provider: "moonshotai",
+  name: "Kimi K2.5",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "MoonshotAI's native multimodal model delivering state-of-the-art visual coding capability and self-directed agent swarm paradigm. Built on Kimi K2 with continued pretraining over approximately 15T mixed visual and text tokens, optimised for general reasoning, visual coding, and agentic tool-calling.",
+  costs: {
+    input: 0.6, // Per million tokens
+    output: 3.0, // Per million tokens
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "vision",
+    "code",
+    "reasoning",
+    "tool_calling",
+    "multilingual",
+  ],
+  maxContext: 262144,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced multimodal model with visual coding and agentic capabilities",
+    releaseDate: "2026-01-27",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "multimodal-instruction-tuned",
+      baseModel: "Kimi K2",
+      trainingTokens: "15T mixed visual and text tokens",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.moonshot.cn/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.moonshot.cn/terms",
+      lastUpdated: "2026-01-27",
+    },
+    trainingData: {
+      sources: "Mixed visual and text tokens",
+      size: "15T tokens",
+      cutoffDate: "2026-01-01",
+    },
+    languageSupport: ["English", "Chinese", "Japanese", "Korean"],
+    domainExpertise: {
+      visualCoding: 9,
+      agenticWorkflows: 9,
+      generalReasoning: 8,
+      multimodalProcessing: 9,
+      toolCalling: 9,
+    },
+    bestFor: [
+      "visual coding tasks",
+      "agentic workflows",
+      "multimodal reasoning",
+      "tool-calling applications",
+      "agent swarm coordination",
+    ],
+    accessibility: {
+      visionSupport: true,
+      multimodalInterface: true,
+      structuredOutputs: true,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "structured_outputs",
+      "response_format",
+      "tool_choice",
+      "tools",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "reasoning-support",
+      "structured-outputs",
+      "tool-calling",
+      "multimodal",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "visual-coding-tasks",
+      "multimodal-analysis",
+      "agent-coordination",
+      "structured-outputs",
+    ],
+    warnings: [
+      "High output costs may require careful token management",
+      "Advanced features may need familiarisation for optimal use",
+      "Multimodal processing may require specific input formatting",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Kimi K2.5 - Multimodal model with visual coding and agent capabilities, 262K context",
+      parameterSection: "Parameter controls for Kimi K2.5 multimodal model",
+      statusMessages: {
+        processing: "Processing multimodal request with Kimi K2.5",
+        complete: "Multimodal response ready from Kimi K2.5",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;
