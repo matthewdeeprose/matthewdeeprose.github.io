@@ -1,0 +1,42 @@
+/* Image long description - accessible progressive disclosure */
+/* Provides styling for @longdesc annotation elements injected by ImageAssetManager */
+/* Part of WCAG 2.2 AA compliance for image accessibility */
+
+.image-long-description {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.long-description-details {
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+    padding: 0.5rem;
+    background: var(--surface-color, #f9f9f9);
+}
+
+.long-description-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0.25rem 0;
+    color: var(--heading-color, #333);
+}
+
+.long-description-details summary:focus-visible {
+    outline: 2px solid var(--focus-color, #0066cc);
+    outline-offset: 2px;
+}
+
+.long-description-details p {
+    margin-top: 0.5rem;
+    line-height: 1.6;
+}
+
+/* Print: expand long descriptions automatically */
+@media print {
+    .long-description-details {
+        border: 1px solid #999;
+    }
+    .long-description-details[open] summary {
+        margin-bottom: 0.25rem;
+    }
+}

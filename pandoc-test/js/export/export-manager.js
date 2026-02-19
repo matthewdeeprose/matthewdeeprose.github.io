@@ -58,6 +58,24 @@ const ExportManager = (function () {
     if (shouldLog(LOG_LEVELS.DEBUG)) console.log("[EXPORT]", message, ...args);
   }
 
+// ===========================================================================================
+  // EXPORT CONVERGENCE CONFIGURATION
+  // ===========================================================================================
+  // Controls the Base64 self-referencing convergence iterations for save functionality.
+  //
+  // USE_LEGACY_CONVERGENCE = false (default):
+  //   All exports use 2 iterations — works reliably for both image and non-image documents.
+  //   Produces smaller files, avoids btoa() failures on large documents, and supports
+  //   infinite save chains. Recommended setting.
+  //
+  // USE_LEGACY_CONVERGENCE = true:
+  //   Non-image exports use 5 iterations (original behaviour), image exports use 2.
+  //   May produce marginally tighter self-referencing for small non-image documents,
+  //   but risks btoa() failure on larger documents. Use only if issues found with
+  //   the 2-iteration approach for non-image exports.
+
+  const USE_LEGACY_CONVERGENCE = false;
+
   // ===========================================================================================
   // PANDOC ARGUMENT CAPTURE SYSTEM
   // ===========================================================================================
@@ -716,8 +734,55 @@ const ExportManager = (function () {
       htmlComponents.push("</body>");
       htmlComponents.push("</html>");
 
-      // Generate the initial HTML structure
+// Generate the initial HTML structure
       let preliminaryHTML = htmlComponents.join("\n");
+
+// === IMAGE EMBEDDING ===
+      // Embed registered images as base64 data URLs before Base64 convergence
+      // Must happen AFTER HTML assembly but BEFORE self-referencing Base64 step
+      //
+      // CRITICAL: replaceImagesForExport uses tempDiv.innerHTML for DOM parsing,
+      // which strips structural HTML tags (DOCTYPE, html, head, body, /body, /html).
+      // To preserve the complete document structure, we extract only the body content,
+      // process that through image embedding, then reassemble with the structural wrapper.
+      let hasEmbeddedImages = false;
+      if (window.ImageAssetManager && window.ImageAssetManager.getImageCount() > 0) {
+        try {
+          // Clean up preview-injected long descriptions before export injection
+          // Preview uses blob-URL-based IDs (longdesc-blob-...) which must be removed
+          // to prevent duplicates when replaceImagesForExport adds clean filename-based IDs
+          preliminaryHTML = preliminaryHTML.replace(
+            /<div\s+id="longdesc-blob-[^"]*"[^>]*class="image-long-description"[^>]*>[\s\S]*?<\/div>/g,
+            ""
+          );
+          logDebug("Cleaned preview long description elements from export HTML");
+
+          // Extract body content to avoid innerHTML stripping structural tags
+          const bodyOpenMatch = preliminaryHTML.match(/<body[^>]*>/i);
+          const bodyCloseIndex = preliminaryHTML.lastIndexOf('</body>');
+
+          if (bodyOpenMatch && bodyCloseIndex > -1) {
+            const bodyOpenEnd = bodyOpenMatch.index + bodyOpenMatch[0].length;
+            const preamble = preliminaryHTML.substring(0, bodyOpenEnd);
+            const bodyContent = preliminaryHTML.substring(bodyOpenEnd, bodyCloseIndex);
+            const postamble = preliminaryHTML.substring(bodyCloseIndex);
+
+            logDebug("Extracted body content for image embedding, length:", bodyContent.length);
+            const processedBody = window.ImageAssetManager.replaceImagesForExport(bodyContent);
+            preliminaryHTML = preamble + processedBody + postamble;
+            logDebug("Reassembled document with structural tags preserved");
+          } else {
+            // Fallback: process full HTML (structural tags may be lost)
+            logWarn("Could not extract body content — processing full HTML");
+            preliminaryHTML = window.ImageAssetManager.replaceImagesForExport(preliminaryHTML);
+          }
+
+          hasEmbeddedImages = true;
+          logInfo(`Embedded ${window.ImageAssetManager.getImageCount()} image(s) in export`);
+        } catch (imageError) {
+          logWarn("Image embedding failed, continuing without embedded images:", imageError.message);
+        }
+      }
 
       // === SELF-REFERENCING HTML ===
       // Self-containing Base64 solution - DELEGATED to Base64Handler
@@ -726,13 +791,43 @@ const ExportManager = (function () {
           "[EXPORT] Base64Handler module required for self-referencing HTML"
         );
       }
+// Determine convergence iterations for Base64 self-referencing
+      // Default (USE_LEGACY_CONVERGENCE = false): always use 2 iterations — reliable for all sizes
+      // Legacy (USE_LEGACY_CONVERGENCE = true): 5 for non-image, 2 for image exports
+      const maxIterations = hasEmbeddedImages ? 2 : (USE_LEGACY_CONVERGENCE ? 5 : 2);
+      if (hasEmbeddedImages) {
+        logInfo("Using 2 Base64 convergence iterations for image-heavy export");
+      } else if (!USE_LEGACY_CONVERGENCE) {
+        logInfo("Using 2 Base64 convergence iterations (modern default)");
+      }
 
-      const convergenceResult =
-        window.Base64Handler.generateSelfReferencingHTML(
-          preliminaryHTML,
-          "Standard",
-          5 // maxIterations
+      let convergenceResult;
+      try {
+        convergenceResult =
+          window.Base64Handler.generateSelfReferencingHTML(
+            preliminaryHTML,
+            "Standard",
+            maxIterations
+          );
+} catch (convergenceError) {
+        logWarn("Base64 convergence failed (document may be too large):", convergenceError.message);
+        logInfo("Exporting without self-referencing save functionality");
+        // Inject empty embedded data element so content-storage-handler
+        // detects it and hides the save button (preventing broken saves
+        // where MathJax state from the live DOM pollutes the saved file)
+        const fallbackHTML = preliminaryHTML.replace(
+          '</body>',
+          '\n<!-- Embedded Original Content for Save Functionality (convergence failed) -->\n' +
+          '<script id="original-content-data" type="application/x-original-html-base64">\n' +
+          '</script>\n</body>'
         );
+        convergenceResult = {
+          finalHTML: fallbackHTML,
+          converged: false,
+          iterations: 0,
+          base64Length: 0,
+        };
+      }
 
       const finalHTML = convergenceResult.finalHTML;
       const converged = convergenceResult.converged;
@@ -875,7 +970,7 @@ const ExportManager = (function () {
       htmlComponents.push("</body>");
       htmlComponents.push("</html>");
 
-      // Generate the complete HTML first
+// Generate the complete HTML first
       let preliminaryHTML = htmlComponents.join("\n");
 
       // 🎯 SELF-CONTAINING BASE64 SOLUTION - DELEGATED to Base64Handler
@@ -888,6 +983,52 @@ const ExportManager = (function () {
         enhancedJS + "\n</body>\n</html>"
       );
 
+// === IMAGE EMBEDDING ===
+      // Embed registered images as base64 data URLs before Base64 convergence
+      // Must happen AFTER HTML assembly but BEFORE self-referencing Base64 step
+      //
+      // CRITICAL: replaceImagesForExport uses tempDiv.innerHTML for DOM parsing,
+      // which strips structural HTML tags (DOCTYPE, html, head, body, /body, /html).
+      // To preserve the complete document structure, we extract only the body content,
+      // process that through image embedding, then reassemble with the structural wrapper.
+      let hasEmbeddedImages = false;
+      if (window.ImageAssetManager && window.ImageAssetManager.getImageCount() > 0) {
+        try {
+          // Clean up preview-injected long descriptions before export injection
+          baseHTML = baseHTML.replace(
+            /<div\s+id="longdesc-blob-[^"]*"[^>]*class="image-long-description"[^>]*>[\s\S]*?<\/div>/g,
+            ""
+          );
+          logDebug("Cleaned preview long description elements from enhanced export HTML");
+
+          // Extract body content to avoid innerHTML stripping structural tags
+          const bodyOpenMatch = baseHTML.match(/<body[^>]*>/i);
+          const bodyCloseIndex = baseHTML.lastIndexOf('</body>');
+
+          if (bodyOpenMatch && bodyCloseIndex > -1) {
+            const bodyOpenEnd = bodyOpenMatch.index + bodyOpenMatch[0].length;
+            const preamble = baseHTML.substring(0, bodyOpenEnd);
+            const bodyContent = baseHTML.substring(bodyOpenEnd, bodyCloseIndex);
+            const postamble = baseHTML.substring(bodyCloseIndex);
+
+            logDebug("Extracted body content for image embedding, length:", bodyContent.length);
+            const processedBody = window.ImageAssetManager.replaceImagesForExport(bodyContent);
+            baseHTML = preamble + processedBody + postamble;
+            logDebug("Reassembled document with structural tags preserved");
+          } else {
+            // Fallback: process full HTML (structural tags may be lost)
+            logWarn("Could not extract body content — processing full HTML");
+            baseHTML = window.ImageAssetManager.replaceImagesForExport(baseHTML);
+          }
+
+          hasEmbeddedImages = true;
+          logInfo(`Embedded ${window.ImageAssetManager.getImageCount()} image(s) in enhanced export`);
+        } catch (imageError) {
+          logWarn("Image embedding failed, continuing without embedded images:", imageError.message);
+        }
+      }
+
+
       // Generate self-referencing HTML using Base64Handler
       if (!window.Base64Handler) {
         throw new Error(
@@ -895,15 +1036,43 @@ const ExportManager = (function () {
         );
       }
 
-      // Change maxIterations value to increase number of possible saves that can be made
-      // This will increase file size
-      // After maxIterations -1 the save function will stop working properly
-      const convergenceResult =
-        window.Base64Handler.generateSelfReferencingHTML(
-          baseHTML,
-          "Enhanced Pandoc",
-          5 // maxIterations
+// Determine convergence iterations for Base64 self-referencing
+      // Default (USE_LEGACY_CONVERGENCE = false): always use 2 iterations — reliable for all sizes
+      // Legacy (USE_LEGACY_CONVERGENCE = true): 5 for non-image, 2 for image exports
+      const maxIterations = hasEmbeddedImages ? 2 : (USE_LEGACY_CONVERGENCE ? 5 : 2);
+      if (hasEmbeddedImages) {
+        logInfo("Using 2 Base64 convergence iterations for image-heavy export");
+      } else if (!USE_LEGACY_CONVERGENCE) {
+        logInfo("Using 2 Base64 convergence iterations (modern default)");
+      }
+
+      let convergenceResult;
+      try {
+        convergenceResult =
+          window.Base64Handler.generateSelfReferencingHTML(
+            baseHTML,
+            "Enhanced Pandoc",
+            maxIterations
+          );
+      } catch (convergenceError) {
+        logWarn("Base64 convergence failed (document may be too large):", convergenceError.message);
+        logInfo("Exporting without self-referencing save functionality");
+        // Inject empty embedded data element so content-storage-handler
+        // detects it and hides the save button (preventing broken saves
+        // where MathJax state from the live DOM pollutes the saved file)
+        const fallbackHTML = baseHTML.replace(
+          '</body>',
+          '\n<!-- Embedded Original Content for Save Functionality (convergence failed) -->\n' +
+          '<script id="original-content-data" type="application/x-original-html-base64">\n' +
+          '</script>\n</body>'
         );
+        convergenceResult = {
+          finalHTML: fallbackHTML,
+          converged: false,
+          iterations: 0,
+          base64Length: 0,
+        };
+      }
 
       const finalHTML = convergenceResult.finalHTML;
       const converged = convergenceResult.converged;
@@ -2012,13 +2181,20 @@ async function loadFontDataDirect() {
       logInfo("🔒 Export started - LaTeX storage protected from overwrites");
     }
 
+// === DUPLICATE EXPORT PREVENTION ===
+    // Check BEFORE resetting — prevents race condition with concurrent calls
+    if (window.exportGenerationInProgress) {
+      logWarn("Export already in progress — ignoring duplicate call");
+      return;
+    }
+
     // === VALIDATION ===
     // Get UI elements
     const outputContent = document.querySelector(".output-content");
-    const exportButton = document.getElementById("export-html");
+    const exportButton = document.getElementById("exportButton");
 
     if (!outputContent) {
-      logError("[EXPORT] Output content not found - cannot export");
+      logError("[EXPORT] Output content not found — cannot export");
       if (window.showNotification) {
         window.showNotification("Cannot find content to export", "error");
       }
@@ -2027,7 +2203,6 @@ async function loadFontDataDirect() {
 
     // Store original button state
     const originalButtonContent = exportButton ? exportButton.innerHTML : "";
-    window.exportGenerationInProgress = false;
 
     try {
       // ✅ NEW: Validate export readiness (including fonts)

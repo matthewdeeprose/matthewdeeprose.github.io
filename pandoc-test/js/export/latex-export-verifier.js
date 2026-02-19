@@ -82,13 +82,41 @@ const CONFIG = {
     },
   };
 
-  // ===========================================================================================
+// ===========================================================================================
   // INTERNAL STATE
   // ===========================================================================================
 
   let sourceInventory = null;
   let sourceCrossReferences = null;
   let lastVerificationResult = null;
+  
+  // Preview comparison state
+  let previewSnapshot = null;
+let lastPreviewComparison = null;
+  let lastMathComparison = null;
+
+  // ===========================================================================================
+  // PREVIEW COMPARISON CONFIGURATION
+  // ===========================================================================================
+  
+  /**
+   * Preview snapshot structure:
+   * {
+   *   timestamp: ISO string,
+   *   captured: boolean,
+   *   crossRefs: {
+   *     userRefs: Array,      // Links with data-reference-type="ref"
+   *     navLinks: Array,      // Navigation links (ToC, sidebar)
+   *     anchors: Array,       // Elements with content- IDs
+   *     footnoteLinks: Array, // Footnote references
+   *     statistics: Object,   // Count summaries
+   *   },
+   *   math: {
+   *     expressions: Array,   // Math elements from preview
+   *     statistics: Object,   // Count summaries
+   *   },
+   * }
+   */
 
   // ===========================================================================================
   // UTILITY FUNCTIONS
@@ -324,23 +352,7 @@ sourceInventory = {
   // PHASE 1B: SOURCE CROSS-REFERENCE EXTRACTION
   // ===========================================================================================
 
-// ===========================================================================================
-  // FUTURE ENHANCEMENT: PREVIEW VS EXPORT COMPARISON
-  // ===========================================================================================
-  // TODO: Add function to compare cross-reference behaviour between:
-  //   - Playground preview: document.querySelector('#output')
-  //   - Export HTML: the generated standalone file
-  // 
-  // This would help diagnose whether issues are:
-  //   - "Totally broken" - fails in both preview and export
-  //   - "Export-only issue" - works in preview but breaks in export pipeline
-  //
-  // Implementation approach:
-  //   1. Add capturePreviewCrossReferences() to analyse #output div
-  //   2. Compare preview vs export in verification report
-  //   3. Flag issues with "worksInPreview: true/false" for debugging
-  // ===========================================================================================
-  
+
   /**
    * Extract cross-references (\label and \ref) from LaTeX source
    * @param {string} sourceText - LaTeX source text
@@ -580,7 +592,7 @@ const analysis = {
       analysis.statistics.totalAnchors = analysis.anchors.length;
       analysis.statistics.totalFootnotes = analysis.footnoteLinks.length;
 
-      logInfo(
+logInfo(
         `✅ Found ${analysis.userRefs.length} user cross-references, ` +
         `${analysis.navLinks.length} navigation links, and ` +
         `${analysis.anchors.length} anchor targets`
@@ -590,6 +602,830 @@ const analysis = {
     } catch (error) {
       logError("Error analysing cross-references in export:", error);
       return null;
+    }
+  }
+
+  // ===========================================================================================
+  // PREVIEW COMPARISON FUNCTIONS
+  // ===========================================================================================
+
+  /**
+   * Capture cross-reference state from the playground preview (#output div)
+   * This allows comparison between preview rendering and exported HTML
+   * @returns {Object|null} - Preview cross-reference state or null if #output not found
+   */
+  function capturePreviewCrossReferences() {
+    logInfo("📸 Capturing cross-reference state from preview...");
+
+    const outputDiv = document.getElementById("output");
+    if (!outputDiv) {
+      logWarn("Cannot capture preview - #output element not found");
+      return null;
+    }
+
+    const crossRefs = {
+      timestamp: new Date().toISOString(),
+      userRefs: [],
+      navLinks: [],
+      anchors: [],
+      footnoteLinks: [],
+      footnoteAnchors: [],
+      statistics: {
+        totalUserRefs: 0,
+        totalNavLinks: 0,
+        totalAnchors: 0,
+        totalFootnotes: 0,
+      },
+    };
+
+    try {
+      // =====================================================================
+      // Find all internal links in preview
+      // Note: Preview may not have ToC/sidebar, so navLinks may be empty
+      // =====================================================================
+      const internalLinks = outputDiv.querySelectorAll('a[href^="#content-"]');
+      
+      let userRefIndex = 0;
+      let navLinkIndex = 0;
+
+      internalLinks.forEach((link) => {
+        const href = link.getAttribute("href") || "";
+        const targetId = href.replace("#", "");
+        const displayText = link.textContent || "";
+        const refType = link.getAttribute("data-reference-type") || "";
+        const refTarget = link.getAttribute("data-reference") || "";
+        
+        const labelType = getLabelTypeFromExportId(targetId);
+        const hasProperDisplay = checkDisplayQuality(displayText, labelType, refTarget);
+        const isUserRef = refType === "ref" || !!refTarget;
+
+        const linkData = {
+          index: isUserRef ? userRefIndex++ : navLinkIndex++,
+          targetId: targetId,
+          displayText: truncate(displayText, 40),
+          labelType: labelType,
+          refType: refType,
+          refTarget: refTarget,
+          hasProperDisplay: hasProperDisplay,
+          isUserRef: isUserRef,
+        };
+
+        if (isUserRef) {
+          crossRefs.userRefs.push(linkData);
+        } else {
+          crossRefs.navLinks.push(linkData);
+        }
+      });
+
+      // =====================================================================
+      // Find all anchor targets in preview
+      // =====================================================================
+      const anchorElements = outputDiv.querySelectorAll('[id^="content-"]');
+      
+      anchorElements.forEach((el, idx) => {
+        const id = el.getAttribute("id") || "";
+        const tagName = el.tagName.toLowerCase();
+        const labelType = getLabelTypeFromExportId(id);
+        
+        crossRefs.anchors.push({
+          index: idx,
+          id: id,
+          tagName: tagName,
+          labelType: labelType,
+        });
+      });
+
+      // =====================================================================
+      // Find footnote elements in preview
+      // =====================================================================
+      const footnoteRefs = outputDiv.querySelectorAll('.footnote-ref, [role="doc-noteref"]');
+      footnoteRefs.forEach((ref, idx) => {
+        const href = ref.getAttribute("href") || "";
+        const id = ref.getAttribute("id") || "";
+        
+        crossRefs.footnoteLinks.push({
+          index: idx,
+          id: id,
+          targetId: href.replace("#", ""),
+        });
+      });
+
+      const footnoteBacklinks = outputDiv.querySelectorAll('.footnote-back, [role="doc-backlink"]');
+      footnoteBacklinks.forEach((backlink, idx) => {
+        const href = backlink.getAttribute("href") || "";
+        
+        crossRefs.footnoteAnchors.push({
+          index: idx,
+          targetId: href.replace("#", ""),
+          hasBacklink: true,
+        });
+      });
+
+      // Update statistics
+      crossRefs.statistics.totalUserRefs = crossRefs.userRefs.length;
+      crossRefs.statistics.totalNavLinks = crossRefs.navLinks.length;
+      crossRefs.statistics.totalAnchors = crossRefs.anchors.length;
+      crossRefs.statistics.totalFootnotes = crossRefs.footnoteLinks.length;
+
+      logInfo(
+        `✅ Preview captured: ${crossRefs.userRefs.length} user refs, ` +
+        `${crossRefs.navLinks.length} nav links, ${crossRefs.anchors.length} anchors`
+      );
+
+      return crossRefs;
+    } catch (error) {
+      logError("Error capturing preview cross-references:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Capture math expression state from preview
+   * @returns {Object|null} - Preview math state
+   */
+  function capturePreviewMathExpressions() {
+    logDebug("📸 Capturing math expressions from preview...");
+
+    const outputDiv = document.getElementById("output");
+    if (!outputDiv) {
+      logWarn("Cannot capture preview math - #output element not found");
+      return null;
+    }
+
+    const mathState = {
+      timestamp: new Date().toISOString(),
+      expressions: [],
+      statistics: {
+        total: 0,
+        inline: 0,
+        display: 0,
+        withParentIds: 0,
+      },
+    };
+
+try {
+      // Find Pandoc math spans in preview
+      const mathSpans = outputDiv.querySelectorAll("span.math");
+      
+mathSpans.forEach((span, idx) => {
+        const isInline = span.classList.contains("inline");
+        const isDisplay = span.classList.contains("display");
+        const isEnvironment = span.classList.contains("numbered-env");
+        const hasParentId = !!span.getAttribute("data-math-parent-id");
+        
+        // Determine type (matching analyseExportHTML logic)
+        let type = "inline";
+        if (isDisplay) {
+          type = "display";
+        } else if (isEnvironment) {
+          type = "environment";
+        }
+        
+        // =====================================================================
+        // Extract LaTeX content - handle both pre-MathJax and post-MathJax DOM
+        // After MathJax renders, the original LaTeX is stored in:
+        //   1. <annotation encoding="application/x-tex"> (MathML)
+        //   2. <script type="math/tex"> (older MathJax)
+        //   3. Or the original span content (before rendering)
+        // =====================================================================
+        let latex = "";
+        
+        // Method 1: Check for MathML annotation (MathJax 3.x stores original here)
+        const annotation = span.querySelector('annotation[encoding="application/x-tex"]');
+        if (annotation) {
+          latex = annotation.textContent || "";
+        }
+        
+        // Method 2: Check for script element (MathJax 2.x style)
+        if (!latex) {
+          const script = span.querySelector('script[type="math/tex"], script[type="math/tex; mode=display"]');
+          if (script) {
+            latex = script.textContent || "";
+          }
+        }
+        
+        // Method 3: Check mjx-container aria-label (contains original LaTeX)
+        if (!latex) {
+          const mjxContainer = span.querySelector("mjx-container");
+          if (mjxContainer) {
+            latex = mjxContainer.getAttribute("aria-label") || "";
+          }
+        }
+        
+        // Method 4: Fall back to raw textContent (pre-MathJax or simple cases)
+        if (!latex) {
+          latex = span.textContent || "";
+        }
+        
+        // Extract inner LaTeX from delimiters (if present)
+        if (type === "environment") {
+          // Match \begin{...}...\end{...}
+          const envMatch = latex.match(/\\begin\{(\w+\*?)\}([\s\S]*)\\end\{\1\}/);
+          if (envMatch) {
+            latex = envMatch[2] || latex;
+          }
+        } else if (type === "display") {
+          // Match \[...\]
+          const displayMatch = latex.match(/\\\[([\s\S]*)\\\]/);
+          if (displayMatch) {
+            latex = displayMatch[1];
+          }
+        } else {
+          // Match \(...\)
+          const inlineMatch = latex.match(/\\\(([\s\S]*)\\\)/);
+          if (inlineMatch) {
+            latex = inlineMatch[1];
+          }
+        }
+
+        mathState.expressions.push({
+          index: idx,
+          type: type,
+          hasParentId: hasParentId,
+          parentId: span.getAttribute("data-math-parent-id") || null,
+          latex: truncate(latex.trim(), 60),
+          hash: simpleHash(normaliseLatex(latex)),
+        });
+
+        // Count statistics - environments count as display for comparison purposes
+        if (isInline && !isEnvironment) mathState.statistics.inline++;
+        if (isDisplay || isEnvironment) mathState.statistics.display++;
+        if (hasParentId) mathState.statistics.withParentIds++;
+      });
+
+      mathState.statistics.total = mathState.expressions.length;
+
+      logDebug(
+        `✅ Preview math captured: ${mathState.statistics.total} expressions ` +
+        `(${mathState.statistics.inline} inline, ${mathState.statistics.display} display)`
+      );
+
+      return mathState;
+    } catch (error) {
+      logError("Error capturing preview math:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Capture complete preview state (cross-refs and math)
+   * Call this after Pandoc conversion, before export
+   * @returns {Object} - Complete preview snapshot
+   */
+  function capturePreviewState() {
+    logInfo("📸 Capturing complete preview state...");
+
+    previewSnapshot = {
+      timestamp: new Date().toISOString(),
+      captured: true,
+      crossRefs: capturePreviewCrossReferences(),
+      math: capturePreviewMathExpressions(),
+    };
+
+    if (previewSnapshot.crossRefs || previewSnapshot.math) {
+      logInfo("✅ Preview state captured successfully");
+      console.log(
+        `📸 Preview snapshot: ` +
+        `${previewSnapshot.crossRefs?.statistics?.totalUserRefs || 0} user refs, ` +
+        `${previewSnapshot.crossRefs?.statistics?.totalAnchors || 0} anchors, ` +
+        `${previewSnapshot.math?.statistics?.total || 0} math expressions`
+      );
+    } else {
+      logWarn("⚠️ Preview state capture incomplete - #output may be empty");
+      previewSnapshot.captured = false;
+    }
+
+    return previewSnapshot;
+  }
+
+  /**
+   * Get the current preview snapshot
+   * @returns {Object|null} - Current preview snapshot or null
+   */
+  function getPreviewSnapshot() {
+    return previewSnapshot;
+  }
+
+  /**
+   * Compare preview cross-references against export cross-references
+   * Identifies whether issues exist in preview, export, or both
+   * @param {Object} exportCrossRefs - Cross-reference analysis from export HTML
+   * @returns {Object} - Comparison results with location flags
+   */
+  function comparePreviewToExportCrossRefs(exportCrossRefs) {
+    logInfo("🔍 Comparing preview to export cross-references...");
+
+    if (!previewSnapshot || !previewSnapshot.crossRefs) {
+      logWarn("No preview snapshot available - cannot compare");
+      return {
+        available: false,
+        reason: "Preview not captured. Call capturePreviewState() after conversion.",
+      };
+    }
+
+    if (!exportCrossRefs) {
+      logWarn("No export cross-references available - cannot compare");
+      return {
+        available: false,
+        reason: "Export cross-reference analysis not available.",
+      };
+    }
+
+    const preview = previewSnapshot.crossRefs;
+    const comparison = {
+      available: true,
+      timestamp: new Date().toISOString(),
+      previewTimestamp: preview.timestamp,
+      
+      // Summary statistics
+      statistics: {
+        preview: {
+          userRefs: preview.statistics.totalUserRefs,
+          navLinks: preview.statistics.totalNavLinks,
+          anchors: preview.statistics.totalAnchors,
+          footnotes: preview.statistics.totalFootnotes,
+        },
+        export: {
+          userRefs: exportCrossRefs.statistics.totalUserRefs,
+          navLinks: exportCrossRefs.statistics.totalNavLinks,
+          anchors: exportCrossRefs.statistics.totalAnchors,
+          footnotes: exportCrossRefs.statistics.totalFootnotes,
+        },
+      },
+
+      // Issue location analysis
+      issueLocations: {
+        orphanUserRefs: { inPreview: false, inExport: false },
+        orphanNavLinks: { inPreview: false, inExport: false },
+        displayQuality: { inPreview: false, inExport: false },
+        anchorMismatch: { inPreview: false, inExport: false },
+      },
+
+      // Detailed findings
+      details: {},
+    };
+
+    try {
+      // =====================================================================
+      // Check 1: Orphan user refs (links to non-existent anchors)
+      // =====================================================================
+      const previewAnchorIds = new Set(preview.anchors.map(a => a.id));
+      const exportAnchorIds = new Set(exportCrossRefs.anchors.map(a => a.id));
+
+      // Check preview for orphan user refs
+      const previewOrphanUserRefs = preview.userRefs.filter(
+        link => !previewAnchorIds.has(link.targetId)
+      );
+      
+      // Check export for orphan user refs
+      const exportOrphanUserRefs = exportCrossRefs.userRefs.filter(
+        link => !exportAnchorIds.has(link.targetId)
+      );
+
+      comparison.issueLocations.orphanUserRefs = {
+        inPreview: previewOrphanUserRefs.length > 0,
+        inExport: exportOrphanUserRefs.length > 0,
+        previewCount: previewOrphanUserRefs.length,
+        exportCount: exportOrphanUserRefs.length,
+      };
+
+      comparison.details.orphanUserRefs = {
+        preview: previewOrphanUserRefs.slice(0, 5),
+        export: exportOrphanUserRefs.slice(0, 5),
+      };
+
+      // =====================================================================
+      // Check 2: Orphan navigation links
+      // Note: Preview typically doesn't have ToC/sidebar, so this often
+      //       shows as "export only" which is expected behaviour
+      // =====================================================================
+      const previewOrphanNavLinks = preview.navLinks.filter(
+        link => !previewAnchorIds.has(link.targetId)
+      );
+      
+      const exportOrphanNavLinks = exportCrossRefs.navLinks.filter(
+        link => !exportAnchorIds.has(link.targetId)
+      );
+
+      comparison.issueLocations.orphanNavLinks = {
+        inPreview: previewOrphanNavLinks.length > 0,
+        inExport: exportOrphanNavLinks.length > 0,
+        previewCount: previewOrphanNavLinks.length,
+        exportCount: exportOrphanNavLinks.length,
+        note: preview.navLinks.length === 0 
+          ? "Preview has no navigation links (ToC/sidebar not rendered)" 
+          : null,
+      };
+
+      comparison.details.orphanNavLinks = {
+        preview: previewOrphanNavLinks.slice(0, 5),
+        export: exportOrphanNavLinks.slice(0, 5),
+      };
+
+      // =====================================================================
+      // Check 3: Display quality (refs showing raw labels instead of numbers)
+      // =====================================================================
+      const previewPoorDisplay = preview.userRefs.filter(
+        link => !link.hasProperDisplay
+      );
+      
+      const exportPoorDisplay = exportCrossRefs.userRefs.filter(
+        link => !link.hasProperDisplay
+      );
+
+      comparison.issueLocations.displayQuality = {
+        inPreview: previewPoorDisplay.length > 0,
+        inExport: exportPoorDisplay.length > 0,
+        previewCount: previewPoorDisplay.length,
+        exportCount: exportPoorDisplay.length,
+      };
+
+      comparison.details.displayQuality = {
+        preview: previewPoorDisplay.slice(0, 5),
+        export: exportPoorDisplay.slice(0, 5),
+      };
+
+      // =====================================================================
+      // Check 4: Anchor count comparison
+      // =====================================================================
+      const previewAnchorCount = preview.anchors.length;
+      const exportAnchorCount = exportCrossRefs.anchors.length;
+      const anchorDifference = Math.abs(exportAnchorCount - previewAnchorCount);
+
+      comparison.issueLocations.anchorMismatch = {
+        inPreview: false, // Anchors themselves don't "fail" in preview
+        inExport: anchorDifference > 0,
+        previewCount: previewAnchorCount,
+        exportCount: exportAnchorCount,
+        difference: anchorDifference,
+      };
+
+      // Generate summary
+      comparison.summary = generateComparisonSummary(comparison.issueLocations);
+
+      logInfo(
+        `✅ Preview comparison complete: ` +
+        `${comparison.summary.exportOnlyCount} export-only, ` +
+        `${comparison.summary.bothCount} in both, ` +
+        `${comparison.summary.previewOnlyCount} preview-only`
+      );
+
+      return comparison;
+    } catch (error) {
+      logError("Error comparing preview to export:", error);
+      return {
+        available: false,
+        reason: `Comparison error: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Generate summary of issue locations
+   * @param {Object} issueLocations - Issue location flags
+   * @returns {Object} - Summary counts
+   */
+  function generateComparisonSummary(issueLocations) {
+    let exportOnlyCount = 0;
+    let bothCount = 0;
+    let previewOnlyCount = 0;
+
+    Object.values(issueLocations).forEach(location => {
+      if (location.inPreview && location.inExport) {
+        bothCount++;
+      } else if (location.inExport && !location.inPreview) {
+        exportOnlyCount++;
+      } else if (location.inPreview && !location.inExport) {
+        previewOnlyCount++;
+      }
+    });
+
+    return {
+      exportOnlyCount,
+      bothCount,
+      previewOnlyCount,
+      totalIssueTypes: exportOnlyCount + bothCount + previewOnlyCount,
+    };
+  }
+
+  /**
+   * Determine issue location label for reporting
+   * @param {boolean} inPreview - Issue exists in preview
+   * @param {boolean} inExport - Issue exists in export
+   * @returns {string} - Location label
+   */
+  function getIssueLocationLabel(inPreview, inExport) {
+    if (inPreview && inExport) {
+      return "BOTH (preview & export)";
+    } else if (inExport && !inPreview) {
+      return "EXPORT ONLY";
+    } else if (inPreview && !inExport) {
+      return "PREVIEW ONLY";
+    }
+    return "UNKNOWN";
+  }
+
+  /**
+   * Get actionable guidance based on issue location
+   * @param {string} issueType - Type of issue
+   * @param {boolean} inPreview - Issue exists in preview
+   * @param {boolean} inExport - Issue exists in export
+   * @returns {string} - Guidance text
+   */
+  function getLocationGuidance(issueType, inPreview, inExport) {
+    if (inPreview && inExport) {
+      // Issue in both - problem is in Pandoc conversion or source
+      switch (issueType) {
+        case "crossref_orphan_refs":
+          return "Issue is in Pandoc conversion - equation labels not becoming anchor IDs";
+        case "crossref_display_quality":
+          return "Issue is in Pandoc conversion - ref resolution not working";
+        case "crossref_count_mismatch":
+          return "Source labels not converted to anchor IDs by Pandoc";
+        default:
+          return "Issue originates in Pandoc conversion or source LaTeX";
+      }
+    } else if (inExport && !inPreview) {
+      // Issue only in export - problem is in export pipeline
+      switch (issueType) {
+        case "crossref_orphan_nav":
+          return "Issue is in export pipeline - ToC generator uses different ID format";
+        case "crossref_orphan_refs":
+          return "Issue is in export pipeline - anchors present in preview but missing after export";
+        default:
+          return "Issue is in export pipeline - check template or content generation";
+      }
+    } else if (inPreview && !inExport) {
+      // Issue only in preview - rare, export fixed it
+      return "Issue resolved during export (unusual - verify export is correct)";
+    }
+    return "Check both Pandoc conversion and export pipeline";
+  }
+
+  /**
+   * Get location data for a cross-reference issue type
+   * Maps issue types to the corresponding preview comparison location data
+   * @param {string} issueType - Type of cross-reference issue
+   * @returns {Object|null} - Location data with inPreview/inExport flags, or null
+   */
+  function getCrossRefIssueLocationData(issueType) {
+    if (!lastPreviewComparison || !lastPreviewComparison.available) {
+      return null;
+    }
+
+    const locations = lastPreviewComparison.issueLocations;
+    
+    // Map issue types to location data keys
+    const typeToLocationMap = {
+      "crossref_orphan_refs": locations.orphanUserRefs,
+      "crossref_orphan_nav": locations.orphanNavLinks,
+      "crossref_display_quality": locations.displayQuality,
+      "crossref_count_mismatch": locations.anchorMismatch,
+    };
+
+    return typeToLocationMap[issueType] || null;
+  }
+
+  /**
+   * Enhance an issue object with location information
+   * @param {Object} issue - Issue object to enhance
+   * @returns {Object} - Enhanced issue with location fields
+   */
+  function enhanceIssueWithLocation(issue) {
+    const locationData = getCrossRefIssueLocationData(issue.type);
+    
+    if (!locationData) {
+      // No preview comparison data available for this issue type
+      return {
+        ...issue,
+        worksInPreview: null,
+        worksInExport: null,
+        issueLocation: null,
+        locationGuidance: null,
+      };
+    }
+
+    const inPreview = locationData.inPreview;
+    const inExport = locationData.inExport;
+
+    return {
+      ...issue,
+      worksInPreview: !inPreview,
+      worksInExport: !inExport,
+      issueLocation: getIssueLocationLabel(inPreview, inExport),
+      locationGuidance: getLocationGuidance(issue.type, inPreview, inExport),
+    };
+  }
+
+  /**
+   * Compare preview math expressions against export math expressions
+   * Identifies whether math-related issues exist in preview, export, or both
+   * @param {Object} exportAnalysis - Export analysis from analyseExportHTML()
+   * @returns {Object} - Comparison results with location flags
+   */
+  function comparePreviewToExportMath(exportAnalysis) {
+    logInfo("🔢 Comparing preview to export math expressions...");
+
+    if (!previewSnapshot || !previewSnapshot.math) {
+      logWarn("No preview math snapshot available - cannot compare");
+      return {
+        available: false,
+        reason: "Preview math not captured. Call capturePreviewState() after conversion.",
+      };
+    }
+
+    if (!exportAnalysis || !exportAnalysis.mathElements) {
+      logWarn("No export math analysis available - cannot compare");
+      return {
+        available: false,
+        reason: "Export math analysis not available.",
+      };
+    }
+
+    const previewMath = previewSnapshot.math;
+    const exportMath = exportAnalysis.mathElements;
+
+    const comparison = {
+      available: true,
+      timestamp: new Date().toISOString(),
+      previewTimestamp: previewMath.timestamp,
+
+      // Summary statistics
+      statistics: {
+        preview: {
+          total: previewMath.statistics.total,
+          inline: previewMath.statistics.inline,
+          display: previewMath.statistics.display,
+          withParentIds: previewMath.statistics.withParentIds,
+        },
+        export: {
+          total: exportMath.length,
+          inline: exportMath.filter(e => e.type === "inline").length,
+          display: exportMath.filter(e => e.type === "display" || e.type === "environment").length,
+          withParentIds: exportMath.filter(e => e.hasParentId).length,
+        },
+      },
+
+      // Issue location analysis
+      issueLocations: {
+        countMismatch: { inPreview: false, inExport: false },
+        missingParentIds: { inPreview: false, inExport: false },
+        typeMismatch: { inPreview: false, inExport: false },
+        contentMismatch: { inPreview: false, inExport: false },
+      },
+
+      // Detailed findings
+      details: {},
+    };
+
+    try {
+      const previewStats = comparison.statistics.preview;
+      const exportStats = comparison.statistics.export;
+
+      // =====================================================================
+      // Check 1: Expression count match
+      // =====================================================================
+      const countDifference = Math.abs(previewStats.total - exportStats.total);
+      const countRatio = exportStats.total > 0 
+        ? Math.min(previewStats.total, exportStats.total) / Math.max(previewStats.total, exportStats.total)
+        : (previewStats.total === 0 ? 1 : 0);
+
+      if (countDifference > 0 && countRatio < 0.95) {
+        // Significant mismatch - determine where the issue is
+        // If preview has fewer, the issue is in preview (or source)
+        // If export has fewer, the issue is in export
+        comparison.issueLocations.countMismatch = {
+          inPreview: previewStats.total < exportStats.total,
+          inExport: exportStats.total < previewStats.total,
+          previewCount: previewStats.total,
+          exportCount: exportStats.total,
+          difference: countDifference,
+          ratio: Math.round(countRatio * 100),
+        };
+      }
+
+      comparison.details.countMismatch = {
+        preview: previewStats.total,
+        export: exportStats.total,
+        difference: countDifference,
+      };
+
+      // =====================================================================
+      // Check 2: Parent ID presence
+      // =====================================================================
+      const previewParentRatio = previewStats.total > 0 
+        ? previewStats.withParentIds / previewStats.total 
+        : 0;
+      const exportParentRatio = exportStats.total > 0 
+        ? exportStats.withParentIds / exportStats.total 
+        : 0;
+
+      // Missing parent IDs is an issue if ratio is low (< 50% for documents with math)
+      const previewMissingParents = previewStats.total > 0 && previewParentRatio < 0.5;
+      const exportMissingParents = exportStats.total > 0 && exportParentRatio < 0.5;
+
+      comparison.issueLocations.missingParentIds = {
+        inPreview: previewMissingParents,
+        inExport: exportMissingParents,
+        previewRatio: Math.round(previewParentRatio * 100),
+        exportRatio: Math.round(exportParentRatio * 100),
+        previewCount: previewStats.withParentIds,
+        exportCount: exportStats.withParentIds,
+      };
+
+      comparison.details.parentIds = {
+        preview: { count: previewStats.withParentIds, ratio: previewParentRatio },
+        export: { count: exportStats.withParentIds, ratio: exportParentRatio },
+      };
+
+      // =====================================================================
+      // Check 3: Type distribution match
+      // =====================================================================
+      const previewDisplayRatio = previewStats.total > 0 
+        ? previewStats.display / previewStats.total 
+        : 0;
+      const exportDisplayRatio = exportStats.total > 0 
+        ? exportStats.display / exportStats.total 
+        : 0;
+      const typeRatioDiff = Math.abs(previewDisplayRatio - exportDisplayRatio);
+
+      if (typeRatioDiff > 0.1 && previewStats.total > 5) {
+        // Significant type distribution difference
+        comparison.issueLocations.typeMismatch = {
+          inPreview: previewDisplayRatio > exportDisplayRatio,
+          inExport: exportDisplayRatio > previewDisplayRatio,
+          previewInline: previewStats.inline,
+          previewDisplay: previewStats.display,
+          exportInline: exportStats.inline,
+          exportDisplay: exportStats.display,
+        };
+      }
+
+      comparison.details.typeDistribution = {
+        preview: { inline: previewStats.inline, display: previewStats.display },
+        export: { inline: exportStats.inline, display: exportStats.display },
+      };
+
+// =====================================================================
+      // Check 4: Content hash sampling (compare first 50 hashes)
+      // =====================================================================
+      // Debug: Log sample hashes to identify mismatch source
+      logDebug("🔍 Hash comparison debug:");
+      const previewSample = previewMath.expressions.slice(0, 5);
+      const exportSample = exportMath.slice(0, 5);
+      
+      previewSample.forEach((e, i) => {
+        const exportE = exportSample[i];
+        logDebug(`  [${i}] Preview: "${e.latex?.substring(0, 30)}" hash=${e.hash}`);
+        logDebug(`  [${i}] Export:  "${exportE?.latex?.substring(0, 30)}" hash=${exportE?.hash}`);
+        logDebug(`  [${i}] Match: ${e.hash === exportE?.hash ? "✅" : "❌"}`);
+      });
+
+      const previewHashes = new Set(previewMath.expressions.slice(0, 50).map(e => e.hash));
+      const exportHashes = new Set(exportMath.slice(0, 50).map(e => e.hash));
+
+      const previewOnlyHashes = [...previewHashes].filter(h => !exportHashes.has(h));
+      const exportOnlyHashes = [...exportHashes].filter(h => !previewHashes.has(h));
+
+      const sampleSize = Math.min(50, previewMath.expressions.length, exportMath.length);
+      const matchingHashes = sampleSize - Math.max(previewOnlyHashes.length, exportOnlyHashes.length);
+      const contentMatchRatio = sampleSize > 0 ? matchingHashes / sampleSize : 1;
+
+      if (contentMatchRatio < 0.9 && sampleSize > 5) {
+        comparison.issueLocations.contentMismatch = {
+          inPreview: previewOnlyHashes.length > exportOnlyHashes.length,
+          inExport: exportOnlyHashes.length > previewOnlyHashes.length,
+          sampleSize: sampleSize,
+          matchingCount: matchingHashes,
+          matchRatio: Math.round(contentMatchRatio * 100),
+        };
+      }
+
+      comparison.details.contentSampling = {
+        sampleSize: sampleSize,
+        matchingHashes: matchingHashes,
+        previewOnlyCount: previewOnlyHashes.length,
+        exportOnlyCount: exportOnlyHashes.length,
+        matchRatio: contentMatchRatio,
+      };
+
+      // Generate summary
+      comparison.summary = generateComparisonSummary(comparison.issueLocations);
+
+      logInfo(
+        `✅ Math comparison complete: ` +
+        `${comparison.summary.exportOnlyCount} export-only, ` +
+        `${comparison.summary.bothCount} in both, ` +
+        `${comparison.summary.previewOnlyCount} preview-only`
+      );
+
+      return comparison;
+    } catch (error) {
+      logError("Error comparing preview to export math:", error);
+      return {
+        available: false,
+        reason: `Comparison error: ${error.message}`,
+      };
     }
   }
 
@@ -2033,7 +2869,7 @@ comparison.summary = {
    * @param {Object} analysis - Export analysis
    * @param {Object} mathJaxConfig - MathJax configuration analysis (optional)
    */
-function printDiagnosticReport(comparison, inventory, analysis, mathJaxConfig = null, crossRefAnalysis = null) {
+function printDiagnosticReport(comparison, inventory, analysis, mathJaxConfig = null, crossRefAnalysis = null, previewComparison = null, mathComparison = null) {
     const sizeCategory = inventory?.sizeCategory || "unknown";
     const maxToShow = CONFIG.maxIssuesToShowConsole;
 
@@ -2115,7 +2951,7 @@ function printDiagnosticReport(comparison, inventory, analysis, mathJaxConfig = 
       }
     }
 
-    // Cross-reference section
+// Cross-reference section
     if (crossRefAnalysis || (comparison && comparison.crossReferences)) {
       console.log("\n🔗 CROSS-REFERENCES:");
       
@@ -2148,14 +2984,82 @@ function printDiagnosticReport(comparison, inventory, analysis, mathJaxConfig = 
       }
     }
 
+    // Preview vs Export comparison section
+    if (previewComparison && previewComparison.available) {
+      console.log("\n🔍 PREVIEW VS EXPORT COMPARISON:");
+      console.log(`   ├── Preview captured: ✅ (${new Date(previewComparison.previewTimestamp).toLocaleTimeString()})`);
+      
+      const stats = previewComparison.statistics;
+      console.log(`   ├── Cross-refs in preview: ${stats.preview.userRefs} user refs, ${stats.preview.anchors} anchors`);
+      console.log(`   ├── Cross-refs in export: ${stats.export.userRefs} user refs, ${stats.export.anchors} anchors`);
+      
+      if (previewComparison.summary) {
+        const summary = previewComparison.summary;
+        console.log("   └── Issues by location:");
+        
+        if (summary.exportOnlyCount > 0) {
+          console.log(`       ├── Export only: ${summary.exportOnlyCount} ⚠️`);
+        } else {
+          console.log(`       ├── Export only: 0 ✅`);
+        }
+        
+        if (summary.bothCount > 0) {
+          console.log(`       ├── Both (preview & export): ${summary.bothCount} ❌`);
+        } else {
+          console.log(`       ├── Both (preview & export): 0 ✅`);
+        }
+        
+        if (summary.previewOnlyCount > 0) {
+          console.log(`       └── Preview only: ${summary.previewOnlyCount} ⚠️`);
+        } else {
+          console.log(`       └── Preview only: 0 ✅`);
+        }
+      }
+} else if (previewSnapshot === null) {
+      console.log("\n🔍 PREVIEW VS EXPORT COMPARISON:");
+      console.log("   ⚠️ Preview not captured. Run capturePreviewState() after conversion for comparison.");
+    }
+
+    // Math expression preview comparison section
+    if (mathComparison && mathComparison.available) {
+      console.log("\n🔢 MATH PREVIEW VS EXPORT:");
+      
+      const stats = mathComparison.statistics;
+      console.log(`   ├── Preview: ${stats.preview.total} expressions (${stats.preview.inline} inline, ${stats.preview.display} display)`);
+      console.log(`   ├── Export: ${stats.export.total} expressions (${stats.export.inline} inline, ${stats.export.display} display)`);
+      console.log(`   ├── Parent IDs: preview ${stats.preview.withParentIds}/${stats.preview.total}, export ${stats.export.withParentIds}/${stats.export.total}`);
+      
+      if (mathComparison.details.contentSampling) {
+        const sampling = mathComparison.details.contentSampling;
+        const matchPercent = Math.round(sampling.matchRatio * 100);
+        const matchIcon = matchPercent >= 90 ? "✅" : matchPercent >= 70 ? "⚠️" : "❌";
+        console.log(`   └── Content match (sample): ${matchPercent}% ${matchIcon}`);
+      }
+      
+      if (mathComparison.summary) {
+        const summary = mathComparison.summary;
+        if (summary.totalIssueTypes > 0) {
+          console.log("   Math issues by location:");
+          if (summary.exportOnlyCount > 0) {
+            console.log(`       ├── Export only: ${summary.exportOnlyCount} ⚠️`);
+          }
+          if (summary.bothCount > 0) {
+            console.log(`       ├── Both: ${summary.bothCount} ❌`);
+          }
+          if (summary.previewOnlyCount > 0) {
+            console.log(`       └── Preview only: ${summary.previewOnlyCount} ⚠️`);
+          }
+        }
+      }
+    }
+
     // Issues section
     if (comparison && comparison.issues.length > 0) {
       const issueCount = comparison.issues.length;
       const showCount = Math.min(issueCount, maxToShow);
       
       console.log(`\n⚠️ ISSUES DETECTED (showing ${showCount} of ${issueCount}):\n`);
-
-      comparison.issues.slice(0, maxToShow).forEach((issue) => {
+comparison.issues.slice(0, maxToShow).forEach((issue) => {
         const icon = issue.severity === "error" ? "❌" : "⚠️";
         console.log(`   [${issue.id}] ${icon} ${issue.type.toUpperCase()}`);
         
@@ -2167,6 +3071,16 @@ function printDiagnosticReport(comparison, inventory, analysis, mathJaxConfig = 
         }
         if (issue.likelyCause) {
           console.log(`       Likely cause: ${issue.likelyCause}`);
+        }
+        // Show location information if available (Phase C enhancement)
+        if (issue.issueLocation) {
+          const locationIcon = issue.issueLocation.includes("BOTH") ? "❌" 
+            : issue.issueLocation.includes("EXPORT") ? "⚠️" 
+            : "ℹ️";
+          console.log(`       📍 Location: ${issue.issueLocation} ${locationIcon}`);
+        }
+        if (issue.locationGuidance) {
+          console.log(`       💡 Fix: ${issue.locationGuidance}`);
         }
         console.log("");
       });
@@ -2215,7 +3129,7 @@ function printDiagnosticReport(comparison, inventory, analysis, mathJaxConfig = 
 const diagnostic = {
       meta: {
         timestamp: new Date().toISOString(),
-        version: "1.1.0",
+        version: "1.2.0",
         documentTitle: document.title || "Unknown",
         detailLevel: detail,
         generatedBy: "LatexExportVerifier",
@@ -2242,6 +3156,72 @@ const diagnostic = {
         // Summary mode: first 10 expressions
         diagnostic.expressionSamples = sourceInventory.expressions.slice(0, 10);
       }
+    }
+
+// Add preview comparison data
+    if (previewSnapshot && previewSnapshot.captured) {
+      diagnostic.previewComparison = {
+        captured: true,
+        captureTimestamp: previewSnapshot.timestamp,
+        preview: {
+          crossRefs: previewSnapshot.crossRefs ? {
+            userRefs: previewSnapshot.crossRefs.statistics.totalUserRefs,
+            navLinks: previewSnapshot.crossRefs.statistics.totalNavLinks,
+            anchors: previewSnapshot.crossRefs.statistics.totalAnchors,
+            footnotes: previewSnapshot.crossRefs.statistics.totalFootnotes,
+          } : null,
+          math: previewSnapshot.math ? {
+            total: previewSnapshot.math.statistics.total,
+            inline: previewSnapshot.math.statistics.inline,
+            display: previewSnapshot.math.statistics.display,
+            withParentIds: previewSnapshot.math.statistics.withParentIds,
+          } : null,
+        },
+      };
+
+// Include cross-ref comparison results if available
+      if (lastPreviewComparison && lastPreviewComparison.available) {
+        diagnostic.previewComparison.crossRefComparison = {
+          timestamp: lastPreviewComparison.timestamp,
+          statistics: lastPreviewComparison.statistics,
+          issueLocations: lastPreviewComparison.issueLocations,
+          summary: lastPreviewComparison.summary,
+        };
+
+        // Include detailed findings in full mode
+        if (detail === "full") {
+          diagnostic.previewComparison.crossRefComparison.details = lastPreviewComparison.details;
+        }
+      }
+
+      // Include math comparison results if available
+      if (lastMathComparison && lastMathComparison.available) {
+        diagnostic.previewComparison.mathComparison = {
+          timestamp: lastMathComparison.timestamp,
+          statistics: lastMathComparison.statistics,
+          issueLocations: lastMathComparison.issueLocations,
+          summary: lastMathComparison.summary,
+        };
+
+        // Include detailed findings in full mode
+        if (detail === "full") {
+          diagnostic.previewComparison.mathComparison.details = lastMathComparison.details;
+        }
+      }
+
+      // Include full preview details in full mode
+      if (detail === "full" && previewSnapshot.crossRefs) {
+        diagnostic.previewComparison.previewCrossRefDetails = {
+          userRefs: previewSnapshot.crossRefs.userRefs,
+          navLinks: previewSnapshot.crossRefs.navLinks,
+          anchors: previewSnapshot.crossRefs.anchors,
+        };
+      }
+    } else {
+      diagnostic.previewComparison = {
+        captured: false,
+        note: "Preview not captured. Run capturePreviewState() after conversion for comparison data.",
+      };
     }
 
     // Generate LLM context summary
@@ -2307,10 +3287,13 @@ if (summary.issuesByType.unrendered > 0) {
 
       context += "\n### Issue Details\n\n";
 
-      diagnostic.issues.slice(0, 10).forEach((issue, idx) => {
+diagnostic.issues.slice(0, 10).forEach((issue, idx) => {
         context += `${idx + 1}. **${issue.type}**`;
         if (issue.approximateLine) {
           context += ` (line ~${issue.approximateLine})`;
+        }
+        if (issue.issueLocation) {
+          context += ` [${issue.issueLocation}]`;
         }
         context += "\n";
         if (issue.sourcePreview) {
@@ -2318,6 +3301,9 @@ if (summary.issuesByType.unrendered > 0) {
         }
         if (issue.likelyCause) {
           context += `   - Likely cause: ${issue.likelyCause}\n`;
+        }
+        if (issue.locationGuidance) {
+          context += `   - Location guidance: ${issue.locationGuidance}\n`;
         }
         if (issue.suggestedFix) {
           context += `   - Suggested fix: ${issue.suggestedFix}\n`;
@@ -2398,13 +3384,29 @@ if (summary.issuesByType.unrendered > 0) {
       mathJaxConfig = analyseMathJaxConfig(html);
     }
 
-    // Step 5: Analyse cross-references in export
+// Step 5: Analyse cross-references in export
     let crossRefAnalysis = null;
     let crossRefComparison = null;
     if (sourceCrossReferences) {
       crossRefAnalysis = analyseCrossReferencesInExport(html);
       if (crossRefAnalysis) {
         crossRefComparison = compareCrossReferences(sourceCrossReferences, crossRefAnalysis);
+      }
+    }
+
+// Step 5b: Compare preview to export (if preview was captured)
+    let previewComparison = null;
+    let mathComparison = null;
+    if (previewSnapshot && previewSnapshot.captured) {
+      // Compare cross-references if available
+      if (crossRefAnalysis) {
+        previewComparison = comparePreviewToExportCrossRefs(crossRefAnalysis);
+        lastPreviewComparison = previewComparison;
+      }
+      // Compare math expressions
+      if (analysis && analysis.mathElements) {
+        mathComparison = comparePreviewToExportMath(analysis);
+        lastMathComparison = mathComparison;
       }
     }
 
@@ -2415,7 +3417,7 @@ if (summary.issuesByType.unrendered > 0) {
       return null;
     }
 
-    // Merge cross-reference results into main comparison
+// Merge cross-reference results into main comparison
     if (crossRefComparison) {
       comparison.crossReferences = {
         sourceLabels: crossRefComparison.statistics.sourceLabels,
@@ -2424,10 +3426,15 @@ if (summary.issuesByType.unrendered > 0) {
         exportAnchors: crossRefComparison.statistics.exportAnchors,
       };
       
-      // Add cross-reference issues to main issues list
+      // Add cross-reference issues to main issues list (with location enhancement)
       crossRefComparison.issues.forEach(issue => {
+        // Enhance with location data if preview comparison was done
+        const enhancedIssue = previewComparison && previewComparison.available
+          ? enhanceIssueWithLocation(issue)
+          : issue;
+        
         comparison.issues.push({
-          ...issue,
+          ...enhancedIssue,
           id: comparison.issues.length + 1,
         });
       });
@@ -2478,9 +3485,8 @@ if (summary.issuesByType.unrendered > 0) {
       };
     }
 
-    // Print diagnostic report
-    printDiagnosticReport(comparison, sourceInventory, analysis, mathJaxConfig, crossRefAnalysis);
-
+// Print diagnostic report
+   printDiagnosticReport(comparison, sourceInventory, analysis, mathJaxConfig, crossRefAnalysis, previewComparison, mathComparison);
     logInfo(`⏱️ Verification completed in ${durationMs}ms`);
 
     return {
@@ -2505,14 +3511,17 @@ if (summary.issuesByType.unrendered > 0) {
     return lastVerificationResult.status;
   }
 
-  /**
+/**
    * Clear stored inventory and results
    */
-  function clearInventory() {
+function clearInventory() {
     sourceInventory = null;
     sourceCrossReferences = null;
     lastVerificationResult = null;
-    logInfo("✅ LaTeX inventory and cross-references cleared");
+    previewSnapshot = null;
+    lastPreviewComparison = null;
+    lastMathComparison = null;
+    logInfo("✅ LaTeX inventory, cross-references, preview snapshot, and comparisons cleared");
   }
 
   // ===========================================================================================
@@ -2529,7 +3538,7 @@ if (summary.issuesByType.unrendered > 0) {
     const tests = {
       moduleExists: () => !!window.LatexExportVerifier,
       
-      hasRequiredMethods: () => {
+hasRequiredMethods: () => {
         const required = [
           "captureSourceInventory",
           "analyseExportHTML",
@@ -2539,6 +3548,11 @@ if (summary.issuesByType.unrendered > 0) {
           "getVerificationStatus",
           "clearInventory",
           "detectCustomMacros",
+          // Preview comparison methods
+          "capturePreviewState",
+          "getPreviewSnapshot",
+          "comparePreviewToExportCrossRefs",
+          "comparePreviewToExportMath",
         ];
         return required.every((method) => 
           typeof window.LatexExportVerifier[method] === "function"
@@ -3061,7 +4075,7 @@ detectsOrphanUserRefs: () => {
         return goodDisplayCount === 2;
       },
 
-      hashPerformanceIsAcceptable: () => {
+hashPerformanceIsAcceptable: () => {
         // Test hash function performance with many calls
         const startTime = performance.now();
         for (let i = 0; i < 1000; i++) {
@@ -3071,6 +4085,507 @@ detectsOrphanUserRefs: () => {
         
         // Should complete 1000 hashes in <100ms
         return duration < 100;
+      },
+
+      // =====================================================================
+      // Preview Comparison Tests
+      // =====================================================================
+
+      capturePreviewStateReturnsObject: () => {
+        // This test verifies the function exists and returns expected structure
+        // Note: May return null if #output doesn't exist, which is valid
+        const result = capturePreviewState();
+        if (result === null) {
+          // No #output element - this is acceptable in test environment
+          return true;
+        }
+        return result.hasOwnProperty("timestamp") &&
+               result.hasOwnProperty("captured") &&
+               result.hasOwnProperty("crossRefs") &&
+               result.hasOwnProperty("math");
+      },
+
+      getPreviewSnapshotReturnsStoredState: () => {
+        // Should return whatever was last captured (or null)
+        const snapshot = getPreviewSnapshot();
+        // Either null or has expected structure
+        if (snapshot === null) return true;
+        return snapshot.hasOwnProperty("timestamp") &&
+               snapshot.hasOwnProperty("captured");
+      },
+
+      comparePreviewToExportHandlesMissingPreview: () => {
+        // Temporarily clear preview snapshot
+        const originalSnapshot = previewSnapshot;
+        previewSnapshot = null;
+        
+        const mockExportRefs = {
+          statistics: { totalUserRefs: 0, totalNavLinks: 0, totalAnchors: 0, totalFootnotes: 0 },
+          userRefs: [],
+          navLinks: [],
+          anchors: [],
+        };
+        
+        const result = comparePreviewToExportCrossRefs(mockExportRefs);
+        
+        // Restore original snapshot
+        previewSnapshot = originalSnapshot;
+        
+        return result !== null && 
+               result.available === false &&
+               result.reason.includes("Preview not captured");
+      },
+
+      comparePreviewToExportHandlesMissingExport: () => {
+        // Set up a mock preview snapshot
+        const originalSnapshot = previewSnapshot;
+        previewSnapshot = {
+          timestamp: new Date().toISOString(),
+          captured: true,
+          crossRefs: {
+            statistics: { totalUserRefs: 0, totalNavLinks: 0, totalAnchors: 0, totalFootnotes: 0 },
+            userRefs: [],
+            navLinks: [],
+            anchors: [],
+          },
+        };
+        
+        const result = comparePreviewToExportCrossRefs(null);
+        
+        // Restore original snapshot
+        previewSnapshot = originalSnapshot;
+        
+        return result !== null && 
+               result.available === false &&
+               result.reason.includes("Export cross-reference analysis not available");
+      },
+
+      comparePreviewToExportDetectsOrphanUserRefs: () => {
+        // Set up preview with valid anchor
+        const originalSnapshot = previewSnapshot;
+        previewSnapshot = {
+          timestamp: new Date().toISOString(),
+          captured: true,
+          crossRefs: {
+            statistics: { totalUserRefs: 1, totalNavLinks: 0, totalAnchors: 1, totalFootnotes: 0 },
+            userRefs: [{ targetId: "content-eq:test", hasProperDisplay: true }],
+            navLinks: [],
+            anchors: [{ id: "content-eq:test" }],
+          },
+        };
+        
+        // Export has orphan ref (no matching anchor)
+        const mockExportRefs = {
+          statistics: { totalUserRefs: 1, totalNavLinks: 0, totalAnchors: 0, totalFootnotes: 0 },
+          userRefs: [{ targetId: "content-eq:test", hasProperDisplay: true }],
+          navLinks: [],
+          anchors: [], // No anchors!
+        };
+        
+        const result = comparePreviewToExportCrossRefs(mockExportRefs);
+        
+        // Restore original snapshot
+        previewSnapshot = originalSnapshot;
+        
+        // Preview has no orphans (anchor exists), export has orphans (no anchor)
+        return result !== null && 
+               result.available === true &&
+               result.issueLocations.orphanUserRefs.inPreview === false &&
+               result.issueLocations.orphanUserRefs.inExport === true;
+      },
+
+      comparePreviewToExportDetectsBothIssues: () => {
+        // Set up preview with orphan ref (no anchor)
+        const originalSnapshot = previewSnapshot;
+        previewSnapshot = {
+          timestamp: new Date().toISOString(),
+          captured: true,
+          crossRefs: {
+            statistics: { totalUserRefs: 1, totalNavLinks: 0, totalAnchors: 0, totalFootnotes: 0 },
+            userRefs: [{ targetId: "content-eq:missing", hasProperDisplay: true }],
+            navLinks: [],
+            anchors: [], // No anchors - orphan in preview
+          },
+        };
+        
+        // Export also has orphan ref
+        const mockExportRefs = {
+          statistics: { totalUserRefs: 1, totalNavLinks: 0, totalAnchors: 0, totalFootnotes: 0 },
+          userRefs: [{ targetId: "content-eq:missing", hasProperDisplay: true }],
+          navLinks: [],
+          anchors: [], // No anchors - orphan in export too
+        };
+        
+        const result = comparePreviewToExportCrossRefs(mockExportRefs);
+        
+        // Restore original snapshot
+        previewSnapshot = originalSnapshot;
+        
+        // Both have orphans
+        return result !== null && 
+               result.available === true &&
+               result.issueLocations.orphanUserRefs.inPreview === true &&
+               result.issueLocations.orphanUserRefs.inExport === true &&
+               result.summary.bothCount >= 1;
+      },
+
+      generateComparisonSummaryCountsCorrectly: () => {
+        const testLocations = {
+          issue1: { inPreview: true, inExport: true },   // both
+          issue2: { inPreview: false, inExport: true },  // export only
+          issue3: { inPreview: false, inExport: true },  // export only
+          issue4: { inPreview: true, inExport: false },  // preview only
+        };
+        
+        const summary = generateComparisonSummary(testLocations);
+        
+        return summary.bothCount === 1 &&
+               summary.exportOnlyCount === 2 &&
+               summary.previewOnlyCount === 1 &&
+               summary.totalIssueTypes === 4;
+      },
+
+      getIssueLocationLabelReturnsCorrectLabels: () => {
+        return getIssueLocationLabel(true, true) === "BOTH (preview & export)" &&
+               getIssueLocationLabel(false, true) === "EXPORT ONLY" &&
+               getIssueLocationLabel(true, false) === "PREVIEW ONLY" &&
+               getIssueLocationLabel(false, false) === "UNKNOWN";
+      },
+
+      getLocationGuidanceReturnsHelpfulText: () => {
+        const bothGuidance = getLocationGuidance("crossref_orphan_refs", true, true);
+        const exportOnlyGuidance = getLocationGuidance("crossref_orphan_nav", false, true);
+        const previewOnlyGuidance = getLocationGuidance("crossref_orphan_refs", true, false);
+        
+        return bothGuidance.includes("Pandoc") &&
+               exportOnlyGuidance.includes("export pipeline") &&
+               previewOnlyGuidance.includes("resolved during export");
+      },
+
+      // =====================================================================
+      // Phase B: Math Preview Comparison Tests
+      // =====================================================================
+
+      comparePreviewToExportMathHandlesMissingPreview: () => {
+        // Store and clear preview
+        const originalSnapshot = previewSnapshot;
+        previewSnapshot = null;
+        
+        const mockExportAnalysis = {
+          mathElements: [{ type: "inline", hash: "abc123", hasParentId: true }],
+        };
+        
+        const result = comparePreviewToExportMath(mockExportAnalysis);
+        
+        // Restore
+        previewSnapshot = originalSnapshot;
+        
+        return result !== null && 
+               result.available === false &&
+               result.reason.includes("Preview math not captured");
+      },
+
+      comparePreviewToExportMathHandlesMissingExport: () => {
+        // Store original and set mock preview
+        const originalSnapshot = previewSnapshot;
+        previewSnapshot = {
+          captured: true,
+          math: {
+            timestamp: new Date().toISOString(),
+            expressions: [{ index: 0, type: "inline", fullHash: "abc123" }],
+            statistics: { total: 1, inline: 1, display: 0, withParentIds: 0 },
+          },
+        };
+        
+        const result = comparePreviewToExportMath(null);
+        
+        // Restore
+        previewSnapshot = originalSnapshot;
+        
+        return result !== null && 
+               result.available === false &&
+               result.reason.includes("Export math analysis not available");
+      },
+
+      comparePreviewToExportMathDetectsCountMismatch: () => {
+        const originalSnapshot = previewSnapshot;
+        
+        // Preview has 10 expressions
+        previewSnapshot = {
+          captured: true,
+          math: {
+            timestamp: new Date().toISOString(),
+            expressions: Array(10).fill(null).map((_, i) => ({
+              index: i,
+              type: "inline",
+              fullHash: `hash${i}`,
+            })),
+            statistics: { total: 10, inline: 10, display: 0, withParentIds: 0 },
+          },
+        };
+        
+        // Export has only 5 expressions (significant mismatch)
+        const mockExportAnalysis = {
+          mathElements: Array(5).fill(null).map((_, i) => ({
+            type: "inline",
+            hash: `hash${i}`,
+            hasParentId: false,
+          })),
+        };
+        
+        const result = comparePreviewToExportMath(mockExportAnalysis);
+        
+        previewSnapshot = originalSnapshot;
+        
+        return result !== null && 
+               result.available === true &&
+               result.statistics.preview.total === 10 &&
+               result.statistics.export.total === 5;
+      },
+
+      comparePreviewToExportMathDetectsTypeDistribution: () => {
+        const originalSnapshot = previewSnapshot;
+        
+        // Preview: mostly inline
+        previewSnapshot = {
+          captured: true,
+          math: {
+            timestamp: new Date().toISOString(),
+            expressions: [
+              { index: 0, type: "inline", fullHash: "h1" },
+              { index: 1, type: "inline", fullHash: "h2" },
+              { index: 2, type: "inline", fullHash: "h3" },
+              { index: 3, type: "inline", fullHash: "h4" },
+              { index: 4, type: "display", fullHash: "h5" },
+            ],
+            statistics: { total: 5, inline: 4, display: 1, withParentIds: 0 },
+          },
+        };
+        
+        // Export: same expressions
+        const mockExportAnalysis = {
+          mathElements: [
+            { type: "inline", hash: "h1", hasParentId: false },
+            { type: "inline", hash: "h2", hasParentId: false },
+            { type: "inline", hash: "h3", hasParentId: false },
+            { type: "inline", hash: "h4", hasParentId: false },
+            { type: "display", hash: "h5", hasParentId: false },
+          ],
+        };
+        
+        const result = comparePreviewToExportMath(mockExportAnalysis);
+        
+        previewSnapshot = originalSnapshot;
+        
+        return result !== null && 
+               result.available === true &&
+               result.statistics.preview.inline === 4 &&
+               result.statistics.export.inline === 4 &&
+               result.details.typeDistribution !== undefined;
+      },
+
+      comparePreviewToExportMathDetectsParentIdIssues: () => {
+        const originalSnapshot = previewSnapshot;
+        
+        // Preview: no parent IDs
+        previewSnapshot = {
+          captured: true,
+          math: {
+            timestamp: new Date().toISOString(),
+            expressions: Array(10).fill(null).map((_, i) => ({
+              index: i,
+              type: "inline",
+              fullHash: `hash${i}`,
+              hasParentId: false,
+            })),
+            statistics: { total: 10, inline: 10, display: 0, withParentIds: 0 },
+          },
+        };
+        
+        // Export: has parent IDs
+        const mockExportAnalysis = {
+          mathElements: Array(10).fill(null).map((_, i) => ({
+            type: "inline",
+            hash: `hash${i}`,
+            hasParentId: true,
+          })),
+        };
+        
+        const result = comparePreviewToExportMath(mockExportAnalysis);
+        
+        previewSnapshot = originalSnapshot;
+        
+        return result !== null && 
+               result.available === true &&
+               result.issueLocations.missingParentIds.inPreview === true &&
+               result.issueLocations.missingParentIds.inExport === false;
+      },
+
+      comparePreviewToExportMathGeneratesSummary: () => {
+        const originalSnapshot = previewSnapshot;
+        
+        previewSnapshot = {
+          captured: true,
+          math: {
+            timestamp: new Date().toISOString(),
+            expressions: [{ index: 0, type: "inline", fullHash: "abc" }],
+            statistics: { total: 1, inline: 1, display: 0, withParentIds: 1 },
+          },
+        };
+        
+        const mockExportAnalysis = {
+          mathElements: [{ type: "inline", hash: "abc", hasParentId: true }],
+        };
+        
+        const result = comparePreviewToExportMath(mockExportAnalysis);
+        
+        previewSnapshot = originalSnapshot;
+        
+        return result !== null && 
+               result.available === true &&
+               result.summary !== undefined &&
+               typeof result.summary.exportOnlyCount === "number" &&
+               typeof result.summary.bothCount === "number" &&
+               typeof result.summary.previewOnlyCount === "number";
+      },
+
+      // =====================================================================
+      // Phase C: Issue Location Enhancement Tests
+      // =====================================================================
+
+      getCrossRefIssueLocationDataReturnsNull: () => {
+        // Store and clear comparison data
+        const originalComparison = lastPreviewComparison;
+        lastPreviewComparison = null;
+        
+        const result = getCrossRefIssueLocationData("crossref_orphan_refs");
+        
+        lastPreviewComparison = originalComparison;
+        
+        return result === null;
+      },
+
+      getCrossRefIssueLocationDataReturnsLocationData: () => {
+        const originalComparison = lastPreviewComparison;
+        
+        lastPreviewComparison = {
+          available: true,
+          issueLocations: {
+            orphanUserRefs: { inPreview: true, inExport: true },
+            orphanNavLinks: { inPreview: false, inExport: true },
+            displayQuality: { inPreview: false, inExport: false },
+            anchorMismatch: { inPreview: false, inExport: true },
+          },
+        };
+        
+        const result = getCrossRefIssueLocationData("crossref_orphan_refs");
+        
+        lastPreviewComparison = originalComparison;
+        
+        return result !== null && 
+               result.inPreview === true && 
+               result.inExport === true;
+      },
+
+      enhanceIssueWithLocationAddsFields: () => {
+        const originalComparison = lastPreviewComparison;
+        
+        lastPreviewComparison = {
+          available: true,
+          issueLocations: {
+            orphanUserRefs: { inPreview: false, inExport: true },
+            orphanNavLinks: { inPreview: false, inExport: true },
+            displayQuality: { inPreview: false, inExport: false },
+            anchorMismatch: { inPreview: false, inExport: true },
+          },
+        };
+        
+        const testIssue = {
+          id: 1,
+          type: "crossref_orphan_refs",
+          severity: "error",
+          message: "Test issue",
+        };
+        
+        const enhanced = enhanceIssueWithLocation(testIssue);
+        
+        lastPreviewComparison = originalComparison;
+        
+        return enhanced.worksInPreview === true &&
+               enhanced.worksInExport === false &&
+               enhanced.issueLocation === "EXPORT ONLY" &&
+               enhanced.locationGuidance !== null;
+      },
+
+      enhanceIssueWithLocationHandlesMissingComparison: () => {
+        const originalComparison = lastPreviewComparison;
+        lastPreviewComparison = null;
+        
+        const testIssue = {
+          id: 1,
+          type: "crossref_orphan_refs",
+          severity: "error",
+          message: "Test issue",
+        };
+        
+        const enhanced = enhanceIssueWithLocation(testIssue);
+        
+        lastPreviewComparison = originalComparison;
+        
+        return enhanced.worksInPreview === null &&
+               enhanced.worksInExport === null &&
+               enhanced.issueLocation === null;
+      },
+
+      enhanceIssueWithLocationHandlesUnknownType: () => {
+        const originalComparison = lastPreviewComparison;
+        
+        lastPreviewComparison = {
+          available: true,
+          issueLocations: {
+            orphanUserRefs: { inPreview: false, inExport: true },
+          },
+        };
+        
+        const testIssue = {
+          id: 1,
+          type: "unknown_issue_type",
+          severity: "warning",
+          message: "Test issue",
+        };
+        
+        const enhanced = enhanceIssueWithLocation(testIssue);
+        
+        lastPreviewComparison = originalComparison;
+        
+        // Unknown types should have null location data
+        return enhanced.worksInPreview === null &&
+               enhanced.issueLocation === null;
+      },
+
+      clearInventoryClearsPreviewSnapshot: () => {
+        // Store original state
+        const originalInventory = sourceInventory;
+        const originalCrossRefs = sourceCrossReferences;
+        const originalResult = lastVerificationResult;
+        const originalSnapshot = previewSnapshot;
+        
+        // Set some dummy values
+        previewSnapshot = { test: true };
+        
+        // Clear everything
+        clearInventory();
+        
+        // Check preview was cleared
+        const wasCleared = previewSnapshot === null;
+        
+        // Restore original state
+        sourceInventory = originalInventory;
+        sourceCrossReferences = originalCrossRefs;
+        lastVerificationResult = originalResult;
+        previewSnapshot = originalSnapshot;
+        
+        return wasCleared;
       },
     };
 
@@ -3119,6 +4634,12 @@ return {
     extractSourceCrossReferences,
     analyseCrossReferencesInExport,
     compareCrossReferences,
+    
+    // Preview comparison functions
+    capturePreviewState,
+    getPreviewSnapshot,
+    comparePreviewToExportCrossRefs,
+    comparePreviewToExportMath,
     
     // Status and utility
     getVerificationStatus,
@@ -3181,14 +4702,37 @@ window.LatexExportVerifier = LatexExportVerifier;
   window.analyseMathJaxConfig = function(html) {
     return LatexExportVerifier.analyseMathJaxConfig(html);
   };
+  
+  // Preview comparison functions
+  window.capturePreviewState = function() {
+    return LatexExportVerifier.capturePreviewState();
+  };
+  
+  window.getPreviewSnapshot = function() {
+    return LatexExportVerifier.getPreviewSnapshot();
+  };
+  
+  window.comparePreviewToExport = function() {
+    // Convenience function that gets export cross-refs and compares
+    const html = window.__lastExportHTML || window.lastGeneratedHTML;
+    if (!html) {
+      console.warn("⚠️ No export HTML available. Export a document first.");
+      return null;
+    }
+    const exportCrossRefs = LatexExportVerifier.analyseCrossReferencesInExport(html);
+    return LatexExportVerifier.comparePreviewToExportCrossRefs(exportCrossRefs);
+  };
 })();
 
 console.log(
-  "✅ LatexExportVerifier v1.1 loaded - Use verifyLatexExport() after exporting to check LaTeX rendering"
+  "✅ LatexExportVerifier v1.3 loaded - Use verifyLatexExport() after exporting to check LaTeX rendering"
 );
 console.log(
   "   Available commands: testLatexExportVerifier(), captureLatexInventory(), verifyLatexExport(), downloadLatexDiagnostics()"
 );
 console.log(
-  "   Checks: expression count, sequence, anchors, types, content fidelity, a11y modules, MathJax config, custom macros"
+  "   Preview comparison: capturePreviewState(), comparePreviewToExport(), getPreviewSnapshot()"
+);
+console.log(
+  "   Checks: expression count, sequence, anchors, types, content fidelity, a11y modules, MathJax config, cross-refs, preview vs export"
 );

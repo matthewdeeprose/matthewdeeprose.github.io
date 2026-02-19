@@ -3120,3 +3120,308 @@ a[data-reference-type="ref"]:focus-visible {
 #investigation-details {
   display: none;
 }
+
+/* ===== IMAGE & FIGURE STYLING - OUTPUT PANEL ===== */
+
+/* Responsive images - constrain to container */
+#output img,
+.output-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin-inline: auto;
+  border-radius: 4px;
+	border: 1px solid var(--heading-color);
+}
+
+/* Figure elements from Pandoc conversion */
+#output figure,
+.output-content figure {
+  margin: 1.5rem 0;
+  padding: 0;
+  text-align: center;
+  max-width: 100%;
+}
+
+/* Figcaptions - styled accessibly */
+#output figcaption,
+.output-content figcaption {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  line-height: 1.5;
+  text-align: center;
+}
+/* Image long descriptions - accessible progressive disclosure */
+#output .image-long-description,
+.output-content .image-long-description {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+#output .long-description-details,
+.output-content .long-description-details {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.5rem;
+  background: var(--surface-color);
+}
+
+#output .long-description-details summary,
+.output-content .long-description-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.25rem 0;
+  color: var(--heading-color);
+}
+
+#output .long-description-details summary:focus-visible,
+.output-content .long-description-details summary:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 2px;
+}
+
+#output .long-description-details p,
+.output-content .long-description-details p {
+  margin-top: 0.5rem;
+  line-height: 1.6;
+}
+/* Dark mode image adjustments */
+[data-theme="dark"] #output img,
+[data-theme="dark"] .output-content img {
+  opacity: 0.92;
+  transition: opacity 0.2s ease;
+}
+
+[data-theme="dark"] #output img:hover,
+[data-theme="dark"] .output-content img:hover {
+  opacity: 1;
+}
+
+[data-theme="dark"] #output figcaption,
+[data-theme="dark"] .output-content figcaption {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] #output .long-description-details,
+[data-theme="dark"] .output-content .long-description-details {
+  border-color: var(--link-hover);
+
+}
+/* High contrast support for images */
+@media (prefers-contrast: high) {
+  #output figure,
+  .output-content figure {
+    border: 2px solid var(--body-text);
+    padding: 0.5rem;
+  }
+
+  #output figcaption,
+  .output-content figcaption {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--body-text);
+  }
+
+  #output .long-description-details,
+  .output-content .long-description-details {
+    border-width: 2px;
+    border-color: var(--border-color);
+  }
+}
+
+/* Print - ensure images don't break across pages */
+@media print {
+  #output figure,
+  .output-content figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #output img,
+  .output-content img {
+    max-width: 100%;
+    max-height: 80vh;
+  }
+
+  #output .long-description-details,
+  .output-content .long-description-details {
+    border: 1px solid var(--border-color);
+  }
+}
+
+/* Reduced motion - disable image hover transitions */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="dark"] #output img,
+  [data-theme="dark"] .output-content img {
+    transition: none;
+  }
+}
+
+/* ===== TABLE STYLING - OUTPUT PANEL ===== */
+
+/* Scrollable wrapper - prevents table overflow breaking layout */
+#output .table-wrapper,
+.output-content .table-wrapper {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Unwrapped tables also need overflow protection */
+#output > table,
+.output-content > table,
+#output > div > table,
+.output-content > div > table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Base table styling */
+#output table,
+.output-content table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  border-radius: 4px;
+}
+
+/* Table caption - WCAG accessible */
+#output caption,
+.output-content caption {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--heading-color);
+  text-align: left;
+  padding: 0.75rem 0.75rem 0.5rem;
+  caption-side: top;
+}
+
+/* Header cells */
+#output th,
+.output-content th {
+  background-color: var(--surface-color);
+  color: var(--body-text);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 2px solid var(--heading-color);
+  border-right: 1px solid var(--heading-color);
+  white-space: nowrap;
+}
+
+#output th:last-child,
+.output-content th:last-child {
+  border-right: none;
+}
+
+/* Body cells */
+#output td,
+.output-content td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--heading-color);
+  border-right: 1px solid var(--heading-color);
+  vertical-align: top;
+}
+
+#output td:last-child,
+.output-content td:last-child {
+  border-right: none;
+}
+
+/* Zebra striping for readability */
+#output tbody tr:nth-child(even),
+.output-content tbody tr:nth-child(even) {
+  background-color: var(--surface-color);
+}
+
+/* Row hover for tracking */
+#output tbody tr:hover,
+.output-content tbody tr:hover {
+  background-color: var(--focus-bg);
+}
+
+/* Dark mode tables */
+[data-theme="dark"] #output th,
+[data-theme="dark"] .output-content th {
+  background-color: var(--surface-color);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] #output tbody tr:nth-child(even),
+[data-theme="dark"] .output-content tbody tr:nth-child(even) {
+  background-color: rgba(179, 219, 210, 0.04);
+}
+
+[data-theme="dark"] #output tbody tr:hover,
+[data-theme="dark"] .output-content tbody tr:hover {
+  background-color: var(--focus-bg);
+}
+
+/* High contrast tables */
+@media (prefers-contrast: high) {
+  #output table,
+  .output-content table {
+    border-width: 2px;
+    border-color: var(--body-text);
+  }
+
+  #output th,
+  .output-content th {
+    border-bottom-width: 3px;
+    border-color: var(--body-text);
+  }
+
+  #output td,
+  .output-content td {
+    border-color: var(--body-text);
+  }
+}
+
+/* Responsive: card layout on narrow viewports */
+@media screen and (max-width: 600px) {
+  #output table,
+  .output-content table {
+    font-size: 0.875rem;
+  }
+
+  #output th,
+  #output td,
+  .output-content th,
+  .output-content td {
+    padding: 0.375rem 0.5rem;
+  }
+}
+
+/* Print tables */
+@media print {
+  #output table,
+  .output-content table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #output tbody tr:nth-child(even),
+  .output-content tbody tr:nth-child(even) {
+    background-color: #f5f5f5;
+  }
+
+  #output tbody tr:hover,
+  .output-content tbody tr:hover {
+    background-color: transparent;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  #output tbody tr,
+  .output-content tbody tr {
+    transition: none;
+  }
+}

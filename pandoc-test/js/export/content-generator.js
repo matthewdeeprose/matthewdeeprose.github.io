@@ -393,7 +393,7 @@ const ContentGenerator = (function () {
     }
   }
 
-  /**
+/**
    * Generate accessibility support CSS for screen reader and assistive technology compatibility.
    * Delegates to: CSSLoader
    * Template: css/accessibility/accessibility-support.css
@@ -413,6 +413,31 @@ const ContentGenerator = (function () {
       return css;
     } catch (error) {
       logError("[ContentGen] Failed to load accessibility support CSS:", error);
+      return "";
+    }
+  }
+
+  /**
+   * Generate image long description CSS for accessible progressive disclosure.
+   * Delegates to: CSSLoader
+   * Template: css/accessibility/image-descriptions.css
+   * Provides styling for @longdesc annotation elements injected by ImageAssetManager
+   * @returns {Promise<string>} Image description CSS or empty string on error
+   */
+  async function generateImageDescriptionCSS() {
+    if (!window.CSSLoader) {
+      logError("[ContentGen] CSSLoader module not available");
+      return "";
+    }
+
+    try {
+      logDebug("Delegating image description CSS to CSSLoader");
+      const css = await window.CSSLoader.loadCSSFile(
+        "css/accessibility/image-descriptions.css"
+      );
+      return css;
+    } catch (error) {
+      logError("[ContentGen] Failed to load image description CSS:", error);
       return "";
     }
   }
@@ -534,10 +559,16 @@ const ContentGenerator = (function () {
         logDebug("generateAccessibilityControlsCSS not available or failed");
       }
 
-      try {
+try {
         cssComponents.push(await generateMathematicalContentCSS());
       } catch (e) {
         logDebug("generateMathematicalContentCSS not available or failed");
+      }
+
+      try {
+        cssComponents.push(await generateImageDescriptionCSS());
+      } catch (e) {
+        logDebug("generateImageDescriptionCSS not available or failed");
       }
 
       // === TABLE CSS ===
@@ -1079,7 +1110,8 @@ const ContentGenerator = (function () {
     generateEnhancedCSS, // Main CSS orchestrator - loads all CSS
     generateDistractionFreeCSS, // Distraction-free mode CSS
     minifyCSS, // CSS minification utility
-    generateResponsiveImageCSS, // Responsive image CSS
+generateResponsiveImageCSS, // Responsive image CSS
+    generateImageDescriptionCSS, // Image long description CSS
 
     // Table-specific CSS
     generateTableCSS, // Table CSS orchestrator - loads all table CSS

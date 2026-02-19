@@ -1153,6 +1153,39 @@
                   Save
                 </button>
                 <button
+                  id="uploadImagesButton"
+                  class="panel-clear-btn"
+                  onclick="triggerImageUpload()"
+                  aria-label="Upload images referenced in LaTeX document"
+                  title="Upload image files referenced by \\includegraphics commands in your LaTeX"
+                >
+                  <svg
+                    height="21"
+                    viewBox="0 0 21 21"
+                    width="21"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                    class="upload-images-icon"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(3 3)"
+                    >
+                      <path
+                        d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"
+                      />
+                      <circle cx="4.5" cy="4.5" r="1.5" />
+                      <path d="m14.5 10.5-3-3-6 6" />
+                    </g>
+                  </svg>
+
+                  Upload Images
+                </button>
+                <button
                   id="clearInputButton"
                   class="panel-clear-btn"
                   onclick="clearInputOptimized()"
@@ -1225,6 +1258,15 @@
                 type="file"
                 id="fileLoadInput"
                 accept=".tex,.txt"
+                style="display: none"
+                aria-hidden="true"
+              />
+              <!-- Hidden file input for uploading images referenced in LaTeX -->
+              <input
+                type="file"
+                id="imageUploadInput"
+                accept="image/*"
+                multiple
                 style="display: none"
                 aria-hidden="true"
               />
@@ -2853,6 +2895,311 @@
     <script src="./js/export/body-generator.js"></script>
     <script src="./js/export/footer-generator.js"></script>
     <script src="./js/export/base64-handler.js"></script>
+    <script src="./js/export/image-asset-manager.js"></script>
+    <!-- Image Asset Integration - Preview hook and upload coordination -->
+    <script>
+      (function () {
+        "use strict";
+
+        // =====================================================================
+        // IMAGE UPLOAD COORDINATION
+        // =====================================================================
+
+        /**
+         * Check LaTeX input for image references and notify user of missing ones
+         * Called after conversion or when content changes significantly
+         */
+        function checkForMissingImages() {
+          if (!window.ImageAssetManager) return;
+
+          // Get current LaTeX content
+          const contentEditable = document.getElementById(
+            "input-contenteditable"
+          );
+          const textarea = document.getElementById("input");
+          const latex = contentEditable?.textContent || textarea?.value || "";
+
+          if (!latex.trim()) return;
+
+          const missing = window.ImageAssetManager.getMissingImages(latex);
+
+          if (missing.length === 0) return;
+
+          const filenames = missing.map((m) => m.filename);
+          const message =
+            missing.length === 1
+              ? `Image referenced in LaTeX not found: "${filenames[0]}". Upload it to display in preview and exports.`
+              : `${missing.length} images referenced in LaTeX not found: ${filenames.join(", ")}. Upload them to display in preview and exports.`;
+
+          // Show notification with upload action
+          if (
+            window.UniversalNotifications &&
+            typeof window.UniversalNotifications.warning === "function"
+          ) {
+            window.UniversalNotifications.warning(message, {
+              duration: 10000,
+            });
+          } else {
+            logWarn("[IMAGE-INTEGRATION] " + message);
+          }
+
+          // Announce to screen readers
+          if (window.AppConfig?.announceToScreenReader) {
+            window.AppConfig.announceToScreenReader(
+              `${missing.length} image${missing.length > 1 ? "s" : ""} referenced in LaTeX need to be uploaded.`
+            );
+          }
+        }
+
+        /**
+         * Handle image file upload from the hidden input
+         * Matches uploaded files to LaTeX references and registers them
+         */
+        async function handleImageUpload(event) {
+          if (!window.ImageAssetManager) return;
+
+          const files = Array.from(event.target.files);
+          if (files.length === 0) return;
+
+          // Get current LaTeX content for reference matching
+          const contentEditable = document.getElementById(
+            "input-contenteditable"
+          );
+          const textarea = document.getElementById("input");
+          const latex = contentEditable?.textContent || textarea?.value || "";
+
+          const references =
+            window.ImageAssetManager.detectImageReferences(latex);
+
+          let uploadedCount = 0;
+          let unmatchedFiles = [];
+
+          for (const file of files) {
+            // Try to match uploaded file to a LaTeX reference
+            const matchedRef = findMatchingRef(file.name, references);
+
+            if (matchedRef) {
+              try {
+                await window.ImageAssetManager.registerImage(
+                  matchedRef.filename,
+                  file
+                );
+                uploadedCount++;
+              } catch (error) {
+                logError(
+                  "[IMAGE-INTEGRATION] Failed to register: " + file.name,
+                  error
+                );
+              }
+            } else {
+              unmatchedFiles.push(file.name);
+            }
+          }
+
+          // Notify user of results
+          if (uploadedCount > 0) {
+            if (window.UniversalNotifications) {
+              window.UniversalNotifications.success(
+                `${uploadedCount} image${uploadedCount > 1 ? "s" : ""} uploaded and linked to LaTeX references.`
+              );
+            }
+
+            // Replace images in current preview
+            const outputDiv = document.getElementById("output");
+            if (outputDiv) {
+              window.ImageAssetManager.replaceImagesForPreview(outputDiv);
+            }
+
+            // Announce to screen readers
+            if (window.AppConfig?.announceToScreenReader) {
+              window.AppConfig.announceToScreenReader(
+                `${uploadedCount} image${uploadedCount > 1 ? "s" : ""} uploaded successfully and now visible in preview.`
+              );
+            }
+          }
+
+          if (unmatchedFiles.length > 0) {
+            if (window.UniversalNotifications) {
+              window.UniversalNotifications.warning(
+                `${unmatchedFiles.length} file(s) did not match any LaTeX image reference: ${unmatchedFiles.join(", ")}`
+              );
+            }
+          }
+
+          // Reset file input so the same files can be re-uploaded if needed
+          event.target.value = "";
+        }
+
+        /**
+         * Match an uploaded filename to a LaTeX reference
+         */
+        function findMatchingRef(uploadedName, references) {
+          const uploadedBasename = uploadedName.split("/").pop().toLowerCase();
+
+          // Exact match
+          const exact = references.find(
+            (ref) =>
+              ref.filename.toLowerCase() === uploadedName.toLowerCase()
+          );
+          if (exact) return exact;
+
+          // Basename match (handles "images/yoda.jpg" matching upload of "yoda.jpg")
+          const basename = references.find(
+            (ref) =>
+              ref.filename.split("/").pop().toLowerCase() ===
+              uploadedBasename
+          );
+          if (basename) return basename;
+
+          return null;
+        }
+
+        /**
+         * Trigger the image upload dialog
+         * Can be called from a button or programmatically
+         */
+        function triggerImageUpload() {
+          const input = document.getElementById("imageUploadInput");
+          if (input) {
+            input.click();
+          }
+        }
+
+        // =====================================================================
+        // PREVIEW HOOK — Replace images after conversion renders output
+        // =====================================================================
+
+        /**
+         * MutationObserver on the output div to replace image src
+         * after Pandoc conversion places HTML in the output area.
+         * Non-invasive — does not modify any conversion pipeline files.
+         */
+        function setupPreviewImageHook() {
+          const outputDiv = document.getElementById("output");
+          if (!outputDiv) {
+            logWarn(
+              "[IMAGE-INTEGRATION] Output div not found — preview hook not set up"
+            );
+            return;
+          }
+
+          const observer = new MutationObserver(function (mutations) {
+            if (!window.ImageAssetManager) return;
+            if (window.ImageAssetManager.getImageCount() === 0) return;
+
+            // Check if any mutations added img elements
+            let hasNewImages = false;
+            for (const mutation of mutations) {
+              if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+                for (const node of mutation.addedNodes) {
+                  if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (
+                      node.tagName === "IMG" ||
+                      node.querySelector?.("img")
+                    ) {
+                      hasNewImages = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              if (hasNewImages) break;
+            }
+
+            if (hasNewImages) {
+              // Small delay to allow MathJax and other post-processing to complete
+              setTimeout(function () {
+                const count =
+                  window.ImageAssetManager.replaceImagesForPreview(
+                    outputDiv
+                  );
+                if (count > 0) {
+                  logInfo(
+                    "[IMAGE-INTEGRATION] Replaced " +
+                      count +
+                      " image(s) in preview after conversion"
+                  );
+                }
+              }, 100);
+            }
+          });
+
+          observer.observe(outputDiv, {
+            childList: true,
+            subtree: true,
+          });
+
+          logInfo(
+            "[IMAGE-INTEGRATION] Preview image hook set up via MutationObserver"
+          );
+        }
+
+        // =====================================================================
+        // MISSING IMAGE DETECTION — Check after each conversion
+        // =====================================================================
+
+        /**
+         * Hook into conversion completion to check for missing images.
+         * Listens for the output div content changing and checks after a delay.
+         */
+        function setupMissingImageDetection() {
+          const outputDiv = document.getElementById("output");
+          if (!outputDiv) return;
+
+          let debounceTimer = null;
+
+          const observer = new MutationObserver(function () {
+            // Debounce: only check after output has settled (500ms)
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+              checkForMissingImages();
+            }, 500);
+          });
+
+          observer.observe(outputDiv, {
+            childList: true,
+          });
+
+          logInfo(
+            "[IMAGE-INTEGRATION] Missing image detection hook set up"
+          );
+        }
+
+        // =====================================================================
+        // INITIALISATION
+        // =====================================================================
+
+        function initialiseImageIntegration() {
+          // Set up file input handler
+          const imageInput = document.getElementById("imageUploadInput");
+          if (imageInput) {
+            imageInput.onchange = handleImageUpload;
+          }
+
+          // Set up preview hook
+          setupPreviewImageHook();
+
+          // Set up missing image detection
+          setupMissingImageDetection();
+
+          logInfo("[IMAGE-INTEGRATION] Image integration initialised");
+        }
+
+        // Make functions globally available
+        window.triggerImageUpload = triggerImageUpload;
+        window.checkForMissingImages = checkForMissingImages;
+
+        // Initialise when DOM is ready
+        if (document.readyState === "loading") {
+          document.addEventListener(
+            "DOMContentLoaded",
+            initialiseImageIntegration
+          );
+        } else {
+          initialiseImageIntegration();
+        }
+      })();
+    </script>
 
     <script src="js/export/export-manager.js"></script>
     <script src="./js/export/scorm-export-manager.js"></script>
@@ -2974,6 +3321,10 @@
     <script src="./js/testing/individual/test-template-generator.js"></script>
     <script src="./js/testing/individual/test-cross-ref-anchors.js"></script>
     <script src="./js/testing/individual/chunked-anchor-diagnostic.js"></script>
+
+    <!-- Image Tests -->
+    <script src="./js/testing/individual/test-image-asset-poc.js"></script>
+    <script src="./js/testing/individual/test-image-asset-manager.js"></script>
 
     <!-- JS Migration testing -->
     <script src="./js/testing/migration/test-initialization-js-migration.js"></script>
