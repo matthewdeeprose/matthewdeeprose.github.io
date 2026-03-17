@@ -20,41 +20,76 @@
  */
 
 export const defaultColors = [
-    // Base Colors
-    // White is essential for high-contrast combinations
-    { "colourHex": "#FFFFFF", "name": "White" },
-    
-    // Black Variants
-    // Multiple black options provide flexibility for different contrast needs
-    { "colourHex": "#231F20", "name": "Plain Black" },
-    { "colourHex": "#00131D", "name": "Rich Black" },
-    
-    // Neutral Gray Scale
-    // Neutral colors are crucial for creating hierarchy without being distracting
-    { "colourHex": "#495961", "name": "Neutral 1" },  // Darkest neutral
-    { "colourHex": "#758D9A", "name": "Neutral 2" },
-    { "colourHex": "#9FB1BD", "name": "Neutral 3" },
-    { "colourHex": "#E1E8EC", "name": "Neutral 4" },  // Lightest neutral
-    
-    // Marine Color Family
-    // Cool blues and teals for primary brand elements
-    { "colourHex": "#002E3B", "name": "Prussian" },   // Dark blue base
-    { "colourHex": "#005C84", "name": "Marine 1" },
-    { "colourHex": "#74C9E5", "name": "Marine 2" },
-    { "colourHex": "#3CBAC6", "name": "Marine 3" },
-    { "colourHex": "#B3DBD2", "name": "Marine 4" },
-    { "colourHex": "#4BB694", "name": "Marine 5" },
-    { "colourHex": "#1E8765", "name": "Shamrock" },
-    { "colourHex": "#C1D100", "name": "Marine 6" },   // Accent color
-    
-    // Horizon Color Family
-    // Warm accent colors for highlighting and emphasis
-    { "colourHex": "#FCBC00", "name": "Horizon 1" },  // Gold
-    { "colourHex": "#EF7D00", "name": "Horizon 2" },  // Orange
-    { "colourHex": "#E73037", "name": "Horizon 3" },  // Red
-    { "colourHex": "#E73238", "name": "Coral" },      // Bright red
-    { "colourHex": "#D5007F", "name": "Horizon 4" },  // Magenta
-    { "colourHex": "#8D3970", "name": "Horizon 5" }   // Purple
+    // Core Colours
+    // The foundation of the University of Southampton brand
+    { "colourHex": "#fafafa", "name": "White" },
+    { "colourHex": "#002f4c", "name": "Marine Blue" },
+    { "colourHex": "#005c84", "name": "University Blue" },
+
+    // Wider Blues
+    // Extended blue palette for flexibility across the brand
+    { "colourHex": "#003784", "name": "Midnight Blue" },
+    { "colourHex": "#0265ca", "name": "Vibrant Blue" },
+    { "colourHex": "#68b9e8", "name": "Mid Blue" },
+    { "colourHex": "#91dcf4", "name": "Sky Blue" },
+    { "colourHex": "#cbebfd", "name": "Light Blue" },
+    { "colourHex": "#00ddff", "name": "Digital Blue" },
+
+    // Neutral Palette - Black
+    { "colourHex": "#111111", "name": "Black" },
+
+    // Warm Neutrals
+    // Warm tones for softening layouts and creating hierarchy
+    { "colourHex": "#3e3836", "name": "Warm Neutral 01" },  // Darkest
+    { "colourHex": "#706b69", "name": "Warm Neutral 02" },
+    { "colourHex": "#b3a59d", "name": "Warm Neutral 03" },
+    { "colourHex": "#d1c6c0", "name": "Warm Neutral 04" },
+    { "colourHex": "#ece6e1", "name": "Warm Neutral 05" },
+    { "colourHex": "#fbf9f7", "name": "Warm Neutral 06" },  // Lightest
+
+    // Cool Neutrals
+    // Cool tones complementing the blue brand palette
+    { "colourHex": "#495961", "name": "Cool Neutral 01" },  // Darkest
+    { "colourHex": "#758d9a", "name": "Cool Neutral 02" },
+    { "colourHex": "#9eb1bd", "name": "Cool Neutral 03" },
+    { "colourHex": "#e1e8ec", "name": "Cool Neutral 04" },
+    { "colourHex": "#f5f5f5", "name": "Cool Neutral 05" },  // Lightest
+
+    // Marine Colour Family
+    // Inspired by the ocean and marine landscapes of Southampton
+    { "colourHex": "#00403e", "name": "Marine 01" },   // Darkest
+    { "colourHex": "#0c838c", "name": "Marine 02" },
+    { "colourHex": "#00b0b3", "name": "Marine 03" },
+    { "colourHex": "#83dbd2", "name": "Marine 04" },
+    { "colourHex": "#c9f7f0", "name": "Marine 05" },   // Lightest
+    { "colourHex": "#00ffae", "name": "Digital Marine" },
+
+    // Forest Colour Family
+    // Inspired by the verdant green surroundings of campus
+    { "colourHex": "#01530d", "name": "Forest 01" },   // Darkest
+    { "colourHex": "#0c8c41", "name": "Forest 02" },
+    { "colourHex": "#8bd100", "name": "Forest 03" },
+    { "colourHex": "#83db8c", "name": "Forest 04" },
+    { "colourHex": "#d4f7c9", "name": "Forest 05" },   // Lightest
+    { "colourHex": "#cfff00", "name": "Digital Forest" },
+
+    // Horizon Colour Family
+    // Warmth and energy inspired by the sun
+    { "colourHex": "#5a0202", "name": "Horizon 01" },  // Darkest
+    { "colourHex": "#e63037", "name": "Horizon 02" },
+    { "colourHex": "#ef7d00", "name": "Horizon 03" },
+    { "colourHex": "#fcbc00", "name": "Horizon 04" },
+    { "colourHex": "#fff4dd", "name": "Horizon 05" },  // Lightest
+    { "colourHex": "#fbfc00", "name": "Digital Horizon" },
+
+    // Amethyst Colour Family
+    // Depth and vibrancy for the extended palette
+    { "colourHex": "#6c0370", "name": "Amethyst 01" },  // Darkest
+    { "colourHex": "#d500a0", "name": "Amethyst 02" },
+    { "colourHex": "#ea42cb", "name": "Amethyst 03" },
+    { "colourHex": "#db83d4", "name": "Amethyst 04" },
+    { "colourHex": "#ece1ec", "name": "Amethyst 05" },  // Lightest
+    { "colourHex": "#ff34d3", "name": "Digital Amethyst" }
 ];
 
 /**
