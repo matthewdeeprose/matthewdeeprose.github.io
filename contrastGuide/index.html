@@ -1,0 +1,2913 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Colour Contrast Guide – University of Southampton</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://matthewdeeprose.github.io/scripts/chroma.js"></script>
+    <style>
+      /* ===== CSS Custom Properties ===== */
+      :root {
+        --marine-blue: #002f4c;
+        --university-blue: #005c84;
+        --brand-white: #fafafa;
+        --midnight-blue: #003784;
+        --vibrant-blue: #0265ca;
+        --mid-blue: #68b9e8;
+        --sky-blue: #91dcf4;
+        --light-blue: #cbebfd;
+        --digital-blue: #00ddff;
+        --black: #111111;
+        --warm-neutral-01: #3e3836;
+        --warm-neutral-02: #706b69;
+        --warm-neutral-03: #b3a59d;
+        --warm-neutral-04: #d1c6c0;
+        --warm-neutral-05: #ece6e1;
+        --warm-neutral-06: #fbf9f7;
+        --cool-neutral-01: #495961;
+        --cool-neutral-02: #758d9a;
+        --cool-neutral-03: #9eb1bd;
+        --cool-neutral-04: #e1e8ec;
+        --cool-neutral-05: #f5f5f5;
+
+        --font-heading: "DM Serif Display", serif;
+        --font-body: "Inter", sans-serif;
+
+        --space-xs: 0.5rem;
+        --space-sm: 1rem;
+        --space-md: 1.5rem;
+        --space-lg: 2.5rem;
+        --space-xl: 4rem;
+        --space-xxl: 6rem;
+
+        --max-width: 52rem;
+        --max-width-wide: 72rem;
+      }
+
+      /* ===== Reset & Base ===== */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-body);
+        font-size: 1rem;
+        line-height: 1.65;
+        color: var(--black);
+        background-color: var(--brand-white);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ===== Typography ===== */
+      h1,
+      h2,
+      h3 {
+        font-family: var(--font-heading);
+        font-weight: 400;
+        line-height: 1.2;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 5vw, 3.2rem);
+        color: var(--marine-blue);
+      }
+
+      h2 {
+        font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+        color: var(--marine-blue);
+        margin-bottom: var(--space-md);
+      }
+
+      h3 {
+        font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+        color: var(--university-blue);
+        margin-bottom: var(--space-sm);
+      }
+
+      p {
+        max-width: 65ch;
+        margin-bottom: var(--space-sm);
+      }
+
+      a {
+        color: var(--vibrant-blue);
+        text-decoration: underline;
+        text-underline-offset: 0.15em;
+      }
+
+      a:hover {
+        color: var(--marine-blue);
+      }
+
+      /* ===== Universal Focus Indicator ===== */
+      a:focus-visible,
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible,
+      [tabindex]:focus-visible {
+        /* Ensure high-contrast mode still has an indicator */
+        outline: 2px transparent solid;
+        /* Thick white box-shadow with a thin dark blue indicator */
+        box-shadow:
+          0 0 0 2px white,
+          0 0 0 4px #002e3b,
+          0 0 4px 8px white;
+      }
+
+      strong {
+        font-weight: 600;
+      }
+
+      /* ===== Skip Link ===== */
+      .skip-link {
+        position: absolute;
+        top: -100%;
+        left: var(--space-sm);
+        background: var(--marine-blue);
+        color: var(--brand-white);
+        padding: var(--space-xs) var(--space-sm);
+        z-index: 100;
+        border-radius: 0 0 4px 4px;
+      }
+
+      .skip-link:focus-visible {
+        top: 0;
+        /* Ensure high-contrast mode still has an indicator */
+        outline: 2px transparent solid;
+        box-shadow:
+          0 0 0 2px white,
+          0 0 0 4px #002e3b,
+          0 0 4px 8px white;
+      }
+
+      /* ===== Layout ===== */
+      .container {
+        max-width: var(--max-width);
+        margin: 0 auto;
+        padding: 0 var(--space-md);
+      }
+
+      .container--wide {
+        max-width: var(--max-width-wide);
+      }
+
+      section {
+        padding: var(--space-xl) 0;
+      }
+
+      section + section {
+        border-top: 1px solid var(--cool-neutral-04);
+      }
+
+      /* ===== Hero ===== */
+      .hero {
+        background-color: var(--marine-blue);
+        color: var(--brand-white);
+        padding: var(--space-xxl) 0 var(--space-xl);
+      }
+
+      .hero h1 {
+        color: var(--brand-white);
+        margin-bottom: var(--space-md);
+      }
+
+      .hero p {
+        font-size: 1.125rem;
+        color: var(--light-blue);
+        max-width: 55ch;
+      }
+
+      .hero .lead {
+        color: var(--brand-white);
+        font-size: 1.25rem;
+        line-height: 1.5;
+      }
+
+      .hero-logo {
+        display: block;
+        width: clamp(200px, 40vw, 380px);
+        height: auto;
+        margin-bottom: var(--space-lg);
+      }
+
+      /* ===== Navigation ===== */
+      .toc {
+        background-color: var(--warm-neutral-06);
+        border: 1px solid var(--warm-neutral-04);
+        border-radius: 6px;
+        padding: var(--space-md);
+        margin: var(--space-lg) 0;
+      }
+
+      .toc h2 {
+        font-size: 1.3rem;
+        margin-bottom: var(--space-sm);
+      }
+
+      .toc ol {
+        padding-left: 1.5rem;
+      }
+
+      .toc li {
+        margin-bottom: var(--space-xs);
+      }
+
+      .toc a {
+        text-underline-offset: 4px;
+        font-weight: 500;
+      }
+
+      .toc a:hover {
+        text-decoration: underline;
+      }
+
+      /* ===== Callout Boxes ===== */
+      .callout {
+        border-left: 4px solid var(--university-blue);
+        background-color: var(--cool-neutral-05);
+        padding: var(--space-md);
+        margin: var(--space-md) 0;
+        border-radius: 0 6px 6px 0;
+      }
+
+      .callout p:last-child {
+        margin-bottom: 0;
+      }
+
+      .callout--tip {
+        border-left-color: #0c8c41;
+        background-color: #d4f7c9;
+      }
+
+      .callout--warning {
+        border-left-color: #ef7d00;
+        background-color: #fff4dd;
+      }
+
+      /* ===== Audience Tabs ===== */
+      .audience-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: var(--space-md);
+        flex-wrap: wrap;
+      }
+
+      .audience-tab {
+        font-family: var(--font-body);
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: var(--space-xs) var(--space-sm);
+        border: 2px solid var(--university-blue);
+        background: var(--brand-white);
+        color: var(--university-blue);
+        cursor: pointer;
+        border-radius: 4px;
+        transition:
+          background-color 0.15s,
+          color 0.15s;
+      }
+
+      .audience-tab:hover {
+        background-color: var(--light-blue);
+      }
+
+      .audience-tab[aria-pressed="true"] {
+        background-color: var(--university-blue);
+        color: var(--brand-white);
+      }
+
+      .audience-content {
+        display: none;
+      }
+
+      .audience-content.active {
+        display: block;
+      }
+
+      /* ===== Interactive Demo ===== */
+      .demo-contrast {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-md);
+        margin: var(--space-md) 0;
+      }
+
+      @media (max-width: 40rem) {
+        .demo-contrast {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .demo-card {
+        padding: var(--space-lg);
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .demo-card p {
+        margin: 0 auto var(--space-xs);
+        font-size: 1.125rem;
+        font-weight: 600;
+      }
+
+      .demo-ratio {
+        display: inline-block;
+        font-family: var(--font-body);
+        font-size: 0.875rem;
+        font-weight: 700;
+        padding: 0.2em 0.6em;
+        border-radius: 4px;
+        margin-top: var(--space-xs);
+      }
+
+      .badge-pass {
+        background-color: #01530d;
+        color: var(--brand-white);
+      }
+
+      .badge-fail {
+        background-color: #5a0202;
+        color: var(--brand-white);
+      }
+
+      .badge-large {
+        background-color: #ef7d00;
+        color: var(--black);
+      }
+
+      /* ===== Graphical Objects Demo ===== */
+      .icon-demo-row {
+        display: flex;
+        gap: var(--space-md);
+        justify-content: center;
+        align-items: center;
+        margin-bottom: var(--space-sm);
+      }
+
+      .icon-demo-row svg {
+        width: 36px;
+        height: 36px;
+      }
+
+      /* ===== Colour Picker ===== */
+      .colour-select-group {
+        margin: var(--space-md) 0;
+      }
+
+      .colour-select-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: var(--space-xs);
+      }
+
+      .colour-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .colour-swatch {
+        width: 44px;
+        height: 44px;
+        border: 2px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.1s;
+        font-size: 0;
+        padding: 0;
+        font-family: var(--font-body);
+      }
+
+      .colour-swatch:hover {
+        transform: scale(1.15);
+        z-index: 1;
+      }
+
+      .colour-swatch[aria-checked="true"] {
+        border-color: var(--black);
+        box-shadow:
+          0 0 0 3px var(--brand-white),
+          0 0 0 5px var(--vibrant-blue);
+      }
+
+      .colour-family-heading {
+        font-family: var(--font-body);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--warm-neutral-02);
+        margin-top: var(--space-sm);
+        margin-bottom: 4px;
+        width: 100%;
+      }
+
+      /* ===== Quick Lookup Layout ===== */
+      .lookup-layout {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+      }
+
+      @media (min-width: 48rem) {
+        .lookup-layout {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      /* ===== Pair Builder Layout ===== */
+      .pair-layout {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+      }
+
+      @media (min-width: 48rem) {
+        .pair-layout {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .pair-layout__result {
+          grid-column: 1 / -1;
+        }
+      }
+
+      /* ===== Results Area ===== */
+      .results-summary {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: var(--space-md) 0 var(--space-sm);
+        padding-bottom: var(--space-xs);
+        border-bottom: 2px solid var(--cool-neutral-04);
+      }
+
+      .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: var(--space-sm);
+        margin: var(--space-md) 0;
+      }
+
+      .result-card {
+        border-radius: 8px;
+        padding: var(--space-md);
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .result-card__text {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: var(--space-xs);
+      }
+
+      .result-card__heading {
+        font-family: var(--font-heading);
+        font-size: 1.4rem;
+        margin-bottom: var(--space-xs);
+      }
+
+      .result-card__meta {
+        font-size: 0.8rem;
+        display: flex;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .result-card__meta span {
+        display: inline-block;
+      }
+
+      /* ===== Level filter ===== */
+      .filter-group {
+        display: flex;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+        align-items: center;
+        margin: var(--space-sm) 0;
+      }
+
+      .filter-group__label {
+        font-weight: 600;
+        margin-right: var(--space-xs);
+      }
+
+      .filter-btn {
+        font-family: var(--font-body);
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 0.3em 0.8em;
+        border: 2px solid var(--cool-neutral-01);
+        border-radius: 4px;
+        background: var(--brand-white);
+        color: var(--cool-neutral-01);
+        cursor: pointer;
+      }
+
+      .filter-btn:hover {
+        background-color: var(--cool-neutral-04);
+      }
+
+      .filter-btn[aria-pressed="true"] {
+        background-color: var(--cool-neutral-01);
+        color: var(--brand-white);
+      }
+
+      /* ===== Component Preview ===== */
+      .preview-frame {
+        border: 1px solid var(--cool-neutral-04);
+        border-radius: 8px;
+        overflow: hidden;
+        margin: var(--space-md) 0;
+      }
+
+      .preview-bar {
+        background-color: var(--cool-neutral-04);
+        padding: var(--space-xs) var(--space-sm);
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--cool-neutral-01);
+      }
+
+      .preview-body {
+        padding: var(--space-lg);
+      }
+
+      .preview-body__heading {
+        font-family: var(--font-heading);
+        font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+        line-height: 1.2;
+        color: var(--university-blue);
+        margin-bottom: var(--space-sm);
+      }
+
+      .preview-body .btn-preview {
+        display: inline-block;
+        padding: 0.6em 1.4em;
+        border-radius: 4px;
+        font-weight: 600;
+        font-family: var(--font-body);
+        font-size: 0.95rem;
+        margin-top: var(--space-sm);
+        border: none;
+        cursor: default;
+      }
+
+      .preview-body .link-preview {
+        text-decoration: underline;
+        font-weight: 600;
+      }
+
+      .preview-body svg {
+        width: 1em;
+        height: 1em;
+        vertical-align: -0.125em;
+      }
+
+      /* ===== Matrix ===== */
+      .matrix-wrapper {
+        overflow-x: auto;
+        margin: var(--space-md) 0;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .matrix-table {
+        border-collapse: collapse;
+        font-size: 0.75rem;
+        min-width: 600px;
+      }
+
+      .matrix-table th,
+      .matrix-table td {
+        padding: 4px 6px;
+        text-align: center;
+        border: 1px solid var(--cool-neutral-04);
+        white-space: nowrap;
+      }
+
+      .matrix-table th {
+        background-color: var(--warm-neutral-06);
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+      }
+
+      .matrix-table th:first-child {
+        text-align: left;
+        position: sticky;
+        left: 0;
+        z-index: 2;
+      }
+
+      .matrix-table tbody th {
+        font-weight: 600;
+        text-align: left;
+        position: sticky;
+        left: 0;
+        background-color: var(--warm-neutral-06);
+        z-index: 1;
+      }
+
+      .matrix-swatch {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border: 1px solid var(--cool-neutral-03);
+        border-radius: 2px;
+        vertical-align: middle;
+        margin-right: 3px;
+      }
+
+      .matrix-cell {
+        min-width: 40px;
+        font-weight: 600;
+      }
+
+      .matrix-cell--aaa {
+        background-color: #66ccee;
+        color: var(--black);
+      }
+
+      .matrix-cell--aa {
+        background-color: #f0e442;
+        color: var(--black);
+      }
+
+      .matrix-cell--large {
+        background-color: #cc79a7;
+        color: var(--black);
+      }
+
+      .matrix-cell--fail {
+        background-color: var(--cool-neutral-05);
+        color: var(--warm-neutral-02);
+      }
+
+      .matrix-cell--self {
+        background-color: var(--warm-neutral-04);
+        color: var(--warm-neutral-02);
+      }
+
+      .matrix-cell__badge {
+        display: none;
+      }
+
+      /* ===== Matrix responsive card layout ===== */
+      @media (max-width: 48rem) {
+        .matrix-wrapper {
+          overflow-x: visible;
+        }
+
+        .matrix-table {
+          min-width: 0;
+          width: 100%;
+        }
+
+        .matrix-table thead {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+
+        .matrix-table tbody tr {
+          display: block;
+          margin-bottom: var(--space-md);
+          border: 1px solid var(--cool-neutral-04);
+          border-radius: 6px;
+          overflow: hidden;
+        }
+
+        .matrix-table tbody th {
+          display: block;
+          position: static;
+          padding: var(--space-xs) var(--space-sm);
+          font-size: 0.85rem;
+          text-align: left;
+          border: none;
+          border-bottom: 2px solid var(--cool-neutral-04);
+        }
+
+        .matrix-table tbody td {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          padding: 6px var(--space-sm);
+          border: none;
+          border-top: 1px solid var(--cool-neutral-04);
+          min-width: 0;
+          white-space: normal;
+          gap: 0.3em;
+        }
+
+        .matrix-table tbody td::before {
+          content: attr(data-label);
+          font-weight: 500;
+          font-size: 0.75rem;
+          margin-right: auto;
+        }
+
+        .matrix-table tbody td.matrix-cell--self {
+          display: none;
+        }
+
+        .matrix-cell__badge {
+          display: inline-block;
+          font-size: 0.7rem;
+          padding: 0.15em 0.5em;
+          border-radius: 3px;
+          margin-left: 0.4em;
+        }
+      }
+
+      /* ===== Family filter for matrix ===== */
+      .family-select {
+        font-family: var(--font-body);
+        font-size: 0.95rem;
+        padding: 0.4em 0.8em;
+        border: 2px solid var(--cool-neutral-01);
+        border-radius: 4px;
+        margin-bottom: var(--space-sm);
+        max-width: 280px;
+      }
+
+      /* ===== Gallery ===== */
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: var(--space-sm);
+        margin: var(--space-md) 0;
+      }
+
+      .gallery-card {
+        border-radius: 8px;
+        padding: var(--space-md);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+      }
+
+      .gallery-card__name {
+        font-family: var(--font-body);
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .gallery-card__sample {
+        font-size: 1.05rem;
+        line-height: 1.4;
+        margin: 0;
+      }
+
+      .gallery-card__sample-heading {
+        font-family: var(--font-heading);
+        font-size: 1.3rem;
+        line-height: 1.2;
+        margin: 0;
+      }
+
+      .gallery-card__meta {
+        display: flex;
+        gap: var(--space-xs);
+        flex-wrap: wrap;
+        align-items: center;
+        margin-top: auto;
+        padding-top: var(--space-xs);
+        font-size: 0.8rem;
+      }
+
+      .gallery-card__hex {
+        font-family: monospace;
+        font-size: 0.9rem;
+      }
+
+      /* ===== Copy Hex Button ===== */
+      .copy-hex-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3em;
+        font-family: monospace;
+        font-size: 0.85rem;
+        padding: 0.15em 0.4em;
+        border: 1px solid currentColor;
+        border-radius: 3px;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        transition: opacity 0.15s;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .copy-hex-btn:hover {
+        opacity: 0.75;
+      }
+
+      .copy-hex-btn svg {
+        width: 0.9em;
+        height: 0.9em;
+        flex-shrink: 0;
+      }
+
+      /* ===== WCAG Level Key ===== */
+      .level-key {
+        display: flex;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+        margin: var(--space-sm) 0;
+        list-style: none;
+        padding: 0;
+      }
+
+      .level-key__item {
+        display: flex;
+        align-items: center;
+        gap: 0.3em;
+        font-size: 0.85rem;
+      }
+
+      .level-key__swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+
+      /* ===== Footer ===== */
+      footer {
+        background-color: var(--marine-blue);
+        color: var(--light-blue);
+        padding: var(--space-lg) 0;
+        margin-top: var(--space-xl);
+        font-size: 0.9rem;
+      }
+
+      footer a {
+        color: var(--sky-blue);
+      }
+
+      /* ===== Visually Hidden ===== */
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* ===== Utility ===== */
+      .mt-sm {
+        margin-top: var(--space-sm);
+      }
+      .mt-md {
+        margin-top: var(--space-md);
+      }
+      .mt-lg {
+        margin-top: var(--space-lg);
+      }
+      .mb-0 {
+        margin-bottom: 0;
+      }
+
+      /* ===== Back to Top ===== */
+      .back-to-top {
+        position: fixed;
+        bottom: var(--space-md);
+        right: var(--space-md);
+        z-index: 50;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3em;
+        font-family: var(--font-body);
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 0.5em 1em;
+        border: 2px solid var(--marine-blue);
+        border-radius: 4px;
+        background-color: var(--marine-blue);
+        color: var(--brand-white);
+        cursor: pointer;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s, visibility 0.25s;
+      }
+
+      .back-to-top[data-visible="true"] {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .back-to-top:hover {
+        background-color: var(--university-blue);
+        border-color: var(--university-blue);
+      }
+
+      .back-to-top svg {
+        width: 1em;
+        height: 1em;
+        flex-shrink: 0;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .back-to-top {
+          transition: none;
+        }
+      }
+
+      @media print {
+        .back-to-top {
+          display: none;
+        }
+      }
+
+      /* ===== Print ===== */
+      @media print {
+        .hero {
+          background: var(--brand-white);
+          color: var(--black);
+        }
+        .hero h1,
+        .hero p,
+        .hero .lead {
+          color: var(--black);
+        }
+        .hero-logo .cls-1 {
+          fill: var(--marine-blue);
+        }
+        section {
+          page-break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <!-- ===== HERO ===== -->
+    <header class="hero">
+      <div class="container">
+        <svg
+          class="hero-logo"
+          role="img"
+          aria-label="University of Southampton"
+          focusable="false"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 1522 620"
+        >
+          <defs>
+            <style>
+              .cls-1 {
+                fill: #fafafa;
+              }
+            </style>
+          </defs>
+          <path
+            class="cls-1"
+            d="M510.22,258.63c0,13.88-11.37,23.92-27.2,23.92s-27.21-10-27.21-23.92V216.3h11.33v42.32c0,8.54,6.34,14.1,15.88,14.11s15.87-5.55,15.87-14.11V216.31h11.33Z"
+          />
+          <path
+            class="cls-1"
+            d="M546.71,233.56c8.48,0,15.88,5.53,15.88,17.45v30.25H552.15V251.74c0-6.11-3.66-8.91-8.44-8.9-4,0-9.22,1.94-13.55,5.58v32.84H519.72v-46.4h10.44v5.67a24.75,24.75,0,0,1,16.54-7Z"
+          />
+          <path
+            class="cls-1"
+            d="M584.45,222a6.23,6.23,0,1,1-6.23-6.13A6.18,6.18,0,0,1,584.45,222ZM573,281.26v-46.4h10.44v46.4Z"
+          />
+          <path
+            class="cls-1"
+            d="M618.56,281.26H607.41l-18.56-46.4h11.07L613,270.06l13-35.2h11.07Z"
+          />
+          <path
+            class="cls-1"
+            d="M683.48,258.5c0,.71,0,1.41-.07,2.12h-34c0,.28.06.55.1.82,1.07,7.35,5.82,12,12.74,12a32.37,32.37,0,0,0,14.72-4l2.51,6.82a29.92,29.92,0,0,1-17.92,6.31c-13.88,0-23-10.95-23-24.5s9.12-24.57,22.93-24.5C675.89,233.56,683.51,244.17,683.48,258.5Zm-33.81-5.22H672.9c-1-6.46-4.35-10.63-11.18-10.63C655.26,242.65,651,246.86,649.67,253.28Z"
+          />
+          <path
+            class="cls-1"
+            d="M721.32,233.54l-1.79,10.12a11.81,11.81,0,0,0-1.47,0A25.58,25.58,0,0,0,702,250v31.31H691.54v-46.4H702v6.38c5.38-5.09,12.17-7.74,18.09-7.74C720.5,233.5,720.91,233.51,721.32,233.54Z"
+          />
+          <path
+            class="cls-1"
+            d="M743.27,233.56c6.14,0,13.33,1.71,17.82,6.08l-4.36,6.81c-3-2.93-8.14-4.47-13.1-4.47s-8.39,1.71-8.47,5.38c-.1,2.8,1.88,3.84,9.68,5.84,7.59,2,17.79,4.2,17.83,14.7,0,10.73-10.75,14.66-20.07,14.66-7.47,0-15.13-2.54-19-7.35l4.37-6.83c2.84,3.81,8.7,5.8,14.27,5.81,5.78,0,10-2.27,10-6.13s-4.15-4.53-10.32-6.17c-11.75-3.07-17.14-5.82-17.12-13.91,0-10.62,9.2-14.42,18.42-14.42Z"
+          />
+          <path
+            class="cls-1"
+            d="M781.82,222a6.23,6.23,0,1,1-6.23-6.13A6.18,6.18,0,0,1,781.82,222Zm-11.45,59.23v-46.4h10.44v46.4Z"
+          />
+          <path
+            class="cls-1"
+            d="M821.59,279.38a24.38,24.38,0,0,1-11.69,3.17c-7.43,0-14.14-3.95-14.14-14.3V243.16h-9.07v-6.61l8.63-1.69h.44V222H806.2v12.89h13.13v8.3H806.2v24.33c0,4.67,2.88,6.14,6.44,6.13a21.77,21.77,0,0,0,6.61-1.27Z"
+          />
+          <path
+            class="cls-1"
+            d="M847.69,299.82h-9.6l7.41-18.73-20.44-46.24H836.4l14.08,33.68,13.32-33.68h10.93Z"
+          />
+          <path
+            class="cls-1"
+            d="M948.35,258.06c0,13.55-9.39,24.5-23.86,24.5s-23.86-10.95-23.86-24.5,9.49-24.59,23.86-24.5S948.35,244.51,948.35,258.06Zm-37,0c0,8.89,5.08,15.16,13.13,15.16s13.13-6.18,13.13-15.16-5-15.15-13.13-15.15S911.28,249.17,911.36,258.06Z"
+          />
+          <path
+            class="cls-1"
+            d="M971.44,232.25v2.61h13.18v8.3H971.44v38.1H961v-38.1h-9.07v-6.61l8.64-1.69H961v-2c0-12.64,7-18.39,16-18.36a30.36,30.36,0,0,1,13.89,3.77l-2.53,7.22a27,27,0,0,0-9.83-2.09C974.05,223.36,971.44,226.5,971.44,232.25Z"
+          />
+          <path
+            class="cls-1"
+            d="M532.77,312.64l-12.16,14.92c-6.31-5.06-15.27-8.75-26.31-8.76-10,0-16.89,3.12-17.36,12.07-.27,5.87,2.68,7.91,21.14,12.88,15.86,4.28,36.66,9.22,36.81,31.94.16,23.6-22.57,32.85-41.28,32.85-16.06,0-33.55-6.76-42.33-18l12.59-14.1c6.57,8.05,18.93,12.7,29.76,12.67,11.57,0,18.21-5.17,18.28-12.68.15-7.87-6.31-9.45-21-13.5-25.05-7-37-12.27-37-30.94,0-23.74,19.49-32.73,40.54-32.73C510.48,299.26,523.77,304.52,532.77,312.64Z"
+          />
+          <path
+            class="cls-1"
+            d="M622.48,368.91c0,21.92-15.77,39.63-40.06,39.63-24.13,0-40-17.71-40-39.63s15.92-39.78,40-39.63C606.71,329.28,622.48,347,622.48,368.91Zm-58.8,0c0,12.69,7.26,21.63,18.74,21.63s18.74-8.82,18.74-21.63-7.13-21.62-18.74-21.62S563.56,356.23,563.68,368.91Z"
+          />
+          <path
+            class="cls-1"
+            d="M703.13,406.44h-21v-9.08c-7.68,7.36-17.29,11.18-25.91,11.18-13.76,0-25.27-8.71-25.27-28.22V331.39h21v46.29c0,8.59,4.36,12.91,11.25,12.93,6.06,0,13.07-2.69,18.9-7.67V331.39h21Z"
+          />
+          <path
+            class="cls-1"
+            d="M768.75,403.41a47.68,47.68,0,0,1-20.7,5.11c-13,0-24.45-6.58-24.45-24.21V347.64H709.17V334.46l14-3.08h.46v-20.3h21v20.3h20.21v16.26H744.62v33.94c0,7.24,4.06,9.69,9.67,9.68a35.93,35.93,0,0,0,10.22-1.88Z"
+          />
+          <path
+            class="cls-1"
+            d="M824.09,329.3c13.83,0,25.7,8.84,25.7,28.2v48.94h-21v-46.3c0-9-5.49-12.94-12.61-12.92-5.9,0-12.92,2.77-18.87,7.72v51.5h-21V301.37h21v39.16c7.87-7.39,17.71-11.24,26.8-11.23Z"
+          />
+          <path
+            class="cls-1"
+            d="M935.11,406.44h-21v-8.05c-7.51,7.05-16.11,10.15-24.2,10.15-19.08,0-32.44-17.56-32.44-39.63s13.36-39.63,32.44-39.63c8.09,0,16.69,3.11,24.2,10.16v-8.05h21Zm-21-24.54v-26c-5.93-5.89-13.6-8.88-19.54-8.89-9.82,0-15.77,8.61-15.77,21.88s5.73,21.87,15.77,21.88C900.48,390.78,908.15,387.79,914.08,381.9Z"
+          />
+          <path
+            class="cls-1"
+            d="M1044,329.29c13.45,0,24.8,8.7,24.77,28.21v48.94h-21v-46.3c0-9.06-5.16-13-12-12.94-5.4,0-11.82,2.49-17.44,6.82.09,1.12.13,2.28.13,3.48v48.94h-21v-46.3c0-9-5.09-12.93-11.71-12.92-5.5,0-12,2.72-17.55,7.51v51.71h-21V331.39h21v9.09c7.56-7.37,17-11.2,25.66-11.2,8.9,0,16.93,3.91,21.26,12.35,8.43-8,19.12-12.35,28.89-12.35Z"
+          />
+          <path
+            class="cls-1"
+            d="M1126.52,329.29c19.58-.08,32.79,17.56,32.82,39.62,0,23.68-14.47,39.65-33,39.63-7.87,0-16.45-3.23-23.71-9.85v37.77h-21V331.39h21v8.16c7.17-6.77,15.75-10.27,23.93-10.27Zm11.55,39.62c0-12.83-5.78-21.87-15.77-21.87-6,0-13.62,2.93-19.71,9v25.35c6.16,6.12,13.39,9.65,19.68,9.59C1131.49,390.9,1138.11,383.1,1138.07,368.91Z"
+          />
+          <path
+            class="cls-1"
+            d="M1222.27,403.41a47.72,47.72,0,0,1-20.71,5.11c-13,0-24.45-6.58-24.45-24.21V347.64h-14.43V334.46l14-3.08h.46v-20.3h21v20.3h20.21v16.26h-20.21v33.94c0,7.24,4.06,9.69,9.67,9.68a36,36,0,0,0,10.22-1.88Z"
+          />
+          <path
+            class="cls-1"
+            d="M1304.6,368.91c0,21.92-15.76,39.63-40,39.63-24.13,0-40.06-17.71-40.06-39.63s15.93-39.78,40.06-39.63C1288.84,329.28,1304.6,347,1304.6,368.91Zm-58.79,0c0,12.69,7.25,21.63,18.74,21.63s18.74-8.82,18.74-21.63-7.14-21.62-18.74-21.62S1245.69,356.23,1245.81,368.91Z"
+          />
+          <path
+            class="cls-1"
+            d="M1360.56,329.29c13.78,0,25.72,8.85,25.72,28.21v48.94h-21v-46.3c0-8.95-5.27-12.92-12.16-12.92-5.78,0-13.13,2.78-19.31,7.78v51.44h-21V331.39h21v9.14c8-7.55,18-11.25,26.78-11.25Z"
+          />
+          <path
+            class="cls-1"
+            d="M179.88,193.43l2.93-.94a1.17,1.17,0,1,1,.72,2.22l-2.93.95a7.85,7.85,0,0,1,.09,1.19,7.2,7.2,0,0,1-.08,1.05l5,1.64a6.25,6.25,0,0,0,3.43-.26,7.23,7.23,0,1,0-4.48-13.74,6.13,6.13,0,0,0-2.92,1.8l-3.09,4.24A7.41,7.41,0,0,1,179.88,193.43Z"
+          />
+          <path
+            class="cls-1"
+            d="M183,183.14c.23-.09.47-.19.73-.27a10,10,0,0,1,4.69-.37,19.32,19.32,0,0,0-.84-5.65,19.44,19.44,0,0,0-5.64,1,10,10,0,0,1,1.09,4.54Q183,182.77,183,183.14Z"
+          />
+          <path
+            class="cls-1"
+            d="M162.22,182.87c.26.08.5.18.74.27q0-.37,0-.78a10,10,0,0,1,1.1-4.56,19.82,19.82,0,0,0-5.65-1,19.36,19.36,0,0,0-.82,5.65A10,10,0,0,1,162.22,182.87Z"
+          />
+          <path
+            class="cls-1"
+            d="M156.88,199.28a6.26,6.26,0,0,0,3.43.26l5-1.63a7.45,7.45,0,0,1-.08-1.06,7.85,7.85,0,0,1,.1-1.19l-2.93-.95a1.17,1.17,0,0,1,.72-2.22l2.92.94a7.77,7.77,0,0,1,1.3-1.86l-3.08-4.23a6.27,6.27,0,0,0-2.93-1.8,7.22,7.22,0,1,0-4.47,13.74Z"
+          />
+          <path
+            class="cls-1"
+            d="M169.63,189.91a7.83,7.83,0,0,1,2.17-.67v-3a1.18,1.18,0,0,1,2.35,0v3a7.53,7.53,0,0,1,2.17.68l3.08-4.23a6.08,6.08,0,0,0,.81-3.33,7.24,7.24,0,0,0-14.47,0,6.08,6.08,0,0,0,.81,3.33Z"
+          />
+          <path
+            class="cls-1"
+            d="M190,202l-.76.21c.16.19.33.4.49.62a10,10,0,0,1,1.79,4.33,19.29,19.29,0,0,0,5.13-2.55,19.23,19.23,0,0,0-2.67-5.05A10.06,10.06,0,0,1,190,202Z"
+          />
+          <path
+            class="cls-1"
+            d="M266.75,228.74V172.43c0-1.5-7.56-6.72-24.85-9.11s-22.25-7.52-22.25-7.52v60.6c2.92,2.39,3.43,2.09,23.38,4.4C263.62,223.18,266.75,228.74,266.75,228.74Z"
+          />
+          <path
+            class="cls-1"
+            d="M296.4,220.8c20-2.31,20.45-2,23.38-4.4V155.8s-5,5.13-22.26,7.52-24.84,7.61-24.84,9.11v56.31S275.81,223.18,296.4,220.8Z"
+          />
+          <path
+            class="cls-1"
+            d="M170.26,212.91a6.06,6.06,0,0,0,1.31-3.17v-5.32a7.54,7.54,0,0,1-2.1-.71l-1.85,2.53a1.14,1.14,0,0,1-.94.49,1.19,1.19,0,0,1-.69-.23,1.16,1.16,0,0,1-.26-1.63l1.84-2.53a7.76,7.76,0,0,1-1.35-1.77l-5.05,1.64a6,6,0,0,0-2.62,2.22,7.23,7.23,0,0,0,11.71,8.48Z"
+          />
+          <path
+            class="cls-1"
+            d="M173.41,214.56c-.16-.22-.3-.43-.43-.65-.14.22-.28.43-.44.65a10,10,0,0,1-3.58,3.05,19.37,19.37,0,0,0,4,4.08,20,20,0,0,0,4-4.09A10,10,0,0,1,173.41,214.56Z"
+          />
+          <path
+            class="cls-1"
+            d="M156.28,202.78c.16-.22.32-.43.48-.62L156,202a10,10,0,0,1-4-2.46,19.44,19.44,0,0,0-2.65,5.07,19.89,19.89,0,0,0,5.14,2.53A9.93,9.93,0,0,1,156.28,202.78Z"
+          />
+          <path
+            class="cls-1"
+            d="M184.78,202.21h0l-5-1.63a7.76,7.76,0,0,1-1.35,1.77l1.85,2.53a1.17,1.17,0,0,1-.26,1.63,1.19,1.19,0,0,1-.69.23,1.17,1.17,0,0,1-.95-.49l-1.85-2.53a7.88,7.88,0,0,1-2.1.71v5.32a6.06,6.06,0,0,0,1.31,3.17,7.23,7.23,0,0,0,11.71-8.48A6,6,0,0,0,184.78,202.21Z"
+          />
+          <path
+            class="cls-1"
+            d="M173,202.81a6,6,0,1,0-6-6A6,6,0,0,0,173,202.81Z"
+          />
+          <path
+            class="cls-1"
+            d="M378.22,202.21h0l-5-1.63a7.72,7.72,0,0,1-1.34,1.77l1.84,2.53a1.16,1.16,0,0,1-.26,1.63,1.19,1.19,0,0,1-.69.23,1.17,1.17,0,0,1-.95-.49l-1.84-2.53a7.88,7.88,0,0,1-2.1.71v5.32a6.06,6.06,0,0,0,1.31,3.17,7.23,7.23,0,0,0,11.71-8.48A6,6,0,0,0,378.22,202.21Z"
+          />
+          <path
+            class="cls-1"
+            d="M387.16,190.18a7.23,7.23,0,0,0-9.12-4.64,6.27,6.27,0,0,0-2.93,1.8L372,191.58a8,8,0,0,1,1.29,1.85l2.93-.94a1.17,1.17,0,0,1,.72,2.22l-2.94.95a7.85,7.85,0,0,1,.1,1.19,7.2,7.2,0,0,1-.08,1.05l5,1.64a6.22,6.22,0,0,0,3.42-.26A7.23,7.23,0,0,0,387.16,190.18Z"
+          />
+          <path
+            class="cls-1"
+            d="M363.7,212.91a6.16,6.16,0,0,0,1.31-3.17v-5.32a7.44,7.44,0,0,1-2.1-.71l-1.85,2.53a1.17,1.17,0,0,1-.95.49,1.19,1.19,0,0,1-.69-.23,1.17,1.17,0,0,1-.26-1.63l1.84-2.53a8.05,8.05,0,0,1-1.35-1.77l-5,1.64a6,6,0,0,0-2.62,2.22,7.23,7.23,0,0,0,11.71,8.48Z"
+          />
+          <path
+            class="cls-1"
+            d="M366.85,214.56c-.16-.22-.3-.43-.44-.65-.13.22-.27.43-.43.65a10.11,10.11,0,0,1-3.58,3.05,19.37,19.37,0,0,0,4,4.08,19.7,19.7,0,0,0,4-4.09A9.94,9.94,0,0,1,366.85,214.56Z"
+          />
+          <path
+            class="cls-1"
+            d="M400.25,160.9c-2.32-1.08-58-26.4-130.55-26.4s-128.18,25.3-130.53,26.37l-4.49,2V279.81c0,16.82,3.15,44.71,13.64,76.62,20.5,62.42,61.35,105.54,119.06,124.69a7.55,7.55,0,0,0,4.73,0c57.73-19.16,99.38-62.33,119.51-124.84,10.2-31.69,13.06-60.58,13.06-76.36v-117ZM207.38,168a1.39,1.39,0,0,1,1.6-1.36l3.14.47V161a1.38,1.38,0,0,1,.57-1.12,1.41,1.41,0,0,1,1.24-.2l2.71.89v-4.6a3,3,0,0,1,4.51-2.58c.47.27.91.55,1.37.84,2.07,1.33,4.65,3,11.7,4.67,2,.49,4.62.95,7.38,1.44a134.75,134.75,0,0,1,15,3.28c6,1.83,10.08,4.15,12.42,7.08a2.93,2.93,0,0,1,.65,1.84,3.05,3.05,0,0,1,.65-1.84c2.35-2.93,6.41-5.25,12.43-7.08a134.59,134.59,0,0,1,15-3.28c2.76-.49,5.37-1,7.39-1.44,7.05-1.69,9.63-3.34,11.7-4.67.46-.29.9-.57,1.36-.84a3.07,3.07,0,0,1,1.52-.41,2.92,2.92,0,0,1,1.49.4,3,3,0,0,1,1.51,2.59v4.6l2.7-.89a1.43,1.43,0,0,1,1.25.2,1.38,1.38,0,0,1,.57,1.12v6.14l3.14-.47A1.38,1.38,0,0,1,332,168v50.6c0,4.8-3.62,6.84-12.66,6.37-30.69-.93-42.2,7-42.2,7-.07,2.84-2.91,4.6-7.47,4.6s-7.4-1.76-7.46-4.6c0,0-11.51-7.91-42.21-7-9,.47-12.66-1.57-12.66-6.37Zm60,99c1.86.81,7,4.13,8.37,7.67.47,1.23-.42,3-1,4.33-1.78,3.95-3.23,7-3.44,7.49a35.32,35.32,0,0,0-3.41,13.36A24.69,24.69,0,0,0,272.67,316l-.89-.1a46.64,46.64,0,0,0-10,.46,3.75,3.75,0,0,1-3.59-1.84c-2.46-3.51-6.49-6.7-12.81-8.6-7.65-2.29-17.73-5-26.1-7.16h0c-16-4.5-11.72-13.91-15.56-13.53s-1.84,6.77-.38,9.4a30.82,30.82,0,0,1-9.94-3.76c-11.82-9.44-11.26-21-8.63-29.26,22.26-6,52.28-11.71,85.54-11.71h1.16c3.73,3.11,11.47,10.31,8.79,16.4-.18.42-.35.86-.53,1.3A59.56,59.56,0,0,0,269.05,262c-2.07-.89-4-1-4.64.64S265.29,266.05,267.36,267Zm11.2,23.18.08-.16c.23-.5,5.74-12.23,9.14-20.59,3.11-7.66-3-15.22-7.25-19.29A319,319,0,0,1,319.81,254c1.77,1.5,3.67,3,4,4.48-11.15-1-17.26,1.5-16.58,5.44.34,1.59,2.79,2.14,5,1.59,1.93-.35,10.33-1.18,16.57,3.57,2.85,2.16,4.53,5.7,5,10.51l0,.36c0,.44.07.88.08,1.34.28,7.67-3.17,14.38-10.3,20-23,18-36.45,15.52-38.38,15-6.39-3.77-9.39-9-9.17-15.86A26.91,26.91,0,0,1,278.56,290.13ZM147.25,206l-.63-.49.22-.76a21.63,21.63,0,0,1,3.68-7.09,10,10,0,0,1,4-14.13l.7-.32a22,22,0,0,1,1.16-7.87l.27-.75.8,0a21.79,21.79,0,0,1,7.9,1.3,10,10,0,0,1,15.22,0,22.19,22.19,0,0,1,7.86-1.33l.8,0,.27.75a21.88,21.88,0,0,1,1.21,7.89l.66.31a10,10,0,0,1,4,14.15,21.74,21.74,0,0,1,3.69,7.06l.23.76-.63.49a22.08,22.08,0,0,1-7.16,3.58,10,10,0,0,1-10,9.18,10.25,10.25,0,0,1-2.34-.27,22.07,22.07,0,0,1-5.58,5.69l-.66.45-.66-.45a22,22,0,0,1-5.62-5.68,10.49,10.49,0,0,1-2.31.26,10,10,0,0,1-10-9.21A22,22,0,0,1,147.25,206Zm30.39,76.63a32,32,0,0,1-12.44-15.2c3.59-1.2,7.62-2.47,12.05-3.76v0C176.13,268.77,175.56,276.08,177.64,282.67ZM377.05,352c-8.3,25.59-20.35,47.76-35.82,65.87-18.7,21.92-43.08,38-71.49,47.87a161,161,0,0,1-70.67-47.85c-15.56-18.11-27.74-40.26-36.2-65.83a268.33,268.33,0,0,1-13.05-79c2.2-.88,5.19-2,8.87-3.35,2.47,7.47,8,14.23,17,20.57a94.79,94.79,0,0,0,25.44,12.3s26.3,7.57,41.86,12.22c9.92,3.16,9.47,10.5,7.88,15.54-.11.3-.23.6-.33.91-.21.61-.45,1.24-.72,1.87a.59.59,0,0,1,0,.08c-.27.62-.56,1.24-.9,1.87-.42-.41-1.45-6.33-12.36-11.7s-27.41-2.92-29.27-2c-.93.45-1,.92-.14,1.54a8.31,8.31,0,0,1,1.39,1.1c2.59,2.61,2.18,8.71,9.85,16.63a35.55,35.55,0,0,0,7.75,5.29C237,351,242,348.68,244,348.44c-.13.38-.23.77-.39,1.13C227,378.81,220.4,404,219.45,425l3.34,2.81a150.39,150.39,0,0,0,20.79,14.89v0l6.14,3.5a156.5,156.5,0,0,0,20,9.23c19.64-7.26,37.5-17.79,52.13-31.36,0,0,1.91-1.82,3-3.12-2.11-.21-4.24-.39-6.43-.5-28.17-1.21-36.24-12.39-31.32-29.31.15-.52,1-2.24-.13-3.2-.89-.79-2.36-.15-2.94.13-29,13.74-37.15,54.51-37.15,54.51s-1.16-32.58,21.59-54.36,41.9-17.38,42.76-17.38c9.23,2.19,11.22-3.24,11.7-7.6a2.3,2.3,0,0,1,.81-1.65c4.25-3,9-14.78,4.2-19-2.35-2.2-11.81-4.56-14.13-5.33a35.2,35.2,0,0,1-6.09-2.44A5.74,5.74,0,0,1,305,332c-1.69-4.82-6.25-7.47-7.33-8.21,9.59-2.15,20-7.57,30.94-16.15a38.84,38.84,0,0,0,8.17-8.56c2.08-2.35,2.21-5,6-6.62,7.8-3.72,7.58-7.79,6.22-9.14s-6.37.57-7,1.14a31.87,31.87,0,0,0-.23-6.94,2.56,2.56,0,0,0-.05-.27c0-.18-.05-.36-.08-.53-.05-.33-.11-.65-.17-1,0-.07,0-.14,0-.2-1.58-8-6.07-14.74-10.66-19.64a324,324,0,0,1,58.83,17.14A267.28,267.28,0,0,1,377.05,352Zm15.1-146a22.08,22.08,0,0,1-7.16,3.58,10,10,0,0,1-10,9.18,10.16,10.16,0,0,1-2.33-.27,22.07,22.07,0,0,1-5.58,5.69l-.66.45-.66-.45a22,22,0,0,1-5.62-5.68,10.56,10.56,0,0,1-2.31.26,10,10,0,0,1-10-9.21,21.93,21.93,0,0,1-7.14-3.54l-.63-.49.22-.76A21.63,21.63,0,0,1,344,197.7a10,10,0,0,1,4-14.13l.69-.32a21.87,21.87,0,0,1,1.17-7.87l.27-.75.79,0a21.74,21.74,0,0,1,7.9,1.3,10,10,0,0,1,15.22,0,22.23,22.23,0,0,1,7.87-1.33l.8,0,.27.75a21.74,21.74,0,0,1,1.2,7.89l.67.31a10,10,0,0,1,4,14.15,21.64,21.64,0,0,1,3.7,7.06l.23.76Z"
+          />
+          <path
+            class="cls-1"
+            d="M383.38,202l-.75.21c.16.19.32.4.48.62a9.9,9.9,0,0,1,1.8,4.33,19.44,19.44,0,0,0,5.13-2.55,19.86,19.86,0,0,0-2.67-5.05A10,10,0,0,1,383.38,202Z"
+          />
+          <path
+            class="cls-1"
+            d="M363.06,189.91a8,8,0,0,1,2.18-.67v-3a1.18,1.18,0,0,1,2.35,0v3a7.73,7.73,0,0,1,2.17.68l3.08-4.23a6.08,6.08,0,0,0,.81-3.33,7.24,7.24,0,0,0-14.47,0,6.08,6.08,0,0,0,.81,3.33Z"
+          />
+          <path
+            class="cls-1"
+            d="M376.43,183.14c.24-.09.48-.19.74-.27a10,10,0,0,1,4.69-.37,19.28,19.28,0,0,0-.85-5.65,19.55,19.55,0,0,0-5.64,1,9.91,9.91,0,0,1,1.09,4.54Q376.46,182.77,376.43,183.14Z"
+          />
+          <path
+            class="cls-1"
+            d="M360.44,196.85a6,6,0,1,0,6-5.95A6,6,0,0,0,360.44,196.85Z"
+          />
+          <path
+            class="cls-1"
+            d="M355.66,182.87c.26.08.5.18.73.27q0-.37,0-.78a9.88,9.88,0,0,1,1.11-4.56,19.82,19.82,0,0,0-5.66-1,19.71,19.71,0,0,0-.82,5.65A10,10,0,0,1,355.66,182.87Z"
+          />
+          <path
+            class="cls-1"
+            d="M353.74,199.54l5-1.63a7.45,7.45,0,0,1-.08-1.06,7.85,7.85,0,0,1,.09-1.19l-2.92-.95a1.17,1.17,0,1,1,.72-2.22l2.92.94a8,8,0,0,1,1.29-1.86l-3.08-4.23a6.13,6.13,0,0,0-2.92-1.8,7.21,7.21,0,0,0-5.53.43,7.23,7.23,0,0,0,1.05,13.31A6.25,6.25,0,0,0,353.74,199.54Z"
+          />
+          <path
+            class="cls-1"
+            d="M345.44,199.49a19.44,19.44,0,0,0-2.65,5.07,19.64,19.64,0,0,0,5.13,2.53,9.93,9.93,0,0,1,1.79-4.31c.16-.22.33-.43.49-.62l-.76-.21A10,10,0,0,1,345.44,199.49Z"
+          />
+        </svg>
+        <h1>Colour Contrast Guide</h1>
+        <p class="lead">
+          You need to choose colours that everyone can read. This guide shows
+          you how, using the University of Southampton brand palette.
+        </p>
+        <p>
+          Whether you design in PowerPoint, Canva, InDesign, or code, these
+          tools help you pick accessible colour combinations with confidence.
+        </p>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="container">
+        <!-- ===== TABLE OF CONTENTS ===== -->
+        <nav class="toc" aria-label="Guide contents">
+          <h2>In this guide</h2>
+          <ol>
+            <li><a href="#what-is-contrast">What is colour contrast?</a></li>
+            <li><a href="#the-rules">The rules you need to follow</a></li>
+            <li>
+              <a href="#quick-lookup"
+                >Quick lookup: what works with my colour?</a
+              >
+            </li>
+            <li>
+              <a href="#pair-builder"
+                >Pair builder: choose background and text</a
+              >
+            </li>
+            <li>
+              <a href="#component-preview"
+                >Component preview: review it in context</a
+              >
+            </li>
+            <li>
+              <a href="#matrix-explorer"
+                >Palette matrix: all combinations at a glance</a
+              >
+            </li>
+            <li>
+              <a href="#gallery">Gallery: browse all passing combinations</a>
+            </li>
+          </ol>
+        </nav>
+
+        <!-- ===== SECTION 1: WHAT IS CONTRAST ===== -->
+        <section id="what-is-contrast" aria-labelledby="heading-what">
+          <h2 id="heading-what">What is colour contrast?</h2>
+          <p>
+            Contrast measures how easy it is to tell text apart from its
+            background. High contrast means the text stands out clearly. Low
+            contrast makes it hard to read, especially for people with low
+            vision, colour vision deficiency, or anyone reading a screen in
+            bright sunlight.
+          </p>
+          <p>
+            We measure contrast as a ratio. A ratio of 1:1 means no contrast at
+            all (white text on a white background). A ratio of 21:1 is the
+            maximum (black on white).
+          </p>
+
+          <h3>See the difference</h3>
+          <div class="demo-contrast" id="demo-contrast">
+            <div
+              class="demo-card"
+              style="background-color: #002f4c; color: #fafafa"
+            >
+              <p>You can read this with ease.</p>
+              <span
+                class="demo-ratio badge-pass"
+                aria-label="Contrast ratio 13.3 to 1, passes triple A"
+                >13.3:1 — AAA</span
+              >
+            </div>
+            <div
+              class="demo-card"
+              style="background-color: #68b9e8; color: #91dcf4"
+            >
+              <p>Not enough contrast.</p>
+              <span
+                class="demo-ratio badge-fail"
+                aria-label="Contrast ratio 1.4 to 1, fails"
+                >1.4:1 — Fail</span
+              >
+            </div>
+            <div
+              class="demo-card"
+              style="background-color: #005c84; color: #cbebfd"
+            >
+              <p>This works for larger text.</p>
+              <span
+                class="demo-ratio badge-large"
+                aria-label="Contrast ratio 5.9 to 1, passes double A"
+                >5.9:1 — AA</span
+              >
+            </div>
+            <div
+              class="demo-card"
+              style="background-color: #002f4c; color: #0265ca"
+            >
+              <p>This fails the standard.</p>
+              <span
+                class="demo-ratio badge-fail"
+                aria-label="Contrast ratio 2.5 to 1, fails"
+                >2.5:1 — Fail</span
+              >
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== SECTION 2: THE RULES ===== -->
+        <section id="the-rules" aria-labelledby="heading-rules">
+          <h2 id="heading-rules">The rules you need to follow</h2>
+          <p>
+            The Web Content Accessibility Guidelines (WCAG) set the standards.
+            The University aims for <strong>AA</strong> compliance as a minimum.
+            Here is what that means for you:
+          </p>
+
+          <div class="callout">
+            <p>
+              <strong>AA (4.5:1)</strong> — Normal body text must have a
+              contrast ratio of at least 4.5:1 against its background.
+            </p>
+            <p>
+              <strong>AA Large (3:1)</strong> — Text at 18pt (24px) or above, or
+              14pt (18.66px) bold, needs at least 3:1. This threshold also
+              applies to graphical objects and user interface components such as
+              icons, borders, and form controls.
+            </p>
+            <div class="callout--warning callout">
+              <p>
+                <strong>Watch out:</strong> The 3:1 ratio is only valid for text
+                that meets the large text size threshold. If your text is
+                smaller than 18pt regular or 14pt bold, you must use the full
+                4.5:1 AA ratio. When in doubt, aim for 4.5:1.
+              </p>
+            </div>
+            <p>
+              <strong>AAA (7:1)</strong> — The highest standard. Aim for this
+              where possible, especially for body text.
+            </p>
+          </div>
+
+          <!-- Audience-specific advice -->
+          <h3 class="mt-lg">What this means for you</h3>
+          <div
+            class="audience-tabs"
+            role="group"
+            aria-label="Select your role for tailored advice"
+          >
+            <button
+              class="audience-tab"
+              aria-pressed="true"
+              aria-controls="audience-documents"
+              data-audience="documents"
+              type="button"
+            >
+              Document creators
+            </button>
+            <button
+              class="audience-tab"
+              aria-pressed="false"
+              aria-controls="audience-developers"
+              data-audience="developers"
+              type="button"
+            >
+              Developers
+            </button>
+            <button
+              class="audience-tab"
+              aria-pressed="false"
+              aria-controls="audience-staff"
+              data-audience="staff"
+              type="button"
+            >
+              All staff
+            </button>
+          </div>
+
+          <div class="audience-content active" id="audience-documents">
+            <p>
+              When you work in PowerPoint, Word, Canva, or InDesign, you control
+              which colours you place text on. Use the
+              <a href="#quick-lookup">quick lookup</a> to check your background
+              colour, then pick a text colour from the passing options.
+            </p>
+            <div class="callout--tip callout">
+              <p>
+                <strong>Tip:</strong> The safest combinations are White
+                (#fafafa) or Black (#111111) text on your chosen background. For
+                coloured text on coloured backgrounds, always check first.
+              </p>
+            </div>
+          </div>
+
+          <div class="audience-content" id="audience-developers">
+            <p>
+              You set colour values in CSS, so you have precise control. Use the
+              <a href="#pair-builder">pair builder</a> to test specific
+              combinations and get the exact hex values. Copy the values
+              straight into your stylesheets.
+            </p>
+            <div class="callout--tip callout">
+              <p>
+                <strong>Tip:</strong> Test interactive states too. Hover
+                colours, focus indicators, and placeholder text all need to meet
+                contrast requirements.
+              </p>
+            </div>
+          </div>
+
+          <div class="audience-content" id="audience-staff">
+            <p>
+              You might not choose colours yourself, but you can spot problems.
+              If text on a slide or webpage looks hard to read, it probably
+              fails the contrast requirements. Flag it with your communications
+              or web team.
+            </p>
+            <div class="callout--tip callout">
+              <p>
+                <strong>Tip:</strong> The simplest rule: dark text on light
+                backgrounds, or light text on dark backgrounds. Avoid mid-tone
+                text on mid-tone backgrounds.
+              </p>
+            </div>
+          </div>
+
+          <!-- Graphical objects demo -->
+          <h3 class="mt-lg">Graphical objects need contrast too</h3>
+          <p>
+            The 3:1 minimum contrast ratio does not only apply to large text. It
+            also covers graphical objects and user interface components — icons,
+            chart elements, form field borders, focus indicators, and any visual
+            element a user needs to perceive in order to understand or operate
+            the interface.
+          </p>
+
+          <div class="demo-contrast" id="demo-icons">
+            <div
+              class="demo-card"
+              style="background-color: #fafafa; color: #005c84"
+            >
+              <div class="icon-demo-row" aria-hidden="true">
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="8.5" cy="8.5" r="5" />
+                    <path d="m17.571 17.5-5.571-5.5" />
+                  </g>
+                </svg>
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(2 2)"
+                  >
+                    <circle cx="8.5" cy="8.5" r="8" />
+                    <path d="m5.5 9.5 2 2 5-5" />
+                  </g>
+                </svg>
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g fill="none" fill-rule="evenodd" transform="translate(1 1)">
+                    <path
+                      d="m9.5.5 9 16h-18z"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="m9.5 10.5v-5"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <circle cx="9.5" cy="13.5" fill="currentColor" r="1" />
+                  </g>
+                </svg>
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(3 3)"
+                  >
+                    <path
+                      d="m7.5.5c.35132769 0 .69661025.02588228 1.03404495.07584411l.50785434 1.53911115c.44544792.12730646.86820077.30839026 1.26078721.53578009l1.4600028-.70360861c.5166435.39719686.9762801.86487779 1.3645249 1.388658l-.7293289 1.44720284c.2201691.39604534.3936959.82158734.5131582 1.2692035l1.5298263.5338186c.0390082.29913986.0591302.60421522.0591302.91399032 0 .35132769-.0258823.69661025-.0758441 1.03404495l-1.5391112.50785434c-.1273064.44544792-.3083902.86820077-.5357801 1.26078721l.7036087 1.4600028c-.3971969.5166435-.8648778.9762801-1.388658 1.3645249l-1.4472029-.7293289c-.39604532.2201691-.82158732.3936959-1.26920348.5131582l-.5338186 1.5298263c-.29913986.0390082-.60421522.0591302-.91399032.0591302-.35132769 0-.69661025-.0258823-1.03404495-.0758441l-.50785434-1.5391112c-.44544792-.1273064-.86820077-.3083902-1.26078723-.5357801l-1.46000277.7036087c-.51664349-.3971969-.97628006-.8648778-1.36452491-1.388658l.72932886-1.4472029c-.2203328-.39633993-.39395403-.82222042-.51342462-1.27020241l-1.52968981-.53381682c-.03892294-.29882066-.05900023-.60356226-.05900023-.91299317 0-.35132769.02588228-.69661025.07584411-1.03404495l1.53911115-.50785434c.12730646-.44544792.30839026-.86820077.53578009-1.26078723l-.70360861-1.46000277c.39719686-.51664349.86487779-.97628006 1.388658-1.36452491l1.44720284.72932886c.39633995-.2203328.82222044-.39395403 1.27020243-.51342462l.53381682-1.52968981c.29882066-.03892294.60356226-.05900023.91299317-.05900023z"
+                      stroke-width=".933"
+                    />
+                    <circle cx="7.5" cy="7.5" r="3" />
+                  </g>
+                </svg>
+              </div>
+              <p>These icons are easy to see.</p>
+              <span
+                class="demo-ratio badge-pass"
+                aria-label="Contrast ratio 7.0 to 1, passes triple A"
+                >7.0:1 — Pass</span
+              >
+            </div>
+            <div
+              class="demo-card"
+              style="background-color: #f5f5f5; color: #9eb1bd"
+            >
+              <div class="icon-demo-row" aria-hidden="true">
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="8.5" cy="8.5" r="5" />
+                    <path d="m17.571 17.5-5.571-5.5" />
+                  </g>
+                </svg>
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(2 2)"
+                  >
+                    <circle cx="8.5" cy="8.5" r="8" />
+                    <path d="m5.5 9.5 2 2 5-5" />
+                  </g>
+                </svg>
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g fill="none" fill-rule="evenodd" transform="translate(1 1)">
+                    <path
+                      d="m9.5.5 9 16h-18z"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="m9.5 10.5v-5"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <circle cx="9.5" cy="13.5" fill="currentColor" r="1" />
+                  </g>
+                </svg>
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(3 3)"
+                  >
+                    <path
+                      d="m7.5.5c.35132769 0 .69661025.02588228 1.03404495.07584411l.50785434 1.53911115c.44544792.12730646.86820077.30839026 1.26078721.53578009l1.4600028-.70360861c.5166435.39719686.9762801.86487779 1.3645249 1.388658l-.7293289 1.44720284c.2201691.39604534.3936959.82158734.5131582 1.2692035l1.5298263.5338186c.0390082.29913986.0591302.60421522.0591302.91399032 0 .35132769-.0258823.69661025-.0758441 1.03404495l-1.5391112.50785434c-.1273064.44544792-.3083902.86820077-.5357801 1.26078721l.7036087 1.4600028c-.3971969.5166435-.8648778.9762801-1.388658 1.3645249l-1.4472029-.7293289c-.39604532.2201691-.82158732.3936959-1.26920348.5131582l-.5338186 1.5298263c-.29913986.0390082-.60421522.0591302-.91399032.0591302-.35132769 0-.69661025-.0258823-1.03404495-.0758441l-.50785434-1.5391112c-.44544792-.1273064-.86820077-.3083902-1.26078723-.5357801l-1.46000277.7036087c-.51664349-.3971969-.97628006-.8648778-1.36452491-1.388658l.72932886-1.4472029c-.2203328-.39633993-.39395403-.82222042-.51342462-1.27020241l-1.52968981-.53381682c-.03892294-.29882066-.05900023-.60356226-.05900023-.91299317 0-.35132769.02588228-.69661025.07584411-1.03404495l1.53911115-.50785434c.12730646-.44544792.30839026-.86820077.53578009-1.26078723l-.70360861-1.46000277c.39719686-.51664349.86487779-.97628006 1.388658-1.36452491l1.44720284.72932886c.39633995-.2203328.82222044-.39395403 1.27020243-.51342462l.53381682-1.52968981c.29882066-.03892294.60356226-.05900023.91299317-.05900023z"
+                      stroke-width=".933"
+                    />
+                    <circle cx="7.5" cy="7.5" r="3" />
+                  </g>
+                </svg>
+              </div>
+              <p>These icons are hard to see.</p>
+              <span
+                class="demo-ratio badge-fail"
+                aria-label="Contrast ratio 2.0 to 1, fails"
+                >2.0:1 — Fail</span
+              >
+            </div>
+          </div>
+
+          <div class="callout--tip callout">
+            <p>
+              <strong>Tip:</strong> If you use icons in your designs, make sure
+              the icon colour has at least 3:1 contrast against its background.
+              The same applies to chart segments, infographic elements, and the
+              borders of form fields.
+            </p>
+          </div>
+        </section>
+
+        <!-- ===== SECTION 3: QUICK LOOKUP ===== -->
+        <section id="quick-lookup" aria-labelledby="heading-lookup">
+          <h2 id="heading-lookup">Quick lookup: what works with my colour?</h2>
+          <p>
+            Select a background colour from the brand palette. We show you every
+            brand colour that meets the contrast requirements for text on that
+            background.
+          </p>
+
+          <div class="lookup-layout">
+            <div class="lookup-layout__picker">
+              <div
+                class="filter-group"
+                role="group"
+                aria-label="Filter by WCAG level"
+              >
+                <span class="filter-group__label">Show:</span>
+                <button
+                  class="filter-btn"
+                  type="button"
+                  aria-pressed="true"
+                  data-level="aa"
+                >
+                  AA (4.5:1+)
+                </button>
+                <button
+                  class="filter-btn"
+                  type="button"
+                  aria-pressed="false"
+                  data-level="aaa"
+                >
+                  AAA (7:1+)
+                </button>
+              </div>
+
+              <div class="colour-select-group">
+                <label id="label-bg-lookup"
+                  >Choose your background colour</label
+                >
+                <div
+                  class="colour-grid"
+                  id="lookup-bg-grid"
+                  role="radiogroup"
+                  aria-labelledby="label-bg-lookup"
+                >
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+
+              <div
+                class="filter-group"
+                role="group"
+                aria-label="Filter by WCAG level"
+              >
+                <span class="filter-group__label">Show:</span>
+                <button
+                  class="filter-btn"
+                  type="button"
+                  aria-pressed="true"
+                  data-level="aa"
+                >
+                  AA (4.5:1+)
+                </button>
+                <button
+                  class="filter-btn"
+                  type="button"
+                  aria-pressed="false"
+                  data-level="aaa"
+                >
+                  AAA (7:1+)
+                </button>
+              </div>
+            </div>
+
+            <div class="lookup-layout__results" id="lookup-results-column">
+              <div aria-live="polite" aria-atomic="true">
+                <p class="results-summary" id="lookup-summary">
+                  Select a background colour to review results.
+                </p>
+              </div>
+              <div
+                class="results-grid"
+                id="lookup-results"
+                role="region"
+                aria-label="Passing colour combinations"
+              >
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== SECTION 4: PAIR BUILDER ===== -->
+        <section id="pair-builder" aria-labelledby="heading-pair">
+          <h2 id="heading-pair">Pair builder: choose background and text</h2>
+          <p>
+            Select both a background and a text colour to test a specific
+            combination. You'll find the contrast ratio, the WCAG level, and a
+            live preview.
+          </p>
+
+          <p class="results-summary" id="pair-summary">
+            Select both colours to reveal the result.
+          </p>
+          <div
+            id="pair-announcer"
+            class="visually-hidden"
+            aria-live="polite"
+            role="status"
+          ></div>
+
+          <label for="pair-family-select">Filter by family:</label>
+          <select id="pair-family-select" class="family-select">
+            <option value="all">All brand colours</option>
+            <option value="core">Core colours</option>
+            <option value="blues">Wider blues</option>
+            <option value="warm">Warm neutrals</option>
+            <option value="cool">Cool neutrals</option>
+            <option value="marine">Marine</option>
+            <option value="forest">Forest</option>
+            <option value="horizon">Horizon</option>
+            <option value="amethyst">Amethyst</option>
+          </select>
+
+          <div class="pair-layout">
+            <div class="colour-select-group">
+              <label id="label-pair-bg">Background colour</label>
+              <div
+                class="colour-grid"
+                id="pair-bg-grid"
+                role="radiogroup"
+                aria-labelledby="label-pair-bg"
+              >
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <div class="colour-select-group">
+              <label id="label-pair-fg">Text colour</label>
+              <div
+                class="colour-grid"
+                id="pair-fg-grid"
+                role="radiogroup"
+                aria-labelledby="label-pair-fg"
+              >
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <div class="pair-layout__result" aria-hidden="true">
+              <p class="results-summary" id="pair-summary-bottom">
+                Select both colours to reveal the result.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== SECTION 5: COMPONENT PREVIEW ===== -->
+        <section id="component-preview" aria-labelledby="heading-preview">
+          <h2 id="heading-preview" tabindex="-1">Component preview</h2>
+          <p>Review your chosen combination with sample content.</p>
+
+          <div class="preview-frame" id="preview-frame" hidden>
+            <div class="preview-bar" id="preview-bar">Preview</div>
+            <div class="preview-body" id="preview-body" aria-hidden="true">
+              <p class="preview-body__heading" id="preview-heading">
+                Heading in DM Serif Display
+              </p>
+              <p id="preview-para">
+                We welcome you to explore our programmes and discover how
+                Southampton can support your ambitions. Our research spans
+                disciplines, from engineering to humanities.
+              </p>
+              <span class="link-preview" id="preview-link"
+                >Find out more about our courses
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    fill="none"
+                    fill-rule="evenodd"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(3 3)"
+                  >
+                    <path d="m15.5.5v5h-5" transform="matrix(1 0 0 -1 0 6)" />
+                    <path
+                      d="m12-.95v9.9"
+                      transform="matrix(.70710678 .70710678 -.70710678 .70710678 6.343146 -7.313708)"
+                    />
+                    <path
+                      d="m7.5.5h-5c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h11c1.1045695 0 2-.8954305 2-2v-4"
+                    />
+                  </g></svg
+              ></span>
+              <br />
+              <span class="btn-preview" id="preview-btn"
+                >Apply now
+                <svg
+                  height="21"
+                  viewBox="0 0 21 21"
+                  width="21"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m.5 8.5 4-4-4-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    transform="translate(9 6)"
+                  /></svg
+              ></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== SECTION 6: MATRIX ===== -->
+        <section id="matrix-explorer" aria-labelledby="heading-matrix">
+          <h2 id="heading-matrix">Palette matrix</h2>
+          <p>
+            This table sets out the contrast level for every combination within
+            a colour family. Use it to identify which pairings work together.
+          </p>
+
+          <ul class="level-key" aria-label="Colour key">
+            <li class="level-key__item">
+              <span
+                class="level-key__swatch"
+                style="background: #66ccee"
+                aria-hidden="true"
+              ></span>
+              AAA (7:1+)
+            </li>
+            <li class="level-key__item">
+              <span
+                class="level-key__swatch"
+                style="background: #f0e442"
+                aria-hidden="true"
+              ></span>
+              AA (4.5:1+)
+            </li>
+            <li class="level-key__item">
+              <span
+                class="level-key__swatch"
+                style="background: #cc79a7"
+                aria-hidden="true"
+              ></span>
+              AA Large (3:1+)
+            </li>
+            <li class="level-key__item">
+              <span
+                class="level-key__swatch"
+                style="background: #f5f5f5; border: 1px solid #706b69"
+                aria-hidden="true"
+              ></span>
+              Fail
+            </li>
+          </ul>
+
+          <label for="matrix-family-select">Filter by family:</label>
+          <select id="matrix-family-select" class="family-select">
+            <option value="all">All brand colours</option>
+            <option value="core">Core colours</option>
+            <option value="blues">Wider blues</option>
+            <option value="warm">Warm neutrals</option>
+            <option value="cool">Cool neutrals</option>
+            <option value="marine">Marine</option>
+            <option value="forest">Forest</option>
+            <option value="horizon">Horizon</option>
+            <option value="amethyst">Amethyst</option>
+          </select>
+
+          <div
+            class="matrix-wrapper"
+            tabindex="0"
+            role="region"
+            aria-label="Scrollable colour contrast matrix"
+          >
+            <table class="matrix-table" id="matrix-table">
+              <!-- Populated by JS -->
+            </table>
+          </div>
+        </section>
+
+        <!-- ===== SECTION 7: GALLERY ===== -->
+        <section id="gallery" aria-labelledby="heading-gallery">
+          <h2 id="heading-gallery">Gallery: all passing combinations</h2>
+          <p>
+            Browse every brand colour pairing that meets at least AA (4.5:1).
+            Each card shows the combination in action so you can find
+            inspiration for your next design.
+          </p>
+
+          <div
+            class="filter-group"
+            role="group"
+            aria-label="Filter gallery by WCAG level"
+          >
+            <span class="filter-group__label">Show:</span>
+            <button
+              class="filter-btn gallery-filter"
+              type="button"
+              aria-pressed="true"
+              data-level="aa"
+            >
+              AA (4.5:1+)
+            </button>
+            <button
+              class="filter-btn gallery-filter"
+              type="button"
+              aria-pressed="false"
+              data-level="aaa"
+            >
+              AAA (7:1+)
+            </button>
+          </div>
+
+          <label for="gallery-family-filter">Filter by family:</label>
+          <select id="gallery-family-filter" class="family-select">
+            <option value="all">All families</option>
+            <option value="core">Core</option>
+            <option value="blues">Blues</option>
+            <option value="warm">Warm neutrals</option>
+            <option value="cool">Cool neutrals</option>
+            <option value="marine">Marine</option>
+            <option value="forest">Forest</option>
+            <option value="horizon">Horizon</option>
+            <option value="amethyst">Amethyst</option>
+          </select>
+
+          <p id="gallery-count" class="results-summary" aria-live="polite"></p>
+
+          <div class="gallery-grid" id="gallery-grid">
+            <!-- Populated by JS -->
+          </div>
+        </section>
+      </div>
+      <!-- /.container -->
+      <div
+        id="copy-announcer"
+        class="visually-hidden"
+        aria-live="polite"
+        role="status"
+      ></div>
+    </main>
+
+    <button type="button" class="back-to-top" data-visible="false" aria-label="Back to top">
+      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 9.5 10.5 4.5 15.5 9.5M10.5 4.5 10.5 16.5"/></svg>
+      Back to top
+    </button>
+
+    <footer>
+      <div class="container">
+        <p>
+          Colour Contrast Guide — University of Southampton. Contrast ratios
+          calculated using
+          <a href="https://www.w3.org/TR/WCAG22/#contrast-minimum"
+            >WCAG 2.2 guidelines</a
+          >.
+        </p>
+        <p class="mt-sm">
+          This guide targets WCAG 2.2 AA as a minimum standard. Always test your
+          final designs in context.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // =========================================================================
+      // Logging configuration
+      // =========================================================================
+      const LOG_LEVELS = {
+        ERROR: 0,
+        WARN: 1,
+        INFO: 2,
+        DEBUG: 3,
+      };
+
+      const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+      const ENABLE_ALL_LOGGING = false;
+      const DISABLE_ALL_LOGGING = false;
+
+      function shouldLog(level) {
+        if (DISABLE_ALL_LOGGING) return false;
+        if (ENABLE_ALL_LOGGING) return true;
+        return level <= DEFAULT_LOG_LEVEL;
+      }
+
+      function logError(message, ...args) {
+        if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+      }
+
+      function logWarn(message, ...args) {
+        if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+      }
+
+      function logInfo(message, ...args) {
+        if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+      }
+
+      function logDebug(message, ...args) {
+        if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+      }
+
+      // =========================================================================
+      // Brand colour data
+      // =========================================================================
+      const brandColours = [
+        { hex: "#fafafa", name: "White", family: "core" },
+        { hex: "#002f4c", name: "Marine Blue", family: "core" },
+        { hex: "#005c84", name: "University Blue", family: "core" },
+        { hex: "#003784", name: "Midnight Blue", family: "blues" },
+        { hex: "#0265ca", name: "Vibrant Blue", family: "blues" },
+        { hex: "#68b9e8", name: "Mid Blue", family: "blues" },
+        { hex: "#91dcf4", name: "Sky Blue", family: "blues" },
+        { hex: "#cbebfd", name: "Light Blue", family: "blues" },
+        { hex: "#00ddff", name: "Digital Blue", family: "blues" },
+        { hex: "#111111", name: "Black", family: "core" },
+        { hex: "#3e3836", name: "Warm Neutral 01", family: "warm" },
+        { hex: "#706b69", name: "Warm Neutral 02", family: "warm" },
+        { hex: "#b3a59d", name: "Warm Neutral 03", family: "warm" },
+        { hex: "#d1c6c0", name: "Warm Neutral 04", family: "warm" },
+        { hex: "#ece6e1", name: "Warm Neutral 05", family: "warm" },
+        { hex: "#fbf9f7", name: "Warm Neutral 06", family: "warm" },
+        { hex: "#495961", name: "Cool Neutral 01", family: "cool" },
+        { hex: "#758d9a", name: "Cool Neutral 02", family: "cool" },
+        { hex: "#9eb1bd", name: "Cool Neutral 03", family: "cool" },
+        { hex: "#e1e8ec", name: "Cool Neutral 04", family: "cool" },
+        { hex: "#f5f5f5", name: "Cool Neutral 05", family: "cool" },
+        { hex: "#00403e", name: "Marine 01", family: "marine" },
+        { hex: "#0c838c", name: "Marine 02", family: "marine" },
+        { hex: "#00b0b3", name: "Marine 03", family: "marine" },
+        { hex: "#83dbd2", name: "Marine 04", family: "marine" },
+        { hex: "#c9f7f0", name: "Marine 05", family: "marine" },
+        { hex: "#00ffae", name: "Digital Marine", family: "marine" },
+        { hex: "#01530d", name: "Forest 01", family: "forest" },
+        { hex: "#0c8c41", name: "Forest 02", family: "forest" },
+        { hex: "#8bd100", name: "Forest 03", family: "forest" },
+        { hex: "#83db8c", name: "Forest 04", family: "forest" },
+        { hex: "#d4f7c9", name: "Forest 05", family: "forest" },
+        { hex: "#cfff00", name: "Digital Forest", family: "forest" },
+        { hex: "#5a0202", name: "Horizon 01", family: "horizon" },
+        { hex: "#e63037", name: "Horizon 02", family: "horizon" },
+        { hex: "#ef7d00", name: "Horizon 03", family: "horizon" },
+        { hex: "#fcbc00", name: "Horizon 04", family: "horizon" },
+        { hex: "#fff4dd", name: "Horizon 05", family: "horizon" },
+        { hex: "#fbfc00", name: "Digital Horizon", family: "horizon" },
+        { hex: "#6c0370", name: "Amethyst 01", family: "amethyst" },
+        { hex: "#d500a0", name: "Amethyst 02", family: "amethyst" },
+        { hex: "#ea42cb", name: "Amethyst 03", family: "amethyst" },
+        { hex: "#db83d4", name: "Amethyst 04", family: "amethyst" },
+        { hex: "#ece1ec", name: "Amethyst 05", family: "amethyst" },
+        { hex: "#ff34d3", name: "Digital Amethyst", family: "amethyst" },
+      ];
+
+      const familyNames = {
+        core: "Core",
+        blues: "Wider Blues",
+        warm: "Warm Neutrals",
+        cool: "Cool Neutrals",
+        marine: "Marine",
+        forest: "Forest",
+        horizon: "Horizon",
+        amethyst: "Amethyst",
+      };
+
+      // =========================================================================
+      // Utility functions
+      // =========================================================================
+      function getContrastRatio(hex1, hex2) {
+        try {
+          return chroma.contrast(hex1, hex2);
+        } catch (e) {
+          logError("Failed to calculate contrast:", e);
+          return 0;
+        }
+      }
+
+      function getWcagLevel(ratio) {
+        if (ratio >= 7) return "aaa";
+        if (ratio >= 4.5) return "aa";
+        if (ratio >= 3) return "large";
+        return "fail";
+      }
+
+      function getLevelLabel(level) {
+        const labels = {
+          aaa: "AAA",
+          aa: "AA",
+          large: "AA Large",
+          fail: "Fail",
+        };
+        return labels[level] || "Unknown";
+      }
+
+      function getBadgeClass(level) {
+        const classes = {
+          aaa: "badge-pass",
+          aa: "badge-pass",
+          large: "badge-large",
+          fail: "badge-fail",
+        };
+        return classes[level] || "badge-fail";
+      }
+
+      function textColourForBg(hex) {
+        // Return white or black depending on luminance
+        const lum = chroma(hex).luminance();
+        return lum > 0.35 ? "#111111" : "#fafafa";
+      }
+
+      // =========================================================================
+      // Copy to clipboard
+      // =========================================================================
+      const COPY_ICON_SVG =
+        '<svg aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m11.5 9.5v-7c0-1.1045695-.8954305-2-2-2h-7c-1.1045695 0-2 .8954305-2 2v7c0 1.1045695.8954305 2 2 2h7c1.1045695 0 2-.8954305 2-2z"/><path d="m3.5 11.5v1c0 1.1045695.8954305 2 2 2h7c1.1045695 0 2-.8954305 2-2v-7c0-1.1045695-.8954305-2-2-2h-1"/></g></svg>';
+
+      function buildCopyButton(hex) {
+        return (
+          '<button type="button" class="copy-hex-btn" aria-label="Copy ' +
+          hex +
+          ' to clipboard" onclick="copyToClipboard(\'' +
+          hex +
+          "', this)\">" +
+          '<span class="copy-hex-btn__text">' +
+          hex +
+          "</span>" +
+          COPY_ICON_SVG +
+          "</button>"
+        );
+      }
+
+      function copyToClipboard(hex, buttonEl) {
+        navigator.clipboard
+          .writeText(hex)
+          .then(function () {
+            const textEl = buttonEl.querySelector(".copy-hex-btn__text");
+            const originalText = textEl.textContent;
+            textEl.textContent = "Copied!";
+            buttonEl.setAttribute("aria-label", "Copied " + hex);
+
+            // Screen reader announcement
+            const announcer = document.getElementById("copy-announcer");
+            announcer.textContent = "";
+            requestAnimationFrame(function () {
+              announcer.textContent = "Copied " + hex + " to clipboard";
+            });
+
+            // Clear any previous feedback timeout for rapid clicks
+            if (buttonEl._copyTimeout) {
+              clearTimeout(buttonEl._copyTimeout);
+            }
+
+            buttonEl._copyTimeout = setTimeout(function () {
+              textEl.textContent = originalText;
+              buttonEl.setAttribute(
+                "aria-label",
+                "Copy " + hex + " to clipboard",
+              );
+              buttonEl._copyTimeout = null;
+            }, 1500);
+
+            logDebug("Copied to clipboard:", hex);
+          })
+          .catch(function (err) {
+            logError("Failed to copy to clipboard:", err);
+          });
+      }
+
+      // =========================================================================
+      // Build swatch grids
+      // =========================================================================
+      function buildSwatchGrid(containerEl, onSelect, groupId) {
+        let currentFamily = "";
+        brandColours.forEach(function (colour, index) {
+          if (colour.family !== currentFamily) {
+            currentFamily = colour.family;
+            const heading = document.createElement("span");
+            heading.className = "colour-family-heading";
+            heading.textContent = familyNames[colour.family];
+            heading.id = groupId + "-family-" + colour.family;
+            containerEl.appendChild(heading);
+          }
+
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "colour-swatch";
+          btn.style.backgroundColor = colour.hex;
+          btn.setAttribute("aria-label", colour.name + " (" + colour.hex + ")");
+          btn.setAttribute("role", "radio");
+          btn.setAttribute("aria-checked", "false");
+          btn.dataset.hex = colour.hex;
+          btn.dataset.index = index;
+          btn.dataset.family = colour.family;
+
+          // Roving tabindex: only the first swatch is in the tab order initially
+          btn.setAttribute("tabindex", index === 0 ? "0" : "-1");
+
+          // Light colours need a visible border
+          if (chroma(colour.hex).luminance() > 0.8) {
+            btn.style.border = "2px solid #d1c6c0";
+          }
+
+          btn.onclick = function () {
+            selectSwatch(containerEl, btn, colour, index, onSelect);
+          };
+
+          containerEl.appendChild(btn);
+        });
+
+        // Arrow key navigation for radiogroup pattern
+        containerEl.addEventListener("keydown", function (event) {
+          const swatches = Array.from(
+            containerEl.querySelectorAll(".colour-swatch"),
+          );
+          const currentIndex = swatches.indexOf(document.activeElement);
+          if (currentIndex === -1) return;
+
+          let nextIndex = -1;
+
+          if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+            event.preventDefault();
+            nextIndex =
+              currentIndex + 1 < swatches.length ? currentIndex + 1 : 0;
+          } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+            event.preventDefault();
+            nextIndex =
+              currentIndex - 1 >= 0 ? currentIndex - 1 : swatches.length - 1;
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            nextIndex = 0;
+          } else if (event.key === "End") {
+            event.preventDefault();
+            nextIndex = swatches.length - 1;
+          }
+
+          if (nextIndex !== -1) {
+            const nextSwatch = swatches[nextIndex];
+            const colourIndex = parseInt(nextSwatch.dataset.index, 10);
+            const colour = brandColours[colourIndex];
+
+            // Move focus and select the swatch
+            selectSwatch(
+              containerEl,
+              nextSwatch,
+              colour,
+              colourIndex,
+              onSelect,
+            );
+            nextSwatch.focus();
+          }
+        });
+      }
+
+      function selectSwatch(containerEl, btn, colour, index, onSelect) {
+        const siblings = containerEl.querySelectorAll(".colour-swatch");
+        siblings.forEach(function (s) {
+          s.setAttribute("aria-checked", "false");
+          s.setAttribute("tabindex", "-1");
+        });
+        btn.setAttribute("aria-checked", "true");
+        btn.setAttribute("tabindex", "0");
+        onSelect(colour, index);
+      }
+
+      /**
+       * Filter swatches and family headings within a grid by colour family.
+       * Shows all swatches if familyValue is "all", otherwise shows only
+       * swatches matching the chosen family plus core colours.
+       */
+      function filterSwatchGrid(containerEl, familyValue) {
+        const swatches = containerEl.querySelectorAll(".colour-swatch");
+        const headings = containerEl.querySelectorAll(".colour-family-heading");
+
+        swatches.forEach(function (swatch) {
+          const show =
+            familyValue === "all" ||
+            swatch.dataset.family === familyValue ||
+            swatch.dataset.family === "core";
+          swatch.style.display = show ? "" : "none";
+        });
+
+        headings.forEach(function (heading) {
+          // Heading id format: groupId-family-familyName
+          const familyKey = heading.id.split("-family-")[1];
+          const show =
+            familyValue === "all" ||
+            familyKey === familyValue ||
+            familyKey === "core";
+          heading.style.display = show ? "" : "none";
+        });
+
+        // Ensure roving tabindex points to a visible swatch
+        const visibleSwatches = Array.from(swatches).filter(function (s) {
+          return s.style.display !== "none";
+        });
+        const hasChecked = visibleSwatches.some(function (s) {
+          return s.getAttribute("aria-checked") === "true";
+        });
+        if (!hasChecked && visibleSwatches.length > 0) {
+          // Reset tabindex so the first visible swatch is focusable
+          swatches.forEach(function (s) {
+            s.setAttribute("tabindex", "-1");
+          });
+          visibleSwatches[0].setAttribute("tabindex", "0");
+        }
+
+        logDebug("Filtered swatch grid to family:", familyValue);
+      }
+
+      // =========================================================================
+      // Section 3: Quick Lookup
+      // =========================================================================
+      let lookupBg = null;
+      let lookupLevel = "aa";
+
+      function scrollToLookupResults() {
+        // On narrow screens (single column), scroll results into view
+        if (window.matchMedia("(min-width: 48rem)").matches) return;
+        const resultsColumn = document.getElementById("lookup-results-column");
+        const reducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        resultsColumn.scrollIntoView({
+          behavior: reducedMotion ? "instant" : "smooth",
+          block: "start",
+        });
+      }
+
+      function renderLookupResults() {
+        const resultsEl = document.getElementById("lookup-results");
+        const summaryEl = document.getElementById("lookup-summary");
+        resultsEl.innerHTML = "";
+
+        if (!lookupBg) {
+          summaryEl.textContent =
+            "Select a background colour to find out results.";
+          return;
+        }
+
+        const thresholds = { aa: 4.5, large: 3, aaa: 7 };
+        const threshold = thresholds[lookupLevel];
+        const passing = [];
+
+        brandColours.forEach(function (colour) {
+          if (colour.hex === lookupBg.hex) return;
+          const ratio = getContrastRatio(lookupBg.hex, colour.hex);
+          if (ratio >= threshold) {
+            passing.push({ colour: colour, ratio: ratio });
+          }
+        });
+
+        passing.sort(function (a, b) {
+          return b.ratio - a.ratio;
+        });
+
+        summaryEl.textContent =
+          passing.length +
+          " colour" +
+          (passing.length !== 1 ? "s" : "") +
+          " pass " +
+          getLevelLabel(getWcagLevel(threshold)) +
+          " on " +
+          lookupBg.name +
+          ".";
+
+        passing.forEach(function (item) {
+          const level = getWcagLevel(item.ratio);
+          const card = document.createElement("div");
+          card.className = "result-card";
+          card.style.backgroundColor = lookupBg.hex;
+          card.style.color = item.colour.hex;
+
+          card.innerHTML =
+            '<span class="result-card__heading">' +
+            item.colour.name +
+            "</span>" +
+            '<span class="result-card__text">The quick brown fox jumps over the lazy dog.</span>' +
+            '<span class="result-card__meta">' +
+            '<span class="demo-ratio ' +
+            getBadgeClass(level) +
+            '">' +
+            item.ratio.toFixed(1) +
+            ":1 — " +
+            getLevelLabel(level) +
+            "</span>" +
+            buildCopyButton(item.colour.hex) +
+            "</span>";
+
+          resultsEl.appendChild(card);
+        });
+
+        logDebug("Lookup rendered", passing.length, "results");
+      }
+
+      // =========================================================================
+      // Section 4 & 5: Pair Builder + Component Preview
+      // =========================================================================
+      let pairBg = null;
+      let pairFg = null;
+
+      function scrollToPreview(event) {
+        event.preventDefault();
+        const target = document.getElementById("heading-preview");
+        const reducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        target.scrollIntoView({
+          behavior: reducedMotion ? "instant" : "smooth",
+          block: "start",
+        });
+        target.focus({ preventScroll: true });
+      }
+
+      function scrollToPairResult() {
+        // On narrow screens (single column), scroll the top summary into view
+        if (window.matchMedia("(min-width: 48rem)").matches) return;
+        const summaryEl = document.getElementById("pair-summary");
+        const reducedMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        summaryEl.scrollIntoView({
+          behavior: reducedMotion ? "instant" : "smooth",
+          block: "start",
+        });
+      }
+
+      function renderPairResult() {
+        const summaryEl = document.getElementById("pair-summary");
+        const summaryBottomEl = document.getElementById("pair-summary-bottom");
+        const previewFrame = document.getElementById("preview-frame");
+
+        if (!pairBg || !pairFg) {
+          summaryEl.textContent = "Select both colours to learn the result.";
+          summaryBottomEl.textContent =
+            "Select both colours to learn the result.";
+          previewFrame.hidden = true;
+          return;
+        }
+
+        const ratio = getContrastRatio(pairBg.hex, pairFg.hex);
+        const level = getWcagLevel(ratio);
+        const levelLabel = getLevelLabel(level);
+        const passed = level !== "fail";
+
+        const previewLink = passed
+          ? ' <a href="#component-preview" class="pair-preview-link" onclick="scrollToPreview(event)">Check your choice in the component preview.</a>'
+          : " <strong>This combination does not meet AA requirements for normal text.</strong>";
+
+        const resultHTML =
+          '<span class="demo-ratio ' +
+          getBadgeClass(level) +
+          '">' +
+          ratio.toFixed(2) +
+          ":1 — " +
+          levelLabel +
+          "</span> " +
+          pairFg.name +
+          " " +
+          buildCopyButton(pairFg.hex) +
+          " text on " +
+          pairBg.name +
+          " " +
+          buildCopyButton(pairBg.hex) +
+          " background." +
+          previewLink;
+
+        summaryEl.innerHTML = resultHTML;
+        summaryBottomEl.innerHTML = resultHTML;
+
+        // Announce a plain-text summary to screen readers
+        const pairAnnouncer = document.getElementById("pair-announcer");
+        const passFailText = passed
+          ? "This combination passes " + levelLabel + "."
+          : "This combination does not meet AA requirements for normal text.";
+        const announcementText =
+          pairFg.name +
+          " (" +
+          pairFg.hex +
+          ") text on " +
+          pairBg.name +
+          " (" +
+          pairBg.hex +
+          ") background. " +
+          ratio.toFixed(2) +
+          " to 1. " +
+          passFailText;
+        pairAnnouncer.textContent = "";
+        requestAnimationFrame(function () {
+          pairAnnouncer.textContent = announcementText;
+        });
+
+        // Update preview
+        previewFrame.hidden = false;
+        const previewBody = document.getElementById("preview-body");
+        const previewBar = document.getElementById("preview-bar");
+
+        previewBody.style.backgroundColor = pairBg.hex;
+        previewBody.style.color = pairFg.hex;
+
+        document.getElementById("preview-heading").style.color = pairFg.hex;
+        document.getElementById("preview-para").style.color = pairFg.hex;
+        document.getElementById("preview-link").style.color = pairFg.hex;
+
+        const btn = document.getElementById("preview-btn");
+        btn.style.backgroundColor = pairFg.hex;
+        btn.style.color = pairBg.hex;
+
+        previewBar.textContent =
+          pairBg.name +
+          " background + " +
+          pairFg.name +
+          " text — " +
+          ratio.toFixed(2) +
+          ":1 (" +
+          levelLabel +
+          ")";
+
+        logDebug(
+          "Pair preview updated:",
+          pairBg.name,
+          "+",
+          pairFg.name,
+          "=",
+          ratio.toFixed(2),
+        );
+      }
+
+      // =========================================================================
+      // Section 6: Matrix
+      // =========================================================================
+      function renderMatrix(familyFilter) {
+        const table = document.getElementById("matrix-table");
+        table.innerHTML = "";
+
+        let filtered = brandColours;
+        if (familyFilter && familyFilter !== "all") {
+          // Always include core colours for cross-referencing
+          filtered = brandColours.filter(function (c) {
+            return c.family === familyFilter || c.family === "core";
+          });
+        }
+
+        // Caption
+        const caption = document.createElement("caption");
+        caption.className = "visually-hidden";
+        const familyLabel =
+          familyFilter && familyFilter !== "all"
+            ? familyNames[familyFilter] + " and Core"
+            : "All brand";
+        caption.textContent =
+          "Colour contrast ratios for " + familyLabel + " colours";
+        table.appendChild(caption);
+
+        // Header row
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        const cornerTh = document.createElement("th");
+        cornerTh.setAttribute("scope", "col");
+        cornerTh.textContent = "BG \\ Text";
+        headerRow.appendChild(cornerTh);
+
+        filtered.forEach(function (colour) {
+          const th = document.createElement("th");
+          th.setAttribute("scope", "col");
+          th.setAttribute("aria-label", colour.name + " " + colour.hex);
+          th.style.fontSize = "0.65rem";
+          const swatch = document.createElement("span");
+          swatch.className = "matrix-swatch";
+          swatch.style.backgroundColor = colour.hex;
+          swatch.setAttribute("aria-hidden", "true");
+          th.appendChild(swatch);
+          const label =
+            colour.name.length > 12
+              ? colour.name.substring(0, 11) + "…"
+              : colour.name;
+          th.appendChild(document.createTextNode(label));
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Body rows
+        const tbody = document.createElement("tbody");
+        filtered.forEach(function (bgColour) {
+          const row = document.createElement("tr");
+          const rowHeader = document.createElement("th");
+          rowHeader.setAttribute("scope", "row");
+          rowHeader.setAttribute(
+            "aria-label",
+            bgColour.name + " " + bgColour.hex,
+          );
+          rowHeader.style.fontSize = "0.65rem";
+          const rowSwatch = document.createElement("span");
+          rowSwatch.className = "matrix-swatch";
+          rowSwatch.style.backgroundColor = bgColour.hex;
+          rowSwatch.setAttribute("aria-hidden", "true");
+          rowHeader.appendChild(rowSwatch);
+          const rowLabel =
+            bgColour.name.length > 14
+              ? bgColour.name.substring(0, 13) + "…"
+              : bgColour.name;
+          rowHeader.appendChild(document.createTextNode(rowLabel));
+          row.appendChild(rowHeader);
+
+          filtered.forEach(function (fgColour) {
+            const td = document.createElement("td");
+            td.className = "matrix-cell";
+            td.setAttribute("data-label", fgColour.name);
+
+            if (bgColour.hex === fgColour.hex) {
+              td.className += " matrix-cell--self";
+              td.textContent = "—";
+              td.setAttribute("aria-label", "Same colour");
+            } else {
+              const ratio = getContrastRatio(bgColour.hex, fgColour.hex);
+              const level = getWcagLevel(ratio);
+              td.className += " matrix-cell--" + level;
+              td.appendChild(document.createTextNode(ratio.toFixed(1)));
+              const badge = document.createElement("span");
+              badge.className = "matrix-cell__badge " + getBadgeClass(level);
+              badge.textContent = getLevelLabel(level);
+              td.appendChild(badge);
+              td.setAttribute(
+                "aria-label",
+                bgColour.name +
+                  " background, " +
+                  fgColour.name +
+                  " text: " +
+                  ratio.toFixed(1) +
+                  " to 1, " +
+                  getLevelLabel(level),
+              );
+            }
+
+            row.appendChild(td);
+          });
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        logDebug("Matrix rendered with", filtered.length, "colours");
+      }
+
+      // =========================================================================
+      // Section 7: Gallery
+      // =========================================================================
+      let galleryLevel = "aa";
+      let galleryFamily = "all";
+
+      function renderGallery() {
+        const grid = document.getElementById("gallery-grid");
+        const countEl = document.getElementById("gallery-count");
+        grid.innerHTML = "";
+
+        const threshold = galleryLevel === "aaa" ? 7 : 4.5;
+        const pairs = [];
+
+        brandColours.forEach(function (bg) {
+          if (
+            galleryFamily !== "all" &&
+            bg.family !== galleryFamily &&
+            bg.family !== "core"
+          )
+            return;
+
+          brandColours.forEach(function (fg) {
+            if (bg.hex === fg.hex) return;
+            if (
+              galleryFamily !== "all" &&
+              fg.family !== galleryFamily &&
+              fg.family !== "core"
+            )
+              return;
+
+            const ratio = getContrastRatio(bg.hex, fg.hex);
+            if (ratio >= threshold) {
+              // Avoid duplicates (A on B and B on A)
+              const key = [bg.hex, fg.hex].sort().join("-");
+              if (
+                !pairs.some(function (p) {
+                  return p.key === key;
+                })
+              ) {
+                pairs.push({ bg: bg, fg: fg, ratio: ratio, key: key });
+              }
+            }
+          });
+        });
+
+        pairs.sort(function (a, b) {
+          return b.ratio - a.ratio;
+        });
+
+        countEl.textContent =
+          pairs.length +
+          " unique passing combination" +
+          (pairs.length !== 1 ? "s" : "") +
+          " found.";
+
+        pairs.forEach(function (pair, pairIndex) {
+          const level = getWcagLevel(pair.ratio);
+          const article = document.createElement("article");
+          article.className = "gallery-card";
+          article.style.backgroundColor = pair.bg.hex;
+          article.style.color = pair.fg.hex;
+
+          const nameId = "gallery-card-name-" + pairIndex;
+          article.setAttribute("aria-labelledby", nameId);
+
+          article.innerHTML =
+            '<p class="gallery-card__name" id="' +
+            nameId +
+            '">' +
+            pair.fg.name +
+            " on " +
+            pair.bg.name +
+            "</p>" +
+            '<p class="gallery-card__sample-heading" aria-hidden="true">A heading sample</p>' +
+            '<p class="gallery-card__sample" aria-hidden="true">The quick brown fox jumps over the lazy dog.</p>' +
+            '<div class="gallery-card__meta">' +
+            '<span class="demo-ratio ' +
+            getBadgeClass(level) +
+            '">' +
+            getLevelLabel(level) +
+            " " +
+            pair.ratio.toFixed(1) +
+            ":1</span>" +
+            '<span class="gallery-card__hex">BG ' +
+            buildCopyButton(pair.bg.hex) +
+            "</span>" +
+            '<span class="gallery-card__hex">Text ' +
+            buildCopyButton(pair.fg.hex) +
+            "</span>" +
+            "</div>";
+
+          grid.appendChild(article);
+        });
+
+        logDebug("Gallery rendered with", pairs.length, "pairs");
+      }
+
+      // =========================================================================
+      // Event wiring
+      // =========================================================================
+      document.addEventListener("DOMContentLoaded", function () {
+        logInfo("Colour Contrast Guide initialised");
+
+        // Build swatch grids
+        buildSwatchGrid(
+          document.getElementById("lookup-bg-grid"),
+          function (colour) {
+            lookupBg = colour;
+            renderLookupResults();
+            scrollToLookupResults();
+          },
+          "lookup",
+        );
+
+        buildSwatchGrid(
+          document.getElementById("pair-bg-grid"),
+          function (colour) {
+            pairBg = colour;
+            renderPairResult();
+            scrollToPairResult();
+          },
+          "pair-bg",
+        );
+
+        buildSwatchGrid(
+          document.getElementById("pair-fg-grid"),
+          function (colour) {
+            pairFg = colour;
+            renderPairResult();
+            scrollToPairResult();
+          },
+          "pair-fg",
+        );
+
+        // Audience tabs
+        document.querySelectorAll(".audience-tab").forEach(function (tab) {
+          tab.onclick = function () {
+            document.querySelectorAll(".audience-tab").forEach(function (t) {
+              t.setAttribute("aria-pressed", "false");
+            });
+            tab.setAttribute("aria-pressed", "true");
+
+            document
+              .querySelectorAll(".audience-content")
+              .forEach(function (c) {
+                c.classList.remove("active");
+              });
+            document
+              .getElementById("audience-" + tab.dataset.audience)
+              .classList.add("active");
+          };
+        });
+
+        // Lookup level filters — sync both top and bottom sets
+        document
+          .querySelectorAll("#quick-lookup .filter-btn")
+          .forEach(function (btn) {
+            btn.onclick = function () {
+              // Set all filter buttons with the same level to pressed
+              document
+                .querySelectorAll("#quick-lookup .filter-btn")
+                .forEach(function (b) {
+                  b.setAttribute(
+                    "aria-pressed",
+                    b.dataset.level === btn.dataset.level ? "true" : "false",
+                  );
+                });
+              lookupLevel = btn.dataset.level;
+              renderLookupResults();
+            };
+          });
+
+        // Pair builder family select
+        document.getElementById("pair-family-select").onchange = function () {
+          const family = this.value;
+          filterSwatchGrid(document.getElementById("pair-bg-grid"), family);
+          filterSwatchGrid(document.getElementById("pair-fg-grid"), family);
+        };
+
+        // Matrix family select
+        document.getElementById("matrix-family-select").onchange = function () {
+          renderMatrix(this.value);
+        };
+
+        // Gallery filters
+        document.querySelectorAll(".gallery-filter").forEach(function (btn) {
+          btn.onclick = function () {
+            document.querySelectorAll(".gallery-filter").forEach(function (b) {
+              b.setAttribute("aria-pressed", "false");
+            });
+            btn.setAttribute("aria-pressed", "true");
+            galleryLevel = btn.dataset.level;
+            renderGallery();
+          };
+        });
+
+        document.getElementById("gallery-family-filter").onchange =
+          function () {
+            galleryFamily = this.value;
+            renderGallery();
+          };
+
+        // Initial renders
+        renderMatrix("all");
+        renderGallery();
+
+        // Back to top button — show when hero scrolls out of view
+        const backToTopBtn = document.querySelector(".back-to-top");
+        const heroEl = document.querySelector(".hero");
+
+        const heroObserver = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              backToTopBtn.setAttribute(
+                "data-visible",
+                entry.isIntersecting ? "false" : "true",
+              );
+            });
+          },
+          { threshold: 0 },
+        );
+        heroObserver.observe(heroEl);
+
+        backToTopBtn.onclick = function () {
+          const reducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+          window.scrollTo({
+            top: 0,
+            behavior: reducedMotion ? "instant" : "smooth",
+          });
+
+          // Focus the skip link so keyboard users start from the top
+          const skipLink = document.querySelector(".skip-link");
+          if (reducedMotion) {
+            skipLink.focus();
+          } else {
+            // Wait for scroll to finish before moving focus
+            setTimeout(function () {
+              skipLink.focus();
+            }, 500);
+          }
+        };
+
+        logDebug("Back to top button initialised");
+      });
+    </script>
+  </body>
+</html>
