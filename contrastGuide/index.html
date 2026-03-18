@@ -662,6 +662,13 @@
         color: var(--warm-neutral-02);
       }
 
+      .matrix-cell__ratio {
+        background-color: var(--brand-white);
+        color: var(--black);
+        padding: 2px;
+        border-radius: 2px;
+      }
+
       .matrix-cell__badge {
         display: none;
       }
@@ -2652,7 +2659,10 @@
               const ratio = getContrastRatio(bgColour.hex, fgColour.hex);
               const level = getWcagLevel(ratio);
               td.className += " matrix-cell--" + level;
-              td.appendChild(document.createTextNode(ratio.toFixed(1)));
+              const ratioSpan = document.createElement("span");
+              ratioSpan.className = "matrix-cell__ratio";
+              ratioSpan.textContent = ratio.toFixed(1);
+              td.appendChild(ratioSpan);
               const badge = document.createElement("span");
               badge.className = "matrix-cell__badge " + getBadgeClass(level);
               badge.textContent = getLevelLabel(level);
