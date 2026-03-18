@@ -2409,16 +2409,25 @@
 
         passing.forEach(function (item) {
           const level = getWcagLevel(item.ratio);
-          const card = document.createElement("div");
+          const card = document.createElement("article");
           card.className = "result-card";
           card.style.backgroundColor = lookupBg.hex;
           card.style.color = item.colour.hex;
+          card.setAttribute(
+            "aria-label",
+            item.colour.name +
+              " — " +
+              getLevelLabel(level) +
+              " " +
+              item.ratio.toFixed(1) +
+              " to 1",
+          );
 
           card.innerHTML =
             '<span class="result-card__heading">' +
             item.colour.name +
             "</span>" +
-            '<span class="result-card__text">The quick brown fox jumps over the lazy dog.</span>' +
+            '<span class="result-card__text" aria-hidden="true">The quick brown fox jumps over the lazy dog.</span>' +
             '<span class="result-card__meta">' +
             '<span class="demo-ratio ' +
             getBadgeClass(level) +
@@ -2752,7 +2761,8 @@
           article.style.color = pair.fg.hex;
 
           const nameId = "gallery-card-name-" + pairIndex;
-          article.setAttribute("aria-labelledby", nameId);
+          const badgeId = "gallery-card-badge-" + pairIndex;
+          article.setAttribute("aria-labelledby", nameId + " " + badgeId);
 
           article.innerHTML =
             '<p class="gallery-card__name" id="' +
@@ -2767,6 +2777,8 @@
             '<div class="gallery-card__meta">' +
             '<span class="demo-ratio ' +
             getBadgeClass(level) +
+            '" id="' +
+            badgeId +
             '">' +
             getLevelLabel(level) +
             " " +
