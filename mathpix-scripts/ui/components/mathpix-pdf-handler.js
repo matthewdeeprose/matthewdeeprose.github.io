@@ -259,7 +259,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     const selectAllCheckbox = document.getElementById("select-all-formats");
     const formatCheckboxes = document.querySelectorAll(
-      '.mathpix-format-checkbox input[type="checkbox"]:not(#select-all-formats)'
+      '.mathpix-format-checkbox input[type="checkbox"]:not(#select-all-formats)',
     );
 
     console.log("📋 Elements found:", {
@@ -270,7 +270,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     if (!selectAllCheckbox) {
       console.error(
-        "❌ CRITICAL: Select all formats checkbox not found in DOM!"
+        "❌ CRITICAL: Select all formats checkbox not found in DOM!",
       );
       logWarn("Select all formats checkbox not found");
       return false;
@@ -280,22 +280,11 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (!this.currentProcessingOptions) {
       this.currentProcessingOptions = {
         page_range: "all",
-        formats: [
-          "mmd",
-          "md",
-          "html",
-          "tex.zip",
-          "docx",
-          "pptx",
-          "pdf",
-          "mmd.zip",
-          "md.zip",
-          "html.zip",
-        ],
+        formats: ["mmd"],
       };
       console.log(
         "🎯 Initialized currentProcessingOptions:",
-        this.currentProcessingOptions
+        this.currentProcessingOptions,
       );
     }
 
@@ -335,7 +324,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
       console.log(
         "🎯 Processing options after select all:",
-        this.currentProcessingOptions
+        this.currentProcessingOptions,
       );
     };
 
@@ -352,7 +341,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
       const updateHandler = () => {
         console.log(
-          `📋 Individual checkbox changed: ${checkbox.id} = ${checkbox.checked}`
+          `📋 Individual checkbox changed: ${checkbox.id} = ${checkbox.checked}`,
         );
         this.updateSelectAllState();
         this.updateSelectedFormats();
@@ -375,7 +364,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
    */
   forceSetupSelectAll() {
     console.log(
-      "🔧 FORCE SETUP: Manually initializing Select All functionality"
+      "🔧 FORCE SETUP: Manually initializing Select All functionality",
     );
 
     // Force call setup
@@ -407,14 +396,18 @@ class MathPixPDFHandler extends MathPixBaseModule {
    */
   updateSelectAllState() {
     const selectAllCheckbox = document.getElementById("select-all-formats");
-    const formatCheckboxes = document.querySelectorAll(
-      '.mathpix-format-checkbox input[type="checkbox"]:not(#select-all-formats)'
-    );
+    // Scope to the PDF upload format section only (not convert/resume sections)
+    const formatFieldset = selectAllCheckbox?.closest(".mathpix-option-group");
+    const formatCheckboxes = formatFieldset
+      ? formatFieldset.querySelectorAll(
+          'input[type="checkbox"]:not(#select-all-formats)',
+        )
+      : [];
 
     if (!selectAllCheckbox) return;
 
     const enabledCheckboxes = Array.from(formatCheckboxes).filter(
-      (cb) => !cb.disabled && cb.id !== "pdf-format-mmd"
+      (cb) => !cb.disabled && cb.id !== "pdf-format-mmd",
     );
     const checkedCount = enabledCheckboxes.filter((cb) => cb.checked).length;
 
@@ -460,6 +453,11 @@ class MathPixPDFHandler extends MathPixBaseModule {
     });
 
     try {
+      // Step 0: Reset any previous PDF session UI and state
+      // This ensures clean state whether user arrived via "Process Another"
+      // button or by dropping a new file onto the upload zone
+      this.resetPreviousSession();
+
       // Step 1: Validate PDF file against requirements
       const validation = this.validatePDFFile(pdfFile);
       if (!validation.valid) {
@@ -475,7 +473,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       ) {
         this.showNotification(
           "Please configure your MathPix API credentials first.",
-          "error"
+          "error",
         );
         return false;
       }
@@ -514,7 +512,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
       this.showNotification(
         `${formatName} "${pdfFile.name}" ready. Configure processing options and click "Process ${formatName}".`,
-        "success"
+        "success",
       );
 
       return true;
@@ -574,7 +572,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
               // Announce confirmation to screen readers
               if (this.pdfAccessibility) {
                 this.pdfAccessibility.announce(
-                  `${formatName} ${confirmedFile.name} confirmed. Proceeding to processing options.`
+                  `${formatName} ${confirmedFile.name} confirmed. Proceeding to processing options.`,
                 );
               }
 
@@ -587,12 +585,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
               // Announce cancellation to screen readers
               if (this.pdfAccessibility) {
                 this.pdfAccessibility.announce(
-                  `${formatName} upload cancelled.`
+                  `${formatName} upload cancelled.`,
                 );
               }
 
               resolve(false);
-            }
+            },
           );
         });
       } else {
@@ -605,7 +603,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       // Notify user of preview failure
       if (window.notifyWarning) {
         window.notifyWarning(
-          `Could not preview ${formatName}. You can still proceed with processing.`
+          `Could not preview ${formatName}. You can still proceed with processing.`,
         );
       }
 
@@ -664,7 +662,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Phase 4: Multi-format support - Check against array of supported types
     if (!MATHPIX_CONFIG.SUPPORTED_TYPES.includes(pdfFile.type)) {
       const supportedNames = MATHPIX_CONFIG.SUPPORTED_TYPES.map(
-        (mime) => getFormatInfo(mime)?.name
+        (mime) => getFormatInfo(mime)?.name,
       )
         .filter((name) => name && !name.startsWith("image"))
         .join(", ");
@@ -803,7 +801,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
         block: "start",
       });
       logDebug(
-        "Scrolled to PDF options interface (instant scroll due to layout changes)"
+        "Scrolled to PDF options interface (instant scroll due to layout changes)",
       );
     }, 150);
 
@@ -831,7 +829,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // UNIFIED DROP ZONE: Use main drop zone instead of PDF-specific drop zone
     const mainDropZone = document.getElementById("mathpix-drop-zone");
     const pdfUploadContainer = document.querySelector(
-      ".mathpix-pdf-upload-container"
+      ".mathpix-pdf-upload-container",
     );
 
     // Hide the entire PDF upload container to eliminate duplication
@@ -871,7 +869,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
         Selected Document: ${pdfFile.name}
         <br />
         <span class="help-text">Size: ${this.formatFileSize(
-          pdfFile.size
+          pdfFile.size,
         )} | Select to choose a different file</span>
       `;
         logDebug("Main drop zone updated with document file information", {
@@ -888,29 +886,43 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @method attachPDFOptionsListeners
    * @description Attaches event listeners for PDF processing options
    *
+   * CRITICAL FIX: Removes existing listeners before adding new ones to prevent
+   * duplicate event handling when processing multiple PDFs in one session.
+   *
    * @returns {void}
    * @private
    * @since 2.1.0
+   * @updated 3.5.0 - Added duplicate listener prevention
    */
   attachPDFOptionsListeners() {
+    // ✅ CRITICAL FIX: Remove existing listeners before adding new ones
+    // This prevents duplicate event handlers when processing multiple PDFs
+    this.removePDFOptionsListeners();
+
     // Set up page range change listeners
     const pageRangeInputs = document.querySelectorAll(
-      'input[name="pdf-page-range"]'
+      'input[name="pdf-page-range"]',
     );
     pageRangeInputs.forEach((input) => {
-      input.addEventListener("change", (e) => {
+      // Create named handler and store reference for cleanup
+      const handler = (e) => {
         this.handlePageRangeChange(e.target.value);
-      });
+      };
+      input._pdfPageRangeHandler = handler;
+      input.addEventListener("change", handler);
     });
 
     // Set up format checkbox listeners
     const formatCheckboxes = document.querySelectorAll(
-      'input[type="checkbox"][id^="pdf-format-"]'
+      'input[type="checkbox"][id^="pdf-format-"]',
     );
     formatCheckboxes.forEach((checkbox) => {
-      checkbox.addEventListener("change", () => {
+      // Create named handler and store reference for cleanup
+      const handler = () => {
         this.updateSelectedFormats();
-      });
+      };
+      checkbox._pdfFormatHandler = handler;
+      checkbox.addEventListener("change", handler);
     });
 
     // Set up select all formats functionality (Phase 3.1)
@@ -922,22 +934,82 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Set up process button listener
     const processButton = document.getElementById("mathpix-pdf-process-btn");
     if (processButton) {
-      processButton.addEventListener("click", () => {
+      // Create named handler and store reference for cleanup
+      const handler = () => {
         this.processPDFWithOptions();
-      });
+      };
+      processButton._pdfProcessHandler = handler;
+      processButton.addEventListener("click", handler);
     }
 
     // Set up cancel button listener
     const cancelButton = document.getElementById("mathpix-pdf-cancel-btn");
     if (cancelButton) {
-      cancelButton.addEventListener("click", () => {
+      // Create named handler and store reference for cleanup
+      const handler = () => {
         this.cancelPDFProcessing();
-      });
+      };
+      cancelButton._pdfCancelHandler = handler;
+      cancelButton.addEventListener("click", handler);
     }
 
     logDebug(
-      "PDF options event listeners attached including delimiter controls"
+      "PDF options event listeners attached including delimiter controls",
     );
+  }
+
+  /**
+   * @method removePDFOptionsListeners
+   * @description Removes existing PDF options event listeners to prevent duplicates
+   *
+   * Called before attaching new listeners to ensure clean state when processing
+   * multiple PDFs in a single session.
+   *
+   * @returns {void}
+   * @private
+   * @since 3.5.0
+   */
+  removePDFOptionsListeners() {
+    // Remove page range listeners
+    const pageRangeInputs = document.querySelectorAll(
+      'input[name="pdf-page-range"]',
+    );
+    pageRangeInputs.forEach((input) => {
+      if (input._pdfPageRangeHandler) {
+        input.removeEventListener("change", input._pdfPageRangeHandler);
+        delete input._pdfPageRangeHandler;
+      }
+    });
+
+    // Remove format checkbox listeners
+    const formatCheckboxes = document.querySelectorAll(
+      'input[type="checkbox"][id^="pdf-format-"]',
+    );
+    formatCheckboxes.forEach((checkbox) => {
+      if (checkbox._pdfFormatHandler) {
+        checkbox.removeEventListener("change", checkbox._pdfFormatHandler);
+        delete checkbox._pdfFormatHandler;
+      }
+    });
+
+    // Remove process button listener
+    const processButton = document.getElementById("mathpix-pdf-process-btn");
+    if (processButton && processButton._pdfProcessHandler) {
+      processButton.removeEventListener(
+        "click",
+        processButton._pdfProcessHandler,
+      );
+      delete processButton._pdfProcessHandler;
+    }
+
+    // Remove cancel button listener
+    const cancelButton = document.getElementById("mathpix-pdf-cancel-btn");
+    if (cancelButton && cancelButton._pdfCancelHandler) {
+      cancelButton.removeEventListener("click", cancelButton._pdfCancelHandler);
+      delete cancelButton._pdfCancelHandler;
+    }
+
+    logDebug("Existing PDF options event listeners removed");
   }
 
   /**
@@ -953,7 +1025,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
    */
   initializeDelimiterControls() {
     const delimiterRadios = document.querySelectorAll(
-      'input[name="pdf-math-delimiters"]'
+      'input[name="pdf-math-delimiters"]',
     );
     const customContainer = document.getElementById("pdf-custom-delimiters");
 
@@ -1234,13 +1306,18 @@ class MathPixPDFHandler extends MathPixBaseModule {
     console.log("🔄 updateSelectedFormats called");
 
     const selectedFormats = [];
-    const formatCheckboxes = document.querySelectorAll(
-      'input[type="checkbox"][id^="pdf-format-"]'
-    );
+    // Scope to the PDF upload format section only
+    const selectAllCheckbox = document.getElementById("select-all-formats");
+    const formatFieldset = selectAllCheckbox?.closest(".mathpix-option-group");
+    const formatCheckboxes = formatFieldset
+      ? formatFieldset.querySelectorAll(
+          'input[type="checkbox"][id^="pdf-format-"]',
+        )
+      : document.querySelectorAll('input[type="checkbox"][id^="pdf-format-"]');
 
     formatCheckboxes.forEach((checkbox) => {
       console.log(
-        `📋 ${checkbox.id}: checked=${checkbox.checked}, value=${checkbox.value}`
+        `📋 ${checkbox.id}: checked=${checkbox.checked}, value=${checkbox.value}`,
       );
       if (checkbox.checked) {
         selectedFormats.push(checkbox.value);
@@ -1251,21 +1328,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (!this.currentProcessingOptions) {
       this.currentProcessingOptions = {
         page_range: "all",
-        formats: [
-          "mmd",
-          "md",
-          "html",
-          "tex.zip",
-          "docx",
-          "pptx",
-          "pdf",
-          "mmd.zip",
-          "md.zip",
-          "html.zip",
-        ],
+        formats: ["mmd"],
       };
       console.log(
-        "🆘 Emergency init of processing options in updateSelectedFormats"
+        "🆘 Emergency init of processing options in updateSelectedFormats",
       );
     }
 
@@ -1296,7 +1362,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (!this.currentPDFFile || !this.currentProcessingOptions) {
       this.showNotification(
         "No PDF file or options available for processing",
-        "error"
+        "error",
       );
       return;
     }
@@ -1324,7 +1390,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       await this.controller.pdfProcessor.processPDFDocument(
         this.currentPDFFile,
         finalOptions,
-        this.getPDFProgressCallback()
+        this.getPDFProgressCallback(),
       );
     } catch (error) {
       logError("PDF processing failed", error);
@@ -1349,10 +1415,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     if (this.controller?.progressDisplay) {
       this.controller.progressDisplay.updateStatusDetail(
-        `Validating ${formatCount} output ${formatWord}...`
+        `Validating ${formatCount} output ${formatWord}...`,
       );
       this.controller.progressDisplay.updateTimingDetail(
-        "Format validation in progress..."
+        "Format validation in progress...",
       );
     }
 
@@ -1414,10 +1480,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
         1000
       ).toFixed(1);
       this.controller.progressDisplay.updateStatusDetail(
-        `✓ Format validation complete - ${formatCount} ${formatWord} ready`
+        `✓ Format validation complete - ${formatCount} ${formatWord} ready`,
       );
       this.controller.progressDisplay.updateTimingDetail(
-        `Validation completed in ${validationTime}s`
+        `Validation completed in ${validationTime}s`,
       );
     }
 
@@ -1611,7 +1677,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
             this.updateEnhancedProgress(
               detectedStage,
               progressPercentage,
-              message
+              message,
             );
             logDebug("Enhanced progress stage updated", {
               from: this.progressState.currentStage,
@@ -1638,7 +1704,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           const currentIndex = this.progressState.stageIndex;
           const nextIndex = Math.min(
             currentIndex + 1,
-            this.progressState.stages.length - 1
+            this.progressState.stages.length - 1,
           );
           const nextStage = this.progressState.stages[nextIndex];
 
@@ -1653,7 +1719,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
         // Fallback: Also update old system for compatibility
         const progressFill = document.getElementById(
-          "mathpix-pdf-progress-fill"
+          "mathpix-pdf-progress-fill",
         );
         if (progressFill) {
           const currentWidth = parseInt(progressFill.style.width) || 0;
@@ -1841,7 +1907,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (stage && stage !== this.progressState.currentStage) {
       this.progressState.currentStage = stage;
       this.progressState.stageIndex = this.progressState.stages.findIndex(
-        (s) => s.id === stage
+        (s) => s.id === stage,
       );
       this.progressState.messageIndex = 0; // Reset message cycling for new stage
 
@@ -1883,7 +1949,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
   updateProgressBar(percentage) {
     const progressFill = document.getElementById("pdf-progress-fill-enhanced");
     const progressPercentage = document.getElementById(
-      "pdf-progress-percentage-enhanced"
+      "pdf-progress-percentage-enhanced",
     );
 
     if (progressFill) {
@@ -2032,20 +2098,28 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @since 3.1.0
    */
   stopProgressTracking() {
-    // Safety check: Only stop tracking if progressState exists
-    if (!this.progressState || !this.progressState.intervals) {
+    // Safety check: Only stop tracking if progressTimers exists
+    if (!this.progressTimers) {
       logDebug("Progress tracking stop requested but no active tracking found");
       return;
     }
 
-    // Stop any running intervals
-    Object.values(this.progressState.intervals).forEach((intervalId) => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    });
+    // Stop elapsed time and message cycling timers
+    if (this.progressTimers.elapsed) {
+      clearInterval(this.progressTimers.elapsed);
+      this.progressTimers.elapsed = null;
+    }
 
-    this.progressState.intervals = {};
+    if (this.progressTimers.message) {
+      clearInterval(this.progressTimers.message);
+      this.progressTimers.message = null;
+    }
+
+    if (this.progressTimers.stage) {
+      clearInterval(this.progressTimers.stage);
+      this.progressTimers.stage = null;
+    }
+
     logDebug("Progress tracking stopped");
   }
 
@@ -2059,18 +2133,15 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (!this.progressState || !this.progressState.startTime) return;
 
     const elapsed = Date.now() - this.progressState.startTime;
-    const elapsedElement = document.getElementById("elapsed-time");
+    const elapsedElement = document.getElementById("mathpix-elapsed-time");
 
     if (elapsedElement) {
-      const seconds = Math.floor(elapsed / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const remainingSeconds = seconds % 60;
+      const totalSeconds = Math.floor(elapsed / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
 
-      if (minutes > 0) {
-        elapsedElement.textContent = `${minutes}m ${remainingSeconds}s`;
-      } else {
-        elapsedElement.textContent = `${seconds}s`;
-      }
+      // Fixed-width MM:SS format to prevent container resize
+      elapsedElement.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     }
   }
 
@@ -2128,15 +2199,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
     const estimatedSection = document.getElementById("estimated-remaining");
 
     if (remainingElement) {
-      const seconds = Math.floor(remainingTime / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const remainingSeconds = seconds % 60;
+      const totalSeconds = Math.floor(remainingTime / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
 
-      if (minutes > 0) {
-        remainingElement.textContent = `${minutes}m ${remainingSeconds}s`;
-      } else {
-        remainingElement.textContent = `${seconds}s`;
-      }
+      // Fixed-width MM:SS format to match elapsed time display
+      remainingElement.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     }
 
     // Show the estimated remaining section if we have a time estimate
@@ -2272,7 +2340,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
         await this.controller.pdfResultRenderer.displayPDFResults(
           results,
           documentInfo,
-          this.currentPDFFile
+          this.currentPDFFile,
         );
 
         console.log("🔍 DEBUG [Handler]: displayPDFResults call completed");
@@ -2293,7 +2361,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
       this.showNotification(
         "PDF processing completed successfully!",
-        "success"
+        "success",
       );
       logInfo("PDF results displayed", {
         availableFormats: Object.keys(results),
@@ -2316,7 +2384,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
       this.showNotification(
         "PDF processing completed (basic display)",
-        "success"
+        "success",
       );
     }
   }
@@ -2408,7 +2476,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     formats.forEach((format) => {
       const resultKey = formatMapping[format];
       const contentElement = document.getElementById(
-        `mathpix-pdf-content-${format}`
+        `mathpix-pdf-content-${format}`,
       );
       const tabButton = document.getElementById(`tab-${format}`);
 
@@ -2445,7 +2513,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           console.log(
             `✅ Showing ${format} tab (found ${resultKey}: ${typeof results[
               resultKey
-            ]})`
+            ]})`,
           );
         }
 
@@ -2470,7 +2538,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
         if (tabButton) {
           tabButton.style.display = "none";
           console.log(
-            `❌ Hiding ${format} tab: exists=${resultExists}, valid=${hasValidContent}, element=${!!contentElement}`
+            `❌ Hiding ${format} tab: exists=${resultExists}, valid=${hasValidContent}, element=${!!contentElement}`,
           );
         }
       }
@@ -2492,8 +2560,16 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Set up HTML preview toggle functionality
     this.setupHTMLPreviewToggle();
 
-    // Set up tab switching
-    const tabHeaders = document.querySelectorAll(".mathpix-tab-header");
+    // Phase 8A-8: scope tab-header queries to the upload PDF results container.
+    // Why: an unscoped document-wide query also matches resume-mode tabs
+    // (same .mathpix-tab-header class), which meant clicks on resume tabs
+    // fired both switchTab() AND switchResultTab(). switchResultTab() then
+    // stripped aria-selected + panel .active globally, leaving resume tabs
+    // in the inconsistent state described in § 8A-8.
+    const pdfResultsContainer = document.getElementById("mathpix-pdf-results");
+    const tabHeaders = pdfResultsContainer
+      ? pdfResultsContainer.querySelectorAll(".mathpix-tab-header")
+      : [];
     tabHeaders.forEach((tab) => {
       const clickHandler = (e) => {
         this.switchResultTab(e.target.id.replace("tab-", ""));
@@ -2505,13 +2581,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // Set up export buttons
     const copyButtons = document.querySelectorAll(
-      ".mathpix-copy-btn[data-format]"
+      ".mathpix-copy-btn[data-format]",
     );
     const downloadButtons = document.querySelectorAll(
-      ".mathpix-download-btn[data-format]"
+      ".mathpix-download-btn[data-format]",
     );
     const previewButtons = document.querySelectorAll(
-      ".mathpix-preview-btn[data-format]"
+      ".mathpix-preview-btn[data-format]",
     );
 
     copyButtons.forEach((btn) => {
@@ -2551,10 +2627,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // Set up final action buttons
     const processAnotherBtn = document.getElementById(
-      "mathpix-process-another-pdf"
+      "mathpix-process-another-pdf",
     );
     const clearResultsBtn = document.getElementById(
-      "mathpix-clear-pdf-results"
+      "mathpix-clear-pdf-results",
     );
 
     if (processAnotherBtn) {
@@ -2574,7 +2650,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     }
 
     logDebug(
-      "Results interface setup completed with duplicate prevention and HTML preview toggle"
+      "Results interface setup completed with duplicate prevention and HTML preview toggle",
     );
   }
 
@@ -2788,8 +2864,11 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @since 2.1.0
    */
   removeExistingListeners() {
-    // Remove tab header listeners
-    const tabHeaders = document.querySelectorAll(".mathpix-tab-header");
+    // Phase 8A-8: scope to upload PDF results container (see setupResultsInterface).
+    const pdfResultsContainer = document.getElementById("mathpix-pdf-results");
+    const tabHeaders = pdfResultsContainer
+      ? pdfResultsContainer.querySelectorAll(".mathpix-tab-header")
+      : [];
     tabHeaders.forEach((tab) => {
       if (tab._mathpixClickHandler) {
         tab.removeEventListener("click", tab._mathpixClickHandler);
@@ -2799,7 +2878,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // Remove export button listeners
     const exportButtons = document.querySelectorAll(
-      ".mathpix-copy-btn[data-format], .mathpix-download-btn[data-format], .mathpix-preview-btn[data-format]"
+      ".mathpix-copy-btn[data-format], .mathpix-download-btn[data-format], .mathpix-preview-btn[data-format]",
     );
     exportButtons.forEach((btn) => {
       if (btn._mathpixClickHandler) {
@@ -2833,15 +2912,25 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @since 2.1.0
    */
   switchResultTab(format) {
+    // Phase 8A-8: scope to upload PDF results container. An unscoped query
+    // also hit resume-mode tabs/panels, wiping aria-selected + panel.active
+    // set a moment earlier by the resume-mode switchTab() (§ 8A-8).
+    const pdfResultsContainer = document.getElementById("mathpix-pdf-results");
+    if (!pdfResultsContainer) {
+      logDebug("switchResultTab: PDF results container missing", { format });
+      return;
+    }
+
     // Update tab headers
-    const tabHeaders = document.querySelectorAll(".mathpix-tab-header");
+    const tabHeaders =
+      pdfResultsContainer.querySelectorAll(".mathpix-tab-header");
     tabHeaders.forEach((tab) => {
       const isActive = tab.id === `tab-${format}`;
       tab.setAttribute("aria-selected", isActive.toString());
     });
 
     // Update tab panels
-    const tabPanels = document.querySelectorAll(".mathpix-tab-panel");
+    const tabPanels = pdfResultsContainer.querySelectorAll(".mathpix-tab-panel");
     tabPanels.forEach((panel) => {
       const isActive = panel.id === `panel-${format}`;
       panel.classList.toggle("active", isActive);
@@ -2884,7 +2973,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       if (typeof content !== "string") {
         this.showNotification(
           "Cannot copy non-text content to clipboard",
-          "error"
+          "error",
         );
         return;
       }
@@ -2892,7 +2981,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       await navigator.clipboard.writeText(content);
       this.showNotification(
         MATHPIX_CONFIG.PDF_MESSAGES.PDF_COPY_SUCCESS,
-        "success"
+        "success",
       );
       logInfo("Format content copied", { format, resultKey });
     } catch (error) {
@@ -2988,14 +3077,14 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
       this.showNotification(
         MATHPIX_CONFIG.PDF_MESSAGES.PDF_DOWNLOAD_SUCCESS,
-        "success"
+        "success",
       );
       logInfo("Format content downloaded", { format, resultKey, filename });
     } catch (error) {
       logError("Failed to download content", error);
       this.showNotification(
         MATHPIX_CONFIG.PDF_MESSAGES.PDF_EXPORT_ERROR,
-        "error"
+        "error",
       );
     }
   }
@@ -3012,7 +3101,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (!this.currentPDFId) {
       this.showNotification(
         "No document ID available for DOCX download",
-        "error"
+        "error",
       );
       return;
     }
@@ -3020,7 +3109,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     try {
       const docxBlob = await this.controller.apiClient.downloadPDFFormat(
         this.currentPDFId,
-        "docx"
+        "docx",
       );
       const filename = this.generateDownloadFilename("docx");
 
@@ -3039,7 +3128,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
       this.showNotification(
         MATHPIX_CONFIG.PDF_MESSAGES.PDF_DOWNLOAD_SUCCESS,
-        "success"
+        "success",
       );
       logInfo("DOCX file downloaded via API", { filename });
     } catch (error) {
@@ -3086,7 +3175,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (format !== "html") {
       this.showNotification(
         "Preview is only available for HTML format",
-        "info"
+        "info",
       );
       return;
     }
@@ -3111,6 +3200,98 @@ class MathPixPDFHandler extends MathPixBaseModule {
   }
 
   /**
+   * @method resetPreviousSession
+   * @description Resets UI and state from any previous PDF processing session
+   *
+   * Performs the UI cleanup needed when starting a new PDF upload — hides
+   * previous results, options, and PDF interface elements. Called automatically
+   * at the start of handlePDFUpload to ensure clean state regardless of
+   * whether the user arrived via the "Process Another" button or the drop zone.
+   *
+   * @returns {void}
+   * @private
+   * @since 2.1.2
+   */
+  resetPreviousSession() {
+    logInfo("Resetting previous PDF session for new upload");
+
+    // Clear result renderer session (destroys confidence visualiser, cached data)
+    if (this.controller && this.controller.pdfResultRenderer) {
+      try {
+        if (
+          typeof this.controller.pdfResultRenderer.clearPDFSession ===
+          "function"
+        ) {
+          this.controller.pdfResultRenderer.clearPDFSession();
+          logDebug("Result renderer session cleared");
+        } else if (
+          typeof this.controller.pdfResultRenderer.clearLinesData === "function"
+        ) {
+          this.controller.pdfResultRenderer.clearLinesData();
+          logDebug("Result renderer lines data cleared (fallback)");
+        }
+      } catch (error) {
+        logWarn("Error clearing result renderer session:", error);
+      }
+    }
+
+    // Clear lines data manager cache
+    if (this.controller && this.controller.linesDataManager) {
+      try {
+        this.controller.linesDataManager.clearCache();
+        logDebug("Lines data manager cache cleared");
+      } catch (error) {
+        logWarn("Error clearing lines data manager cache:", error);
+      }
+    }
+
+    // Reset PDF processor state
+    if (this.controller && this.controller.pdfProcessor) {
+      try {
+        this.controller.pdfProcessor.resetProcessingState();
+        logDebug("PDF processor state reset");
+      } catch (error) {
+        logWarn("Error resetting PDF processor state:", error);
+      }
+    }
+
+    // Hide previous results
+    const resultsContainer = document.getElementById("mathpix-pdf-results");
+    if (resultsContainer) {
+      resultsContainer.style.display = "none";
+    }
+
+    // Hide previous PDF interface
+    const pdfInterface = document.getElementById("mathpix-pdf-interface");
+    if (pdfInterface) {
+      pdfInterface.style.display = "none";
+      logDebug("Previous PDF interface hidden");
+    }
+
+    // Hide previous PDF options
+    const pdfOptions = document.getElementById("mathpix-pdf-options");
+    if (pdfOptions) {
+      pdfOptions.style.display = "none";
+    }
+
+    // Show main interface for new upload flow
+    const imageInterface = document.getElementById("mathpix-main-interface");
+    if (imageInterface) {
+      imageInterface.style.display = "block";
+    }
+
+    // Reset handler state
+    this.currentPDFFile = null;
+    this.currentProcessingOptions = null;
+    this.currentPDFId = null;
+    this.currentPDFResults = null;
+
+    logInfo("Previous PDF session reset complete");
+  }
+
+  /**
+
+  /**
    * @method processAnotherPDF
    * @description Resets interface to process another PDF with unified drop zone
    *
@@ -3122,44 +3303,18 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @updated 2.1.1 - Unified drop zone reset implementation
    */
   processAnotherPDF() {
-    // Hide results interface
-    const resultsContainer = document.getElementById("mathpix-pdf-results");
-    if (resultsContainer) {
-      resultsContainer.style.display = "none";
-    }
+    logInfo("Processing another PDF - clearing session");
 
-    // ✅ FIX: Hide PDF-specific interface to return to unified upload state
-    const pdfInterface = document.getElementById("mathpix-pdf-interface");
-    if (pdfInterface) {
-      pdfInterface.style.display = "none";
-      logDebug("PDF interface hidden for unified upload state");
-    }
-
-    // Hide PDF options interface
-    const pdfOptions = document.getElementById("mathpix-pdf-options");
-    if (pdfOptions) {
-      pdfOptions.style.display = "none";
-      logDebug("PDF options hidden");
-    }
-
-    // ✅ FIX: Show main image interface for unified upload
-    const imageInterface = document.getElementById("mathpix-main-interface");
-    if (imageInterface) {
-      imageInterface.style.display = "block";
-      logDebug("Main image interface shown for unified uploads");
-    }
-
-    // Reset state
-    this.currentPDFFile = null;
-    this.currentProcessingOptions = null;
-    this.currentPDFId = null;
-    this.currentPDFResults = null;
+    // Delegate to shared session reset method
+    this.resetPreviousSession();
 
     // UNIFIED DROP ZONE: Reset main drop zone to initial state
     this.resetDropZoneToInitial();
 
     this.showNotification("Ready for new upload", "info");
-    logInfo("Interface reset to unified upload state");
+    logInfo(
+      "Interface reset to unified upload state - all session data cleared",
+    );
   }
 
   /**
@@ -3176,7 +3331,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
   resetDropZoneToInitial() {
     const mainDropZone = document.getElementById("mathpix-drop-zone");
     const pdfUploadContainer = document.querySelector(
-      ".mathpix-pdf-upload-container"
+      ".mathpix-pdf-upload-container",
     );
 
     // Show the PDF upload container again when resetting
@@ -3278,10 +3433,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // PHASE 2: Start format availability check
     if (this.controller?.progressDisplay) {
       this.controller.progressDisplay.updateStatusDetail(
-        `Checking format availability on ${endpointConfig.name} endpoint...`
+        `Checking format availability on ${endpointConfig.name} endpoint...`,
       );
       this.controller.progressDisplay.updateTimingDetail(
-        "Updating format options..."
+        "Updating format options...",
       );
     }
 
@@ -3324,11 +3479,11 @@ class MathPixPDFHandler extends MathPixBaseModule {
       const isAvailable =
         this.controller.apiClient.isFeatureAvailable(featureName);
 
-      // Don't disable MMD (always required)
+      // Don't modify MMD (always required, always checked, always disabled)
       if (format === "mmd") {
-        checkbox.disabled = false;
+        checkbox.disabled = true;
         checkbox.checked = true;
-        logDebug("MMD format always enabled (required)");
+        logDebug("MMD format always enabled (required, locked)");
         availableCount++;
         checkedFormats++;
         return;
@@ -3370,7 +3525,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
             "aria-label",
             `${format.toUpperCase()} format (unavailable on ${
               endpointConfig.name
-            } endpoint)`
+            } endpoint)`,
           );
         }
 
@@ -3379,7 +3534,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           {
             featureName,
             endpoint: currentEndpoint,
-          }
+          },
         );
       } else {
         // Enable available formats
@@ -3393,7 +3548,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
           // Remove any unavailability message span
           const existingMessage = label.querySelector(
-            ".format-unavailable-message"
+            ".format-unavailable-message",
           );
           if (existingMessage) {
             existingMessage.remove();
@@ -3420,7 +3575,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       .filter(
         ([format, feature]) =>
           format !== "mmd" &&
-          !this.controller.apiClient.isFeatureAvailable(feature)
+          !this.controller.apiClient.isFeatureAvailable(feature),
       )
       .map(([format]) => format.toUpperCase());
 
@@ -3428,17 +3583,17 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (this.controller?.progressDisplay) {
       if (unavailableFormats.length > 0) {
         this.controller.progressDisplay.updateStatusDetail(
-          `✓ Format check complete: ${availableCount} available, ${unavailableCount} unavailable on ${endpointConfig.name}`
+          `✓ Format check complete: ${availableCount} available, ${unavailableCount} unavailable on ${endpointConfig.name}`,
         );
         this.controller.progressDisplay.updateTimingDetail(
-          `${unavailableFormats.join(", ")} not supported on this endpoint`
+          `${unavailableFormats.join(", ")} not supported on this endpoint`,
         );
       } else {
         this.controller.progressDisplay.updateStatusDetail(
-          `✓ All ${totalFormats} formats available on ${endpointConfig.name} endpoint`
+          `✓ All ${totalFormats} formats available on ${endpointConfig.name} endpoint`,
         );
         this.controller.progressDisplay.updateTimingDetail(
-          "Ready to configure processing options"
+          "Ready to configure processing options",
         );
       }
     }
@@ -3478,7 +3633,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // PHASE 2: Update progress with endpoint information
     if (this.controller?.progressDisplay) {
       this.controller.progressDisplay.updateStatusDetail(
-        `Checking format availability on ${endpointName} endpoint...`
+        `Checking format availability on ${endpointName} endpoint...`,
       );
     }
 
@@ -3521,7 +3676,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       // PHASE 2: Update progress with validation issue
       if (this.controller?.progressDisplay) {
         this.controller.progressDisplay.updateStatusDetail(
-          `⚠ Format validation issue: ${formatList} unavailable on ${endpointName}`
+          `⚠ Format validation issue: ${formatList} unavailable on ${endpointName}`,
         );
       }
 
@@ -3611,7 +3766,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // Phase 4: Hide upload container during confirmation (use class selector)
     const uploadContainer = document.querySelector(
-      ".mathpix-pdf-upload-container"
+      ".mathpix-pdf-upload-container",
     );
     if (uploadContainer) {
       uploadContainer.style.display = "none";
@@ -3620,7 +3775,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // Get confirmation section
     const confirmationSection = document.getElementById(
-      "mathpix-file-confirmation"
+      "mathpix-file-confirmation",
     );
     if (!confirmationSection) {
       logWarn("File confirmation section not found in HTML");
@@ -3675,14 +3830,14 @@ class MathPixPDFHandler extends MathPixBaseModule {
             // Announce to screen readers
             if (this.pdfAccessibility) {
               this.pdfAccessibility.announce(
-                `${formatName} ${file.name} confirmed. Proceeding to processing options.`
+                `${formatName} ${file.name} confirmed. Proceeding to processing options.`,
               );
             }
 
             cleanup();
             resolve(true);
           },
-          { once: true }
+          { once: true },
         );
       }
 
@@ -3695,7 +3850,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
             // Announce to screen readers
             if (this.pdfAccessibility) {
               this.pdfAccessibility.announce(
-                `${formatName} selection cancelled.`
+                `${formatName} selection cancelled.`,
               );
             }
 
@@ -3708,7 +3863,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
             resolve(false);
           },
-          { once: true }
+          { once: true },
         );
       }
 

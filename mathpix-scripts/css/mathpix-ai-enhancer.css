@@ -1,6 +1,316 @@
 /* =============================================================================
    AI ENHANCEMENT MODAL (Phase 7.1)
    ============================================================================= */
+/* =============================================
+   COLOURS - AI Enhancement Banner (Phase 8 - Conv AE)
+   ============================================= */
+
+.mmd-ai-banner-indicator .ai-sparkle-icon {
+  color: currentcolor;
+}
+
+/* =============================================
+   LAYOUT - AI Enhancement Banner (Phase 8 - Conv AE)
+   ============================================= */
+
+.mmd-ai-enhancement-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.mmd-ai-banner-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 600;
+}
+
+.mmd-ai-banner-indicator .ai-sparkle-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.mmd-ai-banner-toggle {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.mmd-ai-toggle-btn {
+  padding: 0.25rem 0.625rem;
+  border-style: solid;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+/* =============================================================================
+   STRUCTURE
+   ============================================================================= */
+
+#ai-preview-content img,
+.mmd-preview-content img {
+  width: 100%;
+}
+
+/* ── Layout ── */
+.ai-engine-warning {
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* Individual diff line container */
+.diff-line {
+  display: flex;
+  font-family:
+    ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  min-height: 1.5em;
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+/* Line number gutter */
+.diff-line-number {
+  flex-shrink: 0;
+  width: 3em;
+  padding-right: 0.5em;
+  text-align: right;
+  user-select: none;
+  border-right-width: 1px;
+  border-right-style: solid;
+  margin-right: 0.5em;
+}
+
+/* Line content */
+.diff-line-content {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
+
+/* Toggle separator between column toggles and diff toggle */
+.toggle-separator {
+  display: inline-block;
+  width: 1px;
+  height: 1.25em;
+  margin: 0 0.5rem;
+  vertical-align: middle;
+}
+
+/* Override the .mmd-code white-space since we use .diff-line now */
+.column-content.mmd-code:has(.diff-line) {
+  white-space: normal;
+  padding: 0;
+}
+
+.universal-modal-fullscreen .universal-modal-status {
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+.universal-modal-fullscreen .universal-modal-body {
+  padding-bottom: 1rem;
+}
+
+.ai-enhancement-stats {
+  margin: 1rem 0 0;
+  padding: 0;
+  border-radius: 8px;
+  border-width: 1px;
+  border-style: solid;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.ai-enhancement-stats summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.ai-enhancement-stats summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-enhancement-stats summary::before {
+  content: "▶";
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.ai-enhancement-stats[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.stats-summary-icon {
+  font-size: 1rem;
+}
+
+.stats-summary-brief {
+  margin-left: auto;
+  font-weight: normal;
+  font-size: 0.875rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem 1rem;
+  padding: 0 1rem 1rem;
+  margin: 0;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.stat-item dt {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.stat-item dd {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Focus styles for summary */
+.ai-enhancement-stats summary:focus-visible {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   Uncertainty Annotations Panel (Phase 7.5L) — Layout & Structure
+   ============================================================================ */
+
+.ai-uncertainty-panel {
+  margin: 1rem 0 0;
+  padding: 0;
+  border-radius: 8px;
+  border-width: 1px;
+  border-style: solid;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.ai-uncertainty-panel summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.ai-uncertainty-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-uncertainty-panel summary::before {
+  content: "\25B6";
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.ai-uncertainty-panel[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.ai-uncertainty-panel summary:focus-visible {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+.ai-uncertainty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ai-uncertainty-label {
+  font-size: 0.9375rem;
+}
+
+.ai-uncertainty-list {
+  margin: 0;
+  padding: 0.5rem 1rem 1rem;
+  list-style: none;
+  counter-reset: uncertainty;
+}
+
+.ai-uncertainty-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  align-items: flex-start;
+}
+
+.ai-uncertainty-item + .ai-uncertainty-item {
+  border-top-width: 1px;
+  border-top-style: solid;
+}
+
+.ai-uncertainty-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.ai-uncertainty-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.ai-uncertainty-context {
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.ai-uncertainty-comment {
+  font-size: 0.8125rem;
+  font-style: italic;
+}
 
 /* Skip Link */
 .ai-comparison-column .skip-link {
@@ -9,8 +319,6 @@
   top: 0;
   z-index: 100;
   padding: 0.5rem 1rem;
-  background: #005c84;
-  color: #fff;
   text-decoration: none;
   font-size: 0.875rem;
   border-radius: 0 0 4px 0;
@@ -18,7 +326,8 @@
 
 .ai-comparison-column .skip-link:focus {
   left: 0;
-  outline: 2px solid #005c84;
+  outline-width: 2px;
+  outline-style: solid;
   outline-offset: 2px;
 }
 
@@ -26,164 +335,104 @@
   position: relative;
 }
 
-/* =============================================================================
-   COLOURS
-   ============================================================================= */
-
-/* Enhance Button (Toolbar) */
-
-/* Description */
-/* Model Selection */
-.ai-model-selection {
-  border-color: currentcolor;
-}
-.model-option {
-  border-color: transparent;
-}
-.model-option:hover {
-  background-color: #f0f2e8;
-}
-.model-option:has(input:checked) {
-  border-color: #005c84;
-  background-color: rgba(0, 92, 132, 0.09);
-}
-.model-option-description {
-  color: #495961;
-}
-.model-option-cost {
-  color: #8d3970;
-}
-/* Document Info */
-.ai-document-info {
-  background-color: #e1e8ec;
-  border-color: currentcolor;
-}
-/* Cost Estimate */
-.ai-cost-estimate {
-  background-color: rgba(141, 57, 112, 0.1);
-  border-color: #8d3970;
-}
-.ai-cost-estimate-note {
-  color: #495961;
-}
-/* Processing State */
-.processing-spinner {
-  border-color: #e1e8ec;
-  border-top-color: #005c84;
-}
-.processing-progress {
-  background-color: #e1e8ec;
-  border: 1px solid currentcolor;
-}
-.progress-fill {
-  background-color: #005c84;
-}
-.processing-text {
-  color: #495961;
-}
-/* Results - Comparison Panel */
-.comparison-column h4 {
-  border-bottom-color: #758d9a;
-}
-.comparison-content {
-  background-color: #e1e8ec;
-  border-color: currentcolor;
-}
-/* Results - Preview */
-.ai-preview-container {
-  background-color: rgba(225, 232, 236, 0.2);
-  border-color: #ddd;
-}
-/* Error Display */
-.ai-error-display .error-icon {
-  color: #d5007f;
-}
-.ai-error-display h3 {
-  color: #d5007f;
-}
-/* The container needs overflow-x for scrolling to work */
+/* Preview tables */
 #ai-col-preview {
   overflow-x: auto;
 }
 
 #ai-col-preview table {
-  margin: 1rem auto; /* auto centres horizontally (replaces deprecated align="center") */
+  margin: 1rem auto;
   border-collapse: collapse;
   width: auto;
 }
 
 #ai-col-preview th,
 #ai-col-preview td {
-  border: 1px solid #495961; /* WCAG AA contrast against white/light grey */
+  border-width: 1px;
+  border-style: solid;
   padding: 0.5rem 0.75rem;
-  text-align: center; /* truth tables typically look better centred */
-  vertical-align: middle; /* helps with MathJax SVG alignment */
+  text-align: center;
+  vertical-align: middle;
 }
 
 #ai-col-preview th {
-  background-color: #9fb1bd;
   font-weight: bold;
-}
-
-/* Optional: zebra striping for longer tables */
-#ai-col-preview tbody tr:nth-child(even) {
-  background-color: #e1e8ec;
-}
-
-/* Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-  .processing-spinner {
-    border-top-color: #ddd;
-  }
 }
 
 /* 4 column comparison grid */
 .ai-column-toggles {
-  background: #e1e8ec;
-  border-color: #768690;
+  border-width: 1px;
+  border-style: solid;
 }
 
 .ai-column-toggles input[type="checkbox"]:focus-visible {
-  outline-color: #005c84;
+  outline-width: 2px;
+  outline-style: solid;
 }
 
 .ai-comparison-column {
-  border-color: #768690;
+  border-width: 1px;
+  border-style: solid;
 }
 
 .ai-comparison-column > h4 {
-  background: #e1e8ec;
-  border-bottom-color: #768690;
-}
-
-.column-content.mmd-code {
-  background: #f8f8f8;
-}
-
-.column-content.mmd-preview {
-  background: #fff;
-}
-
-.column-content.pdf-viewer {
-  background: #fff;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
 }
 
 .column-content.pdf-viewer .ai-pdf-loading-spinner {
-  border-color: #e1e8ec;
-  border-top-color: #005c84;
+  border-width: 3px;
+  border-style: solid;
 }
 
-.column-content.pdf-viewer .ai-pdf-error {
-  color: #d5007f;
+/* Processing State */
+.processing-progress {
+  border-width: 1px;
+  border-style: solid;
 }
 
-.ai-pdf-page canvas {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ai-enhancement-stats summary::before {
+    transition: none;
+  }
 }
 
-/* =============================================================================
-   STRUCTURE
-   ============================================================================= */
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .diff-line-number {
+    width: 2.5em;
+    font-size: 0.75rem;
+  }
+
+  .toggle-separator {
+    display: none;
+  }
+
+  /* Stack the diff toggle on its own line on mobile */
+  .ai-column-toggles label:has(#toggle-diff) {
+    flex-basis: 100%;
+    margin-top: 0.25rem;
+    padding-top: 0.5rem;
+    border-top-width: 1px;
+    border-top-style: solid;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.ai-enhancement-stats summary {
+  text-decoration: none;
+}
+
+.stats-summary-label {
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
 
 /* Enhance Button (Toolbar) */
 
@@ -209,6 +458,59 @@
 .ai-model-selection legend {
   font-weight: 600;
   padding: 0 0.5rem;
+}
+
+/* Phase 7.4: Advanced options disclosure */
+.ai-advanced-options {
+  margin-bottom: 1.5rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.ai-advanced-options summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ai-advanced-options[open] summary {
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+}
+
+.ai-advanced-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Phase 7.4: Advanced model + engine selects */
+.ai-advanced-model-selection label,
+.ai-engine-selection label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+#ai-advanced-model-select,
+#ai-engine-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border-width: 1px;
+  border-style: solid;
+  font-size: 0.9rem;
+}
+
+.ai-advanced-help,
+.ai-engine-help {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
 }
 
 .model-options {
@@ -361,6 +663,47 @@
   font-size: 0.875rem;
 }
 
+/* Elapsed timer (Phase 7.3J) */
+.processing-elapsed {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.25rem;
+  min-height: 1.5em;
+}
+
+/* Document metrics (Phase 7.3J) */
+.processing-metrics {
+  font-size: 0.8125rem;
+  margin-bottom: 0.25rem;
+  opacity: 0.8;
+}
+
+/* Typical range hint (Phase 7.3J) */
+.processing-hint {
+  font-size: 0.8125rem;
+  font-style: italic;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+/* Indeterminate progress bar pulse (Phase 7.3J) */
+.processing-progress.indeterminate .progress-fill {
+  width: 100% !important;
+  animation: ai-progress-pulse 2s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+@keyframes ai-progress-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 /* Column Toggles Fieldset */
 .ai-column-toggles {
   display: flex;
@@ -422,6 +765,7 @@
   min-height: 0;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   align-items: stretch;
+  overflow: auto;
 }
 
 /* Individual Column */
@@ -565,16 +909,10 @@
   gap: 0.25rem;
   padding: 0.25rem 0.375rem;
   font-size: 0.75rem;
-  border-width: 1px;
+
   border-style: solid;
   border-radius: 3px;
   cursor: pointer;
-}
-
-.ai-pdf-zoom-btn:focus-visible {
-  outline-width: 2px;
-  outline-style: solid;
-  outline-offset: 1px;
 }
 
 .ai-pdf-zoom-btn .icon {
@@ -665,7 +1003,7 @@
 }
 /* Error Display */
 .ai-error-display {
-  text-align: center;
+  text-align: left;
   padding: 2rem;
 }
 
@@ -687,6 +1025,40 @@
   padding-top: 1rem;
   border-top-width: 1px;
   border-top-style: solid;
+}
+
+#ai-preview-content h2,
+#ai-preview-content h3,
+#ai-preview-content h4,
+#ai-preview-content h5,
+#ai-preview-content h6 {
+  margin-block-start: 0.2em;
+  margin-block-end: 0.3em;
+  line-height: 1.2;
+}
+
+#ai-preview-content h2 {
+  font-size: 1.15em;
+}
+#ai-preview-content h3 {
+  font-size: 1.05em;
+}
+#ai-preview-content h4 {
+  font-size: 0.95em;
+}
+#ai-preview-content h5 {
+  font-size: 0.9em;
+}
+#ai-preview-content h6 {
+  font-size: 0.85em;
+}
+
+#sync-mode-select {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+  margin-inline-start: 0.25rem;
+  vertical-align: middle;
 }
 
 /* =============================================================================
@@ -752,6 +1124,12 @@
   .progress-fill {
     transition: none;
   }
+
+  /* Phase 7.3J: Disable pulse animation for reduced motion */
+  .processing-progress.indeterminate .progress-fill {
+    animation: none;
+    opacity: 0.5;
+  }
 }
 
 /* =============================================================================
@@ -763,4 +1141,293 @@
   #ai-enhance-btn-desc {
     display: none !important;
   }
+}
+
+/* ==========================================================================
+   Document Analysis Tab (Phase 7.5F)
+   ========================================================================== */
+
+.document-analysis-container {
+  padding: 1rem;
+}
+
+/* --- Section layout: side-by-side on wider screens --- */
+
+.document-analysis-container .analysis-section {
+  margin-block-end: 1.5rem;
+}
+
+.document-analysis-container .analysis-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  margin-block-end: 0.25rem;
+}
+
+.document-analysis-container .analysis-description {
+  margin-block-end: 0.75rem;
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+/* --- Stat items: compact grid --- */
+
+.document-analysis-container .analysis-data-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.document-analysis-container .stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  opacity: 0.85;
+}
+
+.document-analysis-container .stat-item dt {
+  font-weight: 600;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.document-analysis-container .stat-item dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* --- Two-column section layout on wider screens --- */
+
+@media (min-width: 50rem) {
+  .document-analysis-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  /* Structural takes left column */
+  #resume-analysis-structural {
+    grid-column: 1;
+  }
+
+  /* Semantic takes right column */
+  #resume-analysis-semantic {
+    grid-column: 2;
+  }
+
+  /* Combined spans full width below */
+  #resume-analysis-combined {
+    grid-column: 1 / -1;
+  }
+
+  /* Placeholder spans full width */
+  #resume-analysis-placeholder {
+    grid-column: 1 / -1;
+  }
+}
+
+/* At very wide screens, allow 3 columns of stat items */
+@media (min-width: 75rem) {
+  .document-analysis-container .analysis-data-list {
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  }
+}
+
+/* Compact combined stats: single row when possible */
+#resume-analysis-combined .analysis-data-list {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.document-analysis-container .stat-item {
+  display: block;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  opacity: 0.85;
+}
+
+.document-analysis-container .stat-item dt {
+  font-weight: 600;
+  font-size: 0.85em;
+}
+
+.document-analysis-container .stat-item dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1em;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Prompt Preview (Phase 7.5G) — Layout & Structure
+   ========================================================================== */
+.ai-prompt-preview {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+.ai-prompt-preview > summary {
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-prompt-preview-label {
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+.ai-prompt-token-badge {
+  font-size: 0.8em;
+  font-weight: normal;
+  padding: 0.2em 0.5em;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.ai-prompt-token-badge:empty {
+  display: none;
+}
+.ai-prompt-token-summary dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  font-size: 0.85em;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+.ai-prompt-token-summary dt {
+  font-weight: 600;
+}
+.ai-prompt-token-summary dd {
+  text-align: right;
+  margin: 0;
+}
+.ai-prompt-section {
+  margin-top: 0.5rem;
+}
+.ai-prompt-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+.ai-prompt-text {
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.8em;
+  line-height: 1.4;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0.5rem 0;
+}
+.ai-prompt-step-marker {
+  padding: 5px 0px 5px 05px;
+  margin-bottom: 2rem;
+  border-radius: 4px;
+  font-weight: 700;
+}
+/* File attachment info */
+.ai-prompt-file-attachment {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+.ai-prompt-file-heading {
+  font-size: 0.9em;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+#ai-preview-file-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.75rem;
+  font-size: 0.85em;
+  margin: 0;
+}
+#ai-preview-file-info dt {
+  font-weight: 600;
+}
+#ai-preview-file-info dd {
+  margin: 0;
+}
+.ai-preview-file-warning {
+  font-weight: 700;
+}
+/* Action buttons row */
+.ai-prompt-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.ai-prompt-refresh-btn,
+.ai-prompt-copy-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+.ai-prompt-refresh-btn {
+  margin-top: 0.5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-prompt-refresh-btn {
+    transition: none;
+  }
+}
+/* Reasoning + Multi-pass toggle row */
+.ai-toggles-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.ai-toggles-row > .ai-reasoning-selection,
+.ai-toggles-row > .ai-multipass-selection {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+}
+
+.ai-reasoning-label,
+.ai-multipass-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-reasoning-label input[type="checkbox"],
+.ai-multipass-label input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.ai-reasoning-help,
+.ai-multipass-help {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  line-height: 1.4;
+}
+.ai-uncertainty-panel summary {
+  text-decoration: none;
+}
+
+.ai-uncertainty-label {
+  text-decoration: underline;
 }

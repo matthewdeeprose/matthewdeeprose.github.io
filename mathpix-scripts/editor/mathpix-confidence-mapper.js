@@ -261,8 +261,10 @@
         const lines = page.lines || [];
 
         for (const line of lines) {
-          // Get confidence value (prefer confidence_rate, fall back to confidence)
-          const confidence = line.confidence_rate ?? line.confidence ?? null;
+          // Get confidence value (prefer confidence over confidence_rate)
+          // confidence = overall line recognition quality
+          // confidence_rate = per-character accuracy (misleadingly high)
+          const confidence = line.confidence ?? line.confidence_rate ?? null;
 
           if (confidence === null) {
             continue; // Skip lines without confidence data
@@ -270,7 +272,7 @@
 
           // Get searchable text (prefer text_display for better matching)
           const searchText = this.normaliseText(
-            line.text_display || line.text || ""
+            line.text_display || line.text || "",
           );
 
           if (searchText.length < CONFIDENCE_MAPPER_CONFIG.MIN_MATCH_LENGTH) {
@@ -315,23 +317,35 @@
      * @param {Object} confidenceData - Confidence data to associate
      * @private
      */
-    findAndMapMatches(mmdLines, searchText, confidenceData) {
+findAndMapMatches(mmdLines, searchText, confidenceData) {
       for (let i = 0; i < mmdLines.length; i++) {
         const lineNum = i + 1; // 1-indexed line numbers
-
-        // Skip if already mapped (first match wins)
-        if (this.confidenceMap.has(lineNum)) {
-          continue;
-        }
 
         const mmdLineNorm = this.normaliseText(mmdLines[i]);
 
         if (this.isSubstantialMatch(mmdLineNorm, searchText)) {
-          this.confidenceMap.set(lineNum, {
-            ...confidenceData,
-            level: this.getConfidenceLevel(confidenceData.confidence),
-            levelKey: this.getConfidenceLevelKey(confidenceData.confidence),
-          });
+          const existing = this.confidenceMap.get(lineNum);
+
+          if (existing) {
+            // Multiple lines.json entries map to this MMD line —
+            // keep the LOWEST confidence to flag lines needing review
+            if (confidenceData.confidence < existing.confidence) {
+              this.confidenceMap.set(lineNum, {
+                ...confidenceData,
+                level: this.getConfidenceLevel(confidenceData.confidence),
+                levelKey: this.getConfidenceLevelKey(confidenceData.confidence),
+              });
+              logDebug(
+                `Line ${lineNum}: updated confidence from ${existing.confidence.toFixed(3)} to ${confidenceData.confidence.toFixed(3)} (worst-case)`,
+              );
+            }
+          } else {
+            this.confidenceMap.set(lineNum, {
+              ...confidenceData,
+              level: this.getConfidenceLevel(confidenceData.confidence),
+              levelKey: this.getConfidenceLevelKey(confidenceData.confidence),
+            });
+          }
         }
       }
     }
@@ -524,7 +538,7 @@
      * @returns {Array<{lineNumber: number, data: Object}>} Lines below threshold
      */
     getLinesNeedingReview(
-      threshold = CONFIDENCE_MAPPER_CONFIG.THRESHOLDS.MEDIUM
+      threshold = CONFIDENCE_MAPPER_CONFIG.THRESHOLDS.MEDIUM,
     ) {
       const results = [];
 
@@ -716,13 +730,13 @@
     const mapper = new MathPixConfidenceMapper();
     const map = mapper.buildConfidenceMap(
       restorer.restoredSession.linesData,
-      restorer.restoredSession.currentMMD
+      restorer.restoredSession.currentMMD,
     );
 
     const stats = mapper.getStats();
 
     console.log(
-      `✅ Mapped ${stats.mappedLines} of ${stats.totalLines} lines\n`
+      `✅ Mapped ${stats.mappedLines} of ${stats.totalLines} lines\n`,
     );
     console.log("Distribution:");
     console.log(`   🟢 High (≥95%):     ${stats.high}`);
@@ -737,8 +751,8 @@
       needsReview.slice(0, 5).forEach(({ lineNumber, data }) => {
         console.log(
           `   Line ${lineNumber}: ${mapper.formatConfidencePercent(
-            data.confidence
-          )} - "${data.originalText?.substring(0, 40)}..."`
+            data.confidence,
+          )} - "${data.originalText?.substring(0, 40)}..."`,
         );
       });
       if (needsReview.length > 5) {
@@ -771,10 +785,10 @@
         }
       })(),
       "Toggle checkbox exists": !!document.getElementById(
-        "resume-mmd-show-confidence"
+        "resume-mmd-show-confidence",
       ),
       "Gutter element exists": !!document.getElementById(
-        "resume-mmd-confidence-gutter"
+        "resume-mmd-confidence-gutter",
       ),
       "Session restorer available": !!window.getMathPixSessionRestorer,
     };

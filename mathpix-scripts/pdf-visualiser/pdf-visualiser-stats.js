@@ -47,19 +47,23 @@ function shouldLog(level) {
 }
 
 function logError(message, ...args) {
-  if (shouldLog(LOG_LEVELS.ERROR)) console.error('[PDFVisualiserStats]', message, ...args);
+  if (shouldLog(LOG_LEVELS.ERROR))
+    console.error("[PDFVisualiserStats]", message, ...args);
 }
 
 function logWarn(message, ...args) {
-  if (shouldLog(LOG_LEVELS.WARN)) console.warn('[PDFVisualiserStats]', message, ...args);
+  if (shouldLog(LOG_LEVELS.WARN))
+    console.warn("[PDFVisualiserStats]", message, ...args);
 }
 
 function logInfo(message, ...args) {
-  if (shouldLog(LOG_LEVELS.INFO)) console.log('[PDFVisualiserStats]', message, ...args);
+  if (shouldLog(LOG_LEVELS.INFO))
+    console.log("[PDFVisualiserStats]", message, ...args);
 }
 
 function logDebug(message, ...args) {
-  if (shouldLog(LOG_LEVELS.DEBUG)) console.log('[PDFVisualiserStats]', message, ...args);
+  if (shouldLog(LOG_LEVELS.DEBUG))
+    console.log("[PDFVisualiserStats]", message, ...args);
 }
 
 // =============================================================================
@@ -68,8 +72,8 @@ function logDebug(message, ...args) {
 
 import PDF_VISUALISER_CONFIG, {
   getConfidenceLevelKey,
-  formatPercentage
-} from './pdf-visualiser-config.js';
+  formatPercentage,
+} from "./pdf-visualiser-config.js";
 
 // =============================================================================
 // MAIN CLASS
@@ -94,7 +98,6 @@ import PDF_VISUALISER_CONFIG, {
  * @since 1.0.0
  */
 class PDFVisualiserStats {
-
   // ===========================================================================
   // DOCUMENT-LEVEL STATISTICS
   // ===========================================================================
@@ -134,12 +137,12 @@ class PDFVisualiserStats {
    * @since 1.0.0
    */
   static calculateStatistics(linesData) {
-    logInfo('Calculating document statistics');
+    logInfo("Calculating document statistics");
 
     // Validate input
     if (!linesData || !Array.isArray(linesData.pages)) {
-      logError('Invalid linesData: missing pages array');
-      throw new Error('Invalid lines data: pages array is required');
+      logError("Invalid linesData: missing pages array");
+      throw new Error("Invalid lines data: pages array is required");
     }
 
     const startTime = performance.now();
@@ -150,35 +153,35 @@ class PDFVisualiserStats {
       HIGH: 0,
       MEDIUM: 0,
       LOW: 0,
-      VERY_LOW: 0
+      VERY_LOW: 0,
     };
     const byType = {};
     const byWritingStyle = {
       printed: 0,
-      handwritten: 0
+      handwritten: 0,
     };
 
     // Calculate per-page statistics
-    const pageStats = linesData.pages.map(page => {
+    const pageStats = linesData.pages.map((page) => {
       const pageStat = this.calculatePageStatistics(page);
-      
+
       // Aggregate to document totals
       allConfidences.push(...pageStat.confidences);
-      
+
       // Aggregate level counts
       for (const [level, count] of Object.entries(pageStat.byLevel)) {
         byLevel[level] = (byLevel[level] || 0) + count;
       }
-      
+
       // Aggregate type counts
       for (const [type, count] of Object.entries(pageStat.byType)) {
         byType[type] = (byType[type] || 0) + count;
       }
-      
+
       // Aggregate writing style counts
       byWritingStyle.printed += pageStat.printedCount;
       byWritingStyle.handwritten += pageStat.handwrittenCount;
-      
+
       return pageStat;
     });
 
@@ -195,22 +198,26 @@ class PDFVisualiserStats {
     if (totalLines > 0) {
       // Sort for median and min/max
       const sorted = [...allConfidences].sort((a, b) => a - b);
-      
+
       // Calculate mean
-      averageConfidence = allConfidences.reduce((sum, c) => sum + c, 0) / totalLines;
-      
+      averageConfidence =
+        allConfidences.reduce((sum, c) => sum + c, 0) / totalLines;
+
       // Calculate median
       const mid = Math.floor(totalLines / 2);
-      medianConfidence = totalLines % 2 !== 0 
-        ? sorted[mid] 
-        : (sorted[mid - 1] + sorted[mid]) / 2;
-      
+      medianConfidence =
+        totalLines % 2 !== 0
+          ? sorted[mid]
+          : (sorted[mid - 1] + sorted[mid]) / 2;
+
       // Min and max
       minConfidence = sorted[0];
       maxConfidence = sorted[sorted.length - 1];
-      
+
       // Standard deviation
-      const squaredDiffs = allConfidences.map(c => Math.pow(c - averageConfidence, 2));
+      const squaredDiffs = allConfidences.map((c) =>
+        Math.pow(c - averageConfidence, 2),
+      );
       const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / totalLines;
       standardDeviation = Math.sqrt(variance);
     }
@@ -220,7 +227,7 @@ class PDFVisualiserStats {
       totalPages,
       totalLines,
       averageConfidence,
-      byLevel
+      byLevel,
     });
 
     const processingTime = performance.now() - startTime;
@@ -239,14 +246,14 @@ class PDFVisualiserStats {
       pageStats,
       summaryText,
       calculatedAt: new Date().toISOString(),
-      processingTimeMs: processingTime
+      processingTimeMs: processingTime,
     };
 
-    logInfo('Document statistics calculated', {
+    logInfo("Document statistics calculated", {
       totalPages,
       totalLines,
       averageConfidence: formatPercentage(averageConfidence, 1),
-      processingTime: `${processingTime.toFixed(2)}ms`
+      processingTime: `${processingTime.toFixed(2)}ms`,
     });
 
     return statistics;
@@ -291,15 +298,15 @@ class PDFVisualiserStats {
    */
   static calculatePageStatistics(pageData) {
     if (!pageData) {
-      logWarn('calculatePageStatistics called with null pageData');
+      logWarn("calculatePageStatistics called with null pageData");
       return this.getEmptyPageStats(0);
     }
 
     const pageNumber = pageData.page || 0;
     const lines = pageData.lines || [];
-    
+
     logDebug(`Calculating statistics for page ${pageNumber}`, {
-      lineCount: lines.length
+      lineCount: lines.length,
     });
 
     if (lines.length === 0) {
@@ -314,8 +321,12 @@ class PDFVisualiserStats {
     let handwrittenCount = 0;
 
     for (const line of lines) {
-      // Use confidence_rate (geometric mean) as primary metric
-      const confidence = line.confidence_rate ?? line.confidence ?? 0;
+      // Use confidence (overall line recognition) as primary metric
+      // This aligns with the API's document-level confidence_rate
+      // which is the mean of per-line confidence values.
+      // Note: line.confidence_rate is per-character accuracy and
+      // is misleadingly high even for poorly recognised lines.
+      const confidence = line.confidence ?? line.confidence_rate ?? 0;
       confidences.push(confidence);
 
       // Categorise by confidence level
@@ -323,7 +334,7 @@ class PDFVisualiserStats {
       byLevel[levelKey]++;
 
       // Count by type
-      const lineType = line.type || 'unknown';
+      const lineType = line.type || "unknown";
       byType[lineType] = (byType[lineType] || 0) + 1;
 
       // Count writing style
@@ -336,7 +347,8 @@ class PDFVisualiserStats {
 
     // Calculate statistics
     const sorted = [...confidences].sort((a, b) => a - b);
-    const averageConfidence = confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
+    const averageConfidence =
+      confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
     const minConfidence = sorted[0];
     const maxConfidence = sorted[sorted.length - 1];
 
@@ -353,8 +365,8 @@ class PDFVisualiserStats {
       confidences, // For document-level aggregation
       dimensions: {
         width: pageData.page_width,
-        height: pageData.page_height
-      }
+        height: pageData.page_height,
+      },
     };
   }
 
@@ -382,10 +394,12 @@ class PDFVisualiserStats {
       printedCount: 0,
       handwrittenCount: 0,
       confidences: [],
-      dimensions: pageData ? {
-        width: pageData.page_width,
-        height: pageData.page_height
-      } : null
+      dimensions: pageData
+        ? {
+            width: pageData.page_width,
+            height: pageData.page_height,
+          }
+        : null,
     };
   }
 
@@ -416,7 +430,7 @@ class PDFVisualiserStats {
    * @since 1.0.0
    */
   static countByConfidenceLevel(linesData) {
-    logDebug('Counting lines by confidence level');
+    logDebug("Counting lines by confidence level");
 
     if (!linesData || !Array.isArray(linesData.pages)) {
       return {
@@ -424,7 +438,7 @@ class PDFVisualiserStats {
         MEDIUM: { count: 0, percentage: 0 },
         LOW: { count: 0, percentage: 0 },
         VERY_LOW: { count: 0, percentage: 0 },
-        total: 0
+        total: 0,
       };
     }
 
@@ -432,8 +446,8 @@ class PDFVisualiserStats {
     let total = 0;
 
     for (const page of linesData.pages) {
-      for (const line of (page.lines || [])) {
-        const confidence = line.confidence_rate ?? line.confidence ?? 0;
+      for (const line of page.lines || []) {
+        const confidence = line.confidence ?? line.confidence_rate ?? 0;
         const levelKey = getConfidenceLevelKey(confidence);
         counts[levelKey]++;
         total++;
@@ -445,11 +459,11 @@ class PDFVisualiserStats {
     for (const [level, count] of Object.entries(counts)) {
       result[level] = {
         count,
-        percentage: total > 0 ? Math.round((count / total) * 100) : 0
+        percentage: total > 0 ? Math.round((count / total) * 100) : 0,
       };
     }
 
-    logDebug('Confidence level counts', result);
+    logDebug("Confidence level counts", result);
     return result;
   }
 
@@ -476,7 +490,7 @@ class PDFVisualiserStats {
    * @since 1.0.0
    */
   static findProblemLines(linesData, threshold = 0.8) {
-    logInfo('Finding problem lines', { threshold });
+    logInfo("Finding problem lines", { threshold });
 
     const problemLines = [];
 
@@ -486,10 +500,10 @@ class PDFVisualiserStats {
 
     for (const page of linesData.pages) {
       const pageNumber = page.page;
-      
-      for (const line of (page.lines || [])) {
-        const confidence = line.confidence_rate ?? line.confidence ?? 0;
-        
+
+      for (const line of page.lines || []) {
+        const confidence = line.confidence ?? line.confidence_rate ?? 0;
+
         if (confidence < threshold) {
           problemLines.push({
             pageNumber,
@@ -499,7 +513,7 @@ class PDFVisualiserStats {
             confidenceLevel: getConfidenceLevelKey(confidence),
             type: line.type,
             region: line.region,
-            isHandwritten: line.is_handwritten
+            isHandwritten: line.is_handwritten,
           });
         }
       }
@@ -508,7 +522,9 @@ class PDFVisualiserStats {
     // Sort by confidence (lowest first)
     problemLines.sort((a, b) => a.confidence - b.confidence);
 
-    logInfo(`Found ${problemLines.length} problem lines below ${threshold * 100}% threshold`);
+    logInfo(
+      `Found ${problemLines.length} problem lines below ${threshold * 100}% threshold`,
+    );
     return problemLines;
   }
 
@@ -529,17 +545,19 @@ class PDFVisualiserStats {
     }
 
     return (pageData.lines || [])
-      .filter(line => {
-        const confidence = line.confidence_rate ?? line.confidence ?? 0;
+      .filter((line) => {
+        const confidence = line.confidence ?? line.confidence_rate ?? 0;
         return confidence < threshold;
       })
-      .map(line => ({
+      .map((line) => ({
         lineId: line.id,
         text: line.text,
         confidence: line.confidence_rate ?? line.confidence ?? 0,
-        confidenceLevel: getConfidenceLevelKey(line.confidence_rate ?? line.confidence ?? 0),
+        confidenceLevel: getConfidenceLevelKey(
+          line.confidence_rate ?? line.confidence ?? 0,
+        ),
         type: line.type,
-        region: line.region
+        region: line.region,
       }))
       .sort((a, b) => a.confidence - b.confidence);
   }
@@ -579,19 +597,23 @@ class PDFVisualiserStats {
     }
 
     const avgPercent = formatPercentage(averageConfidence, 0);
-    
+
     const levelSummary = [
       byLevel.HIGH > 0 ? `${byLevel.HIGH} high confidence` : null,
       byLevel.MEDIUM > 0 ? `${byLevel.MEDIUM} medium` : null,
       byLevel.LOW > 0 ? `${byLevel.LOW} low` : null,
-      byLevel.VERY_LOW > 0 ? `${byLevel.VERY_LOW} very low` : null
-    ].filter(Boolean).join(', ');
+      byLevel.VERY_LOW > 0 ? `${byLevel.VERY_LOW} very low` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
-    const pageWord = totalPages === 1 ? 'page' : 'pages';
-    const lineWord = totalLines === 1 ? 'line' : 'lines';
+    const pageWord = totalPages === 1 ? "page" : "pages";
+    const lineWord = totalLines === 1 ? "line" : "lines";
 
-    return `${totalPages}-${pageWord} document with ${totalLines} ${lineWord} analysed. ` +
-           `Average confidence: ${avgPercent}. ${levelSummary}.`;
+    return (
+      `${totalPages}-${pageWord} document with ${totalLines} ${lineWord} analysed. ` +
+      `Average confidence: ${avgPercent}. ${levelSummary}.`
+    );
   }
 
   /**
@@ -612,13 +634,14 @@ class PDFVisualiserStats {
     }
 
     const avgPercent = formatPercentage(averageConfidence, 0);
-    const lineWord = lineCount === 1 ? 'line' : 'lines';
+    const lineWord = lineCount === 1 ? "line" : "lines";
 
     // Highlight any problem areas
     const lowCount = byLevel.LOW + byLevel.VERY_LOW;
-    const problemNote = lowCount > 0 
-      ? ` ${lowCount} ${lowCount === 1 ? 'line needs' : 'lines need'} review.`
-      : '';
+    const problemNote =
+      lowCount > 0
+        ? ` ${lowCount} ${lowCount === 1 ? "line needs" : "lines need"} review.`
+        : "";
 
     return `Page ${pageNumber}: ${lineCount} ${lineWord}, ${avgPercent} average confidence.${problemNote}`;
   }
@@ -649,35 +672,35 @@ class PDFVisualiserStats {
         totalLines: stats.totalLines,
         averageConfidence: formatPercentage(stats.averageConfidence, 1),
         medianConfidence: formatPercentage(stats.medianConfidence, 1),
-        range: `${formatPercentage(stats.minConfidence, 0)} - ${formatPercentage(stats.maxConfidence, 0)}`
+        range: `${formatPercentage(stats.minConfidence, 0)} - ${formatPercentage(stats.maxConfidence, 0)}`,
       },
       breakdown: [
         {
-          level: 'HIGH',
+          level: "HIGH",
           label: levels.HIGH.legendLabel,
           count: stats.byLevel.HIGH,
-          colour: levels.HIGH.borderColour
+          colour: levels.HIGH.borderColour,
         },
         {
-          level: 'MEDIUM',
+          level: "MEDIUM",
           label: levels.MEDIUM.legendLabel,
           count: stats.byLevel.MEDIUM,
-          colour: levels.MEDIUM.borderColour
+          colour: levels.MEDIUM.borderColour,
         },
         {
-          level: 'LOW',
+          level: "LOW",
           label: levels.LOW.legendLabel,
           count: stats.byLevel.LOW,
-          colour: levels.LOW.borderColour
+          colour: levels.LOW.borderColour,
         },
         {
-          level: 'VERY_LOW',
+          level: "VERY_LOW",
           label: levels.VERY_LOW.legendLabel,
           count: stats.byLevel.VERY_LOW,
-          colour: levels.VERY_LOW.borderColour
-        }
+          colour: levels.VERY_LOW.borderColour,
+        },
       ],
-      summary: stats.summaryText
+      summary: stats.summaryText,
     };
   }
 
@@ -699,35 +722,38 @@ class PDFVisualiserStats {
     const errors = [];
 
     if (!linesData) {
-      errors.push('Lines data is null or undefined');
+      errors.push("Lines data is null or undefined");
       return { isValid: false, errors };
     }
 
     if (!Array.isArray(linesData.pages)) {
-      errors.push('Lines data missing pages array');
+      errors.push("Lines data missing pages array");
       return { isValid: false, errors };
     }
 
     // Validate page structure
     for (let i = 0; i < linesData.pages.length; i++) {
       const page = linesData.pages[i];
-      
-      if (typeof page.page !== 'number') {
+
+      if (typeof page.page !== "number") {
         errors.push(`Page ${i}: missing page number`);
       }
-      
+
       if (!Array.isArray(page.lines)) {
         errors.push(`Page ${i}: missing lines array`);
       }
-      
-      if (typeof page.page_width !== 'number' || typeof page.page_height !== 'number') {
+
+      if (
+        typeof page.page_width !== "number" ||
+        typeof page.page_height !== "number"
+      ) {
         errors.push(`Page ${i}: missing page dimensions`);
       }
     }
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }
@@ -738,22 +764,20 @@ class PDFVisualiserStats {
 
 export default PDFVisualiserStats;
 
-export {
-  PDFVisualiserStats
-};
+export { PDFVisualiserStats };
 
 // =============================================================================
 // GLOBAL EXPOSURE FOR TESTING
 // =============================================================================
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.PDFVisualiserStats = PDFVisualiserStats;
 
   /**
    * Test statistics calculation with sample data
    */
   window.testPDFStats = () => {
-    console.log('🧪 Testing PDF Visualiser Statistics');
+    console.log("🧪 Testing PDF Visualiser Statistics");
 
     // Create sample data
     const sampleData = {
@@ -762,51 +786,65 @@ if (typeof window !== 'undefined') {
           page: 1,
           page_width: 2550,
           page_height: 3300,
-          lines: [
-            { id: '1', confidence_rate: 0.98, type: 'text', is_printed: true },
-            { id: '2', confidence_rate: 0.85, type: 'math', is_printed: true },
-            { id: '3', confidence_rate: 0.72, type: 'text', is_handwritten: true },
-            { id: '4', confidence_rate: 0.45, type: 'text', is_handwritten: true }
-          ]
+lines: [
+            { id: "1", confidence: 0.96, confidence_rate: 0.98, type: "text", is_printed: true },
+            { id: "2", confidence: 0.82, confidence_rate: 0.85, type: "math", is_printed: true },
+            {
+              id: "3",
+              confidence: 0.65,
+              confidence_rate: 0.72,
+              type: "text",
+              is_handwritten: true,
+            },
+            {
+              id: "4",
+              confidence: 0.35,
+              confidence_rate: 0.45,
+              type: "text",
+              is_handwritten: true,
+            },
+          ],
         },
         {
           page: 2,
           page_width: 2550,
           page_height: 3300,
           lines: [
-            { id: '5', confidence_rate: 0.99, type: 'text', is_printed: true },
-            { id: '6', confidence_rate: 0.92, type: 'table', is_printed: true }
-          ]
-        }
-      ]
+            { id: "5", confidence: 0.97, confidence_rate: 0.99, type: "text", is_printed: true },
+            { id: "6", confidence: 0.88, confidence_rate: 0.92, type: "table", is_printed: true },
+          ],
+        },
+      ],
     };
 
     // Test full statistics
-    console.log('📊 Full Statistics:');
+    console.log("📊 Full Statistics:");
     const stats = PDFVisualiserStats.calculateStatistics(sampleData);
     console.table({
-      'Total Pages': stats.totalPages,
-      'Total Lines': stats.totalLines,
-      'Average Confidence': formatPercentage(stats.averageConfidence, 1),
-      'Min Confidence': formatPercentage(stats.minConfidence, 1),
-      'Max Confidence': formatPercentage(stats.maxConfidence, 1)
+      "Total Pages": stats.totalPages,
+      "Total Lines": stats.totalLines,
+      "Average Confidence": formatPercentage(stats.averageConfidence, 1),
+      "Min Confidence": formatPercentage(stats.minConfidence, 1),
+      "Max Confidence": formatPercentage(stats.maxConfidence, 1),
     });
 
-    console.log('📈 By Level:', stats.byLevel);
-    console.log('📝 By Type:', stats.byType);
-    console.log('✍️ Writing Style:', stats.byWritingStyle);
-    console.log('💬 Summary:', stats.summaryText);
+    console.log("📈 By Level:", stats.byLevel);
+    console.log("📝 By Type:", stats.byType);
+    console.log("✍️ Writing Style:", stats.byWritingStyle);
+    console.log("💬 Summary:", stats.summaryText);
 
     // Test problem detection
-    console.log('\n⚠️ Problem Lines (below 80%):');
+    console.log("\n⚠️ Problem Lines (below 80%):");
     const problems = PDFVisualiserStats.findProblemLines(sampleData, 0.8);
-    console.table(problems.map(p => ({
-      Page: p.pageNumber,
-      Confidence: formatPercentage(p.confidence, 1),
-      Level: p.confidenceLevel
-    })));
+    console.table(
+      problems.map((p) => ({
+        Page: p.pageNumber,
+        Confidence: formatPercentage(p.confidence, 1),
+        Level: p.confidenceLevel,
+      })),
+    );
 
-    console.log('\n✅ Statistics tests complete');
+    console.log("\n✅ Statistics tests complete");
     return stats;
   };
 }

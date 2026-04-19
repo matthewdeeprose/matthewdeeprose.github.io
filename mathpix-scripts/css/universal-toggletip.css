@@ -53,8 +53,14 @@
 .universal-toggletip-trigger:hover,
 .universal-toggletip-trigger:focus {
   text-decoration-style: solid;
-  outline: 2px solid var(--toggletip-info-accent);
-  outline-offset: 2px;
+  /* ensure high-contrast mode still has an indicator */
+  outline: 2px transparent solid;
+  /* Apply a thick white box-shadow with 
+	   a thin dark blue indicator in the middle */
+  box-shadow:
+    0 0 0 2px #fffff4,
+    0 0 0 4px #002e3b,
+    0 0 4px 8px #fffff4;
 }
 
 .universal-toggletip-trigger:focus {
@@ -108,7 +114,8 @@ button.universal-toggletip-trigger:focus,
   /* Animation setup */
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity var(--toggletip-transition-duration)
+  transition:
+    opacity var(--toggletip-transition-duration)
       var(--toggletip-transition-timing),
     transform var(--toggletip-transition-duration)
       var(--toggletip-transition-timing);
@@ -241,7 +248,9 @@ button.universal-toggletip-trigger:focus,
   font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 150ms ease, color 150ms ease;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .universal-toggletip-close:hover {
@@ -373,7 +382,9 @@ button.universal-toggletip-trigger:focus,
   margin: 0;
   cursor: pointer;
   pointer-events: auto; /* Re-enable pointer events for buttons */
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .universal-toggletip-canvas-region-button:hover {
@@ -385,7 +396,8 @@ button.universal-toggletip-trigger:focus,
   outline: none;
   background: rgba(0, 92, 132, 0.05);
   border-color: var(--toggletip-info-accent);
-  box-shadow: 0 0 0 2px var(--toggletip-background),
+  box-shadow:
+    0 0 0 2px var(--toggletip-background),
     0 0 0 4px var(--toggletip-info-accent);
 }
 
@@ -397,7 +409,8 @@ button.universal-toggletip-trigger:focus,
 .universal-toggletip-canvas-region-button:focus-visible {
   background: rgba(0, 92, 132, 0.05);
   border-color: var(--toggletip-info-accent);
-  box-shadow: 0 0 0 2px var(--toggletip-background),
+  box-shadow:
+    0 0 0 2px var(--toggletip-background),
     0 0 0 4px var(--toggletip-info-accent);
 }
 
@@ -471,6 +484,14 @@ button.universal-toggletip-trigger:focus,
 }
 
 /* ====== DATA DISPLAY UTILITIES ====== */
+
+/* Description list wrapper — reset browser defaults */
+.toggletip-data {
+  margin: 0;
+  padding: 0;
+}
+
+/* dt replaces span.toggletip-label */
 .toggletip-label {
   display: block;
   font-size: 0.75rem;
@@ -480,10 +501,17 @@ button.universal-toggletip-trigger:focus,
   margin-bottom: 0.25rem;
 }
 
+/* dd replaces span.toggletip-value */
 .toggletip-value {
   display: block;
   font-size: 1rem;
   color: var(--toggletip-text);
+  margin: 0; /* Reset default dd margin */
+}
+
+/* Also reset margin on confidence value dd elements */
+.toggletip-confidence-value {
+  margin: 0;
 }
 
 .toggletip-row {
@@ -551,4 +579,8 @@ button.universal-toggletip-trigger:focus,
 }
 .toggletip-confidence-value {
   margin-left: 10px;
+}
+
+.toggletip-label {
+  margin-right: 5px;
 }

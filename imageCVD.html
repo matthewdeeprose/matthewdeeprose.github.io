@@ -11,6 +11,8 @@
       <link rel="stylesheet" id="mainCSS" href="main.css" media="all">
       <link rel="stylesheet" id="darkCSS" href="dark.css" media="(prefers-color-scheme: dark)">
       <link rel="stylesheet" id="printCSS" href="print.css" media="print">
+      <link rel="stylesheet" href="md-scripts/css/graph-builder.css">
+      <script src="js/universal-notifications.js" defer></script>
       <meta property="og:title" content="Colour Vision Deficiency Image Tester - Matthew Deeprose">
       <meta property="og:description" content="With this tool you can upload an image and view how it appears under a simulation of different types of colour vision deficiency, or colour blindness.">
       <meta property="og:image" content="https://matthewdeeprose.github.io/cvdImage43.png">
@@ -66,6 +68,13 @@
   margin-top: 20px;
   max-width: 100%;
   padding: 0 1rem;
+  justify-content: center;
+}
+
+@media (min-width: 1400px) {
+  .image-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--container-width, 250px)), 1fr));
+  }
 }
 
 .image-container {
@@ -77,6 +86,16 @@
 .image-container h2 {
   margin-bottom: 10px;
   font-size: 1.2rem;
+}
+
+.simulation-heading {
+  min-height: 2.8em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-wrap: balance;
+  margin-top: 0;
 }
 
 .image-wrapper {
@@ -106,10 +125,17 @@
 
 .upload-container {
   border: 2px dashed currentcolor;
-  padding: 20px;
-  text-align: center;
+  padding: 12px 20px;
   margin-bottom: 20px;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.upload-container .upload-text {
+  margin: 0;
 }
 .size-value {
   text-align: center;
@@ -169,6 +195,11 @@
 	-ms-filter: url(#tritanopia);
 	-o-filter: url(#tritanopia);
 	filter: url(#tritanopia);
+}
+
+.grayscale {
+	-webkit-filter: grayscale(100%);
+	filter: grayscale(100%);
 }
     </style>
    </head>
@@ -277,8 +308,7 @@
         <button class="upload-button" onclick="document.getElementById('fileInput').click()">
             Choose image
         </button>
-        <p class="upload-text">or drag and drop here</p>
-        <p class="upload-text">Supported formats: PNG, JPEG, WebP</p>
+        <p class="upload-text">or drag and drop, or paste with Ctrl+V / Cmd+V &nbsp;·&nbsp; PNG, JPEG, WebP supported</p>
     </div>
 
     <div class="error-message" role="alert" id="errorMessage"></div>
@@ -304,20 +334,24 @@
 
     <div class="image-grid" id="imageGrid">
         <div class="image-container">
-            <h2>Original (Trichromacy)</h2>
+            <h2 class="simulation-heading">Original (Trichromacy)</h2>
             <div class="image-wrapper trichromacy"></div>
         </div>
         <div class="image-container">
-            <h2>Protanopia</h2>
+            <h2 class="simulation-heading">Protanopia</h2>
             <div class="image-wrapper protanopia"></div>
         </div>
         <div class="image-container">
-            <h2>Deuteranopia</h2>
+            <h2 class="simulation-heading">Deuteranopia</h2>
             <div class="image-wrapper deuteranopia"></div>
         </div>
         <div class="image-container">
-            <h2>Tritanopia</h2>
+            <h2 class="simulation-heading">Tritanopia</h2>
             <div class="image-wrapper tritanopia"></div>
+        </div>
+        <div class="image-container">
+            <h2 class="simulation-heading">Greyscale (Monochromacy)</h2>
+            <div class="image-wrapper grayscale"></div>
         </div>
     </div>
 
@@ -618,6 +652,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateImageSize(sizeSlider.value);
                 hideError();
                 imageGrid.style.display = 'grid';
+                imageGrid.scrollIntoView({ behavior: 'instant', block: 'start' });
             };
 
             /**
@@ -679,6 +714,43 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             fileInput.click();
+        }
+    });
+
+    /**
+     * @description Handles clipboard paste events and routes any pasted image
+     * through the same validation/processing pipeline used by the file picker
+     * and drag-and-drop. Ignores paste inside editable fields so future text
+     * inputs on the page remain unaffected.
+     * @param {ClipboardEvent} e - The paste event
+     */
+    document.addEventListener('paste', function(e) {
+        const target = e.target;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+            if (target.type !== 'range' && target.type !== 'file') return;
+        }
+
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+
+        const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+
+        for (const item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (!file) continue;
+                e.preventDefault();
+
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                handleFileSelect({ target: fileInput });
+
+                if (validTypes.includes(file.type) && typeof window.notifySuccess === 'function') {
+                    window.notifySuccess('Image pasted from clipboard');
+                }
+                return;
+            }
         }
     });
 });

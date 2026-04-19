@@ -638,7 +638,8 @@ const GraphBuilderUI = (function () {
         nextButton.disabled = false;
       }
 
-      const chartName = optionElement.querySelector("h3").textContent;
+      const chartNameEl = optionElement.querySelector("h3") || optionElement.querySelector(".gb-chart-title");
+      const chartName = chartNameEl ? chartNameEl.textContent : optionElement.dataset.chartType;
       GraphBuilderNotifications.success(`Selected ${chartName}`);
     }
 

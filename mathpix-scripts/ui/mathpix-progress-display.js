@@ -130,7 +130,7 @@ class MathPixProgressDisplay {
     this.downloadStartTime = null;
 
     logInfo(
-      "MathPix Progress Display initialised with visual progress bar and detail line support"
+      "MathPix Progress Display initialised with visual progress bar and detail line support",
     );
   }
 
@@ -162,12 +162,12 @@ class MathPixProgressDisplay {
     this.showVisualProgressBar(
       "upload",
       0,
-      `Processing ${fileInfo.name || "mathematics"}...`
+      `Processing ${fileInfo.name || "mathematics"}...`,
     );
 
     // Only show critical initial notification (reduced from previous implementation)
     logDebug(
-      "Progress started with visual indication - notification spam reduced"
+      "Progress started with visual indication - notification spam reduced",
     );
   }
 
@@ -185,7 +185,7 @@ class MathPixProgressDisplay {
 
     if (!this.progressContainer) {
       logWarn(
-        "Visual progress bar container not found - falling back to notifications"
+        "Visual progress bar container not found - falling back to notifications",
       );
       return false;
     }
@@ -197,7 +197,7 @@ class MathPixProgressDisplay {
     if (this.progressFill) {
       this.progressFill.style.width = `${Math.max(
         0,
-        Math.min(100, percentage)
+        Math.min(100, percentage),
       )}%`;
       this.progressBar.setAttribute("aria-valuenow", percentage);
     }
@@ -241,7 +241,7 @@ class MathPixProgressDisplay {
 
     // Progress bar elements - Simple container
     this.progressBar = this.progressContainer?.querySelector(
-      ".mathpix-progress-bar"
+      ".mathpix-progress-bar",
     );
     this.progressFill = document.getElementById("mathpix-pdf-progress-fill");
     this.progressLabel = document.getElementById("mathpix-pdf-progress-text");
@@ -253,11 +253,11 @@ class MathPixProgressDisplay {
     // Enhanced container elements (Phase 3.5)
     this.enhancedContainer = document.getElementById("pdf-progress-enhanced");
     this.enhancedProgressText = document.getElementById(
-      "pdf-progress-text-enhanced"
+      "pdf-progress-text-enhanced",
     );
     this.enhancedStageProgress = document.getElementById("stage-progress");
     this.enhancedCurrentStage = document.getElementById("current-stage");
-    this.enhancedElapsedTime = document.getElementById("elapsed-time");
+    this.enhancedElapsedTime = document.getElementById("mathpix-elapsed-time");
     this.enhancedRemainingTime = document.getElementById("remaining-time");
 
     logDebug(
@@ -275,7 +275,7 @@ class MathPixProgressDisplay {
         enhancedCurrentStage: !!this.enhancedCurrentStage,
         enhancedElapsedTime: !!this.enhancedElapsedTime,
         enhancedRemainingTime: !!this.enhancedRemainingTime,
-      }
+      },
     );
   }
 
@@ -319,7 +319,7 @@ class MathPixProgressDisplay {
     logDebug(
       `Showing visual progress step ${stepIndex + 1}/${this.totalSteps}: ${
         step.key
-      }`
+      }`,
     );
 
     // Show visual progress instead of notification
@@ -579,32 +579,19 @@ class MathPixProgressDisplay {
    * @param {string} text - The timing text to display
    */
   updateTimingDetail(text) {
-    if (!this.timingDetailElement && !this.enhancedElapsedTime) {
+    if (!this.timingDetailElement) {
       this.cacheProgressElements();
     }
 
-    let updatedCount = 0;
-
-    // Update enhanced elapsed time (primary) - Phase 3.5
-    if (this.enhancedElapsedTime) {
-      this.enhancedElapsedTime.textContent = text;
-      updatedCount++;
-      logDebug("Enhanced timing detail updated", { text: text });
-    }
-
-    // Update simple container timing (fallback/backward compatibility)
+    // Write only to the simple container timing element.
+    // The enhanced elapsed time element (#mathpix-elapsed-time) is
+    // exclusively controlled by the setInterval timer in MathPixPDFHandler
+    // to prevent verbose text from causing container resize flicker.
     if (this.timingDetailElement) {
       this.timingDetailElement.textContent = text;
-      updatedCount++;
-      logDebug("Simple timing detail updated", { text: text });
-    }
-
-    if (updatedCount > 0) {
-      logInfo(`Timing detail updated (${updatedCount} elements)`, {
-        text: text,
-      });
+      logDebug("Timing detail updated", { text: text });
     } else {
-      logWarn("No timing detail elements available", { text: text });
+      logWarn("No timing detail element available", { text: text });
     }
   }
   /**
@@ -688,7 +675,7 @@ class MathPixProgressDisplay {
           this.showVisualProgressBar(
             stage,
             percentage,
-            `Test stage ${index + 1}`
+            `Test stage ${index + 1}`,
           );
           logDebug(`✓ Stage ${stage} tested: ${percentage}%`);
 
@@ -768,7 +755,7 @@ class MathPixProgressDisplay {
     if (this.totalFormatsExpected > 0) {
       const progress = `${this.downloadedFormats.length}/${this.totalFormatsExpected}`;
       this.updateStatusDetail(
-        `Downloaded ${formatName} (${downloadInfo.formattedSize}) - ${progress} formats complete`
+        `Downloaded ${formatName} (${downloadInfo.formattedSize}) - ${progress} formats complete`,
       );
     }
   }
@@ -791,7 +778,7 @@ class MathPixProgressDisplay {
   getDownloadSummary() {
     const totalSize = this.downloadedFormats.reduce(
       (sum, download) => sum + download.size,
-      0
+      0,
     );
 
     return {

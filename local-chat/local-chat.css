@@ -1,0 +1,1002 @@
+/* ═══════════════════════════════════════════════════════════════
+   LOCAL CHAT — Phase 5e
+   Chat interface layout, message bubbles, input bar, responsive
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   COLOUR DECLARATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Common: inherited background & colour ───────────────────── */
+
+.local-chat-model-bar select,
+.local-chat-system-prompt textarea,
+.local-chat-retry,
+.local-chat-scroll-bottom,
+.local-chat-input-bar textarea,
+.local-chat-restore-banner-btn,
+.local-chat-chip,
+.local-chat-edit-textarea,
+.local-chat-edit-buttons button,
+.local-chat-preset-bar select {
+  background: inherit;
+  color: inherit;
+}
+
+/* ── Common: 1px solid currentcolor borders ──────────────────── */
+
+.local-chat-model-bar select,
+.local-chat-system-prompt textarea,
+#local-chat-messages,
+.local-chat-retry,
+.local-chat-scroll-bottom,
+.local-chat-input-bar textarea,
+.local-chat-restore-banner,
+.local-chat-restore-banner-btn,
+.local-chat-history-panel,
+.local-chat-edit-textarea,
+.local-chat-edit-buttons button,
+.local-chat-preset-bar select {
+  border: 1px solid currentcolor;
+}
+
+/* ── Common: currentcolor bottom borders ─────────────────────── */
+
+.local-chat-benchmark-table th,
+.local-chat-benchmark-table td,
+.local-chat-history-heading,
+.local-chat-history-entry {
+  border-bottom: 1px solid currentcolor;
+}
+
+/* ── Blockquote accent ───────────────────────────────────────── */
+
+.local-chat-bubble-assistant blockquote {
+  border-left: 3px solid currentcolor;
+}
+
+/* ── Typing indicator dots ───────────────────────────────────── */
+
+.local-chat-typing-dot {
+  background: currentcolor;
+}
+
+/* ── Focus ring ──────────────────────────────────────────────── */
+
+#local-chat-messages:focus-visible {
+  outline: 3px solid currentcolor;
+}
+
+/* ── Export menu ──────────────────────────────────────────────── */
+
+.local-chat-export-menu button {
+  background: transparent;
+  color: inherit;
+  border: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STRUCTURAL DECLARATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Model selector bar ──────────────────────────────────────── */
+
+.local-chat-model-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.local-chat-model-bar label {
+  font-weight: bold;
+}
+
+.local-chat-model-bar select {
+  min-width: 10rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: inherit;
+}
+
+#local-chat-model-status {
+  font-size: 0.9em;
+}
+
+/* ── System prompt (collapsible) ─────────────────────────────── */
+
+.local-chat-system-prompt {
+  margin-bottom: 1rem;
+}
+
+.local-chat-system-prompt summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.local-chat-system-prompt textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  font-family: inherit;
+  font-size: inherit;
+  resize: vertical;
+}
+
+/* ── Parameters panel (5d) ────────────────────────────────────── */
+
+.local-chat-parameters {
+  margin-bottom: 0.75rem;
+  padding: 0 0.75rem;
+}
+
+.local-chat-parameters[open] {
+  padding-bottom: 0.75rem;
+}
+
+.local-chat-parameters summary {
+  padding: 0.5rem 0;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.local-chat-param-group {
+  margin-top: 0.75rem;
+}
+
+.local-chat-param-group label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9em;
+  margin-bottom: 0.25rem;
+}
+
+.local-chat-param-group output {
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+
+.local-chat-param-group input[type="range"] {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.local-chat-param-desc {
+  display: block;
+  font-size: 0.8em;
+  margin-top: 0.15rem;
+}
+
+/* ── Input token counter (5d) ─────────────────────────────────── */
+
+.local-chat-input-counter {
+  font-size: 0.8em;
+  padding: 0.15rem 0.5rem;
+}
+
+.local-chat-input-counter-warning {
+  font-weight: bold;
+}
+
+/* ── Message list ────────────────────────────────────────────── */
+
+#local-chat-messages {
+  overflow-y: auto;
+  max-height: 60vh;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 0.5rem;
+  scroll-behavior: smooth;
+}
+
+/* ── Message bubbles ─────────────────────────────────────────── */
+
+.local-chat-bubble {
+  max-width: 80%;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 1rem;
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.local-chat-bubble:last-child {
+  margin-bottom: 0;
+}
+
+/* User bubble — right-aligned */
+.local-chat-bubble-user {
+  margin-left: auto;
+  border-bottom-right-radius: 0.25rem;
+  white-space: pre-wrap;
+}
+
+/* Assistant bubble — left-aligned */
+.local-chat-bubble-assistant {
+  margin-right: auto;
+  border-bottom-left-radius: 0.25rem;
+}
+
+/* ── Markdown inside assistant bubbles ───────────────────────── */
+
+.local-chat-bubble-assistant p {
+  margin: 0 0 0.5em 0;
+}
+
+.local-chat-bubble-assistant p:last-child {
+  margin-bottom: 0;
+}
+
+.local-chat-bubble-assistant ul,
+.local-chat-bubble-assistant ol {
+  margin: 0.25em 0 0.5em 1.5em;
+  padding: 0;
+}
+
+.local-chat-bubble-assistant pre {
+  overflow-x: auto;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+  margin: 0.5em 0;
+}
+
+.local-chat-bubble-assistant code {
+  font-size: 0.9em;
+}
+
+.local-chat-bubble-assistant h1,
+.local-chat-bubble-assistant h2,
+.local-chat-bubble-assistant h3,
+.local-chat-bubble-assistant h4 {
+  margin: 0.75em 0 0.25em 0;
+  font-size: 1.1em;
+}
+
+.local-chat-bubble-assistant h1:first-child,
+.local-chat-bubble-assistant h2:first-child,
+.local-chat-bubble-assistant h3:first-child {
+  margin-top: 0;
+}
+
+.local-chat-bubble-assistant blockquote {
+  margin: 0.5em 0;
+  padding-left: 0.75em;
+}
+
+/* ── Code block copy button ─────────────────────────────────── */
+
+.local-chat-code-wrapper {
+  position: relative;
+}
+
+.local-chat-code-copy {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75em;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ── Error in bubble ─────────────────────────────────────────── */
+
+.local-chat-bubble-error {
+  display: block;
+  font-style: italic;
+  font-weight: bold;
+}
+
+/* ── Retry button (5e) ────────────────────────────────────────── */
+
+.local-chat-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8em;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.local-chat-retry:hover,
+.local-chat-retry:focus-visible {
+  opacity: 1;
+}
+
+.local-chat-retry:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Typing indicator ──────────────────────────────────────── */
+
+.local-chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0;
+  min-height: 1.5em;
+}
+
+.local-chat-typing-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: local-chat-dot-pulse 1.4s ease-in-out infinite;
+}
+
+.local-chat-typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.local-chat-typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes local-chat-dot-pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* ── Bubble entrance animation ─────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .local-chat-bubble {
+    animation: local-chat-bubble-in 0.2s ease-out;
+  }
+
+  @keyframes local-chat-bubble-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ── Bubble action buttons (Copy / Regenerate) ──────────────── */
+
+.local-chat-bubble-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.local-chat-copy,
+.local-chat-copy-formatted,
+.local-chat-regenerate,
+.local-chat-read-aloud {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8em;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.local-chat-copy:hover,
+.local-chat-copy:focus-visible,
+.local-chat-copy-formatted:hover,
+.local-chat-copy-formatted:focus-visible,
+.local-chat-regenerate:hover,
+.local-chat-regenerate:focus-visible,
+.local-chat-read-aloud:hover,
+.local-chat-read-aloud:focus-visible {
+  opacity: 1;
+}
+
+/* ── Voice Settings link ───────────────────────────────────── */
+
+.local-chat-voice-settings {
+  display: block;
+  font-size: 0.8em;
+  margin-top: 0.5rem;
+}
+
+.local-chat-voice-settings [data-icon] {
+  vertical-align: middle;
+}
+
+/* ── No WebGPU message ──────────────────────────────────────── */
+
+.local-chat-no-webgpu {
+  font-style: italic;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* ── Focus indicators ───────────────────────────────────────── */
+
+#local-chat-messages:focus-visible {
+  outline-offset: -3px;
+}
+
+/* ── Scroll-to-bottom button ────────────────────────────────── */
+
+.local-chat-scroll-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  float: right;
+  margin-top: -3rem;
+  margin-right: 1rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.2em;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.local-chat-scroll-bottom:hover {
+  opacity: 1;
+}
+
+.local-chat-scroll-bottom[hidden] {
+  display: none;
+}
+
+/* ── Input bar ───────────────────────────────────────────────── */
+
+.local-chat-input-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.local-chat-input-bar textarea {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  font-family: inherit;
+  font-size: inherit;
+  resize: none;
+  overflow-y: auto;
+  min-height: 2.75rem;
+}
+
+.local-chat-input-bar button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.5rem 1rem;
+  font-size: inherit;
+  white-space: nowrap;
+}
+
+.local-chat-input-bar button:disabled {
+  cursor: not-allowed;
+}
+
+/* ── Stats bar ───────────────────────────────────────────────── */
+
+.local-chat-stats {
+  display: block;
+  width: 100%;
+  font-size: 0.85em;
+  min-height: 1.25em;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Context gauge ───────────────────────────────────────────── */
+
+.local-chat-context-warning {
+  font-weight: bold;
+}
+
+/* ── Message count badge ────────────────────────────────────── */
+
+.local-chat-message-count {
+  font-size: 0.85em;
+}
+
+/* ── Welcome card ───────────────────────────────────────────── */
+
+.local-chat-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.local-chat-welcome-heading {
+  font-size: 1.3em;
+  margin: 0 0 0.25rem 0;
+}
+
+.local-chat-welcome-meta {
+  font-size: 0.9em;
+  margin: 0 0 1rem 0;
+}
+
+.local-chat-welcome-intro {
+  font-size: 0.95em;
+  margin: 0 0 1rem 0;
+  max-width: 30rem;
+}
+
+/* ── Welcome card benchmark table ───────────────────────────── */
+
+.local-chat-benchmark-table {
+  border-collapse: collapse;
+  font-size: 0.85em;
+  margin: 0 auto 1rem auto;
+  text-align: left;
+}
+
+.local-chat-benchmark-table th,
+.local-chat-benchmark-table td {
+  padding: 0.3rem 0.75rem;
+}
+
+.local-chat-benchmark-table th {
+  opacity: 1;
+  font-weight: bold;
+}
+
+/* ── Starter prompt chips ───────────────────────────────────── */
+
+.local-chat-chip-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.local-chat-chip {
+  padding: 0.5rem 1rem;
+  border-radius: 1.5rem;
+  font-size: 0.9em;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.local-chat-chip:hover,
+.local-chat-chip:focus-visible {
+  opacity: 1;
+}
+
+/* ── Model info panel ───────────────────────────────────────── */
+
+.local-chat-model-info {
+  margin-bottom: 1rem;
+  font-size: 0.9em;
+}
+
+.local-chat-model-info summary {
+  cursor: pointer;
+}
+
+.local-chat-model-info summary:hover {
+  opacity: 1;
+}
+
+.local-chat-model-info-summary {
+  margin: 0.5rem 0;
+}
+
+.local-chat-model-info-specs {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.local-chat-model-info-specs dt {
+  font-weight: bold;
+}
+
+.local-chat-model-info-specs dd {
+  margin: 0;
+}
+
+.local-chat-model-info-best-for {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.95em;
+}
+
+/* ── Restored session badge ─────────────────────────────────── */
+
+.local-chat-restored-badge {
+  font-size: 0.85em;
+  margin-left: 0.5rem;
+  transition: opacity 1s ease-out;
+}
+
+.local-chat-restored-badge-fade {
+  opacity: 0;
+}
+
+/* ── Restore banner ─────────────────────────────────────────── */
+
+.local-chat-restore-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.local-chat-restore-banner-text {
+  font-size: 0.95em;
+}
+
+.local-chat-restore-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.local-chat-restore-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.local-chat-restore-banner-btn:hover,
+.local-chat-restore-banner-btn:focus-visible {
+  opacity: 1;
+}
+
+/* ── History section (welcome card) ─────────────────────────── */
+
+.local-chat-history-section {
+  width: 100%;
+  max-width: 36rem;
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.local-chat-history-heading {
+  font-size: 1em;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.25rem;
+}
+
+.local-chat-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.local-chat-history-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.local-chat-history-entry:last-child {
+  border-bottom: none;
+}
+
+.local-chat-history-title {
+  font-weight: bold;
+  flex: 1 1 100%;
+}
+
+.local-chat-history-meta {
+  font-size: 0.85em;
+  flex: 1 1 100%;
+}
+
+.local-chat-history-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.local-chat-history-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.local-chat-history-btn:hover,
+.local-chat-history-btn:focus-visible {
+  opacity: 1;
+}
+
+.local-chat-history-show-all {
+  display: block;
+  margin: 0.75rem auto 0 auto;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.local-chat-history-show-all:hover,
+.local-chat-history-show-all:focus-visible {
+  opacity: 1;
+}
+
+/* ── History button (toolbar) ───────────────────────────────── */
+
+.local-chat-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.local-chat-history:disabled {
+  cursor: not-allowed;
+}
+
+.local-chat-history:hover:not(:disabled) {
+  opacity: 1;
+}
+
+/* ── History panel (overlay) ────────────────────────────────── */
+
+.local-chat-history-panel {
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.local-chat-history-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.local-chat-history-panel-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+}
+
+.local-chat-history-panel-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.local-chat-history-empty {
+  text-align: center;
+  padding: 1rem;
+}
+
+/* ── Clear conversation button ───────────────────────────────── */
+
+.local-chat-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.local-chat-clear:disabled {
+  cursor: not-allowed;
+}
+
+.local-chat-clear:hover {
+  opacity: 1;
+}
+
+/* ── Download button ─────────────────────────────────────────── */
+
+.local-chat-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  margin-right: 0.5rem;
+}
+
+.local-chat-download:disabled {
+  cursor: not-allowed;
+}
+
+.local-chat-download:hover:not(:disabled) {
+  opacity: 1;
+}
+
+/* ── Export menu ─────────────────────────────────────────────── */
+
+.local-chat-export-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.local-chat-export-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin: 0 0 0.25rem 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  border-radius: 0.35rem;
+  min-width: 10rem;
+  z-index: 100;
+}
+
+.local-chat-export-menu li {
+  margin: 0;
+  padding: 0;
+}
+
+.local-chat-export-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.local-chat-export-menu button:hover,
+.local-chat-export-menu button:focus-visible {
+  outline-offset: -2px;
+}
+
+/* ── Model badge ─────────────────────────────────────────────── */
+
+.local-chat-model-badge {
+  display: block;
+  font-size: 0.75em;
+  margin-bottom: 0.35rem;
+}
+
+/* ── Timestamps ──────────────────────────────────────────────── */
+
+.local-chat-timestamp {
+  display: block;
+  font-size: 0.7em;
+  margin-top: 0.35rem;
+  text-align: right;
+}
+
+.local-chat-bubble-assistant .local-chat-timestamp {
+  text-align: left;
+}
+
+/* ── System prompt preset bar ────────────────────────────────── */
+
+.local-chat-preset-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.local-chat-preset-bar label {
+  font-size: 0.9em;
+}
+
+.local-chat-preset-bar select {
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: inherit;
+}
+
+/* ── Edit button on user bubbles ─────────────────────────────── */
+
+.local-chat-edit-btn {
+  display: block;
+  margin-top: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8em;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.local-chat-edit-btn:hover,
+.local-chat-edit-btn:focus-visible {
+  opacity: 1;
+}
+
+/* ── Edit mode ───────────────────────────────────────────────── */
+
+.local-chat-bubble-editing {
+  cursor: default;
+}
+
+.local-chat-edit-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  font-family: inherit;
+  font-size: inherit;
+  resize: vertical;
+  min-height: 2.75rem;
+}
+
+.local-chat-edit-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.local-chat-edit-buttons button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+
+@media (max-width: 30rem) {
+  .local-chat-bubble {
+    max-width: 95%;
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  #local-chat-messages {
+    scroll-behavior: auto;
+  }
+
+  .local-chat-typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+}

@@ -1,7 +1,918 @@
 /*Light mode */
 
-/* ally reporting */
+.imgdesc-florence-ocr-link,
+.imgdesc-change-model-link {
+  border: 0.2rem solid #fffff4;
+}
 
+.imgdesc-depth-legend {
+  border: 1px solid currentcolor;
+  background: #e1e8ec;
+}
+
+/* Semantic status icon colours (subtle — icons + text labels remain primary indicator) */
+.imgdesc-mm-model-item[data-state="loaded"] .imgdesc-mm-status-icon svg,
+.imgdesc-progress-slot[data-slot-status="complete"]
+  .imgdesc-progress-slot-icon
+  svg {
+  color: #005051;
+}
+
+.imgdesc-mm-model-item[data-state="cached"] .imgdesc-mm-status-icon svg,
+.imgdesc-progress-slot[data-slot-status="cached"]
+  .imgdesc-progress-slot-icon
+  svg {
+  color: #005c84;
+}
+
+.imgdesc-mm-model-item[data-state="downloading"] .imgdesc-mm-status-icon svg,
+.imgdesc-mm-model-item[data-state="loading"] .imgdesc-mm-status-icon svg,
+.imgdesc-progress-slot[data-slot-status="running"]
+  .imgdesc-progress-slot-icon
+  svg {
+  color: #8d3970;
+}
+
+.imgdesc-mm-model-item[data-state="download-error"] .imgdesc-mm-status-icon svg,
+.imgdesc-mm-model-item[data-state="load-error"] .imgdesc-mm-status-icon svg,
+.imgdesc-progress-slot[data-slot-status="error"]
+  .imgdesc-progress-slot-icon
+  svg {
+  color: #d5007f;
+}
+
+/* ── Review List Panel (Phase 6B-1) ── */
+
+/* ── Colours ── */
+
+.imgdesc-review-list-item {
+  border-bottom: 1px solid #758d9a;
+}
+
+.imgdesc-review-list-item:hover {
+  background-color: rgba(128, 128, 128, 0.1);
+}
+
+.imgdesc-review-list-item.imgdesc-list-selected {
+  background-color: #e1e8ec;
+}
+
+.imgdesc-review-confidence-badge[data-level="high"] {
+  background-color: rgba(34, 197, 94, 0.2);
+  color: #005051;
+}
+
+.imgdesc-review-confidence-badge[data-level="medium"] {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #231f20;
+}
+
+.imgdesc-review-confidence-badge[data-level="low"] {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #231f20;
+}
+
+.imgdesc-review-confidence-badge[data-level="user"] {
+  background-color: rgba(99, 102, 241, 0.2);
+  color: #8d3970;
+}
+
+.imgdesc-review-status-badge[data-status="corrected"] {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #005c84;
+}
+
+.imgdesc-review-status-badge[data-status="confirmed"] {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #005051;
+}
+
+.imgdesc-review-status-badge[data-status="removed"] {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #231f20;
+}
+
+.imgdesc-review-status-badge[data-status="restored"] {
+  background-color: rgba(168, 85, 247, 0.15);
+  color: #8d3970;
+}
+
+.imgdesc-analysis-status {
+  background: #e1e8ec;
+}
+
+.imgdesc-help-note {
+  color: #495961;
+}
+
+/* ── Expert Mode (Phase 4A) ── */
+
+.imgdesc-expert-subsection {
+  border-top: 1px solid #495961;
+}
+
+/* ── Library Status Indicators (Phase 4B) ── */
+
+.imgdesc-library-item {
+  border: 1px solid #495961;
+}
+
+.imgdesc-library-status-indicator {
+  background: #495961;
+}
+
+.imgdesc-library-purpose {
+  color: #495961;
+}
+
+.imgdesc-library-status-hint {
+  color: #8d3970;
+}
+
+.imgdesc-library-item[data-status="loading"] .imgdesc-library-status-indicator {
+  background: #005c84;
+}
+
+.imgdesc-library-item[data-status="loading"] .imgdesc-library-status-text {
+  color: #005c84;
+}
+
+.imgdesc-library-item[data-status="ready"] .imgdesc-library-status-indicator {
+  background: #005051;
+}
+
+.imgdesc-library-item[data-status="ready"] .imgdesc-library-status-text {
+  color: #005051;
+}
+
+.imgdesc-library-item[data-status="error"] .imgdesc-library-status-indicator {
+  background: #d5007f;
+}
+
+.imgdesc-library-item[data-status="error"] .imgdesc-library-status-text {
+  color: #d5007f;
+}
+
+/* ── Analysis Profile Selection (Phase 4C) ── */
+
+.imgdesc-expert-profile-description {
+  color: #495961;
+}
+
+.imgdesc-profile-option {
+  border: 1px dotted #495961;
+}
+
+.imgdesc-profile-option:hover {
+  border-color: #005c84;
+  background: #e1e8ec;
+}
+
+.imgdesc-profile-option:has(input:checked) {
+  border: 1px solid #495961;
+  background: #e1e8ec;
+}
+
+.imgdesc-profile-option:has(input:focus-visible) {
+  outline: 2px solid #005c84;
+}
+
+.imgdesc-profile-desc {
+  color: #495961;
+}
+
+/* Feature badge colours */
+.imgdesc-profile-feature[data-feature="ocr"] {
+  background: #e6f4ea;
+  color: #005051;
+}
+
+.imgdesc-profile-feature[data-feature="ocr-off"] {
+  background: #f0f0f0;
+  color: #495961;
+}
+
+.imgdesc-profile-feature[data-feature="colour"] {
+  background: #e3f2fd;
+  color: #005c84;
+}
+
+.imgdesc-profile-feature[data-feature="colour-high"] {
+  background: #e3f2fd;
+  color: #005c84;
+}
+
+.imgdesc-profile-feature[data-feature="colour-low"] {
+  background: #f0f0f0;
+  color: #495961;
+}
+
+/* ── Profile Suggestion Banner (Phase 5C) ── */
+
+.imgdesc-profile-suggestion {
+  border: 1px solid #005c84;
+  border-left: 4px solid #005c84;
+  background: #f0f4ff;
+}
+
+/* ── OCR Bounding Boxes (Phase 5D) ── */
+
+.imgdesc-overlay-toggle,
+.imgdesc-overlay-review-btn {
+  outline: 0.2rem solid #fffff4 !important;
+  border: 0.2rem solid #00131d;
+}
+
+.imgdesc-overlay-box[data-confidence="high"] {
+  border-color: #005051;
+  background: rgba(34, 197, 94, 0.15);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.imgdesc-overlay-box[data-confidence="medium"] {
+  border-color: #d97706;
+  background: rgba(217, 119, 6, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.imgdesc-overlay-box[data-confidence="low"] {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.imgdesc-overlay-box-label {
+  color: #fffff4;
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.8),
+    0 0 1px rgba(0, 0, 0, 0.9);
+}
+
+.imgdesc-overlay-box[data-confidence="high"] .imgdesc-overlay-box-label {
+  background: #005051;
+}
+
+.imgdesc-overlay-box[data-confidence="medium"] .imgdesc-overlay-box-label {
+  background: #b45309;
+}
+
+.imgdesc-overlay-box[data-confidence="low"] .imgdesc-overlay-box-label {
+  background: #d5007f;
+}
+
+.imgdesc-overlay-box:focus-visible {
+  outline: 2px solid #005c84;
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 0 4px rgba(0, 120, 212, 0.5);
+}
+/* ── Overlay Toolbar ── */
+
+.imgdesc-overlay-toolbar {
+  border: 1px solid currentColor;
+}
+
+.imgdesc-overlay-toggle[aria-pressed="true"],
+.imgdesc-overlay-review-btn[aria-pressed="true"] {
+  background: #e0f2fe;
+  border-color: #005c84;
+  border-style: solid;
+}
+
+/* ── Review Mode (Phase 5D-2) ── */
+
+.imgdesc-overlay-box.imgdesc-selected {
+  border-color: #005c84 !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.imgdesc-overlay-box[data-status="confirmed"],
+.imgdesc-overlay-box[data-status="restored"] {
+  border-color: #005051;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.imgdesc-overlay-box[data-status="corrected"] {
+  border-color: #005c84;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Review Panel ── */
+
+.imgdesc-overlay-review-panel {
+  border: 1px solid currentColor;
+  background: #e1e8ec;
+}
+
+.imgdesc-review-input {
+  background: #fffff4;
+}
+
+/* ── Add Item Controls (Phase 5D-3) ── */
+
+.imgdesc-overlay-box[data-status="user-added"] {
+  border-color: #8d3970;
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.imgdesc-overlay-box[data-status="user-added"] .imgdesc-overlay-box-label {
+  background: #8d3970;
+}
+
+.imgdesc-overlay-rubberband {
+  border: 2px dashed #005c84;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.imgdesc-add-keyboard-form {
+  border: 1px solid currentcolor;
+  background: #e1e8ec;
+}
+
+.imgdesc-review-field input[type="text"],
+.imgdesc-review-field input[type="number"],
+.imgdesc-review-field textarea,
+.imgdesc-add-keyboard-form input[type="text"],
+.imgdesc-add-keyboard-form input[type="number"],
+.imgdesc-add-keyboard-form textarea,
+.imgdesc-add-coords input[type="text"],
+.imgdesc-add-coords input[type="number"],
+.imgdesc-add-coords textarea {
+  border: 0.2rem solid #00131d !important;
+  outline: 0.2rem solid #e1e8ec !important;
+}
+
+/* ── Colour Grid Overlay (Phase 5D-4) ── */
+
+.imgdesc-overlay-colour-label {
+  background: rgba(0, 0, 0, 0.65);
+  color: #fffff4;
+}
+
+.imgdesc-overlay-gradient-arrow {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.imgdesc-overlay-classification {
+  background: #e1e8ec;
+}
+
+.imgdesc-verification-results[open] {
+  border-color: #005c84;
+}
+.imgdesc-verification-results > summary {
+  background: #e1e8ec;
+}
+.imgdesc-verify-badge.badge-pass {
+  background: #fffff4;
+  color: #005051;
+}
+.imgdesc-verify-badge.badge-corrections {
+  background: #fffff4;
+  color: #8d3970;
+}
+.imgdesc-verify-badge.badge-error {
+  background: #fffff4;
+  color: #d5007f;
+}
+
+.image-manager-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.image-manager-header {
+  border-bottom: 1px solid #758d9a;
+}
+
+.image-manager-close-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+}
+
+.image-manager-toolbar {
+  border-bottom: 1px solid #758d9a;
+}
+
+.image-manager-count {
+  color: #495961;
+}
+
+.image-manager-card {
+  border: 1px solid #495961;
+  background: #e1e8ec;
+}
+
+.image-manager-card:focus-within {
+  box-shadow: 0 0 0 2px currentColor;
+}
+
+.image-manager-thumbnail {
+  background: #fffff4;
+  border-bottom: 1px solid #495961;
+}
+
+.image-manager-id {
+  color: #495961;
+}
+
+.image-manager-size {
+  color: #495961;
+}
+
+.image-manager-status {
+  color: #495961;
+}
+
+.image-manager-status[data-status="user-replaced"] {
+  color: #002e3b;
+}
+
+.image-manager-status[data-status="user-added"] {
+  color: #8d3970;
+}
+
+.image-manager-status[data-status="missing"] {
+  color: #d5007f;
+}
+
+.image-manager-actions {
+  border-top: 1px solid #495961;
+}
+
+.image-manager-empty {
+  color: #495961;
+}
+
+/* — Mobile colour overrides — */
+
+@media (max-width: 640px) {
+  .image-manager-thumbnail {
+    border-bottom: none;
+    border-right: 1px solid #eee;
+  }
+
+  .image-manager-card {
+    background-color: #fffff4;
+  }
+}
+
+legend.session-manager-group-header {
+  border-bottom-color: currentcolor;
+  color: #00131d;
+  border: 1px solid #00131d;
+}
+
+/* ---- Session Manager: Toolbar ---- */
+
+.session-manager-toolbar {
+  border-color: currentcolor;
+  background: #e1e8ec;
+}
+
+/* ---- Session Manager: Delete Button ---- */
+
+.session-manager-delete-btn {
+  border-color: #d5007f;
+  background: #d5007f;
+  color: #fffff4;
+}
+
+/* ---- Session Manager: Empty State ---- */
+
+.session-manager-empty {
+  color: #758d9a;
+}
+
+/* ---- Session Manager: Group ---- */
+
+.session-manager-group {
+  border-color: currentcolor;
+}
+
+.session-manager-group-header {
+  background: #e1e8ec;
+  border-bottom-color: currentcolor;
+}
+
+.session-manager-group-meta {
+  color: #758d9a;
+}
+
+/* ---- Session Manager: Session Row ---- */
+
+.session-manager-item {
+  border-bottom-color: #9fb1bd;
+}
+
+.session-manager-item-size {
+  color: #495961;
+}
+
+.session-manager-item-badge-active {
+  background: #8d3970;
+  color: #fffff4;
+  border-color: #8d3970;
+}
+
+/* ---- Session Manager: Overflow Toggle ---- */
+
+.session-manager-overflow {
+  border-top-color: #002e3b;
+}
+
+.session-manager-toggle-summary {
+  color: #002e3b;
+}
+
+/* ---- Image Save Warning Banner ---- */
+
+.resume-image-save-warning {
+  border-left-color: #d5007f;
+  background: #e1e8ec;
+}
+
+.resume-image-save-warning-content .icon {
+  color: #d5007f;
+}
+
+/* ---- Storage Dashboard ---- */
+
+.resume-storage-dashboard {
+  border-color: currentcolor;
+  background: #e1e8ec;
+}
+
+.resume-storage-bar-container {
+  background: #fffff4;
+  border: 1px solid currentcolor;
+}
+
+.resume-storage-bar-ok {
+  background-color: #005051;
+}
+
+.resume-storage-bar-warning {
+  background-color: #fcbc00;
+}
+
+.resume-storage-bar-danger {
+  background-color: #ef7d00;
+}
+
+/* ==========================================================================
+   Prompt Preview (Phase 7.5G) — Colour Definitions
+   ========================================================================== */
+
+.ai-engine-warning {
+  border: 1px dotted #d5007f;
+}
+
+.ai-uncertainty-badge {
+  background-color: #d5007f;
+  color: #fffff4;
+}
+
+.ai-uncertainty-index {
+  background-color: #d5007f;
+  color: #fffff4;
+}
+
+.ai-prompt-token-badge {
+  background: #e1e8ec;
+  border: 1px solid currentcolor;
+}
+.ai-prompt-token-summary dl {
+  background: #e1e8ec;
+  border: 1px solid currentcolor;
+}
+
+.ai-prompt-token-badge {
+  text-decoration: none !important;
+}
+.ai-prompt-text {
+  background: #e1e8ec;
+  border: 1px solid currentcolor;
+}
+.ai-prompt-step-marker {
+  background: #fffff4;
+}
+.ai-prompt-file-attachment {
+  background: #e1e8ec;
+  border: 1px solid currentcolor;
+}
+
+.mmd-preview-content th,
+.mmd-preview-content td {
+  border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+.mmd-preview-content th {
+  background: rgba(128, 128, 128, 0.05);
+}
+
+.mathpix-context-menu {
+  border-color: #758d9a;
+  background-color: #fffff4;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.mathpix-context-menu-item {
+  color: #1a1a1a;
+}
+
+.mathpix-context-menu-item {
+  color: #00131d;
+  border: 0.2rem solid #fffff4;
+
+  background-color: #fffff4;
+}
+
+.mathpix-context-menu-item:hover {
+  background-color: #e1e8ec;
+}
+
+.mathpix-context-menu-item:active {
+  background-color: #e1e8ec;
+}
+
+.mathpix-context-menu-item[aria-disabled="true"] {
+  color: #495961;
+}
+
+.mathpix-context-menu-separator {
+  background-color: #758d9a;
+}
+
+.mathpix-math-zoom-overlay {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.mathpix-math-zoom-content {
+  background-color: #fffff4;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Upload Preview Colours */
+.mathpix-upload-preview {
+  background: #e1e8ec;
+  border: 2px dashed #00131d;
+}
+
+.diff-removed {
+  color: #d5007f;
+  background-color: #fff8f8;
+  text-decoration-color: #d5007f;
+}
+
+.diff-added {
+  color: #005051;
+  background-color: #dcfce7;
+  text-decoration-color: #005051;
+}
+
+/* Focus indicators for scrollable content regions */
+#ai-original-content:focus-visible,
+#ai-enhanced-content:focus-visible,
+#ai-pdf-scroll-container:focus-visible {
+  outline: 3px solid #005c84;
+  outline-offset: -2px;
+}
+
+#ai-preview-content:focus-visible {
+  outline: 3px solid #005c84;
+  outline-offset: 10px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  #ai-original-content:focus,
+  #ai-enhanced-content:focus,
+  #ai-preview-content:focus,
+  #ai-pdf-scroll-container:focus {
+    outline: 3px solid #000;
+    outline-offset: 2px;
+  }
+}
+
+/* Diff highlighting */
+
+.toggle-separator {
+  background-color: #768690;
+}
+
+.ai-enhancement-stats {
+  background-color: #e1e8ec;
+  border-color: #768690;
+}
+
+.stats-summary-brief {
+  color: #495961;
+}
+
+.stat-item dt {
+  color: #495961;
+}
+
+.ai-enhancement-stats summary:focus-visible {
+  outline-color: #005c84;
+}
+
+/* Model Selection */
+.model-option:hover {
+  background-color: #f0f2e8;
+}
+
+.model-option:has(input:checked) {
+  border-color: #005c84;
+  background-color: rgba(0, 92, 132, 0.09);
+}
+
+.model-option-description {
+  color: #495961;
+}
+
+.model-option-cost {
+  color: #8d3970;
+}
+
+/* Document Info */
+.ai-document-info {
+  background-color: #e1e8ec;
+}
+
+/* Cost Estimate */
+.ai-cost-estimate {
+  background-color: rgba(141, 57, 112, 0.1);
+  border-color: #8d3970;
+}
+
+.ai-cost-estimate-note {
+  color: #495961;
+}
+
+/* Processing State */
+.processing-spinner {
+  border-color: #e1e8ec;
+  border-top-color: #005c84;
+}
+
+.processing-progress {
+  background-color: #e1e8ec;
+}
+
+.progress-fill {
+  background-color: #005c84;
+}
+
+.processing-text {
+  color: #495961;
+}
+
+/* Results - Comparison Panel */
+.comparison-column h4 {
+  border-bottom-color: #758d9a;
+}
+
+.comparison-content {
+  background-color: #e1e8ec;
+}
+
+/* Results - Preview */
+.ai-preview-container {
+  background-color: rgba(225, 232, 236, 0.2);
+  border-color: #ddd;
+}
+
+/* Error Display */
+.ai-error-display .error-icon {
+  color: #d5007f;
+}
+
+.ai-error-display h3 {
+  color: #d5007f;
+}
+
+/* Preview tables */
+#ai-col-preview th,
+#ai-col-preview td {
+  border-color: #495961;
+}
+
+#ai-col-preview th {
+  background-color: #9fb1bd;
+}
+
+#ai-col-preview tbody tr:nth-child(even) {
+  background-color: #e1e8ec;
+}
+
+/* 4 column comparison grid */
+.ai-column-toggles {
+  background-color: #e1e8ec;
+  border-color: #768690;
+}
+
+.ai-column-toggles input[type="checkbox"]:focus-visible {
+  outline-color: #005c84;
+}
+
+.ai-comparison-column {
+  border-color: #768690;
+}
+
+.ai-comparison-column > h4 {
+  background-color: #e1e8ec;
+  border-bottom-color: #768690;
+}
+
+.column-content.mmd-code {
+  background-color: #f8f8f8;
+}
+
+.column-content.mmd-preview {
+  background-color: #fff;
+}
+
+.column-content.pdf-viewer {
+  background-color: #fff;
+}
+
+.column-content.pdf-viewer .ai-pdf-loading-spinner {
+  border-color: #e1e8ec;
+  border-top-color: #005c84;
+}
+
+.column-content.pdf-viewer .ai-pdf-error {
+  color: #d5007f;
+}
+
+.ai-pdf-page canvas {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* High contrast mode */
+@media (prefers-contrast: more) {
+  .diff-removed {
+    background-color: #ffd0d0;
+    border-left-color: #cc0000;
+  }
+
+  .diff-removed .diff-line-content {
+    color: #660000;
+  }
+
+  .diff-added {
+    background-color: #d0ffd0;
+    border-left-color: #008800;
+  }
+
+  .diff-added .diff-line-content {
+    color: #004400;
+  }
+}
+
+/* Reduced Motion colours */
+@media (prefers-reduced-motion: reduce) {
+  .processing-spinner {
+    border-top-color: #ddd;
+  }
+}
+
+/* Responsive colours */
+@media (max-width: 768px) {
+  .ai-column-toggles label:has(#toggle-diff) {
+    border-top-color: #768690;
+  }
+}
+
+.pdf-vis-no-data-message {
+  background-color: #f0f2e8;
+  border-bottom: 1px solid currentcolor;
+  border-left: 5px solid #005c84;
+  color: currentcolor;
+}
+
+.pdf-vis-no-data-icon {
+  color: #005c84;
+}
+/* ally reporting */
 /* ========== COLOUR DEFINITIONS ========== */
 section.ally-cache-entries {
   border: 1px solid currentcolor;
@@ -912,6 +1823,7 @@ div[data-latex-addition="true"] pre:focus-visible,
 .mathpix-mode-option,
 #toolSelection .tool-option-wrapper {
   border-color: #495961;
+  background: #f0f2e9;
 }
 
 .mathpix-mode-option:hover,
@@ -923,7 +1835,8 @@ div[data-latex-addition="true"] pre:focus-visible,
 .mathpix-mode-option:has(input:checked),
 #toolSelection .tool-option-wrapper:has(input:checked) {
   border-color: #005c84;
-  background-color: rgba(0, 92, 132, 0.051);
+  background-color: #005c84;
+  color: #fffff4;
 }
 
 .mathpix-mode-option:has(input:focus-visible),
@@ -3939,7 +4852,8 @@ input[type="checkbox"]:focus-visible {
 /* Suggester ends */
 
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+textarea {
   border: 0.2rem solid #00131d !important;
   outline: 0.2rem solid #fffff4 !important;
 }
@@ -4678,4 +5592,186 @@ pre.language-json {
 
 .task-complete .task-list-label {
   color: #495961;
+}
+
+/* ============================================================
+ * Set Up Tool — Light Mode Overrides
+ * ============================================================ */
+.setup-status-configured {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.setup-status-not-configured {
+  background-color: #f5f5f5;
+  color: #6c757d;
+}
+
+.setup-credential-section {
+  border-color: #ccc;
+}
+
+.setup-credential-section > summary {
+  background-color: #f8f9fa;
+}
+
+.setup-credential-body {
+  border-top-color: #ccc;
+}
+
+.setup-status-summary,
+.setup-quick-start {
+  border-color: currentcolor;
+  background-color: #f0f2e9;
+}
+
+.setup-input-row input[type="password"],
+.setup-input-row input[type="text"] {
+  background-color: #fff;
+  color: #00131d;
+  border-color: #999;
+}
+
+.setup-toggle-visibility {
+  background-color: #fff;
+  color: #00131d;
+  border-color: #999;
+}
+
+.setup-credential-summary-status.setup-status-configured {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.setup-credential-summary-status.setup-status-not-configured {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.setup-model-group {
+  border-color: #ccc;
+}
+
+/* Phase 9 — Text model card speed indicators */
+.setup-speed-fast {
+  color: #1a7a1a;
+}
+
+.setup-speed-moderate {
+  color: #8a6d00;
+}
+
+.setup-speed-slow {
+  color: #b85c00;
+}
+
+.setup-speed-very-slow {
+  color: #b82020;
+}
+
+.setup-benchmark-highlight {
+  background-color: rgba(26, 122, 26, 0.08);
+}
+
+.setup-model-estimate {
+  background-color: #eef5ee;
+  color: #1a4a1a;
+}
+
+.setup-model-card {
+  border-top-color: #ccc;
+}
+
+.setup-model-benchmarks th,
+.setup-model-benchmarks td {
+  border-bottom-color: #ddd;
+}
+
+/* ── Local Chat (Phase 11a) ──────────────────────────────────── */
+
+.local-chat-bubble-user {
+  background-color: #d8e8f0;
+  color: #00131d;
+}
+
+.local-chat-bubble-assistant {
+  background-color: #e4e2da;
+  color: #00131d;
+}
+
+#local-chat-messages {
+  border-color: #bbb;
+}
+
+.local-chat-stats {
+  color: #556670;
+}
+
+.local-chat-bubble-error {
+  color: #b5003a;
+}
+
+.local-chat-context-warning {
+  color: #b5003a;
+}
+
+.local-chat-no-webgpu {
+  color: #556670;
+}
+
+/* Phase 5C-2: SmilesDrawer element colours — light theme
+ * Must meet WCAG 1.4.11 (3:1 contrast against --chem-bg).
+ */
+.chemistry-structure {
+  --chem-bg: #f0f2e9;
+  --chem-carbon: #111111; /* near-black — 18.4:1 on #fff */
+  --chem-hydrogen: #111111; /* matches carbon — prevents dim H subscripts */
+  --chem-oxygen: #b71c1c; /* deep red — 5.8:1 on #fff */
+  --chem-nitrogen: #0d47a1; /* strong blue — 6.5:1 on #fff */
+  --chem-sulphur: #7a5c00; /* dark goldenrod — ~7.0:1 on #fff (Phase 7C-3) */
+  --chem-fluorine: #1b5e20; /* dark green — 7.1:1 on #fff */
+  --chem-chlorine: #004d40; /* deep teal — 8.6:1 on #fff */
+  --chem-bromine: #7f2800; /* dark brown — 7.3:1 on #fff */
+  --chem-iodine: #4a148c; /* deep purple — 9.3:1 on #fff */
+  --chem-phosphorus: #a63c00; /* burnt orange — ~5.8:1 on #fff (Phase 7C-3) */
+}
+.chemistry-structure {
+  border-color: currentcolor;
+  background: var(--chem-bg, #fffff4);
+}
+
+.chemistry-section-heading {
+  border-bottom-color: #495961;
+}
+
+.chemistry-data-row {
+  border-bottom-color: #495961;
+}
+
+.chemistry-data-row:last-child {
+  border-bottom: none;
+}
+
+.chemistry-data-row dt {
+  color: #495961;
+}
+
+.chemistry-loading,
+.chemistry-not-found,
+.chemistry-description-provenance {
+  color: #495961;
+}
+
+.chemistry-iupac-secondary {
+  color: #495961;
+}
+
+.chemistry-description {
+  border-left-color: #005c84;
+  background: #e1e8ec;
+}
+.local-chat-export-menu {
+  background: #fffff4;
+  border: 1px solid #495961;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
 }

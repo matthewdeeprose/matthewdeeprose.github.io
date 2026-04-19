@@ -31,7 +31,7 @@ class OpenRouterStream {
     if (!initialized) {
       throw new OpenRouterClientError(
         "OpenRouter API client not initialized",
-        ErrorCodes.INVALID_PARAMETERS
+        ErrorCodes.INVALID_PARAMETERS,
       );
     }
   }
@@ -113,37 +113,98 @@ class OpenRouterStream {
       openRouterUtils.debug("Prepared streaming request body", requestBody);
 
       // Sanitize requestBody for console logging to prevent browser freeze with large base64 data
+      // Phase 2 fix: Also handles type:"file" (PDFs) not just type:"image_url" (images)
       const sanitizedBodyForConsole = (() => {
         try {
-          const clone = JSON.parse(JSON.stringify(requestBody));
-          if (clone.messages && Array.isArray(clone.messages)) {
-            clone.messages = clone.messages.map((msg) => {
-              if (msg.content && Array.isArray(msg.content)) {
+          // Build a lightweight summary instead of deep-cloning the entire payload
+          // Deep cloning via JSON.parse(JSON.stringify()) on multi-MB base64 data
+          // causes ~22MB+ of synchronous string processing and freezes/crashes tabs
+          const summary = {
+            model: requestBody.model,
+            stream: requestBody.stream,
+            temperature: requestBody.temperature,
+            max_tokens: requestBody.max_tokens,
+            top_p: requestBody.top_p,
+          };
+
+          if (requestBody.messages && Array.isArray(requestBody.messages)) {
+            summary.messages = requestBody.messages.map((msg) => {
+              // For simple string content, include as-is
+              if (typeof msg.content === "string") {
                 return {
-                  ...msg,
+                  role: msg.role,
+                  content:
+                    msg.content.length > 500
+                      ? msg.content.substring(0, 500) +
+                        `... <TRUNCATED: ${msg.content.length.toLocaleString()} chars total>`
+                      : msg.content,
+                };
+              }
+
+              // For array content (file attachments), sanitise each item
+              if (Array.isArray(msg.content)) {
+                return {
+                  role: msg.role,
                   content: msg.content.map((item) => {
-                    // Truncate base64 image data to prevent console freeze
+                    // Truncate base64 image data
                     if (item.type === "image_url" && item.image_url?.url) {
                       const url = item.image_url.url;
                       if (url.startsWith("data:") && url.length > 200) {
                         const [header] = url.split(",");
                         const dataLength = url.length - header.length - 1;
                         return {
-                          ...item,
+                          type: "image_url",
                           image_url: {
                             url: `${header},<BASE64_TRUNCATED: ${dataLength.toLocaleString()} chars>`,
                           },
                         };
                       }
                     }
+
+                    // Truncate base64 PDF/file data (Phase 2 fix)
+                    if (item.type === "file" && item.file?.file_data) {
+                      const fileData = item.file.file_data;
+                      if (
+                        fileData.startsWith("data:") &&
+                        fileData.length > 200
+                      ) {
+                        const [header] = fileData.split(",");
+                        const dataLength = fileData.length - header.length - 1;
+                        return {
+                          type: "file",
+                          file: {
+                            filename: item.file.filename,
+                            file_data: `${header},<BASE64_TRUNCATED: ${dataLength.toLocaleString()} chars>`,
+                          },
+                        };
+                      }
+                    }
+
+                    // For text items, truncate if very long
+                    if (item.type === "text" && item.text?.length > 500) {
+                      return {
+                        type: "text",
+                        text:
+                          item.text.substring(0, 500) +
+                          `... <TRUNCATED: ${item.text.length.toLocaleString()} chars total>`,
+                      };
+                    }
+
                     return item;
                   }),
                 };
               }
-              return msg;
+
+              return { role: msg.role, content: "[complex content]" };
             });
           }
-          return clone;
+
+          // Copy any plugins config
+          if (requestBody.plugins) {
+            summary.plugins = requestBody.plugins;
+          }
+
+          return summary;
         } catch (e) {
           return {
             error: "Failed to sanitize request body",
@@ -152,18 +213,16 @@ class OpenRouterStream {
         }
       })();
 
-      console.log(
-        "📤 STREAMING REQUEST BODY:",
-        JSON.stringify(sanitizedBodyForConsole, null, 2)
+      // Only log request body at debug level to avoid console overhead
+      openRouterUtils.debug(
+        "Streaming request body (sanitised)",
+        sanitizedBodyForConsole,
       );
-      // Use sanitized body for display to prevent UI freeze with large base64 data
+
+      // Update dev panel display with sanitised (lightweight) body
       openRouterDisplay.updateCodeDisplay(
         "original-request",
-        sanitizedBodyForConsole
-      );
-      openRouterUtils.debug(
-        "Prepared streaming request body",
-        sanitizedBodyForConsole
+        sanitizedBodyForConsole,
       );
 
       // Update UI to show streaming has started
@@ -206,13 +265,13 @@ class OpenRouterStream {
         // Log the full error as JSON to see all details
         console.error(
           "Full API error details:",
-          JSON.stringify(error, null, 2)
+          JSON.stringify(error, null, 2),
         );
 
         throw new OpenRouterClientError(
           error.error?.message || "API request failed",
           ErrorCodes.API_ERROR,
-          { status: response.status, error }
+          { status: response.status, error },
         );
       }
 
@@ -340,7 +399,7 @@ class OpenRouterStream {
                       preview:
                         extractedContent.substring(0, 30) +
                         (extractedContent.length > 30 ? "..." : ""),
-                    }
+                    },
                   );
 
                   // If we extracted content, add it to fullResponse
@@ -351,7 +410,7 @@ class OpenRouterStream {
                         oldLength: fullResponse.length,
                         newLength: extractedContent.length,
                         isReplacement: true,
-                      }
+                      },
                     );
                     fullResponse = extractedContent;
                   }
@@ -369,7 +428,7 @@ class OpenRouterStream {
                       usage: JSON.stringify(response.usage),
                       fullResponseLength: fullResponse.length,
                       responseModel: response.model || "unknown",
-                    }
+                    },
                   );
                   options.onComplete(fullResponse, response);
                   break;
@@ -377,7 +436,7 @@ class OpenRouterStream {
               } else {
                 // Standard processing for streaming chunks
                 openRouterUtils.debug(
-                  "Processing non-JSON final buffer with processBufferLine"
+                  "Processing non-JSON final buffer with processBufferLine",
                 );
                 this.processBufferLine(buffer, options, fullResponse);
               }
@@ -433,11 +492,11 @@ class OpenRouterStream {
                   model: options.model,
                   responseLength: fullResponse.length,
                   estimatedTokens: finalResponseData.usage.total_tokens,
-                }
+                },
               );
               openRouterDisplay.updateDevPanel(
                 finalResponseData,
-                options.model
+                options.model,
               );
             } catch (error) {
               openRouterUtils.warn(
@@ -445,7 +504,7 @@ class OpenRouterStream {
                 {
                   error: error.message,
                   stack: error.stack,
-                }
+                },
               );
               // Continue with callback even if dev panel update fails
             }
@@ -457,7 +516,7 @@ class OpenRouterStream {
                 {
                   responseLength: fullResponse.length,
                   displayDataKeys: Object.keys(finalResponseData),
-                }
+                },
               );
 
               // Create a complete response object for display
@@ -479,7 +538,7 @@ class OpenRouterStream {
 
               openRouterDisplay.updateCodeDisplay(
                 "original-response",
-                displayResponseData
+                displayResponseData,
               );
             } catch (error) {
               openRouterUtils.warn(
@@ -487,7 +546,7 @@ class OpenRouterStream {
                 {
                   error: error.message,
                   stack: error.stack,
-                }
+                },
               );
               // Continue with callback even if display update fails
             }
@@ -570,7 +629,7 @@ class OpenRouterStream {
       throw new OpenRouterClientError(
         "Stream processing failed: " + error.message,
         ErrorCodes.NETWORK_ERROR,
-        { originalError: error }
+        { originalError: error },
       );
     } finally {
       openRouterUtils.debug("Stream processing ended", {
@@ -675,7 +734,7 @@ class OpenRouterStream {
                     "Callback triggered cancellation (expected)",
                     {
                       message: callbackError.message,
-                    }
+                    },
                   );
                   throw callbackError;
                 } else {
@@ -699,7 +758,7 @@ class OpenRouterStream {
               }
             } else {
               openRouterUtils.warn(
-                "onChunk callback not available or not a function"
+                "onChunk callback not available or not a function",
               );
             }
 
@@ -725,7 +784,7 @@ class OpenRouterStream {
                     "Callback triggered cancellation (expected)",
                     {
                       message: callbackError.message,
-                    }
+                    },
                   );
                   throw callbackError;
                 } else {
@@ -770,7 +829,7 @@ class OpenRouterStream {
                     "Callback triggered cancellation (expected)",
                     {
                       message: callbackError.message,
-                    }
+                    },
                   );
                   throw callbackError;
                 } else {
@@ -863,7 +922,7 @@ class OpenRouterStream {
             dataLength: data.length,
             dataPreview:
               data.substring(0, 50) + (data.length > 50 ? "..." : ""),
-          }
+          },
         );
 
         try {
@@ -929,7 +988,7 @@ class OpenRouterStream {
               bufferStart: buffer.substring(0, 30),
               bufferLength: buffer.length,
               modelFamily: modelFamily,
-            }
+            },
           );
 
           const parsed = JSON.parse(buffer);
@@ -998,7 +1057,7 @@ class OpenRouterStream {
                 "Calling onChunk with content from JSON response",
                 {
                   contentLength: content.length,
-                }
+                },
               );
               options.onChunk(content, parsed);
             }
@@ -1011,7 +1070,7 @@ class OpenRouterStream {
                   contentLength: content.length,
                   responseData:
                     JSON.stringify(parsed).substring(0, 100) + "...",
-                }
+                },
               );
               options.onComplete(content, parsed);
             }
@@ -1022,7 +1081,7 @@ class OpenRouterStream {
               {
                 choiceFormat: typeof parsed.choices[0],
                 choiceKeys: Object.keys(parsed.choices[0]),
-              }
+              },
             );
           } else if (options.onComplete) {
             // If we have no content but have a complete response with usage info, call onComplete
@@ -1031,7 +1090,7 @@ class OpenRouterStream {
               {
                 hasUsage: !!parsed.usage,
                 responseModel: parsed.model || "unknown",
-              }
+              },
             );
             options.onComplete(fullResponse, parsed);
           }
@@ -1065,7 +1124,7 @@ class OpenRouterStream {
           tokenCounter.recordStreamChunk(
             options.requestId,
             parsedData.usage,
-            options.model
+            options.model,
           );
         }
       } catch (tokenError) {

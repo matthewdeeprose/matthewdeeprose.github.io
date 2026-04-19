@@ -1,0 +1,371 @@
+/* ========================================
+   GRAPH BUILDER ENHANCED - COLOUR PROPERTIES
+   ======================================== */
+
+/* Enhancement panel container - Colours */
+.gb-enhanced-config {
+  border: 1px solid #495961;
+  background-color: rgba(255, 255, 244, 0.5);
+}
+
+/* Advanced options toggle - Colours */
+.gb-advanced-toggle {
+  background-color: #fffff4;
+  border: 1px solid #495961;
+  color: #00131d;
+}
+
+.gb-advanced-toggle:hover {
+  background-color: rgba(0, 92, 132, 0.05);
+}
+
+.gb-advanced-toggle:focus-visible {
+  outline: 0.2rem solid #005c84;
+  outline-offset: 2px;
+}
+
+/* Advanced panel - Colours */
+.gb-advanced-options {
+  background-color: #fffff4;
+  border: 1px solid #495961;
+}
+
+.gb-advanced-options h4 {
+  color: #005c84;
+}
+
+/* Column definition fieldset - Colours */
+.gb-column-definition {
+  border: 1px solid #495961;
+  background-color: #fffff4;
+}
+
+.gb-column-definition legend {
+  color: #005c84;
+}
+
+/* Column inputs - Colours */
+.gb-enhanced-input,
+.gb-enhanced-select {
+  border: 1px solid #495961;
+  background-color: #fffff4;
+  color: #00131d;
+}
+
+.gb-enhanced-input:focus,
+.gb-enhanced-select:focus {
+  outline: 0.2rem solid #005c84;
+  outline-offset: 1px;
+  border-color: #005c84;
+}
+
+/* Add column button - Colours */
+.gb-add-column-btn {
+  color: #495961;
+  border: 0.2rem dashed #495961;
+  background: none;
+  outline: 0.2rem solid transparent;
+}
+
+.gb-add-column-btn:hover {
+  border-color: #005c84;
+  color: #005c84;
+  background-color: rgba(0, 92, 132, 0.05);
+}
+
+.gb-add-column-btn:focus-visible {
+  outline: 0.2rem solid #005c84;
+  outline-offset: 2px;
+}
+
+/* Remove column button - Colours */
+.gb-remove-column-btn {
+  color: #d5007f;
+  border: 1px solid #d5007f;
+  background: none;
+  outline: 0.2rem solid transparent;
+}
+
+.gb-remove-column-btn:hover {
+  background-color: rgba(213, 0, 127, 0.1);
+}
+
+.gb-remove-column-btn:focus-visible {
+  outline: 0.2rem solid #005c84;
+  outline-offset: 2px;
+}
+
+/* Smart suggestions - Colours */
+.gb-smart-suggestions {
+  background-color: rgba(0, 92, 132, 0.05);
+  border: 1px solid rgba(0, 92, 132, 0.3);
+}
+
+.gb-smart-suggestions h4 {
+  color: #005c84;
+}
+
+/* Toggle icon - Colours */
+.gb-toggle-icon {
+  color: #495961;
+}
+
+.gb-advanced-toggle[aria-expanded="true"] .gb-toggle-icon {
+  color: #005c84;
+}
+
+/* ========================================
+   LAYOUT & STYLING PROPERTIES
+   ======================================== */
+
+/* Enhancement panel container */
+.gb-enhanced-config {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Advanced options toggle button */
+.gb-advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  min-height: 44px;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Toggle checkbox - visually hidden but accessible */
+.gb-toggle-checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Toggle text label */
+.gb-toggle-text {
+  flex: 1;
+  cursor: pointer;
+}
+
+/* Toggle icon (chevron) */
+.gb-toggle-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.gb-advanced-toggle[aria-expanded="true"] .gb-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* Collapsible advanced panel */
+.gb-advanced-options {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 4px;
+  display: none;
+}
+
+.gb-advanced-options.expanded {
+  display: block;
+  animation: gbSlideDown 0.3s ease-out;
+}
+
+@keyframes gbSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gb-advanced-options h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+/* Column definition fieldset */
+.gb-column-definition {
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.gb-column-definition legend {
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0 0.5rem;
+}
+
+/* Column inputs grid */
+.gb-column-inputs {
+  display: grid;
+  grid-template-columns: 1fr 120px 120px auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+/* Input groups within column config */
+.gb-enhanced-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.gb-enhanced-input-group label {
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+/* Enhanced inputs and selects */
+.gb-enhanced-input,
+.gb-enhanced-select {
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  min-height: 44px;
+}
+
+/* Column actions */
+.gb-column-actions {
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Add column button */
+.gb-add-column-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  min-height: 44px;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+/* Remove column button */
+.gb-remove-column-btn {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  min-height: 44px;
+  min-width: 44px;
+  transition: all 0.2s ease;
+  align-self: end;
+}
+
+/* Smart suggestions panel */
+.gb-smart-suggestions {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.gb-smart-suggestions h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.gb-suggestions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gb-suggestions-list li {
+  padding: 0.25rem 0;
+  line-height: 1.4;
+}
+
+/* ========================================
+   ENHANCED DATA ROW GRID
+   ======================================== */
+
+/* ========================================
+   RESPONSIVE BREAKPOINTS
+   ======================================== */
+
+@media (max-width: 885px) {
+  /* Stack enhanced data rows on narrow viewports.
+     !important overrides the inline grid-template-columns
+     set by the row-sync module. */
+  .gb-data-row[data-enhanced-cols] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gb-column-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .gb-remove-column-btn {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 480px) {
+  .gb-enhanced-config {
+    padding: 0.75rem;
+  }
+
+  .gb-advanced-options {
+    padding: 0.75rem;
+  }
+
+  .gb-column-definition {
+    padding: 0.75rem;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY SUPPORT
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .gb-advanced-options.expanded {
+    animation: none;
+  }
+
+  .gb-toggle-icon,
+  .gb-advanced-toggle,
+  .gb-add-column-btn,
+  .gb-remove-column-btn,
+  .gb-enhanced-input,
+  .gb-enhanced-select {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .gb-enhanced-config,
+  .gb-advanced-toggle,
+  .gb-column-definition,
+  .gb-advanced-options {
+    border-width: 2px;
+  }
+
+  .gb-enhanced-input:focus,
+  .gb-enhanced-select:focus {
+    outline-width: 3px;
+  }
+}

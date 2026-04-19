@@ -366,6 +366,10 @@ class MathPixStrokesAPIClient {
         include_equation_tags: userPrefs.equationNumbering || false,
         idiomatic_eqn_arrays: userPrefs.idiomaticEqnArrays || false,
         idiomatic_braces: userPrefs.idiomaticBraces || false,
+
+        // Phase 5A-2: Chemistry recognition (top-level params, matching Text API config)
+        include_smiles: true,
+        include_inchi: true,
       };
 
       logInfo("[Strokes API] Processing with enhanced parameters", {
@@ -374,6 +378,7 @@ class MathPixStrokesAPIClient {
         delimiterFormat: userPrefs.delimiterFormat,
         rmSpaces: requestPayload.rm_spaces,
         equationNumbering: requestPayload.include_equation_tags,
+        chemistryEnabled: true, // Phase 5A-2
       });
 
       logDebug("Strokes API request payload", {
@@ -666,6 +671,8 @@ class MathPixStrokesAPIClient {
    * @returns {number} returns.confidence - Recognition confidence (0-1)
    * @returns {boolean} returns.isHandwritten - True (always true for strokes)
    * @returns {Object} returns.rawResponse - Original unmodified API response
+   * @returns {Array} returns.smiles - Extracted SMILES chemistry data
+   * @returns {boolean} returns.containsChemistry - True if chemistry structures detected
    *
    * @example
    * const result = client.normaliseStrokesResponse(apiResponse);
@@ -683,6 +690,17 @@ class MathPixStrokesAPIClient {
 
     // Detect if response contains table data
     const containsTable = !!(htmlValue || tsvValue);
+
+    // Phase 5B-2: Delegate chemistry extraction to shared module
+    let smilesArray = [];
+    let containsChemistry = false;
+
+    if (window.MathPixChemistryUtils) {
+      smilesArray = window.MathPixChemistryUtils.extractChemistryFromResponse(apiResponse);
+      containsChemistry = smilesArray.length > 0;
+    } else {
+      logWarn("MathPixChemistryUtils not available — chemistry extraction skipped");
+    }
 
     // ✅ Generate markdown table from TSV if available
     const markdownTableValue = tsvValue
@@ -708,6 +726,10 @@ class MathPixStrokesAPIClient {
       // Table detection flag
       containsTable: containsTable,
 
+      // Phase 5A-2: Chemistry data
+      smiles: smilesArray,
+      containsChemistry: containsChemistry,
+
       // Recognition metadata
       confidence: apiResponse.confidence || 0,
       isHandwritten: apiResponse.is_handwritten !== false, // Default to true for strokes
@@ -727,6 +749,8 @@ class MathPixStrokesAPIClient {
       hasTsv: !!result.tsv,
       hasTableMarkdown: !!result.tableMarkdown,
       containsTable: result.containsTable,
+      containsChemistry: result.containsChemistry, // Phase 5A-2
+      smilesCount: result.smiles.length, // Phase 5A-2
       confidence: result.confidence,
     });
 

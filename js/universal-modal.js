@@ -515,14 +515,17 @@ const UniversalModal = (function () {
       const statusArea = document.createElement("div");
       statusArea.id = `${modalId}-status`;
       statusArea.className = "universal-modal-status normal-viewport";
-      statusArea.setAttribute("aria-live", "polite");
-      statusArea.setAttribute("aria-atomic", "true");
-      statusArea.setAttribute("role", "status");
-      statusArea.setAttribute("aria-relevant", "additions text");
+      // Phase 7.3J: aria-live and role="status" moved to the text element only.
+      // Previously these were on the outer container with aria-atomic="true",
+      // which caused two problems:
+      // 1. The dismiss button's aria-label ("Dismiss notification") was included
+      //    in every announcement because aria-atomic reads the full region
+      // 2. Two sequential DOM changes (text update + button visibility) each
+      //    triggered a full atomic re-read, causing double announcements
 
       statusArea.innerHTML = `
         <span class="universal-modal-status-icon" aria-hidden="true"></span>
-        <div class="universal-modal-status-text"></div>
+        <div class="universal-modal-status-text" role="status" aria-live="polite"></div>
         <button type="button" class="universal-modal-status-dismiss" aria-label="Dismiss notification" style="display: none;">
           <span aria-hidden="true">×</span>
         </button>

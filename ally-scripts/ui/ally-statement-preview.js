@@ -468,10 +468,15 @@ const ALLY_STATEMENT_PREVIEW = (function () {
   function renderIntroSection(lastCheckedOn) {
     const config = ALLY_STATEMENT_PREVIEW_CONFIG.INTRO;
 
-    const section = createElement("section", { className: "ally-sp-intro" });
+    const section = createElement("section", {
+      className: "ally-sp-intro",
+      ariaLabelledby: "ally-sp-intro-heading",
+    });
 
     // Heading
-    section.appendChild(createElement("h3", null, config.heading));
+    section.appendChild(
+      createElement("h3", { id: "ally-sp-intro-heading" }, config.heading),
+    );
 
     // Paragraphs
     config.paragraphs.forEach(function (para) {
@@ -526,7 +531,11 @@ const ALLY_STATEMENT_PREVIEW = (function () {
    * @returns {HTMLElement} Warning section
    */
   function renderWarningSection(theme) {
-    const section = createElement("section", { className: "ally-sp-warning" });
+    const headingId = "ally-sp-" + theme.id + "-heading";
+    const section = createElement("section", {
+      className: "ally-sp-warning",
+      ariaLabelledby: headingId,
+    });
 
     // Header with icon and title
     const header = createElement(
@@ -538,7 +547,7 @@ const ALLY_STATEMENT_PREVIEW = (function () {
           ariaHidden: "true",
           dataset: { icon: theme.icon },
         }),
-        createElement("h3", null, theme.title),
+        createElement("h3", { id: headingId }, theme.title),
       ],
     );
     section.appendChild(header);

@@ -23,7 +23,7 @@ const LOG_LEVELS = {
   DEBUG: 3,
 };
 
-const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
@@ -125,6 +125,19 @@ const DEFAULT_CONFIG = {
     unhealthyThreshold: 3, // Consecutive failures before unhealthy
     onStatusChange: null, // Callback: (status) => void
   },
+  // Reasoning / Extended Thinking
+  // Supports OpenRouter reasoning parameter for models that advertise the
+  // "reasoning" capability.  Disabled by default — opt-in only.
+  //
+  // Usage examples:
+  //   reasoning: { enabled: true }                        — adaptive (recommended for Claude 4.6 Opus)
+  //   reasoning: { enabled: true, effort: 'high' }        — effort-based (older reasoning models)
+  //   reasoning: { enabled: true, max_tokens: 10000 }     — budget-based (explicit token budget)
+  reasoning: {
+    enabled: false, // Disabled by default (opt-in)
+    effort: null, // 'minimal' | 'low' | 'medium' | 'high' | null (null = adaptive/model default)
+    max_tokens: null, // Explicit reasoning token budget (null = let model/provider decide)
+  },
 };
 
 // ============================================================================
@@ -173,11 +186,17 @@ class OpenRouterEmbed {
     this.showNotifications = this.config.showNotifications;
     this.enableLogging = this.config.enableLogging;
 
+    // Reasoning / Extended Thinking configuration
+    this._reasoningConfig = {
+      ...DEFAULT_CONFIG.reasoning,
+      ...(config.reasoning || {}),
+    };
+
     // Get container reference
     this.container = document.getElementById(this.containerId);
     if (!this.container) {
       throw new Error(
-        `Container with ID "${this.containerId}" not found in DOM`
+        `Container with ID "${this.containerId}" not found in DOM`,
       );
     }
 
@@ -235,7 +254,7 @@ class OpenRouterEmbed {
       logWarn("EmbedFileUtils not available - file attachment disabled");
     }
 
-// Streaming state (Stage 3)
+    // Streaming state (Stage 3)
     this.isStreaming = false;
     this.streamAbortController = null;
     this.streamBuffer = "";
@@ -293,7 +312,7 @@ class OpenRouterEmbed {
       });
     } else if (this._retryConfig.enabled && !window.EmbedRetryHandlerClass) {
       logWarn(
-        "Retry enabled but EmbedRetryHandlerClass not available. Load openrouter-embed-retry.js first."
+        "Retry enabled but EmbedRetryHandlerClass not available. Load openrouter-embed-retry.js first.",
       );
     }
 
@@ -313,7 +332,7 @@ class OpenRouterEmbed {
       logInfo("Post-processor initialised");
     } else {
       logDebug(
-        "EmbedPostProcessorClass not available - post-processing disabled"
+        "EmbedPostProcessorClass not available - post-processing disabled",
       );
     }
 
@@ -324,7 +343,7 @@ class OpenRouterEmbed {
 
     if (window.EmbedThrottleClass) {
       this._throttleHandler = new window.EmbedThrottleClass(
-        this._throttleConfig
+        this._throttleConfig,
       );
 
       // Connect event emitter if available
@@ -363,7 +382,7 @@ class OpenRouterEmbed {
       });
     } else if (this._cacheConfig.enabled && !window.EmbedCacheClass) {
       logWarn(
-        "Cache enabled but EmbedCacheClass not available. Load openrouter-embed-cache.js first."
+        "Cache enabled but EmbedCacheClass not available. Load openrouter-embed-cache.js first.",
       );
     } else {
       logDebug("EmbedCacheClass not available or cache disabled");
@@ -435,7 +454,7 @@ class OpenRouterEmbed {
 
     if (window.EmbedHealthMonitorClass) {
       this._healthMonitor = new window.EmbedHealthMonitorClass(
-        this._healthConfig
+        this._healthConfig,
       );
 
       // Connect event emitter if available
@@ -456,7 +475,7 @@ class OpenRouterEmbed {
       });
     } else {
       logDebug(
-        "EmbedHealthMonitorClass not available - health monitoring disabled"
+        "EmbedHealthMonitorClass not available - health monitoring disabled",
       );
     }
 
@@ -505,9 +524,9 @@ class OpenRouterEmbed {
       if (
         typeof config.temperature !== "number" ||
         config.temperature < 0 ||
-        config.temperature > 1
+        config.temperature > 2
       ) {
-        throw new Error("temperature must be a number between 0 and 1");
+        throw new Error("temperature must be a number between 0 and 2");
       }
     }
 
@@ -537,19 +556,19 @@ class OpenRouterEmbed {
   validateComponents() {
     if (!this.client) {
       throw new Error(
-        "OpenRouter client not available (window.openRouterClient)"
+        "OpenRouter client not available (window.openRouterClient)",
       );
     }
 
     if (!this.markdown) {
       throw new Error(
-        "Markdown processor not available (window.MarkdownEditor)"
+        "Markdown processor not available (window.MarkdownEditor)",
       );
     }
 
     if (!this.notifications.success || !this.notifications.error) {
       logWarn(
-        "Notification system not fully available, some feedback may be limited"
+        "Notification system not fully available, some feedback may be limited",
       );
     }
 
@@ -585,7 +604,7 @@ class OpenRouterEmbed {
         userMessage = this.fileUtils.prepareImageContent(
           this.currentFile,
           this.currentFileBase64,
-          userPrompt
+          userPrompt,
         );
         logDebug("Built image message");
       } else if (isPDF) {
@@ -593,7 +612,7 @@ class OpenRouterEmbed {
         userMessage = this.fileUtils.preparePDFContent(
           this.currentFile,
           this.currentFileBase64,
-          userPrompt
+          userPrompt,
         );
         logDebug("Built PDF message");
       }
@@ -692,7 +711,7 @@ class OpenRouterEmbed {
 
       const apiResponse = await this.client.sendRequest(
         messages,
-        requestOptions
+        requestOptions,
       );
 
       // Check if cancelled during request
@@ -783,6 +802,29 @@ class OpenRouterEmbed {
       max_tokens: this.max_tokens,
       top_p: this.top_p,
     };
+
+    // Add reasoning parameter when enabled
+    // Supports three modes via the OpenRouter reasoning parameter:
+    //   1. Adaptive:     { enabled: true }                     — model decides depth
+    //   2. Effort-based: { enabled: true, effort: 'high' }     — provider maps to budget
+    //   3. Budget-based: { enabled: true, max_tokens: 10000 }  — explicit token budget
+    if (this._reasoningConfig && this._reasoningConfig.enabled) {
+      const reasoning = { enabled: true };
+
+      if (this._reasoningConfig.effort) {
+        reasoning.effort = this._reasoningConfig.effort;
+      }
+
+      if (
+        typeof this._reasoningConfig.max_tokens === "number" &&
+        this._reasoningConfig.max_tokens > 0
+      ) {
+        reasoning.max_tokens = this._reasoningConfig.max_tokens;
+      }
+
+      options.reasoning = reasoning;
+      logDebug("Added reasoning parameter", reasoning);
+    }
 
     // Add PDF engine if PDF is attached (Stage 2)
     // Using official OpenRouter plugins format per API documentation
@@ -934,11 +976,17 @@ class OpenRouterEmbed {
       throw new Error(message);
     }
 
+    // Phase 7: Local model routing — delegate to local backend if model is local
+    if (this.model && this.model.startsWith('local/') && window.EmbedLocalBackend) {
+      logInfo('Routing to local backend for model:', this.model);
+      return window.EmbedLocalBackend.handleRequest(this, options);
+    }
+
     // Phase 3: Check reduced motion preference and fallback to non-streaming
     // This provides accessibility compliance for users who prefer reduced motion
     if (this.respectReducedMotion && this.prefersReducedMotion()) {
       logInfo(
-        "Reduced motion preferred - falling back to non-streaming request"
+        "Reduced motion preferred - falling back to non-streaming request",
       );
       this._reducedMotionFallbackActive = true;
 
@@ -1039,7 +1087,7 @@ class OpenRouterEmbed {
         } catch (preprocessError) {
           logWarn(
             "Preprocessing failed, using original input:",
-            preprocessError
+            preprocessError,
           );
         }
       }
@@ -1066,15 +1114,18 @@ class OpenRouterEmbed {
       }
 
       // Debug logging for file handling (Issue #2 debugging)
+      // NOTE: Never JSON.stringify messages here — it contains full base64 file data
+      // and will freeze/crash the browser for large PDFs (see Phase 2 investigation)
       if (this.currentFile) {
         logDebug("Streaming with file attachment", {
           fileName: this.currentFile.name,
           fileType: this.currentFile.type,
           hasBase64: !!this.currentFileBase64,
+          base64Length: this.currentFileBase64?.length || 0,
           hasAnalysis: !!this.currentFileAnalysis,
           engine: this.currentFileAnalysis?.engine,
-          messagesStructure: JSON.stringify(messages, null, 2),
-          optionsStructure: JSON.stringify(requestOptions, null, 2),
+          messageCount: messages.length,
+          messageRoles: messages.map((m) => m.role),
         });
       }
 
@@ -1119,6 +1170,9 @@ class OpenRouterEmbed {
           model: this.model,
           temperature: this.temperature,
           max_tokens: this.max_tokens,
+          reasoning: this._reasoningConfig?.enabled
+            ? { ...this._reasoningConfig }
+            : null,
         };
 
         const cachedResponse = this._cacheHandler.get(cacheRequest);
@@ -1250,7 +1304,7 @@ class OpenRouterEmbed {
         return this.client.sendStreamingRequest(
           messages,
           streamingOptions,
-          true
+          true,
         );
       };
 
@@ -1260,7 +1314,7 @@ class OpenRouterEmbed {
       const requestPromise = shouldRetry
         ? this._executeWithRetry(
             executeStreamingRequest,
-            this.streamAbortController?.signal
+            this.streamAbortController?.signal,
           )
         : executeStreamingRequest();
 
@@ -1342,48 +1396,15 @@ class OpenRouterEmbed {
       preview: rawText.substring(0, 100),
     });
 
-    // Process markdown to HTML
-    let html;
-    try {
-      // Use MarkdownEditor.render() method
-      if (this.markdown && typeof this.markdown.render === "function") {
-        html = this.markdown.render(rawText);
-        logDebug("Markdown render method called");
-      }
-      // Fallback to MarkdownEditor.md.render() if available
-      else if (
-        this.markdown?.md &&
-        typeof this.markdown.md.render === "function"
-      ) {
-        html = this.markdown.md.render(rawText);
-        logDebug("Markdown md.render method called");
-      }
-      // Last resort: plain text
-      else {
-        logWarn("No markdown processor available, using plain text");
-        html = `<pre>${this.escapeHtml(rawText)}</pre>`;
-      }
-
-      // Validate that we actually got HTML content
-      if (!html || typeof html !== "string") {
-        logWarn(
-          "Markdown processing returned invalid content, using plain text",
-          {
-            htmlType: typeof html,
-            htmlValue: html,
-          }
-        );
-        html = `<pre>${this.escapeHtml(rawText)}</pre>`;
-      } else {
-        logDebug("Markdown processed to HTML successfully", {
-          htmlLength: html.length,
-        });
-      }
-    } catch (error) {
-      logError("Markdown processing failed, using plain text", error);
-      // Fallback to plain text with line breaks
-      html = `<pre>${this.escapeHtml(rawText)}</pre>`;
-    }
+    // Process markdown to HTML via the same helper used by streaming.
+    // Historic note: this path previously tried this.markdown.render(), but
+    // MarkdownEditor.render is a debounced async editor re-render and
+    // returns undefined — so non-streaming responses silently fell through
+    // to a plain-text <pre> fallback and the user saw raw "##" markdown.
+    // processMarkdownWithFallback goes directly to window.markdownit and
+    // is the same code path that makes streaming work.
+    const html = this.processMarkdownWithFallback(rawText);
+    logDebug("Markdown processed to HTML", { htmlLength: html?.length || 0 });
 
     // Extract token usage with fallbacks
     const tokens = {
@@ -1419,7 +1440,7 @@ class OpenRouterEmbed {
   // CONTENT INJECTION
   // ==========================================================================
 
-/**
+  /**
    * Inject processed content into container
    * @param {string} html - HTML content to inject
    * @throws {Error} If container not available
@@ -1433,7 +1454,7 @@ class OpenRouterEmbed {
 
     // Preserve progress indicator if it exists (Stage 4 Phase 1)
     const progressElement = this.container.querySelector(
-      ".embed-progress-indicator"
+      ".embed-progress-indicator",
     );
     const progressPosition = progressElement
       ? this.container.firstChild === progressElement
@@ -1459,7 +1480,10 @@ class OpenRouterEmbed {
     const now = Date.now();
     if (this.isStreaming) {
       // During streaming: announce at most every 5 seconds
-      if (now - this.lastScreenReaderAnnouncement > this.screenReaderAnnouncementInterval) {
+      if (
+        now - this.lastScreenReaderAnnouncement >
+        this.screenReaderAnnouncementInterval
+      ) {
         this.announceToScreenReader("Content updating");
         this.lastScreenReaderAnnouncement = now;
       }
@@ -1633,7 +1657,7 @@ class OpenRouterEmbed {
         };
         response = await this._postProcessor.process(
           response,
-          postProcessContext
+          postProcessContext,
         );
         logDebug("Response post-processed", {
           processors: response.processed?.processors || [],
@@ -1691,6 +1715,9 @@ class OpenRouterEmbed {
         model: this.model,
         temperature: this.temperature,
         max_tokens: this.max_tokens,
+        reasoning: this._reasoningConfig?.enabled
+          ? { ...this._reasoningConfig }
+          : null,
       };
 
       try {
@@ -1784,6 +1811,77 @@ class OpenRouterEmbed {
   }
 
   /**
+   * Protect LaTeX math expressions from markdown-it processing.
+   * Replaces \[...\], $$...$$, \(...\), and $...$ with placeholders,
+   * returns the modified text and a restore function.
+   * @private
+   */
+  _protectMathExpressions(text) {
+    const placeholders = [];
+    let idx = 0;
+
+    function stash(match) {
+      const key = "<!--MATH_PLACEHOLDER_" + idx++ + "-->";
+      placeholders.push({ key, value: match });
+      return key;
+    }
+
+    // Order matters: longer/greedy delimiters first
+    // Display math: \[...\] (may span multiple lines)
+    let result = text.replace(/\\\[[\s\S]*?\\\]/g, stash);
+    // Display math: $$...$$ (may span multiple lines)
+    result = result.replace(/\$\$[\s\S]*?\$\$/g, stash);
+    // Inline math: \(...\)
+    result = result.replace(/\\\(.*?\\\)/g, stash);
+    // Inline math: $...$ (single line, not empty, not currency like $100)
+    result = result.replace(/\$(?!\d)([^\$\n]+?)\$/g, function (m, inner) {
+      // Guard: reject if the content looks like prose rather than maths.
+      // Three or more consecutive space-separated words (not inside \text{})
+      // indicate the model wrapped a whole sentence in a single $ pair.
+      var stripped = inner.replace(/\\text\s*\{[^}]*\}/g, "");
+      if (/[a-zA-Z]{2,}\s+[a-zA-Z]{2,}\s+[a-zA-Z]{2,}/.test(stripped)) {
+        return m; // leave as-is — not real inline math
+      }
+      return stash(m);
+    });
+    // Bare brackets containing LaTeX commands: [ \frac{...} ]
+    // Some local models omit the backslash on \[ \], outputting just [ ... ]
+    result = result.replace(/\[\s*\\[a-zA-Z][^\]]*\]/g, function (m) {
+      // Convert to proper \[...\] so MathJax recognises it as display math
+      return stash("\\[" + m.slice(1, -1) + "\\]");
+    });
+    // Bare parentheses containing LaTeX commands: ( \rho )
+    result = result.replace(/\(\s*\\[a-zA-Z][^\)]*\)/g, function (m) {
+      // Convert to proper \(...\) so MathJax recognises it as inline math
+      return stash("\\(" + m.slice(1, -1) + "\\)");
+    });
+    // Multiline bare display math with malformed closing:
+    // [ on its own line, LaTeX content, then lone \ (model forgot the ])
+    result = result.replace(/\[\s*\n([\s\S]*?)\n[ \t]*\\[ \t]*(?:\n|$)/g, function (m, inner) {
+      if (/\\[a-zA-Z]/.test(inner)) {
+        return stash("\\[" + inner.trim() + "\\]");
+      }
+      return m;
+    });
+
+    function restore(html) {
+      let out = html;
+      for (let i = 0; i < placeholders.length; i++) {
+        // HTML-escape < and > inside LaTeX so the browser does not parse them as tags.
+        // MathJax reads decoded text nodes, so it still sees the correct characters.
+        var safe = placeholders[i].value
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        out = out.split(placeholders[i].key).join(safe);
+      }
+      return out;
+    }
+
+    return { text: result, restore: restore };
+  }
+
+  /**
    * Process markdown with fallback to plain text
    * Uses markdown-it directly for reliable HTML output
    * @private
@@ -1809,17 +1907,20 @@ class OpenRouterEmbed {
           logDebug("Created markdown-it instance for embed");
         }
 
-        const html = this._markdownItInstance.render(text);
+        // Protect LaTeX math from markdown-it escape processing
+        const math = this._protectMathExpressions(text);
+        const html = this._markdownItInstance.render(math.text);
         if (html && typeof html === "string") {
-          return html;
+          return math.restore(html);
         }
       }
 
       // Priority 2: Try MarkdownEditor.md.render() if it has a markdown-it instance
       if (this.markdown?.md && typeof this.markdown.md.render === "function") {
-        const html = this.markdown.md.render(text);
+        const math = this._protectMathExpressions(text);
+        const html = this.markdown.md.render(math.text);
         if (html && typeof html === "string") {
-          return html;
+          return math.restore(html);
         }
       }
     } catch (error) {
@@ -2102,7 +2203,7 @@ class OpenRouterEmbed {
     // Check file utilities available
     if (!this.fileUtils) {
       throw new Error(
-        "File utilities not available. Ensure openrouter-embed-file.js is loaded."
+        "File utilities not available. Ensure openrouter-embed-file.js is loaded.",
       );
     }
 
@@ -2116,7 +2217,7 @@ class OpenRouterEmbed {
       let compressionResult = null;
       const originalSize = file.size;
 
-if (
+      if (
         isImage &&
         this.fileUtils.shouldCompress &&
         this.fileUtils.shouldCompress(file)
@@ -2141,7 +2242,7 @@ if (
                 compressionResult.originalSize / 1024
               ).toFixed(0)}KB → ` +
                 `${(compressionResult.compressedSize / 1024).toFixed(0)}KB. ` +
-                `Estimated ${compressionResult.estimatedTimeSavings}s faster!`
+                `Estimated ${compressionResult.estimatedTimeSavings}s faster!`,
             );
           }
         } catch (compressionError) {
@@ -2149,7 +2250,7 @@ if (
 
           if (this.showNotifications) {
             this.notifications.warning(
-              "Image compression failed. Using original file (processing may be slower)."
+              "Image compression failed. Using original file (processing may be slower).",
             );
           }
 
@@ -2162,7 +2263,7 @@ if (
       try {
         this.fileUtils.validateFileSize(
           processedFile,
-          compressionResult ? originalSize : null
+          compressionResult ? originalSize : null,
         );
         logDebug("File size validation passed", {
           size: processedFile.size,
@@ -2176,8 +2277,6 @@ if (
         throw sizeError;
       }
 
-
-
       // Analyse file (cost, pages, etc.) using PROCESSED file
       const analysis = await this.fileUtils.analyzeFile(processedFile);
       logInfo("File analysis complete", analysis);
@@ -2188,9 +2287,9 @@ if (
       if (costLevel === "red" && window.safeConfirm) {
         const confirmed = await window.safeConfirm(
           `This operation may cost ${this.fileUtils.formatCost(
-            analysis.cost
+            analysis.cost,
           )}. Continue?`,
-          "High Cost Warning"
+          "High Cost Warning",
         );
 
         if (!confirmed) {
@@ -2199,7 +2298,7 @@ if (
         }
       } else if (costLevel === "orange" && this.showNotifications) {
         this.notifications.warning(
-          `Estimated cost: ${this.fileUtils.formatCost(analysis.cost)}`
+          `Estimated cost: ${this.fileUtils.formatCost(analysis.cost)}`,
         );
       }
 
@@ -2231,7 +2330,7 @@ if (
         this.notifications.success(
           `File attached: ${processedFile.name} (${(
             processedFile.size / 1024
-          ).toFixed(0)} KB)`
+          ).toFixed(0)} KB)`,
         );
       }
 
@@ -2296,7 +2395,7 @@ if (
 
     if (!this.fileUtils) {
       throw new Error(
-        "File utilities not available. Ensure openrouter-embed-file.js is loaded."
+        "File utilities not available. Ensure openrouter-embed-file.js is loaded.",
       );
     }
 
@@ -2405,6 +2504,84 @@ if (
   }
 
   // ==========================================================================
+  // REASONING CONFIGURATION
+  // ==========================================================================
+
+  /**
+   * Configure reasoning / extended thinking
+   *
+   * @param {Object} options - Reasoning configuration
+   * @param {boolean} options.enabled - Enable/disable reasoning
+   * @param {string|null} [options.effort] - Effort level: 'minimal'|'low'|'medium'|'high'|null
+   * @param {number|null} [options.max_tokens] - Explicit reasoning token budget (null = adaptive)
+   *
+   * @example
+   * // Adaptive (recommended for Claude 4.6 Opus)
+   * embed.configureReasoning({ enabled: true });
+   *
+   * // Effort-based (older reasoning models like o4-mini)
+   * embed.configureReasoning({ enabled: true, effort: 'high' });
+   *
+   * // Budget-based (explicit token limit)
+   * embed.configureReasoning({ enabled: true, max_tokens: 10000 });
+   *
+   * // Disable
+   * embed.configureReasoning({ enabled: false });
+   */
+  configureReasoning(options) {
+    if (!options || typeof options !== "object") {
+      logWarn("configureReasoning called with invalid options");
+      return;
+    }
+
+    const validEffortLevels = ["minimal", "low", "medium", "high", null];
+
+    if (typeof options.enabled === "boolean") {
+      this._reasoningConfig.enabled = options.enabled;
+    }
+
+    if (options.effort !== undefined) {
+      if (!validEffortLevels.includes(options.effort)) {
+        logWarn(
+          `Invalid reasoning effort level: "${options.effort}". ` +
+            `Valid values: ${validEffortLevels.filter(Boolean).join(", ")}, or null for adaptive.`,
+        );
+      } else {
+        this._reasoningConfig.effort = options.effort;
+      }
+    }
+
+    if (options.max_tokens !== undefined) {
+      if (
+        options.max_tokens !== null &&
+        (typeof options.max_tokens !== "number" || options.max_tokens < 1)
+      ) {
+        logWarn("Reasoning max_tokens must be a positive number or null");
+      } else {
+        this._reasoningConfig.max_tokens = options.max_tokens;
+      }
+    }
+
+    logInfo("Reasoning configuration updated", { ...this._reasoningConfig });
+  }
+
+  /**
+   * Get current reasoning configuration
+   * @returns {Object} Current reasoning config
+   */
+  getReasoningConfig() {
+    return { ...this._reasoningConfig };
+  }
+
+  /**
+   * Check if reasoning is currently enabled
+   * @returns {boolean} True if reasoning is enabled
+   */
+  isReasoningEnabled() {
+    return this._reasoningConfig.enabled === true;
+  }
+
+  // ==========================================================================
   // ACCESSIBILITY HELPERS
   // ==========================================================================
 
@@ -2450,7 +2627,7 @@ if (
     // Check for browser support first
     if (typeof window === "undefined" || !window.matchMedia) {
       logDebug(
-        "matchMedia not supported, assuming no reduced motion preference"
+        "matchMedia not supported, assuming no reduced motion preference",
       );
       return false;
     }
@@ -2703,7 +2880,7 @@ if (
       if (this.showNotifications && this.notifications.warning) {
         const seconds = Math.round(delay / 1000);
         this.notifications.warning(
-          `Request failed, retrying in ${seconds}s (attempt ${attempt}/${this._retryConfig.maxRetries})...`
+          `Request failed, retrying in ${seconds}s (attempt ${attempt}/${this._retryConfig.maxRetries})...`,
         );
       }
 
@@ -2763,7 +2940,7 @@ if (
 
       if (!this._retryHandler) {
         this._retryHandler = new window.EmbedRetryHandlerClass(
-          this._retryConfig
+          this._retryConfig,
         );
         logInfo("Retry handler created");
       } else {
@@ -2986,7 +3163,7 @@ if (
   addPostProcessor(name, processor, options = {}) {
     if (!this._postProcessor) {
       logWarn(
-        "Post-processor not available - EmbedPostProcessorClass not loaded"
+        "Post-processor not available - EmbedPostProcessorClass not loaded",
       );
       return this;
     }
@@ -3059,7 +3236,7 @@ if (
   addBuiltInPostProcessor(name, options = {}) {
     if (!this._postProcessor) {
       logWarn(
-        "Post-processor not available - EmbedPostProcessorClass not loaded"
+        "Post-processor not available - EmbedPostProcessorClass not loaded",
       );
       return this;
     }
@@ -3130,7 +3307,7 @@ if (
 
     if (!this._throttleHandler) {
       this._throttleHandler = new window.EmbedThrottleClass(
-        this._throttleConfig
+        this._throttleConfig,
       );
 
       // Connect event emitter if available
@@ -3757,14 +3934,14 @@ if (
     if (this._healthConfig.enabled) {
       if (!window.EmbedHealthMonitorClass) {
         logWarn(
-          "Cannot enable health monitoring: EmbedHealthMonitorClass not available"
+          "Cannot enable health monitoring: EmbedHealthMonitorClass not available",
         );
         return this;
       }
 
       if (!this._healthMonitor) {
         this._healthMonitor = new window.EmbedHealthMonitorClass(
-          this._healthConfig
+          this._healthConfig,
         );
 
         // Connect event emitter if available
@@ -3933,7 +4110,7 @@ if (
       return await this.sendRequest(
         request.userPrompt,
         request.systemPrompt,
-        request
+        request,
       );
     } finally {
       this._executingQueuedRequest = false;

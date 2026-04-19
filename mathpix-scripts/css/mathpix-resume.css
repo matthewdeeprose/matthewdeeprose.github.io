@@ -14,6 +14,12 @@
  * - Consistent with mathpix-main.css patterns
  */
 
+/* ---- Focus Mode: hide dashboard ---- */
+
+body.resume-focus-mode .resume-storage-dashboard {
+  display: none;
+}
+
 .resume-session-option-zip-edit {
   border-left-width: 3px;
   border-left-style: solid;
@@ -672,7 +678,7 @@
 @media (min-width: 769px) {
   #resume-panel-mmd {
     min-height: 400px;
-    max-height: max(400px, 70vh);
+    max-height: max(600px, 70vh);
   }
 }
 
@@ -1247,18 +1253,6 @@ body.resume-fullscreen-active {
 
 .diff-context {
   color: currentcolor;
-}
-
-.diff-removed {
-  color: #d5007f;
-  background-color: #fee2e2;
-  text-decoration-color: #d5007f;
-}
-
-.diff-added {
-  color: #005051;
-  background-color: #dcfce7;
-  text-decoration-color: #005051;
 }
 
 .diff-arrow {
@@ -2074,7 +2068,9 @@ body.resume-focus-mode #resume-mmd-pdf-pages {
   border-width: 2px;
   border-style: solid;
   cursor: help;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 .mmd-confidence-indicator:hover,
@@ -2295,7 +2291,10 @@ body.resume-focus-mode
   justify-content: center;
   font-size: 10px;
   font-weight: 600;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   user-select: none;
 }
 
@@ -2577,10 +2576,25 @@ mjx-container:active,
 /* Normalize button and label heights in file controls */
 #resume-mmd-file-controls .mmd-toolbar-btn,
 #resume-mmd-file-controls label.mmd-toolbar-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
   font-size: 0.7rem;
   line-height: 1.5;
   box-sizing: border-box;
+}
+
+/* Compact icon-only mode by default — labels shown at wide viewports */
+#resume-mmd-file-controls .btn-label {
+  display: none;
+}
+
+@media (min-width: 1400px) {
+  #resume-mmd-file-controls .btn-label {
+    display: inline;
+  }
+  #resume-mmd-file-controls .mmd-toolbar-btn,
+  #resume-mmd-file-controls label.mmd-toolbar-btn {
+    padding: 0.5rem 1rem;
+  }
 }
 
 /* Responsive adjustments */
@@ -2643,6 +2657,12 @@ mjx-container:active,
   flex-shrink: 0;
 }
 
+.mmd-toolbar-btn .icon {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 1;
+}
+
 /* Icon spacing in buttons and badges */
 .resume-btn .icon,
 .edit-option-badge .icon,
@@ -2693,4 +2713,527 @@ h4 .icon {
 .resume-validation-warning .icon {
   margin-right: 0.5rem;
   flex-shrink: 0;
+}
+
+.mmd-view-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+#resume-mmd-pdf-zoom-fit svg {
+  margin-right: 5px;
+}
+
+/* ---- High Contrast Colour Overrides ---- */
+
+@media (prefers-contrast: high) {
+  .session-manager-group {
+    border-color: CanvasText;
+  }
+
+  .session-manager-toolbar {
+    border-color: CanvasText;
+  }
+
+  .session-manager-item-badge-active {
+    border-color: CanvasText;
+  }
+
+  .resume-image-save-warning {
+    border-left-color: CanvasText;
+    border-color: CanvasText;
+  }
+
+  .resume-storage-dashboard {
+    border-color: CanvasText;
+  }
+
+  .resume-storage-bar-container {
+    border-color: CanvasText;
+  }
+
+  .resume-storage-bar-ok {
+    background-color: green;
+  }
+
+  .resume-storage-bar-warning {
+    background-color: orange;
+  }
+
+  .resume-storage-bar-danger {
+    background-color: red;
+  }
+}
+
+/* ============================================================================
+   PHASE 9 FEATURE 1B: SESSION MANAGER MODAL
+   ============================================================================ */
+
+.session-manager-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ---- Toolbar: Select All + Delete ---- */
+
+.session-manager-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid;
+  border-radius: 0.375rem;
+}
+
+.session-manager-select-all {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.session-manager-select-all input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
+}
+
+.session-manager-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-manager-delete-btn:focus-visible {
+  outline: 3px solid;
+  outline-offset: 2px;
+}
+
+.session-manager-delete-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.session-manager-delete-btn .icon {
+  width: 0.875em;
+  height: 0.875em;
+}
+
+/* ---- Empty state ---- */
+
+.session-manager-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  font-style: italic;
+}
+
+/* ---- Document group ---- */
+
+.session-manager-group {
+  border: 1px solid;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+.session-manager-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid;
+  cursor: default;
+  float: none;
+  width: 100%;
+}
+.session-manager-group-header input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
+}
+
+.session-manager-group-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.session-manager-group-title .icon {
+  width: 0.875em;
+  height: 0.875em;
+  flex-shrink: 0;
+}
+
+.session-manager-group-meta {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* ---- Session row ---- */
+
+.session-manager-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.session-manager-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem 0.375rem 1.75rem;
+  border-bottom: 1px solid;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.session-manager-item:last-child {
+  border-bottom: none;
+}
+
+.session-manager-item input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.session-manager-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-manager-item-date {
+  font-weight: 500;
+}
+
+.session-manager-item-size {
+  margin-left: 0.25rem;
+}
+
+.session-manager-item-badge {
+  display: inline-block;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.session-manager-item-badge-active {
+  border: 1px solid;
+}
+
+/* ---- Protected (currently loaded) row ---- */
+
+.session-manager-item-protected {
+  opacity: 0.7;
+}
+
+.session-manager-item-protected input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+/* ---- Overflow: details/summary for collapsible groups ---- */
+
+.session-manager-overflow {
+  border-top: 1px solid;
+}
+
+.session-manager-toggle-summary {
+  padding: 0.375rem 0.75rem 0.375rem 1.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.session-manager-toggle-summary::-webkit-details-marker {
+  display: none;
+}
+
+.session-manager-toggle-summary::before {
+  content: "▸ ";
+}
+
+details[open] > .session-manager-toggle-summary::before {
+  content: "▾ ";
+}
+
+.session-manager-toggle-summary:hover {
+  text-decoration: underline;
+}
+
+.session-manager-toggle-summary:focus-visible {
+  outline: 3px solid;
+  outline-offset: -2px;
+}
+
+/* ---- Session item label (clickable area) ---- */
+
+.session-manager-item-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.session-manager-item-protected .session-manager-item-label {
+  cursor: not-allowed;
+}
+
+/* ---- High Contrast Mode ---- */
+
+@media (prefers-contrast: high) {
+  .session-manager-group {
+    border-width: 2px;
+  }
+
+  .session-manager-group-header {
+    border-bottom-width: 2px;
+  }
+
+  .session-manager-toolbar {
+    border-width: 2px;
+  }
+
+  .session-manager-delete-btn {
+    border-width: 2px;
+  }
+
+  .session-manager-item-badge-active {
+    border-width: 2px;
+  }
+}
+
+/* ---- Reduced Motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .session-manager-delete-btn,
+  .session-manager-toggle-btn {
+    transition: none;
+  }
+}
+
+/* ---- Mobile ---- */
+
+@media (max-width: 640px) {
+  .session-manager-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .session-manager-delete-btn {
+    justify-content: center;
+  }
+
+  .session-manager-item {
+    padding-left: 1rem;
+  }
+
+  .session-manager-group-meta {
+    font-size: 0.6875rem;
+  }
+}
+
+/* ---- Focus Mode: hide session manager button ---- */
+
+body.resume-focus-mode .session-manager-toolbar {
+  display: none;
+}
+
+.session-manager-overflow,
+.session-manager-overflow summary {
+  outline: 2px solid transparent;
+  width: 90%;
+  margin-left: 10px;
+}
+
+.session-manager-overflow:hover {
+  outline: 0.2rem solid transparent;
+}
+
+/* ============================================================================
+   PHASE 9 FEATURE 1C: IMAGE SAVE WARNING BANNER
+   ============================================================================ */
+
+.resume-image-save-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border-left: 3px solid;
+  margin: 0.5rem 1.5rem;
+}
+
+.resume-image-save-warning-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.resume-image-save-warning-content .icon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.resume-image-save-warning-content p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.resume-image-save-warning-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.resume-btn-small {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+}
+
+/* ---- High Contrast Mode ---- */
+
+@media (prefers-contrast: high) {
+  .resume-image-save-warning {
+    border-left-width: 4px;
+    border: 2px solid;
+  }
+}
+
+/* ---- Reduced Motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .resume-image-save-warning {
+    transition: none;
+  }
+}
+
+/* ---- Mobile ---- */
+
+@media (max-width: 640px) {
+  .resume-image-save-warning {
+    flex-direction: column;
+    margin: 0.5rem 0.75rem;
+  }
+
+  .resume-image-save-warning-actions {
+    width: 100%;
+  }
+
+  .resume-image-save-warning-actions .resume-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ---- Focus Mode: hide warning ---- */
+
+body.resume-focus-mode .resume-image-save-warning {
+  display: none;
+}
+
+/* ============================================================================
+   PHASE 9 FEATURE 1A: STORAGE USAGE DASHBOARD
+   ============================================================================ */
+
+.resume-storage-dashboard {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid;
+  border-radius: 0.5rem;
+}
+
+.resume-storage-dashboard h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.resume-storage-dashboard h4 .icon {
+  width: 1em;
+  height: 1em;
+}
+
+.resume-storage-bar-container {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.resume-storage-bar {
+  height: 100%;
+  border-radius: 0.25rem;
+  transition: width 0.3s ease;
+  min-width: 2%;
+}
+
+.resume-storage-summary {
+  font-size: 0.8125rem;
+  margin: 0.25rem 0 0.75rem;
+  opacity: 0.85;
+}
+
+.resume-storage-dashboard .resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* ---- High Contrast Mode ---- */
+
+@media (prefers-contrast: high) {
+  .resume-storage-dashboard {
+    border-width: 2px;
+  }
+
+  .resume-storage-bar-container {
+    border: 1px solid;
+  }
+}
+
+/* ---- Reduced Motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .resume-storage-bar {
+    transition: none;
+  }
+}
+
+/* ---- Mobile ---- */
+
+@media (max-width: 640px) {
+  .resume-storage-dashboard {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .resume-storage-dashboard h4 {
+    font-size: 0.875rem;
+  }
+}
+.session-manager-select-all {
+  cursor: pointer;
 }

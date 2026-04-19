@@ -318,6 +318,11 @@ class MathPixZIPParser {
       // Extract converted file info (optional)
       result.converted = await this.extractConvertedInfo(zip);
 
+      // Phase 7C-6: expose the loaded JSZip so downstream restorers can read
+      // supplementary files (e.g. data/chemistry-settings.json) without
+      // reparsing the archive.
+      result.zip = zip;
+
       // Mark as valid
       result.valid = true;
       logInfo("ZIP parse completed successfully");

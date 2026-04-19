@@ -37,15 +37,6 @@
   background: rgba(200, 0, 0, 0.05);
 }
 
-.mmd-preview-content th,
-.mmd-preview-content td {
-  border: 1px solid rgba(128, 128, 128, 0.3);
-}
-
-.mmd-preview-content th {
-  background: rgba(128, 128, 128, 0.05);
-}
-
 /* Override MathPix inline table styles for theme compatibility */
 .mmd-preview-content table,
 .mathpix-rendered-content table,
@@ -684,7 +675,9 @@ a#resume-mmd-preview-skip.mmd-skip-link:focus {
   line-height: 1.5;
   resize: vertical;
   border-radius: 4px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .mmd-editor-textarea:focus {
@@ -809,7 +802,9 @@ a#resume-mmd-preview-skip.mmd-skip-link:focus {
   font-weight: 500;
   min-width: 4rem;
   text-align: center;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* --------------------------------------------------------------------------
@@ -1627,4 +1622,85 @@ button .icon,
 button:has(.icon:only-child) .icon,
 .mmd-fullscreen-btn .icon {
   margin-right: 0;
+}
+
+/* ==========================================================================
+   Phase 6H: Chemistry Image Enhancement Toggle Bar
+   ========================================================================== */
+
+.chem-enhance-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  opacity: 0.85;
+  font-size: 0.85rem;
+}
+
+.chem-enhance-status {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chem-enhance-status svg {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
+
+.chem-enhance-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  color: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chem-enhance-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chem-enhance-toggle:hover,
+.chem-enhance-dismiss:hover {
+  opacity: 0.8;
+}
+
+.chem-enhance-toggle:focus-visible,
+.chem-enhance-dismiss:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.chem-enhance-toggle svg,
+.chem-enhance-dismiss svg {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
+
+.chem-enhance-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
 }

@@ -5,12 +5,6 @@
    COLOUR PROPERTIES
    ========================================== */
 
-/* Upload Preview Colours */
-.mathpix-upload-preview {
-  background: #e1e8ec;
-  border: 2px dashed #00131d;
-}
-
 .upload-preview-display {
   border: 1px solid #e1e8ec;
   background: #e1e8ec;
@@ -178,13 +172,17 @@
   margin-bottom: 1rem;
   margin-top: 1rem;
   transform: translateY(0);
-  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  transition:
+    opacity 0.3s ease-in-out,
+    transform 0.3s ease-in-out;
 }
 
 /* Only apply animations if user hasn't requested reduced motion */
 @media (prefers-reduced-motion: no-preference) {
   .mathpix-upload-preview {
-    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    transition:
+      opacity 0.3s ease-in-out,
+      transform 0.3s ease-in-out;
   }
 
   /* Animate entrance when shown */

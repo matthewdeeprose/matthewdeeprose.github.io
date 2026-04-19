@@ -266,6 +266,84 @@
     // Robot/Model (🤖)
     robot:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 4)"><path d="m4.5 0c.55228475 0 1 .44771525 1 1v2c0 .55228475-.44771525 1-1 1s-1-.44771525-1-1v-2c0-.55228475.44771525-1 1-1z"/><path d="m16.5 2h-11"/><path d="m3.5 2h-3"/><path d="m4.5 10c.55228475 0 1 .4477153 1 1v2c0 .5522847-.44771525 1-1 1s-1-.4477153-1-1v-2c0-.5522847.44771525-1 1-1z"/><path d="m16.5 12h-11"/><path d="m3.5 12h-3"/><path d="m12.5 5c.5522847 0 1 .44771525 1 1v2c0 .55228475-.4477153 1-1 1s-1-.44771525-1-1v-2c0-.55228475.4477153-1 1-1z"/><path d="m11.5 7h-11"/><path d="m16.5 7h-3"/></g></svg>',
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Communication
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Message/Chat (💬)
+    message:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 3)"><path d="m14.5.5c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2l-2.999-.001-2.29389322 2.2938932c-.36048396.360484-.92771502.3882135-1.32000622.0831886l-.09420734-.0831886-2.29389322-2.2938932-2.999.001c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m13.5 5.5h-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m4.49884033 6.5c.5 0 1-.5 1-1s-.5-1-1-1-.99884033.5-.99884033 1 .49884033 1 .99884033 1zm0 4c.5 0 1-.5 1-1s-.5-1-1-1-.99884033.5-.99884033 1 .49884033 1 .99884033 1z" fill="currentColor"/><path d="m13.5 9.5h-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></g></svg>',
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // People & Identity
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // User Male (👤)
+    userMale:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m7.5.5c1.65685425 0 3 1.34314575 3 3v2c0 1.65685425-1.34314575 3-3 3s-3-1.34314575-3-3v-2c0-1.65685425 1.34314575-3 3-3zm7 14v-.7281753c0-3.1864098-3.6862915-5.2718247-7-5.2718247s-7 2.0854149-7 5.2718247v.7281753c0 .5522847.44771525 1 1 1h12c.5522847 0 1-.4477153 1-1z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 2)"/></svg>',
+
+    // User Female (👩)
+    userFemale:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linejoin="round" transform="translate(3 2)"><path d="m8.5 2.5 2 2v1c0 1.65685425-1.34314575 3-3 3-1.59768088 0-2.90366088-1.24891996-2.99490731-2.82372721l-.00509269-1.17627279z" stroke-linecap="round"/><path d="m2.5 10v-4.5c0-2.76142375 2.23857625-5 5-5 2.7614237 0 5 2.23857625 5 5v4.5"/><path d="m14.5 14.5v-.7281753c0-3.1864098-3.6862915-5.2718247-7-5.2718247s-7 2.0854149-7 5.2718247v.7281753c0 .5522847.44771525 1 1 1h12c.5522847 0 1-.4477153 1-1z" stroke-linecap="round"/></g></svg>',
+
+    // Fingerprint (🔏)
+    fingerprint:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.5 2.5)"><path d="m12 10.03c0 2.7448552-1.2554932 5.97-6 5.97-.75780542 0-1.42660143-.0822778-2.01548904-.2317346m-1.76100565-.7815476c-1.68909404-1.1706539-2.22350531-3.1659055-2.22350531-4.9567178v-4.03c0-1.56622031.65466451-2.97953554 1.70527792-3.98123005m1.67130335-1.35397567c.77973587-.42395337 1.6734516-.66479428 2.62341873-.66479428 1.75280799 0 3.49283909.72275393 4.5 2m1.2058722 1.22085393c.1906672.55804827.2941278 1.15651492.2941278 1.77914607 0-.66666667 0 .33333333 0 3"/><path d="m6 14c-1.33333333-.6666667-2-1.6566667-2-2.97v-5.03c0-1.1045695.8954305-2 2-2s2 .8954305 2 2v4.03c0 .6666667.33333333 1 1 1s1-.3333333 1-1v-4.46441832c0-.45607794-.10398763-.90615253-.30405487-1.31600639-.73207609-1.49971686-1.9640578-2.24957529-3.69594513-2.24957529-1.73187932 0-2.96385765.7498515-3.69593498 2.2495545-.20007634.40985541-.30406502.85993519-.30406502 1.31601852v5.43442698c0 1 .16666667 1.6666667.5 2"/><path d="m6 6v4.03c0 1.98 1 2.97 3 2.97"/></g></svg>',
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Sentiment & Emotion
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Happy/Smile (😊)
+    happy:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 2)"><circle cx="8.5" cy="8.5" r="8" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="6" fill="currentColor" r="1"/><circle cx="11" cy="6" fill="currentColor" r="1"/><path d="m5.5 9.5c.60286458 1.3333333 1.60286458 2 3 2s2.3971354-.6666667 3-2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></g></svg>',
+
+    // Neutral (😐)
+    neutral:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 2)"><circle cx="8.5" cy="8.5" r="8" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="6" fill="currentColor" r="1"/><circle cx="11" cy="6" fill="currentColor" r="1"/><path d="m5.5 10.5h6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="matrix(1 0 0 -1 0 21)"/></g></svg>',
+
+    // Sad (😢)
+    sad: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 2)"><path d="m8.5 16.5c4.418278 0 8-3.581722 8-8s-3.581722-8-8-8-8 3.581722-8 8 3.581722 8 8 8z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="6" fill="currentColor" r="1"/><circle cx="11" cy="6" fill="currentColor" r="1"/><path d="m5.5 11.5c.60286458-1.3333333 1.60286458-2 3-2s2.3971354.6666667 3 2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></g></svg>',
+
+    // Heart (❤️)
+    heart:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m7.24264069 2.24264069c.5-2.5 4.34314571-2.65685425 6.00000001-1 1.6034073 1.60340734 1.4999617 4.3343931 0 6l-6.00000001 6.00000001-6-6.00000001c-1.65685425-1.65685425-1.65685425-4.34314575 0-6 1.54996042-1.54996043 5.5-1.5 6 1z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3.257 4.257)"/></svg>',
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Data & Health
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Heart Rate/Pulse (💓)
+    heartRate:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m0 6.5h2l2.5-6 2 12 3-9 2.095 6 1.405-3h2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 4)"/></svg>',
+
+    // Hierarchy/Org Chart (🔀)
+    hierarchy:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><path d="m5.5.5h6v5h-6z"/><path d="m10.5 11.5h6v5h-6z"/><path d="m.5 11.5h6v5h-6z"/><path d="m3.498 11.5v-3h10v3"/><path d="m8.5 8.5v-3"/></g></svg>',
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Objects & Symbols
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Coffee (☕)
+    coffee:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 2)"><path d="m2.5 6.5h6c1.1045695 0 2 .8954305 2 2v2.5c0 2.4852814-2.01471863 4.5-4.5 4.5h-1c-2.48528137 0-4.5-2.0147186-4.5-4.5v-2.5c0-1.1045695.8954305-2 2-2zm8 2h1c1.1045695 0 2 .8954305 2 2s-.8954305 2-2 2h-1"/><path d="m4.5 4.5v-4"/><path d="m6.5 4.5v-2"/></g></svg>',
+
+    // Star (⭐)
+    star: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m7.5 11.5-5 3 2-5.131-4-3.869h5l2-5 2 5h5l-4 4 2 5z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"/></svg>',
+
+    // Flame/Fire (🔥)
+    flame:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m5.5 0c3.66666667 3.33333333 5.5 6.42857143 5.5 9.28571429 0 3.07807311-1.27021139 5.19816551-3.11142285 6.14857691.23027671-.4916139.36142285-1.0920694.36142285-1.7914341 0-1.4285714-.91666667-2.9761904-2.75-4.6428571-1.83333333 1.6666667-2.75 3.2142857-2.75 4.6428571 0 .6993647.13114614 1.2998202.36063321 1.7914341-1.84042182-.9504114-3.11063321-3.0705038-3.11063321-6.14857691 0-2.85714286 1.83333333-5.95238096 5.5-9.28571429z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 3)"/></svg>',
+
+    // Rocket (🚀)
+    rocket:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 1)"><path d="m6.5 18.5c3-2.5021966 4-5.5021966 4-9 0-3.49780342-1-6.49780342-4-9-3 2.50219658-4 5.50219658-4 9 0 3.4978034 1 6.4978034 4 9z"/><path d="m10.0620355 13.3616971c.4244504.2452152.814833.5459803 1.1711478.9022951 1.1190122 1.1190122 1.6901459 2.5740294 1.7134011 4.3650515-2.5082701-.109848-3.88207621-.7645704-4.92553235-1.6471655m-5.11545113-3.6201811c-.42445038.2452152-.81483298.5459803-1.17114781.9022951-1.11901221 1.1190122-1.6901459 2.5740294-1.71340106 4.3650515 2.50827003-.109848 3.88207616-.7645704 4.9255323-1.6471655"/><circle cx="6.5" cy="6.5" r="2"/></g></svg>',
+
+    // Trophy (🏆)
+    trophy:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m4.5.5h6c.5522847 0 1 .44771525 1 1v5c0 2.209139-1.790861 4-4 4s-4-1.790861-4-4v-5c0-.55228475.44771525-1 1-1z"/><path d="m7.5 10.5v3"/><path d="m4.5 13.5h6c.5522847 0 1 .4477153 1 1s-.4477153 1-1 1h-6c-.55228475 0-1-.4477153-1-1s.44771525-1 1-1zm7-11h2c.5522847 0 1 .44771525 1 1v1c0 1.1045695-.8954305 2-2 2h-1zm-8 0h-2c-.55228475 0-1 .44771525-1 1v1c0 1.1045695.8954305 2 2 2h1z"/></g></svg>',
   };
 
   /**

@@ -2,8 +2,8 @@
  * Image Describer Tool - CSS
  * Layout and positioning only - NO colours, NO button styling
  * Colours inherit from theme (light.css/dark.css)
- * Version: 1.0.0
- * Date: 24 November 2025
+ * Version: 1.1.0
+ * Date: 27 March 2026
  */
 
 /* ==============================================
@@ -46,6 +46,28 @@
   border-width: 3px;
 }
 
+/* Collapsed state after image is uploaded */
+.imgdesc-upload-area.imgdesc-upload-collapsed {
+  padding: 0.5rem 1rem;
+}
+
+.imgdesc-upload-area.imgdesc-upload-collapsed .imgdesc-upload-label {
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+.imgdesc-upload-area.imgdesc-upload-collapsed .imgdesc-upload-icon {
+  font-size: 1.25rem;
+}
+
+.imgdesc-upload-area.imgdesc-upload-collapsed .imgdesc-upload-text {
+  font-weight: 500;
+}
+
+.imgdesc-upload-area.imgdesc-upload-collapsed .imgdesc-upload-formats {
+  display: none;
+}
+
 .imgdesc-upload-label {
   display: flex;
   flex-direction: column;
@@ -67,11 +89,12 @@
   font-size: 0.875rem;
 }
 
-#imgdesc-generate {
+#imgdesc-generate,
+#imgdesc-generate-local {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 /* ==============================================
@@ -147,7 +170,7 @@
 
 .imgdesc-field input[type="text"],
 .imgdesc-field textarea {
-  width: 100%;
+  width: 95%;
   padding: 0.5rem;
   border: 1px solid currentColor;
   border-radius: 0.25rem;
@@ -183,60 +206,11 @@
 }
 
 /* ==============================================
-   RADIO GROUP (Description Style)
-   ============================================== */
-
-.imgdesc-radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.imgdesc-radio-label {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid currentColor;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  flex: 1 1 auto;
-  min-width: 120px;
-}
-
-.imgdesc-radio-label:has(input:checked) {
-  border-width: 2px;
-}
-
-.imgdesc-radio-label:focus-within {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-.imgdesc-radio-label input[type="radio"] {
-  margin: 0;
-  flex-shrink: 0;
-}
-
-.imgdesc-radio-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-.imgdesc-model-selector .imgdesc-radio-text {
-  font-weight: 600;
-}
-
-.imgdesc-radio-hint {
-  font-size: 0.8125rem;
-}
-
-/* ==============================================
    SELECT (Audience Level)
    ============================================== */
 
 .imgdesc-option-group select {
-  width: 100%;
+  width: 90%;
   padding: 0.5rem;
   border: 1px solid currentColor;
   border-radius: 0.25rem;
@@ -303,6 +277,19 @@
 .imgdesc-output p {
   margin-bottom: 0rem;
 }
+.imgdesc-output ol,
+.imgdesc-output ul {
+  margin-block-start: 0.25rem;
+  margin-block-end: 0.25rem;
+  padding-inline-start: 1.5rem;
+}
+.imgdesc-output li {
+  margin-bottom: 0.25rem;
+}
+.imgdesc-output li > p {
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
 
 .imgdesc-output {
   padding: 1rem;
@@ -332,6 +319,63 @@
   font-style: italic;
 }
 
+/* Streaming follow-mode: scrollable output box that the camera tracks
+   as tokens stream in. Mirrors local-chat #local-chat-messages behaviour. */
+.imgdesc-output--follow {
+  overflow-y: auto;
+  max-height: 60vh;
+  scroll-behavior: smooth;
+}
+
+/* Thinking indicator (3 pulsing dots) — shown before first token. */
+.imgdesc-typing {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0;
+  min-height: 1.5em;
+}
+
+.imgdesc-typing-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentcolor;
+  opacity: 0.4;
+  animation: imgdesc-typing-pulse 1.4s ease-in-out infinite;
+}
+
+.imgdesc-typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.imgdesc-typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes imgdesc-typing-pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+  .imgdesc-output--follow {
+    scroll-behavior: auto;
+  }
+}
+
 .imgdesc-output-actions {
   margin-top: 1rem;
   display: flex;
@@ -350,14 +394,6 @@
 
   .imgdesc-upload-icon {
     font-size: 2rem;
-  }
-
-  .imgdesc-radio-group {
-    flex-direction: column;
-  }
-
-  .imgdesc-radio-label {
-    min-width: 100%;
   }
 
   .imgdesc-output-actions {
@@ -457,6 +493,46 @@
 }
 
 /* ==============================================
+   ANALYSIS SLOT BREAKDOWN (Phase 9E)
+   ============================================== */
+
+.imgdesc-progress-slots {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.imgdesc-progress-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+}
+
+.imgdesc-progress-slot-icon {
+  display: inline-flex;
+  align-items: center;
+  width: 1rem;
+  min-width: 1rem;
+}
+
+.imgdesc-progress-slot-icon svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.imgdesc-progress-slot-label {
+  flex: 1;
+}
+
+.imgdesc-progress-slot-status {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  font-style: italic;
+}
+
+/* ==============================================
    COMPLETION TIME DISPLAY (Phase 2A)
    ============================================== */
 
@@ -472,10 +548,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Pulsing animation for progress bar during generation (post-14F) */
+@keyframes imgdesc-progress-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.imgdesc-progress-fill.generating {
+  animation: imgdesc-progress-pulse 1.5s ease-in-out infinite;
+}
+
 /* Reduced motion: disable progress bar animation */
 @media (prefers-reduced-motion: reduce) {
   .imgdesc-progress-fill {
     transition: none;
+  }
+
+  .imgdesc-progress-fill.generating {
+    animation: none;
   }
 }
 
@@ -569,7 +664,7 @@
 .imgdesc-options-group summary {
   padding: 0.75rem 1rem;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   border-radius: 0.25rem;
   list-style: none; /* Hide default marker */
   display: flex;
@@ -630,11 +725,109 @@
   padding: 1rem;
   border: 2px dashed currentColor;
   border-radius: 0.25rem;
-  text-align: center;
+  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
 }
 
-.imgdesc-generate-inline button {
+.imgdesc-generate-action {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+
+.imgdesc-generate-options {
+  flex: 1 0 100%;
+  margin-top: 0.25rem;
+}
+
+/* Streaming is disabled entirely for reduced-motion users, so the
+   follow-mode toggle has no effect for them — hide it to avoid clutter. */
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-generate-options {
+    display: none;
+  }
+}
+
+.imgdesc-stream-follow-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.imgdesc-stream-follow-label input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.imgdesc-generate-action > button:first-child {
   width: 100%;
+  flex: 1;
+  min-height: 3.25rem;
+}
+
+/* Generate area model info subtitles */
+.imgdesc-generate-model-info {
+  margin: 0.375rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+
+/* Styled as inline text link, not a button */
+.imgdesc-change-model-link {
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.imgdesc-change-model-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.imgdesc-model-info-separator {
+  margin: 0 0.25rem;
+  opacity: 0.5;
+}
+
+/* Highlight animation for model manager panel */
+@keyframes imgdesc-panel-highlight {
+  0% {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+}
+
+.imgdesc-options-group.imgdesc-highlight-panel {
+  animation: imgdesc-panel-highlight 1.5s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-options-group.imgdesc-highlight-panel {
+    animation: none;
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
 }
 
 /* Hide generate area when output is showing */
@@ -649,10 +842,15 @@
   }
 }
 
-/* Mobile: full width, more prominent */
-@media (max-width: 1024px) {
+/* Mobile: stack buttons vertically */
+@media (max-width: 600px) {
   .imgdesc-generate-inline {
     margin-top: 1rem;
+    flex-direction: column;
+  }
+
+  .imgdesc-generate-action {
+    width: 100%;
   }
 }
 
@@ -854,6 +1052,20 @@
   .imgdesc-debug-panel {
     display: none;
   }
+
+  /* Hide overlay UI when printing (Phase 5D) */
+  .imgdesc-overlay-toolbar,
+  .imgdesc-overlay-review-panel,
+  .imgdesc-add-item-controls,
+  .imgdesc-add-keyboard-form,
+  .imgdesc-overlay-classification {
+    display: none;
+  }
+
+  /* Hide accuracy warnings when printing (Phase 14F) */
+  .imgdesc-accuracy-warning {
+    display: none;
+  }
 }
 
 /* ==============================================
@@ -1013,7 +1225,7 @@
 }
 
 /* ==============================================
-   FULLSCREEN IMAGE MODAL (Phase 2E)
+   FULLSCREEN WORKSPACE MODAL (Phase 7A)
    ============================================== */
 
 /* Make the fullscreen modal extra large */
@@ -1038,46 +1250,83 @@
   flex-shrink: 0;
 }
 
-/* Modal body should fill remaining space */
+/* Modal body — fills remaining space, column layout for workspace */
 .imgdesc-fullscreen-modal .universal-modal-body {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   overflow: hidden;
   padding: 1rem;
 }
 
-/* Fullscreen content container */
-.imgdesc-fullscreen-content {
+/* Fullscreen workspace layout */
+.imgdesc-workspace--fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  gap: 0.75rem;
+}
+
+/* Image preview area — expand to fill available space */
+.imgdesc-workspace--fullscreen .imgdesc-preview {
   text-align: center;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  height: 100%;
 }
 
-/* Fullscreen image styling - fits within modal */
-.imgdesc-fullscreen-image {
+/* Image sizing — override the normal 300px cap */
+.imgdesc-workspace--fullscreen .imgdesc-preview img,
+.imgdesc-workspace--fullscreen .imgdesc-overlay-container > img {
+  max-height: 65vh;
   max-width: 100%;
-  max-height: calc(90vh - 180px); /* Account for header and caption */
-  width: auto;
   height: auto;
+  width: auto;
   object-fit: contain;
-  display: block;
-  margin: 0 auto;
 }
 
-/* Fullscreen caption */
-.imgdesc-fullscreen-caption {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
+/* Overlay container — inline-block so it sizes to the image */
+.imgdesc-workspace--fullscreen .imgdesc-overlay-container {
+  max-width: 100%;
+  display: inline-block;
+}
 
-  text-align: center;
+/* Hide the fullscreen button inside fullscreen — already there */
+.imgdesc-workspace--fullscreen .imgdesc-fullscreen-btn {
+  display: none;
+}
+
+/* View-only mode: hide review/analysis controls, maximise image */
+.imgdesc-workspace--view-only .imgdesc-review-sidebar,
+.imgdesc-workspace--view-only .imgdesc-overlay-toolbar,
+.imgdesc-workspace--view-only .imgdesc-overlay-classification,
+.imgdesc-workspace--view-only .imgdesc-florence-ocr-prompt,
+.imgdesc-workspace--view-only .imgdesc-analysis-status,
+.imgdesc-workspace--view-only .imgdesc-cache-recall-banner,
+.imgdesc-workspace--view-only .imgdesc-depth-legend {
+  display: none;
+}
+
+.imgdesc-workspace--view-only .imgdesc-preview img,
+.imgdesc-workspace--view-only .imgdesc-overlay-container > img {
+  max-height: 85vh;
+}
+
+/* Toolbar — full width, no shrink */
+.imgdesc-workspace--fullscreen .imgdesc-overlay-toolbar {
   flex-shrink: 0;
+}
+
+/* Panels — constrained height with scroll */
+.imgdesc-workspace--fullscreen .imgdesc-overlay-review-panel,
+.imgdesc-workspace--fullscreen .imgdesc-review-list-panel {
+  flex-shrink: 0;
+  overflow-y: auto;
 }
 
 /* Mobile adjustments */
@@ -1089,19 +1338,11 @@
     max-height: 95vh !important;
   }
 
-  .imgdesc-fullscreen-image {
-    max-height: calc(95vh - 180px);
+  .imgdesc-workspace--fullscreen .imgdesc-preview img,
+  .imgdesc-workspace--fullscreen .imgdesc-overlay-container > img {
+    max-height: 40vh;
   }
 }
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .imgdesc-fullscreen-image {
-    animation: none;
-  }
-}
-
-/*new*/
 
 /* ============================================================================
    MODEL SELECTION (Stage 1)
@@ -1235,4 +1476,2044 @@
 
 .imgdesc-hint {
   font-size: 0.85em;
+}
+
+/* ==============================================
+   CAMERA CAPTURE (Phase 2E.2)
+   ============================================== */
+
+/* Camera details section */
+.imgdesc-camera-section {
+  margin-top: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+}
+
+.imgdesc-camera-section summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.imgdesc-camera-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.imgdesc-camera-section summary::before {
+  content: "▶";
+  font-size: 0.7rem;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.imgdesc-camera-section[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.imgdesc-camera-section[open] summary {
+  border-bottom: 1px solid currentColor;
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+/* Focus styles for summary */
+.imgdesc-camera-section summary:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.imgdesc-camera-section summary:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Camera wrapper */
+.imgdesc-camera-wrapper {
+  padding: 1rem;
+}
+
+/* Camera preview area */
+.imgdesc-camera-preview {
+  position: relative;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+/* Mirror wrapper — receives scaleX transform from JS */
+.imgdesc-camera-mirror-wrapper {
+  display: inline-block;
+  transform: scaleX(-1);
+}
+
+.imgdesc-camera-preview video {
+  width: 100%;
+  max-width: 640px;
+  max-height: 300px;
+  height: auto;
+  display: block;
+  border-radius: 0.25rem;
+  border: 1px solid currentColor;
+}
+
+/* Captured photo preview */
+.imgdesc-camera-captured-img {
+  max-width: 100%;
+  max-height: 300px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 0.25rem;
+  border: 1px solid currentColor;
+}
+
+/* Camera status */
+.imgdesc-camera-status {
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+  min-height: 1.5rem;
+}
+
+/* Camera controls */
+.imgdesc-camera-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.imgdesc-camera-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Post-capture adjustment */
+.imgdesc-camera-adjust-hint {
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem 0;
+  font-style: italic;
+}
+
+.imgdesc-camera-adjust-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.imgdesc-camera-adjust-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.25rem;
+  min-width: 24px;
+}
+
+/* Camera unavailable message */
+.imgdesc-camera-unavailable {
+  padding: 1rem;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Camera info/guidance text */
+.imgdesc-camera-info {
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0 0;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .imgdesc-camera-controls,
+  .imgdesc-camera-adjust-controls {
+    flex-direction: column;
+  }
+
+  .imgdesc-camera-controls button,
+  .imgdesc-camera-adjust-controls button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-camera-section summary::before {
+    transition: none;
+  }
+
+  .imgdesc-camera-captured-img {
+    transition: none;
+  }
+}
+#image-camera-summary {
+  text-decoration: none;
+}
+
+/* ============================================================================
+   VISUAL VERIFICATION (Two-Pass) - LAYOUT
+   ============================================================================ */
+.imgdesc-verification-results {
+  margin-top: 1rem;
+  border: 2px solid;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.imgdesc-verification-results > summary {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.imgdesc-verification-output {
+  padding: 1rem;
+}
+.imgdesc-verify-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+/* ── Expert Mode (Phase 4A) ── */
+
+.imgdesc-expert-description {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.imgdesc-expert-subsection {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+}
+
+.imgdesc-expert-subsection:first-of-type {
+  margin-top: 0.5rem;
+  padding-top: 0;
+}
+
+#image-cloud-generation-heading {
+  margin-top: 0.5rem;
+}
+
+.imgdesc-expert-subsection h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+/* ── Section dividers within Model & Generation Settings ── */
+
+#imgdesc-model-manager-panel
+  .imgdesc-expert-subsection
+  + .imgdesc-expert-subsection {
+  border-top: 1px solid currentColor;
+}
+
+/* ── Verification sub-group within Cloud Generation ── */
+
+.imgdesc-verify-subgroup {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border-subtle, rgba(0, 0, 0, 0.1));
+}
+
+.imgdesc-verify-subgroup h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.imgdesc-expert-hint {
+  font-size: 0.85rem;
+  margin: 0;
+  font-style: italic;
+}
+
+/* ── Florence-2 Opt-In (Phase 10C-fix) ── */
+
+.imgdesc-florence2-optin-desc {
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.imgdesc-florence2-options {
+  border: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.imgdesc-florence2-option {
+  display: block;
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+  cursor: pointer;
+}
+
+.imgdesc-florence2-option input[type="checkbox"] {
+  margin-right: 0.4rem;
+}
+
+.imgdesc-florence2-option input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.imgdesc-florence2-coming-soon {
+  font-size: 0.75rem;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.imgdesc-florence2-run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.imgdesc-florence2-run-btn:hover:not(:disabled) {
+  background: var(--imgdesc-btn-hover-bg, #e8e8e8);
+}
+
+.imgdesc-florence2-run-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.imgdesc-florence2-run-btn:focus-visible {
+  outline: 2px solid var(--imgdesc-focus, #005fcc);
+  outline-offset: 2px;
+}
+
+.imgdesc-florence2-status {
+  font-size: 0.82rem;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
+/* ── Model Manager (Phase 9D) ── */
+
+/* Storage summary */
+.imgdesc-mm-storage {
+  margin-bottom: 1rem;
+}
+
+.imgdesc-mm-storage-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.imgdesc-mm-persistent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
+.imgdesc-mm-storage-bar {
+  height: 8px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.imgdesc-mm-storage-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.5;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.imgdesc-mm-persist-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+}
+
+.imgdesc-mm-persist-btn:hover {
+  opacity: 0.8;
+}
+
+.imgdesc-mm-persist-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Model list */
+.imgdesc-mm-model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.imgdesc-mm-model-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  padding: 0.5rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+/* Status icon */
+.imgdesc-mm-status-icon {
+  grid-row: 1;
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  min-width: 1.1rem;
+}
+
+.imgdesc-mm-status-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Model info */
+.imgdesc-mm-model-info {
+  grid-row: 1;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.imgdesc-mm-model-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.imgdesc-mm-model-role {
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+/* Size */
+.imgdesc-mm-model-size {
+  grid-row: 1;
+  grid-column: 3;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* State text */
+.imgdesc-mm-model-status {
+  grid-row: 2;
+  grid-column: 2;
+  text-align: left;
+}
+
+.imgdesc-mm-state-text {
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+/* Action buttons */
+.imgdesc-mm-model-actions {
+  grid-row: 2;
+  grid-column: 3;
+  display: flex;
+  gap: 0.3rem;
+}
+
+.imgdesc-mm-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  background: transparent;
+  color: currentColor;
+}
+
+/* Inline variant — applied alongside .imgdesc-mm-progress when the
+   progress bar is used outside the model-manager grid (e.g. the TTS
+   "Save as Audio" export progress bar, or any future reusable
+   progress bar in a flex/block container). Resets grid positioning
+   and adds its own spacing. Tool-neutral — safe to reuse anywhere. */
+.progress-inline {
+  grid-row: auto;
+  grid-column: auto;
+  flex-basis: 100%;
+  margin-top: 0.4rem;
+}
+
+/* Progress bar (per-model download) */
+.imgdesc-mm-progress {
+  grid-row: 3;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.imgdesc-mm-progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  overflow: hidden;
+}
+
+.imgdesc-mm-progress-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.6;
+  transition: width 0.2s ease;
+  width: 0%;
+}
+
+.imgdesc-mm-progress-text {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  min-width: 3rem;
+  text-align: right;
+}
+
+.imgdesc-mm-progress-detail {
+  width: 100%;
+  font-size: 0.7rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.imgdesc-mm-progress-detail:empty {
+  display: none;
+}
+
+.imgdesc-mm-progress-detail dt {
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.imgdesc-mm-progress-detail dd {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Legend */
+.imgdesc-mm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid currentColor;
+  font-size: 0.75rem;
+}
+
+.imgdesc-mm-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.imgdesc-mm-legend-item svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* Future panel */
+.imgdesc-mm-future-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem;
+  border: 1px dashed currentColor;
+  border-radius: 4px;
+}
+
+.imgdesc-mm-future-text {
+  flex: 1;
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.imgdesc-mm-coming-soon {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-style: italic;
+}
+
+/* Cache panel */
+.imgdesc-mm-cache-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.imgdesc-mm-cache-stats {
+  flex: 1;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.imgdesc-mm-cache-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.imgdesc-mm-cache-clear-btn:hover {
+  opacity: 0.8;
+}
+
+.imgdesc-mm-cache-clear-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.imgdesc-mm-cache-clear-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Responsive: stack model items vertically on small screens */
+@media (max-width: 600px) {
+  .imgdesc-mm-model-item {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .imgdesc-mm-model-size {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  .imgdesc-mm-model-status {
+    grid-row: 3;
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .imgdesc-mm-model-actions {
+    grid-row: 4;
+    grid-column: 2;
+  }
+
+  .imgdesc-mm-progress {
+    grid-row: 5;
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── Analysis Profile Selection (Phase 4C) ── */
+
+.imgdesc-expert-profile-description {
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+}
+
+.imgdesc-profile-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.imgdesc-profile-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.imgdesc-profile-option:has(input:checked) {
+  border-width: 2px;
+  padding: 0.4375rem 0.5625rem;
+}
+
+.imgdesc-profile-option:has(input:focus-visible) {
+  outline-offset: 2px;
+}
+
+/* Hide native radio visually but keep accessible */
+.imgdesc-profile-option input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.imgdesc-profile-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.imgdesc-profile-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.imgdesc-profile-desc {
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.imgdesc-profile-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.imgdesc-profile-feature {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-profile-option {
+    transition: none;
+  }
+}
+
+/* ── Profile Suggestion Banner (Phase 5C) ── */
+
+.imgdesc-profile-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 6px;
+  transition: opacity 0.2s ease;
+}
+
+.imgdesc-profile-suggestion[hidden] {
+  display: none;
+}
+
+.imgdesc-profile-suggestion-text {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.imgdesc-profile-suggestion-skip-ocr {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin: 0.1rem 0;
+}
+
+.imgdesc-profile-suggestion-skip-ocr input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.imgdesc-profile-suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.imgdesc-profile-suggestion-apply,
+.imgdesc-profile-suggestion-dismiss,
+.imgdesc-profile-suggestion-apply-alt,
+.imgdesc-profile-suggestion-choose {
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: 0.2rem solid #f0f4ff !important;
+  border: 0.2rem solid #00131d;
+}
+
+.imgdesc-profile-suggestion-apply:hover {
+  opacity: 0.9;
+}
+
+.imgdesc-profile-suggestion-apply:focus-visible {
+  outline-offset: 2px;
+}
+
+.imgdesc-profile-suggestion-dismiss:focus-visible {
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-profile-suggestion,
+  .imgdesc-profile-suggestion-apply,
+  .imgdesc-profile-suggestion-dismiss {
+    transition: none;
+  }
+}
+
+/* ── Overlay Container (Phase 5D-1) ── */
+
+.imgdesc-overlay-container {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.imgdesc-overlay-container > img {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+}
+
+/* ── Overlay Layers ── */
+
+.imgdesc-overlay-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ── OCR Bounding Boxes ── */
+
+.imgdesc-overlay-box {
+  position: absolute;
+  border: 1px solid;
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.imgdesc-overlay-box[data-suppressed="true"] {
+  border-style: dashed;
+  opacity: 0.4;
+}
+
+.imgdesc-overlay-box-label {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  font-size: 0.6875rem;
+  line-height: 1;
+  padding: 1px 4px;
+  white-space: nowrap;
+  border-radius: 2px 2px 0 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.imgdesc-overlay-box:hover .imgdesc-overlay-box-label,
+.imgdesc-overlay-box:focus .imgdesc-overlay-box-label,
+.imgdesc-overlay-box:focus-visible .imgdesc-overlay-box-label {
+  opacity: 1;
+}
+
+.imgdesc-overlay-box:focus-visible {
+  outline-offset: 2px;
+  z-index: 10;
+}
+
+/* ── Overlay Toolbar ── */
+
+.imgdesc-overlay-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  padding: 0.375rem;
+  border-radius: 0.25rem;
+  align-items: center;
+}
+
+.imgdesc-overlay-toggle,
+.imgdesc-overlay-review-btn {
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+.imgdesc-overlay-toggle:disabled,
+.imgdesc-overlay-review-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.imgdesc-overlay-toggle:focus-visible,
+.imgdesc-overlay-review-btn:focus-visible {
+  outline-offset: 2px;
+}
+
+.imgdesc-overlay-separator {
+  width: 1px;
+  height: 1.25rem;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-overlay-box,
+  .imgdesc-overlay-box-label {
+    transition: none;
+  }
+}
+
+/* ── Review Mode (Phase 5D-2) ── */
+
+.imgdesc-overlay-layer.imgdesc-review-active {
+  pointer-events: auto;
+}
+
+.imgdesc-overlay-layer.imgdesc-review-active .imgdesc-overlay-box {
+  cursor: pointer;
+}
+
+.imgdesc-overlay-box.imgdesc-selected {
+  border-width: 3px;
+  z-index: 10;
+}
+
+.imgdesc-overlay-box[data-status="removed"] {
+  opacity: 0.2;
+  border-style: dotted;
+  pointer-events: none;
+}
+
+/* ── Florence-2 Object Boxes (Phase 10C) ── */
+
+.imgdesc-overlay-box-object {
+  border-color: rgba(128, 0, 200, 0.7);
+  border-width: 2px;
+  background: rgba(128, 0, 200, 0.08);
+}
+
+.imgdesc-overlay-box-object .imgdesc-overlay-box-label {
+  background: rgba(128, 0, 200, 0.85);
+  color: #fff;
+}
+
+.imgdesc-overlay-box-object:focus-visible {
+  outline: 2px solid rgba(128, 0, 200, 1);
+}
+
+.imgdesc-overlay-box-object[data-status="removed"] {
+  border-color: rgba(128, 0, 200, 0.3);
+  background: rgba(128, 0, 200, 0.03);
+  opacity: 0.2;
+  border-style: dotted;
+  pointer-events: none;
+}
+
+.imgdesc-overlay-box-object.imgdesc-selected {
+  border-color: rgba(128, 0, 200, 1);
+  border-width: 3px;
+  z-index: 10;
+}
+
+/* ── Review Panel (Phase 5D-2) ── */
+
+.imgdesc-overlay-review-panel {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+}
+
+.imgdesc-review-field {
+  margin-bottom: 0.5rem;
+}
+
+.imgdesc-review-field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.imgdesc-review-input {
+  width: 90%;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  border-radius: 0.25rem;
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.imgdesc-review-input:focus-visible {
+  outline-offset: 1px;
+}
+
+.imgdesc-review-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.125rem 0.5rem;
+  font-size: 0.8125rem;
+  margin: 0.5rem 0;
+}
+
+.imgdesc-review-meta dt {
+  font-weight: 600;
+}
+
+.imgdesc-review-meta dd {
+  margin: 0;
+}
+
+.imgdesc-review-actions {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.toggletip-data {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.125rem 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.toggletip-data dt {
+  margin: 0;
+}
+
+.toggletip-data dd {
+  margin: 0;
+}
+
+/* ── Add Item Controls (Phase 5D-3) ── */
+
+.imgdesc-overlay-box[data-status="user-added"] {
+  border-style: solid;
+}
+
+.imgdesc-overlay-rubberband {
+  pointer-events: none;
+  z-index: 20;
+}
+
+.imgdesc-add-item-controls {
+  margin-top: 0.5rem;
+}
+
+.imgdesc-add-item-buttons {
+  display: flex;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.imgdesc-add-keyboard-form {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.imgdesc-add-field {
+  margin-bottom: 0.375rem;
+}
+
+.imgdesc-add-field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+}
+
+.imgdesc-add-coords {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.imgdesc-add-coord label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+}
+
+.imgdesc-add-coord input[type="number"] {
+  width: 100%;
+  padding: 0.25rem 0.375rem;
+  font-size: 0.8125rem;
+  border-radius: 0.25rem;
+  box-sizing: border-box;
+}
+
+.imgdesc-add-coord input[type="number"]:focus-visible {
+  outline-offset: 1px;
+}
+
+/* ── Layout & Typography ── */
+
+.imgdesc-review-list-panel {
+  margin-top: 0.5rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.imgdesc-review-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.imgdesc-review-list-status {
+  font-weight: normal;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.imgdesc-review-list {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.imgdesc-review-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  font-size: 0.8125rem;
+}
+
+.imgdesc-review-list-item:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.imgdesc-review-list-item.imgdesc-list-selected {
+  font-weight: 600;
+}
+
+.imgdesc-review-list-item[data-suppressed="true"] {
+  opacity: 0.45;
+}
+
+.imgdesc-review-list-item[data-suppressed="true"] .imgdesc-review-list-text {
+  text-decoration: line-through;
+}
+
+.imgdesc-review-list-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imgdesc-review-confidence-badge {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.imgdesc-review-status-badge {
+  display: inline-block;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.1875rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-review-list-item {
+    transition: none;
+  }
+}
+
+/* ── Colour Grid Overlay (Phase 5D-4) ── */
+
+.imgdesc-overlay-colour-region {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.imgdesc-overlay-colour-label {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.imgdesc-overlay-gradient-arrow {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5rem;
+  pointer-events: none;
+}
+
+.imgdesc-overlay-classification {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  margin: 8px 0 4px;
+  border-radius: 4px;
+}
+
+/* --- Florence-2 OCR quick-access prompt (Phase 14J) --- */
+
+.imgdesc-florence-ocr-prompt {
+  font-size: 0.82rem;
+  padding: 4px 0;
+  margin: 2px 0 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.imgdesc-florence-ocr-btn,
+.imgdesc-florence-ocr-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.imgdesc-florence-ocr-link {
+  font-weight: 400;
+
+  padding: 0.2rem 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.imgdesc-florence-ocr-hint {
+  font-size: 0.78rem;
+  opacity: 0.9;
+}
+
+.imgdesc-florence-ocr-complete {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.imgdesc-florence-ocr-prompt--running {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-overlay-colour-region {
+    transition: none;
+  }
+}
+.imgdesc-review-actions button,
+.imgdesc-add-item-buttons button {
+  font-size: 0.8rem;
+}
+
+/* ==============================================
+   PHASE 6A: ANALYSIS PROGRESS STATUS
+   ============================================== */
+
+.imgdesc-analysis-status {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  margin: 6px 0;
+  border-radius: 4px;
+}
+
+.imgdesc-analysis-status-heading {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.imgdesc-analysis-slots {
+  margin-top: 0.25rem;
+}
+
+/* Keep old class name working if referenced elsewhere */
+.imgdesc-analysis-status-text {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.imgdesc-review-list-item:last-child {
+  border-bottom: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-analysis-status {
+    transition: none;
+  }
+}
+
+/* ==============================================
+   PHASE 6A: HELP NOTES
+   ============================================== */
+
+.imgdesc-help-note {
+  font-size: 0.8rem;
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
+
+/* ==============================================
+   PHASE 6A: HIDE OVERLAY LAYERS DURING GENERATION
+   ============================================== */
+
+.imgdesc-overlays-hidden .imgdesc-overlay-layer {
+  display: none;
+}
+
+/* ==============================================
+   PHASE 7B: SIDEBAR LAYOUT + EXPAND IMAGE
+   ============================================== */
+
+/* ── Expand toggle button — same style as other toolbar buttons ── */
+.imgdesc-overlay-expand-btn {
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+.imgdesc-overlay-expand-btn:focus-visible {
+  outline-offset: 2px;
+}
+
+/* ── Desktop sidebar grid (≥1024px, fullscreen + review active) ── */
+@media (min-width: 1024px) {
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active {
+    display: grid;
+    grid-template-columns: 1fr 35%;
+    grid-template-rows: auto auto 1fr;
+    gap: 0.75rem;
+    overflow: hidden;
+  }
+
+  /* Analysis status: row 1, spans both columns */
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
+    .imgdesc-analysis-status {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  /* Toolbar: row 2, spans both columns */
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
+    .imgdesc-overlay-toolbar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  /* Preview: row 3, left column */
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
+    .imgdesc-preview {
+    grid-column: 1;
+    grid-row: 3;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Sidebar: row 3, right column */
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
+    .imgdesc-review-sidebar {
+    grid-column: 2;
+    grid-row: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow-y: auto;
+    max-height: 100%;
+    min-height: 0;
+  }
+
+  /* Image sizing in sidebar mode */
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
+    .imgdesc-preview
+    img,
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
+    .imgdesc-overlay-container
+    > img {
+    max-height: calc(90vh - 10rem);
+    max-width: 100%;
+  }
+
+  /* Review list fills available sidebar space */
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
+    .imgdesc-review-sidebar
+    .imgdesc-review-list-panel {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  /* Review list itself needs to scroll within the panel */
+  .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
+    .imgdesc-review-sidebar
+    .imgdesc-review-list {
+    max-height: none;
+  }
+}
+
+/* ── Expanded mode: back to flex column (overrides grid) ── */
+.imgdesc-workspace--fullscreen.imgdesc-workspace--expanded {
+  display: flex !important;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Preview must not collapse — take natural size, not flex: 1 */
+.imgdesc-workspace--fullscreen.imgdesc-workspace--expanded .imgdesc-preview {
+  flex: 0 0 auto;
+  overflow: visible;
+  min-height: auto;
+}
+
+/* Image sizing in expanded mode — generous but bounded */
+.imgdesc-workspace--fullscreen.imgdesc-workspace--expanded .imgdesc-preview img,
+.imgdesc-workspace--fullscreen.imgdesc-workspace--expanded
+  .imgdesc-overlay-container
+  > img {
+  max-height: 55vh;
+  max-width: 100%;
+}
+
+/* Sidebar wrapper in expanded mode — natural height, modal body scrolls */
+.imgdesc-workspace--fullscreen.imgdesc-workspace--expanded
+  .imgdesc-review-sidebar {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* Expanded/stacked mode: capped review list height */
+.imgdesc-workspace--fullscreen.imgdesc-workspace--expanded
+  .imgdesc-review-list-panel {
+  max-height: 25vh;
+  overflow-y: auto;
+}
+
+.imgdesc-workspace--fullscreen.imgdesc-workspace--expanded
+  .imgdesc-review-list {
+  max-height: 20vh;
+}
+
+/* ── Below 1024px: stacked layout — workspace scrolls, no inner scrollbars ── */
+@media (max-width: 1023px) {
+  #imgdesc-expand-toggle {
+    display: none !important;
+  }
+
+  /* Workspace scrolls as a whole */
+  .imgdesc-workspace--fullscreen {
+    overflow-y: auto;
+  }
+
+  /* Preview takes natural size — don't grow to fill, let content appear below */
+  .imgdesc-workspace--fullscreen .imgdesc-preview {
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  /* Cap image height so controls are visible without scrolling */
+  .imgdesc-workspace--fullscreen .imgdesc-preview img,
+  .imgdesc-workspace--fullscreen .imgdesc-overlay-container > img {
+    max-height: 45vh;
+  }
+
+  /* Panels take natural height — no inner scrollbar */
+  .imgdesc-workspace--fullscreen .imgdesc-overlay-review-panel,
+  .imgdesc-workspace--fullscreen .imgdesc-review-list-panel {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .imgdesc-workspace--fullscreen .imgdesc-review-list {
+    max-height: none;
+  }
+
+  /* Sidebar wrapper — natural height */
+  .imgdesc-workspace--fullscreen .imgdesc-review-sidebar {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+/* ── Mobile: hide Draw Box button ── */
+@media (max-width: 767px) {
+  .imgdesc-workspace--fullscreen .imgdesc-draw-box-btn {
+    display: none;
+  }
+}
+
+/* ── Print: hide sidebar and expand toggle ── */
+@media print {
+  .imgdesc-review-sidebar,
+  .imgdesc-overlay-expand-btn {
+    display: none;
+  }
+}
+/* ── Depth Zone Overlay (Phase 11B) ─────────────────────────── */
+
+/* Depth layer needs visible overflow so zone labels aren't clipped at edges */
+.imgdesc-overlay-depth {
+  overflow: visible;
+}
+
+/* Canvas fills the overlay layer, CSS-scaled from smaller render */
+.imgdesc-depth-canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated; /* Preserves zone boundaries when upscaled */
+  display: block;
+}
+
+/* Zone text labels — positioned at centroids */
+.imgdesc-depth-zone-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Depth Legend (Phase 11B) ───────────────────────────────── */
+
+.imgdesc-depth-legend {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8rem;
+}
+
+.imgdesc-depth-legend-list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.imgdesc-depth-legend-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.imgdesc-depth-legend-item dt {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 11rem;
+}
+
+.imgdesc-depth-legend-item dd {
+  margin: 0;
+}
+
+/* Colour swatches in legend */
+.imgdesc-depth-swatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.2rem;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.universal-modal-body #imgdesc-overlay-classification {
+  display: none;
+}
+
+.universal-modal-body .imgdesc-overlay-toolbar {
+  margin-top: 0rem;
+}
+
+/* Hide depth legend in fullscreen — on-image labels provide the visual data */
+.imgdesc-workspace--fullscreen .imgdesc-depth-legend,
+.imgdesc-workspace--fullscreen .imgdesc-file-info {
+  display: none;
+}
+
+.imgdesc-depth-zone-label {
+  color: #fffff4;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.imgdesc-depth-zone-label[data-zone="foreground"] {
+  background: #c44520;
+}
+
+.imgdesc-depth-zone-label[data-zone="midground"] {
+  background: #6b3fa0;
+}
+
+.imgdesc-depth-zone-label[data-zone="background"] {
+  background: #2860a8;
+}
+
+.imgdesc-depth-swatch {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.imgdesc-depth-swatch[data-zone="foreground"] {
+  background: rgba(230, 100, 60, 0.6);
+}
+
+.imgdesc-depth-swatch[data-zone="midground"] {
+  background: rgba(140, 80, 200, 0.5);
+}
+
+.imgdesc-depth-swatch[data-zone="background"] {
+  background: rgba(50, 120, 220, 0.6);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 11D: Cache Recall Banner
+   ════════════════════════════════════════════════════════════════ */
+
+.imgdesc-cache-recall-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  background: var(--surface-alt, rgba(128, 128, 128, 0.1));
+}
+
+.imgdesc-cache-recall-text {
+  flex: 1;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Phase 14F: Accuracy Warning Banners + Local Model Selector
+   ════════════════════════════════════════════════════════════════ */
+
+/* --- Warning banner base --- */
+
+.imgdesc-accuracy-warning {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--imgdesc-warning-border, #b8860b);
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+  background: var(--imgdesc-warning-bg, rgba(184, 134, 11, 0.08));
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.imgdesc-accuracy-warning[hidden] {
+  display: none;
+}
+
+.imgdesc-accuracy-warning p {
+  margin: 0;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.imgdesc-accuracy-warning strong {
+  white-space: nowrap;
+}
+
+/* Icon sizing within warning banner */
+.imgdesc-accuracy-warning [data-icon] {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.imgdesc-accuracy-warning svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* --- Output-specific warning modifier --- */
+
+.imgdesc-accuracy-warning--output {
+  margin-top: 0.5rem;
+}
+
+/* --- Analysis reference data (Phase 14H) --- */
+
+.imgdesc-analysis-reference {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid currentColor;
+  opacity: 0.85;
+  font-size: 0.9em;
+}
+
+.imgdesc-analysis-reference h2,
+.imgdesc-analysis-reference h3,
+.imgdesc-analysis-reference h4,
+.imgdesc-analysis-reference h5 {
+  font-size: 1em;
+  margin-top: 1em;
+  margin-bottom: 0.3em;
+}
+
+.imgdesc-analysis-reference h2,
+.imgdesc-analysis-reference h4 {
+  font-size: 1.1em;
+}
+
+.imgdesc-analysis-reference section {
+  margin-top: 0.75em;
+}
+
+.imgdesc-analysis-reference ul {
+  margin: 0.3em 0;
+  padding-left: 1.5em;
+}
+
+.imgdesc-analysis-reference li {
+  margin: 0.15em 0;
+}
+
+.imgdesc-analysis-reference .imgdesc-ref-inline-list {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2em 0.6em;
+}
+
+.imgdesc-analysis-reference dl {
+  margin: 0.3em 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15em 0.6em;
+}
+
+.imgdesc-analysis-reference dt {
+  font-weight: 600;
+}
+
+.imgdesc-analysis-reference dd {
+  margin-left: 0;
+}
+
+@media print {
+  .imgdesc-analysis-reference {
+    opacity: 1;
+    font-size: 0.85em;
+  }
+}
+
+/* --- Educational context reference (Phase 14I) --- */
+
+.imgdesc-educational-context {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-colour, #ccc);
+  opacity: 0.85;
+  font-size: 0.9em;
+}
+
+.imgdesc-educational-context h2,
+.imgdesc-educational-context h3,
+.imgdesc-educational-context h4,
+.imgdesc-educational-context h5 {
+  font-size: 1em;
+  margin-top: 0.5em;
+  margin-bottom: 0.3em;
+}
+
+.imgdesc-educational-context h2,
+.imgdesc-educational-context h4 {
+  font-size: 1.1em;
+}
+
+.imgdesc-educational-context dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2em 0.75em;
+  margin: 0.5em 0;
+}
+
+.imgdesc-educational-context dt {
+  font-weight: 600;
+}
+
+.imgdesc-educational-context dd {
+  margin: 0;
+}
+
+@media print {
+  .imgdesc-educational-context {
+    opacity: 1;
+    font-size: 0.85em;
+  }
+}
+
+/* --- Local model selector --- */
+
+#imgdesc-local-model-group {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+#imgdesc-local-model {
+  width: 100%;
+  box-sizing: border-box;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 0.25rem;
+}
+
+#imgdesc-local-model-hint {
+  margin-top: 0.25rem;
+}
+
+/* ── Save as Audio split button (Phase 11 TTS) ── */
+
+.imgdesc-save-audio-split {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.imgdesc-save-audio-split .imgdesc-save-audio-main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+.imgdesc-save-audio-split .imgdesc-format-toggle {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding: 0.5rem 0.35rem;
+  min-width: auto;
+}
+
+.imgdesc-save-audio-split .imgdesc-format-toggle svg {
+  width: 0.75em;
+  height: 0.75em;
+}
+
+.imgdesc-save-audio-note {
+  display: block;
+  font-size: 0.75em;
+  opacity: 0.7;
+  margin-top: 0.2em;
+}
+
+/* ── Read Aloud engine badge (Phase 5 TTS) ── */
+
+.imgdesc-engine-badge {
+  display: inline-block;
+  font-size: 0.7em;
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  background: var(--badge-bg, #d0d0d0);
+  color: var(--badge-text, #222);
+  vertical-align: middle;
+  margin-left: 0.3em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ── Voice Settings panel (Phase 6 TTS) ── */
+
+.tts-voice-settings {
+  font-size: 0.9rem;
+}
+
+.tts-voice-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tts-settings-link {
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tts-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tts-fieldset legend {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.tts-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tts-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.tts-engine-note {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.tts-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tts-field label {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.tts-field select,
+.tts-field input[type="range"] {
+  width: 100%;
+  max-width: 20rem;
+}
+
+.tts-privacy-notice {
+  font-size: 0.8rem;
+  color: var(--warning-color, #856404);
+  background: var(--warning-bg, #fff3cd);
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  margin: 0;
+}
+
+.tts-nudge {
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
+
+.tts-nudge a {
+  font-weight: 600;
+}
+
+/* --- Reduced motion --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .imgdesc-accuracy-warning {
+    transition: none;
+  }
 }

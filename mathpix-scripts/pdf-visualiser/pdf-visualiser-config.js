@@ -705,8 +705,14 @@ function formatAriaMessage(template, values) {
  * @since 1.2.0
  */
 function buildToggletipContent(line) {
-  const confidencePercent = (line.confidence_rate * 100).toFixed(1);
-  const levelKey = getConfidenceLevelKey(line.confidence_rate);
+  const confidenceValue = line.confidence ?? line.confidence_rate ?? null;
+  const hasConfidence = confidenceValue != null && !isNaN(confidenceValue);
+  const confidencePercent = hasConfidence
+    ? (confidenceValue * 100).toFixed(1)
+    : null;
+  const levelKey = hasConfidence
+    ? getConfidenceLevelKey(confidenceValue)
+    : "VERY_LOW";
 
   const displayText = line.text
     ? line.text.length > 150
@@ -721,27 +727,32 @@ function buildToggletipContent(line) {
     VERY_LOW: "Needs Review",
   };
 
-  return `
-    <div class="toggletip-row">
-      <span class="toggletip-label">Confidence</span>
-      <span class="toggletip-confidence-value toggletip-confidence-${levelKey
-        .toLowerCase()
-        .replace("_", "-")}">${confidencePercent}%</span>
-    </div>
-    <div class="toggletip-row">
-      <span class="toggletip-label">Level</span>
-      <span class="toggletip-value">${levelLabels[levelKey] || "Unknown"}</span>
-    </div>
-    <div class="toggletip-row">
-      <span class="toggletip-label">Type</span>
-      <span class="toggletip-value">${line.type || "Unknown"}</span>
-    </div>
-    <div class="toggletip-row">
-      <span class="toggletip-label">Text</span>
-      <span class="toggletip-value" style="font-size: 0.8125rem;">${escapeHtml(
-        displayText
-      )}</span>
-    </div>
+return `
+    <dl class="toggletip-data">
+      <div class="toggletip-row">
+        <dt class="toggletip-label">Confidence</dt>
+        <dd class="toggletip-confidence-value toggletip-confidence-${levelKey
+          .toLowerCase()
+          .replace(
+            "_",
+            "-",
+          )}">${confidencePercent != null ? confidencePercent + "%" : "Not assessed"}</dd>
+      </div>
+      <div class="toggletip-row">
+        <dt class="toggletip-label">Level</dt>
+        <dd class="toggletip-value">${levelLabels[levelKey] || "Unknown"}</dd>
+      </div>
+      <div class="toggletip-row">
+        <dt class="toggletip-label">Type</dt>
+        <dd class="toggletip-value">${line.type || "Unknown"}</dd>
+      </div>
+      <div class="toggletip-row">
+        <dt class="toggletip-label">Text</dt>
+        <dd class="toggletip-value" style="font-size: 0.8125rem;">${escapeHtml(
+          displayText,
+        )}</dd>
+      </div>
+    </dl>
   `;
 }
 
@@ -769,12 +780,16 @@ function buildToggletipContent(line) {
  * @since 1.2.0
  */
 function buildAccessibleLabel(line, index) {
-  const confidencePercent = (line.confidence_rate * 100).toFixed(1);
+  const confidenceValue = line.confidence ?? line.confidence_rate ?? null;
+  const hasConfidence = confidenceValue != null && !isNaN(confidenceValue);
+  const confidencePercent = hasConfidence
+    ? (confidenceValue * 100).toFixed(1)
+    : null;
   const textPreview = line.text
     ? `"${line.text.substring(0, 30)}${line.text.length > 30 ? "…" : ""}"`
     : line.type || "Unknown type";
 
-  return `Line ${index + 1}: ${textPreview} - ${confidencePercent}% confidence`;
+  return `Line ${index + 1}: ${textPreview} - ${confidencePercent != null ? confidencePercent + "% confidence" : "confidence not assessed"}`;
 }
 
 /**

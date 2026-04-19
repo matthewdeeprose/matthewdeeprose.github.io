@@ -213,6 +213,7 @@
         model: request.model || "",
         temperature: request.temperature ?? 0.7,
         maxTokens: request.max_tokens ?? 2000,
+        reasoning: request.reasoning || null,
       };
 
       const keyString = JSON.stringify(keyParts);

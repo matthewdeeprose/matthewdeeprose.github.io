@@ -1,0 +1,334 @@
+/**
+ * @fileoverview MathPix Image Manager Modal Styles — Phase 8H.1
+ * @module mathpix-image-manager.css
+ * @version 1.1.0
+ * @since Phase 8H.1
+ *
+ * @description
+ * Styles for the Image Manager modal that allows users to view, replace,
+ * add, and delete images in restored OCR documents.
+ *
+ * Plain CSS — no variables. Literal colour values throughout.
+ * Colours are separated into the top section for easy theming.
+ * WCAG 2.2 AA compliant focus states and contrast.
+ */
+
+/* — High contrast colour overrides — */
+
+@media (prefers-contrast: high) {
+  .image-manager-card {
+    border-width: 2px;
+    border-color: black;
+  }
+
+  .image-manager-btn {
+    border-width: 2px;
+    border-color: black;
+  }
+
+  .image-manager-header {
+    border-bottom-width: 2px;
+  }
+
+  .image-manager-close-btn:hover {
+    border-color: black;
+  }
+}
+
+/* ============================================================================
+   MODAL BACKDROP
+   ============================================================================ */
+
+.image-manager-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+
+.image-manager-backdrop[hidden] {
+  display: none;
+}
+
+/* ============================================================================
+   MODAL DIALOG
+   ============================================================================ */
+
+.image-manager-modal {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.image-manager-modal:not([open]) {
+  display: none;
+}
+
+/* Remove default dialog backdrop (we use our own) */
+.image-manager-modal::backdrop {
+  display: none;
+}
+
+/* ============================================================================
+   MODAL CONTAINER
+   ============================================================================ */
+
+.image-manager-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   MODAL HEADER
+   ============================================================================ */
+
+.image-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  flex-shrink: 0;
+}
+
+.image-manager-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.image-manager-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.image-manager-close-btn:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   MODAL TOOLBAR
+   ============================================================================ */
+
+.image-manager-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  flex-shrink: 0;
+}
+
+.image-manager-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.image-manager-action-btn:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+.image-manager-count {
+  font-size: 0.8rem;
+}
+
+/* ============================================================================
+   IMAGE GRID
+   ============================================================================ */
+
+.image-manager-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+  align-content: start;
+  list-style: none;
+  margin: 0;
+}
+
+/* Definition list metadata — reset browser defaults */
+.image-manager-meta dd {
+  margin: 0;
+}
+
+/* ============================================================================
+   IMAGE CARDS
+   ============================================================================ */
+
+.image-manager-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Thumbnail container */
+.image-manager-thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  max-height: 200px;
+  padding: 0.5rem;
+  overflow: hidden;
+}
+
+.image-manager-thumbnail img {
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+}
+
+/* Metadata section */
+.image-manager-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.image-manager-id {
+  font-family: monospace;
+  font-size: 0.7rem;
+  word-break: break-all;
+}
+
+/* Card actions */
+.image-manager-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+}
+
+.image-manager-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+
+.image-manager-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  font-size: 0.95rem;
+}
+
+.image-manager-empty[hidden] {
+  display: none;
+}
+
+/* ============================================================================
+   RESPONSIVE — TABLETS
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .image-manager-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .image-manager-header {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .image-manager-toolbar {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* ============================================================================
+   RESPONSIVE — MOBILE
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  .image-manager-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 0.5rem;
+  }
+
+  .image-manager-card {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .image-manager-thumbnail {
+    min-height: auto;
+    max-height: none;
+  }
+
+  .image-manager-thumbnail img {
+    max-height: 80px;
+  }
+
+  .image-manager-card > :not(.image-manager-thumbnail) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .image-manager-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* ============================================================================
+   REDUCED MOTION
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .image-manager-modal,
+  .image-manager-backdrop,
+  .image-manager-card,
+  .image-manager-btn {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ============================================================================
+   PRINT — HIDE MODAL
+   ============================================================================ */
+
+@media print {
+  .image-manager-modal,
+  .image-manager-backdrop {
+    display: none !important;
+  }
+}

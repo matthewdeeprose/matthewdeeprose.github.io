@@ -313,12 +313,16 @@
 .gb-file-input:focus + .gb-file-label,
 .gb-file-input:focus-visible + .gb-file-label {
   outline: 3px solid #005c84;
-  box-shadow: 0 0 0 1px #ffffff, 0 0 0 4px #005c84;
+  box-shadow:
+    0 0 0 1px #ffffff,
+    0 0 0 4px #005c84;
   background-color: rgba(0, 92, 132, 0.05);
 }
 .gb-file-label:focus-within {
   outline: 3px solid #005c84;
-  box-shadow: 0 0 0 1px #ffffff, 0 0 0 4px #005c84;
+  box-shadow:
+    0 0 0 1px #ffffff,
+    0 0 0 4px #005c84;
   background-color: rgba(0, 92, 132, 0.05);
 }
 .gb-file-label:focus-within .gb-upload-text {
@@ -333,12 +337,16 @@
 }
 .gb-file-label.gb-drag-active:focus-within {
   outline-color: #005c84;
-  box-shadow: 0 0 0 1px #ffffff, 0 0 0 4px #005c84,
+  box-shadow:
+    0 0 0 1px #ffffff,
+    0 0 0 4px #005c84,
     0 0 0 6px rgba(0, 92, 132, 0.3);
 }
 .gb-upload-area:focus-within .gb-file-label {
   outline: 3px solid #005c84;
-  box-shadow: 0 0 0 1px #ffffff, 0 0 0 4px #005c84;
+  box-shadow:
+    0 0 0 1px #ffffff,
+    0 0 0 4px #005c84;
   background-color: rgba(0, 92, 132, 0.05);
 }
 /* Mobile table responsive design - Colours */
@@ -388,7 +396,9 @@
   .gb-file-label:focus-within {
     outline-width: 4px;
     outline-style: solid;
-    box-shadow: 0 0 0 2px #ffffff, 0 0 0 6px currentColor;
+    box-shadow:
+      0 0 0 2px #ffffff,
+      0 0 0 6px currentColor;
   }
   .gb-file-label.gb-drag-active {
     border-width: 3px;
@@ -932,6 +942,9 @@
   line-height: 1.4;
   margin: 0;
   font-size: 1em;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .gb-toast-close {
   background: none;

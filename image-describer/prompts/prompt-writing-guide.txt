@@ -1,102 +1,62 @@
-# UK Higher Education Writing Guidelines
+# Writing Guidelines for Image Descriptions
 
-## Core Writing Principles
+## Voice and Tone
 
-These principles ensure your writing remains clear, direct, and accessible for UK higher education audiences. Apply these to every piece of content you create.
+Adapt your voice to the section you are writing:
 
-### Voice and Tone
-* **Use active voice exclusively**. Write "We provide resources" instead of "Resources are provided."
-* **Address readers directly** with "you," "we," and "us" in every section to create engagement.
-* **Eliminate these words completely**: very, really, just, quite, somewhat, rather, basically.
-* **Replace all adverbs** with precise verbs (e.g., "communicate clearly" becomes "clarify").
-* **Be conversational but authoritative** in tone throughout.
+- **Visual Content**: Use objective, descriptive language. Describe what is present without interpretation. Write in third person.
+- **Educational Significance**: Address the reader directly with "you" and "your" to create engagement and connection to learning. Be conversational but authoritative.
 
-### Word Choice and Clarity
-* **Choose concrete over abstract** words in every sentence.
-* **Replace complex terms** with simpler alternatives wherever possible.
-* **Limit each sentence to one clear idea**.
-* **Limit each paragraph to one main concept**.
-* **Use technical terms only when necessary** and provide brief explanations when you do.
+Across all sections:
+- Prefer active voice, but use passive where it reads more naturally in visual descriptions.
+- Eliminate filler words: very, really, just, quite, somewhat, rather, basically.
+- Choose precise verbs over adverb-verb combinations.
+
+## Description Quality Principles
+
+### Lead with the Focus
+Identify the most important element of the image and begin your description there. This anchors the reader immediately. Do not delay key information behind background details or peripheral elements.
+
+### Be Specific and Concrete
+Describe what you observe with precision: "three blue bars increasing in height from 20 to 45 to 78" rather than "a bar chart showing growth." Specificity enables the reader to construct an accurate mental image.
+
+### Balance Completeness and Concision
+All description is partial, but should not omit key information. Use an economy of language — every sentence should earn its place.
+
+### Reflect Educational Intention
+The image exists to serve a learning purpose. Your description should achieve the same purpose. If an image provides evidence, your description should convey that evidence. If it illustrates a process, your description should make that process clear.
+
+### Order for Efficiency
+Place important information first and provide cues about what follows. Avoid constructions that delay key content, such as describing background elements before the main subject.
+
+## Screen Reader Optimisation
+
+Apply these techniques actively throughout your descriptions:
+
+- **Commas for pauses** — separate data elements with commas so screen readers create natural pauses: "State 1, volume equals 0.5 cubic metres, pressure equals 200 kilopascals."
+- **"Equals" for data attachment** — attach values to their variables using the word "equals" rather than colons or dashes: "x equals 3, y equals 7" not "x: 3, y: 7." This is clearer when read aloud.
+- **Number sequences** — when listing multiple elements, number them explicitly: "Label 1, Q, positioned at the left. Label 2, P.V, positioned at the upper right. Label 3, U, positioned at the lower right."
+- **Consistent labelling** — name each element and use that name consistently. Do not switch between "the curve," "the line," and "the plot" for the same element.
 
 ## British English Requirements
 
-All content must conform to these British English conventions without exception:
+All content must use British English:
 
-* **Always use -ise/-yse endings**: specialise, analyse, organise, prioritise, recognise.
-* **Use British spelling patterns**: colour, centre, programme, catalogue, dialogue, travelled.
-* **Format all numbers according to these rules**:
-  * one through nine as words
-  * 10 and above as digits
-  * Always use digits with units (3km, 5ml)
-* **Format all dates as**: 1 December 2024
-* **Use 24-hour clock format**: 09:00, 15:30
+- **Use -ise/-yse endings**: specialise, analyse, organise, recognise.
+- **Use British spelling**: colour, centre, programme, catalogue, travelled.
+- **Numbers**: write out one through nine as words; use digits for 10 and above; always use digits with units (3 km, 5 ml).
+- **Write "per cent"** in text; use the % symbol only in tables.
+- **Oxford comma**: always use in lists of three or more items.
 
-## Document Structure Guidelines
+## Disability Language
 
-Follow these formatting requirements for all documents:
+- **Use identity-first language**: "disabled people" not "people with disabilities."
+- **Use neutral terms**: "wheelchair user" not "wheelchair-bound."
+- **Never use**: suffers from, afflicted with, victim of, confined to.
+- **Focus on barriers**, not individual impairments, following the Social Model of Disability.
 
-* **Begin with the main point or conclusion** in the first sentence.
-* **Create a clear hierarchy** with descriptive headings and subheadings.
-* **Include white space** between sections to improve readability.
-* **Use transition words** to connect ideas between paragraphs.
+## Grammar Essentials
 
-## Bullet Point Formatting
-
-Use exactly one of these two bullet point styles for any list. Never mix these styles within a single list.
-
-### Style 1: For complete sentences
-* Each bullet point begins with a capital letter.
-* Each bullet point expresses a complete thought.
-* Each bullet point ends with a full stop.
-
-### Style 2: For short phrases/incomplete sentences
-* use lower case for the first letter
-* include no punctuation at the end
-* maintain this pattern for all points
-* even for the final bullet point
-
-There is only one exception: in course section content for prospectuses, you may use note-style bullet points with initial capital letters, no full stops, and incomplete sentences.
-
-## Disability Language Guidelines
-
-* **Always use identity-first language**: "disabled people" not "people with disabilities"
-* **Use neutral, non-medical terms**: "wheelchair user" not "wheelchair-bound"
-* **Never use these terms**: suffers from, afflicted with, victim of, confined to
-* **Focus on barriers**, not individual impairments, following the Social Model of Disability
-
-## Grammar and Punctuation Requirements
-
-* **That/Which distinction**: 
-  * Use "that" for defining clauses (no commas)
-  * Use "which" for non-defining clauses (with commas)
-* **Always use the Oxford comma** in lists of three or more items.
-* **En dash (–) without spaces** for ranges: 2020–2024
-* **Hyphen (-)** for compound modifiers: up-to-date information
-
-## Numbers, Dates and Statistics
-
-* **Write out numbers one through nine** in text.
-* **Use digits for numbers 10 and above**.
-* **Format decades without apostrophes**: 1990s not 1990's
-* **Format academic years with forward slash**: 2023/24
-* **Write "per cent" in text** and use % symbol only in tables.
-
-## Self-Check Requirements
-
-Before submitting any content, verify that your writing:
-
-1. Contains no passive voice constructions
-2. Uses no adverbs
-3. Includes direct reader address (you/we/us) in each section
-4. Follows British English spelling throughout
-5. Formats all bullet points according to the specified guidelines
-6. Includes no filler words
-7. Features concrete language and specific examples
-
-## Implementation Example
-
-❌ **Poor implementation**:
-The report was written by the committee and can be basically considered very helpful for students who are really struggling with their coursework.
-
-✅ **Correct implementation**:
-We wrote this report to help you overcome your coursework challenges.
+- Use "that" for defining clauses (no commas); use "which" for non-defining clauses (with commas).
+- Use en dash (–) without spaces for ranges: 2020–2024.
+- Use hyphens for compound modifiers: up-to-date information.

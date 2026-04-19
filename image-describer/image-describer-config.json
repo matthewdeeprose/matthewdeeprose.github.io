@@ -38,29 +38,10 @@
     }
   ],
 
-  "descriptionStyles": [
-    {
-      "value": "brief",
-      "label": "Brief",
-      "hint": "Concise, 1-2 sentences",
-      "default": false,
-      "promptModifier": "For the Long Description section: provide a BRIEF summary of two to three sentences total (maximum 60 words). Within Visual Content: describe only the most essential visual elements in one sentence. Within Educational Significance: state the primary learning purpose in one sentence. Omit fine architectural details, decorative elements, and extended thematic analysis. Prioritise immediate clarity and conciseness."
-    },
-    {
-      "value": "detailed",
-      "label": "Detailed",
-      "hint": "Comprehensive description",
-      "default": true,
-      "promptModifier": "For the Long Description section: provide COMPREHENSIVE coverage using clear structure. Within Visual Content: systematically describe overall layout, key components and relationships, colours and patterns (considering accessibility for colour-blind users), and any text or labels. Within Educational Significance: explain connections to stated learning objectives, key concepts illustrated, and how this particular visualisation aids understanding. Use clear paragraph breaks and maintain logical organisation throughout."
-    },
-    {
-      "value": "technical",
-      "label": "Technical",
-      "hint": "For technical/scientific images",
-      "default": false,
-      "promptModifier": "For the Long Description section: use appropriate academic and discipline-specific terminology throughout. Assume intermediate-to-advanced knowledge in the stated subject area. In Visual Content: employ precise technical terms relevant to the discipline (such as anatomical terminology for biology, chemical notation for chemistry, or architectural vocabulary for built environment studies). In Educational Significance: use analytical language and reference relevant theoretical frameworks or methodologies. Balance technical precision with the accessibility principles outlined in the writing guide."
-    }
-  ],
+  "descriptionStyle": {
+    "label": "Detailed",
+    "promptModifier": "For the Long Description section: provide COMPREHENSIVE coverage using clear structure. Within Visual Content: systematically describe overall layout, key components and relationships, colours and patterns (considering accessibility for colour-blind users), and any text or labels. Within Educational Significance: explain connections to stated learning objectives, key concepts illustrated, and how this particular visualisation aids understanding. Use clear paragraph breaks and maintain logical organisation throughout."
+  },
 
   "checkboxOptions": [
     {

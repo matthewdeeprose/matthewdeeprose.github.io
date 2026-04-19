@@ -304,9 +304,11 @@ const MATHPIX_CONFIG = {
       include_asciimath: true,
       include_table_html: true, // Enable HTML table extraction
       include_tsv: true, // Enable Tab-Separated Values extraction
-      // include_smiles: true, // Phase 4: DISABLED - not supported by current API tier
     },
     enable_tables_fallback: true, // Better handling of complex tables
+    // Phase 4: Chemistry — top-level params per MathPix support (Apr 2026)
+    include_smiles: true, // SMILES notation for chemistry diagrams
+    include_inchi: true, // InChI notation for chemistry diagrams
   },
 
   /**
@@ -461,6 +463,12 @@ const MATHPIX_CONFIG = {
     math_display_delimiters: ["$$", "$$"],
     rm_spaces: true,
     rm_fonts: true,
+    include_diagram_text: true, // Extract text labels from within diagrams
+    // Phase 5A-1: Chemistry recognition for PDFs
+    include_smiles: true,
+    include_inchi: true,
+    // Phase 5F-1: Request cropped chemistry diagram images from PDF processing
+    include_chemistry_as_image: true,
   },
 
   /**
@@ -657,6 +665,7 @@ const MATHPIX_CONFIG = {
       DATA: "data",
       EDITS: "edits",
       CONVERTED: "converted",
+      HISTORY: "history",
     },
 
     // Progress messages (British spelling)
@@ -807,9 +816,39 @@ const MATHPIX_CONFIG = {
     /**
      * Options passed to markdownToHTML() function
      * @type {Object}
+     *
+     * Accessibility:
+     * - assistiveMml: adds hidden MathML (<mjx-assistive-mml>) to every rendered
+     *   math expression, enabling screen readers to interpret mathematics
+     * - Without the Speech Rule Engine (sre), aria-label text descriptions are
+     *   not generated, but the MathML structural tree still provides meaningful
+     *   screen reader output
+     *
+     * outMath:
+     * - include_asciimath/include_latex/include_mathml: embeds hidden format
+     *   elements in the DOM, required for the context menu export feature
+     * - include_error: surfaces parse errors in the output for debugging
+     *
+     * @see https://github.com/Mathpix/mathpix-markdown-it#tmarkdownitoptions
+     * @since 4.0.0
+     * @updated 7.0.0 - Added accessibility and outMath configuration
      */
     RENDER_OPTIONS: {
       htmlTags: true,
+      mmdExtensions: {
+        smiles: true, // Phase 5C-3: Enable SMILES chemistry diagram rendering
+      },
+      accessibility: {
+        assistiveMml: true, // Adds <mjx-assistive-mml> for screen reader access
+      },
+      outMath: {
+        include_asciimath: true, // Required for context menu export
+        include_latex: true, // Required for context menu export
+        include_mathml: true, // Required for context menu export
+        include_svg: true, // SVG output (default, explicit for clarity)
+        include_table_html: true, // HTML table output (default, explicit)
+        include_error: true, // Surface parse errors for debugging
+      },
     },
 
     /**
@@ -843,6 +882,7 @@ const MATHPIX_CONFIG = {
       SPLIT_VIEW_ENABLED: true, // Phase 4.1: Enabled
       EDIT_MODE_ENABLED: false, // Future: Phase 4.3
       PDF_COMPARISON_ENABLED: true, // Phase 4.2: Enabled
+      PREVIEW_PREPROCESS_FIGURES: true, // Phase 5F-3: Pre-process \includegraphics with <smiles> for preview
     },
 
     /**
@@ -1158,6 +1198,129 @@ const MATHPIX_CONFIG = {
       FORMAT_ERROR: "Unsupported format: {format}",
       PARTIAL_SUCCESS: "{completed} of {total} formats converted successfully",
       CANCELLED: "Conversion cancelled",
+    },
+  },
+
+  // Phase 7C: Chemistry rendering presets
+  CHEMISTRY_RENDERING: {
+    STORAGE_KEY: "mathpix_chemistry_preset",
+    CUSTOM_STORAGE_KEY: "mathpix_chemistry_custom_options",
+    DEFAULT_PRESET: "skeletal",
+
+    PRESETS: {
+      skeletal: {
+        label: "Skeletal",
+        description: "Standard skeletal formula — compact, no explicit hydrogens",
+        bondThickness: 2.0,
+        bondLength: 15,
+        shortBondLength: 0.85,
+        bondSpacing: 5.1,
+        atomVisualization: "default",
+        terminalCarbons: false,
+        explicitHydrogens: false,
+        overlapSensitivity: 0.42,
+        compactDrawing: true,
+        fontSizeLarge: 9,
+        fontSizeSmall: 6,
+        padding: 20,
+      },
+      textbook: {
+        label: "Textbook",
+        description: "Explicit hydrogens and terminal carbons — clearer for learning",
+        bondThickness: 2.0,
+        bondLength: 20,
+        shortBondLength: 0.85,
+        bondSpacing: 5.5,
+        atomVisualization: "default",
+        terminalCarbons: true,
+        explicitHydrogens: true,
+        overlapSensitivity: 0.42,
+        compactDrawing: false,
+        fontSizeLarge: 11,
+        fontSizeSmall: 8,
+        padding: 25,
+      },
+      monochrome: {
+        label: "Monochrome",
+        description: "Single colour — suitable for print or high-contrast needs",
+        bondThickness: 2.0,
+        bondLength: 15,
+        shortBondLength: 0.85,
+        bondSpacing: 5.1,
+        atomVisualization: "default",
+        terminalCarbons: false,
+        explicitHydrogens: false,
+        overlapSensitivity: 0.42,
+        compactDrawing: true,
+        fontSizeLarge: 9,
+        fontSizeSmall: 6,
+        padding: 20,
+        colourScheme: "monochrome",
+      },
+      "high-contrast": {
+        label: "High Contrast",
+        description: "Bold bonds, large labels — optimised for visibility",
+        bondThickness: 3.0,
+        bondLength: 22,
+        shortBondLength: 0.85,
+        bondSpacing: 6.0,
+        atomVisualization: "default",
+        terminalCarbons: true,
+        explicitHydrogens: false,
+        overlapSensitivity: 0.42,
+        compactDrawing: false,
+        fontSizeLarge: 13,
+        fontSizeSmall: 9,
+        padding: 28,
+        colourScheme: "high-contrast",
+      },
+    },
+
+    // Colour palettes per scheme, per theme
+    COLOUR_PALETTES: {
+      // Phase 7C-3: contrast audit swaps —
+      //   element light S:   #f9a825 → #7a5c00  (1.97 → ~7.0:1)
+      //   element light P:   #e65100 → #a63c00  (3.79 → ~5.8:1)
+      //   high-contrast S:   #cc8800 → #6b4800  (2.96 → ~8.5:1)
+      // Also adds H (hydrogen) key to every theme — SmilesDrawer needs it
+      // explicitly; omitting it leaves hydrogen subscripts rendered in a
+      // dim fallback colour (visible on dark theme as grey H₃C labels).
+      element: {
+        light: {
+          C: "#111111", H: "#111111", O: "#b71c1c", N: "#0d47a1", S: "#7a5c00",
+          F: "#2e7d32", CL: "#2e7d32", BR: "#8d6e63", I: "#6a1b9a",
+          P: "#a63c00", BACKGROUND: "#ffffff",
+        },
+        dark: {
+          C: "#e0e0e0", H: "#e0e0e0", O: "#ef5350", N: "#64b5f6", S: "#fff176",
+          F: "#81c784", CL: "#81c784", BR: "#bcaaa4", I: "#ce93d8",
+          P: "#ffab91", BACKGROUND: "#1e1e1e",
+        },
+      },
+      monochrome: {
+        light: {
+          C: "#111111", H: "#111111", O: "#111111", N: "#111111", S: "#111111",
+          F: "#111111", CL: "#111111", BR: "#111111", I: "#111111",
+          P: "#111111", BACKGROUND: "#ffffff",
+        },
+        dark: {
+          C: "#e0e0e0", H: "#e0e0e0", O: "#e0e0e0", N: "#e0e0e0", S: "#e0e0e0",
+          F: "#e0e0e0", CL: "#e0e0e0", BR: "#e0e0e0", I: "#e0e0e0",
+          P: "#e0e0e0", BACKGROUND: "#1e1e1e",
+        },
+      },
+      "high-contrast": {
+        light: {
+          C: "#000000", H: "#000000", O: "#d50000", N: "#0000cc", S: "#6b4800",
+          F: "#006600", CL: "#006600", BR: "#663300", I: "#4a0080",
+          P: "#cc3300", BACKGROUND: "#ffffff",
+        },
+        dark: {
+          C: "#ffffff", H: "#ffffff", O: "#ff5252", N: "#82b1ff", S: "#ffff00",
+          F: "#69f0ae", CL: "#69f0ae", BR: "#d7ccc8", I: "#ea80fc",
+          P: "#ff9e80", BACKGROUND: "#000000",
+        },
+      },
     },
   },
 

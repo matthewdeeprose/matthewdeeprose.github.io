@@ -23,7 +23,7 @@ const UniversalToggletip = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -64,8 +64,8 @@ const UniversalToggletip = (function () {
       currentLogLevel = level;
       logInfo(
         `Logging level set to: ${Object.keys(LOG_LEVELS).find(
-          (key) => LOG_LEVELS[key] === level
-        )}`
+          (key) => LOG_LEVELS[key] === level,
+        )}`,
       );
     } else {
       logWarn(`Invalid logging level: ${level}`);
@@ -88,6 +88,9 @@ const UniversalToggletip = (function () {
       // Track all open toggletips in order (for Escape key handling)
       this.openToggletips = [];
 
+      // Shared live region for screen reader announcements
+      this.liveRegion = null;
+
       // Default configuration
       this.defaults = {
         position: "bottom",
@@ -108,8 +111,60 @@ const UniversalToggletip = (function () {
       if (this.isInitialised) return;
 
       this.setupGlobalEventListeners();
+      this.createLiveRegion();
       this.isInitialised = true;
       logInfo("Toggletip system initialised");
+    }
+
+    /**
+     * Create a shared visually-hidden live region for screen reader announcements.
+     * Uses assertive so announcements are spoken promptly.
+     */
+    createLiveRegion() {
+      if (this.liveRegion) return;
+
+      const region = document.createElement("div");
+      region.id = "universal-toggletip-live-region";
+      region.setAttribute("role", "status");
+      region.setAttribute("aria-live", "assertive");
+      region.setAttribute("aria-atomic", "true");
+
+      // Visually hidden but available to screen readers
+      region.style.cssText =
+        "position:absolute;width:1px;height:1px;padding:0;margin:-1px;" +
+        "overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;";
+
+      document.body.appendChild(region);
+      this.liveRegion = region;
+      logDebug("Live region created for screen reader announcements");
+    }
+
+    /**
+     * Announce a message to screen readers via the shared live region.
+     * Clears after a short delay to allow repeated identical announcements.
+     * @param {string} message - Text to announce
+     */
+    announce(message) {
+      if (!this.liveRegion) {
+        this.createLiveRegion();
+      }
+
+      // Clear first so identical consecutive messages are re-announced
+      this.liveRegion.textContent = "";
+
+      // Use a microtask gap so the clearing is processed before the new content
+      requestAnimationFrame(() => {
+        this.liveRegion.textContent = message;
+
+        // Clear after 3 seconds to avoid stale announcements
+        setTimeout(() => {
+          if (this.liveRegion) {
+            this.liveRegion.textContent = "";
+          }
+        }, 3000);
+      });
+
+      logDebug(`Screen reader announcement: "${message}"`);
     }
 
     /**
@@ -148,7 +203,7 @@ const UniversalToggletip = (function () {
         const clickedToggletip = e.target.closest(".universal-toggletip");
         const clickedTrigger = e.target.closest(".universal-toggletip-trigger");
         const clickedCanvasButton = e.target.closest(
-          ".universal-toggletip-canvas-region-button"
+          ".universal-toggletip-canvas-region-button",
         );
 
         if (!clickedToggletip && !clickedTrigger && !clickedCanvasButton) {
@@ -163,17 +218,17 @@ const UniversalToggletip = (function () {
         (e) => {
           const touchedToggletip = e.target.closest(".universal-toggletip");
           const touchedTrigger = e.target.closest(
-            ".universal-toggletip-trigger"
+            ".universal-toggletip-trigger",
           );
           const touchedCanvasButton = e.target.closest(
-            ".universal-toggletip-canvas-region-button"
+            ".universal-toggletip-canvas-region-button",
           );
 
           if (!touchedToggletip && !touchedTrigger && !touchedCanvasButton) {
             this.closeAll();
           }
         },
-        { passive: true }
+        { passive: true },
       );
 
       // Dismiss DOM toggletips on scroll (but not canvas regions - users may want to compare)
@@ -198,7 +253,7 @@ const UniversalToggletip = (function () {
             }
           }
         },
-        { passive: true }
+        { passive: true },
       );
 
       // Reposition on resize
@@ -220,7 +275,7 @@ const UniversalToggletip = (function () {
             }
           }
         },
-        { passive: true }
+        { passive: true },
       );
 
       // Integration with UniversalModal - close toggletips when modal opens
@@ -244,7 +299,7 @@ const UniversalToggletip = (function () {
       });
 
       logDebug(
-        "Global event listeners registered (including touch and modal integration)"
+        "Global event listeners registered (including touch and modal integration)",
       );
     }
 
@@ -379,6 +434,10 @@ const UniversalToggletip = (function () {
       closeButton.type = "button";
       closeButton.className = "universal-toggletip-close";
       closeButton.setAttribute("aria-label", "Close");
+      // Link close button to content so NVDA reads it as the button's description
+      closeButton.setAttribute("aria-describedby", `${toggletipId}-content`);
+      // Start unfocusable — toggletip is hidden at creation (WCAG 4.1.2)
+      closeButton.setAttribute("tabindex", "-1");
       closeButton.innerHTML = '<span aria-hidden="true">×</span>';
       closeButton.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -529,8 +588,11 @@ const UniversalToggletip = (function () {
       }
 
       // Focus the close button for keyboard users
+      // Content is announced via aria-describedby on the close button
       const closeButton = element.querySelector(".universal-toggletip-close");
       if (closeButton) {
+        // Restore focusability — removed when hidden to satisfy WCAG 4.1.2
+        closeButton.removeAttribute("tabindex");
         // Small delay to ensure element is visible
         requestAnimationFrame(() => {
           closeButton.focus();
@@ -566,6 +628,14 @@ const UniversalToggletip = (function () {
       element.style.pointerEvents = "none";
       element.setAttribute("aria-hidden", "true");
 
+      // Remove close button from tab order while hidden (WCAG 4.1.2)
+      const hiddenCloseBtn = element.querySelector(
+        ".universal-toggletip-close",
+      );
+      if (hiddenCloseBtn) {
+        hiddenCloseBtn.setAttribute("tabindex", "-1");
+      }
+
       // Update state
       toggletipData.isVisible = false;
       if (this.activeToggletip && this.activeToggletip.id === toggletipId) {
@@ -578,11 +648,12 @@ const UniversalToggletip = (function () {
         this.openToggletips.splice(openIndex, 1);
       }
 
-      // Return focus to trigger
+      // Return focus to trigger and announce closure
       if (
         document.activeElement === element ||
         element.contains(document.activeElement)
       ) {
+        // Briefly blur then re-focus the trigger so NVDA re-reads it with "collapsed"
         trigger.focus();
       }
 
@@ -621,7 +692,7 @@ const UniversalToggletip = (function () {
         tooltipRect,
         viewportWidth,
         viewportHeight,
-        offset
+        offset,
       );
 
       // Calculate coordinates based on position
@@ -629,7 +700,7 @@ const UniversalToggletip = (function () {
         finalPosition,
         triggerRect,
         tooltipRect,
-        offset
+        offset,
       );
 
       // Apply position
@@ -642,7 +713,7 @@ const UniversalToggletip = (function () {
       // Set position class for arrow styling
       element.className = element.className.replace(
         /universal-toggletip-position-\w+/g,
-        ""
+        "",
       );
       element.classList.add(`universal-toggletip-position-${finalPosition}`);
     }
@@ -656,7 +727,7 @@ const UniversalToggletip = (function () {
       tooltipRect,
       viewportWidth,
       viewportHeight,
-      offset
+      offset,
     ) {
       const spaceAbove = triggerRect.top;
       const spaceBelow = viewportHeight - triggerRect.bottom;
@@ -759,7 +830,7 @@ const UniversalToggletip = (function () {
         const arrowOffset = triggerCenter - coords.left;
         arrow.style.left = `${Math.max(
           12,
-          Math.min(arrowOffset, element.offsetWidth - 12)
+          Math.min(arrowOffset, element.offsetWidth - 12),
         )}px`;
       }
 
@@ -769,7 +840,7 @@ const UniversalToggletip = (function () {
         const arrowOffset = triggerMiddle - coords.top + window.scrollY;
         arrow.style.top = `${Math.max(
           12,
-          Math.min(arrowOffset, element.offsetHeight - 12)
+          Math.min(arrowOffset, element.offsetHeight - 12),
         )}px`;
       }
     }
@@ -860,7 +931,7 @@ const UniversalToggletip = (function () {
 
       // Get all focusable elements on the page
       const allFocusable = Array.from(
-        document.querySelectorAll(focusableSelectors)
+        document.querySelectorAll(focusableSelectors),
       ).filter((el) => {
         // Exclude elements inside toggletips
         if (el.closest(".universal-toggletip")) return false;
@@ -906,7 +977,7 @@ const UniversalToggletip = (function () {
       ].join(", ");
 
       const allFocusable = Array.from(
-        document.querySelectorAll(focusableSelectors)
+        document.querySelectorAll(focusableSelectors),
       ).filter((el) => {
         if (el.closest(".universal-toggletip")) return false;
         if (el.offsetParent === null && el.tagName !== "BODY") return false;
@@ -946,7 +1017,7 @@ const UniversalToggletip = (function () {
       }
 
       const contentElement = toggletipData.element.querySelector(
-        ".universal-toggletip-content"
+        ".universal-toggletip-content",
       );
       if (contentElement) {
         if (typeof newContent === "string") {
@@ -992,7 +1063,7 @@ const UniversalToggletip = (function () {
       trigger.removeAttribute("aria-controls");
       trigger.classList.remove(
         "universal-toggletip-trigger",
-        "universal-toggletip-trigger-active"
+        "universal-toggletip-trigger-active",
       );
 
       // Remove element from DOM
@@ -1153,7 +1224,7 @@ const UniversalToggletip = (function () {
       overlay.setAttribute("role", "group");
       overlay.setAttribute(
         "aria-label",
-        "Interactive regions - use Tab to navigate, Enter to view details"
+        "Interactive regions - use Tab to navigate, Enter to view details",
       );
 
       // Position overlay exactly over canvas
@@ -1470,7 +1541,7 @@ const UniversalToggletip = (function () {
           if (e.key === "Tab" && !e.shiftKey && regionData.isVisible) {
             // Forward Tab when toggletip is open: go to close button
             const closeBtn = element.querySelector(
-              ".universal-toggletip-close"
+              ".universal-toggletip-close",
             );
             if (closeBtn) {
               e.preventDefault();
@@ -1482,11 +1553,14 @@ const UniversalToggletip = (function () {
         accessibleButton.dataset.tabHandlerAttached = "true";
       }
 
-      // Focus close button
+      // Focus close button — content is announced via aria-describedby
       const closeButton = element.querySelector(".universal-toggletip-close");
       if (closeButton) {
+        // Restore focusability — removed when hidden to satisfy WCAG 4.1.2
+        closeButton.removeAttribute("tabindex");
         requestAnimationFrame(() => {
           closeButton.focus();
+          this.announce("Expanded");
         });
       }
 
@@ -1530,6 +1604,14 @@ const UniversalToggletip = (function () {
       element.classList.remove("universal-toggletip-visible");
       element.setAttribute("aria-hidden", "true");
       element.style.pointerEvents = "none";
+
+      // Remove close button from tab order while hidden (WCAG 4.1.2)
+      const hiddenCloseBtn = element.querySelector(
+        ".universal-toggletip-close",
+      );
+      if (hiddenCloseBtn) {
+        hiddenCloseBtn.setAttribute("tabindex", "-1");
+      }
 
       // Update state
       regionData.isVisible = false;
@@ -1607,7 +1689,7 @@ const UniversalToggletip = (function () {
         tooltipRect,
         viewportWidth,
         viewportHeight,
-        offset
+        offset,
       );
 
       // Calculate coordinates
@@ -1615,7 +1697,7 @@ const UniversalToggletip = (function () {
         finalPosition,
         regionRect,
         tooltipRect,
-        offset
+        offset,
       );
 
       // Apply position
@@ -1628,7 +1710,7 @@ const UniversalToggletip = (function () {
       // Set position class
       element.className = element.className.replace(
         /universal-toggletip-position-\w+/g,
-        ""
+        "",
       );
       element.classList.add(`universal-toggletip-position-${finalPosition}`);
     }
@@ -1649,7 +1731,7 @@ const UniversalToggletip = (function () {
           if (updates.content !== undefined) {
             regionData.content = updates.content;
             const contentElement = regionData.element.querySelector(
-              ".universal-toggletip-content"
+              ".universal-toggletip-content",
             );
             if (contentElement) {
               if (typeof updates.content === "string") {
@@ -1699,7 +1781,7 @@ const UniversalToggletip = (function () {
             regionData.accessibleButton.parentNode
           ) {
             regionData.accessibleButton.parentNode.removeChild(
-              regionData.accessibleButton
+              regionData.accessibleButton,
             );
           }
 

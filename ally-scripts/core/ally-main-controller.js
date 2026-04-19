@@ -242,6 +242,14 @@ const ALLY_MAIN_CONTROLLER = (function () {
         );
         localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.SAVE_CREDENTIALS, "true");
         logInfo("Credentials saved to localStorage");
+
+        // Notify Set Up and other listeners (Phase SU-3)
+        if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.emit === 'function') {
+          window.EmbedEventEmitter.emit('credentials:changed', {
+            service: 'ally',
+            action: 'saved'
+          });
+        }
       } else {
         // Clear stored credentials if user unchecked the option
         localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN);
@@ -249,6 +257,14 @@ const ALLY_MAIN_CONTROLLER = (function () {
         localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.REGION);
         localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.SAVE_CREDENTIALS);
         logDebug("Credentials cleared from localStorage");
+
+        // Notify Set Up and other listeners (Phase SU-3)
+        if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.emit === 'function') {
+          window.EmbedEventEmitter.emit('credentials:changed', {
+            service: 'ally',
+            action: 'cleared'
+          });
+        }
       }
     } catch (error) {
       logError("Failed to save credentials:", error);
@@ -2291,6 +2307,15 @@ const ALLY_MAIN_CONTROLLER = (function () {
 
       // Load stored credentials
       loadStoredCredentials();
+
+      // Listen for credential changes from Set Up (Phase SU-3)
+      if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.on === 'function') {
+        window.EmbedEventEmitter.on('credentials:changed', function (data) {
+          if (data && data.service === 'ally') {
+            loadStoredCredentials();
+          }
+        });
+      }
 
       // Set credentials section open state and highlight if credentials missing
       // Use timeout to allow browser autofill to complete

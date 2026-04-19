@@ -327,6 +327,9 @@ class MathPixModeSwitcher extends MathPixBaseModule {
   switchToUploadMode() {
     logDebug("Switching to upload mode");
 
+    // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
+    this._onModeExit(this.currentMode);
+
     // ✅ Clear any previous results before switching
     this.clearPreviousResults();
 
@@ -374,6 +377,9 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    */
   switchToDrawMode() {
     logDebug("Switching to draw mode");
+
+    // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
+    this._onModeExit(this.currentMode);
 
     // ✅ Clear any previous results before switching
     this.clearPreviousResults();
@@ -426,6 +432,9 @@ class MathPixModeSwitcher extends MathPixBaseModule {
   switchToCameraMode() {
     logDebug("Switching to camera mode");
 
+    // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
+    this._onModeExit(this.currentMode);
+
     // ✅ Clear any previous results before switching
     this.clearPreviousResults();
 
@@ -476,6 +485,9 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    */
   switchToConvertMode() {
     logDebug("Switching to convert mode");
+
+    // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
+    this._onModeExit(this.currentMode);
 
     // ✅ Clear any previous results before switching
     this.clearPreviousResults();
@@ -528,19 +540,25 @@ class MathPixModeSwitcher extends MathPixBaseModule {
   switchToResumeMode() {
     logDebug("Switching to resume mode");
 
+    // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
+    this._onModeExit(this.currentMode);
+
     // Clear any previous results before switching
     this.clearPreviousResults();
 
     // Update state
     this.currentMode = "resume";
 
-    // Update UI visibility (using style.display to override inline styles)
+    // Update UI visibility (using style.display to override inline styles).
+    // Phase 8A-8 Stage 3: removed a stale duplicate line that set
+    // `resumeContainer.style.display = "none"` immediately after setting
+    // it to "" — the restorer's own show() call later made things appear
+    // to work, but the inline `display: none` lingered until show() ran.
     if (this.uploadContainer) this.uploadContainer.style.display = "none";
     if (this.drawContainer) this.drawContainer.style.display = "none";
     if (this.cameraContainer) this.cameraContainer.style.display = "none";
     if (this.convertContainer) this.convertContainer.style.display = "none";
     if (this.resumeContainer) this.resumeContainer.style.display = "";
-    if (this.resumeContainer) this.resumeContainer.style.display = "none";
 
     // Update radio button state
     if (this.uploadRadio) this.uploadRadio.checked = false;
@@ -553,6 +571,20 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     const restorer = window.getMathPixSessionRestorer?.();
     if (restorer) {
       restorer.show();
+
+      // Phase 8A-8 Stage 3: explicitly initialise the resume panel's
+      // tab state rather than relying on whatever state happened to
+      // persist from a previous session/mode. Use the last-viewed tab
+      // (set by switchTab() on each call) or "mmd" as the deterministic
+      // fallback. See CLAUDE.md "Mode-switcher invariant".
+      if (typeof restorer.switchTab === "function") {
+        const targetTab = restorer._lastResumeTab || "mmd";
+        try {
+          restorer.switchTab(targetTab);
+        } catch (err) {
+          logWarn("switchToResumeMode: restorer.switchTab threw", err);
+        }
+      }
     }
 
     // Notify user
@@ -587,6 +619,32 @@ class MathPixModeSwitcher extends MathPixBaseModule {
       } catch (error) {
         logError("Mode change callback failed", error);
       }
+    }
+  }
+
+  /**
+   * Phase 8A-9 D-8: Central mode-exit hook. Called at the top of every
+   * switchToXxxMode() BEFORE clearPreviousResults(). This is the single
+   * place where canonical-DOM-ownership restoration happens (and where
+   * any future cleanup step goes).
+   *
+   * If you add a new mode that takes DOM custody of chemistry elements,
+   * update this method to restore on exit.
+   *
+   * @private
+   * @param {string} prevMode - The mode being exited
+   */
+  _onModeExit(prevMode) {
+    // Restore chemistry elements to their canonical panel
+    // (#mathpix-output-smiles) if PDF mode moved them into #panel-chemistry.
+    // This is idempotent — safe to call even when no move occurred.
+    try {
+      const pdfRenderer = this.controller?.pdfResultRenderer;
+      if (pdfRenderer && typeof pdfRenderer._restoreChemistryToCanonical === "function") {
+        pdfRenderer._restoreChemistryToCanonical();
+      }
+    } catch (error) {
+      logWarn("_onModeExit: chemistry restore failed", error);
     }
   }
 

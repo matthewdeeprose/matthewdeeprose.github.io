@@ -75,10 +75,11 @@
    * Prompt files to load
    * Each entry maps the global variable name to the filename
    */
-  const PROMPT_FILES = {
+const PROMPT_FILES = {
     PROMPT_MARKDOWN: "prompt-markdown.txt",
     PROMPT_WRITING_GUIDE: "prompt-writing-guide.txt",
     PROMPT_IMAGE_DESCRIPTION: "prompt-image-description.txt",
+    PROMPT_VERIFICATION: "prompt-verification.txt",
   };
 
   // ============================================================================

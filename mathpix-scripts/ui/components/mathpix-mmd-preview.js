@@ -36,6 +36,13 @@ const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
+// Phase 8A-7: per-pass diagnostics for the chemistry enhancement queue.
+// Flip to `true` to emit a compact WARN-level snapshot at the start of every
+// `_enhanceChemistryImages` pass (structure count, per-image count, global
+// preset, cache size, MMD length). Kept off by default so production logs
+// stay quiet; enable quickly if the intermittent staleness bug recurs.
+const LOG_PASS_DIAGNOSTICS = false;
+
 /**
  * @function shouldLog
  * @description Determines if a message should be logged based on current logging configuration
@@ -169,6 +176,47 @@ class MathPixMMDPreview {
     // MathJax recovery tracking
     this.mathJaxRecoveryUnsubscribe = null;
     this.pendingMathJaxRender = false; // True if MathJax failed during last render
+
+    // Phase 6H: Chemistry image enhancement
+    // Phase 7C-7: cache entries now shaped as { blobUrl, fingerprint } so that
+    // a genuine rendering-settings change invalidates only the affected
+    // entries instead of the whole map.
+    this.chemistryBlobUrlMap = new Map(); // CDN URL → { blobUrl, fingerprint }
+    this.chemistryBlobUrls = []; // All blob URLs for cleanup
+    this._chemEnhanceAborted = false; // Abort flag for in-progress enhancement
+    this._chemShowingEnhanced = true; // Toggle state: true = enhanced, false = originals
+
+    // Phase 7C-7: cache the most recent enhancement inputs so the
+    // `chemistry-settings-changed` listener can re-run against the same
+    // content/target without refetching or re-rendering the preview.
+    this._lastChemMmdContent = null;
+    this._lastChemTargetElement = null;
+    this._chemEnhanceInFlight = false;
+    // Phase 8A-7: counter, not boolean — every queued event produces a pass
+    // so we never collapse a burst of settings changes into a single re-run.
+    this._chemReEnhanceRequested = 0;
+
+    // Phase 8A-7: defensive — remember chemistry-settings-changed events that
+    // arrived before the preview was ready to act on them (cache empty or no
+    // cached MMD/target). The next `_enhanceChemistryImages` pass consumes
+    // the flag and invalidates the cache so it becomes authoritative.
+    this._pendingChemistrySettingsChange = false;
+    this._pendingChemistrySettingsChangeDetail = null;
+
+    // Phase 7C-7: bind + attach the settings-changed listener. Used by a
+    // sentinel in the 7C-7 test harness to confirm wiring.
+    this._chemistrySettingsChangedBound = true;
+    this._onChemistrySettingsChanged = this._onChemistrySettingsChanged.bind(this);
+    try {
+      document.addEventListener(
+        "chemistry-settings-changed",
+        this._onChemistrySettingsChanged,
+      );
+    } catch (listenerErr) {
+      logWarn("Phase 7C-7: failed to attach chemistry-settings-changed listener", {
+        error: listenerErr.message,
+      });
+    }
 
     // Initialisation flag
     this.isInitialised = true;
@@ -533,6 +581,640 @@ class MathPixMMDPreview {
   // ============================================================================
 
   /**
+   * Pre-process MMD content for preview rendering
+   *
+   * Removes the entire `alt={...}` option from `\includegraphics` commands
+   * before rendering. The CDN library's `\includegraphics` parser incorrectly
+   * treats the first `{...}` group inside the `[...]` options as the image
+   * source, so `alt={SMILES_NOTATION}` causes it to use the SMILES string as
+   * the `src` attribute instead of the actual CDN URL. Stripping the alt
+   * option entirely lets the library parse the URL correctly.
+   *
+   * Also strips `\captionsetup{...}` lines, which the CDN library cannot
+   * parse and would otherwise appear as visible text.
+   *
+   * Controlled by `FEATURES.PREVIEW_PREPROCESS_FIGURES` config flag.
+   *
+   * **Important:** This operates on a temporary copy of the content for rendering
+   * only. The stored MMD content (used by the Source tab, Editor, Convert API,
+   * chemistry extraction, and Copy/Download) is never modified.
+   *
+   * @param {string} content - Raw MMD content
+   * @returns {string} Pre-processed content safe for CDN library rendering
+   * @private
+   */
+  _preprocessForPreview(content) {
+    let processed = content;
+
+    // Remove alt={...} from \includegraphics options entirely.
+    // The CDN library treats the first {...} in options as the image source,
+    // so alt={CONTENT} breaks image rendering. Handles trailing comma/space.
+    const figureResult = processed.replace(
+      /\\includegraphics\[alt=\{[^}]*\},?\s*/g,
+      "\\includegraphics[",
+    );
+    const figureCount = content.length - figureResult.length !== 0 ? 1 : 0;
+    processed = figureResult;
+
+    // Remove \captionsetup{...} lines — LaTeX formatting the CDN library cannot handle
+    const captionResult = processed.replace(/\\captionsetup\{[^}]*\}\n?/g, "");
+    const captionCount = processed.length - captionResult.length !== 0 ? 1 : 0;
+    processed = captionResult;
+
+    if (figureCount || captionCount) {
+      logDebug("[MathPixMMDPreview] Pre-processed content for preview", {
+        altAttributesRemoved: figureCount > 0,
+        captionsetupRemoved: captionCount > 0,
+      });
+    }
+
+    return processed;
+  }
+
+  // ============================================================================
+  // Phase 6H: Chemistry Image Enhancement
+  // ============================================================================
+
+  /**
+   * Extract SMILES notation and CDN URLs from MMD content.
+   * Parses \includegraphics[alt={<smiles>NOTATION</smiles>}]{CDN_URL} patterns.
+   *
+   * @param {string} mmdContent - Raw MMD content (before preprocessing)
+   * @returns {Map<string, string>} Map of CDN URL → SMILES notation
+   * @private
+   */
+  _extractChemistrySmiles(mmdContent) {
+    const chemUrlToSmiles = new Map();
+    if (!mmdContent) return chemUrlToSmiles;
+
+    // Same regex as Phase 6G in mathpix-total-downloader.js
+    const regex =
+      /\\includegraphics\s*\[alt=\{[^}]*<smiles[^>]*>(.*?)<\/smiles>[^}]*\}[^\]]*\]\s*\{([^}]+)\}/g;
+    let match;
+    while ((match = regex.exec(mmdContent)) !== null) {
+      const smiles = match[1];
+      const cdnUrl = match[2].trim();
+      if (smiles && cdnUrl) {
+        chemUrlToSmiles.set(cdnUrl, smiles);
+      }
+    }
+    return chemUrlToSmiles;
+  }
+
+  /**
+   * Enhance chemistry images in the preview DOM with crisp SmilesDrawer renders.
+   * Runs asynchronously after the initial preview paint (non-blocking).
+   * Progressively swaps CDN crop images with rendered blob URLs.
+   *
+   * @param {string} mmdContent - Raw MMD content (before preprocessing)
+   * @param {HTMLElement} targetElement - The preview DOM element
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _enhanceChemistryImages(mmdContent, targetElement) {
+    // Check prerequisites
+    if (
+      typeof window.SmilesDrawer === "undefined" ||
+      typeof window.MathPixChemistryUtils?.renderStructureToBlob !== "function"
+    ) {
+      logDebug(
+        "Phase 6H: SmilesDrawer or renderStructureToBlob not available, skipping",
+      );
+      return;
+    }
+
+    // Phase 8A-7: consume the pending-settings flag. The per-entry
+    // fingerprint-mismatch path below correctly detects stale entries
+    // against the current `_chemistryData`, so wholesale cache invalidation
+    // isn't needed — and wholesale revocation would leave the DOM pointing
+    // at revoked blob URLs if any subsequent render fails (e.g. the
+    // SmilesDrawer "canvas appears blank" race). Just clear the flag here
+    // so we don't accumulate stale detail info, and let per-entry
+    // revocation happen lazily inside the render loop, *after* a
+    // replacement blob has been successfully produced.
+    if (this._pendingChemistrySettingsChange) {
+      logWarn(
+        "Phase 8A-7: consuming pending chemistry-settings change — relying on per-entry fingerprint mismatch",
+        {
+          detail: this._pendingChemistrySettingsChangeDetail,
+          cacheSize: this.chemistryBlobUrlMap.size,
+        },
+      );
+      this._pendingChemistrySettingsChange = false;
+      this._pendingChemistrySettingsChangeDetail = null;
+    }
+
+    // Phase 8A-7: compact per-pass diagnostic snapshot. Guarded by the
+    // module-level `LOG_PASS_DIAGNOSTICS` flag so production stays quiet;
+    // flip the flag at the top of this file to capture state if the
+    // intermittent staleness bug recurs.
+    if (LOG_PASS_DIAGNOSTICS) {
+      const chemistryData =
+        window.getMathPixController?.()?.resultRenderer?._chemistryData || [];
+      logWarn("Phase 8A-7: enhancement pass starting", {
+        structureCount: chemistryData.length,
+        perImageCount: chemistryData.filter(
+          (d) => d?.renderOptions && Object.keys(d.renderOptions).length > 0,
+        ).length,
+        globalPreset: window.MathPixChemistryUtils?.getActivePreset?.(),
+        cacheSize: this.chemistryBlobUrlMap.size,
+        mmdLen: mmdContent?.length,
+      });
+    }
+
+    // Phase 7C-7: Normalise blob URLs back to CDN URLs before extraction.
+    // The MMD editor's live-preview sync can pass content where blob URLs
+    // have already been baked into `\includegraphics{...}` paths (because
+    // the editor reads the rewritten preview source). Extracting against
+    // blob-URL keys would bypass the CDN-keyed blob cache entirely and
+    // leave the fingerprint cache miss path broken. Reversing first
+    // guarantees the extracted map is keyed by CDN URL so cache hits,
+    // swaps, and stable `_lastChemMmdContent` all line up.
+    const normalisedMmd =
+      typeof this.getMMDWithOriginalChemistryUrls === "function"
+        ? this.getMMDWithOriginalChemistryUrls(mmdContent)
+        : mmdContent;
+
+    // Extract SMILES from original MMD (before preprocessing strips alt attributes)
+    const chemUrlToSmiles = this._extractChemistrySmiles(normalisedMmd);
+    if (chemUrlToSmiles.size === 0) {
+      logDebug("Phase 6H: No chemistry images found in MMD");
+      return;
+    }
+
+    logInfo(
+      `Phase 6H: Found ${chemUrlToSmiles.size} chemistry image(s) to enhance`,
+    );
+    this._chemEnhanceAborted = false;
+    this._chemEnhanceInFlight = true;
+
+    // Phase 7C-7: remember the inputs so chemistry-settings-changed can
+    // re-run enhancement against the same content + target. Store the
+    // NORMALISED (CDN-keyed) content so a later re-run stays in sync with
+    // the cache shape.
+    this._lastChemMmdContent = normalisedMmd;
+    this._lastChemTargetElement = targetElement;
+
+    // Phase 7C-7: pull the live per-image state map once per pass. First-match
+    // wins on duplicate SMILES — consistent with 7C-5/7C-6.
+    const chemistryData =
+      window.getMathPixController?.()?.resultRenderer?._chemistryData;
+    const resolvePerImageOptions = (smiles) => {
+      if (!Array.isArray(chemistryData)) return undefined;
+      const match = chemistryData.find((d) => d?.notation === smiles);
+      if (
+        match?.renderOptions &&
+        typeof match.renderOptions === "object" &&
+        Object.keys(match.renderOptions).length > 0
+      ) {
+        return match.renderOptions;
+      }
+      return undefined;
+    };
+
+    let enhancedCount = 0;
+
+    for (const [cdnUrl, smiles] of chemUrlToSmiles) {
+      // Check abort flag (e.g. new render started)
+      if (this._chemEnhanceAborted) {
+        logInfo("Phase 6H: Enhancement aborted (new render in progress)");
+        break;
+      }
+
+      const perImageOptions = resolvePerImageOptions(smiles);
+      let desiredFingerprint;
+      try {
+        desiredFingerprint = this._computeRenderFingerprint(perImageOptions);
+      } catch (fpErr) {
+        // Phase 7C-7: defensive — fall back to pre-7C-7 behaviour (treat
+        // every cached entry as stale).
+        logWarn("Phase 7C-7: fingerprint computation failed, forcing re-render", {
+          error: fpErr.message,
+        });
+        desiredFingerprint = null;
+      }
+
+      // Phase 7C-7: remember the PREVIOUS blob URL so we can locate the
+      // img in the DOM even when the editor's live-preview sync has
+      // rewritten the src to the stale blob URL (the DOM no longer
+      // references the CDN URL after that).
+      let previousBlobUrl = null;
+
+      // Skip if already rendered with the SAME fingerprint — fast path.
+      //
+      // Phase 8A-7 refinement: on fingerprint mismatch, DO NOT revoke the
+      // old blob here. Revocation is deferred until a replacement blob
+      // has been successfully produced below. That way, if the render
+      // fails (e.g. SmilesDrawer "canvas appears blank" race), the DOM
+      // continues to show the old (still-valid) image instead of a
+      // revoked URL.
+      if (this.chemistryBlobUrlMap.has(cdnUrl)) {
+        const existing = this.chemistryBlobUrlMap.get(cdnUrl);
+        previousBlobUrl = existing?.blobUrl || null;
+        if (
+          desiredFingerprint !== null &&
+          existing?.fingerprint === desiredFingerprint
+        ) {
+          const img =
+            this._findImgBySrc(targetElement, cdnUrl) ||
+            (previousBlobUrl
+              ? this._findImgBySrc(targetElement, previousBlobUrl)
+              : null);
+          if (img) {
+            img.src = existing.blobUrl;
+            enhancedCount++;
+          }
+          continue;
+        }
+        // Fall through to re-render. Old entry stays in the map and the
+        // old blob stays valid until we confirm a replacement.
+        logDebug(
+          `Phase 8A-7: cache miss — fingerprint changed for ${smiles.substring(0, 30)} — will render replacement before revoking`,
+        );
+      }
+
+      try {
+        // Phase 8A-7 refinement: SmilesDrawer has an intermittent
+        // "canvas appears blank after rendering" race. When it fires,
+        // `renderStructureToBlob` returns null. Mirror the Phase 7C-7 / 8B
+        // retry pattern (50 ms, one retry) used in the Save Image button
+        // and the ZIP downloader.
+        const renderOpts = {
+          width: 800,
+          height: 600,
+          background: "#ffffff",
+          perImageOptions, // Phase 7C-7
+        };
+        let blob =
+          await window.MathPixChemistryUtils.renderStructureToBlob(smiles, renderOpts);
+
+        if (!blob) {
+          logWarn(
+            `Phase 8A-7: renderStructureToBlob returned null for SMILES: ${smiles.substring(0, 40)} — retrying after 50ms`,
+          );
+          await new Promise((r) => setTimeout(r, 50));
+          blob = await window.MathPixChemistryUtils.renderStructureToBlob(
+            smiles,
+            renderOpts,
+          );
+        }
+
+        if (!blob) {
+          logWarn(
+            `Phase 6H: renderStructureToBlob returned null after retry for SMILES: ${smiles.substring(0, 40)} — keeping previous blob in cache`,
+          );
+          continue;
+        }
+
+        const blobUrl = URL.createObjectURL(blob);
+
+        // Check abort again before DOM manipulation
+        if (this._chemEnhanceAborted) {
+          logInfo("Phase 6H: Enhancement aborted before DOM swap");
+          try { URL.revokeObjectURL(blobUrl); } catch (e) { /* ignore */ }
+          break;
+        }
+
+        // Swap in DOM — look up by cdn URL first, then by the previous
+        // blob URL if the editor's live-preview sync (or an earlier pass)
+        // has already rewritten the img src away from the cdn URL.
+        // Important: this runs BEFORE we revoke the previous blob, so the
+        // DOM lookup can still find the img by its existing src.
+        const img =
+          this._findImgBySrc(targetElement, cdnUrl) ||
+          (previousBlobUrl
+            ? this._findImgBySrc(targetElement, previousBlobUrl)
+            : null);
+        if (img) {
+          img.src = blobUrl;
+          enhancedCount++;
+          logDebug(
+            `Phase 6H: Swapped chemistry image for SMILES: ${smiles.substring(0, 30)}...`,
+          );
+        }
+
+        // Phase 8A-7 refinement: replacement blob is in place in the DOM,
+        // so now it's safe to revoke the old blob (if any) and swap in the
+        // new cache entry. Doing this AFTER the DOM swap ensures nothing
+        // is ever looking at a revoked URL.
+        if (previousBlobUrl) {
+          try { URL.revokeObjectURL(previousBlobUrl); } catch (e) { /* ignore */ }
+          const idx = this.chemistryBlobUrls.indexOf(previousBlobUrl);
+          if (idx !== -1) this.chemistryBlobUrls.splice(idx, 1);
+        }
+        this.chemistryBlobUrlMap.set(cdnUrl, {
+          blobUrl,
+          fingerprint: desiredFingerprint,
+        });
+        this.chemistryBlobUrls.push(blobUrl);
+      } catch (error) {
+        logWarn(
+          `Phase 6H: Failed to render SMILES "${smiles.substring(0, 40)}": ${error.message}`,
+        );
+        // Graceful degradation — keep CDN image
+      }
+    }
+
+    if (enhancedCount > 0) {
+      logInfo(
+        `Phase 6H: Enhanced ${enhancedCount} of ${chemUrlToSmiles.size} chemistry image(s)`,
+      );
+
+      // Show the persistent toggle bar
+      this._showChemEnhanceBar(enhancedCount);
+
+      // Fire a toast notification
+      const plural = enhancedCount === 1 ? "image" : "images";
+      if (typeof window.notifySuccess === "function") {
+        window.notifySuccess(
+          `${enhancedCount} chemistry ${plural} enhanced with crisp structure renders`,
+        );
+      }
+
+      // Track that we're currently showing enhanced images
+      this._chemShowingEnhanced = true;
+    }
+
+    // Phase 7C-7 / 8A-7: release in-flight flag and honour queued re-run
+    // requests. The counter (8A-7) decrements by one per pass kicked off;
+    // that pass will itself check the counter on completion, so bursts of
+    // events unwind one pass at a time rather than collapsing into one.
+    this._chemEnhanceInFlight = false;
+    if (this._chemReEnhanceRequested > 0) {
+      this._chemReEnhanceRequested -= 1;
+      if (this._lastChemMmdContent && this._lastChemTargetElement) {
+        logDebug("Phase 8A-7: processing queued re-enhance request", {
+          remainingAfterThis: this._chemReEnhanceRequested,
+        });
+        this._enhanceChemistryImages(
+          this._lastChemMmdContent,
+          this._lastChemTargetElement,
+        ).catch((err) => {
+          logWarn("Phase 7C-7: queued re-enhance failed", { error: err.message });
+        });
+      }
+    }
+  }
+
+  /**
+   * Phase 7C-7: Compute a short, stable fingerprint string representing the
+   * rendering options effectively in use for a given structure. Used to key
+   * the blob cache so rendering-preference changes invalidate only the
+   * affected entries.
+   *
+   * @param {Object|undefined} perImageOptions
+   * @returns {string}
+   * @private
+   */
+  _computeRenderFingerprint(perImageOptions) {
+    const utils = window.MathPixChemistryUtils;
+    if (perImageOptions && typeof perImageOptions === "object") {
+      return "perImage:" + JSON.stringify(perImageOptions);
+    }
+    const preset = utils?.getActivePreset?.() || "skeletal";
+    if (preset === "custom") {
+      return "custom:" + JSON.stringify(utils?.getCustomOptions?.() || {});
+    }
+    return "preset:" + preset;
+  }
+
+  /**
+   * Phase 7C-7: Handler for the `chemistry-settings-changed` document event.
+   * Re-runs `_enhanceChemistryImages` against the cached MMD content and
+   * preview target. Entries whose fingerprint still matches are reused;
+   * stale entries are revoked and re-rendered.
+   *
+   * Overlap strategy: if an enhancement pass is already in flight, abort it
+   * and set a "re-run needed" flag — the in-flight pass checks the flag on
+   * exit and starts a fresh pass. Simpler than reference-counting locks.
+   * @private
+   */
+  _onChemistrySettingsChanged(event) {
+    // Phase 8A-7: remember the change even if we can't act on it yet. When
+    // `_enhanceChemistryImages` next runs (first-render path included), it
+    // will check this flag and invalidate the blob cache so the pass is
+    // authoritative regardless of earlier dropped events.
+    this._pendingChemistrySettingsChange = true;
+    this._pendingChemistrySettingsChangeDetail = event?.detail || null;
+
+    // Phase 8A-7: a `scope: "global"` change alters every non-per-image
+    // structure's options. The per-entry fingerprint-mismatch path inside
+    // `_enhanceChemistryImages` detects this correctly (each affected
+    // structure's fingerprint changes) so wholesale invalidation here is
+    // unnecessary — and it would leave the DOM pointing at revoked blob
+    // URLs if the subsequent render failed.
+
+    if (this.chemistryBlobUrlMap.size === 0) return;
+    if (!this._lastChemMmdContent || !this._lastChemTargetElement) return;
+
+    if (this._chemEnhanceInFlight) {
+      this._chemEnhanceAborted = true;
+      // Phase 8A-7: counter, not boolean — never collapse bursts of events.
+      this._chemReEnhanceRequested += 1;
+      logDebug("Phase 8A-7: re-enhance queued (pass in flight)", {
+        pending: this._chemReEnhanceRequested,
+      });
+      return;
+    }
+
+    logDebug("Phase 7C-7: chemistry-settings-changed → re-enhancing preview", {
+      detail: event?.detail || {},
+    });
+
+    this._enhanceChemistryImages(
+      this._lastChemMmdContent,
+      this._lastChemTargetElement,
+    ).catch((err) => {
+      logWarn("Phase 7C-7: re-enhance pass failed", { error: err.message });
+    });
+  }
+
+  /**
+   * Find an <img> element by its src attribute value.
+   * Uses iteration rather than CSS selectors to avoid escaping issues
+   * with special characters in CDN URLs (?, &, = etc.).
+   *
+   * @param {HTMLElement} container - DOM element to search within
+   * @param {string} srcValue - The src attribute value to match
+   * @returns {HTMLImageElement|null} The matching img element, or null
+   * @private
+   */
+  _findImgBySrc(container, srcValue) {
+    const imgs = container.querySelectorAll("img");
+    for (const img of imgs) {
+      if (img.getAttribute("src") === srcValue) {
+        return img;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Rewrite CDN URLs to blob URLs in content using the existing chemistry map.
+   * Used by renderToString() for re-renders where blobs are already available.
+   *
+   * @param {string} content - Preprocessed content (CDN URLs still present)
+   * @returns {string} Content with CDN URLs replaced by blob URLs
+   * @private
+   */
+  _rewriteChemistryUrls(content) {
+    if (!content || this.chemistryBlobUrlMap.size === 0) return content;
+
+    let rewritten = content;
+    // Phase 7C-7: cache entries are { blobUrl, fingerprint } — unpack blobUrl
+    for (const [cdnUrl, entry] of this.chemistryBlobUrlMap) {
+      const blobUrl = entry?.blobUrl;
+      if (!blobUrl) continue;
+      const escapedUrl = cdnUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      rewritten = rewritten.replace(new RegExp(escapedUrl, "g"), blobUrl);
+    }
+    return rewritten;
+  }
+
+  /**
+   * Revoke all chemistry blob URLs and clear the map.
+   * Called during cleanup() and before re-enhancement if needed.
+   * @private
+   */
+  _revokeChemistryBlobUrls() {
+    if (this.chemistryBlobUrls.length === 0) return;
+
+    const count = this.chemistryBlobUrls.length;
+    for (const blobUrl of this.chemistryBlobUrls) {
+      try {
+        URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        // Ignore — may already be revoked
+      }
+    }
+    this.chemistryBlobUrls.length = 0;
+    this.chemistryBlobUrlMap.clear();
+    this._chemEnhanceAborted = false;
+    logDebug(`Phase 6H: Revoked ${count} chemistry blob URL(s)`);
+  }
+
+  /**
+   * Show the chemistry enhancement toggle bar above the preview.
+   * @param {number} count - Number of enhanced images
+   * @private
+   */
+  _showChemEnhanceBar(count) {
+    const bar = document.getElementById("chem-enhance-bar");
+    const countEl = document.getElementById("chem-enhance-count");
+    const toggleBtn = document.getElementById("chem-enhance-toggle");
+    if (!bar || !countEl) return;
+
+    const plural = count === 1 ? "structure" : "structures";
+    countEl.textContent = `${count} chemistry ${plural} enhanced`;
+    bar.removeAttribute("hidden");
+
+    // Reset toggle state to "showing enhanced"
+    this._chemShowingEnhanced = true;
+    if (toggleBtn) {
+      toggleBtn.setAttribute("aria-pressed", "true");
+      toggleBtn.innerHTML =
+        '<span aria-hidden="true" data-icon="flip"></span> Show originals';
+      // Re-populate icon
+      if (typeof window.populateIcons === "function") {
+        window.populateIcons(toggleBtn);
+      }
+    }
+  }
+
+  /**
+   * Hide the chemistry enhancement toggle bar.
+   * @private
+   */
+  _hideChemEnhanceBar() {
+    const bar = document.getElementById("chem-enhance-bar");
+    if (bar) {
+      bar.setAttribute("hidden", "");
+    }
+  }
+
+  /**
+   * Toggle all chemistry images between enhanced (SmilesDrawer) and
+   * original (CDN crop) views. Called by the toggle button onclick.
+   */
+  toggleChemistryImageView() {
+    if (this.chemistryBlobUrlMap.size === 0) return;
+
+    const previewContent = document.getElementById("mmd-preview-content");
+    if (!previewContent) return;
+
+    const toggleBtn = document.getElementById("chem-enhance-toggle");
+    const imgs = previewContent.querySelectorAll("img");
+
+    if (this._chemShowingEnhanced) {
+      // Switch to originals: replace blob URLs with CDN URLs
+      // Phase 7C-7: unpack { blobUrl, fingerprint }
+      for (const [cdnUrl, entry] of this.chemistryBlobUrlMap) {
+        const blobUrl = entry?.blobUrl;
+        if (!blobUrl) continue;
+        for (const img of imgs) {
+          if (img.getAttribute("src") === blobUrl) {
+            img.src = cdnUrl;
+          }
+        }
+      }
+      this._chemShowingEnhanced = false;
+      if (toggleBtn) {
+        toggleBtn.setAttribute("aria-pressed", "false");
+        toggleBtn.innerHTML =
+          '<span aria-hidden="true" data-icon="flip"></span> Show enhanced';
+        if (typeof window.populateIcons === "function") {
+          window.populateIcons(toggleBtn);
+        }
+      }
+      logDebug("Phase 6H: Switched to original CDN images");
+    } else {
+      // Switch to enhanced: replace CDN URLs with blob URLs
+      // Phase 7C-7: unpack { blobUrl, fingerprint }
+      for (const [cdnUrl, entry] of this.chemistryBlobUrlMap) {
+        const blobUrl = entry?.blobUrl;
+        if (!blobUrl) continue;
+        for (const img of imgs) {
+          if (img.getAttribute("src") === cdnUrl) {
+            img.src = blobUrl;
+          }
+        }
+      }
+      this._chemShowingEnhanced = true;
+      if (toggleBtn) {
+        toggleBtn.setAttribute("aria-pressed", "true");
+        toggleBtn.innerHTML =
+          '<span aria-hidden="true" data-icon="flip"></span> Show originals';
+        if (typeof window.populateIcons === "function") {
+          window.populateIcons(toggleBtn);
+        }
+      }
+      logDebug("Phase 6H: Switched to enhanced SmilesDrawer images");
+    }
+  }
+
+  /**
+   * Reverse-map chemistry blob URLs back to original CDN URLs.
+   * Required for API calls, localStorage, and Source tab display
+   * where blob: protocol URLs cannot be used.
+   *
+   * @param {string} mmdContent - MMD content potentially containing blob URLs
+   * @returns {string} MMD with original CDN URLs restored
+   */
+  getMMDWithOriginalChemistryUrls(mmdContent) {
+    if (!mmdContent || this.chemistryBlobUrlMap.size === 0) return mmdContent;
+
+    let restored = mmdContent;
+    // Phase 7C-7: unpack { blobUrl, fingerprint }
+    for (const [cdnUrl, entry] of this.chemistryBlobUrlMap) {
+      const blobUrl = entry?.blobUrl;
+      if (!blobUrl) continue;
+      const escapedBlobUrl = blobUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      restored = restored.replace(new RegExp(escapedBlobUrl, "g"), cdnUrl);
+    }
+    return restored;
+  }
+
+  /**
    * Render MMD content to HTML string
    * @param {string} [content] - MMD content to render (uses stored content if not provided)
    * @returns {string} Rendered HTML
@@ -555,8 +1237,17 @@ class MathPixMMDPreview {
     }
 
     try {
+      // Phase 5F-3: Pre-process content for preview rendering
+      const processedContent = this.config.FEATURES?.PREVIEW_PREPROCESS_FIGURES
+        ? this._preprocessForPreview(mmdContent)
+        : mmdContent;
+
+      // Phase 6H: Rewrite chemistry CDN URLs with blob URLs (for re-renders
+      // where the blob map is already populated from a previous render)
+      const chemRewritten = this._rewriteChemistryUrls(processedContent);
+
       const html = window.markdownToHTML(
-        mmdContent,
+        chemRewritten,
         this.config.RENDER_OPTIONS,
       );
       logDebug("Content rendered to string", {
@@ -598,6 +1289,9 @@ class MathPixMMDPreview {
       targetElement.innerHTML = `<p class="mmd-no-content">${this.config.MESSAGES.NO_CONTENT}</p>`;
       return false;
     }
+
+    // Phase 6H: Abort any in-progress chemistry enhancement (new render takes priority)
+    this._chemEnhanceAborted = true;
 
     try {
       // Phase 4.0 Fix: Clear previous MathJax state to prevent DOM conflicts
@@ -713,6 +1407,13 @@ class MathPixMMDPreview {
         contentLength: mmdContent.length,
         elementId: targetElement.id,
         mathRenderedByCDN: hasRenderedMath,
+      });
+
+      // Phase 6H: Enhance chemistry images with crisp SmilesDrawer renders.
+      // Non-blocking — runs after initial paint, progressively swaps images.
+      // Uses original mmdContent (before preprocessing) to extract SMILES.
+      this._enhanceChemistryImages(mmdContent, targetElement).catch((error) => {
+        logWarn("Phase 6H: Chemistry enhancement failed (non-critical)", error);
       });
 
       return true;
@@ -1366,11 +2067,21 @@ class MathPixMMDPreview {
     // Store content for comparison
     this.currentContent = content;
 
+    // Re-verify cached element is still in the live DOM (guards against stale references after DOM rebuild)
+    const livePreviewEl = document.getElementById("mmd-preview-content");
+    if (livePreviewEl && this.elements.previewContent !== livePreviewEl) {
+      logWarn("Preview content element reference was stale, re-caching");
+      this.elements.previewContent = livePreviewEl;
+      this.lastRenderedContent = null; // Force re-render with fresh element
+    }
+
     // Check if content has changed since last render
-    if (
-      this.lastRenderedContent === content &&
-      this.elements.previewContent?.innerHTML
-    ) {
+    // innerHTML must contain substantial rendered output, not just HTML comments or whitespace
+    const existingHTML = this.elements.previewContent?.innerHTML || "";
+    const hasRenderedOutput =
+      existingHTML.replace(/<!--[\s\S]*?-->/g, "").trim().length > 0;
+
+    if (this.lastRenderedContent === content && hasRenderedOutput) {
       logDebug("Preview already rendered with current content, skipping");
       this.showPreviewState("content");
       return;
@@ -1638,6 +2349,31 @@ class MathPixMMDPreview {
    * Call this when the preview system is no longer needed.
    */
   cleanup() {
+    // Phase 6H: Abort any in-progress enhancement, revoke blob URLs, hide bar
+    this._chemEnhanceAborted = true;
+    this._revokeChemistryBlobUrls();
+    this._hideChemEnhanceBar();
+
+    // Phase 7C-7: detach chemistry-settings-changed listener
+    if (this._onChemistrySettingsChanged) {
+      try {
+        document.removeEventListener(
+          "chemistry-settings-changed",
+          this._onChemistrySettingsChanged,
+        );
+      } catch (e) {
+        // ignore
+      }
+    }
+    this._chemistrySettingsChangedBound = false;
+    this._lastChemMmdContent = null;
+    this._lastChemTargetElement = null;
+    this._chemEnhanceInFlight = false;
+    // Phase 8A-7: counter + pending flag
+    this._chemReEnhanceRequested = 0;
+    this._pendingChemistrySettingsChange = false;
+    this._pendingChemistrySettingsChangeDetail = null;
+
     // Unsubscribe from MathJax recovery events
     if (this.mathJaxRecoveryUnsubscribe) {
       this.mathJaxRecoveryUnsubscribe();
@@ -1698,6 +2434,26 @@ window.toggleSplitPDF = (show) => {
   if (!preview) return;
 
   preview.toggleSplitPDF(show);
+};
+
+/**
+ * Phase 6H: Global function to toggle chemistry image view
+ * Called by the toggle button in the chem-enhance-bar
+ */
+window.toggleChemistryImageView = function () {
+  const preview = window.getMathPixMMDPreview?.();
+  if (!preview) return;
+  preview.toggleChemistryImageView();
+};
+
+/**
+ * Phase 6H: Global function to dismiss the chemistry enhancement bar
+ */
+window.dismissChemEnhanceBar = function () {
+  const preview = window.getMathPixMMDPreview?.();
+  if (preview) {
+    preview._hideChemEnhanceBar();
+  }
 };
 
 /**

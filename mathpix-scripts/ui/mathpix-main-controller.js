@@ -228,7 +228,7 @@ class MathPixController {
     this.isInitialised = false;
 
     logInfo(
-      "MathPixController created with modular architecture including Phase 3.1 content analysis, Phase 1C strokes system, Phase 1D camera system, and Phase 5 download system"
+      "MathPixController created with modular architecture including Phase 3.1 content analysis, Phase 1C strokes system, Phase 1D camera system, and Phase 5 download system",
     );
   }
 
@@ -318,7 +318,7 @@ class MathPixController {
     if (editor) {
       editor.showEditButton();
       logDebug(
-        "MMD Editor notified of content availability - edit button shown"
+        "MMD Editor notified of content availability - edit button shown",
       );
     } else {
       logDebug("MMD Editor not available - edit button not shown");
@@ -414,7 +414,7 @@ class MathPixController {
 
       this.isInitialised = true;
       logInfo(
-        "MathPixController initialised successfully with endpoint management, download system, and mode switcher"
+        "MathPixController initialised successfully with endpoint management, download system, and mode switcher",
       );
       return true;
     } catch (error) {
@@ -742,7 +742,7 @@ class MathPixController {
 
       this.showNotification(
         `File processing failed: ${error.message}`,
-        "error"
+        "error",
       );
 
       return false;
@@ -779,6 +779,12 @@ class MathPixController {
     });
 
     try {
+      // CRITICAL: Clear ALL session data before new PDF operation
+      // This prevents data contamination when user drops a new file
+      // onto the upload zone instead of using "Process Another" button
+      this.clearAllSessionData();
+      logDebug("Session data cleared before PDF upload routing");
+
       // Verify PDF handler is available
       if (!this.pdfHandler) {
         const errorMsg =
@@ -951,7 +957,7 @@ class MathPixController {
     // Delegate to result renderer with file for comparison
     const renderResult = this.resultRenderer.displayResult(
       result,
-      originalFile
+      originalFile,
     );
 
     // Show download button (Phase 5)
@@ -1039,7 +1045,7 @@ class MathPixController {
   displayResponsiveComparison(originalFile, result) {
     return this.resultRenderer.displayResponsiveComparison(
       originalFile,
-      result
+      result,
     );
   }
 
@@ -1069,7 +1075,7 @@ class MathPixController {
     return this.resultRenderer.renderContentWithMathJax(
       content,
       type,
-      targetElement
+      targetElement,
     );
   }
 
@@ -1362,7 +1368,7 @@ class MathPixController {
     // Wait for DOM updates to complete (hide preview, show comparison, relocate buttons)
     setTimeout(() => {
       const comparisonTitle = document.querySelector(
-        ".mathpix-comparison-title"
+        ".mathpix-comparison-title",
       );
 
       if (comparisonTitle) {
@@ -1381,14 +1387,14 @@ class MathPixController {
         // Announce processing completion to screen readers
         // Get format count from visible format panels
         const formatPanels = document.querySelectorAll(
-          '.mathpix-format-panel:not([style*="display: none"])'
+          '.mathpix-format-panel:not([style*="display: none"])',
         );
         const formatCount = formatPanels.length;
 
         this.announceToScreenReader(
           `Processing complete. ${formatCount} format${
             formatCount !== 1 ? "s" : ""
-          } available. Viewing results comparison.`
+          } available. Viewing results comparison.`,
         );
 
         logDebug("Scrolled to comparison view and set focus", {
@@ -1402,7 +1408,7 @@ class MathPixController {
       } else {
         logWarn("Comparison title not found for scroll and focus", {
           comparisonContainerExists: !!document.getElementById(
-            "mathpix-comparison-container"
+            "mathpix-comparison-container",
           ),
         });
       }
@@ -1454,7 +1460,7 @@ class MathPixController {
     if (!liveRegion) {
       logWarn(
         "Global ARIA live region not found - announcement skipped",
-        message
+        message,
       );
       return;
     }
@@ -1462,10 +1468,10 @@ class MathPixController {
     // Smart deduplication: Check if notification system just showed a toast
     if (!options.force) {
       const toastContainer = document.getElementById(
-        "universal-toast-container"
+        "universal-toast-container",
       );
       const activeToasts = toastContainer?.querySelectorAll(
-        ".toast-notification"
+        ".toast-notification",
       );
 
       if (activeToasts && activeToasts.length > 0) {
@@ -1475,7 +1481,7 @@ class MathPixController {
             message,
             activeToastCount: activeToasts.length,
             reason: "Prevents duplicate screen reader announcements",
-          }
+          },
         );
         return;
       }
@@ -1611,26 +1617,26 @@ class MathPixController {
     // Update transaction summary section
     this.updateDebugElement(
       "debug-endpoint",
-      debugData.endpoint || "Not available"
+      debugData.endpoint || "Not available",
     );
     this.updateDebugElement(
       "debug-operation",
-      debugData.operation || "Unknown"
+      debugData.operation || "Unknown",
     );
     this.updateDebugElement(
       "debug-timing",
-      this.formatTimingDisplay(debugData.timing)
+      this.formatTimingDisplay(debugData.timing),
     );
     this.updateDebugElement(
       "debug-confidence",
-      this.formatConfidenceDisplay(debugData.response?.confidence)
+      this.formatConfidenceDisplay(debugData.response?.confidence),
     );
 
     // Content type from response (already formatted by API client)
     const contentType = debugData.response?.contentType || "Unknown";
     this.updateDebugElement(
       "debug-content-type",
-      contentType.charAt(0).toUpperCase() + contentType.slice(1)
+      contentType.charAt(0).toUpperCase() + contentType.slice(1),
     );
 
     // Update request data section
@@ -1649,7 +1655,7 @@ class MathPixController {
     const responseElement = document.getElementById("debug-response-data");
     if (responseElement && debugData.response) {
       responseElement.textContent = this.formatJsonForDisplay(
-        debugData.response
+        debugData.response,
       );
       responseElement.className = "language-json";
 
@@ -1666,7 +1672,7 @@ class MathPixController {
     if (apiData) {
       this.updateDebugElement(
         "debug-request-id",
-        apiData.request_id || "Not available"
+        apiData.request_id || "Not available",
       );
 
       // ✅ PHASE 3.4: API version - use processing model for PDFs
@@ -1676,7 +1682,7 @@ class MathPixController {
       } else {
         this.updateDebugElement(
           "debug-api-version",
-          apiData.version || "Not available"
+          apiData.version || "Not available",
         );
       }
 
@@ -1703,7 +1709,7 @@ class MathPixController {
         if (pageCount) {
           this.updateDebugElement(
             "debug-image-dimensions",
-            `${pageCount} page${pageCount === 1 ? "" : "s"}`
+            `${pageCount} page${pageCount === 1 ? "" : "s"}`,
           );
         } else {
           this.updateDebugElement("debug-image-dimensions", "Not available");
@@ -1714,7 +1720,7 @@ class MathPixController {
           "debug-image-dimensions",
           apiData.image_width && apiData.image_height
             ? `${apiData.image_width} × ${apiData.image_height}`
-            : "Not available"
+            : "Not available",
         );
       }
 
@@ -1731,7 +1737,7 @@ class MathPixController {
             ? `Yes (${apiData.auto_rotate_degrees || 0}°, confidence: ${(
                 apiData.auto_rotate_confidence * 100
               ).toFixed(1)}%)`
-            : "No"
+            : "No",
         );
       }
 
@@ -1927,7 +1933,7 @@ class MathPixController {
     return this.resultRenderer.tryAlternativeMathJaxRendering(
       content,
       type,
-      targetElement
+      targetElement,
     );
   }
 
@@ -1989,7 +1995,7 @@ class MathPixController {
 
     // Check if button already exists
     let confirmBtn = previewContainer.querySelector(
-      ".mathpix-process-confirm-btn"
+      ".mathpix-process-confirm-btn",
     );
 
     if (!confirmBtn) {
@@ -2001,7 +2007,7 @@ class MathPixController {
 
       // Find the preview actions container
       const actionsContainer = previewContainer.querySelector(
-        ".mathpix-preview-actions"
+        ".mathpix-preview-actions",
       );
       if (actionsContainer) {
         actionsContainer.appendChild(confirmBtn);
@@ -2015,7 +2021,7 @@ class MathPixController {
     confirmBtn.innerHTML = `${getIcon("refresh")} Process with MathPix`;
     confirmBtn.setAttribute(
       "aria-label",
-      `Process ${file.name} with MathPix OCR`
+      `Process ${file.name} with MathPix OCR`,
     );
     confirmBtn.onclick = (e) => {
       e.preventDefault();
@@ -2105,7 +2111,7 @@ class MathPixController {
     if (!this.apiClient.appId || !this.apiClient.apiKey) {
       this.showNotification(
         "Please configure your MathPix API credentials first.",
-        "error"
+        "error",
       );
       return;
     }
@@ -2135,7 +2141,7 @@ class MathPixController {
           name: fileToProcess.name,
           size: fileToProcess.size,
           type: fileToProcess.type,
-        }
+        },
       );
 
       if (!consentGranted) {
@@ -2144,7 +2150,7 @@ class MathPixController {
         });
         this.showNotification(
           "Processing cancelled. Your file was not uploaded or processed.",
-          "info"
+          "info",
         );
         return;
       }
@@ -2165,7 +2171,7 @@ class MathPixController {
       const result = await this.apiClient.processImage(
         fileToProcess,
         {},
-        this.progressDisplay
+        this.progressDisplay,
       );
 
       // Step 4: Display result with cleanup (pass processed file for comparison view)
@@ -2185,7 +2191,9 @@ class MathPixController {
         fileName: fileToProcess.name,
         availableFormats: Object.keys(result).filter(
           (key) =>
-            result[key] && typeof result[key] === "string" && result[key].trim()
+            result[key] &&
+            typeof result[key] === "string" &&
+            result[key].trim(),
         ),
         processingTiming: result.processingTiming,
       });
@@ -2201,7 +2209,7 @@ class MathPixController {
       // Fallback notification for critical errors
       this.showNotification(
         `${MATHPIX_CONFIG.MESSAGES.UPLOAD_ERROR}: ${error.message}`,
-        "error"
+        "error",
       );
     }
   }
@@ -2265,7 +2273,7 @@ class MathPixController {
       if (this.apiClient.appId && this.apiClient.apiKey) {
         this.strokesAPIClient.setCredentials(
           this.apiClient.appId,
-          this.apiClient.apiKey
+          this.apiClient.apiKey,
         );
 
         // ✅ CRITICAL: Share current API base URL for endpoint management
@@ -2276,7 +2284,7 @@ class MathPixController {
           {
             apiBase: this.strokesAPIClient.apiBase,
             endpoint: this.apiClient.currentEndpoint,
-          }
+          },
         );
       }
 
@@ -2292,7 +2300,7 @@ class MathPixController {
       logError("Failed to initialise strokes system", error);
       this.showNotification(
         "Failed to initialise drawing canvas. Please refresh the page.",
-        "error"
+        "error",
       );
       return false;
     }
@@ -2338,7 +2346,7 @@ class MathPixController {
       });
       this.showNotification(
         "Failed to initialize camera. Please check browser permissions or use file upload instead.",
-        "error"
+        "error",
       );
       return false;
     }
@@ -2407,7 +2415,7 @@ class MathPixController {
       logError("Failed to initialise camera system", error);
       this.showNotification(
         "Failed to initialise camera. Please refresh the page.",
-        "error"
+        "error",
       );
       return false;
     }
@@ -2434,7 +2442,7 @@ class MathPixController {
 
     // Get selected format from radio buttons
     const selectedRadio = document.querySelector(
-      'input[name="mathpix-format"]:checked'
+      'input[name="mathpix-format"]:checked',
     );
     if (selectedRadio) {
       const formatValue = selectedRadio.value;
@@ -2531,7 +2539,7 @@ class MathPixController {
       const canvasImage = await this.captureCanvasAsImage();
       if (!canvasImage) {
         logWarn(
-          "Failed to capture canvas image - comparison view may not work"
+          "Failed to capture canvas image - comparison view may not work",
         );
       }
       // Get stroke data formatted for API
@@ -2570,7 +2578,7 @@ class MathPixController {
       const result = await this.strokesAPIClient.processStrokes(
         strokesData,
         apiOptions,
-        this.progressDisplay
+        this.progressDisplay,
       );
 
       // CRITICAL: Normalize strokes API response to match image API format
@@ -2734,7 +2742,7 @@ class MathPixController {
 
     // Get comparison container elements
     const comparisonContainer = document.getElementById(
-      "mathpix-comparison-container"
+      "mathpix-comparison-container",
     );
     const originalImage = document.getElementById("mathpix-original-image");
     const renderedOutput = document.getElementById("mathpix-rendered-output");
@@ -2785,39 +2793,44 @@ class MathPixController {
           .queueTypeset(renderedOutput)
           .then(() => logDebug("MathJax processed equations in table cells"))
           .catch((error) =>
-            logWarn("Failed to process math in table cells", error)
+            logWarn("Failed to process math in table cells", error),
           );
       } else if (window.MathJax && window.MathJax.typesetPromise) {
         window.MathJax.typesetPromise([renderedOutput])
           .then(() => logDebug("MathJax processed table cells (direct)"))
           .catch((error) =>
-            logWarn("Failed to process math in table cells", error)
+            logWarn("Failed to process math in table cells", error),
           );
       }
 
       logInfo("Table preview rendered in strokes comparison");
     } else {
-      // No table detected - render LaTeX with MathJax
+      // No table detected — delegate to populateProcessedOutputPanel
+      // which uses CDN rendering (Phase 6J) with MathJax fallback
       const latexContent = result.latex || result.latex_styled || result.text;
 
       if (latexContent) {
-        logDebug("Rendering MathJax preview with existing renderer", {
+        logDebug("Rendering strokes preview via result renderer", {
           content: latexContent,
           length: latexContent.length,
           source: result.latex
             ? "normalized latex"
             : result.latex_styled
-            ? "latex_styled"
-            : "text",
+              ? "latex_styled"
+              : "text",
         });
 
-        // Clear previous content
-        renderedOutput.innerHTML = "";
+        // Build a result-like object for populateProcessedOutputPanel
+        const previewResult = {
+          latex: latexContent,
+          mathml: result.mathml || null,
+          asciimath: result.asciimath || null,
+          html: result.html || null,
+        };
 
-        // Use existing renderContentWithMathJax method which handles all the complexity
-        this.renderContentWithMathJax(latexContent, "latex", renderedOutput);
+        this.resultRenderer.populateProcessedOutputPanel(previewResult);
 
-        logInfo("MathJax preview rendered via result renderer");
+        logInfo("Strokes preview rendered via populateProcessedOutputPanel");
       } else {
         logWarn("No LaTeX content available for preview", {
           hasLatex: !!result.latex,
@@ -2878,7 +2891,7 @@ class MathPixController {
           .then((success) => {
             if (success) {
               logInfo(
-                "Strokes system initialised on first draw mode activation"
+                "Strokes system initialised on first draw mode activation",
               );
             } else {
               logError("Failed to initialise strokes system on mode change");
@@ -2895,7 +2908,7 @@ class MathPixController {
           .then((success) => {
             if (success) {
               logInfo(
-                "Camera system initialised on first camera mode activation"
+                "Camera system initialised on first camera mode activation",
               );
             } else {
               logError("Failed to initialise camera system on mode change");
@@ -3149,7 +3162,7 @@ window.copyMathPixDebugData = function (section) {
   const dataSource = mostRecent.source;
 
   console.log(
-    `Copying ${section} data from most recent operation (${dataSource} at ${debugData.timestamp})`
+    `Copying ${section} data from most recent operation (${dataSource} at ${debugData.timestamp})`,
   );
 
   if (!debugData) {
@@ -3186,7 +3199,7 @@ window.copyMathPixDebugData = function (section) {
           `${
             section.charAt(0).toUpperCase() + section.slice(1)
           } data copied to clipboard! (Source: ${dataSource})`,
-          "success"
+          "success",
         );
         console.log(`✅ ${section} data copied from ${dataSource} API client`);
       })
@@ -3267,7 +3280,7 @@ window.handleMathPixCameraCapture = async function () {
     console.error("Camera capture failed:", error);
     controller.showNotification(
       `Photo capture failed: ${error.message}`,
-      "error"
+      "error",
     );
   }
 };
@@ -3309,7 +3322,7 @@ window.toggleMathPixCameraMirror = function () {
   const controller = window.getMathPixController();
   if (!controller || !controller.cameraCapture) {
     console.warn(
-      "[MathPix Camera] Mirror toggle unavailable - camera not initialised"
+      "[MathPix Camera] Mirror toggle unavailable - camera not initialised",
     );
     return;
   }
@@ -3328,7 +3341,7 @@ window.rotateMathPixPreview = function () {
   const controller = window.getMathPixController();
   if (!controller || !controller.fileHandler) {
     console.warn(
-      "[MathPix Preview] Rotate unavailable - file handler not initialised"
+      "[MathPix Preview] Rotate unavailable - file handler not initialised",
     );
     return;
   }
@@ -3347,7 +3360,7 @@ window.flipMathPixPreview = function () {
   const controller = window.getMathPixController();
   if (!controller || !controller.fileHandler) {
     console.warn(
-      "[MathPix Preview] Flip unavailable - file handler not initialised"
+      "[MathPix Preview] Flip unavailable - file handler not initialised",
     );
     return;
   }
@@ -3386,7 +3399,7 @@ window.testPDFExports = () => {
     console.log("Testing PDF export functionality...");
 
     const formats = Object.keys(
-      controller.pdfResultRenderer.currentResults
+      controller.pdfResultRenderer.currentResults,
     ).filter((key) => key !== "processingMetadata");
 
     console.log("📄 Available formats for export:", formats);

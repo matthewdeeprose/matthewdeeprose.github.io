@@ -125,7 +125,7 @@ class PDFConfidenceVisualiser {
   constructor(options = {}) {
     if (!options.container) {
       throw new Error(
-        "Container element is required for PDFConfidenceVisualiser"
+        "Container element is required for PDFConfidenceVisualiser",
       );
     }
 
@@ -295,7 +295,7 @@ class PDFConfidenceVisualiser {
     this.container.setAttribute("role", "region");
     this.container.setAttribute(
       "aria-label",
-      PDF_VISUALISER_CONFIG.ARIA.CONTAINER_LABEL
+      PDF_VISUALISER_CONFIG.ARIA.CONTAINER_LABEL,
     );
 
     // Create main structure
@@ -305,12 +305,12 @@ class PDFConfidenceVisualiser {
 
       <!-- Controls bar -->
       <div class="${config.CONTROLS}" role="toolbar" aria-label="${
-      PDF_VISUALISER_CONFIG.ARIA.CONTROLS_LABEL
-    }">
+        PDF_VISUALISER_CONFIG.ARIA.CONTROLS_LABEL
+      }">
         <!-- Page navigation -->
         <div class="${config.CONTROL_GROUP} ${
-      config.PAGE_NAV
-    }" role="group" aria-label="${PDF_VISUALISER_CONFIG.ARIA.PAGE_NAV_LABEL}">
+          config.PAGE_NAV
+        }" role="group" aria-label="${PDF_VISUALISER_CONFIG.ARIA.PAGE_NAV_LABEL}">
           <button type="button" id="pdf-vis-prev" class="${config.NAV_BUTTON}" 
                   aria-label="${PDF_VISUALISER_CONFIG.ARIA.PREV_PAGE}" disabled>
             <span aria-hidden="true">◀</span> Previous
@@ -335,7 +335,7 @@ class PDFConfidenceVisualiser {
             <span aria-hidden="true">−</span> Zoom Out
           </button>
 <span id="pdf-vis-zoom-level" class="${config.PAGE_INDICATOR}">${Math.round(
-      PDF_VISUALISER_CONFIG.RENDERING.DEFAULT_SCALE * 100
+      PDF_VISUALISER_CONFIG.RENDERING.DEFAULT_SCALE * 100,
     )}%</span>
           <button type="button" id="pdf-vis-zoom-in" class="${
             config.CONTROL_BUTTON
@@ -380,7 +380,14 @@ class PDFConfidenceVisualiser {
         </div>
       </div>
 
-<!-- Main viewer area -->
+<!-- Phase H.4: No data message for unprocessed pages (above viewer) -->
+      <div id="pdf-vis-no-data-message" class="pdf-vis-no-data-message" hidden
+           role="status" aria-live="polite">
+        <span class="pdf-vis-no-data-icon"><svg aria-hidden="true" class="icon" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg></span>
+        <span class="pdf-vis-no-data-text">No confidence data for this page. This page was not included in OCR processing.</span>
+      </div>
+
+      <!-- Main viewer area -->
       <div id="pdf-vis-viewer" class="${config.VIEWER}">
         <!-- Canvas wrapper - scrollable container with centering -->
         <div id="pdf-vis-canvas-wrapper" class="${config.CANVAS_WRAPPER}">
@@ -541,11 +548,11 @@ class PDFConfidenceVisualiser {
     this.boundHandlers.nextPage = () => this.nextPage();
     this.elements.prevButton?.addEventListener(
       "click",
-      this.boundHandlers.prevPage
+      this.boundHandlers.prevPage,
     );
     this.elements.nextButton?.addEventListener(
       "click",
-      this.boundHandlers.nextPage
+      this.boundHandlers.nextPage,
     );
 
     // Zoom
@@ -554,7 +561,7 @@ class PDFConfidenceVisualiser {
     this.elements.zoomIn?.addEventListener("click", this.boundHandlers.zoomIn);
     this.elements.zoomOut?.addEventListener(
       "click",
-      this.boundHandlers.zoomOut
+      this.boundHandlers.zoomOut,
     );
 
     // Toggles
@@ -566,15 +573,15 @@ class PDFConfidenceVisualiser {
       this.setFullPageView(e.target.checked);
     this.elements.overlayToggle?.addEventListener(
       "change",
-      this.boundHandlers.toggleOverlays
+      this.boundHandlers.toggleOverlays,
     );
     this.elements.labelToggle?.addEventListener(
       "change",
-      this.boundHandlers.toggleLabels
+      this.boundHandlers.toggleLabels,
     );
     this.elements.fullPageToggle?.addEventListener(
       "change",
-      this.boundHandlers.toggleFullPage
+      this.boundHandlers.toggleFullPage,
     );
 
     // Fit to screen
@@ -582,14 +589,14 @@ class PDFConfidenceVisualiser {
       this.setFitToScreen(e.target.checked);
     this.elements.fitScreenToggle?.addEventListener(
       "change",
-      this.boundHandlers.toggleFitScreen
+      this.boundHandlers.toggleFitScreen,
     );
 
     // Fullscreen
     this.boundHandlers.toggleFullscreen = () => this.toggleFullscreen();
     this.elements.fullscreenButton?.addEventListener(
       "click",
-      this.boundHandlers.toggleFullscreen
+      this.boundHandlers.toggleFullscreen,
     );
 
     // Keyboard navigation
@@ -712,7 +719,7 @@ class PDFConfidenceVisualiser {
     // Render PDF page
     const result = await this.renderer.renderPage(
       pageNum,
-      this.elements.pdfCanvas
+      this.elements.pdfCanvas,
     );
 
     if (!result) {
@@ -721,6 +728,10 @@ class PDFConfidenceVisualiser {
 
     // Get page-specific lines data
     this.currentPageData = this.getPageLinesData(pageNum);
+
+    // Phase H.4: Check if this is a partial processing situation
+    // Show message if page has no data but other pages do (partial processing)
+    this.updateNoDataMessage(pageNum);
 
     // Size overlay canvas to match
     this.sizeOverlayCanvas(result.viewport);
@@ -733,6 +744,36 @@ class PDFConfidenceVisualiser {
 
     // Update page-specific stats
     this.updatePageStats(pageNum);
+  }
+
+  /**
+   * @method updateNoDataMessage
+   * @description Shows/hides the no-data message for unprocessed pages
+   * Phase H.4: User indication for partial PDF processing
+   * @param {number} pageNum - Current page number
+   * @private
+   * @since Phase H.4
+   */
+  updateNoDataMessage(pageNum) {
+    const messageEl = document.getElementById("pdf-vis-no-data-message");
+    if (!messageEl) return;
+
+    // Check if this is partial processing (some pages have data, this one doesn't)
+    const hasLinesData = this.linesData?.pages?.length > 0;
+    const pageHasData = !!this.currentPageData;
+
+    if (hasLinesData && !pageHasData) {
+      // Show message for unprocessed page
+      const textEl = messageEl.querySelector(".pdf-vis-no-data-text");
+      if (textEl) {
+        textEl.textContent = `No confidence data for page ${pageNum}. This page was not included in OCR processing.`;
+      }
+      messageEl.hidden = false;
+      logDebug(`Showing no-data message for page ${pageNum}`);
+    } else {
+      // Hide message
+      messageEl.hidden = true;
+    }
   }
 
   /**
@@ -961,7 +1002,7 @@ class PDFConfidenceVisualiser {
     if (this.elements.viewer) {
       this.elements.viewer.classList.toggle(
         "pdf-vis-viewer--fullpage",
-        enabled
+        enabled,
       );
     }
 
@@ -995,13 +1036,13 @@ class PDFConfidenceVisualiser {
     if (this.elements.statAvg) {
       this.elements.statAvg.textContent = formatPercentage(
         stats.averageConfidence,
-        1
+        1,
       );
     }
     if (this.elements.statRange) {
       this.elements.statRange.textContent = `${formatPercentage(
         stats.minConfidence,
-        0
+        0,
       )} - ${formatPercentage(stats.maxConfidence, 0)}`;
     }
 
@@ -1047,7 +1088,7 @@ class PDFConfidenceVisualiser {
       formatAriaMessage(PDF_VISUALISER_CONFIG.ARIA.PAGE_CHANGED, {
         current: page,
         total,
-      })
+      }),
     );
 
     if (this.onPageChange) {
@@ -1070,7 +1111,7 @@ class PDFConfidenceVisualiser {
     this.announce(
       formatAriaMessage(PDF_VISUALISER_CONFIG.ARIA.ZOOM_CHANGED, {
         level: Math.round(scale * 100),
-      })
+      }),
     );
   }
 
@@ -1175,16 +1216,16 @@ class PDFConfidenceVisualiser {
       this.elements.fullscreenButton.setAttribute("aria-pressed", "true");
       this.elements.fullscreenButton.setAttribute(
         "aria-label",
-        PDF_VISUALISER_CONFIG.ARIA.EXIT_FULLSCREEN
+        PDF_VISUALISER_CONFIG.ARIA.EXIT_FULLSCREEN,
       );
       const textSpan = this.elements.fullscreenButton.querySelector(
-        ".pdf-vis-fullscreen-text"
+        ".pdf-vis-fullscreen-text",
       );
       if (textSpan) {
         textSpan.textContent = "Exit Fullscreen";
       }
       const iconSpan = this.elements.fullscreenButton.querySelector(
-        ".pdf-vis-fullscreen-icon"
+        ".pdf-vis-fullscreen-icon",
       );
       if (iconSpan) {
         iconSpan.textContent = "✕";
@@ -1234,16 +1275,16 @@ class PDFConfidenceVisualiser {
       this.elements.fullscreenButton.setAttribute("aria-pressed", "false");
       this.elements.fullscreenButton.setAttribute(
         "aria-label",
-        PDF_VISUALISER_CONFIG.ARIA.ENTER_FULLSCREEN
+        PDF_VISUALISER_CONFIG.ARIA.ENTER_FULLSCREEN,
       );
       const textSpan = this.elements.fullscreenButton.querySelector(
-        ".pdf-vis-fullscreen-text"
+        ".pdf-vis-fullscreen-text",
       );
       if (textSpan) {
         textSpan.textContent = "Fullscreen";
       }
       const iconSpan = this.elements.fullscreenButton.querySelector(
-        ".pdf-vis-fullscreen-icon"
+        ".pdf-vis-fullscreen-icon",
       );
       if (iconSpan) {
         iconSpan.textContent = "⛶";
@@ -1285,7 +1326,7 @@ class PDFConfidenceVisualiser {
     ].join(", ");
 
     const focusableElements = Array.from(
-      this.container.querySelectorAll(focusableSelectors)
+      this.container.querySelectorAll(focusableSelectors),
     ).filter((el) => {
       // Ensure element is visible
       const style = window.getComputedStyle(el);
@@ -1593,55 +1634,55 @@ class PDFConfidenceVisualiser {
     if (this.elements.prevButton) {
       this.elements.prevButton.removeEventListener(
         "click",
-        this.boundHandlers.prevPage
+        this.boundHandlers.prevPage,
       );
     }
     if (this.elements.nextButton) {
       this.elements.nextButton.removeEventListener(
         "click",
-        this.boundHandlers.nextPage
+        this.boundHandlers.nextPage,
       );
     }
     if (this.elements.zoomIn) {
       this.elements.zoomIn.removeEventListener(
         "click",
-        this.boundHandlers.zoomIn
+        this.boundHandlers.zoomIn,
       );
     }
     if (this.elements.zoomOut) {
       this.elements.zoomOut.removeEventListener(
         "click",
-        this.boundHandlers.zoomOut
+        this.boundHandlers.zoomOut,
       );
     }
     if (this.elements.overlayToggle) {
       this.elements.overlayToggle.removeEventListener(
         "change",
-        this.boundHandlers.toggleOverlays
+        this.boundHandlers.toggleOverlays,
       );
     }
     if (this.elements.labelToggle) {
       this.elements.labelToggle.removeEventListener(
         "change",
-        this.boundHandlers.toggleLabels
+        this.boundHandlers.toggleLabels,
       );
     }
     if (this.elements.fullPageToggle) {
       this.elements.fullPageToggle.removeEventListener(
         "change",
-        this.boundHandlers.toggleFullPage
+        this.boundHandlers.toggleFullPage,
       );
     }
     if (this.elements.fullscreenButton) {
       this.elements.fullscreenButton.removeEventListener(
         "click",
-        this.boundHandlers.toggleFullscreen
+        this.boundHandlers.toggleFullscreen,
       );
     }
     if (this.elements.fitScreenToggle) {
       this.elements.fitScreenToggle.removeEventListener(
         "change",
-        this.boundHandlers.toggleFitScreen
+        this.boundHandlers.toggleFitScreen,
       );
     }
     if (this.container) {
@@ -1777,7 +1818,7 @@ if (typeof window !== "undefined") {
         pages: linesData.pages?.length,
         totalLines: linesData.pages?.reduce(
           (sum, p) => sum + (p.lines?.length || 0),
-          0
+          0,
         ),
       });
 

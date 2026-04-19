@@ -32,32 +32,32 @@ export class OpenRouterDisplay {
       });
       return;
     }
-    
+
     try {
       // Remove aria-hidden to make element accessible
-      element.removeAttribute('aria-hidden');
-      
+      element.removeAttribute("aria-hidden");
+
       // Set content
       element.textContent = content;
-      
+
       // Only set aria-label if explicitly provided and different from content
       if (ariaLabel && ariaLabel !== content) {
-        element.setAttribute('aria-label', ariaLabel);
+        element.setAttribute("aria-label", ariaLabel);
       } else {
         // Remove any existing aria-label if not needed
-        element.removeAttribute('aria-label');
+        element.removeAttribute("aria-label");
       }
-      
+
       // Add aria-live for dynamic updates if specified
       if (isLive) {
-        element.setAttribute('aria-live', 'polite');
+        element.setAttribute("aria-live", "polite");
       }
-      
+
       openRouterUtils.debug(`Populated ${elementId} with accessible content`, {
         elementId,
         content: content.substring(0, 100), // Log first 100 chars
         hasAriaLabel: !!ariaLabel,
-        isLive
+        isLive,
       });
     } catch (error) {
       openRouterUtils.error(`Failed to populate ${elementId}`, {
@@ -89,19 +89,33 @@ export class OpenRouterDisplay {
           ? openRouterUtils.safeJsonStringify(content)
           : String(content);
 
-      // Escape HTML to prevent XSS
-      const escapedContent = openRouterUtils.escapeHtml(stringContent);
+      // Phase 2 performance fix: Skip expensive processing for very large content
+      // Prism.highlight() and escapeHtml() on multi-MB strings freeze the browser
+      const MAX_HIGHLIGHT_LENGTH = 100_000; // 100KB — safe threshold for Prism
+      const isLargeContent = stringContent.length > MAX_HIGHLIGHT_LENGTH;
 
-      // Update content
-      element.innerHTML = escapedContent;
+      if (isLargeContent) {
+        // For large content, show a truncated preview with size info
+        const preview = stringContent.substring(0, 2000);
+        const escapedPreview = openRouterUtils.escapeHtml(preview);
+        element.innerHTML =
+          escapedPreview +
+          `\n\n... [Content truncated for display: ${(stringContent.length / 1024).toFixed(1)}KB total. Full data sent to API.]`;
+      } else {
+        // Escape HTML to prevent XSS
+        const escapedContent = openRouterUtils.escapeHtml(stringContent);
 
-      // Apply Prism highlighting if available
-      if (window.Prism) {
-        element.innerHTML = Prism.highlight(
-          stringContent,
-          Prism.languages[language],
-          language
-        );
+        // Update content
+        element.innerHTML = escapedContent;
+
+        // Apply Prism highlighting if available
+        if (window.Prism && Prism.languages[language]) {
+          element.innerHTML = Prism.highlight(
+            stringContent,
+            Prism.languages[language],
+            language,
+          );
+        }
       }
 
       // Set appropriate ARIA attributes for accessibility
@@ -110,6 +124,7 @@ export class OpenRouterDisplay {
       openRouterUtils.debug(`Updated code display for ${elementId}`, {
         elementId,
         contentLength: stringContent.length,
+        truncated: isLargeContent,
         language,
       });
     } catch (error) {
@@ -129,14 +144,14 @@ export class OpenRouterDisplay {
     try {
       // Use the new utility function for consistent error handling
       // No aria-labels needed - the <dt> elements provide context
-      this.populateDeveloperData('prompt-tokens', 'Error');
-      this.populateDeveloperData('completion-tokens', 'Error');
-      this.populateDeveloperData('last-cost', 'Error');
-      this.populateDeveloperData('provider-info', 'Error');
-      this.populateDeveloperData('request-timing', 'Error');
-      this.populateDeveloperData('finish-reason', 'Error');
-      this.populateDeveloperData('token-efficiency', 'Error');
-      this.populateDeveloperData('model-changes', 'Error');
+      this.populateDeveloperData("prompt-tokens", "Error");
+      this.populateDeveloperData("completion-tokens", "Error");
+      this.populateDeveloperData("last-cost", "Error");
+      this.populateDeveloperData("provider-info", "Error");
+      this.populateDeveloperData("request-timing", "Error");
+      this.populateDeveloperData("finish-reason", "Error");
+      this.populateDeveloperData("token-efficiency", "Error");
+      this.populateDeveloperData("model-changes", "Error");
 
       // Update code displays with error message
       this.updateCodeDisplay("original-request", "Error occurred");
@@ -144,7 +159,10 @@ export class OpenRouterDisplay {
 
       openRouterUtils.debug("Updated dev panel with error information");
     } catch (error) {
-      openRouterUtils.error("Failed to update dev panel with error information", { error });
+      openRouterUtils.error(
+        "Failed to update dev panel with error information",
+        { error },
+      );
     }
   }
 
@@ -191,7 +209,7 @@ export class OpenRouterDisplay {
                 (model) =>
                   model.isFree &&
                   (model.id === responseModel ||
-                    model.id.replace(":free", "") === responseModel)
+                    model.id.replace(":free", "") === responseModel),
               )
           : false) // If getAllModels is not a function, return false for this condition
       );
@@ -248,7 +266,7 @@ export class OpenRouterDisplay {
 
         openRouterUtils.debug(
           "Created estimated usage for streaming",
-          data.usage
+          data.usage,
         );
       }
 
@@ -289,7 +307,7 @@ export class OpenRouterDisplay {
           completionElement,
           promptTokens,
           completionTokens,
-          report
+          report,
         );
       } else {
         this.updateSimpleTokenCounts(
@@ -297,7 +315,7 @@ export class OpenRouterDisplay {
           completionElement,
           promptTokens,
           completionTokens,
-          report
+          report,
         );
       }
 
@@ -313,14 +331,18 @@ export class OpenRouterDisplay {
         {
           responseModel: data.model,
           requestModel,
-        }
+        },
       );
 
       if (this.isFreeModel(data.model, requestModel)) {
         openRouterUtils.debug(
-          "Model identified as free, skipping cost calculation"
+          "Model identified as free, skipping cost calculation",
         );
-        this.populateDeveloperData('last-cost', 'Free', 'Cost: Free (no charge)');
+        this.populateDeveloperData(
+          "last-cost",
+          "Free",
+          "Cost: Free (no charge)",
+        );
         return;
       }
 
@@ -331,7 +353,7 @@ export class OpenRouterDisplay {
       if (report.validation?.warnings?.length > 0) {
         openRouterUtils.warn(
           "Token validation warnings:",
-          report.validation.warnings
+          report.validation.warnings,
         );
       }
 
@@ -353,7 +375,7 @@ export class OpenRouterDisplay {
   updateProviderInfo(data) {
     const providerText = `${data.provider || "Unknown"} (Model ID: ${data.model})`;
     // No aria-label needed - the <dt> "Provider Information:" provides context
-    this.populateDeveloperData('provider-info', providerText);
+    this.populateDeveloperData("provider-info", providerText);
   }
 
   /**
@@ -368,10 +390,10 @@ export class OpenRouterDisplay {
         requestDate: created.toLocaleDateString(),
         responseTime: Math.round((Date.now() - data.created * 1000) / 1000),
       };
-      
+
       const timingText = `${timing.requestDate} ${timing.requestTime} (Response time: ${timing.responseTime}s)`;
       // No aria-label needed - the <dt> "Request Timing:" provides context
-      this.populateDeveloperData('request-timing', timingText);
+      this.populateDeveloperData("request-timing", timingText);
     }
   }
 
@@ -383,9 +405,11 @@ export class OpenRouterDisplay {
     if (data.choices) {
       const reason = data.choices[0]?.finish_reason || "unknown";
       const nativeReason = data.choices[0]?.native_finish_reason;
-      const reasonText = nativeReason ? `${reason} (native: ${nativeReason})` : reason;
+      const reasonText = nativeReason
+        ? `${reason} (native: ${nativeReason})`
+        : reason;
       // No aria-label needed - the <dt> "Finish Reason:" provides context
-      this.populateDeveloperData('finish-reason', reasonText);
+      this.populateDeveloperData("finish-reason", reasonText);
     }
   }
 
@@ -402,15 +426,21 @@ export class OpenRouterDisplay {
     completionElement,
     promptTokens,
     completionTokens,
-    report
+    report,
   ) {
     // Show detailed breakdown for each model used
     const promptBreakdown = report.modelChanges
-      .map((change) => `${change.previousMetrics?.promptTokens || 0} (${change.from})`)
+      .map(
+        (change) =>
+          `${change.previousMetrics?.promptTokens || 0} (${change.from})`,
+      )
       .join(" + ");
 
     const completionBreakdown = report.modelChanges
-      .map((change) => `${change.previousMetrics?.completionTokens || 0} (${change.from})`)
+      .map(
+        (change) =>
+          `${change.previousMetrics?.completionTokens || 0} (${change.from})`,
+      )
       .join(" + ");
 
     const promptText = `${promptTokens} (Current) | History: ${promptBreakdown}`;
@@ -418,15 +448,15 @@ export class OpenRouterDisplay {
 
     // Keep aria-labels for complex history information to clarify the breakdown
     this.populateDeveloperData(
-      'prompt-tokens', 
-      promptText, 
-      `Prompt tokens: ${promptTokens} current, with history: ${promptBreakdown}`
+      "prompt-tokens",
+      promptText,
+      `Prompt tokens: ${promptTokens} current, with history: ${promptBreakdown}`,
     );
-    
+
     this.populateDeveloperData(
-      'completion-tokens', 
-      completionText, 
-      `Completion tokens: ${completionTokens} current, with history: ${completionBreakdown}`
+      "completion-tokens",
+      completionText,
+      `Completion tokens: ${completionTokens} current, with history: ${completionBreakdown}`,
     );
   }
 
@@ -443,15 +473,15 @@ export class OpenRouterDisplay {
     completionElement,
     promptTokens,
     completionTokens,
-    report
+    report,
   ) {
     // Simple display for single model usage
     const promptText = `${promptTokens} (Total: ${report.totalPromptTokens || promptTokens})`;
     const completionText = `${completionTokens} (Total: ${report.totalCompletionTokens || completionTokens})`;
-    
+
     // No aria-labels needed - the <dt> elements provide context
-    this.populateDeveloperData('prompt-tokens', promptText);
-    this.populateDeveloperData('completion-tokens', completionText);
+    this.populateDeveloperData("prompt-tokens", promptText);
+    this.populateDeveloperData("completion-tokens", completionText);
   }
 
   /**
@@ -464,8 +494,13 @@ export class OpenRouterDisplay {
       const totalAttempts = report.attempts?.length || 1;
       const efficiencyText = `${efficiency}% efficiency | ${totalAttempts} attempt${totalAttempts > 1 ? "s" : ""}`;
       const ariaLabel = `Token efficiency: ${efficiency}% with ${totalAttempts} attempt${totalAttempts > 1 ? "s" : ""}`;
-      
-      this.populateDeveloperData('token-efficiency', efficiencyText, ariaLabel, true); // true for aria-live
+
+      this.populateDeveloperData(
+        "token-efficiency",
+        efficiencyText,
+        ariaLabel,
+        true,
+      ); // true for aria-live
     }
   }
 
@@ -478,7 +513,7 @@ export class OpenRouterDisplay {
   updateModelChanges(data, report, requestModel) {
     let changesText = "None";
     let ariaLabel = "No model changes";
-    
+
     if (report.modelChanges?.length > 0) {
       const changes = report.modelChanges
         .map((change) => {
@@ -495,8 +530,8 @@ export class OpenRouterDisplay {
       changesText = `${requestModel} → ${data.model}`;
       ariaLabel = `Model changed from ${requestModel} to ${data.model}`;
     }
-    
-    this.populateDeveloperData('model-changes', changesText, ariaLabel, true); // true for aria-live
+
+    this.populateDeveloperData("model-changes", changesText, ariaLabel, true); // true for aria-live
   }
 
   /**
@@ -509,19 +544,24 @@ export class OpenRouterDisplay {
     try {
       // Calculate cost (checking if cache was used)
       const cacheDiscount = data.cached ? 0.5 : 0;
-      const cost = calculateCost(data.model, promptTokens, completionTokens, cacheDiscount);
+      const cost = calculateCost(
+        data.model,
+        promptTokens,
+        completionTokens,
+        cacheDiscount,
+      );
 
       // Display formatted cost
       const formattedCost = formatCost(cost);
       // No aria-label needed - the <dt> "Last Transaction Cost:" provides context
-      this.populateDeveloperData('last-cost', formattedCost);
+      this.populateDeveloperData("last-cost", formattedCost);
     } catch (error) {
       openRouterUtils.error("Error calculating cost", {
         error,
         model: data.model,
       });
-      
-      this.populateDeveloperData('last-cost', "Error calculating cost");
+
+      this.populateDeveloperData("last-cost", "Error calculating cost");
     }
   }
 }

@@ -102,6 +102,23 @@ function logDebug(message, ...args) {
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
 
+// Phase 8A-9 D-10: canonical mapping of mode to chemistry-owning panel.
+// Three DOM panels can host chemistry output. Exactly one should contain
+// #chemistry-structure-figure at any moment, matching the current mode.
+// If you add a new mode that hosts chemistry, add it here AND update
+// _restoreChemistryToCanonical() + _onModeExit() to match.
+const CHEMISTRY_PANEL_FOR_MODE = Object.freeze({
+  upload: "mathpix-output-smiles",    // image/single-file upload — canonical home
+  pdf: "panel-chemistry",              // PDF result rendering — moves from canonical
+  resume: "resume-panel-chemistry",    // resume mode — has own DOM since Phase 7A-5d
+  camera: null,                        // no chemistry in this mode
+  convert: null,
+  draw: null,
+});
+
+// Phase 8A-9 D-1: enable runtime invariant checking for chemistry panel ownership
+const ASSERT_CHEM_OWNERSHIP = true;
+
 /**
  * @class MathPixPDFResultRenderer
  * @extends MathPixBaseModule
@@ -334,7 +351,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
               {
                 includePageBreakdown: true,
                 calculateConfidenceStats: true,
-              }
+              },
             );
 
           // Store for future use
@@ -375,7 +392,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
             };
 
             this.controller.pdfProcessor.updateDebugDataWithLinesAPI(
-              linesDebugData
+              linesDebugData,
             );
 
             logInfo("PDF processor debug data updated with Lines API data", {
@@ -387,7 +404,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
             this.updateConfidenceIndicator();
           } else {
             logWarn(
-              "PDF processor not available for debug data update with Lines API"
+              "PDF processor not available for debug data update with Lines API",
             );
           }
 
@@ -407,6 +424,9 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
               hasPageBreakdown: true,
             });
           }
+
+          // Display document-level statistics totals
+          this.updateDocumentStatistics();
         } catch (linesError) {
           // Non-critical: Log but don't break page display
           logWarn("Lines API fetch failed, using basic page parsing", {
@@ -468,11 +488,14 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         });
       }
 
+      // Step 5b: Phase 5F-2 — Chemistry detection in PDF results
+      await this.detectAndDisplayPDFChemistry(results);
+
       // Step 6: Export functionality already configured by createFormatExportActions()
       // ✅ PHASE 4 FIX: Removed setupExportFunctionality() call that was overwriting working buttons
       // Export buttons are created in populateFormatContent() via createFormatExportActions()
       logDebug(
-        "Export functionality configured via createFormatExportActions in content population"
+        "Export functionality configured via createFormatExportActions in content population",
       );
 
       // Step 6a: Validate export functionality is working correctly
@@ -487,7 +510,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       logInfo("PDF results display completed successfully", {
         activeFormat: this.activeFormat,
         populatedFormats: Object.keys(this.displayStates).filter(
-          (format) => this.displayStates[format].populated
+          (format) => this.displayStates[format].populated,
         ),
         documentName: documentInfo.name,
       });
@@ -496,10 +519,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       this.showNotification(
         `Document processing complete! Results available in ${
           Object.keys(results).filter(
-            (key) => key !== "processingMetadata" && results[key]
+            (key) => key !== "processingMetadata" && results[key],
           ).length
         } formats.`,
-        "success"
+        "success",
       );
 
       // Phase 5: Show download button after successful PDF processing
@@ -524,10 +547,315 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
       this.showNotification(
         `Failed to display processing results: ${error.message}`,
-        "error"
+        "error",
       );
 
       throw error;
+    }
+  }
+
+  /**
+   * Phase 5F-2: Detect chemistry in PDF results and display in the Chemistry panel.
+   *
+   * Scans the MMD content from PDF processing for <smiles> tags using the shared
+   * MathPixChemistryUtils module. If chemistry is found, delegates to the image
+   * result renderer's populateChemistryFormat() to set up the chemistry data and
+   * SmilesDrawer rendering, then moves the chemistry panel content into the PDF
+   * tab area so it appears alongside MMD / Confidence as a peer tab.
+   *
+   * Phase 6B: Rewrote to integrate into PDF tab system instead of showing the
+   * separate mathpix-output-container above the PDF results.
+   *
+   * @param {Object} results - PDF processing results containing format-specific content
+   * @param {string} [results.mmd] - MMD content that may contain <smiles> tags
+   * @returns {Promise<void>}
+   * @private
+   */
+  async detectAndDisplayPDFChemistry(results) {
+    const chemUtils = window.MathPixChemistryUtils;
+    if (!chemUtils || typeof chemUtils.extractChemistryFromResponse !== "function") {
+      logDebug("MathPixChemistryUtils not available — skipping PDF chemistry detection");
+      return;
+    }
+
+    // Build a synthetic API response from the MMD content for chemistry extraction
+    const mmdContent = results?.mmd || "";
+    if (!mmdContent) {
+      logDebug("No MMD content in PDF results — skipping chemistry detection");
+      return;
+    }
+
+    const syntheticResponse = { text: mmdContent };
+    const chemData = chemUtils.extractChemistryFromResponse(syntheticResponse);
+
+    if (!chemData || chemData.length === 0) {
+      logDebug("No chemistry detected in PDF MMD content");
+      // Ensure chemistry tab is hidden if it was previously shown
+      this._hideChemistryTab();
+      return;
+    }
+
+    logInfo("Chemistry detected in PDF results", {
+      structureCount: chemData.length,
+      notations: chemData.map((s) => s.notation),
+    });
+
+    // Delegate to the image result renderer's chemistry panel for data + rendering
+    const resultRenderer = this.controller.resultRenderer;
+    if (!resultRenderer) {
+      logWarn("Result renderer not available for chemistry display");
+      return;
+    }
+
+    // Populate the chemistry panel (sets up _chemistryData, renders first structure)
+    resultRenderer.populateChemistryFormat(chemData);
+
+    // Phase 6B: Move the chemistry panel content into the PDF tab area
+    this._moveChemistryToPDFTabs(chemData.length);
+
+    logInfo("Chemistry tab added to PDF results", {
+      structures: chemData.length,
+    });
+  }
+
+  /**
+   * Phase 6B: Move the chemistry panel content from the image/text output container
+   * into the PDF tab panel, and show the Chemistry tab button.
+   *
+   * ⚠️ Phase 8A-9 WARNING — THREE chemistry panel owners exist:
+   *   1. #mathpix-output-smiles  (canonical — image/upload mode)
+   *   2. #panel-chemistry        (PDF mode — THIS method moves elements here)
+   *   3. #resume-panel-chemistry (resume mode — separate DOM since Phase 7A-5d)
+   *
+   * This method moves elements OUT of canonical ownership into #panel-chemistry.
+   * Any mode transition that leaves PDF mode MUST call _restoreChemistryToCanonical()
+   * to move elements back, otherwise subsequent image uploads will write to elements
+   * inside #panel-chemistry while #mathpix-output-smiles remains empty.
+   *
+   * See CHEMISTRY_PANEL_FOR_MODE map and chemistry-phase8-masterplan.md § 8A-9.
+   * Candidate for removal in Phase 8F (full three-panel consolidation).
+   *
+   * @param {number} structureCount - Number of chemistry structures detected
+   * @private
+   */
+  _moveChemistryToPDFTabs(structureCount) {
+    const targetPanel = document.getElementById("panel-chemistry");
+    const chemTab = this.formatElements.tabs["chemistry"];
+
+    if (!targetPanel) {
+      logWarn("Cannot move chemistry to PDF tabs — target panel not found");
+      return;
+    }
+
+    // Find the chemistry content wherever it currently lives
+    // (could be in mathpix-output-smiles, panel-chemistry, or resume-panel-chemistry)
+    const sourcePanel = this._findChemistryContentSource(targetPanel);
+
+    // Phase 8A-9 D-11: precondition checks
+    if (!sourcePanel) {
+      logWarn(
+        "_moveChemistryToPDFTabs: source already empty — content may have " +
+        "already been moved. Skipping to prevent no-op move."
+      );
+      return;
+    }
+
+    if (sourcePanel === targetPanel) {
+      logWarn(
+        "_moveChemistryToPDFTabs: target already contains canonical children " +
+        "— ownership leak? Skipping redundant move.",
+        { sourceId: sourcePanel.id, targetId: targetPanel.id }
+      );
+      return;
+    }
+
+    // Move all children into the PDF tab panel
+    targetPanel.innerHTML = "";
+    while (sourcePanel.firstChild) {
+      targetPanel.appendChild(sourcePanel.firstChild);
+    }
+
+    // Show the Chemistry tab button in the PDF tab headers
+    if (chemTab) {
+      chemTab.style.display = "block";
+      logDebug("Chemistry tab button shown in PDF tabs");
+    }
+
+    // Hide the image/text output container — chemistry is now in PDF tabs
+    const outputContainer = document.getElementById("mathpix-output-container");
+    if (outputContainer) {
+      outputContainer.style.display = "none";
+    }
+
+    // Store structure count for tab label updates
+    this._chemistryStructureCount = structureCount;
+  }
+
+  /**
+   * Phase 6B: Hide the chemistry tab in the PDF tab area.
+   * Called when no chemistry is detected or when clearing results.
+   * @private
+   */
+  _hideChemistryTab() {
+    const chemTab = this.formatElements.tabs["chemistry"];
+    if (chemTab) {
+      chemTab.style.display = "none";
+    }
+
+    // Also hide via the image result renderer if available
+    if (this.controller.resultRenderer) {
+      this.controller.resultRenderer.showChemistryTab(false);
+    }
+  }
+
+  /**
+   * Phase 6B: Find the panel that currently contains the chemistry content.
+   * The content (canvas, identifiers, buttons) may have been previously moved
+   * from its original location (mathpix-output-smiles) to panel-chemistry or
+   * resume-panel-chemistry. This method checks all possible locations and
+   * returns the one that has the content.
+   *
+   * @param {HTMLElement} excludePanel - Panel to exclude (the target we're moving TO)
+   * @returns {HTMLElement|null} The panel containing chemistry content, or null
+   * @private
+   */
+  _findChemistryContentSource(excludePanel) {
+    // All possible locations for the chemistry panel content
+    const candidates = [
+      document.getElementById("mathpix-output-smiles"),
+      document.getElementById("panel-chemistry"),
+      document.getElementById("resume-panel-chemistry"),
+    ];
+
+    for (const panel of candidates) {
+      if (!panel || panel === excludePanel) continue;
+      // Check if this panel has the chemistry canvas (the key content element)
+      if (panel.querySelector("#chemistry-structure-figure") ||
+          panel.querySelector("#chemistry-structure-canvas")) {
+        return panel;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Phase 8A-9: Restore canonical chemistry sub-elements back to
+   * #mathpix-output-smiles from whichever non-canonical panel currently
+   * holds them. This is the reverse of _moveChemistryToPDFTabs().
+   *
+   * Idempotent — safe to call when elements are already in their
+   * canonical location (#mathpix-output-smiles). Called by _onModeExit()
+   * in mathpix-mode-switcher.js on every mode transition.
+   *
+   * @private
+   */
+  _restoreChemistryToCanonical() {
+    const canonicalPanel = document.getElementById("mathpix-output-smiles");
+    if (!canonicalPanel) {
+      logDebug("_restoreChemistryToCanonical: canonical panel not in DOM");
+      return;
+    }
+
+    // Check if canonical elements are already home
+    if (canonicalPanel.querySelector("#chemistry-structure-figure")) {
+      logDebug("_restoreChemistryToCanonical: elements already canonical — no-op");
+      return;
+    }
+
+    // Find where the canonical children currently live (exclude canonical itself)
+    const sourcePanel = this._findChemistryContentSource(canonicalPanel);
+    if (!sourcePanel) {
+      // No chemistry content anywhere — nothing to restore
+      logDebug("_restoreChemistryToCanonical: no chemistry content found — no-op");
+      return;
+    }
+
+    // Skip if source is resume-panel-chemistry — resume has its own
+    // separate DOM (Phase 7A-5d) with resume-chemistry-* prefixed IDs;
+    // those should NOT be moved into the canonical panel
+    if (sourcePanel.id === "resume-panel-chemistry") {
+      logDebug(
+        "_restoreChemistryToCanonical: source is resume panel (own DOM) — no-op"
+      );
+      return;
+    }
+
+    logInfo("_restoreChemistryToCanonical: moving elements back from " +
+      sourcePanel.id + " to mathpix-output-smiles");
+
+    // Move all children back to canonical
+    while (sourcePanel.firstChild) {
+      canonicalPanel.appendChild(sourcePanel.firstChild);
+    }
+
+    // Run the ownership invariant check
+    this._assertChemistryPanelOwnershipConsistent("_restoreChemistryToCanonical");
+  }
+
+  /**
+   * Phase 8A-9 D-1: Assert that chemistry panel ownership is consistent
+   * with the current mode. Exactly one panel should contain
+   * #chemistry-structure-figure, matching the expected panel for the mode.
+   *
+   * @param {string} context - Calling context for diagnostic logging
+   * @private
+   */
+  _assertChemistryPanelOwnershipConsistent(context) {
+    if (!ASSERT_CHEM_OWNERSHIP) return;
+
+    const violations = [];
+    const figureEl = document.getElementById("chemistry-structure-figure");
+
+    // Check for duplicates (D-9 style)
+    const dupeCount = document.querySelectorAll("#chemistry-structure-figure").length;
+    if (dupeCount > 1) {
+      violations.push(
+        `Duplicate: found ${dupeCount} elements with id chemistry-structure-figure`
+      );
+    }
+
+    // If no chemistry data, no ownership expectation
+    const controller = window.getMathPixController?.();
+    const hasChemistryData = controller?.resultRenderer?._chemistryData?.length > 0;
+
+    if (hasChemistryData && !figureEl) {
+      violations.push(
+        "Chemistry data exists but #chemistry-structure-figure not in DOM"
+      );
+    }
+
+    if (figureEl && hasChemistryData) {
+      // Determine which panel owns it
+      let actualOwner = "(detached)";
+      let parent = figureEl.parentElement;
+      while (parent) {
+        if (parent.id === "mathpix-output-smiles" ||
+            parent.id === "panel-chemistry" ||
+            parent.id === "resume-panel-chemistry") {
+          actualOwner = parent.id;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+
+      // Determine expected owner from current mode
+      const currentMode = controller?.modeSwitcher?.currentMode || "upload";
+      const expectedOwner = CHEMISTRY_PANEL_FOR_MODE[currentMode];
+
+      if (expectedOwner && actualOwner !== expectedOwner) {
+        violations.push(
+          `Mode "${currentMode}" expects chemistry in #${expectedOwner} ` +
+          `but found in #${actualOwner}`
+        );
+      }
+    }
+
+    if (violations.length > 0) {
+      logWarn("Phase 8A-9 D-1: chemistry panel ownership violation", {
+        context,
+        violations,
+      });
     }
   }
 
@@ -578,6 +906,46 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       tables: pageData.tables,
       handwritten: pageData.handwritten,
       printed: pageData.printed,
+    });
+  }
+
+  /**
+   * Update document-level statistics display with totals from Lines API analysis.
+   * Populates the doc-stat-* elements inside #mathpix-doc-statistics.
+   * @since 3.4.3
+   */
+  updateDocumentStatistics() {
+    if (!this.linesAnalysis) {
+      logDebug("No Lines API data available for document statistics");
+      return;
+    }
+
+    const statsPanel = document.getElementById("mathpix-doc-statistics");
+    if (statsPanel) {
+      statsPanel.style.display = "block";
+    }
+
+    const statElements = {
+      "doc-stat-lines": this.linesAnalysis.totalLines || 0,
+      "doc-stat-math": this.linesAnalysis.mathElements?.count || 0,
+      "doc-stat-tables": this.linesAnalysis.tableStructures?.count || 0,
+      "doc-stat-handwritten": this.linesAnalysis.handwrittenLines || 0,
+      "doc-stat-printed": this.linesAnalysis.printedLines || 0,
+    };
+
+    Object.entries(statElements).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = value;
+      }
+    });
+
+    logDebug("Document statistics updated", {
+      lines: statElements["doc-stat-lines"],
+      math: statElements["doc-stat-math"],
+      tables: statElements["doc-stat-tables"],
+      handwritten: statElements["doc-stat-handwritten"],
+      printed: statElements["doc-stat-printed"],
     });
   }
 
@@ -931,7 +1299,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           content,
           displayContent,
           totalLines,
-          previewLines
+          previewLines,
         );
       }
 
@@ -1043,6 +1411,9 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         logWarn("Failed to show convert UI:", e);
       }
 
+      // Phase 8 (Conv AD): Show AI Enhance button when MMD content is available
+      this.showUploadAIEnhanceButton();
+
       logInfo("MMD format populated with preview structure preserved");
       return;
     }
@@ -1104,12 +1475,13 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     fullContent,
     truncatedContent,
     totalLines,
-    previewLines
+    previewLines,
   ) {
     const toggleButton = document.getElementById("html-expand-toggle-pdf");
     const toggleIcon = document.getElementById("html-toggle-icon-pdf");
     const toggleText = document.getElementById("html-toggle-text-pdf");
     const visibleLines = document.getElementById("html-visible-lines-pdf");
+    // Phase 8A-9: global scope intentional — unique class, only one in DOM
     const container = document.querySelector(".html-content-container");
     const codeElement = document.getElementById("mathpix-pdf-content-html");
 
@@ -1220,7 +1592,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     if (toggleButton._htmlToggleHandler) {
       toggleButton.removeEventListener(
         "click",
-        toggleButton._htmlToggleHandler
+        toggleButton._htmlToggleHandler,
       );
     }
 
@@ -1285,7 +1657,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
             const content = await file.async("string");
             texFiles.push({ name: filename, content: content });
           }
-        })
+        }),
       );
 
       if (texFiles.length > 0) {
@@ -1306,7 +1678,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           texFiles.length
         } .tex file(s) found</p>
         <p style="margin: 0;"><strong>Displaying:</strong> ${this.escapeHtml(
-          mainFile.name
+          mainFile.name,
         )}</p>
       `;
         formatContent.appendChild(zipInfo);
@@ -1353,7 +1725,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       <div class="mathpix-format-content">
         <div class="mathpix-error-content">
           <p><strong>Error extracting LaTeX ZIP:</strong> ${this.escapeHtml(
-            error.message
+            error.message,
           )}</p>
           <p>You can still download the ZIP file directly.</p>
           <div class="mathpix-export-actions">
@@ -1516,7 +1888,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     logInfo("Tab switching setup completed", {
       tabCount: tabElements.length,
       availableFormats: tabElements.map((tab) =>
-        tab.getAttribute("data-format")
+        tab.getAttribute("data-format"),
       ),
     });
   }
@@ -1579,7 +1951,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
       if (!this.currentResults || !this.currentResults[resultKey]) {
         throw new Error(
-          `No content available for ${format} format (looking for key: ${resultKey})`
+          `No content available for ${format} format (looking for key: ${resultKey})`,
         );
       }
 
@@ -1825,7 +2197,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       if (formatsElement && this.currentResults) {
         const availableFormats = Object.keys(this.currentResults)
           .filter(
-            (key) => key !== "processingMetadata" && this.currentResults[key]
+            (key) => key !== "processingMetadata" && this.currentResults[key],
           )
           .map((format) => format.toUpperCase())
           .join(", ");
@@ -1961,6 +2333,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
   validateExportFunctionality() {
     logDebug("Validating export functionality configuration");
 
+    // Phase 8A-9: global scope intentional — validates all action buttons across modes
     const exportButtons = document.querySelectorAll(".mathpix-action-button");
     let workingButtons = 0;
     let brokenButtons = 0;
@@ -1993,7 +2366,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     // Throw error for critical issues
     if (brokenButtons > 0) {
       throw new Error(
-        `Export functionality compromised: ${brokenButtons} buttons with context issues detected`
+        `Export functionality compromised: ${brokenButtons} buttons with context issues detected`,
       );
     }
 
@@ -2003,7 +2376,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
     if (workingButtons === 0 && exportButtons.length > 0) {
       throw new Error(
-        "No working export buttons found despite buttons being present"
+        "No working export buttons found despite buttons being present",
       );
     }
 
@@ -2033,7 +2406,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
       // Process Another Document button
       const processAnotherButton = document.getElementById(
-        "mathpix-process-another-pdf"
+        "mathpix-process-another-pdf",
       );
       if (processAnotherButton) {
         processAnotherButton.addEventListener("click", () => {
@@ -2042,13 +2415,13 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         logDebug("Process Another button configured successfully");
       } else {
         logWarn(
-          "Process Another button not found in DOM - ID: mathpix-process-another-pdf"
+          "Process Another button not found in DOM - ID: mathpix-process-another-pdf",
         );
       }
 
       // Clear Results button
       const clearResultsButton = document.getElementById(
-        "mathpix-clear-pdf-results"
+        "mathpix-clear-pdf-results",
       );
       if (clearResultsButton) {
         clearResultsButton.addEventListener("click", () => {
@@ -2057,7 +2430,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         logDebug("Clear Results button configured successfully");
       } else {
         logWarn(
-          "Clear Results button not found in DOM - ID: mathpix-clear-pdf-results"
+          "Clear Results button not found in DOM - ID: mathpix-clear-pdf-results",
         );
       }
 
@@ -2144,24 +2517,25 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       "mdzip",
       "htmlzip",
       "confidence", // Phase 3.2: PDF Confidence Visualiser tab
-    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latexpdf" | Phase 2: Added "pptx" | Phase 2B: Added archive formats | Phase 3.2: confidence
+      "chemistry", // Phase 6B: Chemistry structures tab
+    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latexpdf" | Phase 2: Added "pptx" | Phase 2B: Added archive formats | Phase 3.2: confidence | Phase 6B: chemistry
 
     formats.forEach((format) => {
       // Use direct DOM queries instead of cached elements to ensure we find existing elements
       this.formatElements.tabs[format] = document.getElementById(
-        `tab-${format}`
+        `tab-${format}`,
       );
       this.formatElements.panels[format] = document.getElementById(
-        `panel-${format}`
+        `panel-${format}`,
       );
     });
 
     logDebug("Format elements cached via direct DOM queries", {
       tabs: Object.keys(this.formatElements.tabs).filter(
-        (k) => this.formatElements.tabs[k]
+        (k) => this.formatElements.tabs[k],
       ),
       panels: Object.keys(this.formatElements.panels).filter(
-        (k) => this.formatElements.panels[k]
+        (k) => this.formatElements.panels[k],
       ),
     });
   }
@@ -2182,7 +2556,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       // Respect user's motion preferences for accessibility
       setTimeout(() => {
         const resultsHeading = document.getElementById(
-          "mathpix-doc-proc-results"
+          "mathpix-doc-proc-results",
         );
         if (resultsHeading) {
           // Use instant scroll to avoid jarring rapid movements during multi-step workflow
@@ -2193,7 +2567,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           logDebug("Scrolled to document processing results heading");
         } else {
           logWarn(
-            "Document processing results heading not found (id: mathpix-document-processing-results)"
+            "Document processing results heading not found (id: mathpix-document-processing-results)",
           );
         }
       }, 150);
@@ -2252,7 +2626,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         '<svg height="21" viewBox="0 0 21 21"width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"> <path d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"/><path d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"/><path d="m2.5 5.5h5" /><path d="m2.5 7.5h7" /><path d="m2.5 9.5h3" /><path d="m2.5 11.5h6" /></g></svg> Copy';
       copyButton.setAttribute(
         "aria-label",
-        `Copy ${format.toUpperCase()} content to clipboard`
+        `Copy ${format.toUpperCase()} content to clipboard`,
       );
       copyButton.addEventListener("click", () => {
         this.handleFormatExport(format, "copy");
@@ -2267,7 +2641,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       ' <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/><path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/><path d="m3.5 3.5h2v2h-2z"/></g></svg> Download';
     downloadButton.setAttribute(
       "aria-label",
-      `Download ${format.toUpperCase()} file`
+      `Download ${format.toUpperCase()} file`,
     );
     downloadButton.addEventListener("click", () => {
       this.handleFormatExport(format, "download");
@@ -2932,11 +3306,11 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         const firstVisibleFormat = formats.find(
           (f) =>
             this.formatElements.tabs[f] &&
-            this.formatElements.tabs[f].style.display !== "none"
+            this.formatElements.tabs[f].style.display !== "none",
         );
         if (firstVisibleFormat) {
           logWarn(
-            `Falling back to first visible format: ${firstVisibleFormat}`
+            `Falling back to first visible format: ${firstVisibleFormat}`,
           );
           await this.switchToFormat(firstVisibleFormat);
         }
@@ -2947,11 +3321,11 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       const firstVisibleFormat = formats.find(
         (f) =>
           this.formatElements.tabs[f] &&
-          this.formatElements.tabs[f].style.display !== "none"
+          this.formatElements.tabs[f].style.display !== "none",
       );
       if (firstVisibleFormat) {
         logWarn(
-          `No content detected, falling back to first visible: ${firstVisibleFormat}`
+          `No content detected, falling back to first visible: ${firstVisibleFormat}`,
         );
         await this.switchToFormat(firstVisibleFormat);
       }
@@ -2980,6 +3354,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         if (panel) {
           panel.style.display = "none";
           panel.setAttribute("aria-hidden", "true");
+          panel.setAttribute("hidden", "");
         }
 
         if (tab) {
@@ -2994,6 +3369,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       const activeTab = this.formatElements.tabs[format];
 
       if (activePanel) {
+        activePanel.removeAttribute("hidden");
         activePanel.style.display = "block";
         activePanel.setAttribute("aria-hidden", "false");
       }
@@ -3150,7 +3526,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           await navigator.clipboard.writeText(latexContent);
           this.showNotification(
             "LaTeX content copied to clipboard!",
-            "success"
+            "success",
           );
           return;
         } catch (error) {
@@ -3163,7 +3539,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           document.body.removeChild(textArea);
           this.showNotification(
             "LaTeX content copied to clipboard!",
-            "success"
+            "success",
           );
           return;
         }
@@ -3178,7 +3554,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       await navigator.clipboard.writeText(content);
       this.showNotification(
         `${format.toUpperCase()} content copied to clipboard!`,
-        "success"
+        "success",
       );
     } catch (error) {
       // Fallback for older browsers
@@ -3191,7 +3567,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
       this.showNotification(
         `${format.toUpperCase()} content copied to clipboard!`,
-        "success"
+        "success",
       );
     }
   }
@@ -3216,7 +3592,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       try {
         content = await this.controller.apiClient.downloadPDFFormat(
           this.currentResults.processingMetadata.pdfId,
-          "docx"
+          "docx",
         );
       } catch (error) {
         throw new Error(`Failed to download DOCX: ${error.message}`);
@@ -3226,7 +3602,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       content = this.currentResults[resultKey];
       if (!content) {
         throw new Error(
-          `No content available for ${format} format (key: ${resultKey})`
+          `No content available for ${format} format (key: ${resultKey})`,
         );
       }
     }
@@ -3237,7 +3613,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const downloadInfo = this.generateDownloadFile(
       format,
       content,
-      baseFilename
+      baseFilename,
     );
 
     // Trigger download
@@ -3253,7 +3629,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
     this.showNotification(
       `${downloadInfo.filename} downloaded successfully!`,
-      "success"
+      "success",
     );
 
     logInfo("File download completed", {
@@ -3280,12 +3656,12 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const previewWindow = window.open(
       "",
       "_blank",
-      "width=800,height=600,scrollbars=yes,resizable=yes"
+      "width=800,height=600,scrollbars=yes,resizable=yes",
     );
 
     if (!previewWindow) {
       throw new Error(
-        "Could not open preview window. Please check popup blocker settings."
+        "Could not open preview window. Please check popup blocker settings.",
       );
     }
 
@@ -3314,6 +3690,556 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     previewWindow.focus();
 
     this.showNotification("HTML preview opened in new window", "info");
+  }
+
+  /**
+   * @method resetMMDPanelContent
+   * @description Resets MMD panel content whilst preserving the static HTML structure
+   *
+   * The MMD panel contains a complex static structure in tools.html:
+   * - mmd-view-controls (Code/Preview/Split/Compare/Edit buttons)
+   * - mmd-session-banner (session restore UI)
+   * - mmd-content-area (code container, preview container, editor wrapper)
+   *
+   * Unlike other format panels, this structure MUST NOT be destroyed with innerHTML = ""
+   * because populateMMDFormatWithPreview depends on finding #mathpix-pdf-content-mmd
+   * within this structure. If destroyed, the fallback creates a bare <pre><code>
+   * with no view controls.
+   *
+   * @param {HTMLElement} panel - The panel-mmd element
+   * @returns {void}
+   * @private
+   * @since 3.5.1
+   */
+  resetMMDPanelContent(panel) {
+    logDebug("Resetting MMD panel content (preserving structure)");
+
+    // 1. Clear the code element content and reset highlighting
+    const codeElement = panel.querySelector("#mathpix-pdf-content-mmd");
+    if (codeElement) {
+      codeElement.textContent = "";
+      codeElement.className = "language-markdown";
+      logDebug("MMD code element cleared");
+    }
+
+    // 2. Reset content area data attributes
+    const contentArea = panel.querySelector("#mmd-content-area");
+    if (contentArea) {
+      contentArea.dataset.currentView = "code";
+      contentArea.dataset.libraryLoaded =
+        contentArea.dataset.libraryLoaded || "false";
+      contentArea.dataset.hasContent = "false";
+    }
+
+    // 3. Reset view buttons to initial state (code active, others inactive)
+    const viewButtons = {
+      "mmd-view-code-btn": true,
+      "mmd-view-preview-btn": false,
+      "mmd-view-split-btn": false,
+      "mmd-view-pdf-split-btn": false,
+    };
+    Object.entries(viewButtons).forEach(([id, isActive]) => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.classList.toggle("active", isActive);
+        btn.setAttribute("aria-pressed", String(isActive));
+      }
+    });
+
+    // 4. Reset view containers — show code, hide others
+    const codeContainer = panel.querySelector("#mmd-code-container");
+    if (codeContainer) {
+      codeContainer.classList.add("active");
+      codeContainer.dataset.editing = "false";
+    }
+
+    const previewContainer = panel.querySelector("#mmd-preview-container");
+    if (previewContainer) {
+      previewContainer.classList.remove("active");
+      previewContainer.hidden = true;
+
+      // Clear only the rendered content, NOT the structural children
+      // (loading state, error state, skip links must be preserved)
+      const previewContent = previewContainer.querySelector(
+        "#mmd-preview-content",
+      );
+      if (previewContent) {
+        previewContent.innerHTML = "";
+      }
+
+      // Reset preview states to initial hidden
+      const previewLoading = previewContainer.querySelector(
+        "#mmd-preview-loading",
+      );
+      if (previewLoading) previewLoading.hidden = true;
+
+      const previewError = previewContainer.querySelector("#mmd-preview-error");
+      if (previewError) previewError.hidden = true;
+    }
+
+    // 5. Hide editor wrapper, clear textarea, and reset editor state
+    const editorWrapper = panel.querySelector("#mmd-editor-wrapper");
+    if (editorWrapper) {
+      editorWrapper.hidden = true;
+      const textarea = editorWrapper.querySelector("#mmd-editor-textarea");
+      if (textarea) textarea.value = "";
+    }
+
+    // 5b. Reset MMD editor state to prevent stale editing artifacts
+    // Without this, switchView → updateButtonVisibility → stopEditing →
+    // syncToCodeElement overwrites newly populated code element with empty textarea
+    const editor = window.getMathPixMMDEditor?.();
+    if (editor) {
+      if (editor.isEditing) {
+        editor.isEditing = false;
+        editor._persistenceCallbackRegistered = false;
+        logDebug("Editor isEditing state reset during panel content reset");
+      }
+
+      // Reset edit button to initial "Edit MMD" appearance
+      editor.updateButtonState(false);
+      const editBtn = panel.querySelector("#mmd-edit-btn");
+      if (editBtn) {
+        editBtn.setAttribute("aria-pressed", "false");
+        editBtn.hidden = true;
+      }
+    }
+
+    // 6. Hide edit button (shown when content available)
+    const editBtn = document.getElementById("mmd-edit-btn");
+    if (editBtn) {
+      editBtn.hidden = true;
+      editBtn.setAttribute("aria-pressed", "false");
+    }
+
+    // 7. Hide fullscreen button
+    const fullscreenBtn = document.getElementById("mmd-fullscreen-btn");
+    if (fullscreenBtn) {
+      fullscreenBtn.hidden = true;
+    }
+
+    // 8. Hide editor toolbar
+    const editorToolbar = document.getElementById("mmd-editor-toolbar");
+    if (editorToolbar) {
+      editorToolbar.hidden = true;
+    }
+
+    // 9. Hide session banner
+    const sessionBanner = panel.querySelector("#mmd-session-banner");
+    if (sessionBanner) {
+      sessionBanner.hidden = true;
+    }
+
+    // 10. Hide split-view PDF toggle
+    const splitPdfToggle = document.getElementById("mmd-split-pdf-toggle");
+    if (splitPdfToggle) {
+      splitPdfToggle.hidden = true;
+    }
+
+    // 11. Reset view status text
+    const viewStatus = document.getElementById("mmd-view-status");
+    if (viewStatus) {
+      viewStatus.textContent = "Viewing code";
+    }
+
+    // 12. Hide upload AI Enhance button (Phase 8 - Conv AD)
+    this.hideUploadAIEnhanceButton();
+
+    // 13. Hide AI enhancement banner and clear toggle state (Phase 8 - Conv AE)
+    this.hideAIEnhancementBanner();
+
+    logDebug("MMD panel content reset (structure preserved)");
+  }
+
+  /**
+   * Show the upload mode AI Enhance button.
+   *
+   * Called after MMD content is successfully populated in upload mode.
+   * Only shows if MMD content and a PDF file are available.
+   *
+   * @private
+   * @since Phase 8 (Conv AD)
+   */
+  showUploadAIEnhanceButton() {
+    const btn = document.getElementById("upload-ai-enhance-btn");
+    if (!btn) {
+      logDebug("Upload AI Enhance button not found in DOM");
+      return;
+    }
+
+    // Only show if we have MMD content and a PDF source
+    const hasMMD = !!this.currentResults?.mmd;
+    const hasPDF = !!(
+      this.currentPDFFile || this.controller?.pdfHandler?.currentPDFFile
+    );
+
+    if (hasMMD && hasPDF) {
+      btn.hidden = false;
+      logInfo("Upload AI Enhance button shown");
+    } else {
+      logDebug("Upload AI Enhance button not shown: conditions not met", {
+        hasMMD,
+        hasPDF,
+      });
+    }
+  }
+
+  /**
+   * Hide the upload mode AI Enhance button.
+   *
+   * Called on panel reset and session cleanup.
+   *
+   * @private
+   * @since Phase 8 (Conv AD)
+   */
+  hideUploadAIEnhanceButton() {
+    const btn = document.getElementById("upload-ai-enhance-btn");
+    if (btn) {
+      btn.hidden = true;
+      logDebug("Upload AI Enhance button hidden");
+    }
+  }
+
+  // ==========================================================================
+  // AI ENHANCEMENT TOGGLE (Phase 8 - Conv AE)
+  // ==========================================================================
+
+  /**
+   * Show the AI enhancement banner after enhancement is applied.
+   * Stores original MMD (first time only) and enhanced MMD.
+   *
+   * @param {string} originalMMD - Original MMD before enhancement
+   * @param {string} enhancedMMD - Enhanced MMD content
+   * @param {Object} metadata - AI enhancement metadata
+   * @private
+   * @since Phase 8 (Conv AE)
+   */
+  showAIEnhancementBanner(originalMMD, enhancedMMD, metadata) {
+    // Store originals (only on first enhancement — don't overwrite)
+    if (!this._originalMMD) {
+      this._originalMMD = originalMMD;
+      logDebug("Stored original MMD for toggle", {
+        length: originalMMD?.length,
+      });
+    }
+
+    this._enhancedMMD = enhancedMMD;
+    this._aiEnhancementMetadata = metadata;
+    this._showingEnhanced = true;
+
+    // Show banner
+    const banner = document.getElementById("mmd-ai-enhancement-banner");
+    if (banner) {
+      banner.hidden = false;
+      logDebug("AI enhancement banner shown");
+    }
+
+    // Set toggle buttons to enhanced active
+    this._updateToggleButtons("enhanced");
+
+    // Update banner text with model info
+    const bannerText = document.getElementById("mmd-ai-banner-text");
+    if (bannerText && metadata?.model) {
+      const modelName = metadata.model.split("/").pop() || metadata.model;
+      bannerText.textContent = `Enhanced with AI (${modelName})`;
+    }
+  }
+
+  /**
+   * Hide the AI enhancement banner and clear toggle state.
+   *
+   * @private
+   * @since Phase 8 (Conv AE)
+   */
+  hideAIEnhancementBanner() {
+    const banner = document.getElementById("mmd-ai-enhancement-banner");
+    if (banner) {
+      banner.hidden = true;
+    }
+
+    // Clear toggle state
+    this._originalMMD = null;
+    this._enhancedMMD = null;
+    this._showingEnhanced = false;
+    // Note: _aiEnhancementMetadata kept for ZIP inclusion until clearPDFSession
+
+    logDebug("AI enhancement banner hidden and toggle state cleared");
+  }
+
+  /**
+   * Toggle between original and enhanced MMD content.
+   * Updates code element, syntax highlighting, preview, and currentResults.
+   *
+   * @param {string} version - 'original' or 'enhanced'
+   * @private
+   * @since Phase 8 (Conv AE)
+   */
+  async toggleMMDVersion(version) {
+    if (version === "original" && !this._originalMMD) {
+      logWarn("Cannot toggle to original: no original MMD stored");
+      return;
+    }
+    if (version === "enhanced" && !this._enhancedMMD) {
+      logWarn("Cannot toggle to enhanced: no enhanced MMD stored");
+      return;
+    }
+
+    const content =
+      version === "original" ? this._originalMMD : this._enhancedMMD;
+    this._showingEnhanced = version === "enhanced";
+
+    // 1. Update currentResults.mmd (affects convert API, copy, download)
+    if (this.currentResults) {
+      this.currentResults.mmd = content;
+    }
+
+    // 2. Update code element and re-highlight
+    const codeElement = document.getElementById("mathpix-pdf-content-mmd");
+    if (codeElement) {
+      codeElement.textContent = content;
+
+      if (window.Prism && window.Prism.highlightElement) {
+        try {
+          window.Prism.highlightElement(codeElement);
+          logDebug("Prism highlighting re-applied after toggle");
+        } catch (e) {
+          logWarn("Prism highlighting failed during toggle", e);
+        }
+      }
+    }
+
+    // 3. Update MMD preview if loaded
+    // Use updateContent() (not setContent) to re-render when preview is visible
+    try {
+      const controller = window.getMathPixController?.();
+      const mmdPreview = controller?.getMMDPreview?.();
+      if (mmdPreview) {
+        await mmdPreview.updateContent(content);
+      }
+    } catch (e) {
+      logWarn("Failed to update MMD preview during toggle", e);
+    }
+
+    // 4. Update toggle button states
+    this._updateToggleButtons(version);
+
+    // 5. Announce to screen readers
+    const srStatus = document.getElementById("mmd-ai-banner-sr-status");
+    if (srStatus) {
+      srStatus.textContent = `Now showing ${version} MMD content`;
+    }
+
+    logInfo(`MMD toggled to ${version} version`, {
+      contentLength: content.length,
+    });
+  }
+
+  /**
+   * Update toggle button visual and ARIA states.
+   *
+   * @param {string} activeVersion - 'original' or 'enhanced'
+   * @private
+   * @since Phase 8 (Conv AE)
+   */
+  _updateToggleButtons(activeVersion) {
+    const originalBtn = document.getElementById("mmd-toggle-original-btn");
+    const enhancedBtn = document.getElementById("mmd-toggle-enhanced-btn");
+
+    if (originalBtn) {
+      const isActive = activeVersion === "original";
+      originalBtn.classList.toggle("active", isActive);
+      originalBtn.setAttribute("aria-pressed", String(isActive));
+    }
+
+    if (enhancedBtn) {
+      const isActive = activeVersion === "enhanced";
+      enhancedBtn.classList.toggle("active", isActive);
+      enhancedBtn.setAttribute("aria-pressed", String(isActive));
+    }
+
+    // Update banner text to reflect current version
+    const bannerText = document.getElementById("mmd-ai-banner-text");
+    if (bannerText && this._aiEnhancementMetadata) {
+      const modelName =
+        this._aiEnhancementMetadata.model?.split("/").pop() ||
+        this._aiEnhancementMetadata.model ||
+        "AI";
+      bannerText.textContent =
+        activeVersion === "enhanced"
+          ? `Enhanced with AI (${modelName})`
+          : `Viewing original — enhanced version available (${modelName})`;
+    }
+  }
+
+  /**
+   * Get the original (pre-enhancement) MMD content.
+   * Used by the upload provider to always enhance from original.
+   *
+   * @returns {string|null} Original MMD or null if no enhancement applied
+   * @since Phase 8 (Conv AE)
+   */
+  getOriginalMMD() {
+    return this._originalMMD || null;
+  }
+
+  /**
+   * @method clearPDFSession
+   * @description Comprehensively clears all PDF session data to prevent stale data issues
+   *
+   * Clears:
+   * - Lines data and analysis
+   * - Confidence visualiser (destroys instance)
+   * - Current PDF file reference
+   * - Document ID
+   * - Total pages
+   * - Lines data manager cache
+   * - All format panel content
+   * - Preview blob URLs
+   *
+   * @returns {void}
+   * @private
+   * @since 3.5.0
+   */
+  clearPDFSession() {
+    logInfo("Clearing PDF session data");
+
+    // ✅ CRITICAL: Destroy confidence visualiser first (prevents stale visualisation)
+    if (this.confidenceVisualiser) {
+      try {
+        this.confidenceVisualiser.destroy();
+        logDebug("Confidence visualiser destroyed");
+      } catch (error) {
+        logWarn("Error destroying confidence visualiser:", error);
+      }
+      this.confidenceVisualiser = null;
+    }
+
+    // Clear lines data and analysis
+    this.linesData = null;
+    this.linesAnalysis = null;
+    logDebug("Lines data and analysis cleared");
+
+    // Hide confidence tab and indicator (will be re-shown by showConfidenceTabIfDataAvailable)
+    const confidenceTab = this.formatElements?.tabs?.["confidence"];
+    if (confidenceTab) {
+      confidenceTab.style.display = "none";
+      logDebug("Confidence tab hidden");
+    }
+    const confidenceIndicator = document.getElementById(
+      "mathpix-pdf-confidence-indicator",
+    );
+    if (confidenceIndicator) {
+      confidenceIndicator.style.display = "none";
+    }
+
+    // Clear PDF file reference
+    this.currentPDFFile = null;
+    logDebug("Current PDF file reference cleared");
+
+    // Clear document identification
+    this.documentId = null;
+    this.totalPages = null;
+    logDebug("Document ID and page count cleared");
+
+    // Clear preview blob URL if exists
+    if (this.previewPdfUrl) {
+      URL.revokeObjectURL(this.previewPdfUrl);
+      this.previewPdfUrl = null;
+      logDebug("PDF preview blob URL revoked");
+    }
+
+    // Clear results state
+    this.currentResults = null;
+    this.documentInfo = null;
+    this.activeFormat = "mmd";
+    this.resetDisplayStates();
+    logDebug("Results state cleared");
+
+    // Phase 5F-2: Hide chemistry panel if it was shown for PDF results
+    if (this.controller.resultRenderer) {
+      this.controller.resultRenderer.showChemistryTab(false);
+    }
+    const outputContainer = document.getElementById("mathpix-output-container");
+    if (outputContainer) {
+      outputContainer.style.display = "none";
+      // Restore hidden tabs/panels for future image result use
+      const allTabs = outputContainer.querySelectorAll(".mathpix-tab-header");
+      allTabs.forEach((tab) => {
+        if (tab.id !== "mathpix-tab-smiles") {
+          tab.style.display = "";
+        }
+      });
+      const allPanels = outputContainer.querySelectorAll(".mathpix-tab-panel");
+      allPanels.forEach((panel) => {
+        panel.style.display = "";
+      });
+    }
+    logDebug("Chemistry panel cleared for PDF session");
+
+    // Phase 8 (Conv AE): Clear AI enhancement metadata to prevent stale data in ZIP
+    this._aiEnhancementMetadata = null;
+    this._originalMMD = null;
+    this._enhancedMMD = null;
+    this._showingEnhanced = false;
+    logDebug("AI enhancement state cleared");
+
+    // Clear format panel content (preserve structural panels: confidence + MMD)
+    if (this.formatElements && this.formatElements.panels) {
+      Object.entries(this.formatElements.panels).forEach(([format, panel]) => {
+        if (panel) {
+          // Skip confidence panel - its container structure must be preserved
+          // The visualiser instance is already destroyed above
+          if (format === "confidence") {
+            // Reset confidence panel to placeholder state instead of clearing
+            const container = panel.querySelector(
+              "#mathpix-confidence-visualiser-container",
+            );
+            if (container) {
+              container.innerHTML = `
+                <div class="confidence-visualiser-placeholder">
+                  <p>Loading confidence visualiser...</p>
+                </div>
+              `;
+              logDebug("Confidence panel reset to placeholder state");
+            }
+          } else if (format === "mmd") {
+            // Preserve MMD panel's static HTML structure (view controls, editor, session banner)
+            // Only clear the content within the structure
+            this.resetMMDPanelContent(panel);
+          } else {
+            panel.innerHTML = "";
+          }
+        }
+      });
+      logDebug("Format panels cleared (confidence + MMD structure preserved)");
+    }
+
+    // Clear document metadata display elements
+    [
+      "mathpix-doc-name",
+      "mathpix-doc-size",
+      "mathpix-doc-pages",
+      "mathpix-doc-range",
+      "mathpix-processing-time",
+    ].forEach((elementId) => {
+      const element = this.elements[elementId];
+      if (element) {
+        element.textContent = "";
+      }
+    });
+    logDebug("Document metadata display cleared");
+
+    // Clear lines data manager cache if available
+    if (this.controller && this.controller.linesDataManager) {
+      try {
+        this.controller.linesDataManager.clearCache();
+        logDebug("Lines data manager cache cleared");
+      } catch (error) {
+        logWarn("Error clearing lines data manager cache:", error);
+      }
+    }
+
+    logInfo("PDF session data cleared successfully");
   }
 
   /**
@@ -3346,11 +4272,8 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       fileInputContainer.setAttribute("aria-hidden", "false");
     }
 
-    // Clear current results
-    this.currentResults = null;
-    this.documentInfo = null;
-    this.activeFormat = "mmd";
-    this.resetDisplayStates();
+    // ✅ CRITICAL FIX: Clear all PDF session data to prevent stale data
+    this.clearPDFSession();
 
     // ✅ CRITICAL FIX: Delegate to PDF handler to reset drop zone and clear file state
     if (this.controller && this.controller.pdfHandler) {
@@ -3380,10 +4303,25 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       logDebug("PDF preview blob URL cleaned up");
     }
 
-    // Clear all format panels
-    Object.values(this.formatElements.panels).forEach((panel) => {
+    // Clear all format panels (preserving structural panels)
+    Object.entries(this.formatElements.panels).forEach(([format, panel]) => {
       if (panel) {
-        panel.innerHTML = "";
+        if (format === "mmd") {
+          this.resetMMDPanelContent(panel);
+        } else if (format === "confidence") {
+          const container = panel.querySelector(
+            "#mathpix-confidence-visualiser-container",
+          );
+          if (container) {
+            container.innerHTML = `
+              <div class="confidence-visualiser-placeholder">
+                <p>Loading confidence visualiser...</p>
+              </div>
+            `;
+          }
+        } else {
+          panel.innerHTML = "";
+        }
       }
     });
 
@@ -3427,7 +4365,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     for (const elementId of requiredElements) {
       if (!this.elements[elementId]) {
         logError(
-          `PDF result renderer validation failed - missing element: ${elementId}`
+          `PDF result renderer validation failed - missing element: ${elementId}`,
         );
         return false;
       }
@@ -3454,10 +4392,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       displayStates: this.displayStates,
       cachedElements: {
         tabs: Object.keys(this.formatElements.tabs).filter(
-          (k) => this.formatElements.tabs[k]
+          (k) => this.formatElements.tabs[k],
         ),
         panels: Object.keys(this.formatElements.panels).filter(
-          (k) => this.formatElements.panels[k]
+          (k) => this.formatElements.panels[k],
         ),
       },
     };
@@ -3493,6 +4431,9 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     this.currentPage = pageNumber;
     this.refreshCurrentDisplay();
 
+    // Update per-page statistics in the navigation panel
+    this.updatePageStatistics(pageNumber);
+
     // Update PDF preview if initialised (Phase 3.4.2)
     if (this.previewInitialized) {
       this.updatePreviewForCurrentPage();
@@ -3521,7 +4462,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         this.currentViewMode === "pages" ? "flex" : "none";
       pageNavigation.setAttribute(
         "aria-hidden",
-        this.currentViewMode === "pages" ? "false" : "true"
+        this.currentViewMode === "pages" ? "false" : "true",
       );
     }
 
@@ -3594,14 +4535,14 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
     // Insert navigation after the view selection controls
     const viewControls = resultsContainer.querySelector(
-      ".mathpix-results-controls"
+      ".mathpix-results-controls",
     );
     if (viewControls) {
       viewControls.insertAdjacentElement("afterend", navContainer);
     } else {
       resultsContainer.insertBefore(
         navContainer,
-        resultsContainer.querySelector(".mathpix-results-tabs")
+        resultsContainer.querySelector(".mathpix-results-tabs"),
       );
     }
 
@@ -3905,7 +4846,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       // Fallback: Estimate total pages from largest content array
       this.totalPages = Math.max(
         ...formats.map((f) => this.pageContents[f.ui]?.length || 0),
-        1
+        1,
       );
       logInfo("Content analysis parsing completed (estimated pages)", {
         totalPages: this.totalPages,
@@ -3917,7 +4858,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         {
           totalPages: this.totalPages,
           method: "lines-api-authoritative",
-        }
+        },
       );
     }
   }
@@ -4115,7 +5056,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       // 6. Add keyboard navigation hint
       table.setAttribute(
         "aria-label",
-        "Use arrow keys to navigate table cells"
+        "Use arrow keys to navigate table cells",
       );
 
       logDebug("Table accessibility enhanced successfully");
@@ -4154,7 +5095,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const listContainer = document.getElementById("mathpix-diagram-text-list");
     const emptyState = document.getElementById("mathpix-diagram-text-empty");
     const toggleText = document.querySelector(
-      "#mathpix-diagram-text-toggle .toggle-text"
+      "#mathpix-diagram-text-toggle .toggle-text",
     );
 
     if (!section || !listContainer) {
@@ -4255,7 +5196,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         const textElementsList = diagram.textElements
           .map(
             (element) =>
-              `<li class="text-element">${this.escapeHtml(element.text)}</li>`
+              `<li class="text-element">${this.escapeHtml(element.text)}</li>`,
           )
           .join("");
 
@@ -4337,7 +5278,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     if (toggleButton._diagramToggleHandler) {
       toggleButton.removeEventListener(
         "click",
-        toggleButton._diagramToggleHandler
+        toggleButton._diagramToggleHandler,
       );
     }
 
@@ -4397,7 +5338,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       await navigator.clipboard.writeText(text);
       this.showNotification(
         `Diagram text from page ${pageNumber} copied to clipboard!`,
-        "success"
+        "success",
       );
       logInfo("Diagram text copied to clipboard", {
         pageNumber,
@@ -4416,7 +5357,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         document.execCommand("copy");
         this.showNotification(
           `Diagram text from page ${pageNumber} copied to clipboard!`,
-          "success"
+          "success",
         );
         logInfo("Diagram text copied via fallback", {
           pageNumber,
@@ -4468,7 +5409,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         const enhanced = this.enhanceTableAccessibility(table);
         if (enhanced) {
           logDebug(
-            `Enhanced table ${index + 1} of ${tables.length} in PDF HTML`
+            `Enhanced table ${index + 1} of ${tables.length} in PDF HTML`,
           );
         }
       });
@@ -4520,7 +5461,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       const totalLines =
         linesData.pages?.reduce(
           (sum, page) => sum + (page.lines?.length || 0),
-          0
+          0,
         ) || 0;
 
       logInfo("Lines data stored successfully", {
@@ -4539,7 +5480,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         {
           pdfId,
           error: error.message,
-        }
+        },
       );
       this.linesData = null;
       return null;
@@ -4587,10 +5528,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
    */
   updatePDFConfidenceIndicator() {
     const indicator = document.getElementById(
-      "mathpix-pdf-confidence-indicator"
+      "mathpix-pdf-confidence-indicator",
     );
     const valueElement = document.getElementById(
-      "mathpix-pdf-confidence-value"
+      "mathpix-pdf-confidence-value",
     );
     const barElement = document.getElementById("mathpix-pdf-confidence-bar");
 
@@ -4617,8 +5558,8 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     this.linesData.pages.forEach((page) => {
       if (page.lines && Array.isArray(page.lines)) {
         page.lines.forEach((line) => {
-          // Use confidence_rate (geometric mean) as primary metric
-          const confidence = line.confidence_rate ?? line.confidence ?? null;
+          // Use confidence (overall line recognition) as primary metric
+          const confidence = line.confidence ?? line.confidence_rate ?? null;
           if (confidence !== null && confidence !== undefined) {
             totalConfidence += confidence;
             lineCount++;
@@ -4660,8 +5601,8 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       "aria-label",
       `Recognition confidence: ${percentageValue}% (${level.replace(
         "-",
-        " "
-      )}). Click to view detailed confidence analysis.`
+        " ",
+      )}). Click to view detailed confidence analysis.`,
     );
 
     logInfo("PDF confidence indicator updated", {
@@ -4689,7 +5630,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       ) {
         this.controller.showNotification(
           "Confidence data not available. Please wait for processing to complete.",
-          "warning"
+          "warning",
         );
       }
       return;
@@ -4716,7 +5657,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
    */
   async initialiseConfidenceVisualiser() {
     const container = document.getElementById(
-      "mathpix-confidence-visualiser-container"
+      "mathpix-confidence-visualiser-container",
     );
 
     if (!container) {
@@ -4733,7 +5674,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     // Check dependencies
     if (typeof window.PDFConfidenceVisualiser === "undefined") {
       logError(
-        "PDFConfidenceVisualiser not available. Ensure pdf-visualiser-core.js is loaded."
+        "PDFConfidenceVisualiser not available. Ensure pdf-visualiser-core.js is loaded.",
       );
       container.innerHTML = `
       <div class="confidence-visualiser-error" role="alert">
@@ -4759,7 +5700,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           ) {
             this.controller.showNotification(
               `Visualiser error: ${error.message}`,
-              "error"
+              "error",
             );
           }
         },
@@ -4860,6 +5801,109 @@ export default MathPixPDFResultRenderer;
  * Returns: boolean indicating system health
  */
 if (typeof window !== "undefined") {
+  // Phase 8A-9 D-4: Chemistry panel ownership audit helper.
+  // Returns a structured object showing which panel owns which canonical
+  // chemistry children, whether ownership matches the current mode, and
+  // any violations. Returns { consistent: true, ... } when all is well.
+  // See CLAUDE.md "Debug commands → MathPix".
+  window.auditChemistryPanelOwnership = function () {
+    const panelIds = [
+      "mathpix-output-smiles",
+      "panel-chemistry",
+      "resume-panel-chemistry",
+    ];
+    const canonicalIds = [
+      "chemistry-structure-figure",
+      "chemistry-structure-canvas",
+      "chemistry-structure-description-container",
+      "smiles-output-heading",
+      "chemistry-identifiers",
+      "chemistry-actions",
+    ];
+
+    const result = {
+      canonicalChildren: [],
+      pdfChildren: [],
+      resumeChildren: [],
+      activeModeExpected: null,
+      activeModeActualOwner: null,
+      consistent: true,
+      violations: [],
+    };
+
+    // Check each panel
+    for (const panelId of panelIds) {
+      const panel = document.getElementById(panelId);
+      if (!panel) continue;
+      const childIds = Array.from(panel.children)
+        .map((c) => c.id)
+        .filter(Boolean);
+      if (panelId === "mathpix-output-smiles") result.canonicalChildren = childIds;
+      else if (panelId === "panel-chemistry") result.pdfChildren = childIds;
+      else if (panelId === "resume-panel-chemistry") result.resumeChildren = childIds;
+    }
+
+    // Check for duplicates
+    for (const id of canonicalIds) {
+      const count = document.querySelectorAll("#" + id).length;
+      if (count > 1) {
+        result.violations.push("Duplicate: " + count + " elements with id " + id);
+        result.consistent = false;
+      }
+    }
+
+    // Check expected vs actual owner
+    const controller = window.getMathPixController?.();
+    const currentMode = controller?.modeSwitcher?.currentMode || "upload";
+    const expectedPanelId = CHEMISTRY_PANEL_FOR_MODE[currentMode];
+    result.activeModeExpected = expectedPanelId || "(no chemistry for mode " + currentMode + ")";
+
+    const figureEl = document.getElementById("chemistry-structure-figure");
+    if (figureEl) {
+      let owner = "(detached)";
+      let parent = figureEl.parentElement;
+      while (parent) {
+        if (panelIds.includes(parent.id)) { owner = parent.id; break; }
+        parent = parent.parentElement;
+      }
+      result.activeModeActualOwner = owner;
+
+      if (expectedPanelId && owner !== expectedPanelId) {
+        result.violations.push(
+          "Mode \"" + currentMode + "\" expects #" + expectedPanelId +
+          " but figure is in #" + owner
+        );
+        result.consistent = false;
+      }
+    } else {
+      result.activeModeActualOwner = "(not in DOM)";
+      const hasData = controller?.resultRenderer?._chemistryData?.length > 0;
+      if (hasData) {
+        result.violations.push(
+          "Chemistry data exists but #chemistry-structure-figure not in DOM"
+        );
+        result.consistent = false;
+      }
+    }
+
+    return result;
+  };
+
+  // Phase 8 (Conv AE): Global toggle function for AI enhancement banner
+  window.toggleMMDAIVersion = function (version) {
+    try {
+      const controller = window.getMathPixController?.();
+      const renderer = controller?.pdfResultRenderer;
+      if (renderer && typeof renderer.toggleMMDVersion === "function") {
+        renderer.toggleMMDVersion(version);
+      } else {
+        console.warn("PDF result renderer not available for AI version toggle");
+      }
+    } catch (e) {
+      console.error("Error toggling MMD AI version:", e);
+    }
+  };
+
   window.validateMathPixExportFunctionality = () => {
     console.log("🧪 MathPix Export Functionality Validation");
 
@@ -4876,6 +5920,7 @@ if (typeof window !== "undefined") {
     console.log("✅ Core Systems:", { hasRenderer, hasResults, hasMethod });
 
     // Test 2: Button health check
+    // Phase 8A-9: global scope intentional — validation queries all action buttons
     const buttons = document.querySelectorAll(".mathpix-action-button");
     let healthyButtons = 0;
     let problematicButtons = 0;
@@ -4893,7 +5938,7 @@ if (typeof window !== "undefined") {
     });
 
     console.log(
-      `📊 Button Health: ${healthyButtons} healthy, ${problematicButtons} problematic`
+      `📊 Button Health: ${healthyButtons} healthy, ${problematicButtons} problematic`,
     );
 
     // Test 3: Format availability
@@ -4923,7 +5968,7 @@ if (typeof window !== "undefined") {
     });
 
     console.log(
-      `📄 Metadata: ${populatedMetadata}/${metadataElements.length} populated`
+      `📄 Metadata: ${populatedMetadata}/${metadataElements.length} populated`,
     );
 
     // Overall result
@@ -4934,7 +5979,7 @@ if (typeof window !== "undefined") {
       problematicButtons === 0 &&
       populatedMetadata > 0;
     console.log(
-      `🎯 Overall Status: ${allGood ? "✅ HEALTHY" : "❌ ISSUES DETECTED"}`
+      `🎯 Overall Status: ${allGood ? "✅ HEALTHY" : "❌ ISSUES DETECTED"}`,
     );
 
     return allGood;

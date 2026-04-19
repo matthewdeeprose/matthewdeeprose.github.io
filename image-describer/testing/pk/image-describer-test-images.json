@@ -1,0 +1,467 @@
+{
+  "version": "1.0.2",
+  "lastUpdated": "2026-03-01T10:34:41.489Z",
+  "description": "Test image registry for Image Describer Test Harness.",
+  "images": {
+    "piston-cylinder": {
+      "name": "Piston-Cylinder System",
+      "filename": "piston.png",
+      "base64": "[removed]",
+      "mimeType": "image/png",
+      "context": {
+        "subject": "Engineering",
+        "topic": "Thermofluids",
+        "objective": "Understand the First Law of Thermodynamics applied to closed systems",
+        "module": "FEEG1003",
+        "audience": "ug1",
+        "style": "detailed",
+        "additionalContext": ""
+      },
+      "groundTruth": {
+        "mustContain": ["cylinder", "piston", "arrow", "P.V", "U"],
+        "mustNotContain": [
+          "dashed line",
+          "temperature gauge",
+          "thermometer",
+          "dividing line"
+        ],
+        "visualFacts": [
+          {
+            "id": "piston-identity",
+            "claim": "The piston is a grey disc or circular element",
+            "required": true,
+            "failPattern": "grey line|horizontal line|dividing line"
+          },
+          {
+            "id": "arrow-separate",
+            "claim": "A blue arrow appears above/near the piston as a separate element",
+            "required": true,
+            "failPattern": "arrow.{0,15}is the piston|piston.{0,15}includes.{0,15}arrow|arrow.{0,5}on the piston"
+          },
+          {
+            "id": "q-label",
+            "claim": "Q label appears on the left side of the diagram",
+            "required": true
+          },
+          {
+            "id": "pv-label",
+            "claim": "P.V label appears at the upper right, with an arrow pointing toward the piston region",
+            "required": true,
+            "failPattern": "P\\.?V.{0,20}lower|P\\.?V.{0,20}left|P\\.?V.{0,20}bottom"
+          },
+          {
+            "id": "u-label",
+            "claim": "U label appears at the lower right, with an arrow pointing into the gas/particle region",
+            "required": true,
+            "failPattern": "U.{0,20}upper|U.{0,20}top|U.{0,20}piston region"
+          },
+          {
+            "id": "blue-arrow-up",
+            "claim": "The blue arrow above the piston points upward, indicating the direction of work output",
+            "required": true,
+            "failPattern": "blue arrow.{0,20}downward|blue arrow.{0,20}pointing down|arrow.{0,10}pushes?.{0,10}down"
+          },
+          {
+            "id": "boundary",
+            "claim": "A system boundary is indicated",
+            "required": false
+          },
+          {
+            "id": "red-dots-interior",
+            "claim": "Red dots are contained within the lower portion of the cylinder, below the piston",
+            "required": false
+          },
+          {
+            "id": "three-d-perspective",
+            "claim": "The cylinder is drawn in 3D perspective, not as a flat 2D shape",
+            "required": false
+          },
+          {
+            "id": "q-arrow-direction",
+            "claim": "The Q label is accompanied by a red arrow pointing rightward toward the cylinder",
+            "required": false,
+            "failPattern": "Q.{0,20}pointing left|Q.{0,20}pointing away|Q.{0,20}outward"
+          },
+          {
+            "id": "cylinder-open-top",
+            "claim": "The cylinder has an open top with an elliptical opening through which the piston can move",
+            "required": false,
+            "failPattern": "sealed|closed top|capped"
+          }
+        ]
+      }
+    },
+    "pv-diagram": {
+      "name": "P-V Diagram",
+      "filename": "pv.png",
+      "base64": "[removed]",
+      "mimeType": "image/png",
+      "context": {
+        "subject": "Engineering",
+        "topic": "Thermofluids",
+        "objective": "Understand the First Law of Thermodynamics applied to closed systems",
+        "module": "FEEG1003",
+        "audience": "ug1",
+        "style": "detailed",
+        "additionalContext": ""
+      },
+      "groundTruth": {
+        "mustContain": ["pressure", "volume", "curve"],
+        "mustNotContain": [
+          "fully shaded",
+          "dashed line",
+          "arrows pointing outward",
+          "outward-pointing",
+          "dimension line"
+        ],
+        "visualFacts": [
+          {
+            "id": "thin-strip",
+            "claim": "A thin/narrow strip or region between two close vertical lines, not a large shaded area",
+            "required": true,
+            "failPattern": "entire area.*shaded|full area.*shaded|shaded region between.*state|hatching across"
+          },
+          {
+            "id": "no-shading",
+            "claim": "The area under the curve is not shaded or coloured",
+            "required": true,
+            "failPattern": "shaded area|shaded region|coloured region|shading under|shading beneath|is shaded|light grey shad|area is shaded|region is shaded"
+          },
+          {
+            "id": "solid-lines",
+            "claim": "Lines in the diagram are solid, not dashed",
+            "required": true,
+            "failPattern": "dashed"
+          },
+          {
+            "id": "state-ordering",
+            "claim": "State 2 appears to the left of state 1 (unconventional ordering)",
+            "required": true
+          },
+          {
+            "id": "arrows-inward",
+            "claim": "Arrows on the thin strip point inward, not outward",
+            "required": true,
+            "failPattern": "outward|pointing away"
+          },
+          {
+            "id": "axes-correct",
+            "claim": "Pressure on vertical axis, Volume on horizontal axis",
+            "required": true
+          },
+          {
+            "id": "tick-marks",
+            "claim": "Tick marks on the vertical line segment are horizontal lines crossing through it, not dimension-line marks on either side",
+            "required": false,
+            "failPattern": "dimension line|marks on either side|ticks on either side|serifs on either side"
+          },
+          {
+            "id": "curve-concavity",
+            "claim": "The curve is concave upward (curving toward the origin), not concave downward",
+            "required": false,
+            "failPattern": "concave down|curving away from the origin"
+          },
+          {
+            "id": "state-dots",
+            "claim": "Small filled dots appear on the horizontal axis at states 1 and 2",
+            "required": false
+          },
+          {
+            "id": "delta-v-position",
+            "claim": "The δV strip is positioned between states 2 and 1, closer to state 2 (left side)",
+            "required": false,
+            "failPattern": "closer to state 1|near state 1|adjacent to state 1"
+          },
+          {
+            "id": "delta-v-label",
+            "claim": "The thin strip is labelled δV (or dV)",
+            "required": true
+          },
+          {
+            "id": "p-axis-label",
+            "claim": "The vertical axis is labelled P",
+            "required": false
+          },
+          {
+            "id": "v-axis-label",
+            "claim": "The horizontal axis is labelled V",
+            "required": false
+          }
+        ]
+      }
+    },
+    "ga-mechanism": {
+      "name": "Proposed Mechanism of Action of GA",
+      "filename": "Proposed_mechanism_of_action_of_GA.png",
+      "base64": "[removed]",
+      "mimeType": "image/png",
+      "context": {
+        "subject": "Medicine",
+        "topic": "Immunology — relapse in autoimmune disease — multiple sclerosis",
+        "objective": "Understand the immunological principles behind disease-modifying treatments in multiple sclerosis, specifically how glatiramer acetate modulates T-cell responses",
+        "module": "MEDI2046",
+        "audience": "ug2",
+        "style": "detailed",
+        "additionalContext": "Diagram from: Autoimmune concepts of multiple sclerosis as a basis for selective immunotherapy, PNAS 2004. Shows proposed mechanism of glatiramer acetate (GA) in relapsing-remitting MS treatment."
+      },
+      "groundTruth": {
+        "mustContain": [
+          "periphery",
+          "CNS",
+          "TH1",
+          "TH2",
+          "blood-brain-barrier"
+        ],
+        "mustNotContain": ["antibody", "B cell", "dendritic"],
+        "visualFacts": [
+          {
+            "id": "two-region-layout",
+            "claim": "The diagram is divided into two distinct regions labelled 'periphery' (left) and 'CNS' (right)",
+            "required": true
+          },
+          {
+            "id": "bbb-divider",
+            "claim": "The two regions are separated by a vertical element labelled 'blood-brain-barrier'",
+            "required": true
+          },
+          {
+            "id": "th1-to-th2-shift",
+            "claim": "The diagram shows a progression from a TH1 cell to a TH2 cell in the periphery, indicating a phenotype shift",
+            "required": true,
+            "failPattern": "th1.{0,20}cns|th1.{0,20}crosses|th1.{0,20}migrat"
+          },
+          {
+            "id": "cell-colour-coding",
+            "claim": "The TH1 cell has a red interior while TH2 cells have green interiors",
+            "required": true,
+            "failPattern": "th1.{0,15}green|th2.{0,15}red"
+          },
+          {
+            "id": "macrophage-periphery",
+            "claim": "A macrophage in the periphery presents GA via MHC to the T-cell's TCR",
+            "required": true
+          },
+          {
+            "id": "microglia-cns",
+            "claim": "A microglia cell in the CNS presents CNS antigen (CNS Ag) via MHC to the T-cell's TCR",
+            "required": true,
+            "failPattern": "macrophage.{0,20}in the cns|macrophage.{0,20}cns region"
+          },
+          {
+            "id": "cytokine-output",
+            "claim": "The TH2 cell in the CNS releases IL-4, IL-10 (antiinflammatory cytokines) and BDNF (neurotrophins)",
+            "required": true
+          },
+          {
+            "id": "ga-lightning-symbol",
+            "claim": "GA-therapy is represented with yellow lightning bolt symbols",
+            "required": false,
+            "failPattern": "syringe|injection needle|inject"
+          },
+          {
+            "id": "antigen-distinction",
+            "claim": "The macrophage presents a different antigen (GA, shown as a blue/cyan shape) from the microglia (CNS Ag, shown as a purple shape)",
+            "required": false
+          },
+          {
+            "id": "bystander-suppression-label",
+            "claim": "A boxed label reading 'bystander suppression' is associated with the antiinflammatory cytokine outputs",
+            "required": false
+          },
+          {
+            "id": "neuroprotection-label",
+            "claim": "A boxed label reading 'neuroprotection' is associated with BDNF/neurotrophin output",
+            "required": false
+          },
+          {
+            "id": "arrow-types",
+            "claim": "A dashed arrow connects TH1 to TH2 in the periphery, while a solid arrow shows migration across the blood-brain-barrier",
+            "required": false
+          },
+          {
+            "id": "no-th1-in-cns",
+            "claim": "The description should NOT state that TH1 cells are present in or migrate into the CNS; only TH2 cells appear in the CNS region",
+            "required": true,
+            "failPattern": "th1.{0,30}(in|into|within|enters|crosses into|inside).{0,15}(cns|central nervous)"
+          }
+        ]
+      }
+    },
+	"siege-rouen": {
+      "name": "Siege of Rouen Miniature",
+      "filename": "Siege_de_Rouen_1418-1419.jpg",
+      "base64": "[removed]",
+      "mimeType": "image/jpeg",
+      "context": {
+        "subject": "History",
+        "topic": "The Hundred Years War — Siege Warfare and the Conquest of Normandy",
+        "objective": "Understand the military strategies and technologies used in Henry V's conquest of Normandy, including the role of gunpowder artillery in siege warfare",
+        "module": "HIST3253",
+        "audience": "ug3",
+        "style": "detailed",
+        "additionalContext": "Manuscript miniature from Martial d'Auvergne, Vigiles du roi Charles VII (c.1490–1500), depicting the Siege of Rouen (1418–1419)."
+      },
+      "groundTruth": {
+        "mustContain": ["cannon", "tower", "medieval"],
+        "mustNotContain": ["trebuchet", "catapult", "tapestry", "photograph"],
+        "visualFacts": [
+          {
+            "id": "manuscript-miniature",
+            "claim": "The image is a medieval manuscript miniature, not a tapestry, photograph, or modern illustration",
+            "required": true,
+            "failPattern": "tapestry|photograph|photo|modern illustration"
+          },
+          {
+            "id": "gunpowder-artillery",
+            "claim": "Multiple cannons on wheeled carriages are depicted as the primary siege weapons, not trebuchets or catapults",
+            "required": true,
+            "failPattern": "trebuchet|catapult|ballista|mangon"
+          },
+          {
+            "id": "fortified-towers",
+            "claim": "The city's fortifications include cylindrical towers with pointed or conical roofs on the right side of the image",
+            "required": true
+          },
+          {
+            "id": "military-encampment",
+            "claim": "Military tents are visible in the background, representing the besieging army's encampment",
+            "required": true
+          },
+          {
+            "id": "attackers-and-defenders",
+            "claim": "Armed figures appear on both sides — attackers on the left with siege equipment, and defenders visible near the fortifications on the right",
+            "required": true
+          },
+          {
+            "id": "no-named-individuals",
+            "claim": "No individuals are identified by name, label, or inscription in the image — the description should not identify specific historical figures by name based solely on visual content",
+            "required": true,
+            "failPattern": "henry v is shown|henry v is depicted|henry v appears|figure.{0,20}is henry|identified as henry"
+          },
+          {
+            "id": "gold-border-frame",
+            "claim": "The image has a decorative gold or gilded border frame",
+            "required": false
+          },
+          {
+            "id": "gothic-window-tracery",
+            "claim": "At least one tower features a Gothic-style window with architectural tracery",
+            "required": false
+          },
+          {
+            "id": "wooden-gate-structure",
+            "claim": "A wooden gate or door with visible timber framing appears between the towers",
+            "required": false
+          },
+          {
+            "id": "cannon-muzzle-fire",
+            "claim": "Red sparks or fire effects are visible at cannon muzzles, showing the weapons being discharged",
+            "required": false
+          },
+          {
+            "id": "moat-or-ditch",
+            "claim": "A water-filled moat or ditch runs between the attacking forces and the city fortifications",
+            "required": false
+          },
+          {
+            "id": "tent-cross-markings",
+            "claim": "Some tents in the encampment bear cross markings or symbols",
+            "required": false
+          }
+        ]
+      }
+    }
+  },
+  "exceedance-nomograph": {
+  "name": "Probability of Exceedance (Intensity) Nomograph",
+  "filename": "Probability_of_exceedance__intensity_.jpg",
+  "base64": "",
+  "mimeType": "image/jpeg",
+  "context": {
+    "subject": "Engineering Geology",
+    "topic": "Geohazards — Hazard, Vulnerability and Risk",
+    "objective": "Understand the relationship between return period, service life, and probability of exceedance for different infrastructure types, and how this informs engineering design for geological hazards",
+    "module": "CENV1027",
+    "audience": "ug1",
+    "style": "detailed",
+    "additionalContext": "From: González de Vallejo (2012) 'Design with Geo-Hazards', Soils and Rocks, 35(1). Used alongside definitions of hazard (probability of occurrence of a damaging phenomenon at a specified intensity for a given time within a specific area) and return period (years between two events of similar magnitude)."
+  },
+  "groundTruth": {
+    "mustContain": ["return period", "service life", "probability", "exceedance"],
+    "mustNotContain": ["scatter plot", "data points", "legend box", "linear scale on both"],
+    "visualFacts": [
+      {
+        "id": "chart-type",
+        "claim": "The image is a nomograph or design chart with smooth continuous curves, not a scatter plot or standard line graph with plotted data points",
+        "required": true,
+        "failPattern": "scatter|data points|plotted points|individual measurements"
+      },
+      {
+        "id": "y-axis-logarithmic",
+        "claim": "The vertical axis (Return period, T) uses a logarithmic scale, ranging from 1 to 10,000 years",
+        "required": true,
+        "failPattern": "linear.{0,15}(y.axis|vertical|return period)|both axes.{0,10}linear"
+      },
+      {
+        "id": "x-axis-linear",
+        "claim": "The horizontal axis (Service life, t) uses a linear scale, ranging from 0 to 250 years",
+        "required": true
+      },
+      {
+        "id": "six-curves",
+        "claim": "There are six probability curves labelled p = 1%, 5%, 10%, 20%, 30%, and 50%",
+        "required": true,
+        "failPattern": "five curves|four curves|three curves|seven curves|eight curves"
+      },
+      {
+        "id": "curve-ordering",
+        "claim": "The p = 1% curve is the highest (requiring the greatest return period for a given service life), while p = 50% is the lowest",
+        "required": true,
+        "failPattern": "p.{0,5}=.{0,5}1%.{0,20}(lowest|bottom)|p.{0,5}=.{0,5}50%.{0,20}(highest|top)"
+      },
+      {
+        "id": "infrastructure-labels",
+        "claim": "Rotated vertical text labels along the lower portion identify infrastructure categories: Buildings, Power stations, Industrial installations, Dams/bridges, and Storage facilities for non-radioactive wastes",
+        "required": true,
+        "failPattern": "no.{0,15}label|no.{0,15}categor|without.{0,15}infrastructure"
+      },
+      {
+        "id": "red-annotation-lines",
+        "claim": "Red annotation lines with arrowheads demonstrate how to read the chart: a vertical line at approximately 50 years service life and a horizontal line at approximately 1,000 years return period, intersecting near the p = 1% curve",
+        "required": true,
+        "failPattern": "no.{0,10}red|no.{0,10}annotation|no.{0,10}reading"
+      },
+      {
+        "id": "formula-box",
+        "claim": "An embedded formula box shows p = 1−(1−1/T)^t relating probability, return period, and service life",
+        "required": true,
+        "failPattern": "no.{0,10}formula|no.{0,10}equation"
+      },
+      {
+        "id": "buildings-service-life",
+        "claim": "The 'Buildings' category is positioned at approximately 50 years service life",
+        "required": false
+      },
+      {
+        "id": "curves-cyan-blue",
+        "claim": "The probability curves are drawn in cyan or blue",
+        "required": false,
+        "failPattern": "black curves|red curves|green curves"
+      },
+      {
+        "id": "no-legend-box",
+        "claim": "Probability values are labelled directly on or adjacent to the curves, with no separate legend box",
+        "required": false,
+        "failPattern": "legend box|legend panel|separate legend|key box"
+      },
+      {
+        "id": "cream-background",
+        "claim": "The chart has a light yellow or cream background within the plot area",
+        "required": false
+      }
+    ]
+  }
+}
+}
+  }
+}

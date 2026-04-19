@@ -1,0 +1,169 @@
+/**
+ * MathPix Mathematics Context Menu - Accessible Context Menu Styles
+ *
+ * Theme support via prefers-color-scheme to match existing light.css/dark.css approach.
+ * WCAG 2.2 AA compliant: focus indicators, touch targets, contrast ratios.
+ *
+ * @since 1.0.0
+ */
+
+/* =============================================================================
+   COLOUR DEFINITIONS (light mode defaults)
+   ============================================================================= */
+
+/* =============================================================================
+   BASE STYLES (light mode defaults)
+   ============================================================================= */
+
+.mathpix-context-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 200px;
+  max-width: 280px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.875rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.mathpix-context-menu[data-visible="true"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+/* =============================================================================
+   MENU ITEMS
+   ============================================================================= */
+
+.mathpix-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  background: none;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  /* WCAG 2.2 AA: minimum 44x44px touch target via padding */
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.mathpix-context-menu-item:focus-visible {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: -2px;
+}
+
+.mathpix-context-menu-item[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.mathpix-context-menu-item[aria-disabled="true"]:hover {
+  background: none;
+}
+
+/* =============================================================================
+   MENU ITEM ICONS
+   ============================================================================= */
+
+.mathpix-context-menu-item .menu-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+}
+
+/* =============================================================================
+   MENU SEPARATOR
+   ============================================================================= */
+
+.mathpix-context-menu-separator {
+  height: 1px;
+  margin: 4px 8px;
+  padding: 0;
+  border: none;
+}
+
+/* =============================================================================
+   COPY FEEDBACK FLASH
+   ============================================================================= */
+
+.mathpix-context-menu-item[data-copied="true"] {
+  transition: background-color 0.2s ease;
+}
+
+/* =============================================================================
+   CLICK-TO-ZOOM OVERLAY
+   ============================================================================= */
+
+.mathpix-math-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  padding: 2rem;
+}
+
+.mathpix-math-zoom-content {
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  transform: scale(2);
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-math-zoom-content {
+    transform: scale(1.5);
+  }
+}
+
+/* =============================================================================
+   REDUCED MOTION
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .mathpix-context-menu {
+    transition: none;
+  }
+
+  .mathpix-context-menu-item[data-copied="true"] {
+    transition: none;
+  }
+
+  .mathpix-math-zoomed {
+    transition: none;
+  }
+}
+
+/* =============================================================================
+   PRINT: HIDE MENU
+   ============================================================================= */
+
+@media print {
+  .mathpix-context-menu {
+    display: none !important;
+  }
+}

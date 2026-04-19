@@ -1,0 +1,568 @@
+/* ============================================================
+ * Set Up Tool — Layout & Structure
+ * Colours defined in dark.css / light.css
+ * ============================================================ */
+
+/* ------------------------------------------------------------
+ * Hero Section — Two-column grid (status + quick start)
+ * ------------------------------------------------------------ */
+.setup-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .setup-hero {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.setup-status-summary,
+.setup-quick-start {
+  padding: 1.25rem;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+}
+
+.setup-status-summary h2,
+.setup-quick-start h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+/* Quick Start definition list */
+.setup-quick-start-list {
+  margin: 0.75rem 0 0 0;
+}
+
+.setup-quick-start-list dt {
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+.setup-quick-start-list dt:first-of-type {
+  margin-top: 0;
+}
+
+.setup-quick-start-list dd {
+  margin-left: 0;
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------
+ * Status Summary Items
+ * ------------------------------------------------------------ */
+.setup-status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.setup-status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  min-height: 44px;
+}
+
+.setup-status-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.setup-status-label {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.setup-status-value {
+  margin-left: auto;
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------
+ * Credentials Section
+ * ------------------------------------------------------------ */
+.setup-credentials-section {
+  margin-top: 2rem;
+}
+
+.setup-credentials-section > h2 {
+  margin-bottom: 1rem;
+}
+
+/* ------------------------------------------------------------
+ * Credential Details (collapsible sections)
+ * ------------------------------------------------------------ */
+.setup-credential-section {
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.setup-credential-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  min-height: 44px;
+  font-weight: 600;
+  font-size: 1rem;
+  list-style: none;
+}
+
+/* Remove default marker in all browsers */
+.setup-credential-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.setup-credential-section > summary::marker {
+  content: "";
+}
+
+/* Disclosure triangle via CSS */
+.setup-credential-section > summary::before {
+  content: "\25B6"; /* right-pointing triangle */
+  display: inline-block;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  width: 1rem;
+  text-align: center;
+}
+
+.setup-credential-section[open] > summary::before {
+  content: "\25BC"; /* down-pointing triangle */
+}
+
+.setup-credential-summary-status {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: normal;
+  padding: 0.2rem 0.6rem;
+  border-radius: 3px;
+}
+
+.setup-credential-body {
+  padding: 1rem 1.25rem 1.25rem;
+  border-top: 1px solid currentColor;
+}
+
+/* ------------------------------------------------------------
+ * API Key Input Group
+ * ------------------------------------------------------------ */
+.setup-input-group {
+  margin-bottom: 1rem;
+}
+
+.setup-input-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.setup-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.setup-input-row input[type="password"],
+.setup-input-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  font-family: monospace;
+  font-size: 0.9rem;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.setup-toggle-visibility {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.5rem;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  background: transparent;
+}
+
+.setup-help-text {
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
+  opacity: 0.8;
+}
+
+/* ------------------------------------------------------------
+ * Select Inputs (Ally region)
+ * ------------------------------------------------------------ */
+.setup-select {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  min-height: 44px;
+  box-sizing: border-box;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------
+ * Checkbox Group (Ally Remember)
+ * ------------------------------------------------------------ */
+.setup-checkbox-group {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.setup-checkbox-group input[type="checkbox"] {
+  width: 44px;
+  height: 44px;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.setup-checkbox-group > label {
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.setup-checkbox-group .setup-help-text {
+  margin-left: 1.75rem;
+}
+
+.setup-model-card-dl {
+  font-size: 0.875rem;
+}
+/* ------------------------------------------------------------
+ * Button Group (Save + Clear)
+ * ------------------------------------------------------------ */
+.setup-button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.setup-button-group button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9rem;
+  border: 2px solid currentColor;
+}
+
+/* ------------------------------------------------------------
+ * Placeholder Sections (MathPix, Ally, Models)
+ * ------------------------------------------------------------ */
+.setup-placeholder {
+  padding: 1rem 1.25rem;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.setup-models-section {
+  margin-top: 2rem;
+  border-top: 2px solid currentColor;
+  padding-top: 1.5rem;
+}
+
+.setup-models-section > h2 {
+  margin-bottom: 1rem;
+}
+
+/* Ensure model manager buttons inside Set Up meet 44px touch targets */
+#setup-model-manager-panel button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Larger status icons in Set Up panel (more room than Image Describer) */
+#setup-model-manager-panel .imgdesc-mm-status-icon {
+  width: 1.5rem;
+  min-width: 1.5rem;
+}
+
+#setup-model-manager-panel .imgdesc-mm-status-icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+/* ------------------------------------------------------------
+ * Model Groups — Two-column grid on desktop
+ * ------------------------------------------------------------ */
+.setup-models-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .setup-models-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.setup-model-group {
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+}
+
+.setup-model-group > h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+/* Override imgdesc-expert-subsection border/margin when used as a model group */
+.setup-model-group.imgdesc-expert-subsection {
+  margin-top: 0;
+  padding-top: 1rem;
+}
+
+/* Model items in narrower columns — allow wrapping */
+@media (min-width: 768px) {
+  .setup-model-group .imgdesc-mm-model-item {
+    flex-wrap: wrap;
+  }
+}
+
+/* ------------------------------------------------------------
+ * Text model group description
+ * ------------------------------------------------------------ */
+.setup-model-group-desc {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+}
+
+/* ------------------------------------------------------------
+ * Model card expandable (Phase 9 — text model details)
+ * ------------------------------------------------------------ */
+.setup-model-card {
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border-color, #ddd);
+  padding-top: 0.5rem;
+}
+
+.setup-model-card summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.setup-model-card-body {
+  padding: 0.75rem 0;
+}
+
+.setup-model-card-summary {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+/* Model card definition list */
+.setup-model-card-dl dt {
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+.setup-model-card-dl dd {
+  margin-left: 0;
+  margin-top: 0.25rem;
+}
+
+.setup-model-card-dl ul {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+
+/* Benchmark table */
+.setup-model-benchmarks {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.setup-model-benchmarks th,
+.setup-model-benchmarks td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+
+.setup-model-benchmarks th {
+  font-weight: 600;
+}
+
+/* GPU detection highlight */
+.setup-benchmark-highlight {
+  font-weight: 600;
+}
+
+/* Speed rating dots */
+.setup-speed-rating {
+  white-space: nowrap;
+  letter-spacing: 0.1em;
+}
+
+/* Personalised estimate */
+.setup-model-estimate {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* ------------------------------------------------------------
+ * Responsive benchmark tables — stack on narrow viewports
+ * ------------------------------------------------------------ */
+@media screen and (max-width: 1024px) {
+  .setup-model-benchmarks th,
+  .setup-model-benchmarks td {
+    text-align: right;
+  }
+}
+
+/* ------------------------------------------------------------
+ * Narrow viewports — stack input rows vertically
+ * ------------------------------------------------------------ */
+@media (max-width: 479px) {
+  .setup-input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .setup-input-row input[type="password"],
+  .setup-input-row input[type="text"] {
+    width: 100%;
+  }
+
+  .setup-toggle-visibility {
+    align-self: flex-start;
+  }
+}
+
+/* ------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .setup-credential-section,
+  .setup-credential-section > summary,
+  .setup-status-item,
+  .setup-button-group button,
+  .setup-toggle-visibility,
+  #setup-model-manager-panel .imgdesc-mm-progress-fill,
+  #setup-model-manager-panel .imgdesc-mm-model-item,
+  .setup-benchmark-highlight {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* "Configure in Set Up" redirect links (used in other tools' config sections) */
+.setup-redirect-hint {
+  margin: 0.75rem 1rem 0.5rem;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+.setup-redirect-hint a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.setup-redirect-hint a:hover,
+.setup-redirect-hint a:focus {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------
+ * Text Model Manager — Engine badges & GPU status (DE-4b)
+ * ------------------------------------------------------------ */
+.setup-section-divider {
+  margin: 1.25rem 0;
+  border: none;
+  border-top: 1px solid var(--border-color, #ccc);
+}
+
+.setup-tm-engine-badge {
+  display: inline-block;
+  font-size: 0.7em;
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  background: var(--badge-bg, #d0d0d0);
+  color: var(--badge-text, #222);
+  vertical-align: middle;
+  margin-left: 0.3em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.setup-tm-gpu-status {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+}
+
+.setup-tm-gpu-status h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.setup-tm-gpu-empty {
+  font-style: italic;
+  opacity: 0.7;
+  margin: 0;
+}
+
+.setup-tm-gpu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  flex-wrap: wrap;
+}
+
+.setup-tm-gpu-model-name {
+  font-weight: 600;
+}
+
+.setup-tm-gpu-size {
+  font-size: 0.85em;
+  opacity: 0.8;
+}

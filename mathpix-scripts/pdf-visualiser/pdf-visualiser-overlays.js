@@ -199,13 +199,13 @@ class PDFVisualiserOverlays {
     pageWidth,
     pageHeight,
     viewport,
-    dpr = 1
+    dpr = 1,
   ) {
     const base = this.transformCoordinates(
       region,
       pageWidth,
       pageHeight,
-      viewport
+      viewport,
     );
 
     return {
@@ -473,8 +473,8 @@ class PDFVisualiserOverlays {
         continue;
       }
 
-      // Get confidence rate
-      const confidence = line.confidence_rate ?? line.confidence ?? 0;
+      // Get confidence (overall line recognition, not per-character rate)
+      const confidence = line.confidence ?? line.confidence_rate ?? 0;
 
       // Transform coordinates
       const coords = this.transformCoordinatesWithDPI(
@@ -482,7 +482,7 @@ class PDFVisualiserOverlays {
         pageWidth,
         pageHeight,
         viewport,
-        dpr
+        dpr,
       );
 
       // Draw the overlay box
@@ -530,7 +530,7 @@ class PDFVisualiserOverlays {
         } catch (error) {
           logWarn(
             `Failed to create toggletip region for line ${lineIndex + 1}`,
-            error
+            error,
           );
         }
       }
@@ -622,7 +622,7 @@ class PDFVisualiserOverlays {
       labelX - padding / 2,
       labelY - padding / 2,
       textWidth + padding,
-      textHeight + padding
+      textHeight + padding,
     );
 
     // Draw text - use config colour if set, otherwise fall back to confidence-level colour
@@ -661,7 +661,7 @@ class PDFVisualiserOverlays {
     pageWidth,
     pageHeight,
     viewport,
-    options = {}
+    options = {},
   ) {
     const {
       dpr = PDF_VISUALISER_CONFIG.RENDERING.DEVICE_PIXEL_RATIO,
@@ -679,7 +679,7 @@ class PDFVisualiserOverlays {
       pageWidth,
       pageHeight,
       viewport,
-      dpr
+      dpr,
     );
 
     ctx.save();
@@ -763,7 +763,7 @@ class PDFVisualiserOverlays {
       ctx.fillText(
         level.legendLabel,
         x + padding + actualSwatchSize + padding,
-        currentY + (actualSwatchSize - fontSize) / 2
+        currentY + (actualSwatchSize - fontSize) / 2,
       );
 
       // Track max width
@@ -844,7 +844,7 @@ class PDFVisualiserOverlays {
         pageWidth,
         pageHeight,
         viewport,
-        dpr
+        dpr,
       );
 
       // Check if point is inside box
@@ -957,7 +957,7 @@ if (typeof window !== "undefined") {
       testRegion,
       2550,
       3300,
-      mockViewport
+      mockViewport,
     );
     console.table({
       "Original X": testRegion.top_left_x,
@@ -976,7 +976,7 @@ if (typeof window !== "undefined") {
     for (const conf of testConfidences) {
       const colours = PDFVisualiserOverlays.getConfidenceColours(conf);
       console.log(
-        `${(conf * 100).toFixed(0)}%: ${colours.level} - ${colours.border}`
+        `${(conf * 100).toFixed(0)}%: ${colours.level} - ${colours.border}`,
       );
     }
 

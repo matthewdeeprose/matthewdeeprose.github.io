@@ -118,7 +118,7 @@ class MathPixTotalDownloader extends MathPixBaseModule {
       const mockSourceState = this.createMockState(sourceType);
       const sourceResult = await this.collectSourceFiles(
         mockSourceState,
-        sourceFolder
+        sourceFolder,
       );
       logInfo("Source collection result:", sourceResult);
 
@@ -127,7 +127,7 @@ class MathPixTotalDownloader extends MathPixBaseModule {
       const resultsResult = await this.collectResultFiles(
         mockResponse,
         resultsFolder,
-        sourceResult // Pass source result for filename generation in tests too
+        sourceResult, // Pass source result for filename generation in tests too
       );
       logInfo("Results collection result:", resultsResult);
 
@@ -143,19 +143,24 @@ class MathPixTotalDownloader extends MathPixBaseModule {
       };
       const dataResult = await this.collectDataFiles(
         collectionData,
-        dataFolder
+        dataFolder,
       );
       logInfo("Data collection result:", dataResult);
 
       // Generate production README (Phase 4 - NEW!)
+      // Generate production README (Phase 4)
+      // Include edits result, history result, and converted result for README generation
       const manifest = {
         sourceResult,
         resultsResult,
-        response: mockResponse,
+        editsResult,
+        historyResult, // Version history from localStorage
+        convertedResult, // Phase 6.2: Add converted files to manifest
+        response: data.response, // rawResponse for metadata
         metadata: this.generateMetadata(
           sourceResult,
           resultsResult,
-          mockResponse
+          data.response,
         ),
       };
       const readme = this.generateProductionReadme(manifest);
@@ -180,7 +185,7 @@ class MathPixTotalDownloader extends MathPixBaseModule {
 
       if (typeof notifySuccess === "function") {
         notifySuccess(
-          `Test ZIP (${sourceType}/${apiType}) downloaded successfully!`
+          `Test ZIP (${sourceType}/${apiType}) downloaded successfully!`,
         );
       }
     } catch (error) {
@@ -391,7 +396,7 @@ Upcoming phases:
     const sanitised = nameWithoutExt
       .replace(
         this.config.FILENAME_ALLOWED_CHARS,
-        this.config.FILENAME_REPLACEMENT
+        this.config.FILENAME_REPLACEMENT,
       )
       .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
 
@@ -529,7 +534,7 @@ Upcoming phases:
         const isPDF = sourceResult.filesCollected?.some(
           (file) =>
             file.mimeType === "application/pdf" ||
-            file.filename?.toLowerCase().endsWith(".pdf")
+            file.filename?.toLowerCase().endsWith(".pdf"),
         );
 
         if (isPDF) {
@@ -568,7 +573,7 @@ Upcoming phases:
       default:
         logWarn(
           "Unknown source type for processing mode detection:",
-          sourceType
+          sourceType,
         );
         // Enhanced fallback using operation type
         if (operation === "processImage") {
@@ -654,7 +659,7 @@ Upcoming phases:
     if (response.data && Array.isArray(response.data)) {
       const hasTableData = response.data.some(
         (item) =>
-          item.type === "html" && item.value && item.value.includes("<table")
+          item.type === "html" && item.value && item.value.includes("<table"),
       );
       if (hasTableData) {
         logInfo("✓ Table detected from response data HTML");
@@ -883,7 +888,7 @@ Upcoming phases:
 
     // Fallback: Partial matching for known patterns
     for (const [pattern, description] of Object.entries(
-      MathPixTotalDownloader.ENDPOINT_REGION_MAP
+      MathPixTotalDownloader.ENDPOINT_REGION_MAP,
     )) {
       if (cleanEndpoint.includes(pattern.split(".")[0])) {
         // Match subdomain
@@ -1199,7 +1204,7 @@ Upcoming phases:
             }
           },
           format,
-          quality
+          quality,
         );
       } catch (error) {
         logError("Canvas conversion failed:", error);
@@ -1245,7 +1250,7 @@ Upcoming phases:
     });
 
     logInfo(
-      `✓ Canvas snapshot collected: ${pngFilename} (${canvas.width}x${canvas.height})`
+      `✓ Canvas snapshot collected: ${pngFilename} (${canvas.width}x${canvas.height})`,
     );
 
     // Collect stroke data if available
@@ -1263,7 +1268,7 @@ Upcoming phases:
       });
 
       logInfo(
-        `✓ Stroke data collected: ${strokesFilename} (${strokes.length} strokes)`
+        `✓ Stroke data collected: ${strokesFilename} (${strokes.length} strokes)`,
       );
     }
   }
@@ -1573,7 +1578,7 @@ Upcoming phases:
     data,
     resultsFolder,
     result,
-    baseFilename = null
+    baseFilename = null,
   ) {
     logInfo("Collecting Text API formats...");
 
@@ -1590,9 +1595,9 @@ Upcoming phases:
         isResultRenderer
           ? "Result Renderer"
           : isRawResponse
-          ? "Raw API Response"
-          : "Unknown"
-      }`
+            ? "Raw API Response"
+            : "Unknown"
+      }`,
     );
 
     // ========================================================================
@@ -1850,7 +1855,7 @@ Upcoming phases:
     conversionResult,
     resultsFolder,
     result,
-    baseFilename = null
+    baseFilename = null,
   ) {
     logInfo("Collecting PDF API formats...");
 
@@ -1881,6 +1886,27 @@ Upcoming phases:
         });
         logInfo(`✓ ${key.toUpperCase()} collected`);
       }
+    }
+
+    // Phase 8 (Conv AE): When AI-enhanced, overwrite main .mmd with original content
+    // The enhanced version is written to /edits by createArchive (needs editsFolder access)
+    try {
+      const aiController = window.getMathPixController?.();
+      const aiRenderer = aiController?.pdfResultRenderer;
+
+      if (aiRenderer?._aiEnhancementMetadata && aiRenderer._originalMMD) {
+        // Overwrite the main .mmd file with original (canonical) content
+        const mainMmdFilename = baseFilename
+          ? `${baseFilename}.mmd`
+          : "mmd.mmd";
+        resultsFolder.file(mainMmdFilename, aiRenderer._originalMMD);
+        logInfo(
+          "✓ Main MMD overwritten with original (pre-enhancement) content",
+        );
+      }
+    } catch (e) {
+      logWarn("Failed to collect AI enhancement data for ZIP:", e);
+      // Non-critical — don't block ZIP creation
     }
 
     // Binary formats (pass-through as Blobs) - use descriptive filenames when available
@@ -1971,7 +1997,7 @@ Upcoming phases:
     response,
     resultsFolder,
     result,
-    baseFilename = null
+    baseFilename = null,
   ) {
     logInfo("Collecting Strokes API formats...");
 
@@ -1980,7 +2006,7 @@ Upcoming phases:
       response,
       resultsFolder,
       result,
-      baseFilename
+      baseFilename,
     );
 
     logInfo(`Strokes API formats collected: ${result.filesCollected.length}`);
@@ -2025,7 +2051,7 @@ Upcoming phases:
             formats,
             resultsFolder,
             result,
-            baseFilename
+            baseFilename,
           );
           break;
         case "pdf":
@@ -2033,7 +2059,7 @@ Upcoming phases:
             formats,
             resultsFolder,
             result,
-            baseFilename
+            baseFilename,
           );
           break;
         case "strokes":
@@ -2041,7 +2067,7 @@ Upcoming phases:
             formats,
             resultsFolder,
             result,
-            baseFilename
+            baseFilename,
           );
           break;
         default:
@@ -2197,27 +2223,31 @@ Upcoming phases:
 
     // Calculate file size statistics (Phase 5.6)
     const sourceTotalSize = this.calculateTotalSize(
-      sourceResult.filesCollected
+      sourceResult.filesCollected,
     );
     const resultsTotalSize = this.calculateTotalSize(
-      resultsResult.filesCollected
+      resultsResult.filesCollected,
     );
     const totalSize = sourceTotalSize + resultsTotalSize;
 
     // Create file size maps (Phase 5.6)
     const sourceFileSizes = this.createFileSizeMap(sourceResult.filesCollected);
     const resultFileSizes = this.createFileSizeMap(
-      resultsResult.filesCollected
+      resultsResult.filesCollected,
     );
 
-    // Extract debug data for enhanced processing (Phase 5.7 + 5.7b)
-    const debugData = this.getRealDebugData ? this.getRealDebugData() : null;
+    // Extract debug data for enhanced processing (Phase 5.7 + 5.7b + H.1)
+    // Phase H.1: Prefer stored debugData from createArchive (has controller access)
+    // Fallback to DOM extraction if not available
+    const debugData =
+      this.currentDebugData ||
+      (this.getRealDebugData ? this.getRealDebugData() : null);
 
     // Detect processing mode (Phase 5.6 + 5.7) - now with debug data
     const processingModeInfo = this.detectProcessingMode(
       sourceResult,
       response,
-      debugData
+      debugData,
     );
 
     // Generate enhanced timing (Phase 5.6 + 5.7) - now with debug data
@@ -2232,11 +2262,11 @@ Upcoming phases:
     // Phase 5.7b: Parse confidence values from debug data for PDF
     const confidenceValue = this.parseConfidenceValue(
       debugData?.confidence,
-      response.confidence
+      response.confidence,
     );
     const confidenceRateValue = this.parseConfidenceValue(
       debugData?.confidenceRate,
-      response.confidence_rate
+      response.confidence_rate,
     );
 
     const metadata = {
@@ -2249,7 +2279,7 @@ Upcoming phases:
         apiType: resultsResult.apiType,
       },
 
-      // Processing metadata (enhanced in Phase 5.6 + 5.7b)
+      // Processing metadata (enhanced in Phase 5.6 + 5.7b + H.1)
       processing: {
         // Phase 5.7b: Prioritize debug panel data for PDF
         requestId:
@@ -2272,6 +2302,13 @@ Upcoming phases:
         processingMode: processingModeInfo.mode,
         inputSource: processingModeInfo.source,
         sourceFileName: sourceFileName,
+        // Phase H.1: Page range tracking for partial PDF processing
+        pageRange: debugData?.metadata?.pageRange || "all",
+        totalPdfPages: debugData?.metadata?.totalPdfPages || null,
+        pagesProcessed:
+          this.currentLinesData?.pages?.length ||
+          debugData?.metadata?.pageCount ||
+          null,
       },
 
       // Content analysis - Phase 5.7b: Enhanced with Lines API data
@@ -2288,7 +2325,7 @@ Upcoming phases:
         // Phase 5.7b: Enhanced table detection using Lines API
         hasTable: this.detectTableFromMultipleSourcesEnhanced(
           response,
-          debugData
+          debugData,
         ),
       },
 
@@ -2352,7 +2389,7 @@ Upcoming phases:
         const percent = parseFloat(percentMatch[1]);
         const normalized = percent / 100;
         logDebug(
-          `Confidence parsed from debug panel: ${debugValue} -> ${normalized}`
+          `Confidence parsed from debug panel: ${debugValue} -> ${normalized}`,
         );
         return normalized;
       }
@@ -2379,7 +2416,7 @@ Upcoming phases:
     if (debugData?.linesApi?.tableCount > 0) {
       logInfo(
         "✓ Table detected from Lines API statistics:",
-        debugData.linesApi.tableCount
+        debugData.linesApi.tableCount,
       );
       return true;
     }
@@ -2570,6 +2607,7 @@ JSON (.json)
       sourceResult,
       resultsResult,
       editsResult,
+      historyResult,
       convertedResult,
       response,
       metadata,
@@ -2602,7 +2640,7 @@ JSON (.json)
       : "N/A";
 
     const confidenceRating = this.getConfidenceRating(
-      metadata.processing.confidence
+      metadata.processing.confidence,
     );
 
     const confidenceRatePercent = metadata.processing.confidenceRate
@@ -2612,7 +2650,7 @@ JSON (.json)
     // Phase 5.7b: Generate PDF-specific content analysis section
     const contentAnalysisSection = this.generateContentAnalysisSection(
       metadata,
-      debugData
+      debugData,
     );
 
     const readme = `
@@ -2646,6 +2684,7 @@ Processing Mode:     ${metadata.processing.processingMode || "Unknown"}
 Source File:         ${metadata.processing.sourceFileName || "Unknown"} (${
       metadata.formats.sourceTotalSize || "Unknown"
     })
+Pages Processed:     ${this.formatPageRangeForReadme(metadata.processing)}
 
 Quality Metrics:
 - Confidence Score:    ${confidencePercent}% (${confidenceRating})
@@ -2675,8 +2714,9 @@ ${this.formatFileList(resultsResult.filesCollected, "    ")}
   - api-response.json:   Complete API response data
   - debug-info.md:       Debug information in Markdown format
   - metadata.json:       Structured processing metadata
-  ${this.generateEditsSection(editsResult)}
+${this.generateEditsSection(editsResult)}
   ${this.generateConvertedSection(convertedResult)}
+  ${this.generateHistorySection(historyResult)}
 
 
 
@@ -2699,13 +2739,13 @@ Total Archive Size:  ${metadata.formats.totalSize || "Unknown"}
 Result Files by Size:
 ${this.formatFileSizeList(
   resultsResult.filesCollected,
-  metadata.formats.resultFileSizes
+  metadata.formats.resultFileSizes,
 )}
 
 Source Files:
 ${this.formatFileSizeList(
   sourceResult.filesCollected,
-  metadata.formats.sourceFileSizes
+  metadata.formats.sourceFileSizes,
 )}
 
 ================================================================================
@@ -2733,7 +2773,7 @@ TECHNICAL INFORMATION
 Request ID:        ${metadata.processing.requestId}
 API Version:       ${metadata.processing.apiVersion}
 Processing Region: ${this.extractGeographicRegion(
-      debugData?.endpoint || this.extractEndpointFromDebugPanel()
+      debugData?.endpoint || this.extractEndpointFromDebugPanel(),
     )}
 Total Files:       ${metadata.formats.totalFiles} (${
       metadata.formats.sourceCount
@@ -2777,9 +2817,41 @@ Timestamp: ${timestamp}
 `.trim();
 
     logInfo(
-      "✓ Production README generated (Phase 5.7b with PDF quality metrics)"
+      "✓ Production README generated (Phase 5.7b with PDF quality metrics)",
     );
     return readme;
+  }
+
+  /**
+   * Format page range information for README display
+   * Phase H.1: Human-readable page range description
+   *
+   * @param {Object} processing - Processing metadata from generateMetadata
+   * @returns {string} Formatted page range string
+   */
+  formatPageRangeForReadme(processing) {
+    const pageRange = processing?.pageRange || "all";
+    const totalPages = processing?.totalPdfPages;
+    const pagesProcessed = processing?.pagesProcessed;
+
+    // If all pages or no PDF processing
+    if (pageRange === "all" || !totalPages) {
+      if (pagesProcessed && totalPages) {
+        return `All pages (${pagesProcessed} of ${totalPages})`;
+      }
+      return "All pages";
+    }
+
+    // Partial processing
+    if (pagesProcessed && totalPages) {
+      return `${pageRange} of ${totalPages} (${pagesProcessed} pages processed)`;
+    }
+
+    if (totalPages) {
+      return `${pageRange} of ${totalPages}`;
+    }
+
+    return pageRange;
   }
 
   /**
@@ -2802,12 +2874,12 @@ Timestamp: ${timestamp}
       lines.push(
         `  - Handwritten:     ${metadata.content.handwrittenLines} line${
           metadata.content.handwrittenLines !== 1 ? "s" : ""
-        }`
+        }`,
       );
       lines.push(
         `  - Printed:         ${metadata.content.printedLines} line${
           metadata.content.printedLines !== 1 ? "s" : ""
-        }`
+        }`,
       );
       lines.push(`  - Tables Detected: ${debugData.linesApi.tableCount}`);
     } else {
@@ -2816,7 +2888,7 @@ Timestamp: ${timestamp}
       lines.push(
         `  - Contains at least one table: ${
           metadata.content.hasTable ? "Yes" : "No"
-        }`
+        }`,
       );
     }
 
@@ -2839,6 +2911,58 @@ Timestamp: ${timestamp}
     const charDiffStr =
       charDiff >= 0 ? `+${charDiff} characters` : `${charDiff} characters`;
 
+    // Check if this is an AI-enhanced version
+    const aiMeta = editsResult.aiEnhanced;
+    const aiLineage = editsResult.aiLineage;
+
+    if (aiMeta) {
+      // Direct AI-enhanced version - include AI metadata
+      const modelName = this.formatModelName(aiMeta.model);
+      const costStr = aiMeta.cost > 0 ? `$${aiMeta.cost.toFixed(4)}` : "N/A";
+
+      return `
+/edits/
+  AI-Enhanced MMD content:
+  - ${editsResult.filename}:  AI-enhanced version (${charDiffStr} from original)
+    Enhancement details:
+      Model: ${modelName}
+      Lines added: +${aiMeta.linesAdded}
+      Lines removed: -${aiMeta.linesRemoved}
+      Total lines changed: ${aiMeta.linesChanged}
+      Processing cost: ${costStr}
+      Enhanced at: ${aiMeta.appliedAt || "Unknown"}
+    Original MathPix output preserved in: results/${
+      editsResult.sourceFileName?.replace(/\.pdf$/i, ".mmd") || "mmd.mmd"
+    }
+    Last modified: ${editsResult.lastModified || "Unknown"}
+`;
+    }
+
+    if (aiLineage) {
+      // User edit built upon AI enhancement - show lineage
+      const modelName = this.formatModelName(aiLineage.model);
+      const costStr =
+        aiLineage.cost > 0 ? `$${aiLineage.cost.toFixed(4)}` : "N/A";
+
+      return `
+/edits/
+  User's edited MMD content (based on AI-enhanced version):
+  - ${editsResult.filename}:  User edits (${charDiffStr} from original)
+    Built upon AI enhancement:
+      Model: ${modelName}
+      AI lines added: +${aiLineage.linesAdded}
+      AI lines removed: -${aiLineage.linesRemoved}
+      AI lines changed: ${aiLineage.linesChanged}
+      AI processing cost: ${costStr}
+      AI enhanced at: ${aiLineage.appliedAt || "Unknown"}
+    Original MathPix output preserved in: results/${
+      editsResult.sourceFileName?.replace(/\.pdf$/i, ".mmd") || "mmd.mmd"
+    }
+    Last modified: ${editsResult.lastModified || "Unknown"}
+`;
+    }
+
+    // Standard user edit (no AI involvement)
     return `
 /edits/
   User's edited MMD content:
@@ -2848,6 +2972,28 @@ Timestamp: ${timestamp}
     }
     Last modified: ${editsResult.lastModified || "Unknown"}
 `;
+  }
+
+  /**
+   * Format model ID to human-readable name
+   * @param {string} modelId - Model ID (e.g., "anthropic/claude-sonnet-4")
+   * @returns {string} Formatted model name
+   */
+  formatModelName(modelId) {
+    if (!modelId || modelId === "unknown") return "Unknown model";
+
+    // Extract model name from provider/model format
+    const parts = modelId.split("/");
+    if (parts.length === 2) {
+      const provider = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+      const model = parts[1]
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+      return `${provider} ${model}`;
+    }
+
+    return modelId;
   }
 
   /**
@@ -2945,7 +3091,7 @@ ${fileList}
       const metadata = this.generateMetadata(
         sourceResult,
         resultsResult,
-        response
+        response,
       );
       const metadataJson = JSON.stringify(metadata, null, 2);
       dataFolder.file("metadata.json", metadataJson);
@@ -3097,7 +3243,7 @@ ${fileList}
       sourceType: this.detectRealSourceType(
         fileHandler,
         canvasSystem,
-        pdfHandler
+        pdfHandler,
       ),
 
       // Source data - check BOTH file handler AND PDF handler
@@ -3263,7 +3409,7 @@ ${fileList}
     }
 
     const availableFormats = Object.keys(currentResult).filter(
-      (key) => currentResult[key] && currentResult[key] !== ""
+      (key) => currentResult[key] && currentResult[key] !== "",
     );
 
     logInfo("✓ Formats collected from result renderer", {
@@ -3330,6 +3476,28 @@ ${fileList}
       logInfo("✓ Lines API statistics extracted:", linesApiStats);
     }
 
+    // Phase H.1: Extract PDF processor metadata for pageRange tracking
+    // This provides structured data that DOM extraction may miss
+    if (controller?.pdfProcessor?.getLastDebugData) {
+      const pdfProcessorData = controller.pdfProcessor.getLastDebugData();
+      if (pdfProcessorData?.metadata) {
+        // Get total PDF pages from uploadVerification (PDF.js document)
+        const totalPdfPages =
+          controller?.pdfHandler?.uploadVerification?.pdfDocument?.numPages ||
+          null;
+
+        debugData.metadata = {
+          pageRange: pdfProcessorData.metadata.pageRange || "all",
+          pageCount: pdfProcessorData.metadata.pageCount || null,
+          totalPdfPages: totalPdfPages,
+          requestedFormats: pdfProcessorData.metadata.requestedFormats || [],
+          completedFormats: pdfProcessorData.metadata.completedFormats || [],
+          processingModel: pdfProcessorData.metadata.processingModel || null,
+        };
+        logInfo("✓ PDF processor metadata extracted:", debugData.metadata);
+      }
+    }
+
     logInfo("✓ Debug data collected from DOM (including PDF-specific data)");
     return debugData;
   }
@@ -3344,26 +3512,26 @@ ${fileList}
 
     if (!statsContainer) {
       logDebug(
-        "Lines API statistics container not found (not a PDF processing)"
+        "Lines API statistics container not found (not a PDF processing)",
       );
       return null;
     }
 
     const stats = {
       lineCount: parseInt(
-        document.getElementById("page-stat-lines")?.textContent || "0"
+        document.getElementById("page-stat-lines")?.textContent || "0",
       ),
       mathElements: parseInt(
-        document.getElementById("page-stat-math")?.textContent || "0"
+        document.getElementById("page-stat-math")?.textContent || "0",
       ),
       tableCount: parseInt(
-        document.getElementById("page-stat-tables")?.textContent || "0"
+        document.getElementById("page-stat-tables")?.textContent || "0",
       ),
       handwrittenLines: parseInt(
-        document.getElementById("page-stat-handwritten")?.textContent || "0"
+        document.getElementById("page-stat-handwritten")?.textContent || "0",
       ),
       printedLines: parseInt(
-        document.getElementById("page-stat-printed")?.textContent || "0"
+        document.getElementById("page-stat-printed")?.textContent || "0",
       ),
     };
 
@@ -3475,6 +3643,12 @@ ${fileList}
   async createArchive(data) {
     logInfo("Creating archive with real data...");
 
+    // Phase H.1: Store references for use in generateMetadata
+    // These are needed because generateMetadata is called from collectDataFiles
+    // which doesn't have direct access to the original data object
+    this.currentLinesData = data.linesData || null;
+    this.currentDebugData = data.debugData || null;
+
     try {
       const zip = new JSZip();
 
@@ -3484,11 +3658,12 @@ ${fileList}
       const dataFolder = zip.folder(this.config.DIRECTORIES.DATA);
       const editsFolder = zip.folder(this.config.DIRECTORIES.EDITS);
       const convertedFolder = zip.folder(this.config.DIRECTORIES.CONVERTED);
+      const historyFolder = zip.folder(this.config.DIRECTORIES.HISTORY);
 
       // Collect source files (Phase 2)
       const sourceResult = await this.collectSourceFiles(
         data.sourceState,
-        sourceFolder
+        sourceFolder,
       );
       logInfo("Source collection result:", sourceResult);
 
@@ -3498,7 +3673,7 @@ ${fileList}
       const resultsResult = await this.collectResultFiles(
         data.formats || data.response, // Use formats if available, fallback to response
         resultsFolder,
-        sourceResult // Pass source result for base filename extraction
+        sourceResult, // Pass source result for base filename extraction
       );
       logInfo("Results collection result:", resultsResult);
 
@@ -3542,7 +3717,7 @@ ${fileList}
             // Check if filename already exists
             if (existingFilenames.has(savedVersion.filename)) {
               logDebug(
-                `Skipping saved version (filename exists): ${savedVersion.filename}`
+                `Skipping saved version (filename exists): ${savedVersion.filename}`,
               );
               continue;
             }
@@ -3561,7 +3736,7 @@ ${fileList}
           }
         }
         logInfo(
-          `Added ${savedVersionsCount} manually saved MMD versions to edits folder`
+          `Added ${savedVersionsCount} manually saved MMD versions to edits folder`,
         );
       }
       // Combine counts for reporting
@@ -3572,6 +3747,15 @@ ${fileList}
         (editsResult.hasEdits ? 1 : 0) +
         savedVersionsCount;
       logInfo("Edits collection result:", editsResult);
+
+      // Collect localStorage version history
+      const sourceFileName =
+        data.sourceState?.file?.name || editsResult.sourceFileName || "unknown";
+      const historyResult = this.collectVersionHistory(
+        historyFolder,
+        sourceFileName,
+      );
+      logInfo("History collection result:", historyResult);
 
       // Phase 6.2: Collect converted files if any
       const convertedResult = this.collectConvertedFiles(convertedFolder);
@@ -3598,9 +3782,775 @@ ${fileList}
       };
       const dataResult = await this.collectDataFiles(
         collectionData,
-        dataFolder
+        dataFolder,
       );
       logInfo("Data collection result:", dataResult);
+
+      // Phase 8 (Conv AE): Include AI enhancement in ZIP
+      try {
+        const aiController = window.getMathPixController?.();
+        const aiRenderer = aiController?.pdfResultRenderer;
+        if (aiRenderer?._aiEnhancementMetadata) {
+          // Add metadata to /metadata folder
+          const metadataFolder = zip.folder("metadata");
+          metadataFolder.file(
+            "ai-enhancement.json",
+            JSON.stringify(aiRenderer._aiEnhancementMetadata, null, 2),
+          );
+          logInfo("✓ AI enhancement metadata added to ZIP");
+
+          // Add enhanced MMD to /edits folder (session restorer picks this up)
+          const enhancedContent =
+            aiRenderer._enhancedMMD || aiRenderer.currentResults?.mmd;
+          if (enhancedContent) {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, "0");
+            const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+            const baseName = this.extractBaseNameFromSource(data.sourceState);
+            const enhancedFilename = baseName
+              ? `${baseName}-ai-enhanced-${timestamp}.mmd`
+              : `ai-enhanced-${timestamp}.mmd`;
+
+            editsFolder.file(enhancedFilename, enhancedContent);
+            logInfo(
+              "✓ AI-enhanced MMD added to edits folder:",
+              enhancedFilename,
+            );
+          }
+        }
+      } catch (aiMetaError) {
+        logWarn("Failed to add AI enhancement data to ZIP:", aiMetaError);
+      }
+
+      // Phase 8H.2 / 8E: Image packaging for ZIP
+      // Two modes:
+      //   1. Resume mode — live registry passed from session restorer (has blobs already)
+      //   2. Fresh mode  — build registry from MMD and download from CDN
+      let imageDownloadResult = null;
+      try {
+        if (
+          data.imageRegistry &&
+          typeof data.imageRegistry.getAllImages === "function"
+        ) {
+          // ================================================================
+          // RESUME MODE: Package images from live session-restorer registry.
+          // Blobs are already attached (from ZIP extraction, user swaps, or
+          // user adds). Deleted images are already removed from the registry.
+          // No CDN download required.
+          // ================================================================
+          logInfo("Resume mode: packaging images from live registry");
+
+          const liveRegistry = data.imageRegistry;
+          const allImages = liveRegistry.getAllImages();
+          const imageCount = allImages.length;
+
+          if (imageCount > 0) {
+            const docBaseName =
+              this.extractBaseNameFromSource(data.sourceState) || "document";
+            const imagesFolder = zip.folder("images");
+            const existingFilenameMap = data.imageFilenameMap || {};
+            const newFilenameMap = {};
+            const addedFiles = new Set();
+            let succeeded = 0;
+            let failed = 0;
+
+            // Counter for generating filenames for user-added images.
+            // Start after the highest-numbered existing image to avoid clashes.
+            let addedImageCounter = Object.keys(existingFilenameMap).length + 1;
+
+            for (const img of allImages) {
+              // ----------------------------------------------------------
+              // 1. Determine filename
+              // ----------------------------------------------------------
+              let filename = null;
+              const existingEntry = existingFilenameMap[img.id];
+
+              if (existingEntry?.filename) {
+                // Known image (OCR original or swapped) — keep existing slot.
+                // If the user swapped it, the file content is different but the
+                // "slot" in the document is the same, so same filename is fine.
+                filename = existingEntry.filename;
+              }
+
+              if (!filename) {
+                // User-added image or missing map entry — generate filename
+                const ext =
+                  img.mimeType === "image/png"
+                    ? ".png"
+                    : img.mimeType === "image/webp"
+                      ? ".webp"
+                      : ".jpg";
+                filename = `${docBaseName}-image-${addedImageCounter}${ext}`;
+                addedImageCounter++;
+              }
+
+              // ----------------------------------------------------------
+              // 2. Get blob and add to ZIP
+              // ----------------------------------------------------------
+              let addedToZip = false;
+
+              if (img.blob && img.blob instanceof Blob && img.blob.size > 0) {
+                // Primary path: blob is attached to registry entry
+                if (!addedFiles.has(filename)) {
+                  imagesFolder.file(filename, img.blob);
+                  addedFiles.add(filename);
+                  addedToZip = true;
+                  succeeded++;
+                  logDebug(
+                    `Added to ZIP /images/: ${filename} (${img.blob.size} bytes, status: ${img.status})`,
+                  );
+                }
+              } else if (img.dataUri) {
+                // Fallback: convert data URI to blob (user-added images may
+                // have had their blob revoked but dataUri preserved)
+                try {
+                  const fallbackBlob = await this.base64ToBlob(
+                    img.dataUri,
+                    img.mimeType || "image/jpeg",
+                  );
+                  if (!addedFiles.has(filename)) {
+                    imagesFolder.file(filename, fallbackBlob);
+                    addedFiles.add(filename);
+                    addedToZip = true;
+                    succeeded++;
+                    logDebug(
+                      `Added to ZIP /images/ (from dataUri): ${filename}`,
+                    );
+                  }
+                } catch (convError) {
+                  logWarn(
+                    `Failed to convert dataUri for ${img.id}: ${convError.message}`,
+                  );
+                  failed++;
+                }
+              } else {
+                logWarn(
+                  `No blob or dataUri for image ${img.id} (status: ${img.status}) — skipping`,
+                );
+                failed++;
+              }
+
+              // ----------------------------------------------------------
+              // 3. Record in filenameMap
+              // ----------------------------------------------------------
+              newFilenameMap[img.id] = {
+                filename,
+                url: img.originalUrl,
+                downloaded: addedToZip,
+                status: img.status,
+              };
+            }
+
+            logInfo(
+              `Resume image packaging: ${succeeded}/${imageCount} images added to ZIP`,
+            );
+
+            // ============================================================
+            // Phase 7C-7: Chemistry replacement in RESUME mode.
+            //
+            // The fresh-mode Phase 6G branch below handles chemistry for
+            // newly-processed documents, but resume mode never enters
+            // that branch — it takes its own live-registry path. Without
+            // this block, resume-mode ZIP downloads carry whatever images
+            // were originally in the ZIP, ignore per-image renderOptions
+            // set via the chemistry panel, and never write the manifest.
+            //
+            // We use `data.formats.mmd` (the original MMD with CDN URLs,
+            // not the blob-rewritten preview content) so matching against
+            // `img.originalUrl` in the registry works the same way the
+            // fresh-mode branch does.
+            // ============================================================
+            if (
+              typeof window.SmilesDrawer !== "undefined" &&
+              typeof window.MathPixChemistryUtils?.renderStructureToBlob ===
+                "function"
+            ) {
+              try {
+                const originalMmd = data.formats?.mmd || "";
+                const includeGfxRegex =
+                  /\\includegraphics\s*\[alt=\{[^}]*<smiles[^>]*>(.*?)<\/smiles>[^}]*\}[^\]]*\]\s*\{([^}]+)\}/g;
+                const urlToSmiles = new Map();
+                let chemMatch;
+                while (
+                  (chemMatch = includeGfxRegex.exec(originalMmd)) !== null
+                ) {
+                  const smilesNotation = chemMatch[1];
+                  const imgUrl = chemMatch[2].trim();
+                  if (smilesNotation && imgUrl) {
+                    urlToSmiles.set(imgUrl, smilesNotation);
+                  }
+                }
+
+                logInfo(
+                  `Phase 7C-7 resume: ${urlToSmiles.size} chemistry image(s) found in original MMD`,
+                );
+
+                if (urlToSmiles.size > 0) {
+                  // Pull per-image overrides from the result renderer
+                  const ctrl =
+                    typeof window.getMathPixController === "function"
+                      ? window.getMathPixController()
+                      : null;
+                  const chemistryData = Array.isArray(
+                    ctrl?.resultRenderer?._chemistryData,
+                  )
+                    ? ctrl.resultRenderer._chemistryData
+                    : [];
+
+                  const smilesToRenderOptions = new Map();
+                  const smilesToRenderPreset = new Map();
+                  for (const entry of chemistryData) {
+                    if (
+                      entry?.notation &&
+                      entry?.renderOptions &&
+                      typeof entry.renderOptions === "object" &&
+                      Object.keys(entry.renderOptions).length > 0 &&
+                      !smilesToRenderOptions.has(entry.notation)
+                    ) {
+                      smilesToRenderOptions.set(
+                        entry.notation,
+                        entry.renderOptions,
+                      );
+                      if (entry.renderPresetName) {
+                        smilesToRenderPreset.set(
+                          entry.notation,
+                          entry.renderPresetName,
+                        );
+                      }
+                    }
+                  }
+
+                  logInfo(
+                    `Phase 7C-7 resume: ${smilesToRenderOptions.size} per-image override(s) in _chemistryData`,
+                  );
+
+                  const originalsFolder = zip.folder("images/originals");
+                  const perImageOverrideRecords = [];
+                  let replacedCount = 0;
+
+                  for (const img of allImages) {
+                    const smiles = urlToSmiles.get(img.originalUrl);
+                    if (!smiles) continue;
+
+                    const mapEntry = newFilenameMap[img.id];
+                    if (!mapEntry || !mapEntry.downloaded) continue;
+
+                    const perImageOptions =
+                      smilesToRenderOptions.get(smiles) || null;
+
+                    // Phase 7C-7: retry once on a null return. SmilesDrawer
+                    // has an intermittent "canvas appears blank" race on
+                    // back-to-back renders sharing the same hidden canvas —
+                    // a short async gap is enough for the next call to succeed.
+                    let renderedBlob =
+                      await window.MathPixChemistryUtils.renderStructureToBlob(
+                        smiles,
+                        { perImageOptions },
+                      );
+
+                    if (!renderedBlob) {
+                      logWarn(
+                        `Phase 7C-7 resume: first render returned null for "${smiles.substring(0, 30)}..." — retrying`,
+                      );
+                      await new Promise((resolve) => setTimeout(resolve, 50));
+                      renderedBlob =
+                        await window.MathPixChemistryUtils.renderStructureToBlob(
+                          smiles,
+                          { perImageOptions },
+                        );
+                    }
+
+                    if (!renderedBlob) {
+                      logWarn(
+                        `Phase 7C-7 resume: render still failed after retry for "${smiles.substring(0, 30)}..." — keeping registry image`,
+                      );
+                      continue;
+                    }
+
+                    // Move the registry image to /images/originals/
+                    const origFilename = mapEntry.filename;
+                    const baseName = origFilename.replace(/\.[^/.]+$/, "");
+                    const origExt =
+                      origFilename.match(/\.[^/.]+$/)?.[0] || ".jpg";
+
+                    if (img.blob) {
+                      originalsFolder.file(
+                        `${baseName}-original${origExt}`,
+                        img.blob,
+                      );
+                    }
+
+                    // Replace with rendered PNG
+                    const renderedFilename = `${baseName}.png`;
+                    imagesFolder.file(renderedFilename, renderedBlob);
+                    if (origFilename !== renderedFilename) {
+                      zip.remove(`images/${origFilename}`);
+                    }
+
+                    mapEntry.filename = renderedFilename;
+                    mapEntry.replacedBy = "smiles-render";
+                    mapEntry.replacedAt = Date.now();
+                    mapEntry.smilesSource = smiles;
+                    mapEntry.originalFilename = origFilename;
+
+                    replacedCount++;
+                    if (perImageOptions) {
+                      const record = {
+                        smiles,
+                        filename: renderedFilename,
+                        options: { ...perImageOptions },
+                      };
+                      const presetName = smilesToRenderPreset.get(smiles);
+                      if (presetName) record.preset = presetName;
+                      perImageOverrideRecords.push(record);
+                    }
+
+                    logInfo(
+                      `Phase 7C-7 resume: ✓ replaced ${origFilename} → ${renderedFilename} (${renderedBlob.size} bytes)` +
+                        (perImageOptions ? " [per-image]" : ""),
+                    );
+                  }
+
+                  if (replacedCount > 0) {
+                    logInfo(
+                      `Phase 7C-7 resume: replaced ${replacedCount} chemistry image(s) ` +
+                        `(${perImageOverrideRecords.length} with per-image overrides)`,
+                    );
+
+                    // Write chemistry-settings.json manifest
+                    try {
+                      const utils = window.MathPixChemistryUtils;
+                      const activePreset = utils.getActivePreset();
+                      const customOptions =
+                        activePreset === "custom"
+                          ? utils.getCustomOptions()
+                          : null;
+
+                      const manifest = {
+                        schemaVersion: 1,
+                        exportedAt: new Date().toISOString(),
+                        globalPreset: activePreset,
+                        customOptions,
+                        perImageOverrides: perImageOverrideRecords,
+                        renderedCount: replacedCount,
+                        perImageCount: perImageOverrideRecords.length,
+                      };
+
+                      zip.file(
+                        "data/chemistry-settings.json",
+                        JSON.stringify(manifest, null, 2),
+                      );
+                      logInfo(
+                        `Phase 7C-7 resume: data/chemistry-settings.json written ` +
+                          `(preset=${activePreset}, perImage=${perImageOverrideRecords.length})`,
+                      );
+                    } catch (manifestError) {
+                      logWarn(
+                        "Phase 7C-7 resume: failed to write chemistry-settings.json (non-critical)",
+                        manifestError,
+                      );
+                    }
+                  } else {
+                    logWarn(
+                      "Phase 7C-7 resume: no chemistry images were replaced. " +
+                        "Check whether img.originalUrl matches keys in the original MMD.",
+                    );
+                  }
+                }
+              } catch (chemErr) {
+                logWarn(
+                  "Phase 7C-7 resume: chemistry replacement failed (non-critical)",
+                  chemErr,
+                );
+              }
+            }
+
+            // Write registry JSON to /metadata/
+            const registryJson = liveRegistry.toJSON();
+            registryJson.filenameMap = newFilenameMap;
+            registryJson.downloadSummary = {
+              total: imageCount,
+              succeeded,
+              failed,
+              source: "session-restorer",
+              packagedAt: new Date().toISOString(),
+            };
+
+            const metadataFolder = zip.folder("metadata");
+            metadataFolder.file(
+              "image-registry.json",
+              JSON.stringify(registryJson, null, 2),
+            );
+            logInfo("✓ Live image registry JSON added to ZIP /metadata/");
+          } else {
+            logDebug("Live registry has no images — skipping image step");
+          }
+        } else if (
+          typeof window.MathPixImageRegistry === "function" &&
+          typeof window.MathPixImageDownloader === "function"
+        ) {
+          // ================================================================
+          // FRESH MODE: Build registry from MMD and download from CDN.
+          // This is the original Phase 8E (Conv AG) path, used when creating
+          // a ZIP from a fresh MathPix processing session (not a resume).
+          // ================================================================
+          const aiController = window.getMathPixController?.();
+          const pdfRenderer = aiController?.pdfResultRenderer;
+          const mmdContent =
+            pdfRenderer?.currentResults?.mmd ||
+            document.querySelector("#mathpix-pdf-content-mmd")?.textContent;
+
+          if (mmdContent && mmdContent.length > 0) {
+            const imageRegistry = new window.MathPixImageRegistry();
+            const imageCount = imageRegistry.buildFromMMD(mmdContent);
+
+            if (imageCount > 0) {
+              const docBaseName =
+                this.extractBaseNameFromSource(data.sourceState) || "document";
+              imageRegistry.setDocumentId(docBaseName);
+
+              logInfo(`Image registry built: ${imageCount} images detected`);
+
+              const imageDownloader = new window.MathPixImageDownloader();
+
+              // Strategy 1 (preferred): Fetch via MathPix API mmd.zip
+              // This bypasses CDN CORS restrictions entirely
+              const pdfId = aiController?.pdfProcessor?.currentPdfId;
+              // Read credentials from the API client (not DOM inputs, which may be
+              // overwritten by OpenRouter credentials during the session)
+              const appId = aiController?.apiClient?.appId;
+              const appKey = aiController?.apiClient?.apiKey;
+
+              if (pdfId && appId && appKey) {
+                logInfo(`Using mmd.zip strategy (pdf_id: ${pdfId})`);
+                imageDownloadResult = await imageDownloader.downloadFromMmdZip(
+                  imageRegistry,
+                  pdfId,
+                  { appId, appKey },
+                  docBaseName,
+                );
+              } else {
+                // Strategy 2 (fallback): Direct CDN download
+                logInfo(
+                  "mmd.zip prerequisites missing, falling back to CDN download",
+                );
+                logDebug("Missing:", {
+                  pdfId: !!pdfId,
+                  appId: !!appId,
+                  appKey: !!appKey,
+                });
+                imageDownloadResult = await imageDownloader.downloadAll(
+                  imageRegistry,
+                  docBaseName,
+                );
+              }
+
+              logInfo("Image download result:", {
+                total: imageDownloadResult.total,
+                succeeded: imageDownloadResult.succeeded,
+                failed: imageDownloadResult.failed,
+                elapsedMs: imageDownloadResult.elapsedMs,
+              });
+
+              // Add downloaded images to /images/ folder in ZIP
+              if (imageDownloadResult.succeeded > 0) {
+                const imagesFolder = zip.folder("images");
+                const addedFiles = new Set();
+
+                const allImages = imageRegistry.getAllImages();
+                for (const img of allImages) {
+                  const mapEntry = imageDownloadResult.filenameMap[img.id];
+                  if (!mapEntry || !mapEntry.downloaded) continue;
+                  if (addedFiles.has(mapEntry.filename)) continue;
+
+                  if (img.status === "downloaded" && img.blob) {
+                    imagesFolder.file(mapEntry.filename, img.blob);
+                    addedFiles.add(mapEntry.filename);
+                    logDebug(`Added to ZIP /images/: ${mapEntry.filename}`);
+                  }
+                }
+
+                logInfo(
+                  `Added ${addedFiles.size} image files to ZIP /images/ folder`,
+                );
+
+                // ============================================================
+                // Phase 6G: Replace chemistry images with SmilesDrawer renders
+                // ============================================================
+                if (
+                  typeof window.SmilesDrawer !== "undefined" &&
+                  typeof window.MathPixChemistryUtils?.renderStructureToBlob ===
+                    "function"
+                ) {
+                  try {
+                    // Phase 7C-7: in resume mode the live MMD content can
+                    // contain blob: URLs (the MMD editor bakes the preview
+                    // rewrite into its textarea). Reverse those back to the
+                    // original CDN URLs before extraction so the regex keys
+                    // match `img.originalUrl` in the image registry lookup
+                    // below — otherwise no replacements happen and the
+                    // manifest is never written.
+                    const mmdPreview =
+                      typeof window.getMathPixMMDPreview === "function"
+                        ? window.getMathPixMMDPreview()
+                        : null;
+                    const normalisedMmd =
+                      mmdPreview &&
+                      typeof mmdPreview.getMMDWithOriginalChemistryUrls ===
+                        "function"
+                        ? mmdPreview.getMMDWithOriginalChemistryUrls(mmdContent)
+                        : mmdContent;
+
+                    // Build a map of CDN URL → SMILES notation from the MMD
+                    const chemUrlToSmiles = new Map();
+                    const includeGfxRegex =
+                      /\\includegraphics\s*\[alt=\{[^}]*<smiles[^>]*>(.*?)<\/smiles>[^}]*\}[^\]]*\]\s*\{([^}]+)\}/g;
+                    let chemMatch;
+                    while (
+                      (chemMatch = includeGfxRegex.exec(normalisedMmd)) !== null
+                    ) {
+                      const smilesNotation = chemMatch[1];
+                      const cdnUrl = chemMatch[2].trim();
+                      if (smilesNotation && cdnUrl) {
+                        chemUrlToSmiles.set(cdnUrl, smilesNotation);
+                      }
+                    }
+
+                    if (chemUrlToSmiles.size > 0) {
+                      logInfo(
+                        `Phase 6G: Found ${chemUrlToSmiles.size} chemistry image(s) to replace`,
+                      );
+
+                      const originalsFolder = zip.folder("images/originals");
+                      let replacedCount = 0;
+                      let chemIndex = 0;
+                      const chemTotal = chemUrlToSmiles.size;
+
+                      // Phase 7C-5: read per-image overrides from the result
+                      // renderer. Both image and PDF flows store chemistry data
+                      // on controller.resultRenderer (PDF delegates to it).
+                      // Access via window.getMathPixController() — the other
+                      // window.mathPixController globals are not defined.
+                      const ctrl =
+                        typeof window.getMathPixController === "function"
+                          ? window.getMathPixController()
+                          : null;
+                      const chemistryData = Array.isArray(
+                        ctrl?.resultRenderer?._chemistryData,
+                      )
+                        ? ctrl.resultRenderer._chemistryData
+                        : [];
+                      logDebug(
+                        "Phase 7C-5: chemistry data lookup",
+                        {
+                          entries: chemistryData.length,
+                          withRenderOptions: chemistryData.filter(
+                            (e) =>
+                              e?.renderOptions &&
+                              Object.keys(e.renderOptions).length > 0,
+                          ).length,
+                        },
+                      );
+                      const smilesToRenderOptions = new Map();
+                      const smilesToRenderPreset = new Map();
+                      for (const entry of chemistryData) {
+                        if (
+                          entry?.notation &&
+                          entry.renderOptions &&
+                          typeof entry.renderOptions === "object" &&
+                          Object.keys(entry.renderOptions).length > 0
+                        ) {
+                          if (!smilesToRenderOptions.has(entry.notation)) {
+                            smilesToRenderOptions.set(entry.notation, {
+                              ...entry.renderOptions,
+                            });
+                            if (entry.renderPresetName) {
+                              smilesToRenderPreset.set(
+                                entry.notation,
+                                entry.renderPresetName,
+                              );
+                            }
+                          }
+                        }
+                      }
+                      const perImageOverrideRecords = [];
+
+                      // Match registry images to chemistry data by URL
+                      // (reuse allImages from the image-adding loop above)
+                      const chemFilenameMap = imageDownloadResult.filenameMap;
+
+                      for (const img of allImages) {
+                        const mapEntry = chemFilenameMap[img.id];
+                        if (!mapEntry || !mapEntry.downloaded) continue;
+
+                        const smiles = chemUrlToSmiles.get(img.originalUrl);
+                        if (!smiles) continue;
+
+                        chemIndex++;
+                        const perImageOptions =
+                          smilesToRenderOptions.get(smiles) || null;
+                        logInfo(
+                          `Rendering chemistry structure ${chemIndex} of ${chemTotal}` +
+                            (perImageOptions ? " (per-image)" : ""),
+                        );
+
+                        const renderedBlob =
+                          await window.MathPixChemistryUtils.renderStructureToBlob(
+                            smiles,
+                            { perImageOptions },
+                          );
+
+                        if (!renderedBlob) {
+                          logWarn(
+                            `Phase 6G: Render failed for "${smiles.substring(0, 30)}..." — keeping CDN crop`,
+                          );
+                          continue;
+                        }
+
+                        // Move original CDN image to /images/originals/
+                        const origFilename = mapEntry.filename;
+                        const baseName = origFilename.replace(
+                          /\.[^/.]+$/,
+                          "",
+                        );
+                        const origExt =
+                          origFilename.match(/\.[^/.]+$/)?.[0] || ".jpg";
+
+                        // Copy original blob to /images/originals/
+                        if (img.blob) {
+                          originalsFolder.file(
+                            `${baseName}-original${origExt}`,
+                            img.blob,
+                          );
+                        }
+
+                        // Replace with rendered PNG in /images/
+                        const renderedFilename = `${baseName}.png`;
+                        imagesFolder.file(renderedFilename, renderedBlob);
+
+                        // Remove original file from /images/ if extension changed
+                        if (origFilename !== renderedFilename) {
+                          zip.remove(`images/${origFilename}`);
+                        }
+
+                        // Update filenameMap entry
+                        mapEntry.filename = renderedFilename;
+                        mapEntry.replacedBy = "smiles-render";
+                        mapEntry.replacedAt = Date.now();
+                        mapEntry.smilesSource = smiles;
+                        mapEntry.originalFilename = origFilename;
+
+                        replacedCount++;
+                        if (perImageOptions) {
+                          const presetName =
+                            smilesToRenderPreset.get(smiles) || null;
+                          const record = {
+                            smiles,
+                            filename: renderedFilename,
+                            options: { ...perImageOptions },
+                          };
+                          if (presetName) record.preset = presetName;
+                          perImageOverrideRecords.push(record);
+                        }
+                        logInfo(
+                          `✓ Replaced ${origFilename} → ${renderedFilename} (${renderedBlob.size} bytes)`,
+                        );
+                      }
+
+                      if (replacedCount > 0) {
+                        logInfo(
+                          `Phase 6G/7C-5: Replaced ${replacedCount} chemistry image(s) ` +
+                            `(${perImageOverrideRecords.length} with per-image overrides)`,
+                        );
+
+                        // Phase 7C-5: write chemistry-settings.json manifest
+                        if (window.MathPixChemistryUtils?.getActivePreset) {
+                          try {
+                            const utils = window.MathPixChemistryUtils;
+                            const activePreset = utils.getActivePreset();
+                            const customOptions =
+                              activePreset === "custom"
+                                ? utils.getCustomOptions()
+                                : null;
+
+                            const manifest = {
+                              schemaVersion: 1,
+                              exportedAt: new Date().toISOString(),
+                              globalPreset: activePreset,
+                              customOptions,
+                              perImageOverrides: perImageOverrideRecords,
+                              renderedCount: replacedCount,
+                              perImageCount: perImageOverrideRecords.length,
+                            };
+
+                            zip.file(
+                              "data/chemistry-settings.json",
+                              JSON.stringify(manifest, null, 2),
+                            );
+                            logInfo(
+                              `Phase 7C-5: data/chemistry-settings.json written ` +
+                                `(preset=${activePreset}, perImage=${perImageOverrideRecords.length})`,
+                            );
+                          } catch (manifestError) {
+                            logWarn(
+                              "Phase 7C-5: failed to write chemistry-settings.json (non-critical)",
+                              manifestError,
+                            );
+                          }
+                        }
+                      } else {
+                        logDebug(
+                          "Phase 6G: No chemistry images were replaced (no successful renders)",
+                        );
+                      }
+                    } else {
+                      logDebug(
+                        "Phase 6G: No chemistry \\includegraphics found in MMD",
+                      );
+                    }
+                  } catch (chemRenderError) {
+                    logWarn(
+                      "Phase 6G: Chemistry image replacement failed (non-critical):",
+                      chemRenderError,
+                    );
+                  }
+                }
+              }
+
+              // Always add registry JSON to /metadata/
+              const registryJson = imageRegistry.toJSON();
+              registryJson.filenameMap = imageDownloadResult.filenameMap;
+              registryJson.downloadSummary = {
+                total: imageDownloadResult.total,
+                succeeded: imageDownloadResult.succeeded,
+                failed: imageDownloadResult.failed,
+                elapsedMs: imageDownloadResult.elapsedMs,
+                downloadedAt: new Date().toISOString(),
+              };
+
+              const metadataFolder = zip.folder("metadata");
+              metadataFolder.file(
+                "image-registry.json",
+                JSON.stringify(registryJson, null, 2),
+              );
+              logInfo("✓ Image registry JSON added to ZIP /metadata/");
+            } else {
+              logDebug("No images found in MMD — skipping image download step");
+            }
+          } else {
+            logDebug("No MMD content available — skipping image download step");
+          }
+        } else {
+          logDebug(
+            "Image registry/downloader modules not loaded — skipping image step",
+          );
+        }
+      } catch (imageError) {
+        logWarn(
+          "Image download/ZIP integration failed (non-critical):",
+          imageError,
+        );
+      }
 
       // Generate production README (Phase 4)
       // Include edits result and converted result for README generation
@@ -3613,7 +4563,7 @@ ${fileList}
         metadata: this.generateMetadata(
           sourceResult,
           resultsResult,
-          data.response
+          data.response,
         ),
       };
       const readme = this.generateProductionReadme(manifest);
@@ -3686,11 +4636,6 @@ ${fileList}
     return `${baseName}-${date}-${time}.mmd`;
   }
 
-  /**
-   * Collect MMD edits from the editor session
-   * @param {JSZip.folder} editsFolder - The edits folder in the ZIP
-   * @returns {Object} Collection result with edits information
-   */
   collectMMDEdits(editsFolder) {
     const result = {
       hasEdits: false,
@@ -3700,6 +4645,8 @@ ${fileList}
       characterDifference: 0,
       sourceFileName: null,
       lastModified: null,
+      aiEnhanced: null, // AI enhancement metadata if present (direct AI edit)
+      aiLineage: null, // AI lineage info if built upon AI enhancement
       errors: [],
     };
 
@@ -3730,8 +4677,23 @@ ${fileList}
         return result;
       }
 
-      // Generate timestamped filename
-      const filename = this.generateEditsFilename(session.sourceFileName);
+      // Check for AI enhancement metadata
+      const aiMetadata = session.aiEnhanced || null;
+      const hasAIMetadata = aiMetadata && aiMetadata.appliedAt;
+
+      // Determine if this IS the AI enhancement or is BASED ON it
+      // Compare current content with the AI-enhanced content snapshot
+      const isDirectAIEnhancement =
+        hasAIMetadata &&
+        aiMetadata.content &&
+        session.current === aiMetadata.content;
+
+      const isBasedOnAI = hasAIMetadata && !isDirectAIEnhancement;
+
+      // Generate timestamped filename - use special pattern for direct AI-enhanced versions
+      const filename = isDirectAIEnhancement
+        ? this.generateAIEnhancedFilename(session.sourceFileName)
+        : this.generateEditsFilename(session.sourceFileName);
 
       // Add edited content to ZIP
       editsFolder.file(filename, session.current);
@@ -3747,18 +4709,255 @@ ${fileList}
         ? new Date(session.lastModified).toISOString()
         : new Date().toISOString();
 
-      logInfo("MMD edits collected", {
-        filename: result.filename,
-        originalLength: result.originalLength,
-        editedLength: result.editedLength,
-        characterDifference: result.characterDifference,
-      });
+      // Include AI metadata based on whether this IS AI or BASED ON AI
+      if (isDirectAIEnhancement) {
+        result.aiEnhanced = {
+          model: aiMetadata.model || "unknown",
+          linesAdded: aiMetadata.linesAdded || 0,
+          linesRemoved: aiMetadata.linesRemoved || 0,
+          linesChanged: aiMetadata.linesChanged || 0,
+          cost: aiMetadata.cost || 0,
+          appliedAt: aiMetadata.appliedAt
+            ? new Date(aiMetadata.appliedAt).toISOString()
+            : null,
+        };
+        logInfo("AI-enhanced MMD collected", {
+          filename: result.filename,
+          model: result.aiEnhanced.model,
+          linesChanged: result.aiEnhanced.linesChanged,
+        });
+      } else if (isBasedOnAI) {
+        // Content has been modified since AI enhancement - track lineage
+        result.aiLineage = {
+          model: aiMetadata.model || "unknown",
+          linesAdded: aiMetadata.linesAdded || 0,
+          linesRemoved: aiMetadata.linesRemoved || 0,
+          linesChanged: aiMetadata.linesChanged || 0,
+          cost: aiMetadata.cost || 0,
+          appliedAt: aiMetadata.appliedAt
+            ? new Date(aiMetadata.appliedAt).toISOString()
+            : null,
+        };
+        logInfo("MMD edits collected (based on AI enhancement)", {
+          filename: result.filename,
+          aiModel: result.aiLineage.model,
+          aiAppliedAt: result.aiLineage.appliedAt,
+        });
+      } else {
+        logInfo("MMD edits collected", {
+          filename: result.filename,
+          originalLength: result.originalLength,
+          editedLength: result.editedLength,
+          characterDifference: result.characterDifference,
+        });
+      }
     } catch (error) {
       logError("Failed to collect MMD edits:", error);
       result.errors.push(error.message);
     }
 
     return result;
+  }
+
+  /**
+   * Generate filename for AI-enhanced MMD content
+   * Uses pattern: {basename}-ai-enhanced-{date}-{time}.mmd
+   * @param {string} sourceFileName - Original source filename
+   * @returns {string} Generated filename
+   */
+  generateAIEnhancedFilename(sourceFileName) {
+    // Remove .pdf extension if present
+    let baseName = sourceFileName?.replace(/\.pdf$/i, "") || "mathpix-export";
+
+    // Sanitise filename - remove unsafe characters
+    baseName = baseName.replace(/[<>:"/\\|?*]/g, "-");
+
+    // Format date: YYYY-MM-DD
+    const now = new Date();
+    const date = now.toISOString().split("T")[0];
+
+    // Format time: HH-MM
+    const time = now.toTimeString().slice(0, 5).replace(":", "-");
+
+    return `${baseName}-ai-enhanced-${date}-${time}.mmd`;
+  }
+
+  /**
+   * Collect all localStorage version history for the current source
+   * Saves all auto-saved checkpoints to /history/ folder
+   * @param {JSZip.folder} historyFolder - The history folder in the ZIP
+   * @param {string} sourceFileName - Source filename to match sessions
+   * @returns {Object} Collection result with history information
+   */
+  collectVersionHistory(historyFolder, sourceFileName) {
+    const result = {
+      hasHistory: false,
+      versionsCollected: 0,
+      versions: [],
+      errors: [],
+    };
+
+    try {
+      if (!sourceFileName) {
+        logDebug("No source filename provided for history collection");
+        return result;
+      }
+
+      // Get base name for matching (without extension)
+      const sourceBaseName = sourceFileName.replace(/\.[^/.]+$/, "");
+
+      // Find all matching localStorage sessions
+      const keys = Object.keys(localStorage).filter((k) =>
+        k.startsWith("mathpix-resume-session"),
+      );
+
+      logDebug(`Found ${keys.length} total localStorage session keys`);
+
+      const matchingSessions = [];
+
+      for (const key of keys) {
+        try {
+          const data = JSON.parse(localStorage.getItem(key));
+
+          // Handle both property name variants for backwards compatibility
+          const storedName = data?.sourceFileName || data?.sourceFilename || "";
+          const storedBaseName = storedName.replace(/\.[^/.]+$/, "");
+
+          // Match by base filename
+          if (
+            storedBaseName &&
+            storedBaseName === sourceBaseName &&
+            data.current
+          ) {
+            matchingSessions.push({
+              key,
+              data,
+              lastModified: data.lastModified || 0,
+              contentLength: data.current?.length || 0,
+              hasAIEnhancement: !!(
+                data.aiEnhanced && data.aiEnhanced.appliedAt
+              ),
+            });
+          }
+        } catch (e) {
+          logDebug("Skipping invalid localStorage entry:", key);
+        }
+      }
+
+      // Sort by lastModified descending (newest first)
+      matchingSessions.sort((a, b) => b.lastModified - a.lastModified);
+
+      logInfo(
+        `Found ${matchingSessions.length} localStorage sessions for ${sourceBaseName}`,
+      );
+
+      // Get current session content to avoid duplicating in history
+      // (current session is already saved to /edits/ folder)
+      const persistence = window.getMathPixMMDPersistence?.();
+      const currentContent = persistence?.session?.current || null;
+      let skippedAsCurrent = 0;
+
+      // Add each session to history folder (excluding current)
+      for (let i = 0; i < matchingSessions.length; i++) {
+        const session = matchingSessions[i];
+        const data = session.data;
+
+        // Skip if this session's content matches the current session
+        // (already being saved to /edits/ folder)
+        if (currentContent && data.current === currentContent) {
+          skippedAsCurrent++;
+          logDebug(
+            `Skipping session (matches current in /edits/): ${session.key}`,
+          );
+          continue;
+        }
+
+        try {
+          // Generate filename with timestamp and index
+          const timestamp = new Date(session.lastModified);
+          const dateStr = timestamp.toISOString().split("T")[0];
+          const timeStr = timestamp
+            .toTimeString()
+            .slice(0, 5)
+            .replace(":", "-");
+
+          // Add AI indicator if applicable
+          const aiSuffix = session.hasAIEnhancement ? "-ai" : "";
+          const filename = `${this.sanitizeFilename(sourceBaseName)}-${dateStr}-${timeStr}${aiSuffix}.mmd`;
+
+          // Add to history folder
+          historyFolder.file(filename, data.current);
+
+          // Track version info
+          result.versions.push({
+            filename,
+            lastModified: timestamp.toISOString(),
+            size: data.current.length,
+            hasAIEnhancement: session.hasAIEnhancement,
+            aiModel: session.hasAIEnhancement ? data.aiEnhanced?.model : null,
+          });
+
+          result.versionsCollected++;
+          logDebug(`Added history version: ${filename}`);
+        } catch (e) {
+          logWarn(`Failed to add history version for key ${session.key}:`, e);
+          result.errors.push(`Failed to process session: ${e.message}`);
+        }
+      }
+
+      if (skippedAsCurrent > 0) {
+        logDebug(
+          `Skipped ${skippedAsCurrent} session(s) matching current edit (already in /edits/)`,
+        );
+      }
+
+      result.hasHistory = result.versionsCollected > 0;
+
+      logInfo(`Collected ${result.versionsCollected} version history entries`);
+    } catch (error) {
+      logError("Failed to collect version history:", error);
+      result.errors.push(error.message);
+    }
+
+    return result;
+  }
+
+  /**
+   * Generate history section for README
+   * Documents all localStorage versions included in the archive
+   * @param {Object} historyResult - History collection result
+   * @returns {string} Formatted history section or empty string
+   */
+  generateHistorySection(historyResult) {
+    // Return empty string if no history
+    if (!historyResult?.hasHistory || historyResult.versionsCollected === 0) {
+      return "";
+    }
+
+    const versionList = historyResult.versions
+      .map((v) => {
+        const sizeKB = (v.size / 1024).toFixed(1);
+        const aiTag = v.hasAIEnhancement
+          ? ` [AI: ${this.formatModelName(v.aiModel)}]`
+          : "";
+        return `  - ${v.filename} (${sizeKB} KB)${aiTag}`;
+      })
+      .join("\n");
+
+    const aiCount = historyResult.versions.filter(
+      (v) => v.hasAIEnhancement,
+    ).length;
+    const aiNote =
+      aiCount > 0
+        ? `\n  Note: ${aiCount} version(s) include AI enhancements (marked with [AI])`
+        : "";
+
+    return `
+/history/
+  Browser localStorage version history (${historyResult.versionsCollected} checkpoints):
+  Auto-saved editing checkpoints, newest first:
+${versionList}${aiNote}
+`;
   }
 
   /**
@@ -3975,7 +5174,7 @@ window.testMathPixDownloader = {
     console.log("─────────────────────────────");
     const filenameResults = downloader.testFilenameGeneration();
     console.log(
-      `\nResult: ${filenameResults.passed}/${filenameResults.total} tests passed\n`
+      `\nResult: ${filenameResults.passed}/${filenameResults.total} tests passed\n`,
     );
 
     // Test 3: Basic ZIP Creation
@@ -4056,7 +5255,7 @@ window.testMathPixDownloader = {
 
     console.log("\n═══════════════════════════════════════════════════\n");
     console.log(
-      allPass ? "✓ All prerequisites met!" : "✗ Some prerequisites missing!"
+      allPass ? "✓ All prerequisites met!" : "✗ Some prerequisites missing!",
     );
     console.log("");
 
@@ -4194,7 +5393,7 @@ window.testMathPixDownloader = {
     console.log("- Upload ZIP should contain test-upload.txt");
     console.log("- Clipboard ZIP should contain clipboard-image.jpg");
     console.log(
-      "- Canvas ZIP should contain canvas-drawing.png and strokes-data.json\n"
+      "- Canvas ZIP should contain canvas-drawing.png and strokes-data.json\n",
     );
 
     return true;
@@ -4254,7 +5453,7 @@ window.testMathPixDownloader = {
     console.log("✓ Text API collection result:", result);
     console.log("Files collected:", result.filesCollected.length);
     console.log(
-      "Expected: 6 formats (LaTeX, MathML, AsciiMath, HTML, JSON, Markdown)"
+      "Expected: 6 formats (LaTeX, MathML, AsciiMath, HTML, JSON, Markdown)",
     );
 
     return result.filesCollected.length >= 5; // At least 5 formats
@@ -4300,7 +5499,7 @@ window.testMathPixDownloader = {
     await downloader.collectStrokesApiFormats(
       mockResponse,
       resultsFolder,
-      result
+      result,
     );
 
     console.log("✓ Strokes API collection result:", result);
@@ -4333,7 +5532,7 @@ window.testMathPixDownloader = {
       const resultsFolder = zip.folder("results");
       const result = await downloader.collectResultFiles(
         mockResponse,
-        resultsFolder
+        resultsFolder,
       );
 
       console.log(`API type detected: ${result.apiType}`);
@@ -4435,11 +5634,11 @@ window.testMathPixDownloader = {
 
     console.log("\nStep 1 Results:");
     console.log(
-      textPassed ? "✓ Text API test passed" : "✗ Text API test failed"
+      textPassed ? "✓ Text API test passed" : "✗ Text API test failed",
     );
     console.log(pdfPassed ? "✓ PDF API test passed" : "✗ PDF API test failed");
     console.log(
-      strokesPassed ? "✓ Strokes API test passed" : "✗ Strokes API test failed"
+      strokesPassed ? "✓ Strokes API test passed" : "✗ Strokes API test failed",
     );
 
     // Orchestrator tests
@@ -4499,7 +5698,7 @@ window.testMathPixDownloader = {
       !sanitized.app_id && !sanitized.app_key && sanitized._sanitized === true;
 
     console.log(
-      passed ? "✓ Sanitization test PASSED" : "✗ Sanitization test FAILED"
+      passed ? "✓ Sanitization test PASSED" : "✗ Sanitization test FAILED",
     );
     return passed;
   },
@@ -4531,7 +5730,7 @@ window.testMathPixDownloader = {
     console.log(
       passed
         ? "✓ Debug formatting test PASSED"
-        : "✗ Debug formatting test FAILED"
+        : "✗ Debug formatting test FAILED",
     );
     return passed;
   },
@@ -4572,7 +5771,7 @@ window.testMathPixDownloader = {
     const metadata = downloader.generateMetadata(
       sourceResult,
       resultsResult,
-      mockResponse
+      mockResponse,
     );
 
     console.log("Metadata generated:", {
@@ -4595,7 +5794,7 @@ window.testMathPixDownloader = {
     console.log(
       passed
         ? "✓ Metadata generation test PASSED"
-        : "✗ Metadata generation test FAILED"
+        : "✗ Metadata generation test FAILED",
     );
     return passed;
   },
@@ -4633,7 +5832,7 @@ window.testMathPixDownloader = {
     const metadata = downloader.generateMetadata(
       sourceResult,
       resultsResult,
-      mockResponse
+      mockResponse,
     );
 
     const manifest = {
@@ -4663,7 +5862,7 @@ window.testMathPixDownloader = {
     console.log(
       passed
         ? "✓ README generation test PASSED"
-        : "✗ README generation test FAILED"
+        : "✗ README generation test FAILED",
     );
     return passed;
   },
@@ -4714,13 +5913,13 @@ window.testMathPixDownloader = {
     const dataFolder = zip.folder("data");
     const result = await downloader.collectDataFiles(
       collectionData,
-      dataFolder
+      dataFolder,
     );
 
     console.log("Data collection result:", result);
     console.log("Files collected:", result.filesCollected.length);
     console.log(
-      "Expected: 4 files (api-request, api-response, debug-info, metadata)"
+      "Expected: 4 files (api-request, api-response, debug-info, metadata)",
     );
 
     // Verify each file
@@ -4732,7 +5931,9 @@ window.testMathPixDownloader = {
       result.filesCollected.length === 4 && result.errors.length === 0;
 
     console.log(
-      passed ? "✓ Data collection test PASSED" : "✗ Data collection test FAILED"
+      passed
+        ? "✓ Data collection test PASSED"
+        : "✗ Data collection test FAILED",
     );
     return passed;
   },
@@ -4796,22 +5997,22 @@ window.testMathPixDownloader = {
     console.log(
       sanitizationPassed
         ? "✓ Sanitization test passed"
-        : "✗ Sanitization test failed"
+        : "✗ Sanitization test failed",
     );
     console.log(
       debugPassed
         ? "✓ Debug formatting test passed"
-        : "✗ Debug formatting test failed"
+        : "✗ Debug formatting test failed",
     );
     console.log(
       metadataPassed
         ? "✓ Metadata generation test passed"
-        : "✗ Metadata generation test failed"
+        : "✗ Metadata generation test failed",
     );
     console.log(
       readmePassed
         ? "✓ README generation test passed"
-        : "✗ README generation test failed"
+        : "✗ README generation test failed",
     );
 
     // Data collection test

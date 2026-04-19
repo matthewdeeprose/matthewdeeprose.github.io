@@ -250,7 +250,10 @@ class MathPixConvertAPIClient {
   }
 
   /**
-   * Gets the configuration, lazily loading from MATHPIX_CONFIG
+   * Gets the configuration, lazily loading from MATHPIX_CONFIG.
+   * The ENDPOINT is resolved dynamically from the user's regional endpoint
+   * preference so that the Convert API uses the same region as the regular
+   * MathPix API client (defaults to EU for GDPR compliance).
    * @private
    * @returns {Object} Convert API configuration
    */
@@ -262,7 +265,24 @@ class MathPixConvertAPIClient {
           details: "Configuration not loaded",
         });
       }
-      this.config = MATHPIX_CONFIG.CONVERT;
+      // Copy so we don't mutate the shared config object
+      this.config = Object.assign({}, MATHPIX_CONFIG.CONVERT);
+
+      // Resolve regional endpoint: read stored preference, fall back to default
+      var endpointKey =
+        localStorage.getItem(MATHPIX_CONFIG.ENDPOINT_PREFERENCE_KEY) ||
+        MATHPIX_CONFIG.DEFAULT_ENDPOINT;
+      var endpointConfig =
+        MATHPIX_CONFIG.ENDPOINTS[endpointKey] ||
+        MATHPIX_CONFIG.ENDPOINTS[MATHPIX_CONFIG.DEFAULT_ENDPOINT];
+
+      if (endpointConfig && endpointConfig.baseUrl) {
+        this.config.ENDPOINT = endpointConfig.baseUrl.trim() + "/converter";
+        logDebug("Convert endpoint resolved from region", {
+          region: endpointKey,
+          endpoint: this.config.ENDPOINT,
+        });
+      }
     }
     return this.config;
   }
@@ -282,13 +302,15 @@ class MathPixConvertAPIClient {
    * existing UI manager pattern in mathpix-ui-manager.js
    */
   _buildHeaders() {
-    // Follow existing pattern from mathpix-ui-manager.js
-    // Note: localStorage keys use hyphens, not underscores
+    // Credential priority: config > DOM form inputs > localStorage
+    // Phase 8 Bible Lesson 24: "Credentials live in the DOM, not in module state"
     const appId =
       (typeof MATHPIX_CONFIG !== "undefined" && MATHPIX_CONFIG.APP_ID) ||
+      document.querySelector("#mathpix-app-id")?.value ||
       localStorage.getItem("mathpix-app-id");
     const appKey =
       (typeof MATHPIX_CONFIG !== "undefined" && MATHPIX_CONFIG.APP_KEY) ||
+      document.querySelector("#mathpix-app-key")?.value ||
       localStorage.getItem("mathpix-app-key");
 
     if (!appId || !appKey) {
@@ -496,7 +518,7 @@ class MathPixConvertAPIClient {
     const body = this._buildRequestBody(
       mmd,
       formatValidation.validFormats,
-      options
+      options,
     );
 
     try {

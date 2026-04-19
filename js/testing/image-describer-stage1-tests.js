@@ -110,16 +110,9 @@
       } S1-4: Generate button initially disabled`
     );
 
-    // S1-5: Style radio buttons populated
-    const styleOptions = document.getElementById("imgdesc-style-options");
-    const styleRadios =
-      styleOptions?.querySelectorAll('input[type="radio"]') || [];
-    results.styleRadios = styleRadios.length >= 3;
-    console.log(
-      `${
-        results.styleRadios ? "✅" : "❌"
-      } S1-5: Style radio buttons populated (${styleRadios.length}/3)`
-    );
+    // S1-5: Description style removed (Phase 2D — always Detailed)
+    results.styleRadios = true;
+    console.log("✅ S1-5: Description style simplified to always Detailed (Phase 2D)");
 
     // S1-6: Audience options populated
     const audienceSelect = document.getElementById("imgdesc-audience");
@@ -201,18 +194,9 @@
       console.log("   Unlabelled:", unlabelledInputs.join(", "));
     }
 
-    // A11y-2: Radio group has proper ARIA
-    const radioGroup = document.getElementById("imgdesc-style-options");
-    const hasRadioRole = radioGroup?.getAttribute("role") === "radiogroup";
-    const hasRadioLabel = radioGroup?.getAttribute("aria-labelledby");
-    results.radioGroupA11y = hasRadioRole && hasRadioLabel;
-    console.log(
-      `${
-        results.radioGroupA11y ? "✅" : "❌"
-      } A11y-2: Radio group has proper ARIA (role="${radioGroup?.getAttribute(
-        "role"
-      )}", aria-labelledby="${hasRadioLabel}")`
-    );
+    // A11y-2: Style radio group removed (Phase 2D — no longer applicable)
+    results.radioGroupA11y = true;
+    console.log("✅ A11y-2: Style radio group removed (Phase 2D — not applicable)");
 
     // A11y-3: Live regions present
     const liveRegions = document.querySelectorAll(

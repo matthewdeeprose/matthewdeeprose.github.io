@@ -522,19 +522,52 @@ const GraphBuilderData = (function () {
       let validRows = 0;
       const errors = [];
 
+      // Determine expected column count from enhanced mode
+      const enhanced = window.GraphBuilderEnhanced;
+      const columns =
+        enhanced && enhanced.isAdvancedMode()
+          ? enhanced.getColumnConfiguration()
+          : null;
+      const expectedInputs = columns ? columns.length : 2;
+
       formRows.forEach((row, index) => {
         const inputs = row.querySelectorAll("input");
-        if (inputs.length >= 2) {
-          const col1 = inputs[0].value.trim();
-          const col2 = inputs[1].value.trim();
+        if (inputs.length >= expectedInputs) {
+          const values = [];
+          for (let i = 0; i < expectedInputs; i++) {
+            values.push(inputs[i].value.trim());
+          }
 
-          if (col1 && col2) {
-            if (isNaN(parseFloat(col2))) {
+          // All fields must be filled
+          const allFilled = values.every((v) => v.length > 0);
+          if (!allFilled) return;
+
+          // Validate numeric columns (skip the label column at index 0)
+          let hasError = false;
+          if (columns) {
+            columns.forEach((col, ci) => {
+              if (
+                ci < values.length &&
+                (col.type === "number" ||
+                  col.type === "currency" ||
+                  col.type === "percentage") &&
+                isNaN(parseFloat(values[ci]))
+              ) {
+                errors.push(
+                  `Row ${index + 1}: ${col.name} must be a number`
+                );
+                hasError = true;
+              }
+            });
+          } else {
+            // Legacy 2-column validation
+            if (isNaN(parseFloat(values[1]))) {
               errors.push(`Row ${index + 1}: Second column must be a number`);
-            } else {
-              validRows++;
+              hasError = true;
             }
           }
+
+          if (!hasError) validRows++;
         }
       });
 
@@ -559,18 +592,73 @@ const GraphBuilderData = (function () {
      * @returns {Object} Processed form data
      */
     extractFormData(formRows, columnHeaders) {
-      const { col1Name = "Category", col2Name = "Value" } = columnHeaders;
-      const headers = [col1Name, col2Name];
+      // Check for enhanced multi-column mode
+      const enhanced = window.GraphBuilderEnhanced;
+      const columns =
+        enhanced && enhanced.isAdvancedMode()
+          ? enhanced.getColumnConfiguration()
+          : null;
+
+      let headers;
+      if (columns) {
+        headers = columns.map((col) => col.name);
+      } else {
+        const { col1Name = "Category", col2Name = "Value" } = columnHeaders;
+        headers = [col1Name, col2Name];
+      }
+
+      const expectedInputs = headers.length;
       const rows = [];
 
       formRows.forEach((row) => {
         const inputs = row.querySelectorAll("input");
-        if (inputs.length >= 2) {
-          const col1 = inputs[0].value.trim();
-          const col2 = parseFloat(inputs[1].value);
+        if (inputs.length >= expectedInputs) {
+          const rowData = [];
+          let valid = true;
 
-          if (col1 && !isNaN(col2)) {
-            rows.push([col1, col2]);
+          for (let i = 0; i < expectedInputs; i++) {
+            const raw = inputs[i].value.trim();
+            if (!raw) {
+              valid = false;
+              break;
+            }
+
+            // Parse based on column type if available
+            if (columns && columns[i]) {
+              const type = columns[i].type;
+              if (
+                type === "number" ||
+                type === "currency" ||
+                type === "percentage"
+              ) {
+                const parsed = parseFloat(
+                  raw.replace(/[£$€¥₹%,\s]/g, "")
+                );
+                if (isNaN(parsed)) {
+                  valid = false;
+                  break;
+                }
+                rowData.push(parsed);
+              } else {
+                rowData.push(raw);
+              }
+            } else {
+              // Legacy: first col text, second col number
+              if (i === 0) {
+                rowData.push(raw);
+              } else {
+                const num = parseFloat(raw);
+                if (isNaN(num)) {
+                  valid = false;
+                  break;
+                }
+                rowData.push(num);
+              }
+            }
+          }
+
+          if (valid && rowData.length === expectedInputs) {
+            rows.push(rowData);
           }
         }
       });

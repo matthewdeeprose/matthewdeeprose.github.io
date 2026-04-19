@@ -109,7 +109,7 @@ function printTestSummary(results, suiteName = "Tests") {
   const total = results.passed + results.failed;
   const status = results.failed === 0 ? "✅ PASSED" : "❌ FAILED";
   console.log(
-    `\n📊 ${suiteName}: ${results.passed}/${total} tests passed ${status}`
+    `\n📊 ${suiteName}: ${results.passed}/${total} tests passed ${status}`,
   );
 }
 
@@ -134,7 +134,7 @@ window.testSessionRestorer = async function () {
   test("Class available on window", !!window.MathPixSessionRestorer);
   test(
     "Getter available on window",
-    typeof window.getMathPixSessionRestorer === "function"
+    typeof window.getMathPixSessionRestorer === "function",
   );
   test("Instance created", !!restorer);
   test("Is initialised", restorer?.isInitialised);
@@ -145,19 +145,19 @@ window.testSessionRestorer = async function () {
   test("Has hide method", typeof restorer?.hide === "function");
   test(
     "Has handleZIPFile method",
-    typeof restorer?.handleZIPFile === "function"
+    typeof restorer?.handleZIPFile === "function",
   );
   test(
     "Has validateZIPFile method",
-    typeof restorer?.validateZIPFile === "function"
+    typeof restorer?.validateZIPFile === "function",
   );
   test(
     "Has restoreSession method",
-    typeof restorer?.restoreSession === "function"
+    typeof restorer?.restoreSession === "function",
   );
   test(
     "Has downloadUpdatedZIP method",
-    typeof restorer?.downloadUpdatedZIP === "function"
+    typeof restorer?.downloadUpdatedZIP === "function",
   );
   test("Has cleanup method", typeof restorer?.cleanup === "function");
   test("Has getDebugInfo method", typeof restorer?.getDebugInfo === "function");
@@ -173,7 +173,7 @@ window.testSessionRestorer = async function () {
   // Parser availability
   test(
     "Parser reference available",
-    !!restorer?.parser || typeof window.getMathPixZIPParser === "function"
+    !!restorer?.parser || typeof window.getMathPixZIPParser === "function",
   );
 
   // ZIP validation tests
@@ -231,7 +231,7 @@ window.validatePhase82 = function () {
       allPassed
         ? "✅ Phase 8.2 validation PASSED"
         : "❌ Phase 8.2 validation FAILED"
-    }`
+    }`,
   );
 
   return allPassed;
@@ -257,11 +257,11 @@ window.validateSessionRecoveryFixes = function () {
   console.log("\n--- Bug 3: Session Index Tracking ---");
   test(
     "getCurrentVersionType method exists",
-    typeof restorer?.getCurrentVersionType === "function"
+    typeof restorer?.getCurrentVersionType === "function",
   );
   test(
     "validateCurrentSessionIndex method exists",
-    typeof restorer?.validateCurrentSessionIndex === "function"
+    typeof restorer?.validateCurrentSessionIndex === "function",
   );
 
   // Test getter/setter functionality
@@ -270,7 +270,7 @@ window.validateSessionRecoveryFixes = function () {
     restorer._currentSessionIndex = 99;
     test(
       "_currentSessionIndex setter works",
-      restorer._currentSessionIndex === 99
+      restorer._currentSessionIndex === 99,
     );
     restorer._currentSessionIndex = originalIndex; // Restore
   }
@@ -279,11 +279,11 @@ window.validateSessionRecoveryFixes = function () {
   console.log("\n--- Bug 4: Switch Version Button ---");
   test(
     "showSwitchVersionButton method exists",
-    typeof restorer?.showSwitchVersionButton === "function"
+    typeof restorer?.showSwitchVersionButton === "function",
   );
   test(
     "hideSwitchVersionButton method exists",
-    typeof restorer?.hideSwitchVersionButton === "function"
+    typeof restorer?.hideSwitchVersionButton === "function",
   );
 
   printTestSummary(results, "Bug Fix Validation");
@@ -334,7 +334,7 @@ window.testSwitchVersionButton = function () {
     console.log("  Button display style:", getComputedStyle(btn).display);
     console.log(
       "  Button visible:",
-      !btn.hidden && getComputedStyle(btn).display !== "none"
+      !btn.hidden && getComputedStyle(btn).display !== "none",
     );
   } else {
     console.log("  ⚠️ Button not found in DOM");
@@ -367,20 +367,20 @@ window.testContentPreview = function () {
   // Method availability
   test(
     "getContentPreview method exists",
-    typeof restorer?.getContentPreview === "function"
+    typeof restorer?.getContentPreview === "function",
   );
   test(
     "findFirstDifference method exists",
-    typeof restorer?.findFirstDifference === "function"
+    typeof restorer?.findFirstDifference === "function",
   );
   test(
     "truncatePreview method exists",
-    typeof restorer?.truncatePreview === "function"
+    typeof restorer?.truncatePreview === "function",
   );
 
   if (!restorer?.getContentPreview) {
     console.log(
-      "⚠️ Content preview methods not available - skipping functional tests"
+      "⚠️ Content preview methods not available - skipping functional tests",
     );
     printTestSummary(results, "Content Preview");
     return results;
@@ -423,7 +423,7 @@ window.testContentPreview = function () {
   const noDiff = restorer.findFirstDifference(original, original);
   test(
     "findFirstDifference returns null for identical strings",
-    noDiff === null
+    noDiff === null,
   );
 
   // Truncation tests
@@ -471,7 +471,7 @@ window.verifyEditWithPreview = function () {
     const comparisonContent = data.baseline || data.original;
     console.log(
       "  Preview:",
-      restorer.getContentPreview(data.current, comparisonContent)
+      restorer.getContentPreview(data.current, comparisonContent),
     );
   }
 
@@ -503,33 +503,33 @@ window.testFocusMode = function () {
   console.log("\n--- Property Tests ---");
   test(
     "isFocusMode property exists",
-    restorer && typeof restorer.isFocusMode === "boolean"
+    restorer && typeof restorer.isFocusMode === "boolean",
   );
   test(
     "savedScrollPosition property exists",
-    restorer && "savedScrollPosition" in restorer
+    restorer && "savedScrollPosition" in restorer,
   );
 
   // Test 3: Focus mode methods exist
   console.log("\n--- Method Tests ---");
   test(
     "enterFocusMode method exists",
-    typeof restorer?.enterFocusMode === "function"
+    typeof restorer?.enterFocusMode === "function",
   );
   test(
     "exitFocusMode method exists",
-    typeof restorer?.exitFocusMode === "function"
+    typeof restorer?.exitFocusMode === "function",
   );
   test(
     "toggleFocusMode method exists",
-    typeof restorer?.toggleFocusMode === "function"
+    typeof restorer?.toggleFocusMode === "function",
   );
 
   // Test 4: Focus mode button cached
   console.log("\n--- Element Tests ---");
   test(
     "Focus mode button is cached",
-    restorer?.elements?.focusModeBtn instanceof HTMLElement
+    restorer?.elements?.focusModeBtn instanceof HTMLElement,
   );
 
   // Test 5: Button has correct initial state
@@ -537,7 +537,7 @@ window.testFocusMode = function () {
   test("Button has aria-pressed attribute", btn?.hasAttribute("aria-pressed"));
   test(
     "Button aria-pressed is initially false",
-    btn?.getAttribute("aria-pressed") === "false"
+    btn?.getAttribute("aria-pressed") === "false",
   );
 
   // Test 6: CSS class exists (check if styles are loaded)
@@ -568,30 +568,30 @@ window.testFocusMode = function () {
     restorer.enterFocusMode();
     test(
       "enterFocusMode sets isFocusMode to true",
-      restorer.isFocusMode === true
+      restorer.isFocusMode === true,
     );
     test(
       "enterFocusMode adds body class",
-      document.body.classList.contains("resume-focus-mode")
+      document.body.classList.contains("resume-focus-mode"),
     );
     test(
       "enterFocusMode sets aria-pressed to true",
-      btn?.getAttribute("aria-pressed") === "true"
+      btn?.getAttribute("aria-pressed") === "true",
     );
 
     // Exit focus mode
     restorer.exitFocusMode();
     test(
       "exitFocusMode sets isFocusMode to false",
-      restorer.isFocusMode === false
+      restorer.isFocusMode === false,
     );
     test(
       "exitFocusMode removes body class",
-      !document.body.classList.contains("resume-focus-mode")
+      !document.body.classList.contains("resume-focus-mode"),
     );
     test(
       "exitFocusMode sets aria-pressed to false",
-      btn?.getAttribute("aria-pressed") === "false"
+      btn?.getAttribute("aria-pressed") === "false",
     );
 
     // Toggle test
@@ -601,7 +601,7 @@ window.testFocusMode = function () {
     test("toggleFocusMode exits focus mode", restorer.isFocusMode === false);
   } else {
     console.log(
-      "\n⚠️ Skipping toggle tests - Resume Mode container not visible"
+      "\n⚠️ Skipping toggle tests - Resume Mode container not visible",
     );
     console.log("   Load a ZIP file first to test full functionality");
   }
@@ -663,7 +663,7 @@ window.validateFocusMode = function () {
       allPassed
         ? "✅ Focus Mode validation PASSED"
         : "❌ Focus Mode validation FAILED"
-    }`
+    }`,
   );
 
   return allPassed;
@@ -731,7 +731,7 @@ window.testFocusModeKeyboard = function () {
 
   test(
     "Ctrl+Shift+F toggles on then off",
-    afterFirstToggle === true && afterSecondToggle === false
+    afterFirstToggle === true && afterSecondToggle === false,
   );
 
   printTestSummary(results, "Keyboard Shortcuts");
@@ -748,7 +748,7 @@ window.testFocusModeKeyboard = function () {
  */
 window.clearAllResumeSessions = function () {
   const keys = Object.keys(localStorage).filter((k) =>
-    k.startsWith("mathpix-resume-session")
+    k.startsWith("mathpix-resume-session"),
   );
   keys.forEach((k) => localStorage.removeItem(k));
   localStorage.removeItem("mathpix-resume-active-index");
@@ -762,7 +762,7 @@ window.clearAllResumeSessions = function () {
  */
 window.listResumeSessions = function () {
   const keys = Object.keys(localStorage).filter((k) =>
-    k.startsWith("mathpix-resume-session")
+    k.startsWith("mathpix-resume-session"),
   );
 
   console.log(`📋 Found ${keys.length} stored session(s):\n`);
@@ -861,6 +861,263 @@ window.demoZIPResume = async function () {
 };
 
 // ============================================================================
+// PHASE 8F: IMAGE RESTORE FROM ZIP TESTS
+// ============================================================================
+
+/**
+ * Test image restore from ZIP - unit tests for methods
+ * Can be run without an active session
+ * @returns {Object} Test results
+ */
+window.testImageRestore = function () {
+  console.log("🖼️ Testing Phase 8F: Image Restore from ZIP...\n");
+
+  const results = createTestResults();
+  const test = (name, condition) => runTest(results, name, condition);
+
+  const restorer = window.getMathPixSessionRestorer?.();
+
+  // Test 1: Constructor properties exist
+  console.log("--- Constructor Properties ---");
+  test(
+    "imageBlobUrlMap exists as Map",
+    restorer?.imageBlobUrlMap instanceof Map,
+  );
+  test(
+    "imageRegistry initialised as null",
+    (restorer !== undefined && restorer.imageRegistry === null) ||
+      restorer?.imageRegistry !== undefined,
+  );
+  test("_rawZIPFile property exists", restorer && "_rawZIPFile" in restorer);
+
+  // Test 2: Methods exist
+  console.log("\n--- Methods ---");
+  test(
+    "extractAndRestoreImages() exists",
+    typeof restorer?.extractAndRestoreImages === "function",
+  );
+  test(
+    "rewriteMMDWithBlobUrls() exists",
+    typeof restorer?.rewriteMMDWithBlobUrls === "function",
+  );
+  test("getMMDForAPI() exists", typeof restorer?.getMMDForAPI === "function");
+
+  // Test 3: rewriteMMDWithBlobUrls with empty map returns unchanged
+  console.log("\n--- URL Rewriting (no mappings) ---");
+  const testMMD = "![](https://cdn.mathpix.com/test.jpg)\nSome text";
+  restorer.imageBlobUrlMap.clear();
+  const unchanged = restorer.rewriteMMDWithBlobUrls(testMMD);
+  test("Empty map returns MMD unchanged", unchanged === testMMD);
+
+  // Test 4: rewriteMMDWithBlobUrls with mappings
+  console.log("\n--- URL Rewriting (with mappings) ---");
+  const testUrl =
+    "https://cdn.mathpix.com/cropped/test-image.jpg?height=100&width=200";
+  const testBlobUrl = "blob:http://localhost/test-blob-id";
+  restorer.imageBlobUrlMap.set(testUrl, testBlobUrl);
+
+  const testInput = `![](${testUrl})\nSome text\n\\includegraphics{${testUrl}}`;
+  const rewritten = restorer.rewriteMMDWithBlobUrls(testInput);
+  test("Markdown image URL replaced", rewritten.includes(testBlobUrl));
+  test(
+    "LaTeX image URL replaced",
+    rewritten.includes(`\\includegraphics{${testBlobUrl}}`),
+  );
+  test("Original URL removed", !rewritten.includes(testUrl));
+
+  // Test 5: getMMDForAPI reverses blob URLs
+  console.log("\n--- API URL Reversal ---");
+  const apiSafe = restorer.getMMDForAPI(rewritten);
+  test("Blob URL reversed to CDN URL", apiSafe.includes(testUrl));
+  test("Blob URL removed from API content", !apiSafe.includes(testBlobUrl));
+  test("Round-trip preserves content", apiSafe === testInput);
+
+  // Test 6: Null/empty handling
+  console.log("\n--- Edge Cases ---");
+  test(
+    "null input returns null",
+    restorer.rewriteMMDWithBlobUrls(null) === null,
+  );
+  test(
+    "empty string returns empty",
+    restorer.rewriteMMDWithBlobUrls("") === "",
+  );
+  test("getMMDForAPI null returns null", restorer.getMMDForAPI(null) === null);
+
+  // Test 7: Multiple images in same MMD
+  console.log("\n--- Multiple Images ---");
+  const url1 = "https://cdn.mathpix.com/cropped/abc-1.jpg?height=100&width=200";
+  const url2 = "https://cdn.mathpix.com/cropped/abc-2.jpg?height=300&width=400";
+  const blob1 = "blob:http://localhost/blob-1111";
+  const blob2 = "blob:http://localhost/blob-2222";
+  restorer.imageBlobUrlMap.clear();
+  restorer.imageBlobUrlMap.set(url1, blob1);
+  restorer.imageBlobUrlMap.set(url2, blob2);
+
+  const multiInput = `![](${url1})\n\nText between images\n\n![](${url2})`;
+  const multiRewritten = restorer.rewriteMMDWithBlobUrls(multiInput);
+  test("First image URL replaced", multiRewritten.includes(blob1));
+  test("Second image URL replaced", multiRewritten.includes(blob2));
+  test("First CDN URL removed", !multiRewritten.includes(url1));
+  test("Second CDN URL removed", !multiRewritten.includes(url2));
+  test(
+    "Text between images preserved",
+    multiRewritten.includes("Text between images"),
+  );
+
+  const multiApi = restorer.getMMDForAPI(multiRewritten);
+  test("Multi-image round-trip preserves content", multiApi === multiInput);
+
+  // Test 8: Duplicate URL in same MMD (same image referenced twice)
+  console.log("\n--- Duplicate References ---");
+  restorer.imageBlobUrlMap.clear();
+  restorer.imageBlobUrlMap.set(url1, blob1);
+  const dupeInput = `![](${url1})\n\n![](${url1})`;
+  const dupeRewritten = restorer.rewriteMMDWithBlobUrls(dupeInput);
+  const blobOccurrences = (
+    dupeRewritten.match(/blob:http:\/\/localhost\/blob-1111/g) || []
+  ).length;
+  test("Both occurrences replaced", blobOccurrences === 2);
+
+  // Clean up test data
+  restorer.imageBlobUrlMap.clear();
+
+  // Test 9: Debug info includes image fields
+  console.log("\n--- Debug Info ---");
+  const debugInfo = restorer.getDebugInfo();
+  test("Debug info has imageBlobUrlCount", "imageBlobUrlCount" in debugInfo);
+  test("Debug info has hasImageRegistry", "hasImageRegistry" in debugInfo);
+  test("Debug info has imageRegistryCount", "imageRegistryCount" in debugInfo);
+
+  printTestSummary(results, "Phase 8F: Image Restore");
+  return results;
+};
+
+/**
+ * Validate image restore is working with a live restored session
+ * Run after loading a ZIP that contains images
+ * @returns {Object} Test results
+ */
+window.validateImageRestoreLive = function () {
+  console.log("🖼️ Phase 8F: Live Image Restore Validation...\n");
+
+  const results = createTestResults();
+  const test = (name, condition) => runTest(results, name, condition);
+
+  const restorer = window.getMathPixSessionRestorer?.();
+  if (!restorer || !restorer.restoredSession) {
+    console.warn("⚠️ No active restored session. Load a ZIP first.");
+    printTestSummary(results, "Live Image Restore (skipped)");
+    return results;
+  }
+
+  const hasImages =
+    restorer.imageRegistry && restorer.imageRegistry.getCount() > 0;
+
+  if (!hasImages) {
+    console.log(
+      "  ℹ️ This ZIP has no images — testing backwards compatibility",
+    );
+    test("Session restored without images", !!restorer.restoredSession);
+    test(
+      "No image registry (expected for older ZIPs)",
+      restorer.imageRegistry === null ||
+        restorer.imageRegistry.getCount() === 0,
+    );
+    test(
+      "No blob URL mappings (expected)",
+      restorer.imageBlobUrlMap.size === 0,
+    );
+    test("MMD content intact", !!restorer.restoredSession.currentMMD);
+    printTestSummary(
+      results,
+      "Live Image Restore (no images — backwards compat)",
+    );
+    return results;
+  }
+
+  console.log("  ℹ️ ZIP contains images — testing full restore\n");
+
+  const registryCount = restorer.imageRegistry.getCount();
+  const blobUrlCount = restorer.imageBlobUrlMap.size;
+  const mmdContent = restorer.getCurrentMMDContent();
+
+  // Registry state
+  console.log("--- Registry State ---");
+  test("Image registry exists", !!restorer.imageRegistry);
+  test(`Registry has ${registryCount} image(s)`, registryCount > 0);
+  test(`${blobUrlCount} blob URL mapping(s) created`, blobUrlCount > 0);
+  test("Registry count matches blob URL count", registryCount === blobUrlCount);
+
+  // MMD rewriting
+  console.log("\n--- MMD Rewriting ---");
+  const hasBlobUrls = mmdContent.includes("blob:");
+  test("MMD content contains blob: URLs", hasBlobUrls);
+
+  let cdnUrlsRemaining = 0;
+  for (const [cdnUrl] of restorer.imageBlobUrlMap) {
+    if (mmdContent.includes(cdnUrl)) {
+      cdnUrlsRemaining++;
+    }
+  }
+  test("No mapped CDN URLs remain in display MMD", cdnUrlsRemaining === 0);
+
+  // API reversal
+  console.log("\n--- API URL Reversal ---");
+  const apiMMD = restorer.getMMDForAPI(mmdContent);
+  test("API MMD has no blob: URLs", !apiMMD.includes("blob:"));
+
+  let cdnUrlsRestored = 0;
+  for (const [cdnUrl] of restorer.imageBlobUrlMap) {
+    if (apiMMD.includes(cdnUrl)) {
+      cdnUrlsRestored++;
+    }
+  }
+  test("All CDN URLs restored in API MMD", cdnUrlsRestored === blobUrlCount);
+
+  // Preview rendering
+  console.log("\n--- Preview Rendering ---");
+  const previewEl = restorer.elements?.mmdPreviewContent;
+  if (previewEl) {
+    const previewImages = previewEl.querySelectorAll("img");
+    const blobImageCount = Array.from(previewImages).filter(
+      (img) => img.src && img.src.startsWith("blob:"),
+    ).length;
+    console.log(
+      `  ℹ️ Preview has ${previewImages.length} <img> element(s), ${blobImageCount} using blob URLs`,
+    );
+    test("Preview contains images", previewImages.length > 0);
+    test("Preview images use blob URLs", blobImageCount > 0);
+  } else {
+    console.log("  ⚠️ Preview element not found — skipping preview tests");
+  }
+
+  // Cleanup tracking
+  console.log("\n--- Cleanup Tracking ---");
+  const trackedBlobUrls = restorer.objectURLs.filter((u) =>
+    u.startsWith("blob:"),
+  );
+  test("Blob URLs tracked for cleanup", trackedBlobUrls.length >= blobUrlCount);
+
+  // Session integration
+  console.log("\n--- Session Integration ---");
+  test(
+    "Registry accessible on restoredSession",
+    restorer.restoredSession.imageRegistry === restorer.imageRegistry,
+  );
+
+  // Stats summary
+  console.log("\n--- Image Statistics ---");
+  const stats = restorer.imageRegistry.getStats();
+  console.log(`  Total: ${stats.total}`);
+  console.log(`  Downloaded: ${stats.downloaded || 0}`);
+  console.log(`  Without alt text: ${stats.withoutAltText || 0}`);
+
+  printTestSummary(results, "Live Image Restore");
+  return results;
+};
+
+// ============================================================================
 // COMPREHENSIVE TEST RUNNER
 // ============================================================================
 
@@ -938,6 +1195,18 @@ window.runAllSessionRestorerTests = async function () {
   allResults.passed += focusModeResults.passed;
   allResults.failed += focusModeResults.failed;
 
+  console.log("");
+
+  // Run Phase 8F Image Restore tests
+  console.log("─".repeat(60));
+  const imageRestoreResults = window.testImageRestore();
+  allResults.suites.push({
+    name: "Image Restore (8F)",
+    ...imageRestoreResults,
+  });
+  allResults.passed += imageRestoreResults.passed;
+  allResults.failed += imageRestoreResults.failed;
+
   // Final summary
   console.log("");
   console.log("═".repeat(60));
@@ -950,21 +1219,21 @@ window.runAllSessionRestorerTests = async function () {
       console.log(
         `${status} ${suite.name}: ${suite.passed}/${
           suite.passed + suite.failed
-        }`
+        }`,
       );
     } else {
       console.log(
-        `${status} ${suite.name}: ${suite.passed ? "PASSED" : "FAILED"}`
+        `${status} ${suite.name}: ${suite.passed ? "PASSED" : "FAILED"}`,
       );
     }
   });
 
   console.log("");
   console.log(
-    `Total: ${allResults.passed} passed, ${allResults.failed} failed`
+    `Total: ${allResults.passed} passed, ${allResults.failed} failed`,
   );
   console.log(
-    allResults.failed === 0 ? "✅ ALL TESTS PASSED" : "❌ SOME TESTS FAILED"
+    allResults.failed === 0 ? "✅ ALL TESTS PASSED" : "❌ SOME TESTS FAILED",
   );
   console.log("═".repeat(60));
 
@@ -1003,6 +1272,8 @@ window.showSessionRestorerTestHelp = function () {
 ║  verifyEditWithPreview()       Check edit was saved          ║
 ║  validateFocusMode()           Quick Focus Mode validation   ║
 ║  testFocusModeKeyboard()       Keyboard shortcut tests       ║
+║  testImageRestore()            Phase 8F unit tests           ║
+║  validateImageRestoreLive()    Phase 8F live validation      ║
 ║                                                              ║
 ║  UTILITIES                                                   ║
 ║  ─────────                                                   ║
@@ -1024,5 +1295,5 @@ window.showSessionRestorerTestHelp = function () {
 
 logInfo("MathPix Session Restorer Test Suite loaded");
 console.log(
-  "💡 Type showSessionRestorerTestHelp() for available test commands"
+  "💡 Type showSessionRestorerTestHelp() for available test commands",
 );

@@ -124,30 +124,30 @@ class MathPixDownloadManager extends MathPixBaseModule {
 
     // PDF Results button elements
     this.buttonElements.pdfSection = document.getElementById(
-      "mathpix-download-section-pdf"
+      "mathpix-download-section-pdf",
     );
     this.buttonElements.pdfButton = document.getElementById(
-      "mathpix-download-all-btn-pdf"
+      "mathpix-download-all-btn-pdf",
     );
     this.buttonElements.pdfProgressDiv = document.getElementById(
-      "mathpix-download-progress-pdf"
+      "mathpix-download-progress-pdf",
     );
     this.buttonElements.pdfStatusSpan = document.getElementById(
-      "mathpix-download-status-pdf"
+      "mathpix-download-status-pdf",
     );
 
     // Text/Strokes Results button elements
     this.buttonElements.textSection = document.getElementById(
-      "mathpix-download-section-text"
+      "mathpix-download-section-text",
     );
     this.buttonElements.textButton = document.getElementById(
-      "mathpix-download-all-btn-text"
+      "mathpix-download-all-btn-text",
     );
     this.buttonElements.textProgressDiv = document.getElementById(
-      "mathpix-download-progress-text"
+      "mathpix-download-progress-text",
     );
     this.buttonElements.textStatusSpan = document.getElementById(
-      "mathpix-download-status-text"
+      "mathpix-download-status-text",
     );
 
     logDebug("Element caching complete");
@@ -185,22 +185,38 @@ class MathPixDownloadManager extends MathPixBaseModule {
 
   /**
    * Attach event listeners to buttons
+   * CRITICAL FIX: Uses data attribute guard to prevent duplicate listeners
+   * when init() is called multiple times (e.g., repeated tool switching).
+   * Each button tracks whether a listener is already attached via
+   * data-download-listener-attached, ensuring only ONE handler exists
+   * regardless of how many MathPixDownloadManager instances are created.
    */
   attachEventListeners() {
     logDebug("Attaching event listeners...");
 
     if (this.buttonElements.pdfButton) {
-      this.buttonElements.pdfButton.addEventListener("click", () =>
-        this.handleDownloadClick("pdf")
-      );
-      logDebug("PDF button listener attached");
+      if (this.buttonElements.pdfButton.dataset.downloadListenerAttached) {
+        logDebug("PDF button listener already attached, skipping");
+      } else {
+        this.buttonElements.pdfButton.addEventListener("click", () =>
+          this.handleDownloadClick("pdf"),
+        );
+        this.buttonElements.pdfButton.dataset.downloadListenerAttached = "true";
+        logDebug("PDF button listener attached");
+      }
     }
 
     if (this.buttonElements.textButton) {
-      this.buttonElements.textButton.addEventListener("click", () =>
-        this.handleDownloadClick("text")
-      );
-      logDebug("Text/Strokes button listener attached");
+      if (this.buttonElements.textButton.dataset.downloadListenerAttached) {
+        logDebug("Text/Strokes button listener already attached, skipping");
+      } else {
+        this.buttonElements.textButton.addEventListener("click", () =>
+          this.handleDownloadClick("text"),
+        );
+        this.buttonElements.textButton.dataset.downloadListenerAttached =
+          "true";
+        logDebug("Text/Strokes button listener attached");
+      }
     }
   }
 
@@ -323,7 +339,7 @@ class MathPixDownloadManager extends MathPixBaseModule {
       // Validate collected data
       if (!response) {
         throw new Error(
-          "No API response available. Please process an image first."
+          "No API response available. Please process an image first.",
         );
       }
 

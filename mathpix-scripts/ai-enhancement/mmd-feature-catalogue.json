@@ -1,0 +1,1470 @@
+{
+  "version": "1.0.0",
+  "source": "MathPix Markdown documentation audit — syntax reference, GitHub README, tables/figures/lists/theorems docs, library API docs, release notes",
+  "auditDate": "2026-02-08",
+  "categories": {
+    "environment": {
+      "description": "LaTeX environments \\begin{X}...\\end{X}",
+      "features": [
+        {
+          "name": "aligned",
+          "syntax": "\\begin{aligned}...\\end{aligned}",
+          "regex": "\\\\begin\\{aligned\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Used for multi-line equations with alignment points inside other math environments. Not directly documented by MMD but supported via MathJax."
+        },
+        {
+          "name": "align",
+          "syntax": "\\begin{align}...\\end{align}",
+          "regex": "\\\\begin\\{align\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Numbered multi-line equation alignment. Explicitly documented in MMD syntax reference."
+        },
+        {
+          "name": "align*",
+          "syntax": "\\begin{align*}...\\end{align*}",
+          "regex": "\\\\begin\\{align\\*\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Unnumbered variant of align. Explicitly documented in MMD syntax reference."
+        },
+        {
+          "name": "equation",
+          "syntax": "\\begin{equation}...\\end{equation}",
+          "regex": "\\\\begin\\{equation\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Numbered single equation. Explicitly documented in MMD syntax reference."
+        },
+        {
+          "name": "equation*",
+          "syntax": "\\begin{equation*}...\\end{equation*}",
+          "regex": "\\\\begin\\{equation\\*\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Unnumbered single equation. Explicitly documented in MMD syntax reference."
+        },
+        {
+          "name": "split",
+          "syntax": "\\begin{split}...\\end{split}",
+          "regex": "\\\\begin\\{split\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Splits a single equation across multiple lines. Can be wrapped in equation environment for numbering. Explicitly documented."
+        },
+        {
+          "name": "gather",
+          "syntax": "\\begin{gather}...\\end{gather}",
+          "regex": "\\\\begin\\{gather\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Numbered consecutive equations without alignment. Explicitly documented."
+        },
+        {
+          "name": "gather*",
+          "syntax": "\\begin{gather*}...\\end{gather*}",
+          "regex": "\\\\begin\\{gather\\*\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Unnumbered variant of gather. Explicitly documented."
+        },
+        {
+          "name": "cases",
+          "syntax": "\\begin{cases}...\\end{cases}",
+          "regex": "\\\\begin\\{cases\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Piecewise function definitions. Supported via MathJax."
+        },
+        {
+          "name": "array",
+          "syntax": "\\begin{array}...\\end{array}",
+          "regex": "\\\\begin\\{array\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "General-purpose math array/matrix with alignment specs. Supported via MathJax."
+        },
+        {
+          "name": "matrix",
+          "syntax": "\\begin{matrix}...\\end{matrix}",
+          "regex": "\\\\begin\\{matrix\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Plain matrix (no delimiters). Supported via MathJax."
+        },
+        {
+          "name": "pmatrix",
+          "syntax": "\\begin{pmatrix}...\\end{pmatrix}",
+          "regex": "\\\\begin\\{pmatrix\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Matrix with parentheses. Supported via MathJax."
+        },
+        {
+          "name": "bmatrix",
+          "syntax": "\\begin{bmatrix}...\\end{bmatrix}",
+          "regex": "\\\\begin\\{bmatrix\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Matrix with square brackets. Supported via MathJax."
+        },
+        {
+          "name": "Bmatrix",
+          "syntax": "\\begin{Bmatrix}...\\end{Bmatrix}",
+          "regex": "\\\\begin\\{Bmatrix\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Matrix with curly braces. Supported via MathJax."
+        },
+        {
+          "name": "vmatrix",
+          "syntax": "\\begin{vmatrix}...\\end{vmatrix}",
+          "regex": "\\\\begin\\{vmatrix\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Matrix with single vertical bars (determinant). Supported via MathJax."
+        },
+        {
+          "name": "Vmatrix",
+          "syntax": "\\begin{Vmatrix}...\\end{Vmatrix}",
+          "regex": "\\\\begin\\{Vmatrix\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Matrix with double vertical bars (norm). Supported via MathJax."
+        },
+        {
+          "name": "smallmatrix",
+          "syntax": "\\begin{smallmatrix}...\\end{smallmatrix}",
+          "regex": "\\\\begin\\{smallmatrix\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Compact matrix for inline use. Supported via MathJax.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "tabular",
+          "syntax": "\\begin{tabular}{spec}...\\end{tabular}",
+          "regex": "\\\\begin\\{tabular\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Primary LaTeX table environment. Extensively documented in MMD. Supports column specs (l, c, r, p{width}), \\hline, \\multicolumn, \\multirow, \\cline, \\hhline, \\diagbox, \\backslashbox."
+        },
+        {
+          "name": "table",
+          "syntax": "\\begin{table}[pos]...\\end{table}",
+          "regex": "\\\\begin\\{table\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Float wrapper for tabular. Supports \\caption and \\label. Documented in MMD tables page."
+        },
+        {
+          "name": "longtable",
+          "syntax": "\\begin{longtable}{spec}...\\end{longtable}",
+          "regex": "\\\\begin\\{longtable\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Multi-page table environment. Supports \\endfirsthead, \\endhead, \\endfoot, \\endlastfoot.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "center",
+          "syntax": "\\begin{center}...\\end{center}",
+          "regex": "\\\\begin\\{center\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Centre-alignment wrapper. Documented in MMD tables examples."
+        },
+        {
+          "name": "figure",
+          "syntax": "\\begin{figure}[pos]...\\end{figure}",
+          "regex": "\\\\begin\\{figure\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Float wrapper for images. Supports \\caption, \\label, \\centering, \\captionsetup. Explicitly documented in MMD figures page."
+        },
+        {
+          "name": "itemize",
+          "syntax": "\\begin{itemize}...\\end{itemize}",
+          "regex": "\\\\begin\\{itemize\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Unordered list environment. Explicitly documented. Supports nested lists to depth of 4."
+        },
+        {
+          "name": "enumerate",
+          "syntax": "\\begin{enumerate}...\\end{enumerate}",
+          "regex": "\\\\begin\\{enumerate\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Ordered list environment. Explicitly documented. Supports nested lists and numbering styles."
+        },
+        {
+          "name": "abstract",
+          "syntax": "\\begin{abstract}...\\end{abstract}",
+          "regex": "\\\\begin\\{abstract\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Document abstract. Explicitly documented in MMD syntax reference."
+        },
+        {
+          "name": "proof",
+          "syntax": "\\begin{proof}...\\end{proof}",
+          "regex": "\\\\begin\\{proof\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Mathematical proof. QED symbol at end. Documented in theorems and proofs page."
+        },
+        {
+          "name": "theorem",
+          "syntax": "\\begin{theorem}...\\end{theorem}",
+          "regex": "\\\\begin\\{theorem\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Theorem environment. Requires \\newtheorem declaration. Documented in theorems page."
+        },
+        {
+          "name": "lemma",
+          "syntax": "\\begin{lemma}...\\end{lemma}",
+          "regex": "\\\\begin\\{lemma\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Lemma environment. Requires \\newtheorem declaration. Documented in theorems page."
+        },
+        {
+          "name": "definition",
+          "syntax": "\\begin{definition}...\\end{definition}",
+          "regex": "\\\\begin\\{definition\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Definition environment. Requires \\newtheorem declaration. Documented in theorems page."
+        },
+        {
+          "name": "corollary",
+          "syntax": "\\begin{corollary}...\\end{corollary}",
+          "regex": "\\\\begin\\{corollary\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Corollary environment. Requires \\newtheorem declaration.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "remark",
+          "syntax": "\\begin{remark}...\\end{remark}",
+          "regex": "\\\\begin\\{remark\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Remark environment (typically unnumbered via \\newtheorem*). Documented in theorems page."
+        },
+        {
+          "name": "proposition",
+          "syntax": "\\begin{proposition}...\\end{proposition}",
+          "regex": "\\\\begin\\{proposition\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Proposition environment. Requires \\newtheorem declaration.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "lstlisting",
+          "syntax": "\\begin{lstlisting}[options]...\\end{lstlisting}",
+          "regex": "\\\\begin\\{lstlisting\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX code listing environment. Supports language option and mathescape. Documented in README (added Dec 2025)."
+        },
+        {
+          "name": "multline",
+          "syntax": "\\begin{multline}...\\end{multline}",
+          "regex": "\\\\begin\\{multline\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": ["mistyped as multiline"],
+          "notes": "Multi-line equation with first line left-aligned, last line right-aligned. Supported via MathJax.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "multline*",
+          "syntax": "\\begin{multline*}...\\end{multline*}",
+          "regex": "\\\\begin\\{multline\\*\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Unnumbered variant of multline.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "eqnarray",
+          "syntax": "\\begin{eqnarray}...\\end{eqnarray}",
+          "regex": "\\\\begin\\{eqnarray\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Legacy equation array. Generally deprecated in favour of align, but may appear in OCR output.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "eqnarray*",
+          "syntax": "\\begin{eqnarray*}...\\end{eqnarray*}",
+          "regex": "\\\\begin\\{eqnarray\\*\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Unnumbered variant of eqnarray.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "subequations",
+          "syntax": "\\begin{subequations}...\\end{subequations}",
+          "regex": "\\\\begin\\{subequations\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Groups equations with sub-numbering (1a, 1b, etc.).",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "gathered",
+          "syntax": "\\begin{gathered}...\\end{gathered}",
+          "regex": "\\\\begin\\{gathered\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Gathered environment for use inside other math environments. Supported via MathJax.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "flalign",
+          "syntax": "\\begin{flalign}...\\end{flalign}",
+          "regex": "\\\\begin\\{flalign\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Full-width alignment. Supported via MathJax.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "flalign*",
+          "syntax": "\\begin{flalign*}...\\end{flalign*}",
+          "regex": "\\\\begin\\{flalign\\*\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Unnumbered variant of flalign.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "generic_environment_detector",
+          "syntax": "\\begin{...}...\\end{...}",
+          "regex": "\\\\begin\\{([a-zA-Z*]+)\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Catch-all regex to detect ANY \\begin{} environment not covered above. The analyser should use this as a fallback to flag unknown environments."
+        }
+      ]
+    },
+    "math_delimiter": {
+      "description": "Delimiters for inline and block mathematics",
+      "features": [
+        {
+          "name": "inline_dollar",
+          "syntax": "$...$",
+          "regex": "(?<!\\\\)\\$(?!\\$)(.+?)(?<!\\\\)\\$",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": ["$ misread as S or 5"],
+          "notes": "Standard inline maths delimiter. Explicitly documented."
+        },
+        {
+          "name": "inline_paren",
+          "syntax": "\\(...\\)",
+          "regex": "\\\\\\(.*?\\\\\\)",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX inline maths delimiter. Explicitly documented. Document's choice between $...$ and \\(...\\) should be preserved."
+        },
+        {
+          "name": "block_double_dollar",
+          "syntax": "$$...$$",
+          "regex": "\\$\\$[\\s\\S]*?\\$\\$",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Block display maths. Explicitly documented. Non-numbered."
+        },
+        {
+          "name": "block_bracket",
+          "syntax": "\\[...\\]",
+          "regex": "\\\\\\[[\\s\\S]*?\\\\\\]",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX block display maths. Explicitly documented. Non-numbered."
+        }
+      ]
+    },
+    "heading": {
+      "description": "Section headings and document structure commands",
+      "features": [
+        {
+          "name": "title_latex",
+          "syntax": "\\title{...}",
+          "regex": "\\\\title\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX document title. Always renders centre-aligned. Explicitly documented."
+        },
+        {
+          "name": "author",
+          "syntax": "\\author{...}",
+          "regex": "\\\\author\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Document author. No Markdown equivalent. Explicitly documented."
+        },
+        {
+          "name": "section",
+          "syntax": "\\section{...}",
+          "regex": "\\\\section\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Equivalent to ## in Markdown or <h2>. Explicitly documented."
+        },
+        {
+          "name": "subsection",
+          "syntax": "\\subsection{...}",
+          "regex": "\\\\subsection\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Equivalent to ### in Markdown or <h3>. Explicitly documented."
+        },
+        {
+          "name": "subsubsection",
+          "syntax": "\\subsubsection{...}",
+          "regex": "\\\\subsubsection\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Equivalent to #### in Markdown or <h4>. Explicitly documented."
+        },
+        {
+          "name": "markdown_heading",
+          "syntax": "# ... / ## ... / ### ... etc.",
+          "regex": "^#{1,6}\\s",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": ["# misread as H or number sign dropped"],
+          "notes": "Markdown headings H1-H6. # renders left-aligned (unlike \\title). Explicitly documented."
+        },
+        {
+          "name": "setext_heading_h1",
+          "syntax": "Heading\\n=====",
+          "regex": "^={3,}\\s*$",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Alternative H1 heading via underline. Documented in syntax reference."
+        },
+        {
+          "name": "setext_heading_h2",
+          "syntax": "Heading\\n-----",
+          "regex": "^-{3,}\\s*$",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Alternative H2 heading via underline. Documented in syntax reference."
+        }
+      ]
+    },
+    "table": {
+      "description": "Table syntax — both Markdown and LaTeX formats",
+      "features": [
+        {
+          "name": "markdown_pipe_table",
+          "syntax": "| col1 | col2 |\\n|---|---|\\n| data | data |",
+          "regex": "^\\|.*\\|\\s*$",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": ["| misread as l or I"],
+          "notes": "Standard Markdown pipe table. Column alignment via : in separator row. Explicitly documented."
+        },
+        {
+          "name": "hline",
+          "syntax": "\\hline",
+          "regex": "\\\\hline",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Horizontal line in tabular. Explicitly documented."
+        },
+        {
+          "name": "cline",
+          "syntax": "\\cline{i-j}",
+          "regex": "\\\\cline\\{\\d+-\\d+\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Partial horizontal line spanning columns i to j."
+        },
+        {
+          "name": "hhline",
+          "syntax": "\\hhline{pattern}",
+          "regex": "\\\\hhline\\s*\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Enhanced horizontal line with fine control. Documented in MMD tables page."
+        },
+        {
+          "name": "multicolumn",
+          "syntax": "\\multicolumn{n}{align}{content}",
+          "regex": "\\\\multicolumn\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Merge multiple columns. Extensively documented in MMD tables page."
+        },
+        {
+          "name": "multirow",
+          "syntax": "\\multirow{n}{width}{content}",
+          "regex": "\\\\multirow\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Merge multiple rows. Documented in MMD tables page."
+        },
+        {
+          "name": "diagbox",
+          "syntax": "\\diagbox{A}{B}",
+          "regex": "\\\\diagbox",
+          "structural": true,
+          "variants": ["\\backslashbox"],
+          "ocrMisreads": [],
+          "notes": "Diagonal split cell header. Supports [dir=SW] option. Documented in release notes."
+        },
+        {
+          "name": "centering",
+          "syntax": "\\centering",
+          "regex": "\\\\centering",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Centre alignment command used inside figure/table environments."
+        },
+        {
+          "name": "caption",
+          "syntax": "\\caption{...}",
+          "regex": "\\\\caption\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Table/figure caption. Explicitly documented for both tables and figures."
+        },
+        {
+          "name": "captionsetup",
+          "syntax": "\\captionsetup{options}",
+          "regex": "\\\\captionsetup\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Caption formatting options. Supports labelformat=empty, singlelinecheck. Documented in figures page."
+        }
+      ]
+    },
+    "image": {
+      "description": "Image and figure references",
+      "features": [
+        {
+          "name": "markdown_image",
+          "syntax": "![alt](url)",
+          "regex": "!\\[([^\\]]*)\\]\\(([^)]+)\\)",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Standard Markdown image. Explicitly documented."
+        },
+        {
+          "name": "markdown_image_with_params",
+          "syntax": "![alt](url){ width=\"X\", height=\"Y\" }",
+          "regex": "!\\[([^\\]]*)\\]\\([^)]+\\)\\s*\\{[^}]+\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "MMD extension: additional parameters for width, height, alignment. Supports width=50%, width=\"36px\", right, left, align=\"left\". Explicitly documented."
+        },
+        {
+          "name": "includegraphics",
+          "syntax": "\\includegraphics[options]{url}",
+          "regex": "\\\\includegraphics\\s*\\[?[^\\]]*\\]?\\s*\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX image inclusion. Options: width, height, left/center/right. Default is centre-aligned. Extensively documented in MMD figures page."
+        },
+        {
+          "name": "mathpix_cdn_url",
+          "syntax": "https://cdn.mathpix.com/snip/images/...",
+          "regex": "https?://cdn\\.mathpix\\.com/",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "MathPix CDN image URLs. Common in OCR-processed documents. Preserve exactly."
+        },
+        {
+          "name": "mathpix_s3_url",
+          "syntax": "https://mathpix-ocr-examples.s3.amazonaws.com/...",
+          "regex": "https?://mathpix-ocr-examples\\.s3\\.amazonaws\\.com/",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "MathPix S3 image URLs. Found in documentation examples."
+        }
+      ]
+    },
+    "formatting": {
+      "description": "Text formatting — bold, italic, underline, strikethrough, etc.",
+      "features": [
+        {
+          "name": "bold_markdown_asterisk",
+          "syntax": "**text**",
+          "regex": "\\*\\*(.+?)\\*\\*",
+          "structural": false,
+          "variants": ["__text__"],
+          "ocrMisreads": [],
+          "notes": "Markdown bold. Explicitly documented."
+        },
+        {
+          "name": "bold_markdown_underscore",
+          "syntax": "__text__",
+          "regex": "__(.+?)__",
+          "structural": false,
+          "variants": ["**text**"],
+          "ocrMisreads": [],
+          "notes": "Alternative Markdown bold. Explicitly documented."
+        },
+        {
+          "name": "bold_latex",
+          "syntax": "\\textbf{text}",
+          "regex": "\\\\textbf\\{",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX bold. Explicitly documented."
+        },
+        {
+          "name": "italic_markdown_asterisk",
+          "syntax": "*text*",
+          "regex": "(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)",
+          "structural": false,
+          "variants": ["_text_"],
+          "ocrMisreads": [],
+          "notes": "Markdown italic. Explicitly documented."
+        },
+        {
+          "name": "italic_markdown_underscore",
+          "syntax": "_text_",
+          "regex": "(?<!_)_(?!_)(.+?)(?<!_)_(?!_)",
+          "structural": false,
+          "variants": ["*text*"],
+          "ocrMisreads": [],
+          "notes": "Alternative Markdown italic. Explicitly documented."
+        },
+        {
+          "name": "italic_latex",
+          "syntax": "\\textit{text}",
+          "regex": "\\\\textit\\{",
+          "structural": false,
+          "variants": ["\\emph{text}"],
+          "ocrMisreads": [],
+          "notes": "LaTeX italic. Explicitly documented."
+        },
+        {
+          "name": "emph",
+          "syntax": "\\emph{text}",
+          "regex": "\\\\emph\\{",
+          "structural": false,
+          "variants": ["\\textit{text}"],
+          "ocrMisreads": [],
+          "notes": "LaTeX emphasis (context-dependent italic/upright)."
+        },
+        {
+          "name": "strikethrough",
+          "syntax": "~~text~~",
+          "regex": "~~(.+?)~~",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Markdown strikethrough. Explicitly documented."
+        },
+        {
+          "name": "mark",
+          "syntax": "==text==",
+          "regex": "==(.+?)==",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Marked/highlighted text. Explicitly documented."
+        },
+        {
+          "name": "underline",
+          "syntax": "\\underline{text}",
+          "regex": "\\\\underline\\{",
+          "structural": false,
+          "variants": ["\\uline{text}"],
+          "ocrMisreads": [],
+          "notes": "LaTeX underline. Documented in README."
+        },
+        {
+          "name": "uline",
+          "syntax": "\\uline{text}",
+          "regex": "\\\\uline\\{",
+          "structural": false,
+          "variants": ["\\underline{text}"],
+          "ocrMisreads": [],
+          "notes": "Alternative underline command. Documented in README."
+        },
+        {
+          "name": "uuline",
+          "syntax": "\\uuline{text}",
+          "regex": "\\\\uuline\\{",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Double underline. Documented in README."
+        },
+        {
+          "name": "uwave",
+          "syntax": "\\uwave{text}",
+          "regex": "\\\\uwave\\{",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Wavy underline. Documented in README."
+        },
+        {
+          "name": "dashuline",
+          "syntax": "\\dashuline{text}",
+          "regex": "\\\\dashuline\\{",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Dashed underline. Documented in README."
+        },
+        {
+          "name": "dotuline",
+          "syntax": "\\dotuline{text}",
+          "regex": "\\\\dotuline\\{",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Dotted underline. Documented in README."
+        },
+        {
+          "name": "sout",
+          "syntax": "\\sout{text}",
+          "regex": "\\\\sout\\{",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Strikethrough (horizontal line through centre). Documented in README."
+        },
+        {
+          "name": "xout",
+          "syntax": "\\xout{text}",
+          "regex": "\\\\xout\\{",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Hatching pattern strikethrough. Documented in README."
+        },
+        {
+          "name": "inline_code",
+          "syntax": "`code`",
+          "regex": "`[^`]+`",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": ["backtick misread as apostrophe"],
+          "notes": "Inline code span. Standard Markdown."
+        },
+        {
+          "name": "code_block_fenced",
+          "syntax": "```lang\\ncode\\n```",
+          "regex": "^```",
+          "structural": true,
+          "variants": ["~~~"],
+          "ocrMisreads": [],
+          "notes": "Fenced code block with optional language. Syntax highlighting via highlight.js. Explicitly documented."
+        },
+        {
+          "name": "subscript_markdown",
+          "syntax": "~text~",
+          "regex": "(?<!~)~(?!~)([^~]+)(?<!~)~(?!~)",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Markdown subscript. Documented in syntax reference."
+        },
+        {
+          "name": "superscript_markdown",
+          "syntax": "^text^",
+          "regex": "(?<!\\^)\\^(?!\\^)([^^]+)(?<!\\^)\\^(?!\\^)",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Markdown superscript. Documented in syntax reference."
+        }
+      ]
+    },
+    "reference": {
+      "description": "Cross-references, labels, citations, and links",
+      "features": [
+        {
+          "name": "label",
+          "syntax": "\\label{identifier}",
+          "regex": "\\\\label\\{([^}]+)\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Reference anchor. Used with equations, figures, tables, theorems. Explicitly documented."
+        },
+        {
+          "name": "ref",
+          "syntax": "\\ref{identifier}",
+          "regex": "\\\\ref\\{([^}]+)\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Reference to a labelled element. Renders as the number. Explicitly documented."
+        },
+        {
+          "name": "eqref",
+          "syntax": "\\eqref{identifier}",
+          "regex": "\\\\eqref\\{([^}]+)\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Equation reference. Renders as (number). Explicitly documented."
+        },
+        {
+          "name": "tag",
+          "syntax": "\\tag{custom}",
+          "regex": "\\\\tag\\{([^}]+)\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Custom equation tag. Overrides automatic numbering. Explicitly documented."
+        },
+        {
+          "name": "url_latex",
+          "syntax": "\\url{link}",
+          "regex": "\\\\url\\{([^}]+)\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX URL. Explicitly documented."
+        },
+        {
+          "name": "href",
+          "syntax": "\\href{url}{text}",
+          "regex": "\\\\href\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX hyperlink with display text.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "markdown_link",
+          "syntax": "[text](url)",
+          "regex": "(?<!!)\\[([^\\]]*)\\]\\(([^)]+)\\)",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Standard Markdown link. Documented in syntax reference."
+        },
+        {
+          "name": "footnote_inline",
+          "syntax": "\\footnote{text}",
+          "regex": "\\\\footnote\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX inline footnote. Auto-increments counter. Documented in README."
+        },
+        {
+          "name": "footnotemark",
+          "syntax": "\\footnotemark{}",
+          "regex": "\\\\footnotemark",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Footnote marker without text. Documented in README."
+        },
+        {
+          "name": "footnotetext",
+          "syntax": "\\footnotetext{text}",
+          "regex": "\\\\footnotetext\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Footnote text associated with previous footnotemark. Documented in README."
+        },
+        {
+          "name": "markdown_footnote",
+          "syntax": "[^id]: footnote text",
+          "regex": "\\[\\^[^\\]]+\\]",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Markdown-style footnote reference and definition.",
+          "confidence": "uncertain"
+        }
+      ]
+    },
+    "chemistry": {
+      "description": "Chemistry notation — SMILES strings and chemical equations",
+      "features": [
+        {
+          "name": "smiles_inline",
+          "syntax": "<smiles>formula</smiles>",
+          "regex": "<smiles>[\\s\\S]*?<\\/smiles>",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Inline SMILES chemical formula. MMD-specific extension. Explicitly documented."
+        },
+        {
+          "name": "smiles_block",
+          "syntax": "```smiles\\nformula\\n```",
+          "regex": "```smiles",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Block SMILES chemical formula. MMD-specific extension. Explicitly documented."
+        },
+        {
+          "name": "ce",
+          "syntax": "\\ce{formula}",
+          "regex": "\\\\ce\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "mhchem chemistry notation (e.g. \\ce{H2O}, \\ce{CO2 + H2O -> H2CO3}). Supported via MathJax mhchem extension.",
+          "confidence": "uncertain"
+        }
+      ]
+    },
+    "list": {
+      "description": "List syntax — ordered and unordered in both Markdown and LaTeX",
+      "features": [
+        {
+          "name": "markdown_unordered",
+          "syntax": "- item / + item / * item",
+          "regex": "^\\s*[-+*]\\s",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": ["- misread as em-dash"],
+          "notes": "Markdown unordered list. Supports nesting via 2-space indent. Explicitly documented."
+        },
+        {
+          "name": "markdown_ordered",
+          "syntax": "1. item",
+          "regex": "^\\s*\\d+\\.\\s",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Markdown ordered list. Numbering continues from first number. Explicitly documented."
+        },
+        {
+          "name": "latex_item",
+          "syntax": "\\item",
+          "regex": "\\\\item\\b",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX list item marker. Used inside itemize/enumerate. Explicitly documented."
+        }
+      ]
+    },
+    "metadata": {
+      "description": "Document metadata, annotations, page breaks, comments",
+      "features": [
+        {
+          "name": "newtheorem",
+          "syntax": "\\newtheorem{name}{Title}",
+          "regex": "\\\\newtheorem\\*?\\{",
+          "structural": true,
+          "variants": ["\\newtheorem*{name}{Title}"],
+          "ocrMisreads": [],
+          "notes": "Theorem environment declaration. Supports optional counter argument. Explicitly documented."
+        },
+        {
+          "name": "theoremstyle",
+          "syntax": "\\theoremstyle{style}",
+          "regex": "\\\\theoremstyle\\{",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Sets formatting style for subsequent \\newtheorem declarations. Styles: plain, definition, remark. Documented."
+        },
+        {
+          "name": "pagebreak",
+          "syntax": "\\pagebreak",
+          "regex": "\\\\pagebreak",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Page break command. Reflected in LaTeX, PDF, DOCX exports. Explicitly documented in syntax reference."
+        },
+        {
+          "name": "latex_comment",
+          "syntax": "% comment",
+          "regex": "(?<!\\\\)%.*$",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "LaTeX comment. Everything after % on a line is ignored."
+        },
+        {
+          "name": "nonumber",
+          "syntax": "\\nonumber",
+          "regex": "\\\\nonumber",
+          "structural": true,
+          "variants": ["\\notag"],
+          "ocrMisreads": [],
+          "notes": "Suppresses equation numbering for a specific line."
+        },
+        {
+          "name": "qed_symbol",
+          "syntax": "\\qedsymbol",
+          "regex": "\\\\qedsymbol",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Custom QED symbol for proofs. Documented in theorems page.",
+          "confidence": "uncertain"
+        },
+        {
+          "name": "renewcommand_qedsymbol",
+          "syntax": "\\renewcommand{\\qedsymbol}{...}",
+          "regex": "\\\\renewcommand\\{\\\\qedsymbol\\}",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Redefine QED symbol. Documented in theorems page."
+        }
+      ]
+    },
+    "other": {
+      "description": "Miscellaneous features — blockquotes, horizontal rules, hints, emojis, HTML",
+      "features": [
+        {
+          "name": "blockquote",
+          "syntax": "> text",
+          "regex": "^>\\s",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Markdown blockquote. Supports nesting with >>. Documented."
+        },
+        {
+          "name": "horizontal_rule",
+          "syntax": "--- / *** / ___",
+          "regex": "^([-*_])\\1{2,}\\s*$",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Horizontal divider line. Documented."
+        },
+        {
+          "name": "hint_collapsible",
+          "syntax": "+++ title\\ncontent\\n+++",
+          "regex": "^\\+\\+\\+\\s",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "MMD-specific collapsible/hint section. Explicitly documented."
+        },
+        {
+          "name": "emoji",
+          "syntax": ":emoji_name:",
+          "regex": ":[a-zA-Z0-9_+-]+:",
+          "structural": false,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Emoji shortcodes. Documented in syntax reference."
+        },
+        {
+          "name": "html_tags",
+          "syntax": "<tag>...</tag>",
+          "regex": "<\\/?[a-zA-Z][^>]*>",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Raw HTML tags. Requires htmlTags=true option. Documented. Supports SVG rendering."
+        },
+        {
+          "name": "line_break_backslash",
+          "syntax": "\\\\",
+          "regex": "\\\\\\\\",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Line break in equations (between rows) and general LaTeX line break."
+        },
+        {
+          "name": "ampersand_alignment",
+          "syntax": "&",
+          "regex": "(?<!\\\\)&",
+          "structural": true,
+          "variants": [],
+          "ocrMisreads": [],
+          "notes": "Column separator in tabular and alignment point in align/aligned/array environments."
+        }
+      ]
+    }
+  },
+  "notationGroups": [
+    {
+      "name": "inequality_leq",
+      "description": "Less-than-or-equal variants",
+      "members": ["\\leq", "\\leqslant", "\\le"],
+      "preserveOriginal": true,
+      "notes": "Document may use any of these — do not normalise between them."
+    },
+    {
+      "name": "inequality_geq",
+      "description": "Greater-than-or-equal variants",
+      "members": ["\\geq", "\\geqslant", "\\ge"],
+      "preserveOriginal": true,
+      "notes": "Document may use any of these — do not normalise between them."
+    },
+    {
+      "name": "arrow_right",
+      "description": "Right arrow variants",
+      "members": ["\\to", "\\rightarrow", "\\longrightarrow", "\\Rightarrow", "\\Longrightarrow", "\\implies"],
+      "preserveOriginal": true,
+      "notes": "Different arrows have different semantic meaning. Preserve the original."
+    },
+    {
+      "name": "arrow_left",
+      "description": "Left arrow variants",
+      "members": ["\\leftarrow", "\\longleftarrow", "\\Leftarrow", "\\Longleftarrow"],
+      "preserveOriginal": true,
+      "notes": "Preserve original form."
+    },
+    {
+      "name": "arrow_leftright",
+      "description": "Bidirectional arrow variants",
+      "members": ["\\leftrightarrow", "\\longleftrightarrow", "\\Leftrightarrow", "\\Longleftrightarrow", "\\iff"],
+      "preserveOriginal": true,
+      "notes": "Preserve original form."
+    },
+    {
+      "name": "arrow_mapsto",
+      "description": "Mapsto arrow variants",
+      "members": ["\\mapsto", "\\longmapsto"],
+      "preserveOriginal": true,
+      "notes": "Preserve original form."
+    },
+    {
+      "name": "multiplication",
+      "description": "Multiplication operator variants",
+      "members": ["\\cdot", "\\times", "\\bullet", "\\ast", "\\star"],
+      "preserveOriginal": true,
+      "notes": "Different operators, different meanings. \\cdot for scalar, \\times for cross product, etc."
+    },
+    {
+      "name": "subset",
+      "description": "Subset relation variants",
+      "members": ["\\subset", "\\subseteq", "\\subsetneq", "\\Subset"],
+      "preserveOriginal": true,
+      "notes": "Strict vs non-strict subset. Preserve original."
+    },
+    {
+      "name": "superset",
+      "description": "Superset relation variants",
+      "members": ["\\supset", "\\supseteq", "\\supsetneq", "\\Supset"],
+      "preserveOriginal": true,
+      "notes": "Strict vs non-strict superset. Preserve original."
+    },
+    {
+      "name": "dots",
+      "description": "Ellipsis variants",
+      "members": ["\\dots", "\\ldots", "\\cdots", "\\vdots", "\\ddots"],
+      "preserveOriginal": true,
+      "notes": "Baseline vs centred vs vertical vs diagonal dots. Very different meanings."
+    },
+    {
+      "name": "negation_not",
+      "description": "Negation variants",
+      "members": ["\\not", "\\neq", "\\ne", "\\notin", "\\notsubset"],
+      "preserveOriginal": true,
+      "notes": "Preserve original form."
+    },
+    {
+      "name": "set_membership",
+      "description": "Set membership variants",
+      "members": ["\\in", "\\notin", "\\ni", "\\owns"],
+      "preserveOriginal": true,
+      "notes": "Preserve original form."
+    },
+    {
+      "name": "infinity",
+      "description": "Infinity symbol variants",
+      "members": ["\\infty", "\\infinity"],
+      "preserveOriginal": true,
+      "notes": "\\infinity is non-standard but sometimes appears in OCR output."
+    },
+    {
+      "name": "sum_product",
+      "description": "Large operator variants",
+      "members": ["\\sum", "\\prod", "\\coprod", "\\bigcup", "\\bigcap", "\\bigoplus", "\\bigotimes"],
+      "preserveOriginal": true,
+      "notes": "Very different operators. Preserve original."
+    },
+    {
+      "name": "integral_variants",
+      "description": "Integral symbol variants",
+      "members": ["\\int", "\\iint", "\\iiint", "\\oint", "\\oiint"],
+      "preserveOriginal": true,
+      "notes": "Single vs double vs triple vs contour integrals."
+    },
+    {
+      "name": "partial_nabla",
+      "description": "Differential operator variants",
+      "members": ["\\partial", "\\nabla"],
+      "preserveOriginal": true,
+      "notes": "Different operators. Preserve original."
+    },
+    {
+      "name": "norm_abs",
+      "description": "Absolute value and norm variants",
+      "members": ["\\vert", "\\Vert", "\\lvert", "\\rvert", "\\lVert", "\\rVert", "|", "\\|"],
+      "preserveOriginal": true,
+      "notes": "Single bars for absolute value, double bars for norms. Preserve original delimiters."
+    },
+    {
+      "name": "bracket_variants",
+      "description": "Bracket/delimiter variants",
+      "members": ["\\left", "\\right", "\\big", "\\Big", "\\bigg", "\\Bigg"],
+      "preserveOriginal": true,
+      "notes": "Delimiter sizing commands. Preserve original sizing choice."
+    },
+    {
+      "name": "approx_sim",
+      "description": "Approximation/similarity variants",
+      "members": ["\\approx", "\\sim", "\\simeq", "\\cong", "\\equiv"],
+      "preserveOriginal": true,
+      "notes": "Different relations. Preserve original."
+    },
+    {
+      "name": "prec_succ",
+      "description": "Ordering relation variants",
+      "members": ["\\prec", "\\succ", "\\preceq", "\\succeq", "\\preccurlyeq", "\\succcurlyeq"],
+      "preserveOriginal": true,
+      "notes": "Preserve original ordering relations."
+    },
+    {
+      "name": "inline_math_delimiters",
+      "description": "Inline maths delimiter choice",
+      "members": ["$...$", "\\(...\\)"],
+      "preserveOriginal": true,
+      "notes": "Document's choice of inline maths delimiter should be preserved consistently."
+    },
+    {
+      "name": "block_math_delimiters",
+      "description": "Block maths delimiter choice",
+      "members": ["$$...$$", "\\[...\\]", "\\begin{equation*}...\\end{equation*}"],
+      "preserveOriginal": true,
+      "notes": "Document's choice of block maths delimiter should be preserved consistently."
+    }
+  ],
+  "greekLetters": {
+    "description": "Greek letter commands — all standard LaTeX Greek letters with known OCR misreads",
+    "lowercase": [
+      {"command": "\\alpha", "ocrMisreads": ["a", "α misread as a"]},
+      {"command": "\\beta", "ocrMisreads": ["B", "β misread as B or 6"]},
+      {"command": "\\gamma", "ocrMisreads": ["y", "γ misread as y"]},
+      {"command": "\\delta", "ocrMisreads": ["d", "δ misread as d or ð"]},
+      {"command": "\\epsilon", "ocrMisreads": ["e", "ε misread as e or E", "c"]},
+      {"command": "\\varepsilon", "ocrMisreads": ["e", "ε misread as e"]},
+      {"command": "\\zeta", "ocrMisreads": ["z", "ζ misread as z"]},
+      {"command": "\\eta", "ocrMisreads": ["n", "η misread as n"]},
+      {"command": "\\theta", "ocrMisreads": ["0", "θ misread as 0 or O"]},
+      {"command": "\\vartheta", "ocrMisreads": ["0", "ϑ misread as 0"]},
+      {"command": "\\iota", "ocrMisreads": ["i", "ι misread as i"]},
+      {"command": "\\kappa", "ocrMisreads": ["k", "κ misread as k"]},
+      {"command": "\\lambda", "ocrMisreads": ["\\lambda misread as \\wedge or A"]},
+      {"command": "\\mu", "ocrMisreads": ["u", "μ misread as u"]},
+      {"command": "\\nu", "ocrMisreads": ["v", "ν misread as v"]},
+      {"command": "\\xi", "ocrMisreads": ["ξ misread as ε or ζ"]},
+      {"command": "\\pi", "ocrMisreads": ["n", "π misread as n or TT or II"]},
+      {"command": "\\varpi", "ocrMisreads": ["w", "ϖ misread as w"]},
+      {"command": "\\rho", "ocrMisreads": ["p", "ρ misread as p"]},
+      {"command": "\\varrho", "ocrMisreads": ["p"]},
+      {"command": "\\sigma", "ocrMisreads": ["o", "σ misread as o"]},
+      {"command": "\\varsigma", "ocrMisreads": ["s"]},
+      {"command": "\\tau", "ocrMisreads": ["t", "τ misread as t or T"]},
+      {"command": "\\upsilon", "ocrMisreads": ["v", "υ misread as v or u"]},
+      {"command": "\\phi", "ocrMisreads": ["\\phi misread as ø or 0"]},
+      {"command": "\\varphi", "ocrMisreads": ["\\varphi misread as \\phi"]},
+      {"command": "\\chi", "ocrMisreads": ["x", "χ misread as x"]},
+      {"command": "\\psi", "ocrMisreads": ["\\psi misread as ψ misread as w"]},
+      {"command": "\\omega", "ocrMisreads": ["w", "ω misread as w"]}
+    ],
+    "uppercase": [
+      {"command": "\\Gamma", "ocrMisreads": ["Γ misread as F or I"]},
+      {"command": "\\Delta", "ocrMisreads": ["Δ misread as A or triangle"]},
+      {"command": "\\Theta", "ocrMisreads": ["Θ misread as O or 0"]},
+      {"command": "\\Lambda", "ocrMisreads": ["Λ misread as A or /\\\\"]},
+      {"command": "\\Xi", "ocrMisreads": ["Ξ misread as E or three horizontal lines"]},
+      {"command": "\\Pi", "ocrMisreads": ["Π misread as II or ||"]},
+      {"command": "\\Sigma", "ocrMisreads": ["Σ misread as E or ∑"]},
+      {"command": "\\Upsilon", "ocrMisreads": ["Y"]},
+      {"command": "\\Phi", "ocrMisreads": ["Φ misread as O or 0"]},
+      {"command": "\\Psi", "ocrMisreads": ["Ψ misread as Y"]},
+      {"command": "\\Omega", "ocrMisreads": ["Ω misread as O or ohm symbol"]}
+    ],
+    "notes": "Greek letter variant pairs (e.g. \\epsilon vs \\varepsilon, \\theta vs \\vartheta, \\phi vs \\varphi) must be preserved — the document's choice is intentional."
+  },
+  "commonOcrSymbolMisreads": {
+    "description": "Common OCR misreads for mathematical symbols beyond Greek letters",
+    "entries": [
+      {"symbol": "\\sum", "misreads": ["∑ misread as E or 2 or Σ"]},
+      {"symbol": "\\prod", "misreads": ["∏ misread as II or Π"]},
+      {"symbol": "\\int", "misreads": ["∫ misread as f or ∫ glyph corruption"]},
+      {"symbol": "\\infty", "misreads": ["∞ misread as 8 or oo"]},
+      {"symbol": "\\partial", "misreads": ["∂ misread as d or a"]},
+      {"symbol": "\\nabla", "misreads": ["∇ misread as V or ▽"]},
+      {"symbol": "\\pm", "misreads": ["± misread as + or ∓"]},
+      {"symbol": "\\mp", "misreads": ["∓ misread as - or ±"]},
+      {"symbol": "\\times", "misreads": ["× misread as x"]},
+      {"symbol": "\\div", "misreads": ["÷ misread as : or +"]},
+      {"symbol": "\\sqrt", "misreads": ["√ misread as V or \\/ or surd corruption"]},
+      {"symbol": "\\approx", "misreads": ["≈ misread as = or ~"]},
+      {"symbol": "\\neq", "misreads": ["≠ misread as = or ≤"]},
+      {"symbol": "\\leq", "misreads": ["≤ misread as < or ≤ with corruption"]},
+      {"symbol": "\\geq", "misreads": ["≥ misread as > or ≥ with corruption"]},
+      {"symbol": "\\forall", "misreads": ["∀ misread as A or V"]},
+      {"symbol": "\\exists", "misreads": ["∃ misread as E or 3"]},
+      {"symbol": "\\emptyset", "misreads": ["∅ misread as 0 or O or ø"]},
+      {"symbol": "\\prime", "misreads": ["′ misread as ' or 1"]},
+      {"symbol": "\\circ", "misreads": ["∘ misread as o or 0"]},
+      {"symbol": "\\langle", "misreads": ["⟨ misread as < or ("]},
+      {"symbol": "\\rangle", "misreads": ["⟩ misread as > or )"]}
+    ]
+  },
+  "libraryCapabilities": {
+    "hasParsingAPI": true,
+    "description": "mathpix-markdown-it is built on markdown-it and exposes several useful methods for parsing and analysis",
+    "renderMethods": [
+      {
+        "name": "MathpixMarkdownModel.markdownToHTML(str, options)",
+        "description": "Renders MMD to HTML string. Primary render method.",
+        "usefulForAnalyser": false
+      },
+      {
+        "name": "MathpixMarkdownModel.render(str, options)",
+        "description": "Renders MMD to HTML wrapped in a container. For full documents.",
+        "usefulForAnalyser": false
+      },
+      {
+        "name": "MathpixMarkdownModel.parseMarkdownByHTML(html, include_sub_math?)",
+        "description": "Parses rendered HTML and returns array of format objects ({type, value}). Types include: mathml, asciimath, latex, svg, html, tsv. Can extract nested maths from tables.",
+        "usefulForAnalyser": true,
+        "notes": "Could be used to verify that detected LaTeX environments actually render. However, requires HTML rendering first, so adds overhead."
+      },
+      {
+        "name": "MathpixMarkdownModel.parseMarkdownByElement(htmlElement)",
+        "description": "Same as parseMarkdownByHTML but takes a DOM element.",
+        "usefulForAnalyser": false,
+        "notes": "Browser-only."
+      }
+    ],
+    "tokenTypes": [
+      "paragraph_open", "paragraph_close",
+      "inline", "text",
+      "heading_open", "heading_close",
+      "bullet_list_open", "bullet_list_close",
+      "ordered_list_open", "ordered_list_close",
+      "list_item_open", "list_item_close",
+      "fence", "code_block", "code_inline",
+      "blockquote_open", "blockquote_close",
+      "table_open", "table_close",
+      "thead_open", "thead_close",
+      "tbody_open", "tbody_close",
+      "tr_open", "tr_close",
+      "th_open", "th_close",
+      "td_open", "td_close",
+      "hr",
+      "html_block", "html_inline",
+      "em_open", "em_close",
+      "strong_open", "strong_close",
+      "s_open", "s_close",
+      "link_open", "link_close",
+      "image",
+      "softbreak", "hardbreak"
+    ],
+    "customTokenTypes": [
+      "math_inline", "math_inline_double",
+      "math_block", "math_block_eqno",
+      "tabular", "tabular_open", "tabular_close",
+      "latex_section", "latex_subsection",
+      "latex_title", "latex_author",
+      "latex_abstract",
+      "smiles_inline", "smiles_block",
+      "latex_list_open", "latex_list_close",
+      "latex_list_item",
+      "latex_figure",
+      "footnote_ref", "footnote_block_open"
+    ],
+    "utilityFunctions": [],
+    "notes": "The library builds on markdown-it's token system. The underlying markdown-it parser generates tokens in a flat array (not a tree), which could theoretically be accessed for feature detection. However, the library does NOT expose a public tokenisation-only API — you must go through markdownToHTML() or render(). For the analyser module, regex-based detection on raw MMD text will be more practical than attempting to hook into the parser internals. The outMath options (include_latex, include_asciimath, etc.) and parseMarkdownByHTML could potentially be used to validate detected maths, but add significant overhead. The disableRules option reveals some internal rule names: 'replacements', and the renderOptions toggle (enable_markdown, enable_latex, enable_markdown_mmd_extensions) shows the three major parsing categories. The enable_markdown_mmd_extensions controls: smiles, asciiMath, mathML.",
+    "cdnUsage": {
+      "url": "https://cdn.jsdelivr.net/npm/mathpix-markdown-it@1.0.40/es5/bundle.js",
+      "latestVersion": "2.0.34",
+      "notes": "CDN bundle exposes window.loadMathJax() and window.MathpixMarkdownModel. The bundle is substantial (~several MB) so loading it solely for analysis would be excessive."
+    }
+  }
+}

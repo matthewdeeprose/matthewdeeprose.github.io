@@ -61,8 +61,8 @@ const UniversalNotifications = (function () {
       currentLogLevel = level;
       logInfo(
         `Logging level set to: ${Object.keys(LOG_LEVELS).find(
-          (key) => LOG_LEVELS[key] === level
-        )}`
+          (key) => LOG_LEVELS[key] === level,
+        )}`,
       );
     } else {
       logWarn(`Invalid logging level: ${level}`);
@@ -100,7 +100,7 @@ const UniversalNotifications = (function () {
       this.duplicateWindowMs = 2000; // 2 second window to suppress duplicates
 
       logInfo(
-        "Notification manager created (container will be initialised when needed)"
+        "Notification manager created (container will be initialised when needed)",
       );
     }
 
@@ -119,7 +119,7 @@ const UniversalNotifications = (function () {
 
       // Fallback: check for open dialog elements
       const openModal = document.querySelector(
-        "dialog[open], .universal-modal[open]"
+        "dialog[open], .universal-modal[open]",
       );
       return !!openModal;
     }
@@ -157,7 +157,7 @@ const UniversalNotifications = (function () {
             // Add universal class while keeping existing gb class
             this.container.classList.add("universal-toast-container");
             logInfo(
-              "Converted Graph Builder toast container to universal container"
+              "Converted Graph Builder toast container to universal container",
             );
             this.containerInitialised = true;
             return true;
@@ -184,7 +184,7 @@ const UniversalNotifications = (function () {
       try {
         if (!document.body) {
           logError(
-            "Cannot create toast container - document.body is not available"
+            "Cannot create toast container - document.body is not available",
           );
           return false;
         }
@@ -303,7 +303,7 @@ const UniversalNotifications = (function () {
         type,
         dismissible,
         duration,
-        { allowHtml: options.allowHtml }
+        { allowHtml: options.allowHtml },
       );
 
       // Store reference
@@ -344,17 +344,19 @@ const UniversalNotifications = (function () {
       type,
       dismissible,
       duration = 0,
-      options = {}
+      options = {},
     ) {
       const toast = document.createElement("div");
       toast.id = toastId;
       // Use existing Graph Builder classes
       toast.className = `gb-toast gb-toast-${type}`;
-      toast.setAttribute("role", type === "error" ? "alert" : "status");
-      toast.setAttribute(
-        "aria-live",
-        type === "error" ? "assertive" : "polite"
-      );
+      // Phase 7.3J: Only error toasts get role="alert" (assertive, standalone).
+      // Non-error toasts rely on the container's aria-live="polite" for announcement.
+      // Previously, both role="status" AND aria-live="polite" on each toast
+      // created nested live regions, causing NVDA to announce content twice.
+      if (type === "error") {
+        toast.setAttribute("role", "alert");
+      }
       toast.style.pointerEvents = "auto";
       toast.style.zIndex = "inherit"; // Inherit from container
 
@@ -365,18 +367,20 @@ const UniversalNotifications = (function () {
       const icon = this.getIconForType(type);
 
       // Build content using existing GB structure
-      // Note: For auto-dismissing toasts, use simpler close label since they auto-dismiss
-      const closeLabel = duration > 0 ? "Dismiss" : "Close notification";
+      // Phase 7.3J: Auto-dismissing toasts skip the close button entirely
+      // to prevent screen readers announcing "Dismiss notification" as part of the message.
+      // The button remains for persistent/error toasts (duration === 0).
+      const showCloseButton = dismissible && !(duration > 0);
 
       toast.innerHTML = `
         <div class="gb-toast-icon" aria-hidden="true">${icon}</div>
-<div class="gb-toast-content">${
-        options.allowHtml ? message : this.escapeHtml(message)
-      }</div>
+        <div class="gb-toast-content">${
+          options.allowHtml ? message : this.escapeHtml(message)
+        }</div>
         ${
-          dismissible
+          showCloseButton
             ? `
-          <button type="button" class="gb-toast-close" aria-label="${closeLabel}">
+          <button type="button" class="gb-toast-close" aria-label="Close notification">
             <span aria-hidden="true">×</span>
           </button>
         `
@@ -384,8 +388,8 @@ const UniversalNotifications = (function () {
         }
       `;
 
-      // Add close functionality
-      if (dismissible) {
+      // Add close functionality (only if close button was rendered)
+      if (showCloseButton) {
         const closeBtn = toast.querySelector(".gb-toast-close");
         if (closeBtn) {
           closeBtn.addEventListener("click", () => this.dismiss(toastId));
@@ -660,5 +664,5 @@ window.clearToasts = UniversalNotifications.clearAll;
 
 // Log that system is ready
 console.log(
-  "🍞 Universal Notifications system ready with Graph Builder compatibility"
+  "🍞 Universal Notifications system ready with Graph Builder compatibility",
 );

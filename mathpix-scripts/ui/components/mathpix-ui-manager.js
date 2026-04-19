@@ -289,7 +289,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
     // Phase 2: Cache processing options UI elements
     this.controller.elements.processingOptions = document.getElementById(
-      "mathpix-processing-options"
+      "mathpix-processing-options",
     );
     this.controller.elements.equationNumberingCheckbox =
       document.getElementById("mathpix-equation-numbering");
@@ -300,7 +300,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
     // Phase 2.0: Cache endpoint selection elements
     this.controller.elements.endpointRadios = document.querySelectorAll(
-      'input[name="mathpix-endpoint"]'
+      'input[name="mathpix-endpoint"]',
     );
 
     // Track if preference listeners attached (prevent duplicates)
@@ -335,7 +335,7 @@ class MathPixUIManager extends MathPixBaseModule {
   cacheMultiFormatElements() {
     // Cache format tab buttons for user selection
     this.controller.elements.formatTabs = document.querySelectorAll(
-      '.mathpix-tab-header[role="tab"]'
+      '.mathpix-tab-header[role="tab"]',
     );
 
     // Cache format-specific content and panel elements
@@ -349,16 +349,17 @@ class MathPixUIManager extends MathPixBaseModule {
       "table-html",
       "table-markdown",
       "table-tsv",
+      "smiles",
     ];
     this.controller.elements.formatContents = {};
     this.controller.elements.formatPanels = {};
 
     formats.forEach((format) => {
       this.controller.elements.formatContents[format] = document.getElementById(
-        `mathpix-content-${format}`
+        `mathpix-content-${format}`,
       );
       this.controller.elements.formatPanels[format] = document.getElementById(
-        `mathpix-output-${format}`
+        `mathpix-output-${format}`,
       );
     });
 
@@ -369,7 +370,7 @@ class MathPixUIManager extends MathPixBaseModule {
     this.controller.elements.formats =
       document.getElementById("mathpix-formats");
     this.controller.elements.htmlPreview = document.getElementById(
-      "mathpix-html-preview-content"
+      "mathpix-html-preview-content",
     );
 
     // Initialize dynamic preview containers (populated during processing)
@@ -417,7 +418,7 @@ class MathPixUIManager extends MathPixBaseModule {
     // Guard against duplicate attachment (fixes multiple file dialogs issue)
     if (this._eventListenersAttached) {
       logDebug(
-        "Event listeners already attached, skipping duplicate attachment"
+        "Event listeners already attached, skipping duplicate attachment",
       );
       return;
     }
@@ -432,6 +433,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
         if (e.target.files[0]) {
           const file = e.target.files[0];
+
+          // CRITICAL: Reset file input value so re-selecting the same file
+          // triggers the change event. Without this, selecting the same file
+          // again produces no response because the browser sees no value change.
+          // We must grab the file reference BEFORE resetting.
+          e.target.value = "";
 
           // Phase 4: Smart routing - document formats vs image formats
           const formatInfo = MATHPIX_CONFIG.getFormatInfo(file.type);
@@ -458,12 +465,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["file-input"].addEventListener(
         "change",
-        fileInputHandler
+        fileInputHandler,
       );
       this.trackEventListener(
         this.controller.elements["file-input"],
         "change",
-        fileInputHandler
+        fileInputHandler,
       );
     }
 
@@ -480,12 +487,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["drop-zone"].addEventListener(
         "click",
-        dropZoneClickHandler
+        dropZoneClickHandler,
       );
       this.trackEventListener(
         this.controller.elements["drop-zone"],
         "click",
-        dropZoneClickHandler
+        dropZoneClickHandler,
       );
     }
 
@@ -500,12 +507,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["drop-zone"].addEventListener(
         "keydown",
-        dropZoneKeydownHandler
+        dropZoneKeydownHandler,
       );
       this.trackEventListener(
         this.controller.elements["drop-zone"],
         "keydown",
-        dropZoneKeydownHandler
+        dropZoneKeydownHandler,
       );
     }
 
@@ -551,31 +558,31 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["drop-zone"].addEventListener(
         "dragover",
-        dragOverHandler
+        dragOverHandler,
       );
       this.controller.elements["drop-zone"].addEventListener(
         "dragleave",
-        dragLeaveHandler
+        dragLeaveHandler,
       );
       this.controller.elements["drop-zone"].addEventListener(
         "drop",
-        dropHandler
+        dropHandler,
       );
 
       this.trackEventListener(
         this.controller.elements["drop-zone"],
         "dragover",
-        dragOverHandler
+        dragOverHandler,
       );
       this.trackEventListener(
         this.controller.elements["drop-zone"],
         "dragleave",
-        dragLeaveHandler
+        dragLeaveHandler,
       );
       this.trackEventListener(
         this.controller.elements["drop-zone"],
         "drop",
-        dropHandler
+        dropHandler,
       );
     }
 
@@ -598,7 +605,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
       if (isTextInput) {
         logDebug(
-          "[MathPixUIManager] Paste event ignored - user is typing in text field"
+          "[MathPixUIManager] Paste event ignored - user is typing in text field",
         );
         return;
       }
@@ -613,7 +620,7 @@ class MathPixUIManager extends MathPixBaseModule {
         await this.controller.fileHandler.handleClipboardPaste(e);
       } else {
         logError(
-          "[MathPixUIManager] File handler clipboard method not available"
+          "[MathPixUIManager] File handler clipboard method not available",
         );
       }
     };
@@ -640,7 +647,7 @@ class MathPixUIManager extends MathPixBaseModule {
         // Arrow key navigation for ARIA tabs pattern (WCAG 2.2 AA requirement)
         const tabKeyHandler = (e) => {
           const tabs = Array.from(this.controller.elements.formatTabs).filter(
-            (t) => t.style.display !== "none" // Only navigate visible tabs
+            (t) => t.style.display !== "none", // Only navigate visible tabs
           );
           const currentIndex = tabs.indexOf(tab);
           let targetTab = null;
@@ -695,7 +702,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
     // Delegation to existing MarkdownCodeCopy system for syntax highlighting
     logDebug(
-      "Copy button functionality delegated to existing MarkdownCodeCopy system"
+      "Copy button functionality delegated to existing MarkdownCodeCopy system",
     );
 
     // Phase 2.0: Endpoint selection handlers
@@ -709,13 +716,23 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["save-config"].addEventListener(
         "click",
-        saveConfigHandler
+        saveConfigHandler,
       );
       this.trackEventListener(
         this.controller.elements["save-config"],
         "click",
-        saveConfigHandler
+        saveConfigHandler,
       );
+    }
+
+    // Listen for credential changes from Set Up (Phase SU-3)
+    if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.on === 'function') {
+      const self = this;
+      window.EmbedEventEmitter.on('credentials:changed', function (data) {
+        if (data && data.service === 'mathpix') {
+          self.loadStoredConfig();
+        }
+      });
     }
 
     // Fullscreen button handler
@@ -723,7 +740,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
     // Table styling preference toggle
     const styleToggle = document.getElementById(
-      "mathpix-preserve-table-styles"
+      "mathpix-preserve-table-styles",
     );
     if (styleToggle) {
       const styleToggleHandler = () => {
@@ -748,7 +765,7 @@ class MathPixUIManager extends MathPixBaseModule {
             this.controller.resultRenderer.populateTableFormat(
               "table-html",
               this.controller.originalTableHtml,
-              contentElement
+              contentElement,
             );
           }
 
@@ -757,7 +774,7 @@ class MathPixUIManager extends MathPixBaseModule {
             styleToggle.checked
               ? "Table styling preserved"
               : "Table styling removed - code is now cleaner for custom CSS",
-            "info"
+            "info",
           );
         } else {
           logDebug("Not currently viewing table HTML or no table loaded");
@@ -815,12 +832,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["clear-canvas-btn"].addEventListener(
         "click",
-        clearHandler
+        clearHandler,
       );
       this.trackEventListener(
         this.controller.elements["clear-canvas-btn"],
         "click",
-        clearHandler
+        clearHandler,
       );
     }
 
@@ -837,12 +854,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["undo-stroke-btn"].addEventListener(
         "click",
-        undoHandler
+        undoHandler,
       );
       this.trackEventListener(
         this.controller.elements["undo-stroke-btn"],
         "click",
-        undoHandler
+        undoHandler,
       );
     }
 
@@ -860,12 +877,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["submit-strokes-btn"].addEventListener(
         "click",
-        submitHandler
+        submitHandler,
       );
       this.trackEventListener(
         this.controller.elements["submit-strokes-btn"],
         "click",
-        submitHandler
+        submitHandler,
       );
     }
 
@@ -885,12 +902,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["upload-mode-radio"].addEventListener(
         "change",
-        uploadModeHandler
+        uploadModeHandler,
       );
       this.trackEventListener(
         this.controller.elements["upload-mode-radio"],
         "change",
-        uploadModeHandler
+        uploadModeHandler,
       );
     }
 
@@ -909,13 +926,13 @@ class MathPixUIManager extends MathPixBaseModule {
           try {
             await this.controller.initStrokesSystem();
             logDebug(
-              "Strokes system initialised on first draw mode activation"
+              "Strokes system initialised on first draw mode activation",
             );
           } catch (err) {
             logError("Failed to initialise strokes system:", err);
             this.showNotification(
               "Failed to initialise drawing canvas",
-              "error"
+              "error",
             );
             return; // Don't continue if initialization failed
           }
@@ -933,12 +950,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["draw-mode-radio"].addEventListener(
         "change",
-        drawModeHandler
+        drawModeHandler,
       );
       this.trackEventListener(
         this.controller.elements["draw-mode-radio"],
         "change",
-        drawModeHandler
+        drawModeHandler,
       );
     }
 
@@ -958,13 +975,13 @@ class MathPixUIManager extends MathPixBaseModule {
           try {
             await this.controller.initCameraSystem();
             logDebug(
-              "Camera system initialised on first camera mode activation"
+              "Camera system initialised on first camera mode activation",
             );
           } catch (err) {
             logError("Failed to initialise camera system:", err);
             this.showNotification(
               "Failed to initialise camera system",
-              "error"
+              "error",
             );
             return; // Don't continue if initialization failed
           }
@@ -982,12 +999,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["camera-mode-radio"].addEventListener(
         "change",
-        cameraModeHandler
+        cameraModeHandler,
       );
       this.trackEventListener(
         this.controller.elements["camera-mode-radio"],
         "change",
-        cameraModeHandler
+        cameraModeHandler,
       );
     }
 
@@ -1005,7 +1022,7 @@ class MathPixUIManager extends MathPixBaseModule {
           logDebug("Switched to convert mode via UI");
         } else {
           logWarn(
-            "Mode switcher not available, using direct convert mode activation"
+            "Mode switcher not available, using direct convert mode activation",
           );
           // Fallback: activate convert mode directly
           const convertMode = window.getMathPixConvertMode?.();
@@ -1022,12 +1039,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["convert-mode-radio"].addEventListener(
         "change",
-        convertModeHandler
+        convertModeHandler,
       );
       this.trackEventListener(
         this.controller.elements["convert-mode-radio"],
         "change",
-        convertModeHandler
+        convertModeHandler,
       );
     }
 
@@ -1045,7 +1062,7 @@ class MathPixUIManager extends MathPixBaseModule {
           logDebug("Switched to resume mode via UI");
         } else {
           logWarn(
-            "Mode switcher not available, using direct resume mode activation"
+            "Mode switcher not available, using direct resume mode activation",
           );
           // Fallback: activate session restorer directly
           const restorer = window.getMathPixSessionRestorer?.();
@@ -1061,12 +1078,12 @@ class MathPixUIManager extends MathPixBaseModule {
 
       this.controller.elements["resume-mode-radio"].addEventListener(
         "change",
-        resumeModeHandler
+        resumeModeHandler,
       );
       this.trackEventListener(
         this.controller.elements["resume-mode-radio"],
         "change",
-        resumeModeHandler
+        resumeModeHandler,
       );
     }
 
@@ -1135,13 +1152,13 @@ class MathPixUIManager extends MathPixBaseModule {
           if (success) {
             this.showNotification(
               "Canvas fitted to available width",
-              "success"
+              "success",
             );
             logDebug("Canvas successfully fitted to width via UI button");
           } else {
             this.showNotification(
               "Fit to width not needed - already optimal",
-              "info"
+              "info",
             );
             logDebug("Fit to width skipped - canvas already near-optimal size");
           }
@@ -1164,16 +1181,16 @@ class MathPixUIManager extends MathPixBaseModule {
           if (success) {
             this.showNotification(
               "Canvas fitted to maximum viewport space",
-              "success"
+              "success",
             );
             logDebug("Canvas successfully fitted to viewport via UI button");
           } else {
             this.showNotification(
               "Fit to viewport not needed - already maximised",
-              "info"
+              "info",
             );
             logDebug(
-              "Fit to viewport skipped - canvas already near-optimal size"
+              "Fit to viewport skipped - canvas already near-optimal size",
             );
           }
 
@@ -1203,7 +1220,7 @@ class MathPixUIManager extends MathPixBaseModule {
     });
 
     logDebug(
-      `Canvas size button listeners attached: ${sizeButtons.length} buttons (including fit buttons)`
+      `Canvas size button listeners attached: ${sizeButtons.length} buttons (including fit buttons)`,
     );
   }
 
@@ -1299,7 +1316,7 @@ class MathPixUIManager extends MathPixBaseModule {
         logDebug("Input listeners attached, initial values captured");
       } else {
         logError(
-          "Could not find custom size input elements after modal render"
+          "Could not find custom size input elements after modal render",
         );
       }
 
@@ -1319,10 +1336,10 @@ class MathPixUIManager extends MathPixBaseModule {
         ) {
           this.showNotification(
             "Size out of valid range (300-2000 × 200-1500)",
-            "error"
+            "error",
           );
           logWarn(
-            `Invalid custom size attempted: ${capturedWidth}×${capturedHeight}`
+            `Invalid custom size attempted: ${capturedWidth}×${capturedHeight}`,
           );
           return;
         }
@@ -1339,7 +1356,7 @@ class MathPixUIManager extends MathPixBaseModule {
         const oldHeight = canvas.height;
 
         logDebug(
-          `Applying custom size: ${oldWidth}×${oldHeight} → ${capturedWidth}×${capturedHeight}`
+          `Applying custom size: ${oldWidth}×${oldHeight} → ${capturedWidth}×${capturedHeight}`,
         );
 
         const scaleX = capturedWidth / oldWidth;
@@ -1349,7 +1366,7 @@ class MathPixUIManager extends MathPixBaseModule {
         if (this.controller.strokesCanvas.strokes.length > 0) {
           this.controller.strokesCanvas.scaleStrokes(scaleX, scaleY);
           logDebug(
-            `Scaled ${this.controller.strokesCanvas.strokes.length} strokes`
+            `Scaled ${this.controller.strokesCanvas.strokes.length} strokes`,
           );
         }
 
@@ -1371,10 +1388,10 @@ class MathPixUIManager extends MathPixBaseModule {
 
         this.showNotification(
           `Canvas resized to ${capturedWidth}×${capturedHeight}`,
-          "success"
+          "success",
         );
         logInfo(
-          `Custom canvas size applied: ${capturedWidth}×${capturedHeight}`
+          `Custom canvas size applied: ${capturedWidth}×${capturedHeight}`,
         );
       } else if (result === true) {
         // User clicked confirm but dimensions weren't captured
@@ -1444,7 +1461,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
       // Make background inert
       const mainElements = document.querySelectorAll(
-        "body > *:not(script):not(style)"
+        "body > *:not(script):not(style)",
       );
       mainElements.forEach((el) => el.setAttribute("inert", ""));
 
@@ -1485,7 +1502,7 @@ class MathPixUIManager extends MathPixBaseModule {
       // Get all focusable elements for focus trapping
       const getFocusableElements = () => {
         return modal.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
       };
 
@@ -1627,21 +1644,38 @@ class MathPixUIManager extends MathPixBaseModule {
    * @since 1.0.0
    */
   loadStoredConfig() {
-    const appId = localStorage.getItem("mathpix-app-id");
-    const appKey = localStorage.getItem("mathpix-app-key");
+    const storedAppId = localStorage.getItem("mathpix-app-id");
+    const storedAppKey = localStorage.getItem("mathpix-app-key");
 
-    if (
-      appId &&
-      appKey &&
-      this.controller.elements["app-id"] &&
-      this.controller.elements["app-key"]
-    ) {
-      this.controller.elements["app-id"].value = appId;
-      this.controller.elements["app-key"].value = appKey;
-      this.controller.apiClient.setCredentials(appId, appKey);
+    const appIdEl = this.controller.elements["app-id"];
+    const appKeyEl = this.controller.elements["app-key"];
+
+    // Primary: load from localStorage
+    if (storedAppId && storedAppKey && appIdEl && appKeyEl) {
+      appIdEl.value = storedAppId;
+      appKeyEl.value = storedAppKey;
+      this.controller.apiClient.setCredentials(storedAppId, storedAppKey);
       this.configLoaded = true;
-      logDebug("Stored configuration loaded");
+      logDebug("Stored configuration loaded from localStorage");
       return true;
+    }
+
+    // Fallback: browser autofill may have populated inputs without localStorage
+    // This covers cases where localStorage was cleared but browser remembered values
+    if (appIdEl && appKeyEl) {
+      const domAppId = appIdEl.value?.trim();
+      const domAppKey = appKeyEl.value?.trim();
+
+      if (domAppId && domAppKey) {
+        this.controller.apiClient.setCredentials(domAppId, domAppKey);
+        localStorage.setItem("mathpix-app-id", domAppId);
+        localStorage.setItem("mathpix-app-key", domAppKey);
+        this.configLoaded = true;
+        logInfo(
+          "Credentials recovered from browser autofill and saved to localStorage",
+        );
+        return true;
+      }
     }
 
     this.configLoaded = false;
@@ -1681,6 +1715,14 @@ class MathPixUIManager extends MathPixBaseModule {
     // Persist to localStorage for development convenience
     localStorage.setItem("mathpix-app-id", appId);
     localStorage.setItem("mathpix-app-key", appKey);
+
+    // Notify Set Up and other listeners (Phase SU-3)
+    if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.emit === 'function') {
+      window.EmbedEventEmitter.emit('credentials:changed', {
+        service: 'mathpix',
+        action: 'saved'
+      });
+    }
 
     this.configLoaded = true;
     this.showNotification("Configuration saved successfully", "success");
@@ -1829,16 +1871,16 @@ class MathPixUIManager extends MathPixBaseModule {
         rmSpaces: localStorage.getItem("mathpix-rm-spaces"),
         rmFonts: localStorage.getItem("mathpix-rm-fonts"),
         idiomaticEqnArrays: localStorage.getItem(
-          "mathpix-idiomatic-eqn-arrays"
+          "mathpix-idiomatic-eqn-arrays",
         ),
         idiomaticBraces: localStorage.getItem("mathpix-idiomatic-braces"),
 
         // Advanced options
         confidenceThreshold: localStorage.getItem(
-          "mathpix-confidence-threshold"
+          "mathpix-confidence-threshold",
         ),
         confidenceRateThreshold: localStorage.getItem(
-          "mathpix-confidence-rate-threshold"
+          "mathpix-confidence-rate-threshold",
         ),
         includeLineData: localStorage.getItem("mathpix-include-line-data"),
         includeWordData: localStorage.getItem("mathpix-include-word-data"),
@@ -1890,7 +1932,7 @@ class MathPixUIManager extends MathPixBaseModule {
   applyPreferencesToUI(prefs) {
     if (!this.controller.elements.processingOptions) {
       logWarn(
-        "[MathPix UI] Processing options not available, skipping preference application"
+        "[MathPix UI] Processing options not available, skipping preference application",
       );
       return;
     }
@@ -1929,7 +1971,7 @@ class MathPixUIManager extends MathPixBaseModule {
     // If UI elements not available yet, return stored preferences
     if (!this.controller.elements.processingOptions) {
       logDebug(
-        "[MathPix UI] Processing options UI not available, returning stored preferences"
+        "[MathPix UI] Processing options UI not available, returning stored preferences",
       );
       return this.loadUserPreferences();
     }
@@ -1937,7 +1979,7 @@ class MathPixUIManager extends MathPixBaseModule {
     try {
       // Get delimiter format from radio buttons
       const delimiterRadio = [...this.controller.elements.delimiterRadios].find(
-        (r) => r.checked
+        (r) => r.checked,
       );
 
       // Build preferences object from UI elements (with fallbacks)
@@ -1954,10 +1996,10 @@ class MathPixUIManager extends MathPixBaseModule {
       const rmSpacesCheckbox = document.getElementById("mathpix-rm-spaces");
       const rmFontsCheckbox = document.getElementById("mathpix-rm-fonts");
       const idiomaticArraysCheckbox = document.getElementById(
-        "mathpix-idiomatic-eqn-arrays"
+        "mathpix-idiomatic-eqn-arrays",
       );
       const idiomaticBracesCheckbox = document.getElementById(
-        "mathpix-idiomatic-braces"
+        "mathpix-idiomatic-braces",
       );
 
       prefs.rmSpaces =
@@ -1975,10 +2017,10 @@ class MathPixUIManager extends MathPixBaseModule {
 
       // Advanced options (may not exist yet)
       const confidenceThresholdInput = document.getElementById(
-        "mathpix-confidence-threshold"
+        "mathpix-confidence-threshold",
       );
       const includeLineDataCheckbox = document.getElementById(
-        "mathpix-include-line-data"
+        "mathpix-include-line-data",
       );
 
       if (confidenceThresholdInput?.value) {
@@ -1993,7 +2035,7 @@ class MathPixUIManager extends MathPixBaseModule {
     } catch (e) {
       logError(
         "[MathPix UI] Failed to get current preferences, using stored:",
-        e
+        e,
       );
       return this.loadUserPreferences();
     }
@@ -2018,7 +2060,7 @@ class MathPixUIManager extends MathPixBaseModule {
       // Existing preferences
       localStorage.setItem(
         "mathpix-equation-numbering",
-        prefs.equationNumbering
+        prefs.equationNumbering,
       );
       localStorage.setItem("mathpix-delimiter-format", prefs.delimiterFormat);
       localStorage.setItem("mathpix-page-info", prefs.includePageInfo);
@@ -2028,7 +2070,7 @@ class MathPixUIManager extends MathPixBaseModule {
       localStorage.setItem("mathpix-rm-fonts", prefs.rmFonts);
       localStorage.setItem(
         "mathpix-idiomatic-eqn-arrays",
-        prefs.idiomaticEqnArrays
+        prefs.idiomaticEqnArrays,
       );
       localStorage.setItem("mathpix-idiomatic-braces", prefs.idiomaticBraces);
 
@@ -2036,7 +2078,7 @@ class MathPixUIManager extends MathPixBaseModule {
       if (prefs.confidenceThreshold !== null) {
         localStorage.setItem(
           "mathpix-confidence-threshold",
-          prefs.confidenceThreshold
+          prefs.confidenceThreshold,
         );
       } else {
         localStorage.removeItem("mathpix-confidence-threshold");
@@ -2045,7 +2087,7 @@ class MathPixUIManager extends MathPixBaseModule {
       if (prefs.confidenceRateThreshold !== null) {
         localStorage.setItem(
           "mathpix-confidence-rate-threshold",
-          prefs.confidenceRateThreshold
+          prefs.confidenceRateThreshold,
         );
       } else {
         localStorage.removeItem("mathpix-confidence-rate-threshold");
@@ -2054,7 +2096,7 @@ class MathPixUIManager extends MathPixBaseModule {
       localStorage.setItem("mathpix-include-line-data", prefs.includeLineData);
       localStorage.setItem(
         "mathpix-include-word-data",
-        prefs.includeWordData || false
+        prefs.includeWordData || false,
       );
 
       logDebug("[MathPix UI] Enhanced preferences saved:", prefs);
@@ -2194,7 +2236,7 @@ class MathPixUIManager extends MathPixBaseModule {
       }
 
       const radio = document.getElementById(
-        `endpoint-${currentEndpoint.toLowerCase()}`
+        `endpoint-${currentEndpoint.toLowerCase()}`,
       );
       if (radio) {
         radio.checked = true;
@@ -2233,7 +2275,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
     // Import MATHPIX_CONFIG to check GDPR warning dismissed flag
     const hasSeenWarning = localStorage.getItem(
-      "mathpix-gdpr-warning-dismissed"
+      "mathpix-gdpr-warning-dismissed",
     );
 
     if (isLeavingEU && !hasSeenWarning) {
@@ -2247,7 +2289,7 @@ class MathPixUIManager extends MathPixBaseModule {
         () => {
           // User cancelled - revert selection
           this.revertEndpointSelection(currentEndpoint);
-        }
+        },
       );
     } else {
       // No warning needed
@@ -2299,7 +2341,7 @@ class MathPixUIManager extends MathPixBaseModule {
       const config = this.controller.apiClient.getEndpointConfig();
       this.showNotification(
         `Switched to ${config.name} endpoint (${config.location})`,
-        "success"
+        "success",
       );
 
       logInfo("Endpoint switched successfully", {
@@ -2360,12 +2402,12 @@ class MathPixUIManager extends MathPixBaseModule {
       <p>
         You are switching from the <strong>EU endpoint</strong> to the 
         <strong>${targetConfig.name} endpoint</strong> (${
-      targetConfig.location
-    }).
+          targetConfig.location
+        }).
       </p>
       <div class="warning-box">
         <p style="margin: 0 0 0.5rem 0;"><strong>${getIcon(
-          "warning"
+          "warning",
         )} Important:</strong></p>
         <p style="margin: 0;">
           Data processed on non-EU servers may not comply with GDPR requirements. 
@@ -2376,11 +2418,11 @@ class MathPixUIManager extends MathPixBaseModule {
       </div>
       <ul style="list-style: none; padding: 0; margin: 1rem 0;">
         <li style="margin: 0.5rem 0;">${getIcon(
-          "checkCircle"
+          "checkCircle",
         )} <strong>EU endpoint:</strong> GDPR-compliant, data processed in EU</li>
         <li style="margin: 0.5rem 0;">${getIcon("warning")} <strong>${
-      targetConfig.name
-    } endpoint:</strong> Data processed in ${targetConfig.dataLocality}</li>
+          targetConfig.name
+        } endpoint:</strong> Data processed in ${targetConfig.dataLocality}</li>
       </ul>
       <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
         <input type="checkbox" id="gdpr-dont-show-again" style="margin: 0;">
@@ -2411,7 +2453,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
         // Check if user selected "don't show again"
         const dontShowAgain = document.getElementById(
-          "gdpr-dont-show-again"
+          "gdpr-dont-show-again",
         )?.checked;
         if (dontShowAgain && result === true) {
           localStorage.setItem("mathpix-gdpr-warning-dismissed", "true");
@@ -2452,7 +2494,7 @@ class MathPixUIManager extends MathPixBaseModule {
     const confirmed = confirm(
       `You are switching from EU to ${targetConfig.name} endpoint.\n\n` +
         `Data will be processed in ${targetConfig.dataLocality}.\n\n` +
-        `This may not comply with GDPR requirements. Continue?`
+        `This may not comply with GDPR requirements. Continue?`,
     );
 
     if (confirmed) {
@@ -2510,14 +2552,14 @@ class MathPixUIManager extends MathPixBaseModule {
         const label = element.labels?.[0]?.textContent || featureKey;
         element.setAttribute(
           "aria-label",
-          `${label} (unavailable on ${endpointName} servers)`
+          `${label} (unavailable on ${endpointName} servers)`,
         );
 
         // Add title for tooltip
         element.setAttribute(
           "title",
           `This format is not available on the ${endpointName} endpoint. ` +
-            `Switch to US endpoint for full feature support.`
+            `Switch to US endpoint for full feature support.`,
         );
 
         logDebug("Feature disabled in UI", { featureKey, endpoint });
@@ -2615,24 +2657,24 @@ class MathPixUIManager extends MathPixBaseModule {
       if (this.controller.elements.equationNumberingCheckbox) {
         this.controller.elements.equationNumberingCheckbox.addEventListener(
           "change",
-          savePrefs
+          savePrefs,
         );
         this.trackEventListener(
           this.controller.elements.equationNumberingCheckbox,
           "change",
-          savePrefs
+          savePrefs,
         );
       }
 
       if (this.controller.elements.pageInfoCheckbox) {
         this.controller.elements.pageInfoCheckbox.addEventListener(
           "change",
-          savePrefs
+          savePrefs,
         );
         this.trackEventListener(
           this.controller.elements.pageInfoCheckbox,
           "change",
-          savePrefs
+          savePrefs,
         );
       }
 

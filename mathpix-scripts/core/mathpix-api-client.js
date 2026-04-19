@@ -1008,6 +1008,8 @@ class MathPixAPIClient {
       hasTableHtml: !!result.tableHtml,
       hasLineData: !!result.line_data,
       lineDataCount: result.line_data?.length || 0,
+      containsChemistry: result.containsChemistry, // Phase 5B-2
+      smilesCount: result.smiles?.length || 0,      // Phase 5B-2
       confidence: result.confidence,
     });
 
@@ -1089,7 +1091,10 @@ class MathPixAPIClient {
    *
    * @returns {Array<Object>} Array of SMILES data objects
    * @returns {string} returns[].notation - SMILES notation string
+   * @returns {string|null} returns[].inchi - InChI string (if include_inchi enabled)
+   * @returns {string|null} returns[].inchiKey - InChI Key (if include_inchi enabled)
    * @returns {string} [returns[].context] - Surrounding context text
+   * @returns {number|null} [returns[].confidence] - Recognition confidence (from line_data)
    * @returns {string} [returns[].lineId] - Line data ID reference
    *
    * @throws {Error} When result parameter is null or undefined
@@ -1102,54 +1107,14 @@ class MathPixAPIClient {
    * @since 4.0.0 (Phase 4)
    */
   extractSMILESFromResponse(result) {
-    if (!result) {
-      logWarn("Cannot extract SMILES from null/undefined result");
-      return [];
+    // Phase 5B-2: Delegate to shared chemistry utils module
+    if (window.MathPixChemistryUtils) {
+      return window.MathPixChemistryUtils.extractChemistryFromResponse(result);
     }
 
-    const smilesArray = [];
-
-    // Extract from text field
-    const text = result.text || "";
-    const smilesRegex = /<smiles>(.*?)<\/smiles>/g;
-    let match;
-
-    while ((match = smilesRegex.exec(text)) !== null) {
-      smilesArray.push({
-        notation: match[1],
-        context: this.extractContext(text, match.index),
-      });
-    }
-
-    // Extract from line_data if available
-    if (Array.isArray(result.line_data)) {
-      result.line_data.forEach((line) => {
-        if (
-          line.subtype === "chemistry" ||
-          line.subtype === "chemistry_reaction"
-        ) {
-          const lineMatch = /<smiles>(.*?)<\/smiles>/.exec(line.text || "");
-          if (lineMatch) {
-            smilesArray.push({
-              notation: lineMatch[1],
-              context: line.type || "chemistry diagram",
-              lineId: line.id,
-            });
-          }
-        }
-      });
-    }
-
-    if (smilesArray.length > 0) {
-      logInfo("SMILES chemistry data extracted", {
-        count: smilesArray.length,
-        notations: smilesArray.map((s) => s.notation),
-      });
-    } else {
-      logDebug("No SMILES chemistry data found in response");
-    }
-
-    return smilesArray;
+    // Fallback: if shared module not loaded, return empty array
+    logWarn("MathPixChemistryUtils not available — chemistry extraction skipped");
+    return [];
   }
 
   /**
@@ -1168,15 +1133,11 @@ class MathPixAPIClient {
    * @since 4.0.0 (Phase 4)
    */
   extractContext(text, position) {
-    // Get up to 50 characters before the SMILES tag
-    const contextStart = Math.max(0, position - 50);
-    const contextText = text.substring(contextStart, position).trim();
-
-    // Extract the last few words for context
-    const words = contextText.split(/\s+/);
-    const contextWords = words.slice(-5).join(" ");
-
-    return contextWords || "General chemistry";
+    // Phase 5B-2: Delegate to shared chemistry utils module
+    if (window.MathPixChemistryUtils) {
+      return window.MathPixChemistryUtils.extractContext(text, position);
+    }
+    return "General chemistry";
   }
 
   /**
