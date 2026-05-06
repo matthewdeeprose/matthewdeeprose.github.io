@@ -56,13 +56,24 @@ const GraphBuilderRowSync = (function () {
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
-  /** Map column data type to HTML input type and attributes */
+  /**
+   * Map column data type to HTML input type and attributes.
+   *
+   * Currency and percentage columns use type="text" with inputmode="decimal"
+   * so users can enter notation like "£1,200" or "42%". validateFormData
+   * and extractFormData both strip [£$€¥₹%,\s] before parsing, so the raw
+   * symbols are acceptable at entry time.
+   *
+   * Plain "number" columns keep type="number" for browser-level numeric
+   * validation and mobile numeric keyboard.
+   */
   function inputTypeForColumn(col) {
     switch (col.type) {
       case "number":
+        return { type: "number", step: "any" };
       case "currency":
       case "percentage":
-        return { type: "number", step: "any" };
+        return { type: "text", step: "", inputmode: "decimal" };
       case "date":
         return { type: "date", step: "" };
       default:
@@ -108,6 +119,19 @@ const GraphBuilderRowSync = (function () {
         if (chartData.rows.length >= 2 && window.GraphBuilderUI) {
           window.GraphBuilderUI.showPreview(chartData);
         }
+
+        // Update the core controller's state so the "Choose Chart Type"
+        // navigation gate passes. Without this, advanced-mode users are
+        // blocked with a "Please add data first" error even when rows are
+        // valid, because basic mode writes chartData via generateFormData()
+        // which row-sync's input listener bypasses.
+        if (
+          chartData.rows.length >= 2 &&
+          window.GraphBuilder &&
+          window.GraphBuilder._state
+        ) {
+          window.GraphBuilder._state.chartData = chartData;
+        }
       }
     }
   }
@@ -127,13 +151,14 @@ const GraphBuilderRowSync = (function () {
     var helpId = inputId + "-help";
     var attrs = inputTypeForColumn(column);
     var stepAttr = attrs.step ? ' step="' + attrs.step + '"' : "";
+    var inputmodeAttr = attrs.inputmode ? ' inputmode="' + attrs.inputmode + '"' : "";
     var label = escapeHtml(column.name);
 
     return (
       '<div class="gb-input-group" data-col-index="' + colIndex + '">' +
       '<label for="' + inputId + '" class="gb-row-label">' + label + ":</label>" +
       '<input type="' + attrs.type + '" id="' + inputId + '" name="' + inputId + '"' +
-      stepAttr + ' required aria-describedby="' + helpId + '">' +
+      stepAttr + inputmodeAttr + ' required aria-describedby="' + helpId + '">' +
       '<span id="' + helpId + '" class="sr-only">Enter ' +
       label.toLowerCase() + " for row " + rowNumber + "</span>" +
       "</div>"
@@ -355,9 +380,22 @@ const GraphBuilderRowSync = (function () {
     setRowGrid(rowDiv, columns.length);
     container.appendChild(rowDiv);
 
+    // Attach validation listeners to every input in the new row.
+    // Without this, typing in rows added via the Add-row button never
+    // triggers validation or preview/chartData updates — rows 3+ are
+    // invisible to the rest of the Graph Builder.
+    var inputs = rowDiv.querySelectorAll("input");
+    inputs.forEach(function (inp) {
+      inp.addEventListener("input", triggerCoreValidation);
+    });
+
     // Focus first input of new row
     var firstInput = rowDiv.querySelector("input");
     if (firstInput) firstInput.focus();
+
+    // Revalidate immediately so the new (empty) row is counted in the
+    // row totals even before the user starts typing.
+    triggerCoreValidation();
 
     logDebug("Added enhanced row: " + rowId + " with " + columns.length + " columns");
   }

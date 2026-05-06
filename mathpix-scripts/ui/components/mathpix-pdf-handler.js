@@ -789,6 +789,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Set up event listeners for options (including Select All)
     this.attachPDFOptionsListeners();
 
+    // Iteration 5a/5b: apply smart default to page-break checkbox based
+    // on the uploaded PDF's page count (multi-page → ON; single-page →
+    // OFF). Pass force:true so a fresh upload always re-applies even if
+    // the user overrode the previous upload's default.
+    this.applyPageBreakSmartDefault({ force: true });
+
     // ✅ Feature 3: Sync processing options with actual HTML checkbox states
     // This ensures HTML defaults (all formats checked) are respected
     this.updateSelectedFormats();
@@ -925,6 +931,38 @@ class MathPixPDFHandler extends MathPixBaseModule {
       checkbox.addEventListener("change", handler);
     });
 
+    // Iteration 5b: page-break checkbox manual-override tracking.
+    // When the user toggles the checkbox, mark it as user-overridden so
+    // subsequent range/custom-input changes don't undo their choice.
+    // Programmatic checkbox.checked = X assignments do NOT fire change
+    // events, so this only flags genuine user interaction.
+    const pageBreakCheckbox = document.getElementById(
+      "pdf-include-page-breaks",
+    );
+    if (pageBreakCheckbox) {
+      const handler = () => {
+        this._pageBreakUserOverridden = true;
+        logDebug(
+          "User toggled page-break checkbox; smart default suppressed until next upload",
+          { newState: pageBreakCheckbox.checked },
+        );
+      };
+      pageBreakCheckbox._pdfPageBreakUserHandler = handler;
+      pageBreakCheckbox.addEventListener("change", handler);
+    }
+
+    // Iteration 5b: custom page-range input re-evaluates the smart
+    // default. The "change" event fires on blur after a value change —
+    // less noisy than "input", which would re-evaluate per keystroke.
+    const customRangeInput = document.getElementById("pdf-page-numbers");
+    if (customRangeInput) {
+      const handler = () => {
+        this.applyPageBreakSmartDefault();
+      };
+      customRangeInput._pdfCustomRangeHandler = handler;
+      customRangeInput.addEventListener("change", handler);
+    }
+
     // Set up select all formats functionality (Phase 3.1)
     this.setupSelectAllFormats();
 
@@ -1007,6 +1045,28 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (cancelButton && cancelButton._pdfCancelHandler) {
       cancelButton.removeEventListener("click", cancelButton._pdfCancelHandler);
       delete cancelButton._pdfCancelHandler;
+    }
+
+    // Iteration 5b: remove page-break override listener
+    const pageBreakCheckbox = document.getElementById(
+      "pdf-include-page-breaks",
+    );
+    if (pageBreakCheckbox && pageBreakCheckbox._pdfPageBreakUserHandler) {
+      pageBreakCheckbox.removeEventListener(
+        "change",
+        pageBreakCheckbox._pdfPageBreakUserHandler,
+      );
+      delete pageBreakCheckbox._pdfPageBreakUserHandler;
+    }
+
+    // Iteration 5b: remove custom-range input listener
+    const customRangeInput = document.getElementById("pdf-page-numbers");
+    if (customRangeInput && customRangeInput._pdfCustomRangeHandler) {
+      customRangeInput.removeEventListener(
+        "change",
+        customRangeInput._pdfCustomRangeHandler,
+      );
+      delete customRangeInput._pdfCustomRangeHandler;
     }
 
     logDebug("Existing PDF options event listeners removed");
@@ -1268,6 +1328,185 @@ class MathPixPDFHandler extends MathPixBaseModule {
   }
 
   /**
+   * @method collectPageBreakPreferences
+   * @description Collects page-break preferences from the UI checkbox.
+   *
+   * Reads the "Preserve original page breaks" checkbox in the PDF options
+   * panel. When ticked, returns { include_page_breaks: true }, which flows
+   * through buildFinalProcessingOptions() to processPDF() in the API client
+   * and becomes a top-level options_json field on the v3/pdf request.
+   *
+   * @returns {Object} Configuration object — contains include_page_breaks
+   *                   only when the checkbox is ticked (omitted otherwise so
+   *                   the API uses its default of false).
+   * @private
+   * @since (MathPix October 2025 release adoption)
+   */
+  collectPageBreakPreferences() {
+    const config = {};
+    const includePageBreaks =
+      document.getElementById("pdf-include-page-breaks")?.checked || false;
+    if (includePageBreaks) {
+      config.include_page_breaks = true;
+      logDebug("Page breaks enabled");
+    }
+    return config;
+  }
+
+  /**
+   * @method applyPageBreakSmartDefault
+   * @description Applies a context-aware default to the page-break checkbox
+   * based on the uploaded PDF's page count.
+   *
+   * Rule: if the PDF has 2+ pages, default ON; otherwise default OFF.
+   * Single-page PDFs gain nothing from page-break markers, so we avoid
+   * surfacing visible \pagebreak text in the MMD output unnecessarily.
+   * Multi-page PDFs benefit from preserving boundaries in DOCX/LaTeX
+   * exports.
+   *
+   * Reads page count from this.uploadVerification.pdfDocument.numPages,
+   * which is populated by PDF.js during the upload-verification preview
+   * (pdf-preview-upload-verification.js::loadAndRenderFirstPage).
+   *
+   * Safe to call when the checkbox is absent (e.g. fieldset removed) —
+   * the function exits silently.
+   *
+   * @returns {Object} Diagnostic info: { numPages, defaultedOn, applied }
+   *                   - applied=false means the checkbox was not in the DOM.
+   * @private
+   * @since (Iteration 5a — smart page-break default)
+   */
+  applyPageBreakSmartDefault({ force = false } = {}) {
+    const checkbox = document.getElementById("pdf-include-page-breaks");
+    if (!checkbox) {
+      logDebug("applyPageBreakSmartDefault: checkbox not in DOM, skipping");
+      return {
+        numPages: null,
+        effectivePages: null,
+        defaultedOn: false,
+        applied: false,
+        skippedReason: "no-checkbox",
+      };
+    }
+
+    const numPages = this.uploadVerification?.pdfDocument?.numPages ?? null;
+    const effectivePages = this._computeEffectivePageCount(numPages);
+    const wouldDefaultOn =
+      typeof effectivePages === "number" && effectivePages >= 2;
+
+    // Iteration 5b: respect manual user override on non-forced calls.
+    // Force is used on initial upload (fresh slate); range/custom-input
+    // re-evaluations don't force. The override flag is set by the change
+    // listener wired in attachPDFOptionsListeners().
+    if (!force && this._pageBreakUserOverridden) {
+      logInfo("Page-break smart default suppressed (user override active)", {
+        numPages,
+        effectivePages,
+        wouldHaveDefaulted: wouldDefaultOn,
+        currentCheckboxState: checkbox.checked,
+      });
+      return {
+        numPages,
+        effectivePages,
+        defaultedOn: wouldDefaultOn,
+        applied: false,
+        skippedReason: "user-override",
+      };
+    }
+
+    checkbox.checked = wouldDefaultOn;
+    if (force) {
+      // Fresh upload — clear any prior override flag.
+      this._pageBreakUserOverridden = false;
+    }
+
+    logInfo("Page-break smart default applied", {
+      numPages,
+      effectivePages,
+      defaultedOn: wouldDefaultOn,
+      force,
+    });
+
+    return {
+      numPages,
+      effectivePages,
+      defaultedOn: wouldDefaultOn,
+      applied: true,
+      skippedReason: null,
+    };
+  }
+
+  /**
+   * @method _computeEffectivePageCount
+   * @description Returns the number of pages that will actually be sent
+   * to MathPix based on the current page-range selection.
+   *
+   * - "all"      → numPages
+   * - "first-10" → min(10, numPages)
+   * - "custom"   → parse pdf-page-numbers value; fall back to numPages
+   *                if empty or unparseable
+   *
+   * @param {number|null} numPages - Total pages in the uploaded PDF
+   * @returns {number|null} Effective page count, or null if unknown
+   * @private
+   * @since (Iteration 5b)
+   */
+  _computeEffectivePageCount(numPages) {
+    if (typeof numPages !== "number" || numPages < 1) return null;
+
+    const range = this.currentProcessingOptions?.page_range || "all";
+    if (range === "all") return numPages;
+    if (range === "first-10") return Math.min(10, numPages);
+    if (range === "custom") {
+      const customInput = document.getElementById("pdf-page-numbers");
+      const raw = customInput?.value?.trim() || "";
+      if (!raw) return numPages; // empty custom field — treat as "all"
+      const parsed = this._parsePageRangeCount(raw, numPages);
+      // Unparseable input — be permissive and treat as "all" so the
+      // smart default doesn't flip OFF on a typo.
+      return parsed > 0 ? parsed : numPages;
+    }
+    return numPages;
+  }
+
+  /**
+   * @method _parsePageRangeCount
+   * @description Counts the unique pages described by a MathPix-style
+   * page-range string ("1-3,5,7-9"). Pages outside [1,maxPages] are
+   * clipped. Returns 0 if any token is malformed (caller decides how
+   * to handle that — currently treated as "fall back to all").
+   *
+   * @param {string} rangeStr - Range expression (e.g. "1-3,5,7-9")
+   * @param {number} maxPages - Upper bound (clip pages > this)
+   * @returns {number} Count of unique pages in the parsed range, or 0
+   *                   if any token is malformed.
+   * @private
+   * @since (Iteration 5b)
+   */
+  _parsePageRangeCount(rangeStr, maxPages) {
+    if (!rangeStr) return 0;
+    const pages = new Set();
+    const parts = rangeStr.split(",");
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      const dashMatch = trimmed.match(/^(\d+)\s*-\s*(\d+)$/);
+      if (dashMatch) {
+        const a = parseInt(dashMatch[1], 10);
+        const b = parseInt(dashMatch[2], 10);
+        if (Number.isNaN(a) || Number.isNaN(b) || a < 1 || b < a) return 0;
+        for (let i = a; i <= Math.min(b, maxPages); i++) pages.add(i);
+      } else if (/^\d+$/.test(trimmed)) {
+        const n = parseInt(trimmed, 10);
+        if (n >= 1 && n <= maxPages) pages.add(n);
+      } else {
+        return 0; // unrecognised token
+      }
+    }
+    return pages.size;
+  }
+
+  /**
    * @method handlePageRangeChange
    * @description Handles page range selection changes
    *
@@ -1292,6 +1531,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
     this.currentProcessingOptions.page_range = rangeType;
 
     logDebug("Page range changed", { rangeType });
+
+    // Iteration 5b: re-evaluate page-break smart default since the
+    // effective page count just changed. Non-forced — the override flag
+    // suppresses re-application if the user has manually toggled the
+    // checkbox since the last upload.
+    this.applyPageBreakSmartDefault();
   }
 
   /**
@@ -1530,12 +1775,16 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Collect numbering preferences (Phase 5, Feature 2)
     const numberingConfig = this.collectNumberingPreferences();
 
+    // Collect page-break preferences (MathPix October 2025 release)
+    const pageBreakConfig = this.collectPageBreakPreferences();
+
     // Combine all processing options
     const finalOptions = {
       page_range: pageRange,
       formats: this.currentProcessingOptions.formats,
       ...delimiterConfig, // Spread delimiter configuration (Feature 1)
       ...numberingConfig, // Spread numbering configuration (Feature 2)
+      ...pageBreakConfig, // Spread page-break configuration (Oct 2025)
     };
 
     logDebug("Final processing options built", finalOptions);
@@ -3464,6 +3713,20 @@ class MathPixPDFHandler extends MathPixBaseModule {
       pptx: "docx", // Microsoft PowerPoint (uses same feature gate as DOCX)
     };
 
+    // Display names for aria-label generation. Compound format keys
+    // (htmlzip, mmdzip, mdzip, latexpdf) need explicit mapping because
+    // toUpperCase alone produces unreadable strings like "HTMLZIP" /
+    // "LATEXPDF" — bad for screen-reader announcements. Falls back to
+    // format.toUpperCase() for simple format names.
+    const FORMAT_DISPLAY_NAMES = {
+      htmlzip: "HTML ZIP",
+      mmdzip: "MMD ZIP",
+      mdzip: "MD ZIP",
+      latexpdf: "LaTeX PDF",
+    };
+    const displayNameFor = (fmt) =>
+      FORMAT_DISPLAY_NAMES[fmt] || fmt.toUpperCase();
+
     const totalFormats = Object.keys(formatFeatureMap).length;
     let checkedFormats = 0;
     let availableCount = 0;
@@ -3523,7 +3786,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
           // Add ARIA label for screen readers (keep for accessibility)
           checkbox.setAttribute(
             "aria-label",
-            `${format.toUpperCase()} format (unavailable on ${
+            `${displayNameFor(format)} format (unavailable on ${
               endpointConfig.name
             } endpoint)`,
           );
@@ -3555,7 +3818,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
           }
 
           // Update ARIA label
-          checkbox.setAttribute("aria-label", `${format.toUpperCase()} format`);
+          checkbox.setAttribute(
+            "aria-label",
+            `${displayNameFor(format)} format`,
+          );
         }
 
         logDebug(`Format ${format} enabled (available on ${currentEndpoint})`);

@@ -82,7 +82,11 @@ const GraphBuilderColumnManager = (function () {
 
     function getColumns() {
       return columns.map(function (c) {
-        return { name: c.name, type: c.type, role: c.role };
+        var clone = { name: c.name, type: c.type, role: c.role };
+        if (c.role === "value" && (c.chartType === "bar" || c.chartType === "line")) {
+          clone.chartType = c.chartType;
+        }
+        return clone;
       });
     }
 
@@ -94,11 +98,15 @@ const GraphBuilderColumnManager = (function () {
       }
 
       columns = newColumns.map(function (col) {
-        return {
+        var next = {
           name: col.name || "Untitled",
           type: col.type || "text",
           role: col.role || "value",
         };
+        if (next.role === "value" && (col.chartType === "bar" || col.chartType === "line")) {
+          next.chartType = col.chartType;
+        }
+        return next;
       });
 
       logDebug("Column configuration updated: " + columns.length + " columns");
@@ -117,6 +125,9 @@ const GraphBuilderColumnManager = (function () {
         type: (column && column.type) || "number",
         role: (column && column.role) || "value",
       };
+      if (newCol.role === "value" && column && (column.chartType === "bar" || column.chartType === "line")) {
+        newCol.chartType = column.chartType;
+      }
 
       columns.push(newCol);
       logDebug("Added column: " + newCol.name);
@@ -172,20 +183,21 @@ const GraphBuilderColumnManager = (function () {
       if (!validation.valid) return [];
 
       var valueCols = validation.roleCounts.value || 0;
+      var radiusCols = validation.roleCounts.radius || 0;
       var hasTimeData = columns.some(function (col) { return col.type === "date"; });
       var compatible = [];
 
       if (valueCols === 1) {
         compatible.push("bar", "line", "pie", "doughnut");
       } else if (valueCols >= 2) {
-        compatible.push("bar", "line", "scatter");
+        compatible.push("bar", "line", "scatter", "combo");
       }
 
       if (hasTimeData && compatible.indexOf("line") === -1) {
         compatible.push("line");
       }
 
-      if (valueCols >= 3) {
+      if (valueCols >= 2 && radiusCols >= 1) {
         compatible.push("bubble");
       }
 

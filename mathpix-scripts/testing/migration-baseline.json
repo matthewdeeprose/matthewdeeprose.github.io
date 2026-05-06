@@ -1,0 +1,514 @@
+[
+  {
+    "name": "Caffeine",
+    "smiles": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+    "comp": "The structure is built on two fused rings sharing an edge: an aromatic six-membered ring and an aromatic five-membered ring (xanthine). The aromatic six-membered ring contains two nitrogen atoms, and four carbon atoms. The aromatic five-membered ring contains two nitrogen atoms, and three carbon atoms. From N1 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). From the ring, a double bond connects to an oxygen atom. This forms a urea linkage (N–C(=O)–N). From N3 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). From N7 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). The remaining ring position, C8, is bonded to an implicit hydrogen atom.",
+    "std": "A 9-atom fused ring system (xanthine, purine-2,6-dione) with three N-methyl groups. Functional groups: a urea linkage, and a lactam (cyclic amide).",
+    "short": "A fused ring system (xanthine, purine-2,6-dione) with three N-methyl groups.",
+    "functionalGroups": [
+      {
+        "shortName": "lactam"
+      },
+      {
+        "shortName": "urea"
+      },
+      {
+        "shortName": "N-methyl"
+      },
+      {
+        "shortName": "N-methyl"
+      },
+      {
+        "shortName": "N-methyl"
+      }
+    ],
+    "rings": [
+      {
+        "type": "pyrimidine",
+        "size": 6
+      },
+      {
+        "type": "imidazole",
+        "size": 5
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "fused-rings",
+    "locants": null
+  },
+  {
+    "name": "Theobromine",
+    "smiles": "Cn1cnc2c1c(=O)[nH]c(=O)n2C",
+    "comp": "The structure is built on two fused rings sharing an edge: an aromatic five-membered ring and an aromatic six-membered ring (xanthine). The aromatic five-membered ring contains two nitrogen atoms, and three carbon atoms. The aromatic six-membered ring contains two nitrogen atoms, and four carbon atoms. From N7 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). From the ring, a double bond connects to an oxygen atom. This forms a urea linkage (N–C(=O)–N). From N3 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). The remaining two ring positions carry implicit hydrogens: N1, and C8.",
+    "std": "A 9-atom fused ring system (xanthine, purine-2,6-dione) with two N-methyl groups. Functional groups: a lactam (cyclic amide), and a urea linkage.",
+    "short": "A fused ring system (xanthine, purine-2,6-dione) with two N-methyl groups.",
+    "functionalGroups": [
+      {
+        "shortName": "lactam"
+      },
+      {
+        "shortName": "urea"
+      },
+      {
+        "shortName": "N-methyl"
+      },
+      {
+        "shortName": "N-methyl"
+      }
+    ],
+    "rings": [
+      {
+        "type": "imidazole",
+        "size": 5
+      },
+      {
+        "type": "pyrimidine",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "fused-rings",
+    "locants": null
+  },
+  {
+    "name": "Theophylline",
+    "smiles": "Cn1c(=O)c2[nH]cnc2n(C)c1=O",
+    "comp": "The structure is built on two fused rings sharing an edge: an aromatic six-membered ring and an aromatic five-membered ring (xanthine). The aromatic six-membered ring contains two nitrogen atoms, and four carbon atoms. The aromatic five-membered ring contains two nitrogen atoms, and three carbon atoms. From N1 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). From the ring, a double bond connects to an oxygen atom. This forms a urea linkage (N–C(=O)–N). From N3 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). The remaining two ring positions carry implicit hydrogens: N7, and C8.",
+    "std": "A 9-atom fused ring system (xanthine, purine-2,6-dione) with two N-methyl groups. Functional groups: a urea linkage, and a lactam (cyclic amide).",
+    "short": "A fused ring system (xanthine, purine-2,6-dione) with two N-methyl groups.",
+    "functionalGroups": [
+      {
+        "shortName": "lactam"
+      },
+      {
+        "shortName": "urea"
+      },
+      {
+        "shortName": "N-methyl"
+      },
+      {
+        "shortName": "N-methyl"
+      }
+    ],
+    "rings": [
+      {
+        "type": "pyrimidine",
+        "size": 6
+      },
+      {
+        "type": "imidazole",
+        "size": 5
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "fused-rings",
+    "locants": null
+  },
+  {
+    "name": "Paraxanthine",
+    "smiles": "CN1C=NC2=C1C(=O)N(C(=O)N2)C",
+    "comp": "The structure is built on two fused rings sharing an edge: an aromatic six-membered ring and an aromatic five-membered ring (xanthine). The aromatic six-membered ring contains two nitrogen atoms, and four carbon atoms. The aromatic five-membered ring contains two nitrogen atoms, and three carbon atoms. From N1 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). From the ring, a double bond connects to an oxygen atom. This forms a urea linkage (N–C(=O)–N). From N7 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms an N-methyl group (–CH₃). The remaining two ring positions carry implicit hydrogens: N3, and C8.",
+    "std": "A 9-atom fused ring system (xanthine, purine-2,6-dione) with two N-methyl groups. Functional groups: a lactam (cyclic amide), and a urea linkage.",
+    "short": "A fused ring system (xanthine, purine-2,6-dione) with two N-methyl groups.",
+    "functionalGroups": [
+      {
+        "shortName": "urea"
+      },
+      {
+        "shortName": "lactam"
+      },
+      {
+        "shortName": "N-methyl"
+      },
+      {
+        "shortName": "N-methyl"
+      }
+    ],
+    "rings": [
+      {
+        "type": "pyrimidine",
+        "size": 6
+      },
+      {
+        "type": "imidazole",
+        "size": 5
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "fused-rings",
+    "locants": null
+  },
+  {
+    "name": "Uracil",
+    "smiles": "O=c1cc[nH]c(=O)[nH]1",
+    "comp": "The structure is centred on a six-membered aromatic ring (pyrimidine), containing two nitrogen atoms, and four carbon atoms. Two branches extend from the ring, at meta positions: Branch 1: From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). Branch 2: From the ring, a double bond connects to an oxygen atom. This forms a urea linkage (N–C(=O)–N). The remaining four ring positions carry implicit hydrogens: N1, N3, C5, and C6.",
+    "std": "An 8-atom molecule built on a pyrimidine ring (pyrimidine-2,4-dione). Two substituents at meta positions: a lactam (cyclic amide), and a urea linkage.",
+    "short": "An 8-atom pyrimidine ring (pyrimidine-2,4-dione) with a lactam and a urea linkage at meta positions.",
+    "functionalGroups": [
+      {
+        "shortName": "lactam"
+      },
+      {
+        "shortName": "urea"
+      }
+    ],
+    "rings": [
+      {
+        "type": "pyrimidine",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "aromatic-ring",
+    "locants": null
+  },
+  {
+    "name": "Cytosine",
+    "smiles": "Nc1cc[nH]c(=O)n1",
+    "comp": "The structure is centred on a six-membered aromatic ring (pyrimidine), containing two nitrogen atoms, and four carbon atoms. Two branches extend from the ring, at meta positions: Branch 1: From C4 of the ring, a nitrogen atom is attached to the ring (bonded to two hydrogens). This forms an amine group (–NH₂). Branch 2: From the ring, a double bond connects to an oxygen atom. This forms a urea linkage (N–C(=O)–N). The remaining three ring positions carry implicit hydrogens: N1, C5, and C6.",
+    "std": "An 8-atom molecule built on a pyrimidine ring (pyrimidin-2(1H)-one). Two substituents at meta positions: an amine group (–NH₂), and a urea linkage.",
+    "short": "An 8-atom pyrimidine ring (pyrimidin-2(1H)-one) with an amine and a urea linkage at meta positions.",
+    "functionalGroups": [
+      {
+        "shortName": "urea"
+      },
+      {
+        "shortName": "amine"
+      }
+    ],
+    "rings": [
+      {
+        "type": "pyrimidine",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "aromatic-ring",
+    "locants": null
+  },
+  {
+    "name": "2-Pyridone",
+    "smiles": "O=c1cccc[nH]1",
+    "comp": "The structure is centred on a six-membered aromatic ring (pyridine), containing one nitrogen atom, and five carbon atoms. One branch extends from the ring: Branch 1: From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). The remaining five ring positions carry implicit hydrogens: N1, C3, C4, C5, and C6.",
+    "std": "A 7-atom molecule built on a pyridine ring (pyridin-2(1H)-one). One substituent: a lactam (cyclic amide).",
+    "short": "A 7-atom pyridine ring (pyridin-2(1H)-one) with a lactam.",
+    "functionalGroups": [
+      {
+        "shortName": "lactam"
+      }
+    ],
+    "rings": [
+      {
+        "type": "pyridine",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "aromatic-ring",
+    "locants": null
+  },
+  {
+    "name": "Thymine",
+    "smiles": "Cc1c[nH]c(=O)[nH]c1=O",
+    "comp": "The structure is centred on a six-membered aromatic ring (pyrimidine), containing two nitrogen atoms, and four carbon atoms. Three branches extend from the ring: Branch 1: From C5 of the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms a methyl group (–CH₃). Branch 2: From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). Branch 3: From the ring, a double bond connects to an oxygen atom. This forms a urea linkage (N–C(=O)–N). The remaining three ring positions carry implicit hydrogens: N1, N3, and C6.",
+    "std": "A 9-atom molecule built on a pyrimidine ring (pyrimidine-2,4-dione). Three substituents: a methyl group (–CH₃), a lactam (cyclic amide), and a urea linkage.",
+    "short": "A 9-atom pyrimidine ring (pyrimidine-2,4-dione) with a methyl group, a lactam, and a urea linkage.",
+    "functionalGroups": [
+      {
+        "shortName": "urea"
+      },
+      {
+        "shortName": "lactam"
+      },
+      {
+        "shortName": "methyl"
+      }
+    ],
+    "rings": [
+      {
+        "type": "pyrimidine",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "aromatic-ring",
+    "locants": null
+  },
+  {
+    "name": "Adenine",
+    "smiles": "Nc1ncnc2[nH]cnc12",
+    "comp": "The structure is built on two fused rings sharing an edge: an aromatic six-membered ring and an aromatic five-membered ring (purine). The aromatic six-membered ring contains two nitrogen atoms, and four carbon atoms. The aromatic five-membered ring contains two nitrogen atoms, and three carbon atoms. From C6 of the ring, a nitrogen atom is attached to the ring (bonded to two hydrogens). This forms an amine group (–NH₂). The remaining three ring positions carry implicit hydrogens: N9, C2, and C8.",
+    "std": "A 9-atom fused ring system (purine). Functional groups: an amine group (–NH₂).",
+    "short": "A fused ring system (purine) with an amine.",
+    "functionalGroups": [
+      {
+        "shortName": "amine"
+      }
+    ],
+    "rings": [
+      {
+        "type": "pyrimidine",
+        "size": 6
+      },
+      {
+        "type": "imidazole",
+        "size": 5
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "fused-rings",
+    "locants": null
+  },
+  {
+    "name": "Aspirin",
+    "smiles": "CC(=O)Oc1ccccc1C(=O)O",
+    "comp": "The structure is centred on a six-membered aromatic ring (benzene), with all six ring positions occupied by carbon atoms. Two branches extend from the ring, at adjacent (ortho) positions: Branch 1: From the ring, a single bond connects to an oxygen atom. From this oxygen, a single bond connects to a carbon atom. From this carbon, a single bond connects to a carbon atom (bonded to three hydrogens), and a double bond connects to an oxygen atom. This forms an ester group (–OCOCH₃). Branch 2: A carbon atom is attached to the ring. From this carbon, a double bond connects to an oxygen atom, and a single bond connects to an oxygen atom (bonded to one hydrogen). This forms a carboxylic acid group (–COOH). The remaining four ring positions are each bonded to an implicit hydrogen atom.",
+    "std": "A 13-atom molecule built on a benzene ring. Two substituents at adjacent (ortho) positions: an ester group (–OCOCH₃), and a carboxylic acid group (–COOH).",
+    "short": "A 13-atom benzene ring with an ester and a carboxylic acid at adjacent (ortho) positions.",
+    "functionalGroups": [
+      {
+        "shortName": "acid"
+      },
+      {
+        "shortName": "ester"
+      }
+    ],
+    "rings": [
+      {
+        "type": "benzene",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "aromatic-ring",
+    "locants": null
+  },
+  {
+    "name": "Naproxen",
+    "smiles": "COc1ccc2cc(C(C)C(=O)O)ccc2c1",
+    "comp": "The structure is built on two fused aromatic six-membered rings sharing an edge (naphthalene). Each ring contains six carbon atoms. From a carbon atom in the ring, a single bond connects to an oxygen atom. From this oxygen, a single bond connects to a carbon atom. This forms a methoxy group (–OCH₃). From a carbon atom in the ring, a carbon atom is attached to the ring (bonded to one hydrogen). From this carbon, a single bond connects to a carbon atom (bonded to three hydrogens), and a single bond connects to a carbon atom. This forms a carboxylic acid group (–COOH). The remaining six ring positions are each bonded to an implicit hydrogen atom.",
+    "std": "A 10-atom fused ring system (naphthalene). Functional groups: a methoxy group (–OCH₃), and a carboxylic acid group (–COOH).",
+    "short": "A fused ring system (naphthalene) with a carboxylic acid and a methoxy group.",
+    "functionalGroups": [
+      {
+        "shortName": "acid"
+      },
+      {
+        "shortName": "methoxy"
+      }
+    ],
+    "rings": [
+      {
+        "type": "benzene",
+        "size": 6
+      },
+      {
+        "type": "benzene",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "fused-rings",
+    "locants": null
+  },
+  {
+    "name": "Barbituric acid",
+    "smiles": "O=C1CC(=O)NC(=O)N1",
+    "comp": "The structure is centred on a six-membered ring containing two nitrogen atoms. Three branches extend from the ring: Branch 1: From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). Branch 2: From the ring, a double bond connects to an oxygen atom. This forms a urea linkage (N–C(=O)–N). Branch 3: From the ring, a double bond connects to an oxygen atom. This forms a lactam (cyclic amide, N–C(=O)–C). The remaining three ring positions carry implicit hydrogens: two N–H, and one C–H₂.",
+    "std": "A 9-atom molecule built on a six-membered ring. Three substituents: two lactams (cyclic amide), and a urea linkage.",
+    "short": "A 9-atom six-membered ring with two lactams and a urea linkage.",
+    "functionalGroups": [
+      {
+        "shortName": "lactam"
+      },
+      {
+        "shortName": "lactam"
+      },
+      {
+        "shortName": "urea"
+      }
+    ],
+    "rings": [
+      {
+        "type": "six-membered",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "ring",
+    "locants": null
+  },
+  {
+    "name": "Urea",
+    "smiles": "NC(=O)N",
+    "comp": "The carbon is a urea linkage (H₂N–CO–NH₂).",
+    "std": "A single carbon bearing a urea linkage (H₂N–CO–NH₂).",
+    "short": "A single carbon bearing a urea linkage (H₂N–CO–NH₂).",
+    "functionalGroups": [
+      {
+        "shortName": "amide"
+      },
+      {
+        "shortName": "amine"
+      }
+    ],
+    "rings": [],
+    "chain": {
+      "length": 1,
+      "type": null
+    },
+    "scaffoldType": "chain",
+    "locants": null
+  },
+  {
+    "name": "Guanidine",
+    "smiles": "NC(=N)N",
+    "comp": "A single carbon bearing three amine groups (–NH₂).",
+    "std": "A single carbon bearing three amine groups (–NH₂).",
+    "short": "A single carbon bearing three amines.",
+    "functionalGroups": [
+      {
+        "shortName": "amine"
+      },
+      {
+        "shortName": "amine"
+      },
+      {
+        "shortName": "amine"
+      }
+    ],
+    "rings": [],
+    "chain": {
+      "length": 1,
+      "type": null
+    },
+    "scaffoldType": "chain",
+    "locants": null
+  },
+  {
+    "name": "Naphthalene",
+    "smiles": "c1ccc2ccccc2c1",
+    "comp": "The structure is built on two fused aromatic six-membered rings sharing an edge (naphthalene). Each ring contains six carbon atoms. The remaining eight ring positions are each bonded to an implicit hydrogen atom.",
+    "std": "A 10-atom fused ring system (naphthalene).",
+    "short": "A fused ring system (naphthalene).",
+    "functionalGroups": [],
+    "rings": [
+      {
+        "type": "benzene",
+        "size": 6
+      },
+      {
+        "type": "benzene",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "fused-rings",
+    "locants": null
+  },
+  {
+    "name": "1-Methylnaphthalene",
+    "smiles": "Cc1cccc2ccccc12",
+    "comp": "The structure is built on two fused aromatic six-membered rings sharing an edge (naphthalene). Each ring contains six carbon atoms. From a carbon atom in the ring, a carbon atom is attached to the ring (bonded to three hydrogens). This forms a methyl group (–CH₃). The remaining seven ring positions are each bonded to an implicit hydrogen atom.",
+    "std": "A 10-atom fused ring system (naphthalene) with one methyl group.",
+    "short": "A fused ring system (naphthalene) with one methyl group.",
+    "functionalGroups": [
+      {
+        "shortName": "methyl"
+      }
+    ],
+    "rings": [
+      {
+        "type": "benzene",
+        "size": 6
+      },
+      {
+        "type": "benzene",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "fused-rings",
+    "locants": null
+  },
+  {
+    "name": "Benzaldehyde",
+    "smiles": "O=Cc1ccccc1",
+    "comp": "The structure is centred on a six-membered aromatic ring (benzene), with all six ring positions occupied by carbon atoms. One branch extends from the ring: Branch 1: From the ring, a single bond connects to a carbon atom. From this carbon, a double bond connects to an oxygen atom. This forms an aldehyde group (–CHO). The remaining five ring positions are each bonded to an implicit hydrogen atom.",
+    "std": "An 8-atom molecule built on a benzene ring. One substituent: an aldehyde group (–CHO).",
+    "short": "An 8-atom benzene ring with an aldehyde.",
+    "functionalGroups": [
+      {
+        "shortName": "aldehyde"
+      }
+    ],
+    "rings": [
+      {
+        "type": "benzene",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "aromatic-ring",
+    "locants": null
+  },
+  {
+    "name": "Biphenyl",
+    "smiles": "c1ccc(-c2ccccc2)cc1",
+    "comp": "The structure consists of two aromatic six-membered rings (benzenes) joined by a single bond. Each ring has five carbon atoms carrying implicit hydrogens; the remaining position of each ring connects to the other ring. The remaining 10 ring positions are each bonded to an implicit hydrogen atom.",
+    "std": "A 12-atom molecule. A benzene ring.",
+    "short": "A 12-atom benzene ring.",
+    "functionalGroups": [],
+    "rings": [
+      {
+        "type": "benzene",
+        "size": 6
+      },
+      {
+        "type": "benzene",
+        "size": 6
+      }
+    ],
+    "chain": null,
+    "scaffoldType": "aromatic-ring",
+    "locants": null
+  },
+  {
+    "name": "Ethanol",
+    "smiles": "CCO",
+    "comp": "The structure is a two-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
+    "std": "A 3-atom, two-carbon chain with a hydroxyl group (–OH).",
+    "short": "A two-carbon chain with a hydroxyl group.",
+    "functionalGroups": [
+      {
+        "shortName": "hydroxyl"
+      }
+    ],
+    "rings": [],
+    "chain": {
+      "length": 2,
+      "type": null
+    },
+    "scaffoldType": "chain",
+    "locants": null
+  },
+  {
+    "name": "(R)-2-butanol",
+    "smiles": "C[C@@H](O)CC",
+    "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The third carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
+    "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH).",
+    "short": "A four-carbon chain with a hydroxyl group.",
+    "functionalGroups": [
+      {
+        "shortName": "hydroxyl"
+      }
+    ],
+    "rings": [],
+    "chain": {
+      "length": 4,
+      "type": null
+    },
+    "scaffoldType": "chain",
+    "locants": null
+  }
+]

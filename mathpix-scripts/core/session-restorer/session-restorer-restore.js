@@ -17,6 +17,63 @@
     window._SRShared;
   const proto = MathPixSessionRestorer.prototype;
 
+  /**
+   * Phase 8C-CT-3e: shared paint helper for the resume panel's comprehensive
+   * description. Prefers the cached HTML form, regenerates on miss if the
+   * engine is available and `compPubData` was supplied, and falls back to
+   * the cached plain text if the HTML engine is missing. Single source of
+   * paint for all six generation/populate sites in this module.
+   *
+   * @param {HTMLElement|null} compEl - The `#…-comprehensive-desc-text` node
+   * @param {HTMLElement|null} compContainer - The `#…-comprehensive-description` wrapper
+   * @param {Object} item - Chemistry data item (carries _comprehensiveDescription* caches)
+   * @param {Object|null} utilsRef - `MathPixChemistryUtils` (either `chemUtils` or `utils` alias)
+   * @param {Object|null} compPubData - PubChem data bag (may be null in cache-only callers)
+   */
+  function _paintResumeComprehensive(compEl, compContainer, item, utilsRef, compPubData) {
+    if (!compEl) return;
+    let compHtml = item._comprehensiveDescriptionHTML;
+    if (!compHtml && utilsRef && utilsRef.generateComprehensiveDescriptionHTML && item && item.notation) {
+      try {
+        compHtml = utilsRef.generateComprehensiveDescriptionHTML(item.notation, compPubData);
+        if (compHtml) item._comprehensiveDescriptionHTML = compHtml;
+      } catch (err) {
+        logWarn("generateComprehensiveDescriptionHTML threw (non-fatal)", err);
+      }
+    }
+    if (compHtml) {
+      compEl.innerHTML = compHtml;
+    } else if (item && item._comprehensiveDescription) {
+      compEl.textContent = item._comprehensiveDescription;
+    }
+    if (compContainer) {
+      compContainer.style.display = "";
+      _applyResumePreviewMode(compContainer);
+    }
+  }
+
+  /**
+   * Phase 13-α: Toggle the .chemistry-preview-mode class on a resume-panel
+   * description container based on
+   * MATHPIX_CONFIG.CHEMISTRY_DESCRIPTIONS.PREVIEW_MODE. Mirrors
+   * _applyChemistryPreviewMode in mathpix-result-renderer.js so that resume
+   * mode and post-OCR mode share preview-indicator behaviour.
+   *
+   * Idempotent — safe to call on every render path.
+   *
+   * @param {HTMLElement} container - Resume description container element
+   */
+  function _applyResumePreviewMode(container) {
+    if (!container) return;
+    const cfg = window.MATHPIX_CONFIG?.CHEMISTRY_DESCRIPTIONS;
+    if (!cfg) {
+      logWarn("CHEMISTRY_DESCRIPTIONS config missing; preview-mode default = on");
+    }
+    const previewMode = cfg?.PREVIEW_MODE !== false;
+    container.classList.toggle("chemistry-preview-mode", previewMode);
+    logDebug("Resume preview-mode class toggled", { container: container.id, on: previewMode });
+  }
+
   // =========================================================================
   // SESSION RESTORATION
   // =========================================================================
@@ -304,6 +361,13 @@
    * @private
    */
   proto._detectRestoredChemistry = async function () {
+    // Always wipe any previous resume chemistry tab/panel state before
+    // inspecting the new session. Without this, loading a non-chemistry
+    // ZIP after a chemistry ZIP (no refresh) leaves the chemistry tab
+    // button visible and the previous panel content rendered, because
+    // the early-return paths below would otherwise skip every cleanup.
+    this._resetResumeChemistryUI();
+
     const chemUtils = window.MathPixChemistryUtils;
     if (!chemUtils || typeof chemUtils.extractChemistryFromResponse !== "function") {
       logDebug("MathPixChemistryUtils not available — skipping resume chemistry detection");
@@ -380,6 +444,99 @@
   // =========================================================================
   // Phase 7A-5d: Resume chemistry panel — own DOM, no element moving
   // =========================================================================
+
+  /**
+   * Reset the resume chemistry tab + panel back to their initial empty
+   * state. Called at the top of _detectRestoredChemistry on every restore
+   * so a fresh ZIP without chemistry can't inherit the previous ZIP's tab
+   * button, active panel, or rendered structure content.
+   *
+   * If the chemistry tab was the active tab when the new ZIP loaded, falls
+   * back to the MMD tab so the resume container always has a visible panel.
+   * @private
+   */
+  proto._resetResumeChemistryUI = function () {
+    const chemTab =
+      this.elements.tabChemistry ||
+      document.getElementById("resume-tab-chemistry");
+    const chemPanel =
+      this.elements.panelChemistry ||
+      document.getElementById("resume-panel-chemistry");
+
+    const wasActive =
+      !!chemPanel?.classList.contains("active") ||
+      this._lastResumeTab === "chemistry";
+
+    if (chemTab) {
+      chemTab.style.display = "none";
+      chemTab.classList.remove("active");
+      chemTab.setAttribute("aria-selected", "false");
+      chemTab.setAttribute("tabindex", "-1");
+    }
+    if (chemPanel) {
+      chemPanel.classList.remove("active");
+      chemPanel.hidden = true;
+    }
+
+    // If chemistry was the active tab, fall back to MMD so the resume
+    // container has a visible tabpanel after the reset.
+    if (wasActive && typeof this.switchTab === "function") {
+      this.switchTab("mmd");
+    }
+
+    this._resumeChemistryData = null;
+    this._resumeChemistryIndex = 0;
+
+    const compoundNameEl = document.getElementById("resume-chemistry-compound-name");
+    if (compoundNameEl) {
+      compoundNameEl.textContent = "";
+      compoundNameEl.style.display = "none";
+    }
+
+    const canvas = document.getElementById("resume-chemistry-structure-canvas");
+    if (canvas) {
+      const ctx = canvas.getContext?.("2d");
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    const figure = document.getElementById("resume-chemistry-structure-figure");
+    if (figure) figure.setAttribute("aria-label", "Chemical structure diagram");
+
+    ["formula", "name", "weight", "smiles", "inchi", "inchikey"].forEach((key) => {
+      const node = document.getElementById(`resume-chemistry-${key}-display`);
+      if (node) {
+        node.textContent = "";
+        node.classList.remove("chemistry-loading");
+      }
+    });
+
+    const structDescText = document.getElementById("resume-chemistry-structural-desc-text");
+    if (structDescText) structDescText.textContent = "";
+    const structDescContainer = document.getElementById("resume-chemistry-structural-description");
+    if (structDescContainer) structDescContainer.style.display = "none";
+
+    const compDescText = document.getElementById("resume-chemistry-comprehensive-desc-text");
+    if (compDescText) compDescText.innerHTML = "";
+    const compDescContainer = document.getElementById("resume-chemistry-comprehensive-description");
+    if (compDescContainer) compDescContainer.style.display = "none";
+
+    const descArea = document.getElementById("resume-chemistry-description-area");
+    if (descArea) descArea.style.display = "none";
+
+    const perImageBadge = document.getElementById("resume-chemistry-per-image-badge");
+    if (perImageBadge) perImageBadge.hidden = true;
+    const presetSelector = document.getElementById("resume-chemistry-preset-selector");
+    if (presetSelector) presetSelector.style.display = "none";
+    const advancedControls = document.getElementById("resume-chemistry-advanced-controls");
+    if (advancedControls) advancedControls.style.display = "none";
+
+    const selector = document.getElementById("resume-chemistry-structure-selector");
+    if (selector) selector.style.display = "none";
+
+    const copyDescBtn = document.getElementById("resume-chemistry-copy-description-btn");
+    if (copyDescBtn) copyDescBtn.style.display = "none";
+
+    logDebug("Resume chemistry UI reset");
+  };
 
   /**
    * Populate the resume panel's own chemistry DOM elements.
@@ -608,6 +765,57 @@
       };
     }
 
+    // Phase 12-1d: Save as SVG — resume mirror. Reads from the resume-mode
+    // SVG cache, keyed by "resume-chemistry-structure-canvas".
+    const saveAsSvgBtn = document.getElementById("resume-chemistry-save-as-svg-btn");
+    if (saveAsSvgBtn) {
+      saveAsSvgBtn.disabled = false;
+      saveAsSvgBtn.onclick = function () {
+        const restorer = window.getMathPixSessionRestorer?.() || self;
+        const data = restorer?._resumeChemistryData;
+        const index = restorer?._resumeChemistryIndex ?? 0;
+        const item = data?.[index];
+        if (!item?.notation) return;
+
+        const utils = window.MathPixChemistryUtils;
+        const svgString = utils?.getLastRenderedSvgString?.(
+          "resume-chemistry-structure-canvas"
+        );
+        if (!svgString) {
+          if (typeof window.notifyWarning === "function") {
+            window.notifyWarning(
+              "No SVG to download yet — render the structure first"
+            );
+          }
+          return;
+        }
+
+        const name = item._resolvedName || item.commonNames?.[0] || item.iupacName;
+        const filename = name
+          ? name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "") + ".svg"
+          : "structure-" + (index + 1) + ".svg";
+
+        const blob = new Blob([svgString], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        const liveRegion = document.getElementById("resume-chemistry-live-region");
+        if (liveRegion) liveRegion.textContent = "Structure SVG saved as " + filename;
+        if (typeof restorer?.showNotification === "function") {
+          restorer.showNotification("Saved " + filename, "success");
+        }
+      };
+    }
+
     // Phase 8A: Set up rendering controls
     this._setupResumePresetSelector();
     this._setupResumeAdvancedControls();
@@ -687,21 +895,48 @@
         onGraphReady: () => {
           // Generate structural description once the molecular graph is cached
           if (chemUtils.generateStructuralDescription && !item._structuralDescription) {
-            const pubData = item._resolvedName
-              ? { commonNames: item.commonNames, iupacName: item.iupacName }
-              : undefined;
+            const pubData = chemUtils._buildPubchemDataFromItem(item);
             const desc = chemUtils.generateStructuralDescription(item.notation, pubData);
             if (desc) {
               item._structuralDescription = desc;
+              // Phase 10-0: mirror the short-tier cache write
+              item._shortDescription =
+                chemUtils.generateShortDescription?.(item.notation, pubData) || null;
               // Only update DOM if this structure is still displayed
               if (this._resumeChemistryIndex === index) {
                 const descEl = el("structural-desc-text");
                 const container = el("structural-description");
                 if (descEl) descEl.textContent = desc;
                 if (container) container.style.display = "";
-                // Phase 8A-4: Progressive aria-label
+                // Phase 8A-4 + Phase 10-0: aria-label prefers cached short tier
                 const figure = el("structure-figure");
-                if (figure) figure.setAttribute("aria-label", desc);
+                if (figure) {
+                  const live =
+                    chemUtils.generateShortDescriptionForAria?.(item.notation, pubData) || "";
+                  figure.setAttribute("aria-label", item._shortDescription || live || desc);
+                }
+              }
+            }
+          }
+
+          // Phase 8C-CT: Comprehensive description on initial resume.
+          // Phase 8C-CT-3e: also cache + paint the HTML form (plain text
+          // retained for ZIP / alt-text / ARIA consumers).
+          if (chemUtils.generateComprehensiveDescription && !item._comprehensiveDescription) {
+            const compPubData = chemUtils._buildPubchemDataFromItem(item);
+            const compDesc = chemUtils.generateComprehensiveDescription(item.notation, compPubData);
+            if (compDesc) {
+              item._comprehensiveDescription = compDesc;
+              if (chemUtils.generateComprehensiveDescriptionHTML) {
+                const compHtml = chemUtils.generateComprehensiveDescriptionHTML(item.notation, compPubData);
+                if (compHtml) item._comprehensiveDescriptionHTML = compHtml;
+              }
+              if (this._resumeChemistryIndex === index) {
+                _paintResumeComprehensive(
+                  el("comprehensive-desc-text"),
+                  el("comprehensive-description"),
+                  item, chemUtils, compPubData,
+                );
               }
             }
           }
@@ -727,6 +962,9 @@
     if (descArea) descArea.style.display = "none";
     const structDesc = el("structural-description");
     if (structDesc) structDesc.style.display = "none";
+    // Phase 8C-CT: hide comprehensive container between structures
+    const compDesc = el("comprehensive-description");
+    if (compDesc) compDesc.style.display = "none";
 
     // 4. Show cached descriptions if pre-fetch already resolved (item is shared
     //    with resultRenderer._chemistryData, which _prefetchAllChemistryData populates).
@@ -769,17 +1007,46 @@
 
           // Re-generate structural description with PubChem names (if graph is cached)
           if (chemUtils.generateStructuralDescription) {
-            const pubData = { commonNames: item.commonNames, iupacName: item.iupacName };
+            const pubData = chemUtils._buildPubchemDataFromItem(item);
             const desc = chemUtils.generateStructuralDescription(item.notation, pubData);
             if (desc) {
               item._structuralDescription = desc;
+              // Phase 10-0: refresh short-tier cache alongside structural description
+              item._shortDescription =
+                chemUtils.generateShortDescription?.(item.notation, pubData) || null;
               const descEl = el("structural-desc-text");
               const container = el("structural-description");
               if (descEl) descEl.textContent = desc;
               if (container) container.style.display = "";
-              // Phase 8A-4: Update aria-label with name-enriched description
+              // Phase 8A-4 + Phase 10-0: aria-label prefers cached short tier
               const figure = el("structure-figure");
-              if (figure) figure.setAttribute("aria-label", desc);
+              if (figure) {
+                const live =
+                  chemUtils.generateShortDescriptionForAria?.(item.notation, pubData) || "";
+                figure.setAttribute("aria-label", item._shortDescription || live || desc);
+              }
+            }
+          }
+
+          // Phase 8C-CT: Re-generate comprehensive description with PubChem names.
+          // Phase 8C-CT-3e: cache HTML form alongside plain text.
+          if (chemUtils.generateComprehensiveDescription) {
+            const compPubData = chemUtils._buildPubchemDataFromItem(item);
+            const compDesc = chemUtils.generateComprehensiveDescription(item.notation, compPubData);
+            if (compDesc) {
+              item._comprehensiveDescription = compDesc;
+              // Clear stale HTML so the helper regenerates against the
+              // PubChem-enriched pubData rather than reusing the initial cache.
+              item._comprehensiveDescriptionHTML = null;
+              if (chemUtils.generateComprehensiveDescriptionHTML) {
+                const compHtml = chemUtils.generateComprehensiveDescriptionHTML(item.notation, compPubData);
+                if (compHtml) item._comprehensiveDescriptionHTML = compHtml;
+              }
+              _paintResumeComprehensive(
+                el("comprehensive-desc-text"),
+                el("comprehensive-description"),
+                item, chemUtils, compPubData,
+              );
             }
           }
 
@@ -804,6 +1071,9 @@
     // Phase 8B: Save image button enabled when SMILES is available
     const saveImageBtn = document.getElementById("resume-chemistry-save-image-btn");
     if (saveImageBtn) saveImageBtn.disabled = !item.notation;
+    // Phase 12-1d: Save-as-SVG sibling enabled on the same condition.
+    const saveSvgBtn = document.getElementById("resume-chemistry-save-as-svg-btn");
+    if (saveSvgBtn) saveSvgBtn.disabled = !item.notation;
 
     // 6. Update navigation counter + buttons
     const counter = el("structure-counter");
@@ -877,6 +1147,7 @@
    */
   proto._applyResumeFromCache = function (item) {
     const el = (id) => document.getElementById("resume-chemistry-" + id);
+    const chemUtils = window.MathPixChemistryUtils;
 
     // Structural description
     if (item._structuralDescription) {
@@ -884,6 +1155,50 @@
       const container = el("structural-description");
       if (descEl) descEl.textContent = item._structuralDescription;
       if (container) container.style.display = "";
+    }
+
+    // Phase 10-0: aria-label on the resume figure. Cache-hit path previously
+    // left the aria-label untouched, which meant the placeholder
+    // generateBasicAccessibleDescription value (set pre-PubChem) persisted
+    // forever. Prefer the cached short tier; fall back to a live short-tier
+    // call; then to the structural description. Only runs when the resume
+    // figure is the active presentation (not overridden by AI description).
+    if (item.notation) {
+      const figure = el("structure-figure");
+      if (figure && !figure.dataset.aiDescribed) {
+        const pubData = chemUtils._buildPubchemDataFromItem(item);
+        if (!item._shortDescription && chemUtils?.generateShortDescription) {
+          item._shortDescription =
+            chemUtils.generateShortDescription(item.notation, pubData) || null;
+        }
+        const live = chemUtils?.generateShortDescriptionForAria
+          ? chemUtils.generateShortDescriptionForAria(item.notation, pubData) || ""
+          : "";
+        const fallback = item._structuralDescription || "";
+        const ariaLabel = item._shortDescription || live || fallback;
+        if (ariaLabel) figure.setAttribute("aria-label", ariaLabel);
+      }
+    }
+
+    // Phase 8C-CT: Comprehensive description — generate lazily if not cached.
+    // Phase 8C-CT-3e: build compPubData once so the paint helper can
+    // regenerate the HTML form if the cache is empty (defensive — HTML is
+    // normally cached at every upstream generation site).
+    const compPubData = chemUtils._buildPubchemDataFromItem(item);
+    if (!item._comprehensiveDescription && chemUtils?.generateComprehensiveDescription && item.notation) {
+      const compDesc = chemUtils.generateComprehensiveDescription(item.notation, compPubData);
+      if (compDesc) item._comprehensiveDescription = compDesc;
+      if (chemUtils.generateComprehensiveDescriptionHTML && item.notation) {
+        const compHtml = chemUtils.generateComprehensiveDescriptionHTML(item.notation, compPubData);
+        if (compHtml) item._comprehensiveDescriptionHTML = compHtml;
+      }
+    }
+    if (item._comprehensiveDescription) {
+      _paintResumeComprehensive(
+        el("comprehensive-desc-text"),
+        el("comprehensive-description"),
+        item, chemUtils, compPubData,
+      );
     }
 
     // AI / PubChem description
@@ -938,15 +1253,19 @@
       const v = node ? parseFloat(node.value) : NaN;
       return Number.isFinite(v) ? v : fallback;
     };
+    // Phase 12-1d: orientation toggle defaults to CoordGen (true) when the
+    // checkbox is missing.
+    const orientationCheckbox = el("resume-chem-coordgen-orientation");
+    const useCoordGen = orientationCheckbox
+      ? !!orientationCheckbox.checked
+      : true;
     return {
       bondThickness: safeFloat(el("resume-chem-bond-thickness"), 2),
-      bondSpacing: safeFloat(el("resume-chem-bond-spacing"), 5),
-      fontSizeLarge: safeFloat(el("resume-chem-font-size-large"), 11),
-      fontSizeSmall: safeFloat(el("resume-chem-font-size-small"), 4),
-      compactDrawing: !!el("resume-chem-compact-drawing")?.checked,
+      fontSizeLarge: safeFloat(el("resume-chem-font-size-large"), 18),
+      fontSizeSmall: safeFloat(el("resume-chem-font-size-small"), 13),
       explicitHydrogens: !!el("resume-chem-explicit-hydrogens")?.checked,
-      terminalCarbons: !!el("resume-chem-terminal-carbons")?.checked,
       colourScheme: el("resume-chem-colour-scheme")?.value || "element",
+      useCoordGen,
     };
   };
 
@@ -963,10 +1282,19 @@
 
     let values;
     if (presetName === "custom" && utils?.getCustomOptions) {
-      const base = config.PRESETS[config.DEFAULT_PRESET] || {};
-      values = { ...base, ...utils.getCustomOptions() };
+      const baseRdkit = config.PRESETS[config.DEFAULT_PRESET] || {};
+      const baseUI = utils.presetToUIShape
+        ? utils.presetToUIShape(baseRdkit)
+        : {};
+      values = { ...baseUI, ...utils.getCustomOptions() };
     } else {
-      values = config.PRESETS[presetName] || config.PRESETS[config.DEFAULT_PRESET] || {};
+      const presetRdkit =
+        config.PRESETS[presetName] ||
+        config.PRESETS[config.DEFAULT_PRESET] ||
+        {};
+      values = utils?.presetToUIShape
+        ? utils.presetToUIShape(presetRdkit)
+        : {};
     }
 
     const setRange = (id, value) => {
@@ -986,13 +1314,12 @@
     };
 
     setRange("resume-chem-bond-thickness", values.bondThickness);
-    setRange("resume-chem-bond-spacing", values.bondSpacing);
     setRange("resume-chem-font-size-large", values.fontSizeLarge);
     setRange("resume-chem-font-size-small", values.fontSizeSmall);
-    setCheckbox("resume-chem-compact-drawing", values.compactDrawing);
     setCheckbox("resume-chem-explicit-hydrogens", values.explicitHydrogens);
-    setCheckbox("resume-chem-terminal-carbons", values.terminalCarbons);
     setSelect("resume-chem-colour-scheme", values.colourScheme || "element");
+    // Phase 12-1d: orientation default-on for shipped presets / missing keys.
+    setCheckbox("resume-chem-coordgen-orientation", values.useCoordGen !== false);
   };
 
   /**
@@ -1004,8 +1331,12 @@
   proto._populateResumeAdvancedControlsFromOptions = function (optionsObj) {
     const config = window.MATHPIX_CONFIG?.CHEMISTRY_RENDERING;
     if (!config) return;
-    const base = config.PRESETS[config.DEFAULT_PRESET] || {};
-    const values = { ...base, ...(optionsObj || {}) };
+    const utils = window.MathPixChemistryUtils;
+    const baseRdkit = config.PRESETS[config.DEFAULT_PRESET] || {};
+    const baseUI = utils?.presetToUIShape
+      ? utils.presetToUIShape(baseRdkit)
+      : {};
+    const values = { ...baseUI, ...(optionsObj || {}) };
 
     const setRange = (id, value) => {
       const input = document.getElementById(id);
@@ -1024,13 +1355,12 @@
     };
 
     setRange("resume-chem-bond-thickness", values.bondThickness);
-    setRange("resume-chem-bond-spacing", values.bondSpacing);
     setRange("resume-chem-font-size-large", values.fontSizeLarge);
     setRange("resume-chem-font-size-small", values.fontSizeSmall);
-    setCheckbox("resume-chem-compact-drawing", values.compactDrawing);
     setCheckbox("resume-chem-explicit-hydrogens", values.explicitHydrogens);
-    setCheckbox("resume-chem-terminal-carbons", values.terminalCarbons);
     setSelect("resume-chem-colour-scheme", values.colourScheme || "element");
+    // Phase 12-1d: orientation default-on for any value not explicitly false.
+    setCheckbox("resume-chem-coordgen-orientation", values.useCoordGen !== false);
   };
 
   /**
@@ -1145,20 +1475,46 @@
             utils.renderStructure(item.notation, canvas, {
               onGraphReady: function () {
                 if (utils.generateStructuralDescription) {
-                  const pubData = item._resolvedName
-                    ? { commonNames: item.commonNames, iupacName: item.iupacName }
-                    : undefined;
+                  const pubData = utils._buildPubchemDataFromItem(item);
                   const desc = utils.generateStructuralDescription(item.notation, pubData);
                   if (desc) {
                     item._structuralDescription = desc;
+                    // Phase 10-0: mirror the short-tier cache write
+                    item._shortDescription =
+                      utils.generateShortDescription?.(item.notation, pubData) || null;
                     if (self._resumeChemistryIndex === index) {
                       const descEl = document.getElementById("resume-chemistry-structural-desc-text");
                       const descContainer = document.getElementById("resume-chemistry-structural-description");
                       if (descEl) descEl.textContent = desc;
-                      if (descContainer) descContainer.style.display = "";
-                      // Phase 8A-4: progressive aria-label
+                      if (descContainer) { descContainer.style.display = ""; _applyResumePreviewMode(descContainer); }
+                      // Phase 8A-4 + Phase 10-0: aria-label prefers cached short tier
                       const figure = document.getElementById("resume-chemistry-structure-figure");
-                      if (figure) figure.setAttribute("aria-label", desc);
+                      if (figure) {
+                        const live =
+                          utils.generateShortDescriptionForAria?.(item.notation, pubData) || "";
+                        figure.setAttribute("aria-label", item._shortDescription || live || desc);
+                      }
+
+                      // Phase 8C-CT: Comprehensive description for resume panel.
+                      // Phase 8C-CT-3e: cache HTML form so tab-switch re-paint
+                      // keeps the list-ified output rather than dropping to plain.
+                      const compPubData = utils._buildPubchemDataFromItem(item);
+                      let compDesc = item._comprehensiveDescription;
+                      if (!compDesc && utils.generateComprehensiveDescription) {
+                        compDesc = utils.generateComprehensiveDescription(item.notation, compPubData);
+                        if (compDesc) item._comprehensiveDescription = compDesc;
+                      }
+                      if (compDesc && !item._comprehensiveDescriptionHTML && utils.generateComprehensiveDescriptionHTML) {
+                        const compHtml = utils.generateComprehensiveDescriptionHTML(item.notation, compPubData);
+                        if (compHtml) item._comprehensiveDescriptionHTML = compHtml;
+                      }
+                      if (compDesc) {
+                        _paintResumeComprehensive(
+                          document.getElementById("resume-chemistry-comprehensive-desc-text"),
+                          document.getElementById("resume-chemistry-comprehensive-description"),
+                          item, utils, compPubData,
+                        );
+                      }
                     }
                   }
                 }
@@ -1193,19 +1549,45 @@
           utils.renderStructure(item.notation, canvas, {
             onGraphReady: function () {
               if (utils.generateStructuralDescription) {
-                const pubData = item._resolvedName
-                  ? { commonNames: item.commonNames, iupacName: item.iupacName }
-                  : undefined;
+                const pubData = utils._buildPubchemDataFromItem(item);
                 const desc = utils.generateStructuralDescription(item.notation, pubData);
                 if (desc) {
                   item._structuralDescription = desc;
+                  // Phase 10-0: mirror the short-tier cache write
+                  item._shortDescription =
+                    utils.generateShortDescription?.(item.notation, pubData) || null;
                   if (self._resumeChemistryIndex === index) {
                     const descEl = document.getElementById("resume-chemistry-structural-desc-text");
                     const descContainer = document.getElementById("resume-chemistry-structural-description");
                     if (descEl) descEl.textContent = desc;
-                    if (descContainer) descContainer.style.display = "";
+                    if (descContainer) { descContainer.style.display = ""; _applyResumePreviewMode(descContainer); }
+                    // Phase 10-0: aria-label prefers cached short tier
                     const figure = document.getElementById("resume-chemistry-structure-figure");
-                    if (figure) figure.setAttribute("aria-label", desc);
+                    if (figure) {
+                      const live =
+                        utils.generateShortDescriptionForAria?.(item.notation, pubData) || "";
+                      figure.setAttribute("aria-label", item._shortDescription || live || desc);
+                    }
+
+                    // Phase 8C-CT: Comprehensive description for resume panel.
+                    // Phase 8C-CT-3e: cache HTML form alongside plain text.
+                    const compPubData = utils._buildPubchemDataFromItem(item);
+                    let compDesc = item._comprehensiveDescription;
+                    if (!compDesc && utils.generateComprehensiveDescription) {
+                      compDesc = utils.generateComprehensiveDescription(item.notation, compPubData);
+                      if (compDesc) item._comprehensiveDescription = compDesc;
+                    }
+                    if (compDesc && !item._comprehensiveDescriptionHTML && utils.generateComprehensiveDescriptionHTML) {
+                      const compHtml = utils.generateComprehensiveDescriptionHTML(item.notation, compPubData);
+                      if (compHtml) item._comprehensiveDescriptionHTML = compHtml;
+                    }
+                    if (compDesc) {
+                      _paintResumeComprehensive(
+                        document.getElementById("resume-chemistry-comprehensive-desc-text"),
+                        document.getElementById("resume-chemistry-comprehensive-description"),
+                        item, utils, compPubData,
+                      );
+                    }
                   }
                 }
               }
@@ -1252,17 +1634,23 @@
 
     const ids = {
       bondThickness: "resume-chem-bond-thickness",
-      bondSpacing: "resume-chem-bond-spacing",
       fontSizeLarge: "resume-chem-font-size-large",
       fontSizeSmall: "resume-chem-font-size-small",
-      compactDrawing: "resume-chem-compact-drawing",
       explicitHydrogens: "resume-chem-explicit-hydrogens",
-      terminalCarbons: "resume-chem-terminal-carbons",
       colourScheme: "resume-chem-colour-scheme",
+      // Phase 12-1d: CoordGen layout opt-out.
+      coordgenOrientation: "resume-chem-coordgen-orientation",
     };
 
     // Populate from current active preset
     this._populateResumeAdvancedControlsFromPreset(utils.getActivePreset());
+
+    // Phase 12-1d: hydrate orientation checkbox from persisted custom options.
+    const orientationCheckbox = document.getElementById(ids.coordgenOrientation);
+    if (orientationCheckbox && utils.getCustomOptions) {
+      const stored = utils.getCustomOptions();
+      orientationCheckbox.checked = stored.useCoordGen !== false;
+    }
 
     // Debounce timer shared by range sliders
     let debounceTimer = null;
@@ -1272,13 +1660,14 @@
       const el = (id) => document.getElementById(id);
       return {
         bondThickness: parseFloat(el(ids.bondThickness).value),
-        bondSpacing: parseFloat(el(ids.bondSpacing).value),
         fontSizeLarge: parseFloat(el(ids.fontSizeLarge).value),
         fontSizeSmall: parseFloat(el(ids.fontSizeSmall).value),
-        compactDrawing: el(ids.compactDrawing).checked,
         explicitHydrogens: el(ids.explicitHydrogens).checked,
-        terminalCarbons: el(ids.terminalCarbons).checked,
         colourScheme: el(ids.colourScheme).value,
+        // Phase 12-1d: orientation toggle (CoordGen vs RDKit default DG).
+        useCoordGen: el(ids.coordgenOrientation)
+          ? !!el(ids.coordgenOrientation).checked
+          : true,
       };
     };
 
@@ -1288,19 +1677,45 @@
         utils.renderStructure(item.notation, canvas, {
           onGraphReady: function () {
             if (utils.generateStructuralDescription) {
-              const pubData = item._resolvedName
-                ? { commonNames: item.commonNames, iupacName: item.iupacName }
-                : undefined;
+              const pubData = utils._buildPubchemDataFromItem(item);
               const desc = utils.generateStructuralDescription(item.notation, pubData);
               if (desc) {
                 item._structuralDescription = desc;
+                // Phase 10-0: mirror the short-tier cache write
+                item._shortDescription =
+                  utils.generateShortDescription?.(item.notation, pubData) || null;
                 if (self._resumeChemistryIndex === index) {
                   const descEl = document.getElementById("resume-chemistry-structural-desc-text");
                   const descContainer = document.getElementById("resume-chemistry-structural-description");
                   if (descEl) descEl.textContent = desc;
-                  if (descContainer) descContainer.style.display = "";
+                  if (descContainer) { descContainer.style.display = ""; _applyResumePreviewMode(descContainer); }
+                  // Phase 10-0: aria-label prefers cached short tier
                   const figure = document.getElementById("resume-chemistry-structure-figure");
-                  if (figure) figure.setAttribute("aria-label", desc);
+                  if (figure) {
+                    const live =
+                      utils.generateShortDescriptionForAria?.(item.notation, pubData) || "";
+                    figure.setAttribute("aria-label", item._shortDescription || live || desc);
+                  }
+
+                  // Phase 8C-CT: Comprehensive description for resume panel.
+                  // Phase 8C-CT-3e: cache HTML form alongside plain text.
+                  const compPubData = utils._buildPubchemDataFromItem(item);
+                  let compDesc = item._comprehensiveDescription;
+                  if (!compDesc && utils.generateComprehensiveDescription) {
+                    compDesc = utils.generateComprehensiveDescription(item.notation, compPubData);
+                    if (compDesc) item._comprehensiveDescription = compDesc;
+                  }
+                  if (compDesc && !item._comprehensiveDescriptionHTML && utils.generateComprehensiveDescriptionHTML) {
+                    const compHtml = utils.generateComprehensiveDescriptionHTML(item.notation, compPubData);
+                    if (compHtml) item._comprehensiveDescriptionHTML = compHtml;
+                  }
+                  if (compDesc) {
+                    _paintResumeComprehensive(
+                      document.getElementById("resume-chemistry-comprehensive-desc-text"),
+                      document.getElementById("resume-chemistry-comprehensive-description"),
+                      item, utils, compPubData,
+                    );
+                  }
                 }
               }
             }
@@ -1372,7 +1787,7 @@
     };
 
     // Wire range sliders — update <output> immediately, debounce re-render
-    [ids.bondThickness, ids.bondSpacing, ids.fontSizeLarge, ids.fontSizeSmall].forEach(function (id) {
+    [ids.bondThickness, ids.fontSizeLarge, ids.fontSizeSmall].forEach(function (id) {
       const input = document.getElementById(id);
       if (!input) return;
       const output = document.getElementById(id + "-value");
@@ -1383,7 +1798,12 @@
     });
 
     // Wire checkboxes and select — immediate re-render
-    [ids.compactDrawing, ids.explicitHydrogens, ids.terminalCarbons, ids.colourScheme].forEach(function (id) {
+    [
+      ids.explicitHydrogens,
+      ids.colourScheme,
+      // Phase 12-1d: orientation toggle joins the same change-listener flow.
+      ids.coordgenOrientation,
+    ].forEach(function (id) {
       const el = document.getElementById(id);
       if (!el) return;
       el.addEventListener("change", function () { applyCustom(); });

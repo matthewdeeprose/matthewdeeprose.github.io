@@ -482,6 +482,8 @@ body.resume-focus-mode .resume-storage-dashboard {
   flex-direction: column;
   gap: 1rem;
   align-items: center;
+  /* keep canvas left-bleed reachable via horizontal scroll when zoomed past fit */
+  min-width: min-content;
 }
 
 .resume-pdf-page-wrapper {

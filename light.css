@@ -1,5 +1,23 @@
 /*Light mode */
 
+.chemistry-comprehensive-desc li::marker {
+  color: #005c84;
+}
+
+/* Shared left-bordered panel styling
+   (Phase 8C-CT, Phase 8C-CT-3e, Phase 7B) */
+.chemistry-comprehensive-desc p,
+.chemistry-comprehensive-desc ol,
+.captured-text-description {
+  border-left: 3px solid #8d3970;
+  background: #e1e8ec;
+}
+
+.imgdesc-mm-model-item,
+.tts-voice-settings-body {
+  background: #fffff4;
+}
+
 .imgdesc-florence-ocr-link,
 .imgdesc-change-model-link {
   border: 0.2rem solid #fffff4;
@@ -690,7 +708,8 @@ legend.session-manager-group-header {
 /* Focus indicators for scrollable content regions */
 #ai-original-content:focus-visible,
 #ai-enhanced-content:focus-visible,
-#ai-pdf-scroll-container:focus-visible {
+#ai-pdf-scroll-container:focus-visible,
+.mmd-pdf-scroll-container:focus-visible {
   outline: 3px solid #005c84;
   outline-offset: -2px;
 }
@@ -705,7 +724,8 @@ legend.session-manager-group-header {
   #ai-original-content:focus,
   #ai-enhanced-content:focus,
   #ai-preview-content:focus,
-  #ai-pdf-scroll-container:focus {
+  #ai-pdf-scroll-container:focus,
+  .mmd-pdf-scroll-container:focus {
     outline: 3px solid #000;
     outline-offset: 2px;
   }
@@ -1824,6 +1844,7 @@ div[data-latex-addition="true"] pre:focus-visible,
 #toolSelection .tool-option-wrapper {
   border-color: #495961;
   background: #f0f2e9;
+  border-style: dashed;
 }
 
 .mathpix-mode-option:hover,
@@ -1835,8 +1856,7 @@ div[data-latex-addition="true"] pre:focus-visible,
 .mathpix-mode-option:has(input:checked),
 #toolSelection .tool-option-wrapper:has(input:checked) {
   border-color: #005c84;
-  background-color: #005c84;
-  color: #fffff4;
+  border-style: solid;
 }
 
 .mathpix-mode-option:has(input:focus-visible),
@@ -5620,7 +5640,8 @@ pre.language-json {
 }
 
 .setup-status-summary,
-.setup-quick-start {
+.setup-quick-start,
+.setup-model-group {
   border-color: currentcolor;
   background-color: #f0f2e9;
 }
@@ -5720,9 +5741,15 @@ pre.language-json {
 }
 
 /* Phase 5C-2: SmilesDrawer element colours — light theme
+ * Phase 12-1b prerequisite: scope to :root (was .chemistry-structure).
+ * The JS readers (_readRdkitColoursFromCSS, _readColoursFromCSS) query
+ * document.documentElement; the previous .chemistry-structure scope made
+ * these reads return empty → fallback to static palette → live CSS theme
+ * never reached the renderer. :root makes the variables globally visible
+ * for both JS readers AND the existing .chemistry-structure consumers.
  * Must meet WCAG 1.4.11 (3:1 contrast against --chem-bg).
  */
-.chemistry-structure {
+:root {
   --chem-bg: #f0f2e9;
   --chem-carbon: #111111; /* near-black — 18.4:1 on #fff */
   --chem-hydrogen: #111111; /* matches carbon — prevents dim H subscripts */

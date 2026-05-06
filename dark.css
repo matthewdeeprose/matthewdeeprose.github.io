@@ -1,5 +1,27 @@
 /* Dark mode */
 
+.chemistry-comprehensive-desc li::marker {
+  color: #c1d100;
+}
+.chem-enhance-bar {
+  background: #00131d;
+}
+
+/* Shared left-bordered panel styling
+   (Phase 8C-CT, Phase 8C-CT-3e, Phase 7B) */
+.chemistry-comprehensive-desc p,
+.chemistry-comprehensive-desc ol,
+.captured-text-description {
+  border-left: 3px solid #fcbc00;
+  background: #00131d;
+}
+
+.imgdesc-mm-model-item,
+.tts-voice-settings-body {
+  background: #00131d;
+  border: 1px solid #9fb1bd;
+}
+
 .imgdesc-florence-ocr-link,
 .imgdesc-change-model-link {
   border: 0.2rem solid #231f20;
@@ -663,8 +685,9 @@
 /* Focus indicators for scrollable content regions */
 #ai-original-content:focus-visible,
 #ai-enhanced-content:focus-visible,
-#ai-pdf-scroll-container:focus-visible {
-  outline: 3px solid #005c84;
+#ai-pdf-scroll-container:focus-visible,
+.mmd-pdf-scroll-container:focus-visible {
+  outline: 3px solid #c1d100;
   outline-offset: -2px;
 }
 
@@ -678,7 +701,8 @@
   #ai-original-content:focus,
   #ai-enhanced-content:focus,
   #ai-preview-content:focus,
-  #ai-pdf-scroll-container:focus {
+  #ai-pdf-scroll-container:focus,
+  .mmd-pdf-scroll-container:focus {
     outline: 3px solid #000;
     outline-offset: 2px;
   }
@@ -5878,8 +5902,8 @@ pre.language-json {
 }
 
 .setup-status-summary,
-.setup-quick-start {
-  border-color: #555;
+.setup-quick-start,
+.setup-model-group {
   background-color: #1e1e1e;
 }
 
@@ -5978,9 +6002,11 @@ pre.language-json {
 }
 
 /* Phase 5C-2: SmilesDrawer element colours — dark theme
+ * Phase 12-1b prerequisite: scope to :root (was .chemistry-structure).
+ * See light.css for the full rationale — same fix mirrored here.
  * Must meet WCAG 1.4.11 (3:1 contrast against --chem-bg).
  */
-.chemistry-structure {
+:root {
   --chem-bg: #00131d;
   --chem-carbon: #e0e0e0;
   --chem-hydrogen: #e0e0e0; /* matches carbon — prevents dim H subscripts */

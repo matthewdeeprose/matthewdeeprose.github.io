@@ -4853,10 +4853,33 @@ input#custom-height {
   align-items: center;
   gap: 1rem;
   padding: 1rem;
+  /* keep canvas left-bleed reachable via horizontal scroll when zoomed past fit */
+  min-width: min-content;
 }
 
 .mmd-pdf-page canvas {
   display: block;
+}
+
+/* --------------------------------------------------------------------------
+   PDF Pan (click-to-drag) — see mathpix-pdf-pan.js
+   -------------------------------------------------------------------------- */
+
+.mmd-pdf-scroll-container.mmd-pdf-pannable canvas {
+  cursor: grab;
+  /* claim touch gestures on canvas so drag pans instead of native scroll */
+  touch-action: none;
+}
+
+.mmd-pdf-scroll-container.mmd-pdf-panning canvas {
+  cursor: grabbing;
+}
+
+.mmd-pdf-scroll-container.mmd-pdf-panning {
+  /* setPointerCapture renders the captured element's cursor during drag,
+     not the cursor of the element under the pointer */
+  cursor: grabbing;
+  user-select: none;
 }
 
 /* --------------------------------------------------------------------------

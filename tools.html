@@ -2132,9 +2132,10 @@
                           Announce structure (headings, lists, tables)
                         </label>
                         <p class="tts-field-hint" id="tts-verbosity-hint">
-                          When enabled, Read Aloud announces structural cues such as
-                          "Heading level 2" and "Bulleted list with 3 items" to help
-                          you understand the layout of the content.
+                          When enabled, Read Aloud announces structural cues
+                          such as "Heading level 2" and "Bulleted list with 3
+                          items" to help you understand the layout of the
+                          content.
                         </p>
                       </div>
 
@@ -3952,6 +3953,63 @@ Science,91</pre
                 <button
                   type="button"
                   class="gb-chart-option"
+                  data-chart-type="combo"
+                >
+                  <span class="gb-chart-icon">
+                    <svg viewBox="0 0 100 60" aria-hidden="true">
+                      <rect
+                        x="10"
+                        y="40"
+                        width="12"
+                        height="15"
+                        fill="currentColor"
+                        opacity="0.55"
+                      />
+                      <rect
+                        x="30"
+                        y="32"
+                        width="12"
+                        height="23"
+                        fill="currentColor"
+                        opacity="0.55"
+                      />
+                      <rect
+                        x="50"
+                        y="36"
+                        width="12"
+                        height="19"
+                        fill="currentColor"
+                        opacity="0.55"
+                      />
+                      <rect
+                        x="70"
+                        y="22"
+                        width="12"
+                        height="33"
+                        fill="currentColor"
+                        opacity="0.55"
+                      />
+                      <polyline
+                        points="16,28 36,16 56,24 76,10"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      />
+                      <circle cx="16" cy="28" r="2" fill="currentColor" />
+                      <circle cx="36" cy="16" r="2" fill="currentColor" />
+                      <circle cx="56" cy="24" r="2" fill="currentColor" />
+                      <circle cx="76" cy="10" r="2" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <span class="gb-chart-title">Combo (mixed)</span>
+                  <span class="gb-chart-desc"
+                    >Mix bars and lines on shared axes</span
+                  >
+                </button>
+
+                <button
+                  type="button"
+                  class="gb-chart-option"
                   data-chart-type="pie"
                 >
                   <span class="gb-chart-icon">
@@ -4233,6 +4291,20 @@ Science,91</pre
                         checked
                       />
                       Show Grid Lines
+                    </label>
+                  </div>
+                  <div
+                    class="gb-config-group"
+                    id="gb-stack-series-group"
+                    style="display: none"
+                  >
+                    <label>
+                      <input
+                        type="checkbox"
+                        id="gb-stack-series"
+                        name="stack-series"
+                      />
+                      Stack series
                     </label>
                   </div>
                 </div>
@@ -5393,7 +5465,8 @@ Science,91</pre
                       <span class="format-content">
                         <span class="format-label">HTML</span>
                         <span class="format-description"
-                          >Web-ready format with MathML</span
+                          >Web-ready format with MathML and hidden
+                          screen-reader speech text</span
                         >
                       </span>
                     </label>
@@ -5481,8 +5554,10 @@ Science,91</pre
                       <span class="format-content">
                         <span class="format-label">HTML Archive (ZIP)</span>
                         <span class="format-description"
-                          >HTML file with images and CSS packaged in ZIP
-                          archive</span
+                          >Less accessible than HTML. Math expressions are
+                          pre-rendered images — no screen-reader speech text or
+                          semantic structure. Use plain HTML for full
+                          accessibility. Includes images and CSS.</span
                         >
                       </span>
                     </label>
@@ -6345,6 +6420,9 @@ Science,91</pre
                       <div
                         id="resume-mmd-pdf-scroll-container"
                         class="mmd-pdf-scroll-container"
+                        tabindex="0"
+                        role="document"
+                        aria-label="PDF preview, use arrow keys to scroll"
                       >
                         <div
                           id="resume-mmd-pdf-loading"
@@ -6413,18 +6491,25 @@ Science,91</pre
                     style="display: none"
                   ></h5>
 
+                  <!-- Phase 12-1d: visible inline SVG + hidden export canvas. -->
                   <figure
                     id="resume-chemistry-structure-figure"
                     class="chemistry-structure"
                     role="img"
                     aria-label="Chemical structure diagram"
                   >
+                    <svg
+                      id="resume-chemistry-structure-svg"
+                      class="chemistry-svg"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                    ></svg>
                     <canvas
                       id="resume-chemistry-structure-canvas"
                       width="400"
                       height="300"
                       aria-hidden="true"
-                      class="chemistry-canvas"
+                      class="chemistry-canvas chemistry-canvas-export-only"
                     ></canvas>
                     <figcaption
                       id="resume-chemistry-structure-caption"
@@ -6472,7 +6557,7 @@ Science,91</pre
                           name="resume-chemistry-preset"
                           value="textbook"
                         />
-                        <span class="chemistry-preset-text">Textbook</span>
+                        <span class="chemistry-preset-text">All hydrogens</span>
                       </label>
                       <label class="chemistry-preset-label">
                         <input
@@ -6551,36 +6636,13 @@ Science,91</pre
                       <div class="chemistry-control-group">
                         <label
                           class="chemistry-control-label"
-                          for="resume-chem-bond-spacing"
-                        >
-                          Bond spacing
-                          <output
-                            id="resume-chem-bond-spacing-value"
-                            class="chemistry-control-value"
-                            >5</output
-                          >
-                        </label>
-                        <input
-                          type="range"
-                          id="resume-chem-bond-spacing"
-                          class="chemistry-control-range"
-                          min="1"
-                          max="10"
-                          step="0.5"
-                          value="5"
-                        />
-                      </div>
-
-                      <div class="chemistry-control-group">
-                        <label
-                          class="chemistry-control-label"
                           for="resume-chem-font-size-large"
                         >
                           Label font size
                           <output
                             id="resume-chem-font-size-large-value"
                             class="chemistry-control-value"
-                            >11</output
+                            >18</output
                           >
                         </label>
                         <input
@@ -6588,9 +6650,9 @@ Science,91</pre
                           id="resume-chem-font-size-large"
                           class="chemistry-control-range"
                           min="5"
-                          max="20"
+                          max="30"
                           step="1"
-                          value="11"
+                          value="18"
                         />
                       </div>
 
@@ -6603,7 +6665,7 @@ Science,91</pre
                           <output
                             id="resume-chem-font-size-small-value"
                             class="chemistry-control-value"
-                            >4</output
+                            >13</output
                           >
                         </label>
                         <input
@@ -6611,23 +6673,10 @@ Science,91</pre
                           id="resume-chem-font-size-small"
                           class="chemistry-control-range"
                           min="3"
-                          max="12"
+                          max="20"
                           step="1"
-                          value="4"
+                          value="13"
                         />
-                      </div>
-
-                      <div
-                        class="chemistry-control-group chemistry-control-checkbox-group"
-                      >
-                        <label class="chemistry-control-checkbox-label">
-                          <input
-                            type="checkbox"
-                            id="resume-chem-compact-drawing"
-                            class="chemistry-control-checkbox"
-                          />
-                          Compact drawing
-                        </label>
                       </div>
 
                       <div
@@ -6643,17 +6692,23 @@ Science,91</pre
                         </label>
                       </div>
 
+                      <!-- Phase 12-1d: CoordGen layout opt-out. -->
                       <div
                         class="chemistry-control-group chemistry-control-checkbox-group"
                       >
                         <label class="chemistry-control-checkbox-label">
                           <input
                             type="checkbox"
-                            id="resume-chem-terminal-carbons"
+                            id="resume-chem-coordgen-orientation"
                             class="chemistry-control-checkbox"
+                            checked
                           />
-                          Show terminal carbons
+                          CoordGen orientation
                         </label>
+                        <span class="chemistry-control-help">
+                          Use Schrödinger's CoordGen layout. Uncheck to use
+                          RDKit's default 2D layout.
+                        </span>
                       </div>
 
                       <div class="chemistry-control-group">
@@ -6769,7 +6824,29 @@ Science,91</pre
                     class="chemistry-structural-desc"
                     style="display: none"
                   >
+                    <span class="chemistry-preview-pill" aria-hidden="true">Preview</span>
                     <p id="resume-chemistry-structural-desc-text"></p>
+                    <span
+                      class="chemistry-preview-disclosure"
+                      id="resume-chemistry-structural-description-preview-disclosure"
+                    >This description is generated automatically and is currently being refined for accuracy and coverage.</span>
+                  </div>
+
+                  <!-- Comprehensive description (Phase 8C-CT) -->
+                  <div
+                    id="resume-chemistry-comprehensive-description"
+                    class="chemistry-comprehensive-desc"
+                    style="display: none"
+                  >
+                    <details>
+                      <summary>Detailed diagram description</summary>
+                      <span class="chemistry-preview-pill" aria-hidden="true">Preview</span>
+                      <div id="resume-chemistry-comprehensive-desc-text"></div>
+                      <span
+                        class="chemistry-preview-disclosure"
+                        id="resume-chemistry-comprehensive-description-preview-disclosure"
+                      >This description is generated automatically and is currently being refined for accuracy and coverage.</span>
+                    </details>
                   </div>
 
                   <!-- Description area -->
@@ -6850,7 +6927,18 @@ Science,91</pre
                       disabled
                     >
                       <span aria-hidden="true" data-icon="download"></span>
-                      Save Image
+                      Save as PNG
+                    </button>
+                    <!-- Phase 12-1d: vector export sibling to Save as PNG. -->
+                    <button
+                      type="button"
+                      class="chemistry-action-btn"
+                      id="resume-chemistry-save-as-svg-btn"
+                      aria-label="Save structure diagram as SVG vector image"
+                      disabled
+                    >
+                      <span aria-hidden="true" data-icon="download"></span>
+                      Save as SVG
                     </button>
                   </div>
 
@@ -6891,7 +6979,10 @@ Science,91</pre
                   </div>
 
                   <!-- Phase 8A-6: AI output container -->
-                  <div id="resume-chemistry-ai-output" class="visually-hidden"></div>
+                  <div
+                    id="resume-chemistry-ai-output"
+                    class="visually-hidden"
+                  ></div>
 
                   <div
                     id="resume-chemistry-live-region"
@@ -7094,7 +7185,8 @@ Science,91</pre
                         <span class="format-content">
                           <span class="format-label">HTML</span>
                           <span class="format-description"
-                            >Web-ready format with MathML</span
+                            >Web-ready format with MathML and hidden
+                            screen-reader speech text</span
                           >
                         </span>
                       </label>
@@ -7179,8 +7271,10 @@ Science,91</pre
                         <span class="format-content">
                           <span class="format-label">HTML Archive (ZIP)</span>
                           <span class="format-description"
-                            >HTML file with images and CSS packaged in ZIP
-                            archive</span
+                            >Less accessible than HTML. Math expressions are
+                            pre-rendered images — no screen-reader speech text
+                            or semantic structure. Use plain HTML for full
+                            accessibility. Includes images and CSS.</span
                           >
                         </span>
                       </label>
@@ -8154,19 +8248,26 @@ Science,91</pre
                   Chemistry Output
                 </h4>
 
-                <!-- Structure diagram area (populated by SmilesDrawer in 5C-2) -->
+                <!-- Structure diagram area. Phase 12-1d: visible inline SVG
+                     + hidden export canvas (preserved for toBlob consumers). -->
                 <figure
                   id="chemistry-structure-figure"
                   class="chemistry-structure"
                   role="img"
                   aria-label="Chemical structure diagram"
                 >
+                  <svg
+                    id="chemistry-structure-svg"
+                    class="chemistry-svg"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                  ></svg>
                   <canvas
                     id="chemistry-structure-canvas"
                     width="400"
                     height="300"
                     aria-hidden="true"
-                    class="chemistry-canvas"
+                    class="chemistry-canvas chemistry-canvas-export-only"
                   ></canvas>
                   <figcaption
                     id="chemistry-structure-caption"
@@ -8214,7 +8315,7 @@ Science,91</pre
                         name="chemistry-preset"
                         value="textbook"
                       />
-                      <span class="chemistry-preset-text">Textbook</span>
+                      <span class="chemistry-preset-text">All hydrogens</span>
                     </label>
                     <label class="chemistry-preset-label">
                       <input
@@ -8294,36 +8395,13 @@ Science,91</pre
                     <div class="chemistry-control-group">
                       <label
                         class="chemistry-control-label"
-                        for="chem-bond-spacing"
-                      >
-                        Bond spacing
-                        <output
-                          id="chem-bond-spacing-value"
-                          class="chemistry-control-value"
-                          >5</output
-                        >
-                      </label>
-                      <input
-                        type="range"
-                        id="chem-bond-spacing"
-                        class="chemistry-control-range"
-                        min="1"
-                        max="10"
-                        step="0.5"
-                        value="5"
-                      />
-                    </div>
-
-                    <div class="chemistry-control-group">
-                      <label
-                        class="chemistry-control-label"
                         for="chem-font-size-large"
                       >
                         Label font size
                         <output
                           id="chem-font-size-large-value"
                           class="chemistry-control-value"
-                          >11</output
+                          >18</output
                         >
                       </label>
                       <input
@@ -8331,9 +8409,9 @@ Science,91</pre
                         id="chem-font-size-large"
                         class="chemistry-control-range"
                         min="5"
-                        max="20"
+                        max="30"
                         step="1"
-                        value="11"
+                        value="18"
                       />
                     </div>
 
@@ -8346,7 +8424,7 @@ Science,91</pre
                         <output
                           id="chem-font-size-small-value"
                           class="chemistry-control-value"
-                          >4</output
+                          >13</output
                         >
                       </label>
                       <input
@@ -8354,23 +8432,10 @@ Science,91</pre
                         id="chem-font-size-small"
                         class="chemistry-control-range"
                         min="3"
-                        max="12"
+                        max="20"
                         step="1"
-                        value="4"
+                        value="13"
                       />
-                    </div>
-
-                    <div
-                      class="chemistry-control-group chemistry-control-checkbox-group"
-                    >
-                      <label class="chemistry-control-checkbox-label">
-                        <input
-                          type="checkbox"
-                          id="chem-compact-drawing"
-                          class="chemistry-control-checkbox"
-                        />
-                        Compact drawing
-                      </label>
                     </div>
 
                     <div
@@ -8386,17 +8451,23 @@ Science,91</pre
                       </label>
                     </div>
 
+                    <!-- Phase 12-1d: CoordGen layout opt-out. -->
                     <div
                       class="chemistry-control-group chemistry-control-checkbox-group"
                     >
                       <label class="chemistry-control-checkbox-label">
                         <input
                           type="checkbox"
-                          id="chem-terminal-carbons"
+                          id="chem-coordgen-orientation"
                           class="chemistry-control-checkbox"
+                          checked
                         />
-                        Show terminal carbons
+                        CoordGen orientation
                       </label>
+                      <span class="chemistry-control-help">
+                        Use Schrödinger's CoordGen layout. Uncheck to use
+                        RDKit's default 2D layout.
+                      </span>
                     </div>
 
                     <div class="chemistry-control-group">
@@ -8513,7 +8584,29 @@ Science,91</pre
                   class="chemistry-structural-desc"
                   style="display: none"
                 >
+                  <span class="chemistry-preview-pill" aria-hidden="true">Preview</span>
                   <p id="chemistry-structural-desc-text"></p>
+                  <span
+                    class="chemistry-preview-disclosure"
+                    id="chemistry-structural-description-preview-disclosure"
+                  >This description is generated automatically and is currently being refined for accuracy and coverage.</span>
+                </div>
+
+                <!-- Comprehensive description (Phase 8C-CT) -->
+                <div
+                  id="chemistry-comprehensive-description"
+                  class="chemistry-comprehensive-desc"
+                  style="display: none"
+                >
+                  <details>
+                    <summary>Detailed diagram description</summary>
+                    <span class="chemistry-preview-pill" aria-hidden="true">Preview</span>
+                    <div id="chemistry-comprehensive-desc-text"></div>
+                    <span
+                      class="chemistry-preview-disclosure"
+                      id="chemistry-comprehensive-description-preview-disclosure"
+                    >This description is generated automatically and is currently being refined for accuracy and coverage.</span>
+                  </details>
                 </div>
 
                 <!-- Accessible description area (populated by PubChem in 5D-2 / AI in 5E-1) -->
@@ -8593,7 +8686,18 @@ Science,91</pre
                     disabled
                   >
                     <span aria-hidden="true" data-icon="download"></span>
-                    Save Image
+                    Save as PNG
+                  </button>
+                  <!-- Phase 12-1d: vector export sibling to Save as PNG. -->
+                  <button
+                    type="button"
+                    class="chemistry-action-btn"
+                    id="chemistry-save-as-svg-btn"
+                    aria-label="Save structure diagram as SVG vector image"
+                    disabled
+                  >
+                    <span aria-hidden="true" data-icon="download"></span>
+                    Save as SVG
                   </button>
                 </div>
 
@@ -9003,11 +9107,17 @@ Science,91</pre
                   </label>
 
                   <label class="mathpix-format-checkbox">
-                    <input type="checkbox" id="pdf-format-html" value="html" />
+                    <input
+                      type="checkbox"
+                      id="pdf-format-html"
+                      value="html"
+                      aria-label="HTML format"
+                    />
                     <span class="format-content">
                       <span class="format-label">HTML</span>
                       <span class="format-description"
-                        >Web-ready format with MathML</span
+                        >Web-ready format with MathML and hidden
+                        screen-reader speech text</span
                       >
                     </span>
                   </label>
@@ -9105,12 +9215,15 @@ Science,91</pre
                       type="checkbox"
                       id="pdf-format-htmlzip"
                       value="html.zip"
+                      aria-label="HTML ZIP format"
                     />
                     <span class="format-content">
                       <span class="format-label">HTML Archive (ZIP)</span>
                       <span class="format-description"
-                        >HTML file with images and CSS packaged in ZIP
-                        archive</span
+                        >Less accessible than HTML. Math expressions are
+                        pre-rendered images — no screen-reader speech text or
+                        semantic structure. Use plain HTML for full
+                        accessibility. Includes images and CSS.</span
                       >
                     </span>
                   </label>
@@ -9346,6 +9459,37 @@ Science,91</pre
                     </span>
                   </label>
                 </div>
+              </fieldset>
+
+              <!-- Page Break Markers (MathPix October 2025 release) -->
+              <fieldset
+                class="mathpix-option-group mathpix-page-break-options"
+              >
+                <legend>Page Breaks</legend>
+                <p class="option-group-description">
+                  Preserve original page boundaries in exported documents.
+                </p>
+                <label class="mathpix-option mathpix-checkbox-option">
+                  <input
+                    type="checkbox"
+                    id="pdf-include-page-breaks"
+                    value="true"
+                  />
+                  <span class="option-content">
+                    <span class="option-label"
+                      >Preserve original page breaks</span
+                    >
+                    <span class="option-description">
+                      Inserts page break markers at original page boundaries.
+                      Produces real page breaks in DOCX, LaTeX, and PDF (LaTeX)
+                      exports.
+                      <br />
+                      <strong>Note:</strong> When enabled, MMD output will
+                      contain <code>\pagebreak</code> markers visible as text
+                      between pages.
+                    </span>
+                  </span>
+                </label>
               </fieldset>
 
               <!-- Processing Actions -->
@@ -10350,6 +10494,39 @@ Science,91</pre
                     ></span>
                   </div>
 
+                  <!-- Phase 6H: Chemistry image enhancement bar -->
+                  <div
+                    id="chem-enhance-bar"
+                    class="chem-enhance-bar"
+                    role="status"
+                    hidden
+                  >
+                    <p class="chem-enhance-status" id="chem-enhance-status">
+                      <span aria-hidden="true" data-icon="aiSparkle"></span>
+                      <span id="chem-enhance-count"></span>
+                    </p>
+                    <div class="chem-enhance-actions">
+                      <button
+                        type="button"
+                        id="chem-enhance-toggle"
+                        class="chem-enhance-toggle"
+                        onclick="toggleChemistryImageView()"
+                        aria-pressed="true"
+                      >
+                        <span aria-hidden="true" data-icon="flip"></span>
+                        Show originals
+                      </button>
+                      <button
+                        type="button"
+                        class="chem-enhance-dismiss"
+                        onclick="dismissChemEnhanceBar()"
+                        aria-label="Dismiss"
+                      >
+                        <span aria-hidden="true" data-icon="close"></span>
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- ============================================================
      MMD CONTENT AREA - Contains all view containers
      ============================================================ -->
@@ -10506,8 +10683,9 @@ Science,91</pre
                       <div
                         id="mmd-pdf-scroll-container"
                         class="mmd-pdf-scroll-container"
+                        tabindex="0"
                         role="document"
-                        aria-label="PDF document viewer"
+                        aria-label="PDF preview, use arrow keys to scroll"
                       >
                         <!-- Page indicator (floating) -->
                         <div
@@ -10564,39 +10742,6 @@ Science,91</pre
                           <span aria-hidden="true">↓</span> Skip to Preview
                         </button>
                       </nav>
-                    </div>
-
-                    <!-- Phase 6H: Chemistry image enhancement bar -->
-                    <div
-                      id="chem-enhance-bar"
-                      class="chem-enhance-bar"
-                      role="status"
-                      hidden
-                    >
-                      <p class="chem-enhance-status" id="chem-enhance-status">
-                        <span aria-hidden="true" data-icon="aiSparkle"></span>
-                        <span id="chem-enhance-count"></span>
-                      </p>
-                      <div class="chem-enhance-actions">
-                        <button
-                          type="button"
-                          id="chem-enhance-toggle"
-                          class="chem-enhance-toggle"
-                          onclick="toggleChemistryImageView()"
-                          aria-pressed="true"
-                        >
-                          <span aria-hidden="true" data-icon="flip"></span>
-                          Show originals
-                        </button>
-                        <button
-                          type="button"
-                          class="chem-enhance-dismiss"
-                          onclick="dismissChemEnhanceBar()"
-                          aria-label="Dismiss"
-                        >
-                          <span aria-hidden="true" data-icon="close"></span>
-                        </button>
-                      </div>
                     </div>
 
                     <!-- --------------------------------------------------------
@@ -11556,7 +11701,8 @@ Science,91</pre
                         <span class="format-content">
                           <span class="format-label">HTML</span>
                           <span class="format-description"
-                            >Web-ready format with MathML</span
+                            >Web-ready format with MathML and hidden
+                            screen-reader speech text</span
                           >
                         </span>
                       </label>
@@ -11641,8 +11787,10 @@ Science,91</pre
                         <span class="format-content">
                           <span class="format-label">HTML Archive (ZIP)</span>
                           <span class="format-description"
-                            >HTML file with images and CSS packaged in ZIP
-                            archive</span
+                            >Less accessible than HTML. Math expressions are
+                            pre-rendered images — no screen-reader speech text
+                            or semantic structure. Use plain HTML for full
+                            accessibility. Includes images and CSS.</span
                           >
                         </span>
                       </label>
@@ -16129,6 +16277,21 @@ Science,91</pre
     ></script>
     <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-tab-handler.js"></script>
     <script src="https://matthewdeeprose.github.io/markdownit/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script>
+      // Bump Chart.js's rendering pixel ratio for sharper canvas text on
+      // non-HiDPI displays. Default is window.devicePixelRatio, which on
+      // 100%-scaling displays is 1 — text rendered at 1:1 with no
+      // supersampling looks soft. min-floor 2 gives 4× memory cost for
+      // visibly sharper text; HiDPI displays already higher than 2 are
+      // preserved.
+      if (window.Chart && window.Chart.defaults) {
+        window.Chart.defaults.devicePixelRatio = Math.max(
+          2,
+          window.devicePixelRatio || 1
+        );
+      }
+    </script>
 
     <script src="md-scripts/charts/chart-data-manager.js"></script>
     <script src="md-scripts/charts/chart-template-manager.js"></script>
@@ -16147,8 +16310,10 @@ Science,91</pre
     <!-- Graph Builder Enhanced Modules (load in dependency order) -->
     <script src="js/graph-builder-column-manager.js"></script>
     <script src="js/graph-builder-csv-processor.js"></script>
+    <script src="js/graph-builder-data-enhanced.js"></script>
     <script src="js/graph-builder-row-sync.js"></script>
     <script src="js/graph-builder-enhanced.js"></script>
+    <script src="js/graph-builder-charts-enhanced.js"></script>
     <script src="js/graph-builder-testing.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js"></script>
 
@@ -16192,10 +16357,20 @@ Science,91</pre
       type="module"
       src="mathpix-scripts/core/mathpix-image-transformer.js"
     ></script>
-    <!-- Phase 5C-2: SmilesDrawer for 2D structure rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/smiles-drawer@2.1.7/dist/smiles-drawer.min.js"></script>
+    <!-- Phase 12-0c: RDKit.js — registers window.initRDKitModule() for lazy WASM init.
+         SmilesDrawer above remains the production rendering backend until 12-1a.
+         The ~2 MB RDKit_minimal.wasm bundle does NOT download until the first
+         _getRdkit() call inside mathpix-chemistry-utils.js; pages that never render
+         chemistry pay only the small JS shim cost.
+         Version: rdkit-migration-notes.md § "RDKit.js version tested" records the
+         upstream RDKit C++ release as 2025.03.4. The npm package version published
+         against that release is "2025.3.4-1.0.0" (no zero-padding, with a JS-binding
+         suffix) — pin must use the npm version, not the upstream release tag. -->
+    <script src="https://unpkg.com/@rdkit/rdkit@2025.3.4-1.0.0/dist/RDKit_minimal.js"></script>
     <!-- Phase 5B-1: Shared chemistry utilities -->
     <script src="mathpix-scripts/core/mathpix-chemistry-utils.js"></script>
+    <!-- Phase 11-2a: positional-label locant tables (must load after utils, before descriptions) -->
+    <script src="mathpix-scripts/core/mathpix-chemistry-locants.js"></script>
     <!-- Phase 8C refactor: structural description engine (must load after utils) -->
     <script src="mathpix-scripts/core/mathpix-chemistry-descriptions.js"></script>
     <!-- Phase 8C-CT: comprehensive tier engine (must load after descriptions) -->
@@ -16238,6 +16413,8 @@ Science,91</pre
       type="module"
       src="mathpix-scripts/editor/mathpix-mmd-editor-files.js"
     ></script>
+
+    <script src="mathpix-scripts/ui/components/mathpix-pdf-pan.js"></script>
 
     <script
       type="module"
@@ -16337,6 +16514,8 @@ Science,91</pre
     <script src="mathpix-scripts/testing/mathpix-phase5-testing.js"></script>
     <script src="mathpix-scripts/testing/mathpix-phase6-testing.js"></script>
     <script src="mathpix-scripts/testing/mathpix-chemistry-tests.js"></script>
+    <!-- Phase 12-0a: description-engine migration harness (SmilesDrawer baseline + stub RDKit) -->
+    <script src="mathpix-scripts/testing/migration-harness.js"></script>
 
     <!-- OpenRouter Embed Diagnostics -->
     <script src="openrouter-embed/openrouter-embed-diagnostic.js"></script>
@@ -19690,6 +19869,7 @@ Science,91</pre
 
     <script src="js/universal-modal.js"></script>
     <script src="js/universal-toggletip.js"></script>
+    <script src="js/universal-contrast-color.js"></script>
     <script src="js/universal-camera-capture.js"></script>
 
     <!-- OpenRouter API Configuration Management -->

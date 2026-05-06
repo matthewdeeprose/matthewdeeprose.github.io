@@ -1177,6 +1177,20 @@ const MATHPIX_CONFIG = {
         fontSize: "14",
         margin: "70",
       },
+      html: {
+        // Native MathML for browser-native math rendering (modern browsers all support).
+        math_output_format: "mathml",
+        // Runtime-injected speech text for screen readers (MathPix October 2025 release).
+        // MathPix's auto-render script reads accessibility.include_speech from
+        // window.MathpixRenderConfig and injects speech text + assistive MathML at runtime.
+        // Static HTML (no JS) falls back to native MathML rendering. Verified by Test B.
+        accessibility: {
+          include_speech: true,
+          // context_menu intentionally omitted — project already implements its own
+          // copy-as-LaTeX/MathML/AsciiMath context menu in mathpix-math-context-menu.js.
+          // Also silently ignored by the API when probed on 2026-05-02; see Re-check 1.
+        },
+      },
     },
 
     /**
@@ -1211,117 +1225,182 @@ const MATHPIX_CONFIG = {
       skeletal: {
         label: "Skeletal",
         description: "Standard skeletal formula — compact, no explicit hydrogens",
-        bondThickness: 2.0,
-        bondLength: 15,
-        shortBondLength: 0.85,
-        bondSpacing: 5.1,
-        atomVisualization: "default",
-        terminalCarbons: false,
-        explicitHydrogens: false,
-        overlapSensitivity: 0.42,
-        compactDrawing: true,
-        fontSizeLarge: 9,
-        fontSizeSmall: 6,
-        padding: 20,
+        bondLineWidth: 2.0,
+        // Bumped from 6/9 to 13/18 (Phase 12-1b follow-up): the previous
+        // SmilesDrawer-derived sizes rendered atom labels too small to read
+        // comfortably. 13/18 keeps headroom below RDKit's auto-shrink for
+        // dense molecules while exceeding the legibility of High Contrast
+        // (9/13). User-tuned across two iterations: 11/16 → 13/18.
+        minFontSize: 13,
+        maxFontSize: 18,
+        atomColourPalette: "element",
+        addHsInPlace: false,
+        // Phase 12-4c (C3.5): useCoordGen made explicit on every preset.
+        // Previously injected at runtime by _resolveRdkitDrawOptions; the
+        // implicit-default pattern made `_populate*` reads via
+        // `values.useCoordGen !== false` accidentally-correct rather than
+        // intentional. Sub-decision 2 (b) of C3.5 lock.
+        useCoordGen: true,
       },
       textbook: {
-        label: "Textbook",
-        description: "Explicit hydrogens and terminal carbons — clearer for learning",
-        bondThickness: 2.0,
-        bondLength: 20,
-        shortBondLength: 0.85,
-        bondSpacing: 5.5,
-        atomVisualization: "default",
-        terminalCarbons: true,
-        explicitHydrogens: true,
-        overlapSensitivity: 0.42,
-        compactDrawing: false,
-        fontSizeLarge: 11,
-        fontSizeSmall: 8,
-        padding: 25,
+        // Preset KEY stays "textbook" for localStorage stability; UI label is
+        // "All hydrogens" (see PRESETS.textbook.label and the matching
+        // radio-button text in tools.html).
+        label: "All hydrogens",
+        description: "All hydrogens rendered explicitly — clearer for learning",
+        bondLineWidth: 2.0,
+        // Bumped from 8/11 to 13/18 alongside Skeletal/Monochrome.
+        minFontSize: 13,
+        maxFontSize: 18,
+        atomColourPalette: "element",
+        addHsInPlace: true,
+        useCoordGen: true,
       },
       monochrome: {
         label: "Monochrome",
         description: "Single colour — suitable for print or high-contrast needs",
-        bondThickness: 2.0,
-        bondLength: 15,
-        shortBondLength: 0.85,
-        bondSpacing: 5.1,
-        atomVisualization: "default",
-        terminalCarbons: false,
-        explicitHydrogens: false,
-        overlapSensitivity: 0.42,
-        compactDrawing: true,
-        fontSizeLarge: 9,
-        fontSizeSmall: 6,
-        padding: 20,
-        colourScheme: "monochrome",
+        bondLineWidth: 2.0,
+        // Bumped from 6/9 to 13/18 alongside Skeletal/All hydrogens.
+        minFontSize: 13,
+        maxFontSize: 18,
+        atomColourPalette: "monochrome",
+        addHsInPlace: false,
+        useCoordGen: true,
       },
       "high-contrast": {
         label: "High Contrast",
         description: "Bold bonds, large labels — optimised for visibility",
-        bondThickness: 3.0,
-        bondLength: 22,
-        shortBondLength: 0.85,
-        bondSpacing: 6.0,
-        atomVisualization: "default",
-        terminalCarbons: true,
-        explicitHydrogens: false,
-        overlapSensitivity: 0.42,
-        compactDrawing: false,
-        fontSizeLarge: 13,
-        fontSizeSmall: 9,
-        padding: 28,
-        colourScheme: "high-contrast",
+        bondLineWidth: 3.0,
+        // Bumped from 9/13 to 20/26 alongside the other presets (Phase 12-1b
+        // follow-up). Preserves the ~1.5× legibility advantage HC originally
+        // had over Skeletal/Monochrome (HC was 9/13 when others were 6/9);
+        // applied that ratio to the new 13/18 baseline.
+        minFontSize: 20,
+        maxFontSize: 26,
+        atomColourPalette: "high-contrast",
+        addHsInPlace: false,
+        useCoordGen: true,
       },
     },
 
-    // Colour palettes per scheme, per theme
+    // RDKit takes atomColourPalette as { atomicNumber: [r, g, b] } with floats
+    // in 0–1 range. Atomic numbers covered: H(1), C(6), N(7), O(8), F(9),
+    // P(15), S(16), Cl(17), Br(35), I(53). Plus a BACKGROUND entry per theme.
+    // The Phase 7C-3 contrast swaps (light S/P, high-contrast S) are preserved.
     COLOUR_PALETTES: {
-      // Phase 7C-3: contrast audit swaps —
-      //   element light S:   #f9a825 → #7a5c00  (1.97 → ~7.0:1)
-      //   element light P:   #e65100 → #a63c00  (3.79 → ~5.8:1)
-      //   high-contrast S:   #cc8800 → #6b4800  (2.96 → ~8.5:1)
-      // Also adds H (hydrogen) key to every theme — SmilesDrawer needs it
-      // explicitly; omitting it leaves hydrogen subscripts rendered in a
-      // dim fallback colour (visible on dark theme as grey H₃C labels).
       element: {
         light: {
-          C: "#111111", H: "#111111", O: "#b71c1c", N: "#0d47a1", S: "#7a5c00",
-          F: "#2e7d32", CL: "#2e7d32", BR: "#8d6e63", I: "#6a1b9a",
-          P: "#a63c00", BACKGROUND: "#ffffff",
+          1:  [0.067, 0.067, 0.067],   // H  #111111
+          6:  [0.067, 0.067, 0.067],   // C  #111111
+          7:  [0.051, 0.278, 0.631],   // N  #0d47a1
+          8:  [0.718, 0.110, 0.110],   // O  #b71c1c
+          9:  [0.180, 0.490, 0.196],   // F  #2e7d32
+          15: [0.651, 0.235, 0.000],   // P  #a63c00 (Phase 7C-3 contrast swap)
+          16: [0.478, 0.361, 0.000],   // S  #7a5c00 (Phase 7C-3 contrast swap)
+          17: [0.180, 0.490, 0.196],   // Cl #2e7d32
+          35: [0.553, 0.431, 0.388],   // Br #8d6e63
+          53: [0.416, 0.106, 0.604],   // I  #6a1b9a
+          BACKGROUND: [1.000, 1.000, 1.000],   // #ffffff
         },
         dark: {
-          C: "#e0e0e0", H: "#e0e0e0", O: "#ef5350", N: "#64b5f6", S: "#fff176",
-          F: "#81c784", CL: "#81c784", BR: "#bcaaa4", I: "#ce93d8",
-          P: "#ffab91", BACKGROUND: "#1e1e1e",
+          1:  [0.878, 0.878, 0.878],   // H  #e0e0e0
+          6:  [0.878, 0.878, 0.878],   // C  #e0e0e0
+          7:  [0.392, 0.710, 0.965],   // N  #64b5f6
+          8:  [0.937, 0.325, 0.314],   // O  #ef5350
+          9:  [0.506, 0.780, 0.518],   // F  #81c784
+          15: [1.000, 0.671, 0.569],   // P  #ffab91
+          16: [1.000, 0.945, 0.463],   // S  #fff176
+          17: [0.506, 0.780, 0.518],   // Cl #81c784
+          35: [0.737, 0.667, 0.643],   // Br #bcaaa4
+          53: [0.808, 0.576, 0.847],   // I  #ce93d8
+          BACKGROUND: [0.118, 0.118, 0.118],   // #1e1e1e
         },
       },
       monochrome: {
         light: {
-          C: "#111111", H: "#111111", O: "#111111", N: "#111111", S: "#111111",
-          F: "#111111", CL: "#111111", BR: "#111111", I: "#111111",
-          P: "#111111", BACKGROUND: "#ffffff",
+          1:  [0.067, 0.067, 0.067],
+          6:  [0.067, 0.067, 0.067],
+          7:  [0.067, 0.067, 0.067],
+          8:  [0.067, 0.067, 0.067],
+          9:  [0.067, 0.067, 0.067],
+          15: [0.067, 0.067, 0.067],
+          16: [0.067, 0.067, 0.067],
+          17: [0.067, 0.067, 0.067],
+          35: [0.067, 0.067, 0.067],
+          53: [0.067, 0.067, 0.067],
+          BACKGROUND: [1.000, 1.000, 1.000],
         },
         dark: {
-          C: "#e0e0e0", H: "#e0e0e0", O: "#e0e0e0", N: "#e0e0e0", S: "#e0e0e0",
-          F: "#e0e0e0", CL: "#e0e0e0", BR: "#e0e0e0", I: "#e0e0e0",
-          P: "#e0e0e0", BACKGROUND: "#1e1e1e",
+          1:  [0.878, 0.878, 0.878],
+          6:  [0.878, 0.878, 0.878],
+          7:  [0.878, 0.878, 0.878],
+          8:  [0.878, 0.878, 0.878],
+          9:  [0.878, 0.878, 0.878],
+          15: [0.878, 0.878, 0.878],
+          16: [0.878, 0.878, 0.878],
+          17: [0.878, 0.878, 0.878],
+          35: [0.878, 0.878, 0.878],
+          53: [0.878, 0.878, 0.878],
+          BACKGROUND: [0.118, 0.118, 0.118],
         },
       },
       "high-contrast": {
         light: {
-          C: "#000000", H: "#000000", O: "#d50000", N: "#0000cc", S: "#6b4800",
-          F: "#006600", CL: "#006600", BR: "#663300", I: "#4a0080",
-          P: "#cc3300", BACKGROUND: "#ffffff",
+          1:  [0.000, 0.000, 0.000],   // H  #000000
+          6:  [0.000, 0.000, 0.000],   // C  #000000
+          7:  [0.000, 0.000, 0.800],   // N  #0000cc
+          8:  [0.835, 0.000, 0.000],   // O  #d50000
+          9:  [0.000, 0.400, 0.000],   // F  #006600
+          15: [0.800, 0.200, 0.000],   // P  #cc3300
+          16: [0.420, 0.282, 0.000],   // S  #6b4800 (Phase 7C-3 contrast swap)
+          17: [0.000, 0.400, 0.000],   // Cl #006600
+          35: [0.400, 0.200, 0.000],   // Br #663300
+          53: [0.290, 0.000, 0.502],   // I  #4a0080
+          BACKGROUND: [1.000, 1.000, 1.000],   // #ffffff
         },
         dark: {
-          C: "#ffffff", H: "#ffffff", O: "#ff5252", N: "#82b1ff", S: "#ffff00",
-          F: "#69f0ae", CL: "#69f0ae", BR: "#d7ccc8", I: "#ea80fc",
-          P: "#ff9e80", BACKGROUND: "#000000",
+          1:  [1.000, 1.000, 1.000],   // H  #ffffff
+          6:  [1.000, 1.000, 1.000],   // C  #ffffff
+          7:  [0.510, 0.694, 1.000],   // N  #82b1ff
+          8:  [1.000, 0.322, 0.322],   // O  #ff5252
+          9:  [0.412, 0.941, 0.682],   // F  #69f0ae
+          15: [1.000, 0.620, 0.502],   // P  #ff9e80
+          16: [1.000, 1.000, 0.000],   // S  #ffff00
+          17: [0.412, 0.941, 0.682],   // Cl #69f0ae
+          35: [0.843, 0.800, 0.784],   // Br #d7ccc8
+          53: [0.918, 0.502, 0.988],   // I  #ea80fc
+          BACKGROUND: [0.000, 0.000, 0.000],   // #000000
         },
       },
     },
+  },
+
+  /**
+   * @memberof MATHPIX_CONFIG
+   * @type {Object}
+   * @description Phase 13-α: Chemistry description-engine display configuration
+   *
+   * Controls visible-presentation flags for the chemistry description tiers
+   * (SHORT alt-text, STANDARD caption, COMPREHENSIVE walkthrough). Distinct
+   * from CHEMISTRY_RENDERING (which controls structure-diagram rendering).
+   *
+   * @property {boolean} PREVIEW_MODE - When true, appends a "Preview" pill +
+   *   disclosure text to STD and COMP containers (canonical + resume),
+   *   signalling to learners that descriptions are being refined. SHORT tier
+   *   (alt-text) is excluded by design — character-budget-constrained, and
+   *   screen-reader users already receive the disclosure via STD.
+   *
+   *   When false, no preview UI is shown anywhere; this is the single removal
+   *   trigger. Flip to false once Phase 14 accuracy audit clears the engine
+   *   for permanent presentation.
+   *
+   *   See chemistry-phase13-masterplan.md (Phase 13-α section) for the
+   *   removal-trigger criteria.
+   *
+   * @since 13.α
+   */
+  CHEMISTRY_DESCRIPTIONS: {
+    PREVIEW_MODE: true,
   },
 
   /**

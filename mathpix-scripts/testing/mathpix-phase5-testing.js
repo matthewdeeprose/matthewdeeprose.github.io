@@ -667,15 +667,17 @@
       return r;
     }
 
-    // Check SmilesDrawer availability
-    const hasSmilesDrawer = typeof window.SmilesDrawer !== "undefined";
-    assertions.push(assert(hasSmilesDrawer, "SmilesDrawer library available"));
+    // Phase 12-4c C3: SmilesDrawer-availability instrumentation retired-as-dead.
+    // The previous "SmilesDrawer library available" assertion + the "graceful
+    // handling of missing SmilesDrawer" branch were dead post-12-1a (production
+    // rendering is RDKit-only). The renderStructure assertions below are live
+    // RDKit-rendering-path coverage and run unconditionally.
 
     // Check canvas element exists
     const canvas = document.getElementById("chemistry-structure-canvas");
     assertions.push(assert(!!canvas, "Canvas element exists"));
 
-    if (hasSmilesDrawer && canvas) {
+    if (canvas) {
       // Render simple SMILES (ethanol)
       const rendered = utils.renderStructure("CCO", canvas);
       assertions.push(
@@ -686,14 +688,6 @@
       const benzene = utils.renderStructure("C1=CC=CC=C1", canvas);
       assertions.push(
         assert(benzene === true, "renderStructure(benzene): returned true"),
-      );
-    }
-
-    // Missing SmilesDrawer — graceful handling
-    if (!hasSmilesDrawer) {
-      const result = utils.renderStructure("CCO", canvas);
-      assertions.push(
-        assert(result === false, "No SmilesDrawer: returns false gracefully"),
       );
     }
 

@@ -101,9 +101,9 @@ const GraphBuilderEnhanced = (function () {
     panel.className = "gb-enhanced-config";
     panel.id = "gb-enhanced-config";
     panel.innerHTML =
-      '<div class="gb-advanced-toggle" role="button" tabindex="0" ' +
-      'aria-expanded="false" aria-controls="gb-advanced-options">' +
+      '<div class="gb-advanced-toggle">' +
       '<input type="checkbox" class="gb-toggle-checkbox" id="gb-advanced-checkbox" ' +
+      'aria-controls="gb-advanced-options" aria-expanded="false" ' +
       'aria-describedby="gb-advanced-description">' +
       '<label for="gb-advanced-checkbox" class="gb-toggle-text">' +
       "Advanced Column Options</label>" +
@@ -146,8 +146,14 @@ const GraphBuilderEnhanced = (function () {
 
     var typeOpts = ["text", "number", "currency", "percentage", "date"];
     var typeLabels = { text: "Text", number: "Number", currency: "Currency", percentage: "Percentage", date: "Date" };
-    var roleOpts = ["label", "value", "grouping"];
-    var roleLabels = { label: "Label", value: "Value", grouping: "Grouping" };
+    var roleOpts = ["label", "value", "grouping", "radius"];
+    var roleLabels = { label: "Label", value: "Value", grouping: "Grouping", radius: "Radius" };
+    var chartTypeOpts = ["", "bar", "line"];
+    var chartTypeLabels = { "": "default", bar: "Bar", line: "Line" };
+
+    // Per-column Chart Type override only matters for Combo, which itself
+    // requires >= 2 value columns. Match Combo's Stage 2 gating here.
+    var canCombo = cols.filter(function (c) { return c.role === "value"; }).length >= 2;
 
     cols.forEach(function (column, index) {
       var fs = document.createElement("fieldset");
@@ -162,6 +168,12 @@ const GraphBuilderEnhanced = (function () {
         return '<option value="' + r + '"' + (column.role === r ? " selected" : "") + ">" + roleLabels[r] + "</option>";
       }).join("");
 
+      var ctValue = column.chartType || "";
+      var ctHtml = chartTypeOpts.map(function (ct) {
+        return '<option value="' + ct + '"' + (ctValue === ct ? " selected" : "") + ">" + chartTypeLabels[ct] + "</option>";
+      }).join("");
+      var ctDisplay = (column.role === "value" && canCombo) ? "" : "display: none;";
+
       var removeBtn = index >= 2
         ? '<button type="button" class="gb-remove-column-btn" aria-label="Remove column ' + (index + 1) + '">Remove</button>'
         : "";
@@ -169,26 +181,58 @@ const GraphBuilderEnhanced = (function () {
       fs.innerHTML =
         "<legend>Column " + (index + 1) + ": " + eName + "</legend>" +
         '<div class="gb-column-inputs">' +
-        '<div class="gb-enhanced-input-group"><label for="gb-ecol-' + index + '-name">Column Name:</label>' +
+        '<div class="gb-enhanced-input-group"><label for="gb-ecol-' + index + '-name">Name:</label>' +
         '<input type="text" id="gb-ecol-' + index + '-name" class="gb-enhanced-input" value="' + eName + '"></div>' +
         '<div class="gb-enhanced-input-group"><label for="gb-ecol-' + index + '-type">Data Type:</label>' +
         '<select id="gb-ecol-' + index + '-type" class="gb-enhanced-select">' + tHtml + "</select></div>" +
         '<div class="gb-enhanced-input-group"><label for="gb-ecol-' + index + '-role">Role:</label>' +
         '<select id="gb-ecol-' + index + '-role" class="gb-enhanced-select">' + rHtml + "</select></div>" +
+        '<div class="gb-enhanced-input-group gb-chart-type-group" style="' + ctDisplay + '">' +
+        '<label for="gb-ecol-' + index + '-charttype">Chart Type:</label>' +
+        '<select id="gb-ecol-' + index + '-charttype" class="gb-enhanced-select">' + ctHtml + "</select></div>" +
         '<div class="gb-enhanced-input-group">' + removeBtn + "</div></div>";
 
       // Event listeners
       var nI = fs.querySelector("#gb-ecol-" + index + "-name");
       var tS = fs.querySelector("#gb-ecol-" + index + "-type");
       var rS = fs.querySelector("#gb-ecol-" + index + "-role");
+      var ctS = fs.querySelector("#gb-ecol-" + index + "-charttype");
       var rB = fs.querySelector(".gb-remove-column-btn");
 
       if (nI) nI.addEventListener("input", function () { updateColumn(index, "name", nI.value); });
       if (tS) tS.addEventListener("change", function () { updateColumn(index, "type", tS.value); });
-      if (rS) rS.addEventListener("change", function () { updateColumn(index, "role", rS.value); });
+      if (rS) rS.addEventListener("change", function () {
+        updateColumn(index, "role", rS.value);
+        // Role flips change the total value-column count, which can show or
+        // hide chart-type selects on OTHER rows — recompute globally.
+        updateAllChartTypeVisibility();
+      });
+      if (ctS) ctS.addEventListener("change", function () { updateColumn(index, "chartType", ctS.value); });
       if (rB) rB.addEventListener("click", function () { handleRemoveColumn(index); });
 
       container.appendChild(fs);
+    });
+  }
+
+  // Refresh visibility of every per-column "Chart Type" select. Visible only
+  // on value-role columns when valueCount >= 2 (mirrors Combo's gating).
+  // Resets the DOM value to "" when hiding so visible state matches column-
+  // manager state (which drops chartType for non-value roles).
+  function updateAllChartTypeVisibility() {
+    if (!columnManager) return;
+    var cols = columnManager.getColumns();
+    var canCombo = cols.filter(function (c) { return c.role === "value"; }).length >= 2;
+    var container = document.getElementById("gb-dynamic-columns");
+    if (!container) return;
+    container.querySelectorAll(".gb-column-definition").forEach(function (fs, idx) {
+      var ctG = fs.querySelector(".gb-chart-type-group");
+      if (!ctG) return;
+      var visible = !!(cols[idx] && cols[idx].role === "value" && canCombo);
+      ctG.style.display = visible ? "" : "none";
+      if (!visible) {
+        var ctS = fs.querySelector("#gb-ecol-" + idx + "-charttype");
+        if (ctS && ctS.value) ctS.value = "";
+      }
     });
   }
 
@@ -311,19 +355,15 @@ const GraphBuilderEnhanced = (function () {
   // ============================================
 
   function setupListeners() {
-    var toggle = document.querySelector(".gb-advanced-toggle");
     var panel = document.getElementById("gb-advanced-options");
     var checkbox = document.getElementById("gb-advanced-checkbox");
 
-    if (!toggle || !panel || !checkbox) return;
+    if (!panel || !checkbox) return;
 
-    var toggleFn = function () {
-      var expanded = toggle.getAttribute("aria-expanded") === "true";
-      var next = !expanded;
-      toggle.setAttribute("aria-expanded", String(next));
-      checkbox.checked = next;
-
-      if (next) {
+    checkbox.addEventListener("change", function () {
+      var checked = checkbox.checked;
+      checkbox.setAttribute("aria-expanded", String(checked));
+      if (checked) {
         panel.classList.add("expanded");
         activateAdvancedMode();
         announceToScreenReader("Advanced options expanded. Configure column types and roles for multi-series charts.");
@@ -332,15 +372,6 @@ const GraphBuilderEnhanced = (function () {
         deactivateAdvancedMode();
         announceToScreenReader("Advanced options collapsed. Using basic two-column configuration.");
       }
-    };
-
-    toggle.addEventListener("click", function (e) {
-      if (e.target === checkbox || e.target.tagName === "LABEL") return;
-      toggleFn();
-    });
-    checkbox.addEventListener("change", toggleFn);
-    toggle.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFn(); }
     });
 
     // Basic header sync
@@ -369,10 +400,8 @@ const GraphBuilderEnhanced = (function () {
   function enhanceForm(formContainer) {
     try {
       if (state.formEnhanced) { logWarn("Form already enhanced"); return true; }
-
       var container = formContainer || findFormContainer();
       if (!container) { logWarn("Could not find Graph Builder form container"); return false; }
-
       var insertion = findInsertionPoint(container);
       if (!insertion) { logWarn("Could not find insertion point"); return false; }
 
@@ -448,7 +477,9 @@ const GraphBuilderEnhanced = (function () {
     setColumnConfiguration: function (cols, adv) {
       if (!columnManager) return false;
       state.isAdvancedMode = !!adv;
-      return columnManager.setColumns(cols);
+      var ok = columnManager.setColumns(cols);
+      if (ok) { renderDynamicColumns(); updateSmartSuggestions(); }
+      return ok;
     },
     addColumn: function (col) { return columnManager ? columnManager.addColumn(col) : false; },
     removeColumn: function (idx) { return columnManager ? columnManager.removeColumn(idx) : false; },

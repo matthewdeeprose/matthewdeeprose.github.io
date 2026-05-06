@@ -658,6 +658,18 @@ class MathPixMMDPreview {
         chemUrlToSmiles.set(cdnUrl, smiles);
       }
     }
+    // Mathpix also emits chemistry images in markdown-image form
+    // (![<smiles>X</smiles>](URL)) for some PDFs (typically Word-derived).
+    // Capture those alongside the LaTeX form so neither path silently no-ops.
+    const mdRegex =
+      /!\[<smiles[^>]*>(.*?)<\/smiles>\]\(([^)]+)\)/g;
+    while ((match = mdRegex.exec(mmdContent)) !== null) {
+      const smiles = match[1];
+      const cdnUrl = match[2].trim();
+      if (smiles && cdnUrl) {
+        chemUrlToSmiles.set(cdnUrl, smiles);
+      }
+    }
     return chemUrlToSmiles;
   }
 
@@ -673,13 +685,8 @@ class MathPixMMDPreview {
    */
   async _enhanceChemistryImages(mmdContent, targetElement) {
     // Check prerequisites
-    if (
-      typeof window.SmilesDrawer === "undefined" ||
-      typeof window.MathPixChemistryUtils?.renderStructureToBlob !== "function"
-    ) {
-      logDebug(
-        "Phase 6H: SmilesDrawer or renderStructureToBlob not available, skipping",
-      );
+    if (typeof window.MathPixChemistryUtils?.renderStructureToBlob !== "function") {
+      logDebug("Phase 6H: renderStructureToBlob not available, skipping");
       return;
     }
 
@@ -2451,9 +2458,22 @@ window.toggleChemistryImageView = function () {
  */
 window.dismissChemEnhanceBar = function () {
   const preview = window.getMathPixMMDPreview?.();
-  if (preview) {
-    preview._hideChemEnhanceBar();
-  }
+  if (!preview) return;
+
+  // WCAG 2.4.3 — redirect focus to the active view-toggle button
+  // before the dismiss button is removed from the accessibility tree.
+  const buttonKeyMap = {
+    code: "codeBtn",
+    preview: "previewBtn",
+    split: "splitBtn",
+    pdf_split: "pdfSplitBtn",
+  };
+  const targetBtn =
+    preview.elements?.[buttonKeyMap[preview.currentView]] ||
+    document.querySelector(".mmd-view-btn.active");
+  targetBtn?.focus();
+
+  preview._hideChemEnhanceBar();
 };
 
 /**

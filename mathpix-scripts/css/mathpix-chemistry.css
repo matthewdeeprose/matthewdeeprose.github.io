@@ -4,10 +4,110 @@
    Colour declarations
    ═══════════════════════════════════════ */
 
-@media print {
-  .chemistry-structure {
-    border-color: #ccc;
+/* Phase 7C-5: per-image toggle border */
+.chemistry-per-image-toggle-group {
+  border-top: 1px dashed currentColor;
+}
+
+/* Phase 7A-3: Structural description top border */
+.chemistry-structural-desc {
+  border-top: 1px solid currentcolor;
+}
+
+/* Phase 7B: Human-readable text description label */
+.captured-text-label {
+  color: #555;
+}
+
+/* Phase 7C-4: per-image settings indicator badge */
+.chemistry-per-image-badge {
+  border: 1px solid #888;
+  background: #f5f5f5;
+  color: inherit;
+}
+
+/* Forced-colours support (Phase 6E — E6) */
+@media (forced-colors: active) {
+  .chemistry-action-btn,
+  .chemistry-nav-btn {
+    border: 1px solid ButtonText;
   }
+
+  .chemistry-description,
+  .chemistry-comprehensive-desc p,
+  .chemistry-comprehensive-desc ol,
+  .captured-text-description {
+    border-left-color: LinkText;
+  }
+
+  .chemistry-canvas {
+    border: 1px solid CanvasText;
+  }
+
+  .chemistry-structure,
+  .chemistry-preset-selector,
+  .chemistry-advanced-controls,
+  .chemistry-control-select {
+    border-color: CanvasText;
+  }
+
+  .chemistry-structural-desc {
+    border-top-color: CanvasText;
+  }
+
+  .chemistry-comprehensive-desc {
+    border-top: 1px solid CanvasText;
+  }
+
+  .chemistry-per-image-badge {
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .chemistry-preview-mode .chemistry-preview-pill {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+}
+
+/* ═══════════════════════════════════════
+   Phase 13-α: Preview-mode indicator
+   ═══════════════════════════════════════ */
+
+/* Pill + disclosure are hidden by default; the renderer adds the
+   .chemistry-preview-mode class to the parent container only when
+   MATHPIX_CONFIG.CHEMISTRY_DESCRIPTIONS.PREVIEW_MODE is true.
+   Descendant combinator (no `>`) so the rules apply to both the STD
+   container (pill is a direct child) and the COMP container (pill is
+   nested inside <details>). */
+.chemistry-preview-pill,
+.chemistry-preview-disclosure {
+  display: none;
+}
+
+.chemistry-preview-mode .chemistry-preview-pill {
+  display: inline-block;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--accent-color);
+  border-radius: 0.75em;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-color);
+  vertical-align: middle;
+}
+
+.chemistry-preview-mode .chemistry-preview-disclosure {
+  display: block;
+  margin-top: 0.5em;
+  font-size: 0.875em;
+  font-style: italic;
+  color: currentcolor;
+  opacity: 0.85;
 }
 
 /* ═══════════════════════════════════════
@@ -29,6 +129,41 @@
   max-width: 100%;
   height: auto;
   border-radius: 0.25rem;
+}
+
+/* Phase 12-1d: visible inline SVG. Sibling to the (now hidden) export
+   canvas inside chemistry-structure-figure. Sized to match the canonical
+   400×300 figure dimensions but scales freely via the SVG viewBox. */
+.chemistry-svg {
+  display: block;
+  width: 400px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.25rem;
+}
+
+/* Phase 12-1d: hidden export surface. Kept in the layout (visually
+   offscreen) rather than display:none — some browsers won't return correct
+   toBlob() pixel data from a display:none canvas, and ten downstream
+   consumers in mathpix-result-renderer.js call canvas.toBlob() / toDataURL
+   on this element. */
+.chemistry-canvas-export-only {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 400px !important;
+  height: 300px !important;
+  pointer-events: none;
+}
+
+/* Phase 12-1d: explanatory help text below an advanced control. */
+.chemistry-control-help {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin-top: 0.15rem;
+  margin-left: 1.5rem;
 }
 
 /* Phase 7C-2: Rendering preset selector */
@@ -54,7 +189,6 @@
 .chemistry-per-image-toggle-group {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px dashed currentColor;
   font-size: 0.8rem;
 }
 
@@ -80,7 +214,6 @@
 }
 
 .chemistry-preset-label input[type="radio"]:focus-visible {
-  outline: 2px solid #005c84;
   outline-offset: 2px;
 }
 
@@ -100,8 +233,6 @@
   padding: 0.3rem 0;
   user-select: none;
 }
-
-
 
 .chemistry-advanced-body {
   display: flex;
@@ -137,7 +268,6 @@
 }
 
 .chemistry-control-range:focus-visible {
-  outline: 2px solid #005c84;
   outline-offset: 2px;
 }
 
@@ -159,7 +289,6 @@
 }
 
 .chemistry-control-checkbox:focus-visible {
-  outline: 2px solid #005c84;
   outline-offset: 2px;
 }
 
@@ -171,7 +300,6 @@
 }
 
 .chemistry-control-select:focus-visible {
-  outline: 2px solid #005c84;
   outline-offset: 2px;
 }
 
@@ -269,7 +397,6 @@
 .chemistry-structural-desc {
   margin-bottom: 0.75rem;
   padding: 0.5rem 0;
-  border-top: 1px solid var(--chem-border, #e0e0e0);
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -278,12 +405,55 @@
   margin: 0;
 }
 
+/* Phase 8C-CT: Comprehensive description (expandable) */
+.chemistry-comprehensive-desc {
+  margin-bottom: 0.75rem;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.chemistry-comprehensive-desc summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.25rem 0;
+}
+
+.chemistry-comprehensive-desc p {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Phase 8C-CT-3e: enumerated branch list inside comprehensive description.
+   Mirrors the <p> panel styling so the intro <p> → <ol> → tail <p> blocks
+   read as a single continuous left-bordered panel. */
+.chemistry-comprehensive-desc ol {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.5rem 0.5rem 2rem;
+  border-radius: 0 4px 4px 0;
+  list-style-position: outside;
+}
+
+.chemistry-comprehensive-desc li {
+  margin: 0.25rem 0;
+  padding-left: 0.25rem;
+}
+
+.chemistry-comprehensive-desc li::marker {
+  font-weight: 600;
+}
+
+@media (prefers-contrast: more) {
+  .chemistry-comprehensive-desc ol {
+    border-left-width: 4px;
+  }
+}
+
 /* Phase 7B: Human-readable text description */
 .captured-text-description {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  border-left: 3px solid var(--chem-border, #e0e0e0);
-  background: var(--chem-panel-bg, #f9f9f9);
   border-radius: 0 4px 4px 0;
 }
 
@@ -299,7 +469,6 @@
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--chem-label, #555);
 }
 
 .captured-text-content {
@@ -377,55 +546,7 @@
 /* Focus styles (Phase 6E — E1) */
 .chemistry-action-btn:focus-visible,
 .chemistry-nav-btn:focus-visible {
-  outline: 2px solid #005c84;
   outline-offset: 2px;
-}
-
-/* Forced-colours support (Phase 6E — E6) */
-@media (forced-colors: active) {
-  .chemistry-action-btn,
-  .chemistry-nav-btn {
-    border: 1px solid ButtonText;
-  }
-
-  .chemistry-description {
-    border-left-color: LinkText;
-  }
-
-  .chemistry-canvas {
-    border: 1px solid CanvasText;
-  }
-
-  .chemistry-structure {
-    border-color: CanvasText;
-  }
-
-  .chemistry-structural-desc {
-    border-top-color: CanvasText;
-  }
-
-  .captured-text-description {
-    border-left-color: LinkText;
-  }
-
-  .chemistry-preset-selector {
-    border-color: CanvasText;
-  }
-
-  .chemistry-advanced-controls {
-    border-color: CanvasText;
-  }
-
-  .chemistry-control-select {
-    border-color: CanvasText;
-  }
-
-  /* Phase 7C-4: per-image badge */
-  .chemistry-per-image-badge {
-    border-color: CanvasText;
-    background: Canvas;
-    color: CanvasText;
-  }
 }
 
 /* Phase 7C-4: per-image settings indicator badge */
@@ -434,10 +555,7 @@
   align-items: center;
   margin: 0.5rem 0 0.25rem;
   padding: 0.15rem 0.6rem;
-  border: 1px solid var(--chem-border, #888);
   border-radius: 999px;
-  background: var(--chem-bg, #f5f5f5);
-  color: var(--text-color, inherit);
   font-size: 0.8rem;
   font-weight: 500;
   line-height: 1.4;

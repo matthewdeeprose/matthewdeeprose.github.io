@@ -1465,6 +1465,15 @@ class MathPixAPIClient {
     // When page_range is "all" or undefined, omit the parameter entirely
     // This allows MathPix API to process all pages by default
 
+    // Page break markers (MathPix October 2025 release).
+    // Top-level options_json field per docs.mathpix.com/reference/post-v3-pdf.
+    // Default marker is \pagebreak (LaTeX-friendly); see plan's Re-check 2 for
+    // the deferred page_break_marker follow-up.
+    if (options.include_page_breaks) {
+      requestOptions.include_page_breaks = true;
+      logDebug("Page breaks enabled (default \\pagebreak marker)");
+    }
+
     // Configure requested formats
     const requestedFormats =
       options.formats ||
@@ -1515,6 +1524,25 @@ class MathPixAPIClient {
         logWarn("Unknown conversion format skipped", { format, apiFormatName });
       }
     });
+
+    // HTML accessibility options (MathPix October 2025 release).
+    // When HTML is among the requested conversion formats, send the per-format
+    // options from CONVERT.DEFAULT_OPTIONS.html (math_output_format: "mathml" +
+    // accessibility.include_speech: true). Mirrors how v3/converter does it via
+    // _buildRequestBody. docs.mathpix.com/reference/post-v3-pdf documents
+    // conversion_options as a top-level field on v3/pdf.
+    if (requestOptions.conversion_formats.html) {
+      const htmlDefaults = MATHPIX_CONFIG.CONVERT?.DEFAULT_OPTIONS?.html;
+      if (htmlDefaults) {
+        requestOptions.conversion_options =
+          requestOptions.conversion_options || {};
+        requestOptions.conversion_options.html = { ...htmlDefaults };
+        logDebug(
+          "HTML accessibility options applied to PDF request",
+          requestOptions.conversion_options.html
+        );
+      }
+    }
 
     try {
       // Notify progress: Starting upload

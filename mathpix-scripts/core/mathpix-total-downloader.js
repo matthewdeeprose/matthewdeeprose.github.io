@@ -3961,9 +3961,8 @@ ${fileList}
             // fresh-mode branch does.
             // ============================================================
             if (
-              typeof window.SmilesDrawer !== "undefined" &&
               typeof window.MathPixChemistryUtils?.renderStructureToBlob ===
-                "function"
+              "function"
             ) {
               try {
                 const originalMmd = data.formats?.mmd || "";
@@ -3973,6 +3972,21 @@ ${fileList}
                 let chemMatch;
                 while (
                   (chemMatch = includeGfxRegex.exec(originalMmd)) !== null
+                ) {
+                  const smilesNotation = chemMatch[1];
+                  const imgUrl = chemMatch[2].trim();
+                  if (smilesNotation && imgUrl) {
+                    urlToSmiles.set(imgUrl, smilesNotation);
+                  }
+                }
+                // Mathpix also emits chemistry images in markdown-image form
+                // (![<smiles>X</smiles>](URL)) for some PDFs (typically Word-
+                // derived). Capture those alongside the LaTeX form so neither
+                // path silently no-ops.
+                const mdGfxRegex =
+                  /!\[<smiles[^>]*>(.*?)<\/smiles>\]\(([^)]+)\)/g;
+                while (
+                  (chemMatch = mdGfxRegex.exec(originalMmd)) !== null
                 ) {
                   const smilesNotation = chemMatch[1];
                   const imgUrl = chemMatch[2].trim();
@@ -4278,9 +4292,8 @@ ${fileList}
                 // Phase 6G: Replace chemistry images with SmilesDrawer renders
                 // ============================================================
                 if (
-                  typeof window.SmilesDrawer !== "undefined" &&
                   typeof window.MathPixChemistryUtils?.renderStructureToBlob ===
-                    "function"
+                  "function"
                 ) {
                   try {
                     // Phase 7C-7: in resume mode the live MMD content can
@@ -4308,6 +4321,21 @@ ${fileList}
                     let chemMatch;
                     while (
                       (chemMatch = includeGfxRegex.exec(normalisedMmd)) !== null
+                    ) {
+                      const smilesNotation = chemMatch[1];
+                      const cdnUrl = chemMatch[2].trim();
+                      if (smilesNotation && cdnUrl) {
+                        chemUrlToSmiles.set(cdnUrl, smilesNotation);
+                      }
+                    }
+                    // Mathpix also emits chemistry images in markdown-image
+                    // form (![<smiles>X</smiles>](URL)) for some PDFs
+                    // (typically Word-derived). Capture those alongside the
+                    // LaTeX form so neither path silently no-ops.
+                    const mdGfxRegex =
+                      /!\[<smiles[^>]*>(.*?)<\/smiles>\]\(([^)]+)\)/g;
+                    while (
+                      (chemMatch = mdGfxRegex.exec(normalisedMmd)) !== null
                     ) {
                       const smilesNotation = chemMatch[1];
                       const cdnUrl = chemMatch[2].trim();

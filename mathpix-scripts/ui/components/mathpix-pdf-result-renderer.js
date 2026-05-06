@@ -3620,12 +3620,19 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const downloadLink = document.createElement("a");
     downloadLink.href = downloadInfo.url;
     downloadLink.download = downloadInfo.filename;
+    downloadLink.style.display = "none";
     document.body.appendChild(downloadLink);
     downloadLink.click();
-    document.body.removeChild(downloadLink);
 
-    // Cleanup blob URL
-    setTimeout(() => URL.revokeObjectURL(downloadInfo.url), 1000);
+    // Cleanup: keep the <a> and blob URL alive briefly so the browser can
+    // commit the download. Removing/revoking in the same tick as .click()
+    // can cause silent failures (Windows + Chromium variants in particular).
+    setTimeout(() => {
+      if (downloadLink.parentNode) {
+        downloadLink.parentNode.removeChild(downloadLink);
+      }
+      URL.revokeObjectURL(downloadInfo.url);
+    }, 1000);
 
     this.showNotification(
       `${downloadInfo.filename} downloaded successfully!`,

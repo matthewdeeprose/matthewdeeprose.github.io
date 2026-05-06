@@ -229,6 +229,24 @@ class MathPixResultRenderer extends MathPixBaseModule {
    * @param {File} [originalFile] - Original/transformed file for comparison view (Phase 1F.2)
    */
   displayResult(result, originalFile) {
+    // Phase 8A-10: restore canonical chemistry ownership before any image-mode
+    // render. Prior PDF processing in the same mode may have moved canonical
+    // children into #panel-chemistry via _moveChemistryToPDFTabs(). _onModeExit()
+    // only fires on mode switches — this call catches the same-mode PDF → image
+    // sequence. Idempotent: no-op when canonical ownership is already clean.
+    // Will be removed in Phase 8F when the move pattern is eliminated.
+    try {
+      const pdfRenderer = this.controller?.pdfResultRenderer;
+      if (
+        pdfRenderer &&
+        typeof pdfRenderer._restoreChemistryToCanonical === "function"
+      ) {
+        pdfRenderer._restoreChemistryToCanonical();
+      }
+    } catch (error) {
+      logWarn("displayResult: chemistry restore failed", error);
+    }
+
     logInfo("=== displayResult CALLED ===", {
       resultExists: !!result,
       resultKeys: result ? Object.keys(result) : [],
@@ -2057,13 +2075,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       // Try to generate structural description if the molecular graph is
       // already cached (from the MMD preview's renderStructureToBlob).
       if (utils.generateStructuralDescription && !item._structuralDescription) {
-        const pubchemData = {
-          commonNames: item.commonNames || (item._resolvedName ? [item._resolvedName] : []),
-          iupacName: item.iupacName || null,
-          molecularWeight: item.molecularWeight || null,
-          molecularFormula: item.molecularFormula || null,
-          inchi: item.inchi || null,
-        };
+        const pubchemData = utils._buildPubchemDataFromItem(item);
         let desc = utils.generateStructuralDescription(item.notation, pubchemData);
 
         // Phase 7A-5a: If desc is null the graph is not yet cached (race with
@@ -2090,6 +2102,14 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
         if (desc) {
           item._structuralDescription = desc;
+          // Phase 10-0: also cache the short tier. Same graph-cache requirement
+          // applies — when generateStructuralDescription succeeded, the graph is
+          // cached, so generateShortDescription will also succeed. Pre-populating
+          // the field eliminates the aria-label race (see _showStructuralDescription)
+          // and supplies the chemistry-data.json ZIP persistence path with a
+          // ready-to-serialise string.
+          item._shortDescription =
+            utils.generateShortDescription?.(item.notation, pubchemData) || null;
           logDebug("Background structural description generated", {
             index,
             smiles: item.notation,
@@ -2355,6 +2375,12 @@ class MathPixResultRenderer extends MathPixBaseModule {
     if (structDescEl) structDescEl.textContent = "";
     if (structDescContainer) structDescContainer.style.display = "none";
 
+    // Phase 8C-CT: also clear comprehensive description
+    const compDescEl = document.getElementById("chemistry-comprehensive-desc-text");
+    const compDescContainer = document.getElementById("chemistry-comprehensive-description");
+    if (compDescEl) compDescEl.textContent = "";
+    if (compDescContainer) compDescContainer.style.display = "none";
+
     // 1. Render structure diagram on canvas
     const canvas = document.getElementById("chemistry-structure-canvas");
     if (canvas && utils?.renderStructure) {
@@ -2549,6 +2575,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
     // Phase 8B: Save image button enabled when SMILES is available
     const saveImageBtn = document.getElementById("chemistry-save-image-btn");
     if (saveImageBtn) saveImageBtn.disabled = !item.notation;
+    // Phase 12-1d: Save-as-SVG sibling enabled on the same condition.
+    const saveSvgBtn = document.getElementById("chemistry-save-as-svg-btn");
+    if (saveSvgBtn) saveSvgBtn.disabled = !item.notation;
 
     logDebug("Chemistry structure displayed", {
       index,
@@ -2734,15 +2763,21 @@ class MathPixResultRenderer extends MathPixBaseModule {
       const v = node ? parseFloat(node.value) : NaN;
       return Number.isFinite(v) ? v : fallback;
     };
+    // Phase 12-1d: orientation toggle defaults to true (CoordGen on) when
+    // the checkbox is missing — matches the four shipped presets' default-on
+    // behaviour, so the value persists correctly even if the form has not
+    // been opened yet.
+    const orientationCheckbox = el("chem-coordgen-orientation");
+    const useCoordGen = orientationCheckbox
+      ? !!orientationCheckbox.checked
+      : true;
     return {
       bondThickness: safeFloat(el("chem-bond-thickness"), 2),
-      bondSpacing: safeFloat(el("chem-bond-spacing"), 5),
-      fontSizeLarge: safeFloat(el("chem-font-size-large"), 11),
-      fontSizeSmall: safeFloat(el("chem-font-size-small"), 4),
-      compactDrawing: !!el("chem-compact-drawing")?.checked,
+      fontSizeLarge: safeFloat(el("chem-font-size-large"), 18),
+      fontSizeSmall: safeFloat(el("chem-font-size-small"), 13),
       explicitHydrogens: !!el("chem-explicit-hydrogens")?.checked,
-      terminalCarbons: !!el("chem-terminal-carbons")?.checked,
       colourScheme: el("chem-colour-scheme")?.value || "element",
+      useCoordGen,
     };
   }
 
@@ -2779,17 +2814,24 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     const ids = {
       bondThickness: "chem-bond-thickness",
-      bondSpacing: "chem-bond-spacing",
       fontSizeLarge: "chem-font-size-large",
       fontSizeSmall: "chem-font-size-small",
-      compactDrawing: "chem-compact-drawing",
       explicitHydrogens: "chem-explicit-hydrogens",
-      terminalCarbons: "chem-terminal-carbons",
       colourScheme: "chem-colour-scheme",
+      // Phase 12-1d: CoordGen layout opt-out.
+      coordgenOrientation: "chem-coordgen-orientation",
     };
 
     // Populate from current active preset
     this._populateAdvancedControlsFromPreset(utils.getActivePreset());
+
+    // Phase 12-1d: hydrate the orientation checkbox from persisted custom
+    // options (default-on if missing).
+    const orientationCheckbox = document.getElementById(ids.coordgenOrientation);
+    if (orientationCheckbox && utils.getCustomOptions) {
+      const stored = utils.getCustomOptions();
+      orientationCheckbox.checked = stored.useCoordGen !== false;
+    }
 
     // Debounce timer shared by range sliders
     let debounceTimer = null;
@@ -2798,13 +2840,14 @@ class MathPixResultRenderer extends MathPixBaseModule {
       const el = (id) => document.getElementById(id);
       return {
         bondThickness: parseFloat(el(ids.bondThickness).value),
-        bondSpacing: parseFloat(el(ids.bondSpacing).value),
         fontSizeLarge: parseFloat(el(ids.fontSizeLarge).value),
         fontSizeSmall: parseFloat(el(ids.fontSizeSmall).value),
-        compactDrawing: el(ids.compactDrawing).checked,
         explicitHydrogens: el(ids.explicitHydrogens).checked,
-        terminalCarbons: el(ids.terminalCarbons).checked,
         colourScheme: el(ids.colourScheme).value,
+        // Phase 12-1d: orientation toggle (CoordGen vs RDKit default DG).
+        useCoordGen: el(ids.coordgenOrientation)
+          ? !!el(ids.coordgenOrientation).checked
+          : true,
       };
     };
 
@@ -2896,7 +2939,6 @@ class MathPixResultRenderer extends MathPixBaseModule {
     // Wire range sliders — update <output> immediately, debounce re-render
     const rangeIds = [
       ids.bondThickness,
-      ids.bondSpacing,
       ids.fontSizeLarge,
       ids.fontSizeSmall,
     ];
@@ -2912,10 +2954,12 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     // Wire checkboxes and select — immediate re-render
     [
-      ids.compactDrawing,
       ids.explicitHydrogens,
-      ids.terminalCarbons,
       ids.colourScheme,
+      // Phase 12-1d: orientation toggle joins the same change-listener flow.
+      // applyCustom() collects all advanced controls (including useCoordGen)
+      // and persists them via setCustomOptions(), then re-renders.
+      ids.coordgenOrientation,
     ].forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -3136,13 +3180,22 @@ class MathPixResultRenderer extends MathPixBaseModule {
    * Phase 7C-4: Populate advanced controls from a plain options object.
    * Like _populateAdvancedControlsFromPreset() but takes values directly,
    * used to restore per-image override state on navigation.
+   *
+   * Phase 12-4c (C3.5): translates the RDKit-shape preset base via
+   * MathPixChemistryUtils.presetToUIShape() before merging the
+   * SmilesDrawer-shape per-image override on top, so reads against
+   * SmilesDrawer-shape names work uniformly across both code paths.
    * @private
    */
   _populateAdvancedControlsFromOptions(optionsObj) {
     const config = window.MATHPIX_CONFIG?.CHEMISTRY_RENDERING;
     if (!config) return;
-    const base = config.PRESETS[config.DEFAULT_PRESET] || {};
-    const values = { ...base, ...(optionsObj || {}) };
+    const utils = window.MathPixChemistryUtils;
+    const baseRdkit = config.PRESETS[config.DEFAULT_PRESET] || {};
+    const baseUI = utils?.presetToUIShape
+      ? utils.presetToUIShape(baseRdkit)
+      : {};
+    const values = { ...baseUI, ...(optionsObj || {}) };
 
     const setRange = (id, value) => {
       const input = document.getElementById(id);
@@ -3161,19 +3214,28 @@ class MathPixResultRenderer extends MathPixBaseModule {
     };
 
     setRange("chem-bond-thickness", values.bondThickness);
-    setRange("chem-bond-spacing", values.bondSpacing);
     setRange("chem-font-size-large", values.fontSizeLarge);
     setRange("chem-font-size-small", values.fontSizeSmall);
-    setCheckbox("chem-compact-drawing", values.compactDrawing);
     setCheckbox("chem-explicit-hydrogens", values.explicitHydrogens);
-    setCheckbox("chem-terminal-carbons", values.terminalCarbons);
     setSelect("chem-colour-scheme", values.colourScheme || "element");
+    // Phase 12-1d: orientation defaults to CoordGen (checked) for any
+    // values object that doesn't explicitly opt out.
+    setCheckbox("chem-coordgen-orientation", values.useCoordGen !== false);
   }
 
   /**
    * Phase 7C-3: Populate advanced controls to reflect a named preset's values.
    * When presetName is "custom", merges stored custom options on top of the
    * skeletal defaults so controls show the user's last custom values.
+   *
+   * Phase 12-4c (C3.5): both branches translate the RDKit-shape preset
+   * source to SmilesDrawer-shape via MathPixChemistryUtils.presetToUIShape()
+   * before any read. Resolves the C3 α latent regression on the custom-preset
+   * path (where the C3 α one-line `values.bondLineWidth` read returned the
+   * skeletal base default instead of the user's saved bondThickness — the
+   * mixed-shape `values` object held both keys side-by-side after the spread).
+   * Reads now use SmilesDrawer-shape names uniformly, matching collectOptions
+   * output and the customOptions / manifest / per-image-override contract.
    *
    * @param {string} presetName - Preset name from config.PRESETS or "custom"
    * @private
@@ -3186,13 +3248,19 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     let values;
     if (presetName === "custom" && utils?.getCustomOptions) {
-      const base = config.PRESETS[config.DEFAULT_PRESET] || {};
-      values = { ...base, ...utils.getCustomOptions() };
+      const baseRdkit = config.PRESETS[config.DEFAULT_PRESET] || {};
+      const baseUI = utils.presetToUIShape
+        ? utils.presetToUIShape(baseRdkit)
+        : {};
+      values = { ...baseUI, ...utils.getCustomOptions() };
     } else {
-      values =
+      const presetRdkit =
         config.PRESETS[presetName] ||
         config.PRESETS[config.DEFAULT_PRESET] ||
         {};
+      values = utils?.presetToUIShape
+        ? utils.presetToUIShape(presetRdkit)
+        : {};
     }
 
     const setRange = (id, value) => {
@@ -3212,13 +3280,13 @@ class MathPixResultRenderer extends MathPixBaseModule {
     };
 
     setRange("chem-bond-thickness", values.bondThickness);
-    setRange("chem-bond-spacing", values.bondSpacing);
     setRange("chem-font-size-large", values.fontSizeLarge);
     setRange("chem-font-size-small", values.fontSizeSmall);
-    setCheckbox("chem-compact-drawing", values.compactDrawing);
     setCheckbox("chem-explicit-hydrogens", values.explicitHydrogens);
-    setCheckbox("chem-terminal-carbons", values.terminalCarbons);
     setSelect("chem-colour-scheme", values.colourScheme || "element");
+    // Phase 12-1d: orientation default-on for shipped presets and for any
+    // missing value in stored custom options.
+    setCheckbox("chem-coordgen-orientation", values.useCoordGen !== false);
   }
 
   /**
@@ -3531,6 +3599,61 @@ class MathPixResultRenderer extends MathPixBaseModule {
         } finally {
           saveImageBtn.disabled = false;
           saveImageBtn.innerHTML = originalHTML;
+        }
+      };
+    }
+
+    // Phase 12-1d: Save as SVG — vector sibling to Save as PNG. Reads the
+    // cached SVG markup for the visible canvas (populated on every
+    // renderStructure call) and serves it as a download. No re-render
+    // needed; if the cache is empty, the structure has not been rendered
+    // and the click is a no-op with a warning toast.
+    const saveAsSvgBtn = document.getElementById("chemistry-save-as-svg-btn");
+    if (saveAsSvgBtn) {
+      saveAsSvgBtn.onclick = () => {
+        const item = self._chemistryData?.[self._currentStructureIndex];
+        if (!item?.notation) return;
+
+        const utils = window.MathPixChemistryUtils;
+        const svgString = utils?.getLastRenderedSvgString?.(
+          "chemistry-structure-canvas"
+        );
+        if (!svgString) {
+          if (typeof window.notifyWarning === "function") {
+            window.notifyWarning(
+              "No SVG to download yet — render the structure first"
+            );
+          }
+          return;
+        }
+
+        const name =
+          item._resolvedName || item.commonNames?.[0] || item.iupacName;
+        const filename = name
+          ? name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/-+$/, "") + ".svg"
+          : "structure-" + (self._currentStructureIndex + 1) + ".svg";
+
+        const blob = new Blob([svgString], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Match the PNG handler — revoke after a delay so the browser has
+        // time to read the blob asynchronously after a.click().
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        self._announceChemistry("Structure SVG saved as " + filename);
+        if (typeof window.notifySuccess === "function") {
+          window.notifySuccess("Saved " + filename);
         }
       };
     }
@@ -3909,13 +4032,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     // Phase 7A-3: Try structural description first (richer announcement)
     if (utils?.generateStructuralDescription) {
-      const pubchemData = {
-        commonNames: item.commonNames || (item._resolvedName ? [item._resolvedName] : []),
-        iupacName: item.iupacName || null,
-        molecularWeight: item.molecularWeight || null,
-        molecularFormula: item.molecularFormula || null,
-        inchi: item.inchi || null,
-      };
+      const pubchemData = utils._buildPubchemDataFromItem(item);
       const desc = utils.generateStructuralDescription(item.notation, pubchemData);
       if (desc) {
         this._announceChemistry(desc);
@@ -3953,13 +4070,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     if (!utils?.generateStructuralDescription) return;
 
     // Build pubchemData from whatever we know at this point
-    const pubchemData = {
-      commonNames: item.commonNames || (item._resolvedName ? [item._resolvedName] : []),
-      iupacName: item.iupacName || null,
-      molecularWeight: item.molecularWeight || null,
-      molecularFormula: item.molecularFormula || null,
-      inchi: item.inchi || null,
-    };
+    const pubchemData = utils._buildPubchemDataFromItem(item);
 
     // Phase 7A-4: Check item-level cache first.
     // Reuse the cached description if it already includes the compound name
@@ -3988,6 +4099,10 @@ class MathPixResultRenderer extends MathPixBaseModule {
     // Phase 7A-4: Cache on the item so navigation / resume can reuse it
     // without needing the molecular graph cache
     item._structuralDescription = desc;
+    // Phase 10-0: mirror the short-tier cache write (see _prefetchAllChemistryData
+    // near line 2110). Same graph-cache precondition.
+    item._shortDescription =
+      utils.generateShortDescription?.(item.notation, pubchemData) || null;
 
     // Phase 7A-4: Deferred display — avoid flicker for vestibular/seizure safety.
     // On the very first render, PubChem hasn't resolved yet. Rather than showing
@@ -4035,26 +4150,84 @@ class MathPixResultRenderer extends MathPixBaseModule {
     const textEl = document.getElementById("chemistry-structural-desc-text");
     const container = document.getElementById("chemistry-structural-description");
     if (textEl) textEl.textContent = desc;
-    if (container) container.style.display = "";
+    if (container) {
+      container.style.display = "";
+      this._applyChemistryPreviewMode(container);
+    }
 
-    // Phase 8C-ST: use short description for aria-label (standard remains as visible text)
+    const utils = window.MathPixChemistryUtils;
+    // Phase 12-5c-1: ternary guard preserved at this site — downstream calls
+    // gate on item?.notation independently, but preserving the guard keeps
+    // call-site intent honest (no allocation when there's no notation to
+    // describe). The helper is generic; gating is a renderer-specific concern.
+    const pubchemData = item?.notation
+      ? utils._buildPubchemDataFromItem(item)
+      : null;
+
+    // Phase 8C-ST + Phase 10-0: prefer the cached short-tier value from the
+    // pre-fetch flow. Falls back to a live call (for any path that bypasses
+    // pre-fetch caching), then to the structural description `desc`.
     const figure = document.getElementById("chemistry-structure-figure");
     if (figure && !figure.dataset.aiDescribed) {
-      const utils = window.MathPixChemistryUtils;
-      if (utils?.generateShortDescriptionForAria && item?.notation) {
-        const pubchemData = {
-          commonNames: item.commonNames || (item._resolvedName ? [item._resolvedName] : []),
-          iupacName: item.iupacName || null,
-          molecularWeight: item.molecularWeight || null,
-          molecularFormula: item.molecularFormula || null,
-          inchi: item.inchi || null,
-        };
-        const shortDesc = utils.generateShortDescriptionForAria(item.notation, pubchemData);
-        figure.setAttribute("aria-label", shortDesc || desc);
+      const cached = item?._shortDescription;
+      const live =
+        item?.notation && utils?.generateShortDescriptionForAria
+          ? utils.generateShortDescriptionForAria(item.notation, pubchemData)
+          : "";
+      figure.setAttribute("aria-label", cached || live || desc);
+    }
+
+    // Phase 8C-CT: Generate and display comprehensive description.
+    // Phase 8C-CT-3e: also cache + paint the structured HTML form for the
+    // `<details>` panel. The plain-text form is retained on item for 8D ZIP
+    // persistence, 8E alt-text, the Copy button, and ARIA consumers.
+    const compContainer = document.getElementById("chemistry-comprehensive-description");
+    const compTextEl = document.getElementById("chemistry-comprehensive-desc-text");
+    if (compContainer && compTextEl && item?.notation) {
+      const compDesc = utils?.generateComprehensiveDescription?.(item.notation, pubchemData);
+      const compHtml = utils?.generateComprehensiveDescriptionHTML?.(item.notation, pubchemData);
+      if (compDesc) {
+        item._comprehensiveDescription = compDesc;
+        item._comprehensiveDescriptionHTML = compHtml || null;
+        if (compHtml) {
+          compTextEl.innerHTML = compHtml;
+        } else {
+          compTextEl.textContent = compDesc;
+        }
+        compContainer.style.display = "";
+        this._applyChemistryPreviewMode(compContainer);
+        logDebug("Comprehensive description displayed", {
+          smiles: item.notation,
+          length: compDesc.length,
+          htmlForm: !!compHtml,
+        });
       } else {
-        figure.setAttribute("aria-label", desc);
+        compContainer.style.display = "none";
       }
     }
+  }
+
+  /**
+   * Phase 13-α: Toggle the .chemistry-preview-mode class on a description
+   * container based on MATHPIX_CONFIG.CHEMISTRY_DESCRIPTIONS.PREVIEW_MODE.
+   * When the flag is true (default), the container's CSS reveals the
+   * "Preview" pill + disclosure text appended in tools.html. When false,
+   * both elements remain display:none and no preview UI is shown.
+   *
+   * Idempotent — safe to call on every render path.
+   *
+   * @param {HTMLElement} container - Description container element
+   * @private
+   */
+  _applyChemistryPreviewMode(container) {
+    if (!container) return;
+    const cfg = window.MATHPIX_CONFIG?.CHEMISTRY_DESCRIPTIONS;
+    if (!cfg) {
+      logWarn("CHEMISTRY_DESCRIPTIONS config missing; preview-mode default = on");
+    }
+    const previewMode = cfg?.PREVIEW_MODE !== false;
+    container.classList.toggle("chemistry-preview-mode", previewMode);
+    logDebug("Preview-mode class toggled", { container: container.id, on: previewMode });
   }
 
   /**
@@ -5699,13 +5872,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       // Try structural description (7A) first
       const structural = utils.generateStructuralDescription?.(
         chemItem.notation || notation,
-        {
-          commonNames: chemItem.commonNames || (chemItem._resolvedName ? [chemItem._resolvedName] : []),
-          iupacName: chemItem.iupacName || null,
-          molecularWeight: chemItem.molecularWeight || null,
-          molecularFormula: chemItem.molecularFormula || null,
-          inchi: chemItem.inchi || null,
-        },
+        utils._buildPubchemDataFromItem(chemItem),
       );
       if (structural) return structural;
 
@@ -5865,13 +6032,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       el.setAttribute("role", "img");
 
       // Phase 8C-ST: use short description for aria-label on MMD preview
-      const pubchemObj = {
-        commonNames: chemItem.commonNames || (chemItem._resolvedName ? [chemItem._resolvedName] : []),
-        iupacName: chemItem.iupacName || null,
-        molecularWeight: chemItem.molecularWeight || null,
-        molecularFormula: chemItem.molecularFormula || null,
-        inchi: chemItem.inchi || null,
-      };
+      const pubchemObj = utils._buildPubchemDataFromItem(chemItem);
       const shortAria = utils?.generateShortDescriptionForAria?.(
         chemItem.notation, pubchemObj,
       );

@@ -390,7 +390,11 @@
         const line = lines[i];
 
         // --- Markdown images: ![alt](url) ---
-        const mdImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+        // Alt text may contain `]` (e.g. SMILES `[nH]`); the proper terminator
+        // is `](`, not the first `]`. Allow `]` in alt-text only when it isn't
+        // followed by `(` so chemistry images on markdown-form lines register
+        // instead of silently dropping out of the image registry.
+        const mdImgRegex = /!\[((?:[^\]]|\](?!\())*)\]\(([^)]+)\)/g;
         let match;
         while ((match = mdImgRegex.exec(line)) !== null) {
           const altText = match[1];
