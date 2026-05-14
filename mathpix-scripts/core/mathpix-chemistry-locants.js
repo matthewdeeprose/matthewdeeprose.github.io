@@ -66,7 +66,14 @@
   }
 
   function _getNamedSystemHelpers() {
-    const helpers = utils._descriptionInternals?.helpers;
+    // Phase 14-1c step 3: source URL updated to classify.js's helpers table.
+    // identifyFusedSystemName / identifyPyrimidinePattern / identifyPyridinonePattern
+    // moved from descriptions.js's internals.helpers to
+    // MathpixChemistryClassify.internals.helpers. All callsites in this file
+    // (lines 459, 461, 466-467 — incl. Phase 11-2d 2-pyridone fall-through)
+    // remain byte-identical: they read helpers.X via the local helpers
+    // returned from this getter, and the new table exposes the same keys.
+    const helpers = window.MathpixChemistryClassify?.internals?.helpers;
     if (!helpers ||
         typeof helpers.identifyFusedSystemName !== "function" ||
         typeof helpers.identifyPyrimidinePattern !== "function") {

@@ -41,14 +41,18 @@
   justify-content: center !important;
 }
 
-/* Make sure canvas is centered and properly sized in fullscreen mode */
+/* Make sure canvas is centered and properly sized in fullscreen mode.
+   width: 95vw gives Chart.js's responsive sizing an explicit display
+   dimension to size the bitmap to. Replacing the previous
+   `width: auto !important` which forced canvas to its (small) intrinsic
+   bitmap dimensions and caused fullscreen to render preview-sized. */
 .chart-container.fullscreen-mode canvas {
   display: block !important;
   margin: auto !important;
-  max-height: 85vh !important;
-  max-width: 95vw !important;
+  width: 95vw !important;
   height: auto !important;
-  width: auto !important;
+  max-width: 95vw !important;
+  max-height: 85vh !important;
 }
 
 /* Hide chart export controls in fullscreen mode (corrected version) */

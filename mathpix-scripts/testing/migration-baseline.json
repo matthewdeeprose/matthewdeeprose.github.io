@@ -455,9 +455,9 @@
   {
     "name": "Biphenyl",
     "smiles": "c1ccc(-c2ccccc2)cc1",
-    "comp": "The structure consists of two aromatic six-membered rings (benzenes) joined by a single bond. Each ring has five carbon atoms carrying implicit hydrogens; the remaining position of each ring connects to the other ring. The remaining 10 ring positions are each bonded to an implicit hydrogen atom.",
-    "std": "A 12-atom molecule. A benzene ring.",
-    "short": "A 12-atom benzene ring.",
+    "comp": "The structure consists of two aromatic six-membered rings (benzenes) joined by a single bond. Each ring has five carbon atoms carrying implicit hydrogens; the remaining position of each ring connects to the other ring.",
+    "std": "A 12-atom molecule. Two benzene rings joined by a single bond.",
+    "short": "Two benzene rings joined by a single bond.",
     "functionalGroups": [],
     "rings": [
       {
@@ -470,7 +470,7 @@
       }
     ],
     "chain": null,
-    "scaffoldType": "aromatic-ring",
+    "scaffoldType": "joined-rings",
     "locants": null
   },
   {

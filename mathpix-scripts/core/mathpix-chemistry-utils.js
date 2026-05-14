@@ -1042,23 +1042,6 @@ const MathPixChemistryUtils = (function () {
     });
   }
 
-  /**
-   * Phase 12-2a: async wrapper around `_extractGraphFromRdkitSync`. Awaits
-   * `_getRdkit()` so first-call cold paths still resolve, then delegates to
-   * the sync path. Preserves the contract `auditMigrationDiff` and
-   * `testRdkitGraph` rely on — both await the function and their unchanged
-   * outputs cross-verify the sync path used by `_populateGraphCache`.
-   *
-   * @param {string} smiles - SMILES string to translate.
-   * @returns {Promise<Object|null>} Resolves to the translated graph, or null.
-   * @private
-   */
-  async function _extractGraphFromRdkit(smiles) {
-    if (!smiles || typeof smiles !== "string") return null;
-    const rdkit = await _getRdkit();
-    if (!rdkit) return null;
-    return _extractGraphFromRdkitSync(smiles);
-  }
 
   // Phase 7A: Feature flags
   const FEATURE_FLAGS = {
@@ -3211,7 +3194,16 @@ const MathPixChemistryUtils = (function () {
    * @returns {Promise<{graph, rings, ringConnections, _stats} | null>}
    */
   window.testRdkitGraph = async function (smiles) {
-    const graphData = await _extractGraphFromRdkit(smiles);
+    if (!smiles || typeof smiles !== "string") {
+      console.error("testRdkitGraph: invalid SMILES input —", smiles);
+      return null;
+    }
+    const rdkit = await _getRdkit();
+    if (!rdkit) {
+      console.error("testRdkitGraph: RDKit unavailable (cold-start failed)");
+      return null;
+    }
+    const graphData = _extractGraphFromRdkitSync(smiles);
     if (!graphData) {
       console.error("testRdkitGraph: translator returned null for", smiles);
       return null;
@@ -3309,13 +3301,6 @@ const MathPixChemistryUtils = (function () {
     _rdkitInternals: {
       getRdkit: _getRdkit,
       withRdkitMol: _withRdkitMol,
-      // Phase 12-2a: graph-extraction shim. Async translator that consumes
-      // RDKit's get_json() output and emits the SmilesDrawer-shape graph.
-      // Used by the migration harness's auditMigrationDiff RDKit branch and
-      // by the testRdkitGraph console probe. Production callers route through
-      // _populateGraphCache's flag dispatch (12-2b); this export exists for
-      // diff verification and translator inspection.
-      extractGraphFromRdkit: _extractGraphFromRdkit,
       // Phase 12-3a: InChI auxinfo → input-atom-index → InChI-canonical-number
       // map. Async (cache-warming + console probes); sync (used by locants
       // module's _buildLocantMapFromInchi, which is itself sync).

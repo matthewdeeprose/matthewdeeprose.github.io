@@ -27,6 +27,79 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+// Toggle for the "Speak aloud" button on the Approximate Processed Output panel.
+// Set to false to fully disable the feature (button stays hidden, no listeners
+// wired, no DOM queries run). Useful when demoing other features.
+const ENABLE_RENDERED_OUTPUT_TTS = true;
+
+// =============================================================================
+// SRE (Speech Rule Engine) — lazy CDN loader
+// =============================================================================
+// Used by the Speak-aloud feature to convert MathML to Clearspeak speech text.
+// Loaded on first Speak click only, never at module init or page load. Idempotent
+// — concurrent callers share one in-flight promise. On failure the promise
+// reference is cleared so the next click can retry.
+//
+// The bundled MathJax SRE (Path 1) and the MMD-CDN's `latexToSpeech` (Path 2)
+// produce inconsistent speech across the dual-renderer setup; loading SRE
+// directly here gives us one Clearspeak source-of-truth for TTS without
+// touching either of those existing screen-reader pipelines.
+//
+// SCOPE: this loader is for math elements only. Chemistry SMILES rendering
+// (`.smiles-inline`, role="img") has its own aria-label pipeline in
+// `addChemistryAltText` / `MathPixChemistryUtils` and is never passed to SRE.
+
+const SRE_CDN_URL = "https://cdn.jsdelivr.net/npm/speech-rule-engine@4/lib/sre.js";
+let _srePromise = null;
+
+function loadSRE() {
+  if (_srePromise) return _srePromise;
+  _srePromise = (async () => {
+    if (typeof window.SRE === "undefined") {
+      await new Promise((resolve, reject) => {
+        const existing = document.querySelector(
+          'script[data-sre-loader="true"]',
+        );
+        if (existing) {
+          existing.addEventListener("load", resolve, { once: true });
+          existing.addEventListener(
+            "error",
+            () => reject(new Error("SRE script tag failed")),
+            { once: true },
+          );
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = SRE_CDN_URL;
+        script.async = true;
+        script.dataset.sreLoader = "true";
+        script.addEventListener("load", resolve, { once: true });
+        script.addEventListener(
+          "error",
+          () => reject(new Error("SRE script failed to load")),
+          { once: true },
+        );
+        document.head.appendChild(script);
+      });
+    }
+    if (typeof window.SRE === "undefined" || !window.SRE.setupEngine) {
+      throw new Error("SRE library loaded but window.SRE.setupEngine missing");
+    }
+    await window.SRE.setupEngine({
+      domain: "clearspeak",
+      style: "default",
+      modality: "speech",
+      locale: "en",
+    });
+    return window.SRE;
+  })();
+  // Allow retry on failure: clear the cached promise so the next call re-tries.
+  _srePromise.catch(() => {
+    _srePromise = null;
+  });
+  return _srePromise;
+}
+
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
 import { LaTeXTransformer } from "../../core/mathpix-latex-transformer.js";
@@ -99,6 +172,11 @@ class MathPixResultRenderer extends MathPixBaseModule {
       defaultFormat: this.currentFormat,
       mathJaxRecoverySubscribed: !!this.mathJaxRecoveryUnsubscribe,
     });
+
+    // Wire the Speak-aloud button on the Approximate Processed Output panel.
+    // Lazy-retried by _refreshRenderedOutputTts if the static markup is not
+    // yet in the DOM at construct time.
+    this._initRenderedOutputTts();
   }
 
   // =============================================================================
@@ -2055,21 +2133,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
       item._pubchemResolved = true;
 
       if (result && result.found) {
-        // Cache data on the item so _displayChemistryStructure / _lookupAndPopulate*
-        // have access when the user navigates here
-        const commonName = result.commonNames?.[0];
-        if (commonName || result.iupacName) {
-          item._resolvedName = commonName || result.iupacName;
-        }
-        if (result.commonNames) item.commonNames = result.commonNames;
-        if (result.iupacName) item.iupacName = result.iupacName;
-        if (result.molecularWeight) item.molecularWeight = result.molecularWeight;
-        if (result.pubchemUrl) item.pubchemUrl = result.pubchemUrl;
-        if (result.pubchemCid) item.pubchemCid = result.pubchemCid;
-
-        // Back-populate identifiers (PDF mode: item had notation but no inchi/inchiKey)
-        if (!item.inchi && result.inchi) item.inchi = result.inchi;
-        if (!item.inchiKey && result.inchiKey) item.inchiKey = result.inchiKey;
+        this._backPopulateFromPubChem(item, result);
       }
 
       // Try to generate structural description if the molecular graph is
@@ -2124,6 +2188,36 @@ class MathPixResultRenderer extends MathPixBaseModule {
         error: error.message,
       });
     }
+  }
+
+  /**
+   * Phase 14-3 Step 3 (Bundle A): single-source 8-field PubChem back-population.
+   * Caches PubChem data on item so navigation back shows resolved fields without
+   * re-fetching. PDF mode: back-populates inchi/inchiKey when item arrived with
+   * only notation. Caller must gate on result.found.
+   *
+   * Single-arg semantics: writes via item reference (same object as
+   * this._chemistryData[expectedIndex] at call time per _displayChemistryStructure's
+   * local `item = data[index]` capture). Slightly more defensive against the
+   * degenerate concurrent-swap during await — writes to a discarded item are
+   * no-op rather than polluting a freshly-swapped one.
+   *
+   * @param {Object} item - Chemistry data item.
+   * @param {Object} result - PubChem result with .found = true.
+   * @private
+   */
+  _backPopulateFromPubChem(item, result) {
+    const commonName = result.commonNames?.[0];
+    if (commonName || result.iupacName) {
+      item._resolvedName = commonName || result.iupacName;
+    }
+    if (result.commonNames) item.commonNames = result.commonNames;
+    if (result.iupacName) item.iupacName = result.iupacName;
+    if (result.molecularWeight) item.molecularWeight = result.molecularWeight;
+    if (result.pubchemUrl) item.pubchemUrl = result.pubchemUrl;
+    if (result.pubchemCid) item.pubchemCid = result.pubchemCid;
+    if (!item.inchi && result.inchi) item.inchi = result.inchi;
+    if (!item.inchiKey && result.inchiKey) item.inchiKey = result.inchiKey;
   }
 
   /**
@@ -3714,6 +3808,10 @@ class MathPixResultRenderer extends MathPixBaseModule {
         return;
       }
 
+      if (result.found) {
+        this._backPopulateFromPubChem(item, result);
+      }
+
       const nameEl = document.getElementById("chemistry-name-display");
       if (!nameEl) return;
 
@@ -3734,8 +3832,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
           nameEl.textContent = result.iupacName;
         }
 
-        // Phase 6D: Store resolved name and update heading
-        this._chemistryData[expectedIndex]._resolvedName = commonName || result.iupacName;
+        // Phase 6D: Update heading
         this._updateChemistryHeading();
 
         // Phase 7A-3: Re-generate structural description with compound name
@@ -3839,10 +3936,8 @@ class MathPixResultRenderer extends MathPixBaseModule {
         return;
       }
 
-      // Back-populate chemistry data so navigation back shows cached data (Phase 6B)
       if (result.found) {
-        if (result.inchi) this._chemistryData[expectedIndex].inchi = result.inchi;
-        if (result.inchiKey) this._chemistryData[expectedIndex].inchiKey = result.inchiKey;
+        this._backPopulateFromPubChem(item, result);
       }
 
       const nameEl = document.getElementById("chemistry-name-display");
@@ -3863,8 +3958,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
           nameEl.textContent = result.iupacName;
         }
 
-        // Phase 6D: Store resolved name and update heading
-        this._chemistryData[expectedIndex]._resolvedName = commonName || result.iupacName;
+        // Phase 6D: Update heading
         this._updateChemistryHeading();
 
         // Phase 7A-3: Re-generate structural description with compound name
@@ -4518,6 +4612,10 @@ class MathPixResultRenderer extends MathPixBaseModule {
       // Clear existing content
       renderedOutput.innerHTML = "";
 
+      // Hide the Speak button while rendering (re-shown by each success path).
+      // Also stops any in-progress speech triggered from the previous render.
+      this._refreshRenderedOutputTts();
+
       // CRITICAL: Check for tables FIRST before MathJax rendering
       if (result.containsTable && result.tableHtml) {
         logDebug("Displaying table preview in comparison view");
@@ -4557,6 +4655,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
             );
         }
 
+        this._refreshRenderedOutputTts();
         return true;
       }
 
@@ -4605,6 +4704,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
             this.addChemistryAltText(renderedOutput);
             // Phase 7B: Populate human-readable text
             this.populateCapturedTextDescription(result);
+            this._refreshRenderedOutputTts();
             return true;
           }
           // CDN render failed — fall through to MathJax
@@ -4631,29 +4731,35 @@ class MathPixResultRenderer extends MathPixBaseModule {
                 this.addChemistryAltText(renderedOutput);
                 // Phase 7B: Populate human-readable text
                 this.populateCapturedTextDescription(result);
+                this._refreshRenderedOutputTts();
                 return;
               }
             }
 
-            // CDN unavailable or failed — fall back to MathJax
+            // CDN unavailable or failed — fall back to MathJax. Chain refresh
+            // so the Speak button is unhidden once MathJax has populated the
+            // output (renderContentWithMathJax is async — synchronous refresh
+            // would run before any content lands in the panel).
             logInfo("Phase 6J: Falling back to MathJax for comparison panel");
             this.renderContentWithMathJax(
               contentToRender,
               renderType,
               renderedOutput,
-            );
+            ).finally(() => this._refreshRenderedOutputTts());
           });
 
           return true;
         }
       }
 
-      // MathJax fallback path (also used for mathml, asciimath, html types)
+      // MathJax fallback path (also used for mathml, asciimath, html types).
+      // Refresh is chained on the promise so the button reflects the rendered
+      // panel state, not the empty pre-render state.
       this.renderContentWithMathJax(
         contentToRender,
         renderType,
         renderedOutput,
-      );
+      ).finally(() => this._refreshRenderedOutputTts());
 
       return true;
     } catch (error) {
@@ -6114,6 +6220,696 @@ class MathPixResultRenderer extends MathPixBaseModule {
         );
       });
       copyBtn.dataset.wired = "true";
+    }
+  }
+
+  // =========================================================================
+  // RENDERED-OUTPUT TTS (Speak Aloud)
+  // =========================================================================
+  // Behind ENABLE_RENDERED_OUTPUT_TTS feature flag (top of module). Reads the
+  // rendered MMD preview via TTSSemantic.linearise (which already handles
+  // MathJax aria-labels and tables) and routes to the global TTSController.
+
+  _initRenderedOutputTts() {
+    if (!ENABLE_RENDERED_OUTPUT_TTS) return;
+    if (this._renderedOutputTtsWired) return;
+
+    const button = document.getElementById("mathpix-rendered-output-speak");
+    const labelEl = document.getElementById(
+      "mathpix-rendered-output-speak-label",
+    );
+    const status = document.getElementById(
+      "mathpix-rendered-output-speak-status",
+    );
+    if (!button || !labelEl) {
+      logDebug(
+        "Rendered-output Speak button not in DOM yet — TTS init deferred",
+      );
+      return;
+    }
+
+    this._renderedOutputTtsEls = { button, labelEl, status };
+    this._renderedOutputTtsState = "idle";
+    this._renderedOutputTtsActive = false;
+
+    // Idempotent listener attachment at the button level. Without this,
+    // multiple renderer instances (or repeated init calls) would each attach
+    // their own listener to the same static button, causing a single click to
+    // fire N speak() calls and produce overlapping/garbled audio.
+    if (button.dataset.ttsListenerAttached === "true") {
+      logWarn(
+        "Speak button already has a TTS listener — skipping duplicate attachment",
+      );
+    } else {
+      button.addEventListener("click", () =>
+        this._handleRenderedOutputTtsClick(),
+      );
+      button.dataset.ttsListenerAttached = "true";
+    }
+
+    // Subscribe to TTS events. Only react when WE triggered the playback so
+    // other tools (Image Describer, Local Chat) do not flicker our state.
+    const emitter = window.EmbedEventEmitter;
+    if (emitter && typeof emitter.on === "function") {
+      emitter.on("tts:start", () => {
+        if (this._renderedOutputTtsActive) {
+          this._setRenderedOutputTtsState("speaking");
+        }
+      });
+      emitter.on("tts:end", () => {
+        if (this._renderedOutputTtsActive) {
+          this._renderedOutputTtsActive = false;
+          this._setRenderedOutputTtsState("idle");
+        }
+      });
+      emitter.on("tts:error", (data) => {
+        if (this._renderedOutputTtsActive) {
+          logWarn("TTS error during rendered-output read-aloud", data);
+          this._renderedOutputTtsActive = false;
+          this._setRenderedOutputTtsState("idle");
+        }
+      });
+    } else {
+      logWarn(
+        "EmbedEventEmitter unavailable — Speak button state will not auto-reset on TTS events",
+      );
+    }
+
+    this._renderedOutputTtsWired = true;
+    logInfo("Rendered-output TTS initialised");
+  }
+
+  _refreshRenderedOutputTts() {
+    if (!ENABLE_RENDERED_OUTPUT_TTS) return;
+    if (!this._renderedOutputTtsWired) {
+      this._initRenderedOutputTts();
+      if (!this._renderedOutputTtsWired) return;
+    }
+
+    const { button } = this._renderedOutputTtsEls;
+    const output = document.getElementById("mathpix-rendered-output");
+
+    // Always cancel any previous readiness watcher first — render state has
+    // changed, the old watcher is no longer relevant.
+    this._cleanupRenderedOutputTtsReadyWatcher();
+
+    // If we were speaking when content changed, stop and reset.
+    if (this._renderedOutputTtsActive && window.TTSController?.stop) {
+      try {
+        window.TTSController.stop();
+      } catch (err) {
+        logWarn("TTSController.stop failed during refresh", err);
+      }
+      this._renderedOutputTtsActive = false;
+    }
+
+    // Reset visual state to idle without announcing.
+    this._renderedOutputTtsState = "idle";
+    this._setRenderedOutputTtsButtonVisuals("idle");
+
+    const hasOutput = !!(
+      output && (output.innerText || output.textContent || "").trim()
+    );
+    const ttsAvailable = !!window.TTSController?.isAvailable?.();
+    if (!hasOutput || !ttsAvailable) {
+      button.hidden = true;
+      return;
+    }
+
+    // Gate visibility on render-readiness. Reading raw LaTeX delimiters or
+    // an un-enhanced mjx-container produces gobbledygook, so only show the
+    // button once the CDN wrapper is in place OR MathJax has rendered AND
+    // the post-render enhancement has marked the formula. Plain-text output
+    // (no math at all) is shown immediately.
+    if (this._isRenderedOutputReady(output)) {
+      button.hidden = false;
+    } else {
+      button.hidden = true;
+      this._watchForRenderedOutputReady(output);
+    }
+  }
+
+  /**
+   * Decide whether the rendered output is in a state that can safely be read
+   * aloud. Returns true when:
+   * - The output has only plain text (no math markup at all), OR
+   * - The CDN renderer has produced a `[role="math"][aria-label]` wrapper, OR
+   * - MathJax has produced a `mjx-container` AND the post-render enhancement
+   *   has marked it with `data-mathpix-enhanced` (signal that aria-labels
+   *   and assistive MathML are in place).
+   * Requires `window.MathJaxEnhancementReady` whenever math is detected.
+   */
+  _isRenderedOutputReady(output) {
+    if (!output) return false;
+    const text = (output.innerText || output.textContent || "").trim();
+    if (!text) return false;
+
+    const hasMjxContainer = !!output.querySelector("mjx-container");
+    const hasCdnWrapper = !!output.querySelector('[role="math"][aria-label]');
+    const hasSourceFormatTag = !!output.querySelector(
+      "mathml, asciimath, latex",
+    );
+    const hasRawDelimiters = /\\\(|\\\[|\$/.test(text);
+
+    const hasAnyMath =
+      hasMjxContainer ||
+      hasCdnWrapper ||
+      hasSourceFormatTag ||
+      hasRawDelimiters;
+
+    // Pure plain text — speak immediately.
+    if (!hasAnyMath) return true;
+
+    // Any math present — require MathJax to be globally ready.
+    const mathJaxReady =
+      window.MathJaxEnhancementReady === true &&
+      typeof window.MathJax?.typesetPromise === "function";
+    if (!mathJaxReady) return false;
+
+    // CDN wrapper carries the canonical aria-label — sufficient on its own.
+    if (hasCdnWrapper) return true;
+
+    // MathJax-only render — wait for the post-render enhancement marker.
+    if (hasMjxContainer) {
+      return !!output.querySelector(
+        "mjx-container[data-mathpix-enhanced]",
+      );
+    }
+
+    // We have raw delimiters or source-format tags but no rendered math yet.
+    return false;
+  }
+
+  /**
+   * Watch the rendered output for readiness via MutationObserver. Triggers
+   * a refresh as soon as readiness flips from false to true (e.g. when the
+   * CDN wrapper is inserted, or when MathJax adds the post-render
+   * `data-mathpix-enhanced` marker). A 10 s safety timeout prevents the
+   * observer leaking if rendering stalls.
+   *
+   * MathJax + MMD-CDN both render asynchronously and the rendering function
+   * does not return a promise that resolves AFTER enhancement, so we cannot
+   * reliably await readiness. Observing DOM changes is.
+   */
+  _watchForRenderedOutputReady(output) {
+    if (!output) return;
+    if (this._renderedOutputTtsObserver) return; // already watching
+
+    const TIMEOUT_MS = 10000;
+    const start = Date.now();
+
+    const finish = (reason) => {
+      if (this._renderedOutputTtsObserver) {
+        this._renderedOutputTtsObserver.disconnect();
+        this._renderedOutputTtsObserver = null;
+      }
+      if (this._renderedOutputTtsObserverTimeout) {
+        clearTimeout(this._renderedOutputTtsObserverTimeout);
+        this._renderedOutputTtsObserverTimeout = null;
+      }
+      logDebug("Rendered-output readiness watcher finished: " + reason, {
+        elapsedMs: Date.now() - start,
+      });
+    };
+
+    const check = () => {
+      const current = document.getElementById("mathpix-rendered-output");
+      if (this._isRenderedOutputReady(current)) {
+        finish("ready");
+        this._refreshRenderedOutputTts();
+      }
+    };
+
+    this._renderedOutputTtsObserver = new MutationObserver(check);
+    this._renderedOutputTtsObserver.observe(output, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-mathpix-enhanced", "aria-label", "role", "class"],
+    });
+
+    this._renderedOutputTtsObserverTimeout = setTimeout(() => {
+      finish("timeout");
+      logWarn(
+        "Speak button readiness watcher timed out after " +
+          TIMEOUT_MS +
+          "ms — button stays hidden until next render",
+      );
+    }, TIMEOUT_MS);
+
+    // Immediate check in case readiness already flipped between caller's
+    // check and the observer being attached.
+    check();
+  }
+
+  _cleanupRenderedOutputTtsReadyWatcher() {
+    if (this._renderedOutputTtsObserver) {
+      this._renderedOutputTtsObserver.disconnect();
+      this._renderedOutputTtsObserver = null;
+    }
+    if (this._renderedOutputTtsObserverTimeout) {
+      clearTimeout(this._renderedOutputTtsObserverTimeout);
+      this._renderedOutputTtsObserverTimeout = null;
+    }
+  }
+
+  async _handleRenderedOutputTtsClick() {
+    if (!ENABLE_RENDERED_OUTPUT_TTS) return;
+    if (!this._renderedOutputTtsWired) return;
+
+    const controller = window.TTSController;
+    if (!controller) {
+      logWarn("TTSController not available");
+      return;
+    }
+
+    // Speaking → idle: stop current speech.
+    if (this._renderedOutputTtsState === "speaking") {
+      controller.stop();
+      return;
+    }
+
+    // Re-entrancy guard: if a previous click is still preparing speech,
+    // ignore further clicks until that one resolves.
+    if (this._renderedOutputTtsState === "loading") {
+      logDebug("Speak already preparing — ignoring duplicate click");
+      return;
+    }
+
+    const output = document.getElementById("mathpix-rendered-output");
+    if (!output) {
+      logWarn("Rendered output element not found");
+      return;
+    }
+
+    // Show loading state while SRE downloads on first click. After the
+    // first successful click of any tab session, SRE is cached and this is
+    // effectively instant. Setting state (not just visuals) means the
+    // re-entrancy guard above blocks duplicate clicks during prepare.
+    this._setRenderedOutputTtsState("loading");
+
+    let target;
+    try {
+      target = await this._prepareRenderedOutputForTts(output);
+    } catch (err) {
+      logError("Failed to prepare rendered output for TTS", err);
+      this._setRenderedOutputTtsState("idle");
+      return;
+    }
+
+    // After the await, the user may have already moved on (uploaded a new
+    // image, switched modes). Bail if the rendered output has changed under
+    // us — refresh will fire from the new render.
+    if (!document.contains(output)) {
+      this._setRenderedOutputTtsState("idle");
+      return;
+    }
+
+    const semantic = window.TTSSemantic;
+    let payload = null;
+    if (semantic && typeof semantic.linearise === "function") {
+      try {
+        const verbosity =
+          typeof semantic.getVerbosity === "function"
+            ? semantic.getVerbosity()
+            : "on";
+        const linearised = semantic.linearise(target, {
+          verbosity,
+          // Belt-and-braces: any source-format tags missed by the math
+          // selectors above (e.g. unwrapped formulas) are still skipped here.
+          skipSelectors: "mathml, asciimath, latex",
+        });
+        if (linearised && linearised.text && linearised.text.trim()) {
+          payload = linearised;
+        }
+      } catch (err) {
+        logWarn("TTSSemantic linearise failed; using plain text", err);
+      }
+    }
+    if (!payload) {
+      const plain = (target.innerText || target.textContent || "").trim();
+      if (!plain) {
+        logWarn("No text to speak from rendered output");
+        this._setRenderedOutputTtsState("idle");
+        return;
+      }
+      payload = plain;
+    }
+
+    payload = this._cleanRenderedOutputTtsPayload(payload);
+
+    // Diagnostic — surfaces what is actually sent to the TTS engine. Drop
+    // to logDebug once the read-aloud feature is stable.
+    if (typeof payload === "object") {
+      logInfo("Speak payload (object)", {
+        textPreview: (payload.text || "").slice(0, 200),
+        textLength: (payload.text || "").length,
+        sectionCount: Array.isArray(payload.sections)
+          ? payload.sections.length
+          : 0,
+        sections: Array.isArray(payload.sections)
+          ? payload.sections.map((s) => ({
+              type: s?.type,
+              textPreview: (s?.text || "").slice(0, 200),
+              textLength: (s?.text || "").length,
+            }))
+          : null,
+      });
+    } else {
+      logInfo("Speak payload (string)", {
+        preview: payload.slice(0, 200),
+        length: payload.length,
+      });
+    }
+
+    this._renderedOutputTtsActive = true;
+    // Optimistically flip to speaking state — tts:start will confirm.
+    this._setRenderedOutputTtsState("speaking");
+    controller.speak(payload);
+  }
+
+  /**
+   * Clone the rendered output and replace each math element with a synthetic
+   * `<mjx-container>` carrying SRE-generated Clearspeak as its aria-label, so
+   * the lineariser produces consistent natural-language speech regardless of
+   * which renderer (MathJax fallback or MMD CDN) populated the output.
+   *
+   * Falls back to the element's existing aria-label if SRE is unavailable
+   * (offline, blocked CDN) or fails on a particular formula.
+   *
+   * SAFETY: only math elements are touched. Chemistry SMILES (`[role="img"]`,
+   * `.smiles-inline`) have their own aria-labels from `addChemistryAltText`
+   * and are walked by TTSSemantic with those labels intact — SRE is never
+   * invoked on them, since the math selectors below don't match.
+   *
+   * Returns a detached clone safe to pass to TTSSemantic.linearise. The
+   * original DOM is untouched.
+   */
+  async _prepareRenderedOutputForTts(output) {
+    const clone = output.cloneNode(true);
+
+    // Try SRE; if it fails, every formula falls back to its existing aria-label.
+    let sre = null;
+    try {
+      sre = await loadSRE();
+    } catch (err) {
+      logWarn(
+        "SRE unavailable — falling back to existing aria-labels for TTS",
+        err,
+      );
+    }
+
+    // Path 2: CDN wrappers — `<span role="math" aria-label="…">` containing
+    // hidden source-format tags (<mathml>, <asciimath>, <latex>) plus the
+    // rendered <mjx-container>. The wrapper's aria-label is set by
+    // `latexToSpeech` (tools.html). We replace it with a synthetic
+    // mjx-container so downstream linearisation treats it atomically.
+    const cdnWrappers = clone.querySelectorAll('[role="math"][aria-label]');
+    cdnWrappers.forEach((wrapper) => {
+      const speech =
+        this._sreSpeechFor(wrapper, sre) || wrapper.getAttribute("aria-label");
+      if (!speech || !speech.trim()) return;
+      const placeholder = document.createElement("mjx-container");
+      placeholder.setAttribute("aria-label", speech);
+      wrapper.replaceWith(placeholder);
+    });
+
+    // Path 1: bare `<mjx-container>` — produced by the MathJax fallback
+    // render path (no role="math" wrapper). Their aria-labels come from the
+    // bundled MathJax SRE and default to MathSpeak. Overwrite with our own
+    // Clearspeak generation when SRE is available.
+    const mjxContainers = clone.querySelectorAll("mjx-container");
+    mjxContainers.forEach((mjx) => {
+      // Skip duplicates marked by the post-render enhancement wrapper.
+      if (mjx.getAttribute("data-mathpix-enhanced") === "duplicate") return;
+      const speech = this._sreSpeechFor(mjx, sre);
+      if (!speech || !speech.trim()) return;
+      mjx.setAttribute("aria-label", speech);
+    });
+
+    // Tables: MathPix's CDN renders all cells as <td> with no <thead>, so
+    // TTSSemantic's lineariseTable treats the header row as data and emits
+    // 11+ short sentences ("Row 1, Column 1: …") that Web Speech glitches on
+    // at chunk boundaries. Rewrite each table into a single header-aware
+    // paragraph that produces ~4 sentences instead. Math inside cells is
+    // already SRE-processed (above), so the aria-label-aware cell extractor
+    // picks up the right speech for those.
+    const tables = clone.querySelectorAll("table");
+    tables.forEach((table) => {
+      const replacement = this._rewriteTableForTts(table);
+      if (replacement) table.replaceWith(replacement);
+    });
+
+    return clone;
+  }
+
+  /**
+   * Build a header-aware speech paragraph for a table and return a `<div>`
+   * suitable for replacing the original `<table>` in the cloned tree.
+   * Returns null when the table is empty, has no rows, or exceeds the soft
+   * cap (in which case TTSSemantic's lineariseTable handles it).
+   *
+   * Header detection (in priority order):
+   *   1. <thead><tr> — semantic table.
+   *   2. First row contains any <th> — partial semantic markup.
+   *   3. Otherwise the first row is treated as headers heuristically. This
+   *      is the MathPix-CDN signature: the renderer emits all cells as <td>
+   *      regardless of role.
+   */
+  _rewriteTableForTts(table) {
+    const SOFT_CAP_CELLS = 50;
+
+    const allRows = Array.from(table.querySelectorAll("tr"));
+    if (allRows.length === 0) return null;
+
+    let headerCells, dataRows;
+    const theadRow = table.querySelector("thead tr");
+    if (theadRow) {
+      headerCells = Array.from(theadRow.querySelectorAll("th, td"));
+      const tbody = table.querySelector("tbody");
+      dataRows = tbody
+        ? Array.from(tbody.querySelectorAll("tr"))
+        : allRows.filter((r) => !theadRow.contains(r) && r !== theadRow);
+    } else {
+      const firstRowThs = allRows[0].querySelectorAll("th");
+      if (firstRowThs.length > 0) {
+        headerCells = Array.from(firstRowThs);
+        dataRows = allRows.slice(1);
+      } else {
+        headerCells = Array.from(allRows[0].querySelectorAll("td"));
+        dataRows = allRows.slice(1);
+      }
+    }
+
+    const totalCells =
+      headerCells.length +
+      dataRows.reduce(
+        (acc, r) => acc + r.querySelectorAll("td, th").length,
+        0,
+      );
+    if (totalCells === 0) return null;
+    if (totalCells > SOFT_CAP_CELLS) {
+      logDebug(
+        "Table exceeds soft cap (" +
+          totalCells +
+          " cells) — falling back to TTSSemantic.lineariseTable",
+      );
+      return null;
+    }
+
+    const headerLabels = headerCells.map((h) => this._extractCellSpeech(h));
+    const colCount = headerLabels.length;
+    const rowCount = dataRows.length;
+
+    const sentences = [];
+    // Prefix each header with its column position, so the listener can map
+    // a cell to a column without having to count headers in real time.
+    const headerWithPos = headerLabels.map((h, i) =>
+      h ? "Column " + (i + 1) + " " + h : "Column " + (i + 1),
+    );
+
+    if (rowCount === 0 && colCount > 0) {
+      sentences.push(
+        "Table with " + colCount + " column" + (colCount === 1 ? "" : "s") + ".",
+      );
+      sentences.push("Headers: " + headerWithPos.join(", ") + ".");
+    } else {
+      sentences.push(
+        "Table with " +
+          colCount +
+          " column" +
+          (colCount === 1 ? "" : "s") +
+          " and " +
+          rowCount +
+          " data row" +
+          (rowCount === 1 ? "" : "s") +
+          ".",
+      );
+      if (headerLabels.length > 0 && headerLabels.some((h) => h)) {
+        sentences.push("Headers: " + headerWithPos.join(", ") + ".");
+      }
+      dataRows.forEach((tr, rowIdx) => {
+        const cells = Array.from(tr.querySelectorAll("td, th"));
+        const cellTexts = cells.map((c, colIdx) => {
+          const value = this._extractCellSpeech(c);
+          const header = headerLabels[colIdx];
+          return header ? header + " " + value : value;
+        });
+        sentences.push("Row " + (rowIdx + 1) + ": " + cellTexts.join(", ") + ".");
+      });
+    }
+
+    const wrapper = document.createElement("div");
+    const p = document.createElement("p");
+    p.textContent = sentences.join(" ");
+    wrapper.appendChild(p);
+    return wrapper;
+  }
+
+  /**
+   * Extract speakable text from a table cell. If the cell contains math
+   * elements (already SRE-processed by the math pass above), substitute
+   * their aria-labels for the otherwise-empty SVG textContent. Falls back
+   * to plain textContent for cells with no math.
+   */
+  _extractCellSpeech(cell) {
+    if (!cell) return "";
+    const hasMath = !!cell.querySelector("mjx-container[aria-label]");
+    if (!hasMath) {
+      return (cell.textContent || "").replace(/\s+/g, " ").trim();
+    }
+    // Clone the cell so we can mutate it without affecting the parent tree.
+    const cellClone = cell.cloneNode(true);
+    cellClone
+      .querySelectorAll("mjx-container[aria-label]")
+      .forEach((el) => {
+        el.replaceWith(
+          document.createTextNode(" " + el.getAttribute("aria-label") + " "),
+        );
+      });
+    return (cellClone.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Run SRE.toSpeech on an element's MathML. Returns the Clearspeak text or
+   * null if SRE is unavailable, no MathML was found, or the call failed.
+   */
+  _sreSpeechFor(el, sre) {
+    if (!sre || !el) return null;
+    // Both paths embed real MathML inside the element (CDN: <mathml><math>…,
+    // MathJax: <mjx-assistive-mml><math>…). The first <math> descendant is
+    // the canonical source.
+    const mathEl = el.querySelector("math");
+    if (!mathEl) return null;
+    try {
+      const speech = sre.toSpeech(mathEl.outerHTML);
+      return speech && typeof speech === "string" ? speech.trim() : null;
+    } catch (err) {
+      logWarn("SRE.toSpeech failed for formula — using fallback", err);
+      return null;
+    }
+  }
+
+  /**
+   * Strip MathJax context-menu cues that get appended to mjx-container
+   * aria-labels (e.g. "Click to zoom or right-click for options.") so they
+   * are not spoken aloud. Operates on both the top-level text and each
+   * section's text when the payload is a TTSSemantic linearise result.
+   */
+  _cleanRenderedOutputTtsPayload(payload) {
+    const clean = (text) => {
+      if (!text || typeof text !== "string") return text || "";
+      return text
+        .replace(
+          /\s*\.?\s*Click to zoom( or right-click for options)?\s*\.?\s*/gi,
+          " ",
+        )
+        .replace(/\.\s+\./g, ".")
+        .replace(/\s+/g, " ")
+        .trim();
+    };
+
+    if (typeof payload === "string") return clean(payload);
+    if (payload && typeof payload === "object" && typeof payload.text === "string") {
+      return {
+        ...payload,
+        text: clean(payload.text),
+        sections: Array.isArray(payload.sections)
+          ? payload.sections.map((s) =>
+              s && typeof s.text === "string" ? { ...s, text: clean(s.text) } : s,
+            )
+          : payload.sections,
+      };
+    }
+    return payload;
+  }
+
+  _setRenderedOutputTtsState(state) {
+    if (!this._renderedOutputTtsEls) return;
+    const prev = this._renderedOutputTtsState;
+    this._renderedOutputTtsState = state;
+    this._setRenderedOutputTtsButtonVisuals(state);
+
+    // Announce only on genuine transitions, not on initial setup.
+    if (prev === state) return;
+    const { status } = this._renderedOutputTtsEls;
+    if (!status) return;
+    status.textContent = "";
+    setTimeout(() => {
+      let msg;
+      if (state === "speaking") msg = "Reading aloud";
+      else if (state === "loading") msg = "Preparing speech";
+      else msg = "Stopped";
+      status.textContent = msg;
+    }, 50);
+  }
+
+  _setRenderedOutputTtsButtonVisuals(state) {
+    if (!this._renderedOutputTtsEls) return;
+    const { button, labelEl } = this._renderedOutputTtsEls;
+
+    // Track the visual state independently of `_renderedOutputTtsState` so
+    // the button can render a transient "loading" frame between idle and
+    // speaking without needing a full state-machine entry.
+    let iconName, label, ariaLabel;
+    switch (state) {
+      case "speaking":
+        iconName = "close";
+        label = "Stop";
+        ariaLabel = "Stop reading rendered output";
+        break;
+      case "loading":
+        iconName = "hourglass";
+        label = "Preparing…";
+        ariaLabel = "Preparing speech, please wait";
+        break;
+      case "idle":
+      default:
+        iconName = "message";
+        label = "Speak";
+        ariaLabel = "Read rendered output aloud";
+        break;
+    }
+
+    labelEl.textContent = label;
+    button.setAttribute("aria-label", ariaLabel);
+    // Disable the button while loading so a second click can't queue a
+    // duplicate prepare. State-machine guard in the click handler is the
+    // primary defence; this is just visual reinforcement.
+    button.disabled = state === "loading";
+
+    const iconEl = button.querySelector("[data-icon]");
+    if (iconEl) {
+      iconEl.setAttribute("data-icon", iconName);
+      // Re-render the SVG so the icon swap is visible — populateIcons only
+      // runs on DOMContentLoaded, so a manual refresh is needed for runtime
+      // data-icon swaps. Falls back to populateIcons (whole-document scan)
+      // if the per-element helper is not available.
+      if (typeof window.getIcon === "function") {
+        iconEl.innerHTML = window.getIcon(iconName);
+      } else if (window.IconLibrary?.populateIcons) {
+        window.IconLibrary.populateIcons();
+      }
     }
   }
 }

@@ -19,7 +19,7 @@
   background-color: rgba(0, 92, 132, 0.05);
 }
 
-.gb-advanced-toggle:focus-visible {
+.gb-advanced-toggle:has(:focus-visible) {
   outline: 0.2rem solid #005c84;
   outline-offset: 2px;
 }
@@ -47,16 +47,8 @@
 /* Column inputs - Colours */
 .gb-enhanced-input,
 .gb-enhanced-select {
-  border: 1px solid #495961;
   background-color: #fffff4;
   color: #00131d;
-}
-
-.gb-enhanced-input:focus,
-.gb-enhanced-select:focus {
-  outline: 0.2rem solid #005c84;
-  outline-offset: 1px;
-  border-color: #005c84;
 }
 
 /* Add column button - Colours */
@@ -81,7 +73,7 @@
 /* Remove column button - Colours */
 .gb-remove-column-btn {
   color: #d5007f;
-  border: 1px solid #d5007f;
+  border: 0.2rem solid #d5007f;
   background: none;
   outline: 0.2rem solid transparent;
 }
@@ -110,7 +102,7 @@
   color: #495961;
 }
 
-.gb-advanced-toggle[aria-expanded="true"] .gb-toggle-icon {
+.gb-advanced-toggle:has(.gb-toggle-checkbox:checked) .gb-toggle-icon {
   color: #005c84;
 }
 
@@ -167,7 +159,7 @@
   transition: transform 0.2s ease;
 }
 
-.gb-advanced-toggle[aria-expanded="true"] .gb-toggle-icon {
+.gb-advanced-toggle:has(.gb-toggle-checkbox:checked) .gb-toggle-icon {
   transform: rotate(180deg);
 }
 
@@ -201,11 +193,19 @@
   font-size: 1.1rem;
 }
 
-/* Column definition fieldset */
+/* Column definition fieldset.
+   container-type: inline-size makes this fieldset a query container,
+   so .gb-column-inputs inside can switch between vertical-stack and
+   horizontal-grid based on the FIELDSET'S width — not the viewport's.
+   This decouples the layout from viewport width, so an ancestor with
+   constrained width (e.g. a sidebar, a max-width wrapper) gets the
+   stacked layout when there isn't room for the horizontal grid, even
+   if the viewport itself is wide. */
 .gb-column-definition {
   border-radius: 4px;
   padding: 1rem;
   margin-bottom: 1rem;
+  container-type: inline-size;
 }
 
 .gb-column-definition legend {
@@ -214,12 +214,92 @@
   padding: 0 0.5rem;
 }
 
-/* Column inputs grid */
+/* Column inputs — default (narrow fieldset): vertical stack.
+   Each input-group occupies a full row. Works at any width — never
+   overflows. Input/select inside fills the available width via
+   `width: 100%` from the .gb-enhanced-input/.gb-enhanced-select rule
+   below. */
 .gb-column-inputs {
-  display: grid;
-  grid-template-columns: 1fr 120px 120px auto;
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  align-items: end;
+}
+
+/* Wide fieldset: switch to horizontal grid layout.
+   Threshold 600 px gives a generous range — at 600 the minimum grid
+   (Name 80 + 3 selects × 100 + Remove ~88 + 4 gaps × 12 = 516 px) fits
+   in the ~568 px content area with margin. Below 600 the stacked
+   default takes over.
+
+   minmax() tracks: at typical wide fieldsets (~676 px on this page,
+   content ~644) tracks reach their maxes for consistent appearance —
+   Name 145 px, selects 120 px. Between 600 px and ~675 px fieldset,
+   tracks shrink proportionally to fit, but every fieldset on the page
+   has the same width so all rows still match each other. Below 600
+   the layout stacks instead of clipping further.
+
+   :has() adds a 5th track when Phase 3.1.b's per-column Chart Type
+   select is visible (≥ 2 value columns active). Inline
+   `style="display: none"` on .gb-chart-type-group is written by
+   updateAllChartTypeVisibility in graph-builder-enhanced.js; the
+   `:not([style*="display: none"])` check matches both `style=""`
+   (visible) and the empty-or-other-properties cases the browser
+   produces when JS sets `style.display = ""`.
+
+   justify-self:start on the Remove input-group keeps the button hugging
+   Role/Chart Type rather than stretching across any leftover space the
+   trailing `auto` track absorbs. */
+@container (min-width: 600px) {
+  .gb-column-inputs {
+    display: grid;
+    grid-template-columns: minmax(80px, 145px) minmax(100px, 120px) minmax(100px, 120px) auto;
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .gb-column-inputs:has(.gb-chart-type-group:not([style*="display: none"])) {
+    grid-template-columns: minmax(80px, 145px) minmax(100px, 120px) minmax(100px, 120px) minmax(100px, 120px) auto;
+  }
+
+  /* Phase 3.2.b-1: Symbol group sits on a SECOND row when visible
+     (column.type === currency). Row 1 layout
+     (Name / Type / Role / [ChartType] / Remove) is untouched — the
+     explicit grid-row:2 on .gb-symbol-group keeps it out of row 1's
+     auto-flow, and Remove auto-flows into the last row-1 column as
+     before. Symbol is positioned under the Type+Role tracks so the
+     visual hierarchy reads as "this applies to the Type column". */
+  .gb-column-inputs:has(.gb-symbol-group:not([style*="display: none"])) {
+    grid-template-rows: auto auto;
+  }
+  .gb-column-inputs > .gb-symbol-group:not([style*="display: none"]) {
+    grid-row: 2;
+    grid-column: 2 / span 2;
+  }
+
+  /* Remove input-group has no label, so under align-items:start its
+     button would sit at the row's top edge while the other input-groups'
+     inputs/selects sit a label-height + gap lower. align-self:stretch
+     makes the wrapper fill the row's full height (label-height + gap +
+     input-height); justify-content:flex-end then pushes the button to
+     the BOTTOM of that wrapper via flex main-axis alignment, which puts
+     the button at exactly the same y as the inputs/selects in the row.
+     align-self only stretches within the item's assigned grid area —
+     row 1 only — so adding row 2 for Symbol doesn't expand Remove. */
+  .gb-column-inputs > .gb-enhanced-input-group:has(.gb-remove-column-btn) {
+    justify-self: start;
+    align-self: stretch;
+    justify-content: flex-end;
+  }
+}
+
+/* Keep min-width:0 on grid items and inputs — prevents browser default
+   min-content sizing from forcing tracks wider than their declared px
+   sizes (only relevant inside the @container grid, but cheap to keep
+   global). */
+.gb-column-inputs > .gb-enhanced-input-group,
+.gb-column-inputs > .gb-enhanced-input-group > input,
+.gb-column-inputs > .gb-enhanced-input-group > select {
+  min-width: 0;
 }
 
 /* Input groups within column config */
@@ -241,6 +321,8 @@
   border-radius: 4px;
   font-size: 0.95rem;
   min-height: 44px;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 /* Column actions */
@@ -270,7 +352,8 @@
   min-height: 44px;
   min-width: 44px;
   transition: all 0.2s ease;
-  align-self: end;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 /* Smart suggestions panel */
@@ -302,6 +385,21 @@
    ENHANCED DATA ROW GRID
    ======================================== */
 
+/* Allow input columns to shrink below their natural min-content width.
+   The inline `grid-template-columns: 1fr 1fr 1fr 1fr auto` set by the
+   row-sync module uses `1fr` which is shorthand for `minmax(auto, 1fr)`;
+   the `auto` minimum prevents grid tracks from shrinking below their
+   items' min-content size (~154px per browser-default <input>). With 4
+   value columns + Remove button, the natural row width is ~942px, but
+   the parent .gb-data-form is capped at 750px — so the row overflows
+   to the right and the Remove button can be clipped at narrow viewports.
+   Setting min-width:0 on the grid items (and the inputs inside them)
+   releases the min-content constraint and lets `1fr` actually shrink. */
+.gb-data-row[data-enhanced-cols] > .gb-input-group,
+.gb-data-row[data-enhanced-cols] > .gb-input-group > input {
+  min-width: 0;
+}
+
 /* ========================================
    RESPONSIVE BREAKPOINTS
    ======================================== */
@@ -309,13 +407,12 @@
 @media (max-width: 885px) {
   /* Stack enhanced data rows on narrow viewports.
      !important overrides the inline grid-template-columns
-     set by the row-sync module. */
+     set by the row-sync module.
+     (.gb-column-inputs stacking is handled by the container query
+     above, not here — the fieldset's own width is what matters for
+     that layout, not the viewport.) */
   .gb-data-row[data-enhanced-cols] {
     grid-template-columns: 1fr !important;
-  }
-
-  .gb-column-inputs {
-    grid-template-columns: 1fr;
   }
 
   .gb-remove-column-btn {

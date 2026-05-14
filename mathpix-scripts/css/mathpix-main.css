@@ -3193,12 +3193,14 @@ input#custom-height {
 }
 
 .debug-stats dt {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .debug-stats dd {
   margin: 0;
   font-family: "Courier New", monospace;
+  font-weight: 700;
+  letter-spacing: 2px;
 }
 
 .confidence-high {

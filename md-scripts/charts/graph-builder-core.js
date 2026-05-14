@@ -524,6 +524,10 @@ const GraphBuilder = (function () {
         colourScheme: this.dependencies.utils.dom.getById("gb-color-scheme"),
         showLegend: this.dependencies.utils.dom.getById("gb-show-legend"),
         showGrid: this.dependencies.utils.dom.getById("gb-show-grid"),
+        stackSeries: this.dependencies.utils.dom.getById("gb-stack-series"),
+        stackSeriesGroup: this.dependencies.utils.dom.getById(
+          "gb-stack-series-group"
+        ),
         backButton: this.dependencies.utils.dom.getById("gb-config-back"),
         createButton: this.dependencies.utils.dom.getById("gb-config-create"),
       };
@@ -1366,8 +1370,35 @@ const GraphBuilder = (function () {
           state.chartData.headers[1] || "Y Axis";
       }
 
+      // Phase 3.1.a — Stack series visibility. Only meaningful in advanced
+      // mode for cartesian bar/line. Checkbox state itself is preserved
+      // (not reset) so users keep their choice across Next/Prev.
+      this.updateStackSeriesVisibility();
+
       // Generate initial preview
       this.updateChartPreview();
+    }
+
+    /**
+     * Show or hide the "Stack series" option based on chart type + mode.
+     * Advanced mode + bar/line → visible. Anything else → hidden.
+     * Idempotent; safe to call from initializeConfiguration and on chart-type
+     * changes.
+     */
+    updateStackSeriesVisibility() {
+      const group = this.elements.configure.stackSeriesGroup;
+      if (!group) return;
+
+      const enhanced = window.GraphBuilderEnhanced;
+      const advanced =
+        !!(enhanced &&
+          typeof enhanced.isAdvancedMode === "function" &&
+          enhanced.isAdvancedMode());
+      const stackableType =
+        state.selectedChartType === "bar" ||
+        state.selectedChartType === "line";
+
+      group.style.display = advanced && stackableType ? "" : "none";
     }
 
     /**
@@ -1396,6 +1427,11 @@ const GraphBuilder = (function () {
         colourScheme: this.elements.configure.colourScheme?.value || "default",
         showLegend: this.elements.configure.showLegend?.checked ?? true,
         showGrid: this.elements.configure.showGrid?.checked ?? true,
+        // Phase 3.1.a — Stack series. Only surfaced by the UI in advanced
+        // mode for bar/line. The enhanced chart generator also gates the
+        // application on chart type, so a stale `true` on a non-stackable
+        // chart type is a no-op rather than an error.
+        stacked: this.elements.configure.stackSeries?.checked === true,
       };
     }
 

@@ -102,6 +102,55 @@
   };
 
   /**
+   * Stage 2 Task 2.3 — Provider-level capability alias table.
+   *
+   * Translates tool-facing capability names (e.g. 'vision', 'function_calling')
+   * to the provider contract's strict field names ('images', 'toolCalls' —
+   * see providers/_interface.js ProviderCapabilities typedef). Only used for
+   * provider-level (A7 layer 1) gating. Model-level (layer 2) lookup uses
+   * the existing CAPABILITY_MAPPING above, which already handles these
+   * spellings against model.capabilities arrays.
+   *
+   * Unknown capability names fall through to a raw provider.capabilities[name]
+   * check (see _providerHasCapabilities). Grow this table when new aliases
+   * are encountered.
+   *
+   * Provisional location: may move to providers/_interface.js if we adopt a
+   * canonical capability vocabulary at Stage 4/5. Until then, lives here so
+   * 2.3 doesn't touch the provider contract.
+   */
+  const PROVIDER_CAPABILITY_ALIASES = {
+    // Vision / image inputs
+    vision: "images",
+    image: "images",
+    images: "images",
+    // Tool / function calling
+    tool_calling: "toolCalls",
+    function_calling: "toolCalls",
+    toolCalls: "toolCalls",
+    // Reasoning / extended thinking
+    extended_thinking: "reasoning",
+    reasoning: "reasoning",
+    // Direct pass-through (canonical names)
+    streaming: "streaming",
+    pdf: "pdf",
+  };
+
+  /**
+   * Stage 2 Task 2.3 — Provider human-readable labels.
+   *
+   * Provisional. May move to a Provider.label contract field at Stage 4 when
+   * 'anthropic-foundry' needs distinguishing from 'azure-openai' in UI labels.
+   * Override per-instance via EmbedModelSelector.setProviderLabel(id, label).
+   */
+  const PROVIDER_LABELS = {
+    "openrouter": "OpenRouter",
+    "azure-openai": "Microsoft Foundry",
+    "azure-inference": "Foundry (Inference)",   // Stage 5 placeholder
+    "anthropic-foundry": "Claude via Foundry",  // Stage 4 placeholder
+  };
+
+  /**
    * Cost tier thresholds (per 1M tokens, combined input/output average)
    */
   const COST_TIERS = {
@@ -122,6 +171,9 @@
       this._config = { ...DEFAULT_CONFIG };
       this._lastSelection = null;
       logInfo("EmbedModelSelector initialised");
+      // Stage 2 Task 2.3 — per-instance label override map. Populated via
+      // setProviderLabel(id, label); read via _getProviderLabel(id).
+      this._providerLabelOverrides = {};
     }
 
     // ==========================================================================
@@ -208,6 +260,43 @@
       return this;
     }
 
+    /**
+     * Stage 2 Task 2.3 — Override the human-readable label for a provider.
+     *
+     * Provisional API; may be superseded by a Provider.label contract field
+     * at Stage 4. Pass null or undefined as the label to reset to the
+     * built-in default from PROVIDER_LABELS.
+     *
+     * @param {string} providerId
+     * @param {string|null} label - New label, or null to reset
+     * @returns {EmbedModelSelector} For chaining
+     *
+     * @example
+     * window.EmbedModelSelector.setProviderLabel('azure-openai', 'My Foundry');
+     * window.EmbedModelSelector.setProviderLabel('azure-openai', null);  // reset
+     */
+    setProviderLabel(providerId, label) {
+      if (typeof providerId !== "string" || !providerId.trim()) {
+        logWarn("setProviderLabel: providerId must be a non-empty string");
+        return this;
+      }
+      const id = providerId.trim();
+      if (label === null || label === undefined) {
+        delete this._providerLabelOverrides[id];
+        logDebug(`Provider label override removed: '${id}'`);
+      } else if (typeof label === "string" && label.trim()) {
+        this._providerLabelOverrides[id] = label.trim();
+        logDebug(
+          `Provider label override set: '${id}' → '${label.trim()}'`
+        );
+      } else {
+        logWarn(
+          `setProviderLabel: label must be a non-empty string or null (provider: '${id}')`
+        );
+      }
+      return this;
+    }
+
     // ==========================================================================
     // MODEL REGISTRY ACCESS
     // ==========================================================================
@@ -284,6 +373,86 @@
     }
 
     // ==========================================================================
+    // PROVIDER-AWARE HELPERS (Stage 2 Task 2.3)
+    // ==========================================================================
+
+    /**
+     * Get the human-readable label for a provider. Override takes precedence;
+     * falls back to PROVIDER_LABELS; last-resort fallback humanises the id.
+     * @private
+     */
+    _getProviderLabel(providerId) {
+      if (
+        this._providerLabelOverrides &&
+        this._providerLabelOverrides[providerId]
+      ) {
+        return this._providerLabelOverrides[providerId];
+      }
+      if (PROVIDER_LABELS[providerId]) {
+        return PROVIDER_LABELS[providerId];
+      }
+      // Last-resort: humanise the id ('foo-bar' → 'Foo Bar')
+      return providerId
+        .split("-")
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+        .join(" ");
+    }
+
+    /**
+     * Check whether a provider's capability flags satisfy a list of requested
+     * tool-facing capability names. Translates names via PROVIDER_CAPABILITY_ALIASES.
+     * Unknown names fall through to a raw provider.capabilities[name] check.
+     * @private
+     */
+    _providerHasCapabilities(provider, capabilities) {
+      if (!Array.isArray(capabilities) || capabilities.length === 0) {
+        return true;
+      }
+      const caps = (provider && provider.capabilities) || {};
+      return capabilities.every((toolCap) => {
+        const lowered =
+          typeof toolCap === "string" ? toolCap.toLowerCase() : "";
+        const translated =
+          PROVIDER_CAPABILITY_ALIASES[lowered] || lowered;
+        return caps[translated] === true;
+      });
+    }
+
+    /**
+     * Resolve a model to its library routing provider via EmbedProviderLookup.
+     * Returns null if lookup is unavailable or the model lacks a valid id.
+     * Note: uses model.id prefix, NOT model.provider (which is upstream vendor).
+     * @private
+     */
+    _resolveProviderForModel(model) {
+      if (!model || typeof model.id !== "string") return null;
+      const lookup = window.EmbedProviderLookup;
+      if (!lookup || typeof lookup.resolve !== "function") return null;
+      return lookup.resolve(model.id);
+    }
+
+    /**
+     * Determine if a provider is "available" on a given embed instance.
+     *
+     * Order matters: the bad-embed check runs FIRST, before the openrouter
+     * special-case. A malformed embed (missing the isProviderConfigured method)
+     * cannot tell us anything about availability, so we return false for all
+     * providers — including openrouter. For a properly-constructed embed,
+     * openrouter is always available (its API key lives in localStorage and
+     * isn't gated by the providerConfig mechanism — embed.isProviderConfigured
+     * always returns false for it). Other providers are available when
+     * configureProvider() has been called for them.
+     * @private
+     */
+    _isProviderAvailable(embed, providerId) {
+      if (!embed || typeof embed.isProviderConfigured !== "function") {
+        return false;
+      }
+      if (providerId === "openrouter") return true;
+      return embed.isProviderConfigured(providerId);
+    }
+
+    // ==========================================================================
     // CAPABILITY DETECTION
     // ==========================================================================
 
@@ -349,6 +518,178 @@
       return allModels
         .filter((model) => this._modelHasCapabilities(model, capabilities))
         .map((m) => m.id);
+    }
+
+    // ==========================================================================
+    // PROVIDER-AWARE QUERY API (Stage 2 Task 2.3)
+    // ==========================================================================
+    // Two-step selection support for consumer UIs:
+    //   Step 1: getEligibleProviders({capabilities, embed}) returns which
+    //           providers can serve the tool's needs (A7 layer 1 gate).
+    //   Step 2: getEligibleModels({providerId, capabilities, embed}) returns
+    //           models from the chosen provider that pass the model-level
+    //           capability gate (A7 layer 2).
+    //
+    // Existing methods (selectModel, hasCapabilities, getModelsWithCapabilities)
+    // remain provider-agnostic and unchanged for backwards compatibility.
+
+    /**
+     * Return providers whose capabilities meet the requested set, optionally
+     * gated by which providers are configured on a specific embed instance.
+     *
+     * Implements A7 layer 1: provider-level capability gating. Provider labels
+     * come from the internal PROVIDER_LABELS table, overrideable via
+     * setProviderLabel().
+     *
+     * @param {Object} [opts]
+     * @param {string[]} [opts.capabilities=[]] Tool-facing capability names
+     *                                          (e.g. ['vision', 'streaming']).
+     *                                          Translated via PROVIDER_CAPABILITY_ALIASES.
+     * @param {Object} [opts.embed] OpenRouterEmbed instance. If supplied, each
+     *                              result has its `configured` field populated
+     *                              and configured providers sort first.
+     * @returns {Array<{id, label, configured, capabilities}>}
+     *
+     * Edge cases:
+     *   - EmbedProviderRegistry not loaded → returns []
+     *   - capabilities array empty → returns all registered providers
+     *   - embed not supplied → configured field is null on every result
+     *   - embed supplied but malformed (no isProviderConfigured method) →
+     *     configured field is false on every result (we cannot verify)
+     *   - Capability not in alias table → checks raw against provider.capabilities
+     *
+     * @example
+     * // All vision-capable providers, with configured-ness for this embed
+     * window.EmbedModelSelector.getEligibleProviders({
+     *   capabilities: ['vision'],
+     *   embed: myEmbed
+     * });
+     */
+    getEligibleProviders({ capabilities = [], embed } = {}) {
+      const registry = window.EmbedProviderRegistry;
+      if (!registry || typeof registry.list !== "function") {
+        logDebug("EmbedProviderRegistry unavailable, returning []");
+        return [];
+      }
+
+      const ids = registry.list();
+      // Truthy embed → produce a boolean `configured` value (via _isProviderAvailable,
+      // which itself returns false if the embed is malformed). No embed → null.
+      const hasEmbed = !!embed;
+
+      const results = [];
+      for (const id of ids) {
+        const provider = registry.get(id);
+        if (!provider) continue;
+
+        if (!this._providerHasCapabilities(provider, capabilities)) continue;
+
+        results.push({
+          id,
+          label: this._getProviderLabel(id),
+          configured: hasEmbed
+            ? this._isProviderAvailable(embed, id)
+            : null,
+          capabilities: { ...(provider.capabilities || {}) },
+        });
+      }
+
+      // Sort: configured first (when embed supplied), then alphabetically by label
+      if (hasEmbed) {
+        results.sort((a, b) => {
+          if (a.configured !== b.configured) {
+            return a.configured ? -1 : 1;
+          }
+          return a.label.localeCompare(b.label);
+        });
+      } else {
+        results.sort((a, b) => a.label.localeCompare(b.label));
+      }
+
+      logDebug(
+        `getEligibleProviders: ${results.length} of ${ids.length} eligible`,
+        { capabilities, hasEmbed }
+      );
+      return results;
+    }
+
+    /**
+     * Return models registered to the given provider that meet the requested
+     * capabilities. Excludes disabled models. Returns full model objects from
+     * the registry with providerId injected.
+     *
+     * Implements A7 layer 2: model-level capability gating. Uses the existing
+     * CAPABILITY_MAPPING via _modelHasCapabilities (which already handles
+     * 'vision', 'function_calling', etc. against model.capabilities arrays).
+     *
+     * @param {Object} opts
+     * @param {string} opts.providerId Library provider id ('openrouter' / 'azure-openai')
+     * @param {string[]} [opts.capabilities=[]] Tool-facing capability names
+     * @param {Object} [opts.embed] OpenRouterEmbed instance. If supplied and
+     *                              the provider isn't available on this embed,
+     *                              returns [] (except openrouter, which is
+     *                              always available).
+     * @returns {Array<Object>} Full model objects with providerId injected
+     *
+     * Edge cases:
+     *   - window.modelRegistry not loaded → returns []
+     *   - providerId missing/blank → returns []
+     *   - No models match the provider → returns []
+     *   - Model has disabled:true → excluded
+     *   - capabilities array empty → returns all enabled models for that provider
+     *
+     * @example
+     * window.EmbedModelSelector.getEligibleModels({
+     *   providerId: 'azure-openai',
+     *   capabilities: ['vision']
+     * });
+     */
+    getEligibleModels({ providerId, capabilities = [], embed } = {}) {
+      if (typeof providerId !== "string" || !providerId.trim()) {
+        logWarn("getEligibleModels: providerId is required");
+        return [];
+      }
+      const id = providerId.trim();
+
+      // Gate by configured-ness if embed supplied
+      if (embed && typeof embed.isProviderConfigured === "function") {
+        if (!this._isProviderAvailable(embed, id)) {
+          logDebug(
+            `getEligibleModels: provider '${id}' not available on embed, returning []`
+          );
+          return [];
+        }
+      }
+
+      const registry = window.modelRegistry;
+      if (!registry || typeof registry.getAllModels !== "function") {
+        logDebug("window.modelRegistry unavailable, returning []");
+        return [];
+      }
+
+      const allModels = registry.getAllModels();
+
+      const results = [];
+      for (const model of allModels) {
+        if (!model || model.disabled === true) continue;
+
+        // Provider gate: does this model's id-prefix resolve to the target provider?
+        const modelProvider = this._resolveProviderForModel(model);
+        if (!modelProvider || modelProvider.id !== id) continue;
+
+        // Model-level capability gate (reuses existing CAPABILITY_MAPPING)
+        if (!this._modelHasCapabilities(model, capabilities)) continue;
+
+        // Inject providerId into the returned model object (shallow copy to
+        // avoid mutating the registry's stored object)
+        results.push({ ...model, providerId: id });
+      }
+
+      logDebug(
+        `getEligibleModels: ${results.length} models for provider '${id}'`,
+        { capabilities, totalScanned: allModels.length }
+      );
+      return results;
     }
 
     // ==========================================================================

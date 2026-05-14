@@ -542,21 +542,30 @@ const GraphBuilderData = (function () {
           const allFilled = values.every((v) => v.length > 0);
           if (!allFilled) return;
 
-          // Validate numeric columns (skip the label column at index 0)
+          // Validate numeric columns (skip the label column at index 0).
+          // Currency and percentage values are entered as text (e.g. "£1,200"
+          // or "42%") — strip the symbol set before parseFloat so validation
+          // matches what extractFormData accepts below.
           let hasError = false;
           if (columns) {
             columns.forEach((col, ci) => {
-              if (
-                ci < values.length &&
-                (col.type === "number" ||
+              if (ci < values.length) {
+                const isNumeric =
+                  col.type === "number" ||
                   col.type === "currency" ||
-                  col.type === "percentage") &&
-                isNaN(parseFloat(values[ci]))
-              ) {
-                errors.push(
-                  `Row ${index + 1}: ${col.name} must be a number`
-                );
-                hasError = true;
+                  col.type === "percentage";
+                if (isNumeric) {
+                  const cleaned =
+                    col.type === "number"
+                      ? values[ci]
+                      : values[ci].replace(/[£$€¥₹%,\s]/g, "");
+                  if (isNaN(parseFloat(cleaned))) {
+                    errors.push(
+                      `Row ${index + 1}: ${col.name} must be a number`
+                    );
+                    hasError = true;
+                  }
+                }
               }
             });
           } else {

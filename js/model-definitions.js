@@ -39039,6 +39039,156 @@ modelRegistry.registerModel("x-ai/grok-4.3", {
     errorMessage: null,
   },
 });
+// Insert after google/gemma-4-26b-a4b-it in model-definitions.js
+
+modelRegistry.registerModel("google/gemini-3.1-flash-lite", {
+  provider: "google",
+  name: "Gemini 3.1 Flash Lite",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "Gemini 3.1 Flash Lite is Google's general availability high-efficiency multimodal model optimised for low-latency, high-volume workloads. Supports text, image, video, audio, and PDF inputs with a 1M token context window. Designed for lightweight agentic workflows, simple data extraction, and applications where responsiveness and API cost are primary constraints. Features full thinking levels (minimal, low, medium, high) for fine-grained cost and performance trade-offs. Priced at half the cost of Gemini 3 Flash.",
+  costs: {
+    input: 0.25,
+    output: 1.5,
+    image: 0.0,
+    video: 0.0,
+    audio: 0.0,
+    pdf: 0.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 1048576,
+  fallbackTo: "google/gemma-4-26b-a4b-it",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Cost-optimised multimodal model for high-volume, latency-sensitive applications",
+    releaseDate: "2026-05-07",
+    modelArchitecture: {
+      parameters: "Not publicly disclosed",
+      type: "Multimodal transformer",
+      optimisedFor: "Low-latency inference",
+      thinkingLevels: ["minimal", "low", "medium", "high"],
+    },
+    policyLinks: {
+      privacyPolicy: "https://policies.google.com/privacy",
+      acceptableUse: "https://ai.google.dev/terms",
+      termsOfService: "https://policies.google.com/terms",
+      lastUpdated: "2026-05-07",
+    },
+    languageSupport: [
+      "English",
+      "Spanish",
+      "French",
+      "German",
+      "Italian",
+      "Portuguese",
+      "Dutch",
+      "Russian",
+      "Chinese",
+      "Japanese",
+      "Korean",
+      "Arabic",
+      "Hindi",
+    ],
+    bestFor: [
+      "Low-latency multimodal inference",
+      "High-volume API applications",
+      "Cost-optimised data extraction",
+      "Lightweight agentic workflows",
+      "Real-time chatbot applications",
+      "Document and media processing",
+      "Quick reasoning tasks",
+      "Scalable production deployments",
+    ],
+    thinkingCapabilities: {
+      minimal: "Fastest inference, minimal computational overhead",
+      low: "Quick reasoning with moderate processing",
+      medium: "Balanced reasoning depth and latency",
+      high: "Comprehensive reasoning at increased latency cost",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "seed",
+      "response_format",
+      "stop",
+      "structured_outputs",
+      "tools",
+      "tool_choice",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "multimodal-input",
+      "audio-processing",
+      "video-processing",
+      "pdf-processing",
+      "thinking-modes",
+      "function-calling",
+      "structured-outputs",
+      "cost-optimised",
+      "low-latency",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "multimodal-processing",
+      "low-latency-applications",
+      "cost-constrained-projects",
+      "real-time-inference",
+      "data-extraction-workflows",
+      "document-analysis",
+      "agentic-systems",
+    ],
+    warnings: [
+      "Output cost is significantly higher than input ($1.50/M vs $0.25/M) — optimise response length for cost efficiency",
+      "Thinking mode selection affects both latency and pricing — test each level for application requirements",
+      "Higher-level thinking modes increase latency — ensure application timeout settings accommodate maximum expected latency",
+      "Designed for efficiency over capability depth — consider Gemini 3.1 Flash for complex reasoning tasks",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Gemini 3.1 Flash Lite - Cost-optimised multimodal model with 1M context, low-latency design",
+      parameterSection:
+        "Parameter controls for Gemini 3.1 Flash Lite thinking level and output configuration",
+      statusMessages: {
+        processing: "Processing request with Gemini 3.1 Flash Lite model",
+        complete: "Response ready from Gemini 3.1 Flash Lite",
+        thinking: "Applying reasoning to request with Gemini 3.1 Flash Lite",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;

@@ -14,10 +14,7 @@
 const GraphBuilderEnhanced = (function () {
   "use strict";
 
-  // ============================================
-  // LOGGING CONFIGURATION
-  // ============================================
-
+  // ─── LOGGING CONFIGURATION ───
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
   const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
@@ -46,20 +43,14 @@ const GraphBuilderEnhanced = (function () {
       console.log("[GB Enhanced] " + message, ...args);
   }
 
-  // ============================================
-  // STATE
-  // ============================================
-
+  // ─── STATE ───
   var state = { isAdvancedMode: false, formEnhanced: false };
   var columnManager = window.GraphBuilderColumnManager
     ? window.GraphBuilderColumnManager.create()
     : null;
   var enhancedElements = [];
 
-  // ============================================
-  // HELPERS
-  // ============================================
-
+  // ─── HELPERS ───
   function notify(type, message) {
     if (typeof window.GraphBuilderNotifications !== "undefined") {
       window.GraphBuilderNotifications[type](message);
@@ -78,10 +69,7 @@ const GraphBuilderEnhanced = (function () {
     }, 1000);
   }
 
-  // ============================================
-  // DOM HELPERS
-  // ============================================
-
+  // ─── DOM HELPERS ───
   function findFormContainer() {
     var selectors = ["#gb-form-panel", "#GraphBuilderContainer", "#graph-builder"];
     for (var i = 0; i < selectors.length; i++) {
@@ -128,10 +116,7 @@ const GraphBuilderEnhanced = (function () {
     return panel;
   }
 
-  // ============================================
-  // COLUMN RENDERING
-  // ============================================
-
+  // ─── COLUMN RENDERING ───
   function escapeHtml(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -140,7 +125,6 @@ const GraphBuilderEnhanced = (function () {
   function renderDynamicColumns() {
     var container = document.getElementById("gb-dynamic-columns");
     if (!container || !columnManager) return;
-
     var cols = columnManager.getColumns();
     container.innerHTML = "";
 
@@ -150,9 +134,12 @@ const GraphBuilderEnhanced = (function () {
     var roleLabels = { label: "Label", value: "Value", grouping: "Grouping", radius: "Radius" };
     var chartTypeOpts = ["", "bar", "line"];
     var chartTypeLabels = { "": "default", bar: "Bar", line: "Line" };
+    // 3.2.b-1: per-column currency symbol presets, sourced from column-manager.
+    var symbolOpts = (window.GraphBuilderColumnManager && window.GraphBuilderColumnManager.getSymbolPresets)
+      ? window.GraphBuilderColumnManager.getSymbolPresets() : ["£", "$", "€", "¥", "₹"];
+    var symbolLabels = { "£": "£ (Pound)", "$": "$ (Dollar)", "€": "€ (Euro)", "¥": "¥ (Yen)", "₹": "₹ (Rupee)" };
 
-    // Per-column Chart Type override only matters for Combo, which itself
-    // requires >= 2 value columns. Match Combo's Stage 2 gating here.
+    // Per-column Chart Type matters only for Combo (>= 2 value cols).
     var canCombo = cols.filter(function (c) { return c.role === "value"; }).length >= 2;
 
     cols.forEach(function (column, index) {
@@ -163,16 +150,20 @@ const GraphBuilderEnhanced = (function () {
       var tHtml = typeOpts.map(function (t) {
         return '<option value="' + t + '"' + (column.type === t ? " selected" : "") + ">" + typeLabels[t] + "</option>";
       }).join("");
-
       var rHtml = roleOpts.map(function (r) {
         return '<option value="' + r + '"' + (column.role === r ? " selected" : "") + ">" + roleLabels[r] + "</option>";
       }).join("");
-
       var ctValue = column.chartType || "";
       var ctHtml = chartTypeOpts.map(function (ct) {
         return '<option value="' + ct + '"' + (ctValue === ct ? " selected" : "") + ">" + chartTypeLabels[ct] + "</option>";
       }).join("");
       var ctDisplay = (column.role === "value" && canCombo) ? "" : "display: none;";
+      // 3.2.b-1: symbol select, gated on type === "currency".
+      var sValue = column.symbol || "£";
+      var sHtml = symbolOpts.map(function (s) {
+        return '<option value="' + s + '"' + (sValue === s ? " selected" : "") + ">" + escapeHtml(symbolLabels[s] || s) + "</option>";
+      }).join("");
+      var sDisplay = (column.type === "currency") ? "" : "display: none;";
 
       var removeBtn = index >= 2
         ? '<button type="button" class="gb-remove-column-btn" aria-label="Remove column ' + (index + 1) + '">Remove</button>'
@@ -190,6 +181,9 @@ const GraphBuilderEnhanced = (function () {
         '<div class="gb-enhanced-input-group gb-chart-type-group" style="' + ctDisplay + '">' +
         '<label for="gb-ecol-' + index + '-charttype">Chart Type:</label>' +
         '<select id="gb-ecol-' + index + '-charttype" class="gb-enhanced-select">' + ctHtml + "</select></div>" +
+        '<div class="gb-enhanced-input-group gb-symbol-group" style="' + sDisplay + '">' +
+        '<label for="gb-ecol-' + index + '-symbol">Symbol:</label>' +
+        '<select id="gb-ecol-' + index + '-symbol" class="gb-enhanced-select">' + sHtml + "</select></div>" +
         '<div class="gb-enhanced-input-group">' + removeBtn + "</div></div>";
 
       // Event listeners
@@ -197,27 +191,28 @@ const GraphBuilderEnhanced = (function () {
       var tS = fs.querySelector("#gb-ecol-" + index + "-type");
       var rS = fs.querySelector("#gb-ecol-" + index + "-role");
       var ctS = fs.querySelector("#gb-ecol-" + index + "-charttype");
+      var sS = fs.querySelector("#gb-ecol-" + index + "-symbol");
       var rB = fs.querySelector(".gb-remove-column-btn");
 
       if (nI) nI.addEventListener("input", function () { updateColumn(index, "name", nI.value); });
-      if (tS) tS.addEventListener("change", function () { updateColumn(index, "type", tS.value); });
+      if (tS) tS.addEventListener("change", function () {
+        updateColumn(index, "type", tS.value);
+        updateAllSymbolVisibility();  // 3.2.b-1: type flips show/hide symbol select
+      });
       if (rS) rS.addEventListener("change", function () {
         updateColumn(index, "role", rS.value);
-        // Role flips change the total value-column count, which can show or
-        // hide chart-type selects on OTHER rows — recompute globally.
-        updateAllChartTypeVisibility();
+        updateAllChartTypeVisibility();  // role flips affect other rows
       });
       if (ctS) ctS.addEventListener("change", function () { updateColumn(index, "chartType", ctS.value); });
+      if (sS) sS.addEventListener("change", function () { updateColumn(index, "symbol", sS.value); });
       if (rB) rB.addEventListener("click", function () { handleRemoveColumn(index); });
 
       container.appendChild(fs);
     });
   }
 
-  // Refresh visibility of every per-column "Chart Type" select. Visible only
-  // on value-role columns when valueCount >= 2 (mirrors Combo's gating).
-  // Resets the DOM value to "" when hiding so visible state matches column-
-  // manager state (which drops chartType for non-value roles).
+  // Visible only on value-role cols when valueCount >= 2 (mirrors Combo gate).
+  // Resets DOM value to "" when hiding so it matches column-manager state.
   function updateAllChartTypeVisibility() {
     if (!columnManager) return;
     var cols = columnManager.getColumns();
@@ -233,6 +228,19 @@ const GraphBuilderEnhanced = (function () {
         var ctS = fs.querySelector("#gb-ecol-" + idx + "-charttype");
         if (ctS && ctS.value) ctS.value = "";
       }
+    });
+  }
+
+  // 3.2.b-1: visible only when column.type === "currency".
+  function updateAllSymbolVisibility() {
+    if (!columnManager) return;
+    var cols = columnManager.getColumns();
+    var container = document.getElementById("gb-dynamic-columns");
+    if (!container) return;
+    container.querySelectorAll(".gb-column-definition").forEach(function (fs, idx) {
+      var sG = fs.querySelector(".gb-symbol-group");
+      if (!sG) return;
+      sG.style.display = (cols[idx] && cols[idx].type === "currency") ? "" : "none";
     });
   }
 
@@ -284,10 +292,7 @@ const GraphBuilderEnhanced = (function () {
     }
   }
 
-  // ============================================
-  // SMART SUGGESTIONS
-  // ============================================
-
+  // ─── SMART SUGGESTIONS ───
   function updateSmartSuggestions() {
     var list = document.getElementById("gb-suggestions-list");
     if (!list || !columnManager) return;
@@ -315,10 +320,7 @@ const GraphBuilderEnhanced = (function () {
     list.innerHTML = suggestions.map(function (s) { return "<li>" + s + "</li>"; }).join("");
   }
 
-  // ============================================
-  // MODE MANAGEMENT
-  // ============================================
-
+  // ─── MODE MANAGEMENT ───
   function syncFromBasicHeaders() {
     var col1 = document.getElementById("gb-column-1");
     var col2 = document.getElementById("gb-column-2");
@@ -350,10 +352,7 @@ const GraphBuilderEnhanced = (function () {
     logInfo("Advanced mode deactivated");
   }
 
-  // ============================================
-  // EVENT SETUP
-  // ============================================
-
+  // ─── EVENT SETUP ───
   function setupListeners() {
     var panel = document.getElementById("gb-advanced-options");
     var checkbox = document.getElementById("gb-advanced-checkbox");
@@ -393,10 +392,7 @@ const GraphBuilderEnhanced = (function () {
     if (addBtn) addBtn.addEventListener("click", handleAddColumn);
   }
 
-  // ============================================
-  // FORM ENHANCEMENT
-  // ============================================
-
+  // ─── FORM ENHANCEMENT ───
   function enhanceForm(formContainer) {
     try {
       if (state.formEnhanced) { logWarn("Form already enhanced"); return true; }
@@ -431,10 +427,7 @@ const GraphBuilderEnhanced = (function () {
     logInfo("Form enhancement cleaned up");
   }
 
-  // ============================================
-  // CSV DELEGATION
-  // ============================================
-
+  // ─── CSV DELEGATION ───
   function processCSV(csvText, options) {
     if (window.GraphBuilderCSVProcessor) {
       return window.GraphBuilderCSVProcessor.processCSV(csvText, options);
@@ -442,10 +435,7 @@ const GraphBuilderEnhanced = (function () {
     throw new Error("CSV processor module not loaded");
   }
 
-  // ============================================
-  // AUTO-INITIALISATION
-  // ============================================
-
+  // ─── AUTO-INITIALISATION ───
   function autoEnhance() {
     if (!columnManager && window.GraphBuilderColumnManager) {
       columnManager = window.GraphBuilderColumnManager.create();
@@ -467,10 +457,7 @@ const GraphBuilderEnhanced = (function () {
 
   logInfo("Module loaded");
 
-  // ============================================
-  // PUBLIC API
-  // ============================================
-
+  // ─── PUBLIC API ───
   return {
     enhanceForm: enhanceForm,
     getColumnConfiguration: function () { return columnManager ? columnManager.getColumns() : []; },

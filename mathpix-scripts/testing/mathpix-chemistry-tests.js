@@ -960,25 +960,62 @@ window.testChemistry7C_Stage3 = function () {
   // Test 12: controls reflect the skeletal preset after re-population.
   // Phase 12-4c C3: rewritten to read RDKit-shape `bondLineWidth` from
   // config.PRESETS.skeletal (post-C2 rename). Paired with the (α) renderer
-  // fix at mathpix-result-renderer.js:3279 — see C3.5 TODO there.
+  // fix at mathpix-result-renderer.js:3279.
+  // Phase 14-3 Step 5 follow-up: renderer-accessor correction
+  // (window.mathPixController / mathpixController don't exist — canonical
+  // is window.getMathPixController() per CLAUDE.md + 14+ other tests).
+  // Latent since 12-4c; surfaced by Step 5's Test 12b distinct-value
+  // asymmetry. Skip-aware when session uninitialised.
   utils.setActivePreset("skeletal");
   const skeletalPreset = config?.PRESETS?.skeletal;
-  const renderer =
-    window.mathPixController?.resultRenderer ||
-    window.mathpixController?.resultRenderer ||
-    null;
-  if (renderer?._populateAdvancedControlsFromPreset) {
-    renderer._populateAdvancedControlsFromPreset("skeletal");
-  }
+  const renderer = window.getMathPixController?.()?.resultRenderer;
   const bondThicknessInput = document.getElementById("chem-bond-thickness");
-  const controlsMatchPreset =
-    !!bondThicknessInput &&
-    !!skeletalPreset &&
-    parseFloat(bondThicknessInput.value) === skeletalPreset.bondLineWidth;
-  allTests.push({
-    name: "State: controls reflect skeletal preset values on populate",
-    pass: controlsMatchPreset,
-  });
+  const populateTestsPossible =
+    !!renderer?._populateAdvancedControlsFromPreset && !!bondThicknessInput;
+  if (populateTestsPossible) {
+    renderer._populateAdvancedControlsFromPreset("skeletal");
+    const controlsMatchPreset =
+      !!skeletalPreset &&
+      parseFloat(bondThicknessInput.value) === skeletalPreset.bondLineWidth;
+    allTests.push({
+      name: "State: controls reflect skeletal preset values on populate",
+      pass: controlsMatchPreset,
+    });
+  } else {
+    allTests.push({
+      name: "State: controls reflect skeletal preset values on populate (SKIPPED — chemistry session not initialised)",
+      pass: true,
+    });
+  }
+
+  // Test 12b: controls reflect custom-preset values when preset === "custom".
+  // Phase 14-3 Step 5 (Edit 5a) closes inventory row #13. Bug class: C3 α
+  // latent regression (fixed by C3.5) wrote skeletal defaults to the UI
+  // when preset was custom. Custom bondThickness 3.5 is chosen distinct
+  // from skeletal's 2.0 — leak-from-skeletal shows up as mismatch.
+  // Phase 14-3 Step 5 follow-up: inherited Test 12's broken accessor at
+  // write-time; corrected here too. Skip-aware when session uninitialised
+  // (same precondition as Test 12 above).
+  if (populateTestsPossible) {
+    utils.setActivePreset("custom");
+    const expectedCustomBondThickness = 3.5;
+    utils.setCustomOptions({ bondThickness: expectedCustomBondThickness });
+    const skeletalDefault = config?.PRESETS?.skeletal?.bondLineWidth;
+    renderer._populateAdvancedControlsFromPreset("custom");
+    const uiBondThickness = parseFloat(bondThicknessInput.value);
+    const controlsReflectCustom =
+      uiBondThickness === expectedCustomBondThickness &&
+      uiBondThickness !== skeletalDefault;
+    allTests.push({
+      name: "State: controls reflect custom-preset values on populate (not skeletal defaults)",
+      pass: controlsReflectCustom,
+    });
+  } else {
+    allTests.push({
+      name: "State: controls reflect custom-preset values on populate (SKIPPED — chemistry session not initialised)",
+      pass: true,
+    });
+  }
 
   // Test 13: restore to original state
   utils.setActivePreset(originalPreset);
@@ -1405,29 +1442,46 @@ window.testChemistry7C_Stage6 = async function () {
       });
     }
 
-    // Phase 12-4c (C3.5): presetToUIShape mapping integrity.
-    // Six mappings between RDKit-shape preset fields and SmilesDrawer-shape
-    // UI keys. Drift insurance — if the helper or the preset shape changes,
-    // this test catches it. Tested against skeletal (the DEFAULT_PRESET);
-    // mapping is the same shape across all four presets.
+    // Phase 14-3 Step 5 (Edit 5b): presetToUIShape mapping integrity across
+    // all four canonical presets. Six mappings between RDKit-shape preset
+    // fields and SmilesDrawer-shape UI keys. Drift insurance — if the helper
+    // or any preset shape changes, this test catches it. Sentinel push
+    // asserts the PRESETS shape itself (four canonical names) so an
+    // accidental add/remove without paired test update fires here rather
+    // than silently passing. Originally introduced at Phase 12-4c (C3.5)
+    // covering skeletal only; widened to all four presets at 14-3 Step 5.
     try {
-      const skeletal = window.MATHPIX_CONFIG?.CHEMISTRY_RENDERING?.PRESETS?.skeletal;
-      const ui = utils.presetToUIShape ? utils.presetToUIShape(skeletal) : {};
+      const PRESETS = window.MATHPIX_CONFIG?.CHEMISTRY_RENDERING?.PRESETS;
+      const expectedPresetNames = ["skeletal", "textbook", "monochrome", "high-contrast"];
+      const presetNames = PRESETS ? Object.keys(PRESETS) : [];
+      const sentinelOk =
+        !!PRESETS &&
+        presetNames.length === expectedPresetNames.length &&
+        expectedPresetNames.every((n) => presetNames.includes(n));
       allTests.push({
-        name: "presetToUIShape: maps RDKit-shape preset to SmilesDrawer-shape UI",
-        pass:
-          !!skeletal &&
-          !!ui &&
-          ui.bondThickness === skeletal.bondLineWidth &&
-          ui.fontSizeSmall === skeletal.minFontSize &&
-          ui.fontSizeLarge === skeletal.maxFontSize &&
-          ui.colourScheme === skeletal.atomColourPalette &&
-          ui.explicitHydrogens === skeletal.addHsInPlace &&
-          ui.useCoordGen === skeletal.useCoordGen,
+        name: "presetToUIShape: PRESETS shape sentinel (4 canonical names)",
+        pass: sentinelOk,
       });
+
+      for (const presetName of expectedPresetNames) {
+        const preset = PRESETS?.[presetName];
+        const ui = utils.presetToUIShape ? utils.presetToUIShape(preset) : {};
+        allTests.push({
+          name: "presetToUIShape: maps " + presetName,
+          pass:
+            !!preset &&
+            !!ui &&
+            ui.bondThickness === preset.bondLineWidth &&
+            ui.fontSizeSmall === preset.minFontSize &&
+            ui.fontSizeLarge === preset.maxFontSize &&
+            ui.colourScheme === preset.atomColourPalette &&
+            ui.explicitHydrogens === preset.addHsInPlace &&
+            ui.useCoordGen === preset.useCoordGen,
+        });
+      }
     } catch (e) {
       allTests.push({
-        name: "presetToUIShape: maps RDKit-shape preset to SmilesDrawer-shape UI",
+        name: "presetToUIShape: mapping integrity (caught exception)",
         pass: false,
       });
     }

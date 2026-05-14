@@ -138,6 +138,18 @@ const DEFAULT_CONFIG = {
     effort: null, // 'minimal' | 'low' | 'medium' | 'high' | null (null = adaptive/model default)
     max_tokens: null, // Explicit reasoning token budget (null = let model/provider decide)
   },
+  // Stage 2 Task 2.2: Provider configuration map.
+  // Keyed by provider id; each value is a free-form config object the provider's
+  // adapter reads at request time. Default is empty — providers configure
+  // themselves on-demand via embed.configureProvider() or the `providers`
+  // constructor option.
+  //
+  // Current shape per provider:
+  //   azure-openai: { proxyUrl: string (required), userToken?: string }
+  //
+  // OpenRouter is intentionally absent — its API key is read from localStorage
+  // by window.openRouterClient and is not plumbed through this map.
+  providers: {},
 };
 
 // ============================================================================
@@ -206,6 +218,9 @@ class OpenRouterEmbed {
 
     // Component references
     this.client = window.openRouterClient;
+    // Stage 1 Task 1.3: Provider resolution is per-request via
+    // OpenRouterEmbed.getProvider() — no cached field. The lookup module
+    // (providers/_lookup.js) is responsible for prefix → provider dispatch.
     this.markdown = window.MarkdownEditor;
     this.notifications = {
       success: window.notifySuccess,
@@ -314,6 +329,19 @@ class OpenRouterEmbed {
       logWarn(
         "Retry enabled but EmbedRetryHandlerClass not available. Load openrouter-embed-retry.js first.",
       );
+    }
+
+    // Stage 2 Task 2.2: Provider configuration map (in-memory only — Set Up
+    // tool handles persistence at Stage 3). Initialise empty; route any
+    // constructor-supplied entries through configureProvider() so malformed
+    // configs fail fast at construction.
+    this._providerConfigs = {};
+    if (config.providers && typeof config.providers === "object") {
+      for (const [providerId, providerCfg] of Object.entries(config.providers)) {
+        // configureProvider() validates and throws on malformed config; this
+        // surfaces problems at construction time rather than at first request.
+        this.configureProvider(providerId, providerCfg);
+      }
     }
 
     // Stage 6 Phase 2: Event emitter integration
@@ -560,6 +588,26 @@ class OpenRouterEmbed {
       );
     }
 
+    if (!window.EmbedProviderLookup) {
+      throw new Error(
+        "Provider lookup not available (window.EmbedProviderLookup). " +
+          "Ensure providers/_lookup.js is loaded before " +
+          "openrouter-embed-core.js in tools.html.",
+      );
+    }
+
+    if (
+      !window.EmbedProviderRegistry ||
+      typeof window.EmbedProviderRegistry.has !== "function" ||
+      !window.EmbedProviderRegistry.has("openrouter")
+    ) {
+      throw new Error(
+        "OpenRouter provider not registered with EmbedProviderRegistry. " +
+          "Ensure providers/_interface.js and providers/openrouter.js are " +
+          "loaded before openrouter-embed-core.js in tools.html.",
+      );
+    }
+
     if (!this.markdown) {
       throw new Error(
         "Markdown processor not available (window.MarkdownEditor)",
@@ -573,6 +621,49 @@ class OpenRouterEmbed {
     }
 
     logDebug("All required components validated");
+  }
+
+  // ==========================================================================
+  // PROVIDER RESOLUTION (Stage 1 Task 1.3)
+  // ==========================================================================
+
+  /**
+   * Resolve a model identifier to a registered provider.
+   *
+   * Pure function — no instance state. Use this to introspect which
+   * provider would handle a given model identifier without constructing
+   * an embed instance. Delegates to `window.EmbedProviderLookup.resolve()`.
+   *
+   * @param {string} modelId - Model identifier (e.g. 'anthropic/claude-3.5-haiku')
+   * @returns {Provider|null} The resolved provider, or null if the model's
+   *   prefix is a reserved namespace whose provider isn't registered.
+   *
+   * @example
+   *   OpenRouterEmbed.getProvider('anthropic/claude-3.5-haiku')
+   *     // → openrouter provider (legacy fallback)
+   *   OpenRouterEmbed.getProvider('anthropic-foundry/foo')
+   *     // → null (anthropic-foundry not registered; Stage 4 deferred)
+   *   OpenRouterEmbed.getProvider('openrouter/anthropic/claude-3.5-haiku')
+   *     // → openrouter provider (explicit prefix)
+   */
+  static getProvider(modelId) {
+    if (!window.EmbedProviderLookup) {
+      return null;
+    }
+    return window.EmbedProviderLookup.resolve(modelId);
+  }
+
+  /**
+   * The provider that would be used for the current model.
+   *
+   * Returns null if the model's prefix is a reserved namespace whose
+   * provider isn't registered. See OpenRouterEmbed.getProvider() for
+   * the full lookup rule.
+   *
+   * @returns {Provider|null}
+   */
+  get provider() {
+    return OpenRouterEmbed.getProvider(this.model);
   }
 
   // ==========================================================================
@@ -674,7 +765,7 @@ class OpenRouterEmbed {
    * @param {Object} options - Request options (same as sendStreamingRequest)
    * @returns {Promise<Object>} Response object
    */
-  async _sendNonStreamingFallback(options) {
+  async _sendNonStreamingFallback(options, provider) {
     const { userPrompt, onComplete, onError } = options;
 
     logDebug("Executing non-streaming fallback for reduced motion");
@@ -699,7 +790,7 @@ class OpenRouterEmbed {
     try {
       // Build messages and options
       const messages = this.buildMessages(userPrompt);
-      const requestOptions = this.buildOptions();
+      const requestOptions = this.buildOptions(messages, provider);
 
       // Add abort signal if cancellation is enabled
       if (this._requestAbortController) {
@@ -707,12 +798,15 @@ class OpenRouterEmbed {
       }
 
       // Call the client's non-streaming method directly
-      logDebug("Calling openRouterClient.sendRequest (non-streaming)...");
+      logDebug("Calling provider/client non-streaming sendRequest...");
 
-      const apiResponse = await this.client.sendRequest(
-        messages,
-        requestOptions,
-      );
+      // Stage 2 Task 2.1: providers may carry their own non-streaming
+      // transport. Foundry's adapter implements request; OpenRouter's does
+      // not (its transport remains with window.openRouterClient). The
+      // function-type check keeps the OpenRouter path bytewise unchanged.
+      const apiResponse = typeof provider.request === "function"
+        ? await provider.request(messages, requestOptions)
+        : await this.client.sendRequest(messages, requestOptions);
 
       // Check if cancelled during request
       if (this._requestAbortController?.signal?.aborted) {
@@ -789,68 +883,88 @@ class OpenRouterEmbed {
   }
 
   /**
-   * Build request options for OpenRouter API
-   * Includes PDF engine selection if PDF attached
-   * @returns {Object} Options object
+   * Build request options for the resolved provider.
+   *
+   * As of Stage 1 Task 1.3, the provider is no longer cached on the instance —
+   * it's resolved per request via `OpenRouterEmbed.getProvider(this.model)`
+   * and passed in as the second argument. This method assembles a canonical
+   * options object, asks the provider to build the full wire body, then
+   * strips `messages` (which the existing OpenRouter client takes separately
+   * as its first argument) and returns the remainder.
+   *
+   * Wire output is byte-for-byte identical to the previous inline
+   * implementation for any given inputs — the OpenRouter provider mirrors
+   * the same reasoning and PDF-engine rules.
+   *
+   * @param {Array<Object>} messages - The messages array built by `buildMessages()`.
+   *                                   Required; the provider needs it to construct
+   *                                   the body before we destructure it back out.
+   * @param {Provider} provider - The resolved provider for the current model.
+   *                              Must be a Provider object with a buildRequest()
+   *                              method (see providers/_interface.js typedef).
+   * @returns {Object} Options object suitable for `this.client.sendRequest()`
+   *                   and `this.client.sendStreamingRequest()`.
+   * @throws {Error} If `provider` is missing or doesn't expose `buildRequest()`.
    */
-  buildOptions() {
-    logDebug("Building request options...");
+  buildOptions(messages, provider) {
+    logDebug("Building canonical options for provider...");
 
-    const options = {
+    if (!provider || typeof provider.buildRequest !== "function") {
+      throw new Error(
+        "buildOptions: a resolved Provider with buildRequest() is required",
+      );
+    }
+
+    // Canonical options shape — matches the JSDoc on
+    // providers/openrouter.js#buildRequest.
+    const canonicalOptions = {
       model: this.model,
       temperature: this.temperature,
       max_tokens: this.max_tokens,
       top_p: this.top_p,
     };
 
-    // Add reasoning parameter when enabled
-    // Supports three modes via the OpenRouter reasoning parameter:
-    //   1. Adaptive:     { enabled: true }                     — model decides depth
-    //   2. Effort-based: { enabled: true, effort: 'high' }     — provider maps to budget
-    //   3. Budget-based: { enabled: true, max_tokens: 10000 }  — explicit token budget
+    // Reasoning configuration — pass through unchanged when enabled.
+    // The provider applies the same three-mode rules (adaptive / effort /
+    // budget) that the inline implementation used to apply.
     if (this._reasoningConfig && this._reasoningConfig.enabled) {
-      const reasoning = { enabled: true };
-
-      if (this._reasoningConfig.effort) {
-        reasoning.effort = this._reasoningConfig.effort;
-      }
-
-      if (
-        typeof this._reasoningConfig.max_tokens === "number" &&
-        this._reasoningConfig.max_tokens > 0
-      ) {
-        reasoning.max_tokens = this._reasoningConfig.max_tokens;
-      }
-
-      options.reasoning = reasoning;
-      logDebug("Added reasoning parameter", reasoning);
+      canonicalOptions.reasoning = this._reasoningConfig;
     }
 
-    // Add PDF engine if PDF is attached (Stage 2)
-    // Using official OpenRouter plugins format per API documentation
+    // PDF engine selection — promote to a clean canonical string.
+    // The provider builds the OpenRouter-specific `plugins` array shape.
+    // We only forward `fileEngine` when there's a PDF with a resolved engine,
+    // which matches the prior gating exactly. The provider itself drops
+    // `fileEngine: 'auto'` (auto means "let OpenRouter choose"), so passing
+    // 'auto' through is harmless.
     if (
       this.currentFile &&
       this.currentFile.type === "application/pdf" &&
       this.currentFileAnalysis?.engine
     ) {
-      const engine = this.currentFileAnalysis.engine;
-
-      // Only add if not 'auto' (which lets OpenRouter choose)
-      // Supports explicit 'native', 'pdf-text', and 'mistral-ocr' selection
-      if (engine !== "auto") {
-        options.plugins = [
-          {
-            id: "file-parser",
-            pdf: {
-              engine: engine,
-            },
-          },
-        ];
-        logDebug("Added PDF engine using plugins format", { engine });
-      }
+      canonicalOptions.fileEngine = this.currentFileAnalysis.engine;
     }
 
-    logDebug("Built request options", options);
+    // Delegate wire-format construction to the provider.
+    const body = provider.buildRequest(messages, canonicalOptions);
+
+    // The existing client API takes (messages, options) separately. Strip
+    // messages from the body so we return an options-only object compatible
+    // with the existing call sites. (Task 1.3 may revisit this once registry
+    // dispatch arrives; for Stage 1 we preserve the client surface exactly.)
+    const { messages: _ignored, ...options } = body;
+
+    logDebug("Provider returned wire body; extracted options", options);
+
+    // Stage 2 Task 2.2: Inject provider config so transport-owning providers
+    // (Foundry, etc.) can read their proxy URL and token. OpenRouter doesn't
+    // read providerConfig — getProviderConfig() returns null for unconfigured
+    // providers, so the conditional skips the assignment and the OpenRouter
+    // path stays bytewise unchanged.
+    const providerConfig = this.getProviderConfig(provider.id);
+    if (providerConfig) {
+      options.providerConfig = providerConfig;
+    }
 
     return options;
   }
@@ -976,10 +1090,43 @@ class OpenRouterEmbed {
       throw new Error(message);
     }
 
-    // Phase 7: Local model routing — delegate to local backend if model is local
+    // Phase 7: Local model routing — delegate to local backend if model is local.
+    // The local backend pre-empts provider-registry dispatch because it owns
+    // the full request lifecycle (its own streaming loop, response shape, and
+    // state management), not just wire-format translation.
     if (this.model && this.model.startsWith('local/') && window.EmbedLocalBackend) {
       logInfo('Routing to local backend for model:', this.model);
       return window.EmbedLocalBackend.handleRequest(this, options);
+    }
+
+    // Stage 1 Task 1.3: Resolve provider via registry based on model prefix.
+    // Fail fast with a helpful message if no provider is available.
+    const provider = OpenRouterEmbed.getProvider(this.model);
+    if (!provider) {
+      const registered = (window.EmbedProviderRegistry &&
+        typeof window.EmbedProviderRegistry.list === "function")
+        ? window.EmbedProviderRegistry.list()
+        : [];
+      const reserved = (window.EmbedProviderLookup &&
+        typeof window.EmbedProviderLookup.getReservedPrefixes === "function")
+        ? window.EmbedProviderLookup.getReservedPrefixes()
+        : [];
+      const missing = reserved.filter((p) => !registered.includes(p));
+
+      const shortMessage = `No provider registered for model '${this.model}'`;
+      const detailMessage =
+        `${shortMessage}. ` +
+        `Registered providers: ${registered.length ? registered.join(", ") : "(none)"}.` +
+        (missing.length > 0 ? ` Reserved but not loaded: ${missing.join(", ")}.` : "");
+
+      logError(detailMessage);
+
+      if (this.showNotifications && this.notifications.error) {
+        this.notifications.error(shortMessage);
+      }
+      this.announceToScreenReader(`Error: ${shortMessage}`);
+
+      throw new Error(detailMessage);
     }
 
     // Phase 3: Check reduced motion preference and fallback to non-streaming
@@ -991,7 +1138,7 @@ class OpenRouterEmbed {
       this._reducedMotionFallbackActive = true;
 
       // Call a simplified non-streaming version that doesn't recurse back to streaming
-      return this._sendNonStreamingFallback(options);
+      return this._sendNonStreamingFallback(options, provider);
     }
 
     // Create promise that resolves when handleStreamComplete is called
@@ -1103,7 +1250,7 @@ class OpenRouterEmbed {
 
       // Build messages and options (reuse existing methods)
       const messages = this.buildMessages(processedUserPrompt);
-      const requestOptions = this.buildOptions();
+      const requestOptions = this.buildOptions(messages, provider);
 
       // Restore original systemPrompt
       this.systemPrompt = originalSystemPrompt;
@@ -1301,6 +1448,13 @@ class OpenRouterEmbed {
       logDebug("Calling openRouterClient.sendStreamingRequest()...");
 
       const executeStreamingRequest = () => {
+        // Stage 2 Task 2.1: providers may carry their own transport.
+        // Foundry's adapter implements streamRequest; OpenRouter's does not
+        // (its transport remains with window.openRouterClient). The function-
+        // type check keeps the OpenRouter path bytewise unchanged.
+        if (typeof provider.streamRequest === "function") {
+          return provider.streamRequest(messages, streamingOptions);
+        }
         return this.client.sendStreamingRequest(
           messages,
           streamingOptions,
@@ -3011,6 +3165,177 @@ class OpenRouterEmbed {
    */
   isRetryEnabled() {
     return this._retryConfig.enabled && !!this._retryHandler;
+  }
+
+  // ==========================================================================
+  // PROVIDER CONFIGURATION API (Stage 2 Task 2.2)
+  // ==========================================================================
+  // Wires provider-specific transport configuration (proxy URL, user token,
+  // etc.) into per-request options. Mirrors the configureRetry/getRetryConfig/
+  // isRetryEnabled triplet pattern from Stage 6.
+  //
+  // OpenRouter's API key is read from localStorage by window.openRouterClient
+  // and is intentionally not configured through this method. Providers that
+  // own their own transport (Foundry, and future Stage 4/5 adapters) read
+  // their configuration from options.providerConfig, which buildOptions()
+  // injects from this._providerConfigs[provider.id] on every dispatch.
+
+  /**
+   * Set or merge configuration for a transport-owning provider.
+   *
+   * Validates that the providerId matches a registered provider that owns
+   * its transport (has streamRequest or request methods). OpenRouter is
+   * rejected explicitly because its transport stays with window.openRouterClient
+   * and reads its credentials from localStorage.
+   *
+   * @param {string} providerId - Provider id (e.g. 'azure-openai')
+   * @param {Object} config - Provider config object
+   * @param {string} config.proxyUrl - Required; must start with http(s)://
+   * @param {string} [config.userToken] - Optional opaque token for the proxy
+   * @returns {OpenRouterEmbed} For chaining
+   * @throws {Error} If providerId is not a registered transport-owning provider,
+   *                 or if config.proxyUrl is missing/malformed
+   *
+   * @example
+   * embed.configureProvider('azure-openai', {
+   *   proxyUrl: 'https://my-worker.workers.dev',
+   *   userToken: 'optional-shared-secret'
+   * });
+   */
+  configureProvider(providerId, config) {
+    // Validate providerId
+    if (typeof providerId !== "string" || !providerId.trim()) {
+      throw new Error(
+        "configureProvider: providerId must be a non-empty string"
+      );
+    }
+    const id = providerId.trim();
+
+    // Validate config object
+    if (!config || typeof config !== "object" || Array.isArray(config)) {
+      throw new Error(
+        `configureProvider: config must be an object (provider: '${id}')`
+      );
+    }
+
+    // Validate provider is registered AND owns its transport.
+    // Transport-owning providers expose streamRequest or request methods (per
+    // architecture decision A3). OpenRouter does not — its transport stays
+    // with window.openRouterClient. Rejecting OpenRouter explicitly prevents
+    // silent no-ops; rejecting unknown providers prevents typos.
+    const registry = window.EmbedProviderRegistry;
+    if (!registry || typeof registry.get !== "function") {
+      throw new Error(
+        "configureProvider: EmbedProviderRegistry not available (script load order issue)"
+      );
+    }
+
+    const provider = registry.get(id);
+    if (!provider) {
+      const registered = typeof registry.list === "function"
+        ? registry.list().join(", ") || "(none)"
+        : "(unknown)";
+      throw new Error(
+        `configureProvider: no provider registered with id '${id}'. ` +
+        `Registered: ${registered}`
+      );
+    }
+
+    const ownsTransport =
+      typeof provider.streamRequest === "function" ||
+      typeof provider.request === "function";
+
+    if (!ownsTransport) {
+      throw new Error(
+        `configureProvider: provider '${id}' does not own its transport ` +
+        `and is not configured through this method (e.g. OpenRouter reads its ` +
+        `credentials from localStorage via window.openRouterClient)`
+      );
+    }
+
+    // Validate proxyUrl
+    if (typeof config.proxyUrl !== "string" || !config.proxyUrl.trim()) {
+      throw new Error(
+        `configureProvider: config.proxyUrl must be a non-empty string (provider: '${id}')`
+      );
+    }
+
+    const trimmedProxyUrl = config.proxyUrl.trim();
+    if (!/^https?:\/\//i.test(trimmedProxyUrl)) {
+      throw new Error(
+        `configureProvider: config.proxyUrl must start with http:// or https:// (provider: '${id}'), got: '${trimmedProxyUrl}'`
+      );
+    }
+
+    // Validate userToken if present
+    if (
+      config.userToken !== undefined &&
+      config.userToken !== null &&
+      (typeof config.userToken !== "string" || !config.userToken.trim())
+    ) {
+      throw new Error(
+        `configureProvider: config.userToken must be a non-empty string if provided (provider: '${id}')`
+      );
+    }
+
+    // Store normalised config (mirror the trim + trailing-slash strip the
+    // Foundry adapter's readProviderConfig does so the round-trip is symmetric)
+    this._providerConfigs[id] = {
+      proxyUrl: trimmedProxyUrl.replace(/\/$/, ""),
+      userToken:
+        typeof config.userToken === "string" && config.userToken.trim()
+          ? config.userToken.trim()
+          : null,
+    };
+
+    logInfo(`Provider configured: '${id}'`, {
+      proxyUrlSet: true,
+      userTokenSet: !!this._providerConfigs[id].userToken,
+    });
+
+    return this;
+  }
+
+  /**
+   * Get the current configuration for a provider.
+   *
+   * Returns a copy to prevent external mutation. Returns null for providers
+   * that have not been configured on this instance — including OpenRouter,
+   * which is never configured through this mechanism.
+   *
+   * @param {string} providerId - Provider id
+   * @returns {Object|null} { proxyUrl, userToken } copy or null
+   *
+   * @example
+   * const cfg = embed.getProviderConfig('azure-openai');
+   * if (cfg) console.log('Proxy URL:', cfg.proxyUrl);
+   */
+  getProviderConfig(providerId) {
+    if (typeof providerId !== "string" || !providerId.trim()) {
+      return null;
+    }
+    const cfg = this._providerConfigs[providerId.trim()];
+    if (!cfg) return null;
+    // Return a copy to prevent external mutation
+    return { proxyUrl: cfg.proxyUrl, userToken: cfg.userToken };
+  }
+
+  /**
+   * Check whether a provider has been configured on this embed instance.
+   *
+   * @param {string} providerId - Provider id
+   * @returns {boolean} True if configureProvider has been called successfully
+   *
+   * @example
+   * if (embed.isProviderConfigured('azure-openai')) {
+   *   // Safe to send a Foundry request
+   * }
+   */
+  isProviderConfigured(providerId) {
+    if (typeof providerId !== "string" || !providerId.trim()) {
+      return false;
+    }
+    return !!this._providerConfigs[providerId.trim()];
   }
 
   // ==========================================================================

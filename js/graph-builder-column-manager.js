@@ -80,11 +80,27 @@ const GraphBuilderColumnManager = (function () {
   function createInstance() {
     var columns = cloneDefaults();
 
+    // Phase 3.2.b-1: per-column currency symbol presets. Add new symbols here
+    // to expose them across the UI + data + chart layers; the data layer's
+    // formatCurrency accepts any string symbol, so this list is purely the
+    // allowlist for what the UI <select> offers and what setColumns will
+    // persist. Default "£" preserves pre-3.2.b behaviour for any column
+    // without an explicit symbol.
+    var SYMBOL_PRESETS = ["£", "$", "€", "¥", "₹"];
+    var DEFAULT_SYMBOL = "£";
+
+    function isValidSymbol(s) {
+      return typeof s === "string" && SYMBOL_PRESETS.indexOf(s) !== -1;
+    }
+
     function getColumns() {
       return columns.map(function (c) {
         var clone = { name: c.name, type: c.type, role: c.role };
         if (c.role === "value" && (c.chartType === "bar" || c.chartType === "line")) {
           clone.chartType = c.chartType;
+        }
+        if (c.type === "currency") {
+          clone.symbol = isValidSymbol(c.symbol) ? c.symbol : DEFAULT_SYMBOL;
         }
         return clone;
       });
@@ -105,6 +121,9 @@ const GraphBuilderColumnManager = (function () {
         };
         if (next.role === "value" && (col.chartType === "bar" || col.chartType === "line")) {
           next.chartType = col.chartType;
+        }
+        if (next.type === "currency") {
+          next.symbol = isValidSymbol(col.symbol) ? col.symbol : DEFAULT_SYMBOL;
         }
         return next;
       });
@@ -127,6 +146,9 @@ const GraphBuilderColumnManager = (function () {
       };
       if (newCol.role === "value" && column && (column.chartType === "bar" || column.chartType === "line")) {
         newCol.chartType = column.chartType;
+      }
+      if (newCol.type === "currency") {
+        newCol.symbol = (column && isValidSymbol(column.symbol)) ? column.symbol : DEFAULT_SYMBOL;
       }
 
       columns.push(newCol);
@@ -220,9 +242,17 @@ const GraphBuilderColumnManager = (function () {
   // PUBLIC API
   // ============================================
 
+  // Module-level exposure of the currency-symbol allowlist + default.
+  // Lives outside createInstance so consumers (UI, data, charts) can read
+  // it without holding a column-manager instance reference.
+  var MODULE_SYMBOL_PRESETS = ["£", "$", "€", "¥", "₹"];
+  var MODULE_DEFAULT_SYMBOL = "£";
+
   return {
     create: createInstance,
     getDefaults: cloneDefaults,
+    getSymbolPresets: function () { return MODULE_SYMBOL_PRESETS.slice(); },
+    getDefaultSymbol: function () { return MODULE_DEFAULT_SYMBOL; },
     CONFIG: CONFIG,
   };
 })();

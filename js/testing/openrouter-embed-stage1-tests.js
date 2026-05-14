@@ -140,7 +140,7 @@
 
         new OpenRouterEmbed({
           containerId: "temp-test-container",
-          temperature: 2.0, // Invalid
+          temperature: 2.5, // Invalid (validator rejects > 2; pre-2026 range was 0..1, widened to 0..2 for newer models)
         });
         console.error("❌ Should have thrown error for invalid temperature");
         return false;

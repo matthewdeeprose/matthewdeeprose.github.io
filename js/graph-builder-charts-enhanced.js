@@ -15,10 +15,7 @@
 const GraphBuilderChartsEnhanced = (function () {
   "use strict";
 
-  // ============================================
-  // LOGGING CONFIGURATION
-  // ============================================
-
+  // ─── LOGGING CONFIGURATION ───
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
   const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
@@ -47,10 +44,7 @@ const GraphBuilderChartsEnhanced = (function () {
       console.log("[GB Charts Enhanced] " + message, ...args);
   }
 
-  // ============================================
-  // HELPERS
-  // ============================================
-
+  // ─── HELPERS ───
   // Chart types that don't use x/y scales — skip scale overrides for these.
   const SCALE_FREE_TYPES = ["pie", "doughnut", "polarArea", "radar"];
 
@@ -64,20 +58,61 @@ const GraphBuilderChartsEnhanced = (function () {
     return !!(C && C._adapters && C._adapters._date);
   }
 
-  // ============================================
-  // BASE CONFIG SCAFFOLD
-  // ============================================
+  // ─── CURRENCY DISPLAY OPTIONS (Phase 3.2.b-1) ───
+  // Single-knob config for the two open UX questions. Flip either string to
+  // change behaviour — no other code edits needed.
+  //   mixedSymbolStrategy: "plain" (no symbol) | "first" | "all" ("£/$")
+  //   legendSymbolSuffix:  "always" | "mixed-only" | "never"
+  const CURRENCY_DISPLAY_OPTIONS = {
+    mixedSymbolStrategy: "plain",
+    legendSymbolSuffix: "always",
+  };
 
-  // Stub data matches basic ChartConfigBuilder's 2-column shape; only the
-  // layout/padding/title/plugin scaffold survives — data is overwritten.
+  // Resolves {tickSym, titleSym} for currency uniformity; null = not currency.
+  // tickSym=null means "render plain numeric ticks" (mixed + plain strategy).
+  function resolveCurrencyDisplay(processedData) {
+    const meta = processedData.meta || {};
+    if (meta.uniformValueType !== "currency") return null;
+    if (meta.uniformValueSymbol) {
+      return { tickSym: meta.uniformValueSymbol, titleSym: meta.uniformValueSymbol };
+    }
+    const syms = (processedData.datasets || []).map((d) => d._columnSymbol).filter(Boolean);
+    switch (CURRENCY_DISPLAY_OPTIONS.mixedSymbolStrategy) {
+      case "first": return { tickSym: syms[0] || "£", titleSym: syms[0] || "£" };
+      case "all":   return { tickSym: syms[0] || "£", titleSym: Array.from(new Set(syms)).join("/") };
+      default:      return { tickSym: null, titleSym: null };
+    }
+  }
+
+  // generateLabels factory — appends " (sym)" to currency datasets in legend.
+  function makeSymbolSuffixGenerateLabels() {
+    return function (chart) {
+      const def = window.Chart && window.Chart.defaults && window.Chart.defaults.plugins
+        && window.Chart.defaults.plugins.legend && window.Chart.defaults.plugins.legend.labels;
+      const items = (def && def.generateLabels) ? def.generateLabels(chart) : [];
+      items.forEach((it, i) => {
+        const ds = chart.data.datasets[i];
+        if (ds && ds._columnSymbol) it.text = it.text + " (" + ds._columnSymbol + ")";
+      });
+      return items;
+    };
+  }
+
+  function shouldApplySymbolSuffix(processedData) {
+    const meta = processedData.meta || {};
+    const isMixed = meta.uniformValueType === "currency" && meta.uniformValueSymbol === null;
+    const m = CURRENCY_DISPLAY_OPTIONS.legendSymbolSuffix;
+    return m === "always" || (m === "mixed-only" && isMixed);
+  }
+
+  // ─── BASE CONFIG SCAFFOLD ───
+  // Stub data; only the layout/padding/title/plugin scaffold survives.
   function getBaseScaffold(chartType, options) {
     const stubData = { headers: ["X", "Y"], rows: [["stub", 0]] };
-
     if (!window.GraphBuilderCharts || typeof window.GraphBuilderCharts.buildConfig !== "function") {
       logError("GraphBuilderCharts.buildConfig not available — cannot build scaffold");
       return null;
     }
-
     try {
       return window.GraphBuilderCharts.buildConfig(stubData, chartType, options);
     } catch (err) {
@@ -86,18 +121,12 @@ const GraphBuilderChartsEnhanced = (function () {
     }
   }
 
-  // ============================================
-  // CONFIG OVERRIDES
-  // ============================================
-
+  // ─── CONFIG OVERRIDES ───
   function applyDatasets(config, processedData, chartType, options) {
     config.data.labels = processedData.labels.slice();
 
-    // Stacked line needs fill:true + scales.y.stacked for visible area
-    // bands; without fill, lines draw at cumulative positions and read
-    // as overlapping rather than stacked.
-    const stackedLine =
-      chartType === "line" && !!(options && options.stacked === true);
+    // Stacked line needs fill:true to read as stacked area bands.
+    const stackedLine = chartType === "line" && !!(options && options.stacked === true);
     const isCombo = chartType === "combo";
 
     config.data.datasets = processedData.datasets.map((ds) => {
@@ -111,10 +140,8 @@ const GraphBuilderChartsEnhanced = (function () {
       // Combo: per-dataset .type override, default "bar" baseline.
       let effectiveType;
       if (isCombo) {
-        effectiveType =
-          ds._columnChartType === "line" || ds._columnChartType === "bar"
-            ? ds._columnChartType
-            : "bar";
+        effectiveType = (ds._columnChartType === "line" || ds._columnChartType === "bar")
+          ? ds._columnChartType : "bar";
         out.type = effectiveType;
       } else {
         effectiveType = chartType;
@@ -122,10 +149,11 @@ const GraphBuilderChartsEnhanced = (function () {
       if (effectiveType === "line") {
         out.fill = isCombo ? false : stackedLine;
         out.tension = 0.1;
-        // Thicker stroke keeps combo line legible over bar fills.
-        if (isCombo) out.borderWidth = 2;
+        if (isCombo) out.borderWidth = 2;  // Thicker stroke vs bar fills.
       }
       if (ds._columnType) out._columnType = ds._columnType;
+      // 3.2.b-1: pass through symbol for tooltip + legend generateLabels.
+      if (ds._columnSymbol) out._columnSymbol = ds._columnSymbol;
       return out;
     });
   }
@@ -137,25 +165,22 @@ const GraphBuilderChartsEnhanced = (function () {
     if (processedData.datasets.length > 1) {
       config.options.plugins.legend.display = true;
     }
+    // 3.2.b-1: legend symbol suffix policy.
+    if (shouldApplySymbolSuffix(processedData)) {
+      const labels = config.options.plugins.legend.labels = config.options.plugins.legend.labels || {};
+      labels.generateLabels = makeSymbolSuffixGenerateLabels();
+    }
   }
 
   function applyXAxisScale(config, processedData) {
     if (!config.options.scales || !config.options.scales.x) return;
-
     if (processedData.xAxisType !== "time") return;
-
     if (!hasDateAdapter()) {
-      logWarn(
-        "xAxisType='time' requested but no Chart.js date adapter detected; " +
-          "x-axis will fall back to category scale. Load chartjs-adapter-date-fns."
-      );
+      logWarn("xAxisType='time' requested but no Chart.js date adapter detected; x-axis falls back to category scale.");
       return;
     }
-
     config.options.scales.x.type = "time";
-    // displayFormats handle rendering; a ticks.callback would receive the
-    // adapter's pre-formatted STRING and re-parsing it via `new Date(...)`
-    // defaults to year 2001 in V8. tooltipFormat "PP" = localised medium.
+    // displayFormats avoid round-tripping pre-formatted STRING via new Date().
     config.options.scales.x.time = {
       tooltipFormat: "PP",
       displayFormats: {
@@ -164,63 +189,58 @@ const GraphBuilderChartsEnhanced = (function () {
         month: "MMM yyyy", quarter: "qqq yyyy", year: "yyyy",
       },
     };
-    // Cap tick density (wide canvases otherwise render ~45 ticks).
     config.options.scales.x.ticks = config.options.scales.x.ticks || {};
     config.options.scales.x.ticks.autoSkip = true;
-    config.options.scales.x.ticks.maxTicksLimit = 12;
+    config.options.scales.x.ticks.maxTicksLimit = 12;  // wide canvases else render ~45 ticks
   }
 
   function applyYAxisFormatter(config, processedData) {
     if (!config.options.scales || !config.options.scales.y) return;
-
     const uniform = processedData.meta && processedData.meta.uniformValueType;
-    const formatter = uniform && processedData.formatters && processedData.formatters[uniform];
-
-    if (!uniform) {
-      logDebug("Mixed value-column types; using default numeric tick formatting");
-      return;
+    if (!uniform) { logDebug("Mixed value-column types; default numeric ticks"); return; }
+    const formatters = processedData.formatters || {};
+    let cb;
+    if (uniform === "currency") {
+      // 3.2.b-1: closure carries the resolved symbol; null tickSym (mixed +
+      // "plain" strategy) leaves Chart.js default numeric formatting.
+      const cd = resolveCurrencyDisplay(processedData);
+      if (!cd || cd.tickSym === null) return;
+      const f = formatters.currency;
+      if (typeof f !== "function") return;
+      cb = function (v) { return f(v, cd.tickSym); };
+    } else {
+      const f = formatters[uniform];
+      if (typeof f !== "function") return;
+      cb = function (v) { return f(v); };
     }
-    if (typeof formatter !== "function") return;
-
     config.options.scales.y.ticks = config.options.scales.y.ticks || {};
-    config.options.scales.y.ticks.callback = function (value) {
-      return formatter(value);
-    };
+    config.options.scales.y.ticks.callback = cb;
   }
 
-  // Multi-series charts with a single uniform value type get a generic axis
-  // title ("Amount (£)") instead of the first column's name ("Sales"), which
-  // would be misleading when the axis represents multiple series. Mixed types
-  // and single-series charts keep the basic scaffold's title unchanged.
+  // Multi-series uniform value type → generic axis title ("Amount (£)") not
+  // the first column's name. 3.2.b-1 resolves the symbol via uniformValueSymbol.
   function applyYAxisTitle(config, processedData) {
     if (!config.options.scales || !config.options.scales.y) return;
-
-    const multiSeries =
-      Array.isArray(processedData.datasets) && processedData.datasets.length > 1;
+    const multiSeries = Array.isArray(processedData.datasets) && processedData.datasets.length > 1;
     if (!multiSeries) return;
-
     const uniform = processedData.meta && processedData.meta.uniformValueType;
     if (!uniform) return;
-
     let title;
-    if (uniform === "currency") title = "Amount (£)";
-    else if (uniform === "percentage") title = "Percentage (%)";
+    if (uniform === "currency") {
+      const cd = resolveCurrencyDisplay(processedData);
+      title = (cd && cd.titleSym) ? "Amount (" + cd.titleSym + ")" : "Amount";
+    } else if (uniform === "percentage") title = "Percentage (%)";
     else return;
-
     config.options.scales.y.title = config.options.scales.y.title || {};
     config.options.scales.y.title.display = true;
     config.options.scales.y.title.text = title;
   }
 
-  // Stacked bar / stacked line — opt-in via `options.stacked === true`.
-  // Sets both axes because Chart.js requires the pair to cooperate even
-  // when visually only y stacks. Bar/line only; combo/scatter handled
-  // separately (see 3.1.b).
+  // Stacked bar/line opt-in. Both axes required by Chart.js; bar/line only.
   function applyStacked(config, chartType, options) {
     if (!options || options.stacked !== true) return;
     if (chartType !== "bar" && chartType !== "line") return;
     if (!config.options.scales || !config.options.scales.x || !config.options.scales.y) return;
-
     config.options.scales.x.stacked = true;
     config.options.scales.y.stacked = true;
     logDebug("Stacked scales applied for chartType=" + chartType);
@@ -238,6 +258,7 @@ const GraphBuilderChartsEnhanced = (function () {
     config.options.plugins.tooltip.callbacks.label = function (ctx) {
       // Per-dataset type wins; fall back to uniform type, then plain numeric.
       const dsType = ctx.dataset && ctx.dataset._columnType;
+      const dsSym = ctx.dataset && ctx.dataset._columnSymbol;
       const fmt = (dsType && formatters[dsType]) || (uniform && formatters[uniform]) || fallback;
       // parsed is {x,y} for cartesian, raw value for pie/doughnut.
       let value;
@@ -245,16 +266,12 @@ const GraphBuilderChartsEnhanced = (function () {
       else if (typeof ctx.parsed !== "undefined") value = ctx.parsed;
       else value = ctx.raw;
       const prefix = ctx.dataset && ctx.dataset.label ? ctx.dataset.label + ": " : "";
-      return prefix + fmt(value);
+      // 3.2.b-1: per-dataset currency symbol; non-currency formatters ignore extra arg.
+      return prefix + fmt(value, dsSym);
     };
   }
 
-  // ============================================
-  // BUBBLE CONFIG (Phase 3.1.c)
-  // ============================================
-
-  // Bubble owns its own config path: {x,y,r} point shape (not scalar arrays)
-  // breaks applyDatasets/applyXAxisScale. Linear x+y, type-aware formatters.
+  // ─── BUBBLE CONFIG (3.1.c): own path; {x,y,r} points break applyDatasets ───
   function buildBubbleConfig(processedData, options) {
     const meta = processedData.meta || {};
     const fmts = processedData.formatters || {};
@@ -274,19 +291,15 @@ const GraphBuilderChartsEnhanced = (function () {
       borderWidth: typeof ds.borderWidth === "number" ? ds.borderWidth : 1,
     }));
 
-    // Phase 3.1.d: Chart.js treats `r` as canvas pixels — raw values
-    // dominate the canvas. Scale to MIN_PX..MAX_PX with sqrt(t) so bubble
-    // *area* tracks the datum. Preserve raw value as _rRaw for tooltip.
+    // 3.1.d: scale `r` to MIN_PX..MAX_PX with sqrt(t) (area tracks datum).
     const dp = (config.data.datasets[0] && config.data.datasets[0].data) || [];
     if (dp.length) {
       const raws = dp.map((p) => p.r);
-      const rMin = Math.min(...raws);
-      const rMax = Math.max(...raws);
+      const rMin = Math.min(...raws), rMax = Math.max(...raws);
       const MIN_PX = 6, MAX_PX = 40, range = rMax - rMin;
       dp.forEach((p) => {
         p._rRaw = p.r;
-        p.r = range === 0
-          ? (MIN_PX + MAX_PX) / 2
+        p.r = range === 0 ? (MIN_PX + MAX_PX) / 2
           : MIN_PX + (MAX_PX - MIN_PX) * Math.sqrt((p.r - rMin) / range);
       });
     }
@@ -295,32 +308,27 @@ const GraphBuilderChartsEnhanced = (function () {
     config.options.scales = config.options.scales || {};
     const sx = (config.options.scales.x = config.options.scales.x || {});
     const sy = (config.options.scales.y = config.options.scales.y || {});
-    sx.type = "linear";
-    sy.type = "linear";
+    sx.type = "linear"; sy.type = "linear";
 
     const numFmt = fmts.number || ((v) => String(v));
     const xFmt = (meta.xType && fmts[meta.xType]) || numFmt;
     const yFmt = (meta.yType && fmts[meta.yType]) || numFmt;
     const rFmt = (meta.radiusType && fmts[meta.radiusType]) || numFmt;
-    const xLab = meta.xLabel || "X";
-    const yLab = meta.yLabel || "Y";
-    const rLab = meta.radiusLabel || "Radius";
+    const xLab = meta.xLabel || "X", yLab = meta.yLabel || "Y", rLab = meta.radiusLabel || "Radius";
 
     sx.title = { display: true, text: xLab };
     sy.title = { display: true, text: yLab };
-    sx.ticks = sx.ticks || {};
-    sx.ticks.callback = (v) => xFmt(v);
-    sy.ticks = sy.ticks || {};
-    sy.ticks.callback = (v) => yFmt(v);
+    sx.ticks = sx.ticks || {}; sx.ticks.callback = (v) => xFmt(v);
+    sy.ticks = sy.ticks || {}; sy.ticks.callback = (v) => yFmt(v);
 
-    // Phase 3.1.d: proximity-based tooltips — small bubble markers (6-40 px)
-    // are hard to hit with the default intersect:true mode.
+    // 3.1.d: proximity tooltips for small (6-40 px) markers.
     config.options.interaction = { mode: "nearest", intersect: false };
 
     config.options.plugins = config.options.plugins || {};
     config.options.plugins.legend = config.options.plugins.legend || {};
     config.options.plugins.legend.display = false;
     config.options.plugins.tooltip = config.options.plugins.tooltip || {};
+    // Tooltip uses raw datum (_rRaw), not the scaled visual radius.
     config.options.plugins.tooltip.callbacks = {
       title: (items) => {
         if (!items || !items.length) return "";
@@ -329,7 +337,6 @@ const GraphBuilderChartsEnhanced = (function () {
       },
       label: (ctx) => {
         const raw = ctx.raw || {};
-        // Tooltip shows the raw datum (_rRaw), not the scaled visual radius.
         return [
           xLab + ": " + xFmt(raw.x),
           yLab + ": " + yFmt(raw.y),
@@ -338,18 +345,13 @@ const GraphBuilderChartsEnhanced = (function () {
       },
     };
 
-    config._gbEnhanced = true;
-    config._gbProcessed = processedData;
-    config._gbBubble = true;
+    config._gbEnhanced = true; config._gbProcessed = processedData; config._gbBubble = true;
 
     logInfo("Built enhanced bubble config: " + dp.length + " pts; x=" + xLab + ", y=" + yLab + ", r=" + rLab);
     return config;
   }
 
-  // ============================================
-  // PUBLIC API
-  // ============================================
-
+  // ─── PUBLIC API ───
   function buildConfig(processedData, chartType, options) {
     if (!processedData || !Array.isArray(processedData.datasets)) {
       logError("buildConfig called without valid processedData");
@@ -363,34 +365,21 @@ const GraphBuilderChartsEnhanced = (function () {
     const safeOptions = options || {};
 
     // Bubble has its own data-shape contract; route early.
-    if (chartType === "bubble") {
-      return buildBubbleConfig(processedData, safeOptions);
-    }
+    if (chartType === "bubble") return buildBubbleConfig(processedData, safeOptions);
 
-    // Combo + stacked is a Phase 4 consideration. If the user ticks both,
-    // prefer combo and warn rather than silently dropping one.
+    // Combo + stacked unsupported (Phase 4); prefer combo, warn loudly.
     if (chartType === "combo" && safeOptions.stacked === true) {
-      logWarn(
-        "Stacked + combo combined is not supported; rendering combo without stacking"
-      );
+      logWarn("Stacked + combo unsupported; rendering combo without stacking");
     }
-
-    // Combo isn't a native Chart.js type. The combo container is a bar chart
-    // whose individual datasets carry their own .type ("bar" or "line"), so
-    // the scaffold uses "bar" while applyDatasets writes per-dataset types.
+    // Combo: bar scaffold, per-dataset .type from applyDatasets.
     const scaffoldChartType = chartType === "combo" ? "bar" : chartType;
 
-    logDebug("Building enhanced chart config", {
-      chartType: chartType,
-      scaffoldChartType: scaffoldChartType,
-      datasets: processedData.datasets.length,
-      xAxisType: processedData.xAxisType,
-    });
+    logDebug("Building enhanced chart config", { chartType, scaffoldChartType,
+      datasets: processedData.datasets.length, xAxisType: processedData.xAxisType });
 
     const config = getBaseScaffold(scaffoldChartType, safeOptions);
     if (!config) return null;
 
-    // Always override data — the stub data must not reach Chart.js.
     applyDatasets(config, processedData, chartType, safeOptions);
     applyLegend(config, processedData);
 
@@ -401,25 +390,18 @@ const GraphBuilderChartsEnhanced = (function () {
       applyYAxisTitle(config, processedData);
       applyStacked(config, chartType, safeOptions);
     }
-
-    // Tooltip formatting applies across all chart types.
     applyTooltipFormatter(config, processedData);
 
-    // Marker so downstream code (post-generation override in
-    // FinalChartCreator) can distinguish our config from the basic-mode
-    // scaffold and re-apply our overrides after ChartBuilderState rewrites.
-    config._gbEnhanced = true;
-    config._gbProcessed = processedData;
+    // Marker for FinalChartCreator's post-generation override path.
+    config._gbEnhanced = true; config._gbProcessed = processedData;
 
     logInfo("Built enhanced config: " + config.data.datasets.length + " dataset(s), chartType=" + chartType);
 
     return config;
   }
 
-  // Re-apply enhanced overrides to a live Chart.js instance after
-  // FinalChartCreator.createUsingChartBuilderState's three-stage rewrite
-  // strips functions (state merge serialises them). Restores tick + tooltip
-  // callbacks and forces multi-series y-axis title. No-op without _gbEnhanced.
+  // Re-apply enhanced overrides after FinalChartCreator's state-merge rewrite
+  // strips function callbacks. No-op without _gbEnhanced.
   function applyEnhancedOverrides(chartInstance, config) {
     if (!chartInstance || !config || !config._gbEnhanced) return false;
     if (!chartInstance.options) return false;
@@ -428,53 +410,55 @@ const GraphBuilderChartsEnhanced = (function () {
     const processed = config._gbProcessed || {};
     const formatters = processed.formatters || {};
     const uniform = processed.meta && processed.meta.uniformValueType;
-    const xAxisType = processed.xAxisType;
     const multiSeries = Array.isArray(config.data && config.data.datasets)
-      ? config.data.datasets.length > 1
-      : false;
+      ? config.data.datasets.length > 1 : false;
 
     // Restore plugin callbacks / display.
     if (!opts.plugins) opts.plugins = {};
     if (!opts.plugins.legend) opts.plugins.legend = {};
     if (multiSeries) opts.plugins.legend.display = true;
 
+    // 3.2.b-1: legend generateLabels (suffix policy) — Chart.js strips it.
+    if (shouldApplySymbolSuffix(processed)) {
+      opts.plugins.legend.labels = opts.plugins.legend.labels || {};
+      opts.plugins.legend.labels.generateLabels = makeSymbolSuffixGenerateLabels();
+    }
+
     if (!opts.plugins.tooltip) opts.plugins.tooltip = {};
     opts.plugins.tooltip.callbacks = opts.plugins.tooltip.callbacks || {};
-    const originalTooltipLabel =
-      config.options &&
-      config.options.plugins &&
-      config.options.plugins.tooltip &&
-      config.options.plugins.tooltip.callbacks &&
-      config.options.plugins.tooltip.callbacks.label;
-    if (typeof originalTooltipLabel === "function") {
-      opts.plugins.tooltip.callbacks.label = originalTooltipLabel;
-    }
+    const origTip = config.options && config.options.plugins && config.options.plugins.tooltip
+      && config.options.plugins.tooltip.callbacks && config.options.plugins.tooltip.callbacks.label;
+    if (typeof origTip === "function") opts.plugins.tooltip.callbacks.label = origTip;
 
     // Scale-bearing types only.
     if (opts.scales) {
-      // Y-axis tick formatter.
       if (opts.scales.y) {
-        if (uniform && typeof formatters[uniform] === "function") {
+        // Y-axis tick formatter — currency uses resolved symbol closure.
+        if (uniform === "currency") {
+          const cd = resolveCurrencyDisplay(processed);
+          if (cd && cd.tickSym !== null && typeof formatters.currency === "function") {
+            const f = formatters.currency;
+            opts.scales.y.ticks = opts.scales.y.ticks || {};
+            opts.scales.y.ticks.callback = function (v) { return f(v, cd.tickSym); };
+          }
+        } else if (uniform && typeof formatters[uniform] === "function") {
+          const f = formatters[uniform];
           opts.scales.y.ticks = opts.scales.y.ticks || {};
-          const fmt = formatters[uniform];
-          opts.scales.y.ticks.callback = function (value) {
-            return fmt(value);
-          };
+          opts.scales.y.ticks.callback = function (v) { return f(v); };
         }
         // Multi-series: force a generic y-axis title rather than the
         // first column's name (which the basic post-gen override sets).
         if (multiSeries) {
           opts.scales.y.title = opts.scales.y.title || {};
           opts.scales.y.title.display = true;
-          if (uniform === "currency") opts.scales.y.title.text = "Amount (£)";
-          else if (uniform === "percentage") opts.scales.y.title.text = "Percentage (%)";
-          else if (uniform === "number") opts.scales.y.title.text = "Value";
+          if (uniform === "currency") {
+            const cd = resolveCurrencyDisplay(processed);
+            opts.scales.y.title.text = (cd && cd.titleSym) ? "Amount (" + cd.titleSym + ")" : "Amount";
+          } else if (uniform === "percentage") opts.scales.y.title.text = "Percentage (%)";
           else opts.scales.y.title.text = "Value";
         }
       }
-
-      // Do NOT mutate opts.scales.x.type — setting "time" on a live
-      // Chart.js instance triggers a proxy-setter recursion loop (Phase 2.5).
+      // Do NOT mutate opts.scales.x.type on a live instance (Phase 2.5).
     }
 
     logDebug("Enhanced overrides re-applied to chart instance");

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EmbedProviderRegistry &mdash; Task 1.1 verification</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: #ffffff;
+        color: #1a1a1a;
+        max-width: 60rem;
+        margin: 2rem auto;
+        padding: 0 1.25rem;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-top: 0;
+      }
+      .intro {
+        margin-bottom: 1.5rem;
+      }
+      ol#results {
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+          "Liberation Mono", monospace;
+        font-size: 0.95rem;
+        background: #f6f8fa;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        padding: 1rem 1rem 1rem 2.5rem;
+        margin: 1rem 0;
+      }
+      ol#results li {
+        padding: 0.15rem 0;
+      }
+      .result-pass {
+        color: #006100;
+      }
+      .result-fail {
+        color: #b00020;
+        font-weight: 600;
+      }
+      .label {
+        font-weight: 700;
+        margin-right: 0.4rem;
+      }
+      #summary {
+        font-size: 1.1rem;
+        font-weight: 600;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        border: 2px solid #d0d7de;
+      }
+      #summary.summary-pass {
+        color: #006100;
+        background: #e8f5e9;
+        border-color: #006100;
+      }
+      #summary.summary-fail {
+        color: #b00020;
+        background: #fdecea;
+        border-color: #b00020;
+      }
+      #summary.summary-pending {
+        color: #1a1a1a;
+        background: #f6f8fa;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>EmbedProviderRegistry &mdash; Task 1.1 verification</h1>
+    <p class="intro">
+      Open this file in a browser; results below. Each check appears as a
+      single line prefixed with either <strong>PASS</strong> or
+      <strong>FAIL</strong>. The summary line at the end reports the overall
+      result.
+    </p>
+
+    <h2>Results</h2>
+    <ol id="results" aria-live="polite"></ol>
+
+    <p id="summary" class="summary-pending" role="status" aria-live="polite">
+      Running checks&hellip;
+    </p>
+
+    <!-- Module under test -->
+    <script src="../providers/_interface.js"></script>
+
+    <!-- Test runner (inline for portability) -->
+    <script>
+      (function () {
+        "use strict";
+
+        var resultsList = document.getElementById("results");
+        var summaryEl = document.getElementById("summary");
+
+        var passCount = 0;
+        var failCount = 0;
+
+        function appendResult(passed, description, detail) {
+          var li = document.createElement("li");
+          li.className = passed ? "result-pass" : "result-fail";
+
+          var labelSpan = document.createElement("span");
+          labelSpan.className = "label";
+          labelSpan.textContent = passed ? "PASS" : "FAIL";
+
+          var textSpan = document.createElement("span");
+          textSpan.textContent =
+            "— " + description + (detail ? " (" + detail + ")" : "");
+
+          li.appendChild(labelSpan);
+          li.appendChild(textSpan);
+          resultsList.appendChild(li);
+
+          if (passed) passCount++;
+          else failCount++;
+        }
+
+        function check(description, fn) {
+          try {
+            var ok = !!fn();
+            appendResult(ok, description, ok ? "" : "assertion returned falsy");
+          } catch (err) {
+            appendResult(
+              false,
+              description,
+              "threw: " + (err && err.message ? err.message : String(err))
+            );
+          }
+        }
+
+        function checkThrows(description, fn) {
+          var threw = false;
+          var caughtMessage = "";
+          try {
+            fn();
+          } catch (err) {
+            threw = true;
+            caughtMessage = err && err.message ? err.message : String(err);
+          }
+          appendResult(
+            threw,
+            description,
+            threw ? "threw: " + caughtMessage : "did not throw"
+          );
+        }
+
+        // ------------------------------------------------------------------
+        // 1. Singleton and class exposed
+        // ------------------------------------------------------------------
+        check("window.EmbedProviderRegistry is an object", function () {
+          return typeof window.EmbedProviderRegistry === "object" &&
+            window.EmbedProviderRegistry !== null;
+        });
+        check("window.EmbedProviderRegistryClass is a function", function () {
+          return typeof window.EmbedProviderRegistryClass === "function";
+        });
+
+        // ------------------------------------------------------------------
+        // 2. Empty initial state
+        // ------------------------------------------------------------------
+        check("registry.list() returns an array", function () {
+          return Array.isArray(window.EmbedProviderRegistry.list());
+        });
+        check("registry.list() is initially empty", function () {
+          return window.EmbedProviderRegistry.list().length === 0;
+        });
+        check("registry.has('nope') is false", function () {
+          return window.EmbedProviderRegistry.has("nope") === false;
+        });
+        check("registry.get('nope') returns null", function () {
+          return window.EmbedProviderRegistry.get("nope") === null;
+        });
+
+        // ------------------------------------------------------------------
+        // 3. Validation: register({}) throws
+        // ------------------------------------------------------------------
+        checkThrows(
+          "registry.register({}) throws (missing id and methods)",
+          function () {
+            window.EmbedProviderRegistry.register({});
+          }
+        );
+
+        // ------------------------------------------------------------------
+        // 4. Happy-path register with a valid stub provider
+        // ------------------------------------------------------------------
+        var stub = {
+          id: "test-provider",
+          buildRequest: function () {
+            return {};
+          },
+          endpoint: function () {
+            return { url: "", headers: {} };
+          },
+          parseStreamChunk: function () {
+            return {};
+          },
+          parseResponse: function () {
+            return {};
+          },
+          capabilities: {
+            streaming: true,
+            images: false,
+            pdf: false,
+            reasoning: false,
+            toolCalls: false,
+          },
+        };
+
+        var registerThrew = false;
+        var registerErrMsg = "";
+        try {
+          window.EmbedProviderRegistry.register(stub);
+        } catch (err) {
+          registerThrew = true;
+          registerErrMsg = err && err.message ? err.message : String(err);
+        }
+        appendResult(
+          !registerThrew,
+          "registry.register(stub) succeeds",
+          registerThrew ? "threw: " + registerErrMsg : ""
+        );
+
+        check("registry.has('test-provider') is true", function () {
+          return window.EmbedProviderRegistry.has("test-provider") === true;
+        });
+        check(
+          "registry.get('test-provider') returns the same object reference",
+          function () {
+            return window.EmbedProviderRegistry.get("test-provider") === stub;
+          }
+        );
+        check("registry.list().length === 1", function () {
+          return window.EmbedProviderRegistry.list().length === 1;
+        });
+        check(
+          "registry.list()[0] === 'test-provider' (returns ids, not objects)",
+          function () {
+            return window.EmbedProviderRegistry.list()[0] === "test-provider";
+          }
+        );
+
+        // ------------------------------------------------------------------
+        // 5. Duplicate registration throws
+        // ------------------------------------------------------------------
+        checkThrows(
+          "registering the same id twice throws",
+          function () {
+            window.EmbedProviderRegistry.register(stub);
+          }
+        );
+
+        // ------------------------------------------------------------------
+        // 6. unregister returns boolean correctly
+        // ------------------------------------------------------------------
+        check(
+          "registry.unregister('test-provider') returns true on first call",
+          function () {
+            return (
+              window.EmbedProviderRegistry.unregister("test-provider") === true
+            );
+          }
+        );
+        check(
+          "registry.unregister('test-provider') returns false on second call",
+          function () {
+            return (
+              window.EmbedProviderRegistry.unregister("test-provider") === false
+            );
+          }
+        );
+
+        // ------------------------------------------------------------------
+        // 7. clear() empties the registry
+        // ------------------------------------------------------------------
+        var clearSetupThrew = false;
+        var clearSetupErrMsg = "";
+        try {
+          window.EmbedProviderRegistry.register(stub);
+        } catch (err) {
+          clearSetupThrew = true;
+          clearSetupErrMsg = err && err.message ? err.message : String(err);
+        }
+        appendResult(
+          !clearSetupThrew,
+          "re-register stub before clear() succeeds",
+          clearSetupThrew ? "threw: " + clearSetupErrMsg : ""
+        );
+
+        check("registry.list().length === 1 after re-register", function () {
+          return window.EmbedProviderRegistry.list().length === 1;
+        });
+
+        window.EmbedProviderRegistry.clear();
+
+        check(
+          "registry.list().length === 0 after clear()",
+          function () {
+            return window.EmbedProviderRegistry.list().length === 0;
+          }
+        );
+
+        // ------------------------------------------------------------------
+        // Summary
+        // ------------------------------------------------------------------
+        var total = passCount + failCount;
+        if (failCount === 0) {
+          summaryEl.className = "summary-pass";
+          summaryEl.textContent =
+            "All " + total + " checks passed.";
+        } else {
+          summaryEl.className = "summary-fail";
+          summaryEl.textContent =
+            failCount + " of " + total + " checks failed.";
+        }
+      })();
+    </script>
+  </body>
+</html>

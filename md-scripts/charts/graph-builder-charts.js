@@ -322,8 +322,8 @@ const GraphBuilderCharts = (function () {
 
         this.container.appendChild(canvas);
 
-        // Get configuration
-        const config = this.configBuilder.build(data, chartType, options);
+        // Get configuration (routes through enhanced path when advanced mode is active)
+        const config = buildConfigRouted(data, chartType, options);
 
         // Add preview-specific options
         config.options = {
@@ -510,6 +510,22 @@ const GraphBuilderCharts = (function () {
     async createUsingChartBuilderState(data, chartType, options) {
       logDebug("Creating chart via enhanced ChartBuilderState integration");
 
+      // Build config once so we can detect advanced mode before touching
+      // ChartBuilderState. Phase 2.5: advanced mode bypasses ChartBuilderState
+      // entirely because its updateChartConfig → ChartDataManager.getChartConfig
+      // pipeline rebuilds the Chart.js config from scratch, discarding function
+      // callbacks (tick/tooltip) and scale-type overrides (scales.x.type="time").
+      // The preview path (ChartPreviewManager.update) proves a direct
+      // `new Chart(canvas, config)` preserves both through update(). The
+      // caller's initializeAccessibilityFeatures step runs afterwards for
+      // ChartControls toolbar + ChartAccessibility, so no mirror is needed here.
+      const config = buildConfigRouted(data, chartType, options);
+      if (config && config._gbEnhanced) {
+        return this._createEnhancedChartDirect(config, options);
+      }
+
+      // ----- basic-mode path below (existing ChartBuilderState flow) -----
+
       // Start the chart builder workflow
       await ChartBuilderState.startNewChart({
         chartType: chartType,
@@ -520,8 +536,6 @@ const GraphBuilderCharts = (function () {
       // Set data source
       await ChartBuilderState.setDataSource(data);
 
-      // Update chart configuration with enhanced handling
-      const config = this.configBuilder.build(data, chartType, options);
       logDebug("Built configuration for ChartBuilderState:", config);
 
       // Strategy A: Standard ChartBuilderState.updateChartConfig
@@ -641,6 +655,17 @@ const GraphBuilderCharts = (function () {
         if (!chartOptions.scales.y.grid) chartOptions.scales.y.grid = {};
         chartOptions.scales.y.grid.display = options.showGrid !== false;
 
+        // Re-apply enhanced overrides (currency/percentage/date tick
+        // formatters, tooltip callbacks, multi-series y-axis title) which
+        // ChartBuilderState's earlier rewrite round-trip strips. No-op for
+        // basic-mode configs since they lack the _gbEnhanced marker.
+        if (
+          window.GraphBuilderChartsEnhanced &&
+          typeof window.GraphBuilderChartsEnhanced.applyEnhancedOverrides === "function"
+        ) {
+          window.GraphBuilderChartsEnhanced.applyEnhancedOverrides(chartInstance, config);
+        }
+
         // Force chart update to apply configuration changes
         chartInstance.update("none"); // 'none' for immediate update without animation
 
@@ -666,6 +691,34 @@ const GraphBuilderCharts = (function () {
 
       logInfo(
         "Enhanced chart creation completed successfully via ChartBuilderState"
+      );
+    }
+
+    /**
+     * Phase 2.5: Direct Chart.js construction for advanced mode.
+     * Mirrors the preview path (ChartPreviewManager.update) — canvas + new Chart.
+     * Bypasses ChartBuilderState because its config-rebuild pipeline strips our
+     * tick/tooltip callbacks and scale-type overrides. The caller's
+     * initializeAccessibilityFeatures step handles ChartControls toolbar +
+     * ChartAccessibility for both basic and advanced modes, so no mirror here.
+     */
+    _createEnhancedChartDirect(config, options) {
+      logInfo(
+        "Advanced mode: direct chart construction (bypassing ChartBuilderState)"
+      );
+
+      const canvas = document.createElement("canvas");
+      canvas.setAttribute("role", "img");
+      canvas.setAttribute("aria-label", options.title || "Chart");
+      this.container.appendChild(canvas);
+
+      const chartInstance = new Chart(canvas, config);
+      chartRegistry.final = chartInstance;
+
+      logInfo(
+        "Advanced-mode chart created via direct path, " +
+          config.data.datasets.length +
+          " dataset(s)"
       );
     }
 
@@ -1086,6 +1139,60 @@ const GraphBuilderCharts = (function () {
   const previewManager = new ChartPreviewManager();
   const finalChartCreator = new FinalChartCreator();
   const validator = new ChartValidator();
+
+  /**
+   * Route chart config building through the Phase 2 enhanced processors
+   * when advanced mode is active. Basic mode falls through to the existing
+   * ChartConfigBuilder.build untouched.
+   *
+   * Basic-mode users see byte-identical behaviour: the branch fails safe
+   * (returns the basic config) if any enhanced module is missing or if
+   * processing produces zero datasets.
+   */
+  function buildConfigRouted(data, chartType, options) {
+    const enhanced = window.GraphBuilderEnhanced;
+    const dataEnhanced = window.GraphBuilderDataEnhanced;
+    const chartsEnhanced = window.GraphBuilderChartsEnhanced;
+
+    const advancedActive =
+      enhanced &&
+      typeof enhanced.isAdvancedMode === "function" &&
+      enhanced.isAdvancedMode() &&
+      dataEnhanced &&
+      chartsEnhanced;
+
+    if (!advancedActive) {
+      return configBuilder.build(data, chartType, options);
+    }
+
+    try {
+      const columnCfg = enhanced.getColumnConfiguration();
+      if (!Array.isArray(columnCfg) || columnCfg.length === 0) {
+        logWarn("Advanced mode active but no column config; using basic path");
+        return configBuilder.build(data, chartType, options);
+      }
+
+      const processed = chartType === "bubble" && typeof dataEnhanced.processBubbleData === "function"
+        ? dataEnhanced.processBubbleData(data, columnCfg)
+        : dataEnhanced.processData(data, columnCfg);
+      if (!processed || !Array.isArray(processed.datasets) || processed.datasets.length === 0) {
+        logWarn("Enhanced processor returned no datasets; using basic path");
+        return configBuilder.build(data, chartType, options);
+      }
+
+      const enhancedConfig = chartsEnhanced.buildConfig(processed, chartType, options);
+      if (!enhancedConfig) {
+        logWarn("Enhanced generator returned null; using basic path");
+        return configBuilder.build(data, chartType, options);
+      }
+
+      logDebug("Routed chart config build through enhanced processors");
+      return enhancedConfig;
+    } catch (err) {
+      logError("Enhanced routing failed; falling back to basic path", err);
+      return configBuilder.build(data, chartType, options);
+    }
+  }
 
   // Module initialisation message
   logInfo("Graph Builder Charts module initialised successfully");

@@ -16369,12 +16369,21 @@ Science,91</pre
     <script src="https://unpkg.com/@rdkit/rdkit@2025.3.4-1.0.0/dist/RDKit_minimal.js"></script>
     <!-- Phase 5B-1: Shared chemistry utilities -->
     <script src="mathpix-scripts/core/mathpix-chemistry-utils.js"></script>
+    <!-- Phase 14-1c: structural classification primitives (must load after utils, before descriptions) -->
+    <script src="mathpix-scripts/core/mathpix-chemistry-classify.js"></script>
     <!-- Phase 11-2a: positional-label locant tables (must load after utils, before descriptions) -->
     <script src="mathpix-scripts/core/mathpix-chemistry-locants.js"></script>
     <!-- Phase 8C refactor: structural description engine (must load after utils) -->
     <script src="mathpix-scripts/core/mathpix-chemistry-descriptions.js"></script>
+    <!-- Phase 14-1d: prose-tier description engine (must load after descriptions, before comprehensive) -->
+    <script src="mathpix-scripts/core/mathpix-chemistry-prose.js"></script>
     <!-- Phase 8C-CT: comprehensive tier engine (must load after descriptions) -->
     <script src="mathpix-scripts/core/mathpix-chemistry-comprehensive.js"></script>
+    <!-- Phase 14-2 Step 1: engine-wide readiness primitive. Resolves once
+         the parser has executed all six chemistry script tags above. -->
+    <script>
+      window._chemistryReady = Promise.resolve(true);
+    </script>
     <script
       type="module"
       src="mathpix-scripts/core/mathpix-strokes-api-client.js"
@@ -16503,6 +16512,10 @@ Science,91</pre
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-diff-engine.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-mmd-analyser.js"></script>
     <script src="mathpix-scripts/core/mathpix-image-registry.js"></script>
+    <script src="mathpix-scripts/core/mathpix-alt-text-mmd-serialiser.js"></script>
+    <script src="mathpix-scripts/core/mathpix-alt-text-integrator.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-alt-text-serialiser-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-alt-text-integrator-tests.js"></script>
     <script src="mathpix-scripts/ui/components/mathpix-image-manager-ui.js"></script>
     <script src="mathpix-scripts/core/mathpix-image-downloader.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-semantic-mapper.js"></script>
@@ -16519,6 +16532,14 @@ Science,91</pre
 
     <!-- OpenRouter Embed Diagnostics -->
     <script src="openrouter-embed/openrouter-embed-diagnostic.js"></script>
+
+    <!-- OpenRouter Embed Stage Test Suites (each defines window.testEmbedStageN_* functions;
+         must execute after openrouter-embed-core.js, but the suites use the embed lazily
+         inside test bodies so order with the type="module" core script is fine) -->
+    <script src="js/testing/openrouter-embed-stage1-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage2-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage3-tests.js"></script>
+    <script src="js/testing/openrouter-embed-stage4-phase2-tests.js"></script>
     <script
       type="module"
       src="openrouter-embed/openrouter-embed-progress.js"
@@ -16552,6 +16573,13 @@ Science,91</pre
     <script src="openrouter-embed/openrouter-embed-queue.js"></script>
 
     <script src="openrouter-embed/openrouter-embed-health.js"></script>
+
+    <!-- Provider abstraction (Stage 1) — registry, then lookup, then concrete providers.
+         (Task 1.2a added the provider files but didn't commit the script-tag wiring;
+         Task 1.3 wires all three together.) -->
+    <script src="openrouter-embed/providers/_interface.js"></script>
+    <script src="openrouter-embed/providers/_lookup.js"></script>
+    <script src="openrouter-embed/providers/openrouter.js"></script>
 
     <script
       type="module"

@@ -15,10 +15,7 @@
 const GraphBuilderRowSync = (function () {
   "use strict";
 
-  // ============================================
-  // LOGGING CONFIGURATION
-  // ============================================
-
+  // ─── LOGGING CONFIGURATION ───
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
   const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
@@ -47,26 +44,14 @@ const GraphBuilderRowSync = (function () {
       console.log("[GB RowSync] " + message, ...args);
   }
 
-  // ============================================
-  // HELPERS
-  // ============================================
-
+  // ─── HELPERS ───
   function escapeHtml(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
-  /**
-   * Map column data type to HTML input type and attributes.
-   *
-   * Currency and percentage columns use type="text" with inputmode="decimal"
-   * so users can enter notation like "£1,200" or "42%". validateFormData
-   * and extractFormData both strip [£$€¥₹%,\s] before parsing, so the raw
-   * symbols are acceptable at entry time.
-   *
-   * Plain "number" columns keep type="number" for browser-level numeric
-   * validation and mobile numeric keyboard.
-   */
+  // currency/percentage → text + inputmode=decimal (allows "£1,200", "42%");
+  // validate/extract strip symbols so raw forms are accepted at entry time.
   function inputTypeForColumn(col) {
     switch (col.type) {
       case "number":
@@ -81,10 +66,7 @@ const GraphBuilderRowSync = (function () {
     }
   }
 
-  // ============================================
-  // VALIDATION BRIDGE
-  // ============================================
-
+  // ─── VALIDATION BRIDGE ───
   /**
    * Trigger the core Graph Builder's validation + preview pipeline.
    * The core controller listens for input events on existing inputs,
@@ -136,10 +118,7 @@ const GraphBuilderRowSync = (function () {
     }
   }
 
-  // ============================================
-  // CORE LOGIC
-  // ============================================
-
+  // ─── CORE LOGIC ───
   var lastColumnCount = 2; // tracks previous count so we know when to act
 
   /**
@@ -225,6 +204,7 @@ const GraphBuilderRowSync = (function () {
         var newInput = newGroup.querySelector("input");
         if (newInput) {
           newInput.addEventListener("input", triggerCoreValidation);
+          attachBlurFormatter(newInput);  // 3.2.b-2
         }
       }
 
@@ -262,6 +242,7 @@ const GraphBuilderRowSync = (function () {
           } else {
             input.removeAttribute("step");
           }
+          attachBlurFormatter(input);  // 3.2.b-2 idempotent
         }
         if (help) {
           help.textContent = "Enter " + col.name.toLowerCase() + " for row " + rowNumber;
@@ -291,14 +272,9 @@ const GraphBuilderRowSync = (function () {
     }
   }
 
-  // ============================================
-  // MONKEY-PATCH: addDataRow
-  // ============================================
-  //
-  // The existing GraphBuilder.addDataRow creates 2-column rows.
-  // When advanced mode is active, we intercept the "Add Row" click
-  // to create rows with the correct column count instead.
-
+  // ─── MONKEY-PATCH addDataRow ───
+  // The existing GraphBuilder.addDataRow creates 2-column rows; in advanced
+  // mode we intercept the Add Row click to create rows with the right count.
   var addRowIntercepted = false;
 
   function interceptAddRow() {
@@ -328,6 +304,43 @@ const GraphBuilderRowSync = (function () {
 
     addRowIntercepted = true;
     logDebug("Add Row button intercepted for advanced mode");
+  }
+
+  // 3.2.b-2: Reformat numeric input on blur with thousand separators (and
+  // currency/percent symbol). Always attached — the handler checks the
+  // CURRENT column at the input's DOM position at blur time, so columns
+  // changing type or being added/removed don't leave stale formatting.
+  // Currency input: blur "1500000" → "£1,500,000" (symbol from col.symbol).
+  // Percentage input: blur "12.5"   → "12.5%".
+  // parseValue's NUMERIC_STRIP_RE strips both forms so re-parsing on
+  // Generate works whether the field is left formatted or wiped.
+  function attachBlurFormatter(inp) {
+    if (inp.dataset.gbBlurAttached === "1") return;  // idempotent
+    inp.dataset.gbBlurAttached = "1";
+    inp.addEventListener("blur", function () {
+      var raw = inp.value.trim();
+      if (!raw) return;
+      var group = inp.closest(".gb-input-group");
+      var row = group && group.closest(".gb-data-row");
+      if (!row) return;
+      var groups = row.querySelectorAll(".gb-input-group");
+      var pos = Array.prototype.indexOf.call(groups, group);
+      if (pos < 0) return;
+      var enhanced = window.GraphBuilderEnhanced;
+      var col = enhanced && enhanced.getColumnConfiguration()[pos];
+      if (!col || (col.type !== "currency" && col.type !== "percentage")) return;
+      var n = parseFloat(raw.replace(/[£$€¥₹%,\s]/g, ""));
+      if (isNaN(n)) return;
+      var fmt = Number(n).toLocaleString("en-GB", {
+        minimumFractionDigits: 0, maximumFractionDigits: 2,
+      });
+      if (col.type === "currency") {
+        var sym = (typeof col.symbol === "string" && col.symbol) ? col.symbol : "£";
+        inp.value = sym + fmt;
+      } else {
+        inp.value = fmt + "%";
+      }
+    });
   }
 
   /** Create a new data row with the enhanced column set */
@@ -387,6 +400,7 @@ const GraphBuilderRowSync = (function () {
     var inputs = rowDiv.querySelectorAll("input");
     inputs.forEach(function (inp) {
       inp.addEventListener("input", triggerCoreValidation);
+      attachBlurFormatter(inp);  // 3.2.b-2
     });
 
     // Focus first input of new row
@@ -400,10 +414,28 @@ const GraphBuilderRowSync = (function () {
     logDebug("Added enhanced row: " + rowId + " with " + columns.length + " columns");
   }
 
-  // ============================================
-  // PUBLIC API — called by GraphBuilderEnhanced
-  // ============================================
+  // 3.2.b-3: keep preview stats in sync with row add/remove. A single
+  // MutationObserver on the rows container fires on any childList change,
+  // covering addEnhancedRow + the core's removeDataRow without coupling
+  // to either call site. Validation-pipeline showPreview() already keeps
+  // stats fresh on input edits; this observer covers the gap where add
+  // (empty row) and remove don't pass through validateFormData → showPreview.
+  var statsObserverInstalled = false;
+  function setupPreviewStatsObserver() {
+    if (statsObserverInstalled) return;
+    var container = document.getElementById("gb-data-rows");
+    if (!container || !window.MutationObserver) return;
+    var observer = new MutationObserver(function () {
+      if (window.GraphBuilderUI && typeof window.GraphBuilderUI.refreshPreviewStats === "function") {
+        window.GraphBuilderUI.refreshPreviewStats();
+      }
+    });
+    observer.observe(container, { childList: true });
+    statsObserverInstalled = true;
+    logDebug("Preview stats observer installed");
+  }
 
+  // ─── PUBLIC API — called by GraphBuilderEnhanced ───
   /**
    * Call this whenever the column configuration changes.
    * @param {Array} columns - Current column array from ColumnManager
@@ -413,6 +445,7 @@ const GraphBuilderRowSync = (function () {
     syncRows(columns);
     syncFormHeaders(columns);
     interceptAddRow();
+    setupPreviewStatsObserver();  // 3.2.b-3
   }
 
   /**

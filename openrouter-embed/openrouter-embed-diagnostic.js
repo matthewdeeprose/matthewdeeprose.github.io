@@ -820,3 +820,570 @@ const hello = 'world';
     }
   };
 })();
+
+// ============================================================================
+// STAGE 1 PROVIDER ABSTRACTION TESTS (Task 1.4)
+// ============================================================================
+//
+// Named regression suite for the provider-registry / provider-lookup /
+// dispatch-refactor work that landed in Stage 1 (Tasks 1.1, 1.2a, 1.2b,
+// 1.3). Five sub-tests:
+//
+//   1. RegistryAndProvider — static infrastructure: registry methods,
+//      OpenRouter provider registration, capabilities shape.
+//   2. LookupRule — namespace convention (A2) across reserved + legacy +
+//      defensive branches; no instance construction.
+//   3. InstanceAPI — `embed.provider` getter resolves correctly and
+//      re-resolves on `setModel()`.
+//   4. MisconfigError — `sendStreamingRequest` fail-fast path: throws
+//      with detail message, fires error notification.
+//   5. RealDispatch — end-to-end OpenRouter round-trip through the
+//      new per-request dispatch path. (Network call.)
+//
+// Run all: `await window.testStage1_ProviderAbstraction_All()`
+// Run one: `await window.testStage1_ProviderAbstraction_<SubTestName>()`
+//
+// Sibling IIFE — does not touch the diagnostic IIFE above.
+//
+// @version 1.0.0 (Stage 1, Task 1.4)
+// @date 9 May 2026
+
+(function () {
+  "use strict";
+
+  // ============================================================================
+  // LOGGING CONFIGURATION
+  // ============================================================================
+
+  const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+  const ENABLE_ALL_LOGGING = false;
+  const DISABLE_ALL_LOGGING = false;
+
+  function shouldLog(level) {
+    if (DISABLE_ALL_LOGGING) return false;
+    if (ENABLE_ALL_LOGGING) return true;
+    return level <= DEFAULT_LOG_LEVEL;
+  }
+
+  function logError(message, ...args) {
+    if (shouldLog(LOG_LEVELS.ERROR))
+      console.error(`[Stage1ProviderAbsTests ERROR] ${message}`, ...args);
+  }
+
+  function logWarn(message, ...args) {
+    if (shouldLog(LOG_LEVELS.WARN))
+      console.warn(`[Stage1ProviderAbsTests WARN] ${message}`, ...args);
+  }
+
+  function logInfo(message, ...args) {
+    if (shouldLog(LOG_LEVELS.INFO))
+      console.log(`[Stage1ProviderAbsTests INFO] ${message}`, ...args);
+  }
+
+  function logDebug(message, ...args) {
+    if (shouldLog(LOG_LEVELS.DEBUG))
+      console.log(`[Stage1ProviderAbsTests DEBUG] ${message}`, ...args);
+  }
+
+  // ============================================================================
+  // INTERNAL HELPERS
+  // ============================================================================
+
+  /**
+   * Create a unique throwaway test container appended to body.
+   * Caller is responsible for `.remove()` (typically in a finally block).
+   */
+  function createTestContainer(prefix) {
+    const div = document.createElement("div");
+    div.id =
+      (prefix || "stage1-providerabs-test") +
+      "-" +
+      Date.now() +
+      "-" +
+      Math.floor(Math.random() * 1e6);
+    div.style.display = "none";
+    document.body.appendChild(div);
+    return div;
+  }
+
+  /**
+   * Print one assertion in the project's test convention. Returns the
+   * boolean unchanged so callers can ANDify results.
+   */
+  function check(name, condition) {
+    if (condition) {
+      console.log(`  ✅ ${name}`);
+      return true;
+    }
+    console.log(`  ❌ ${name}`);
+    return false;
+  }
+
+  // ============================================================================
+  // SUB-TEST 1: REGISTRY + PROVIDER STATIC INFRASTRUCTURE
+  // ============================================================================
+
+  window.testStage1_ProviderAbstraction_RegistryAndProvider =
+    async function () {
+      console.log("\n🧪 TEST 1: Registry + Provider Static Infrastructure");
+      console.log("======================================================\n");
+      try {
+        let allOk = true;
+        const reg = window.EmbedProviderRegistry;
+
+        allOk =
+          check(
+            "EmbedProviderRegistry is a non-null object",
+            reg !== null && typeof reg === "object"
+          ) && allOk;
+
+        const expectedRegMethods = [
+          "register",
+          "get",
+          "has",
+          "unregister",
+          "list",
+          "clear",
+        ];
+        for (const m of expectedRegMethods) {
+          allOk =
+            check(
+              `Registry has method: ${m}`,
+              typeof reg?.[m] === "function"
+            ) && allOk;
+        }
+
+        allOk =
+          check(
+            "Registry has openrouter provider",
+            reg?.has?.("openrouter") === true
+          ) && allOk;
+
+        const provider = reg?.get?.("openrouter");
+        allOk =
+          check(
+            "get('openrouter') returns non-null object",
+            provider !== null && typeof provider === "object"
+          ) && allOk;
+        allOk = check("provider.id === 'openrouter'", provider?.id === "openrouter") && allOk;
+
+        const expectedWireMethods = [
+          "buildRequest",
+          "endpoint",
+          "parseStreamChunk",
+          "parseResponse",
+        ];
+        for (const m of expectedWireMethods) {
+          allOk =
+            check(
+              `Provider has wire method: ${m}`,
+              typeof provider?.[m] === "function"
+            ) && allOk;
+        }
+
+        const caps = provider?.capabilities;
+        allOk =
+          check(
+            "provider.capabilities is non-null, non-array object",
+            caps !== null && typeof caps === "object" && !Array.isArray(caps)
+          ) && allOk;
+
+        const expectedCapFlags = [
+          "streaming",
+          "images",
+          "pdf",
+          "reasoning",
+          "toolCalls",
+        ];
+        for (const f of expectedCapFlags) {
+          allOk =
+            check(`capabilities.${f} is boolean`, typeof caps?.[f] === "boolean") &&
+            allOk;
+        }
+
+        console.log(allOk ? "\n🎉 TEST 1 PASSED!\n" : "\n❌ TEST 1 FAILED.\n");
+        return allOk;
+      } catch (error) {
+        console.error(`❌ TEST 1 FAILED with error: ${error.message}`);
+        return false;
+      }
+    };
+
+  // ============================================================================
+  // SUB-TEST 2: LOOKUP RULE ACROSS ALL BRANCHES
+  // ============================================================================
+
+  window.testStage1_ProviderAbstraction_LookupRule = async function () {
+    console.log("\n🧪 TEST 2: Lookup Rule Across All Branches");
+    console.log("============================================\n");
+    try {
+      let allOk = true;
+      const lookup = window.EmbedProviderLookup;
+
+      allOk =
+        check(
+          "EmbedProviderLookup is a non-null object",
+          lookup !== null && typeof lookup === "object"
+        ) && allOk;
+      allOk =
+        check(
+          "EmbedProviderLookup.resolve is a function",
+          typeof lookup?.resolve === "function"
+        ) && allOk;
+
+      const expectedReserved = new Set([
+        "openrouter",
+        "azure-openai",
+        "azure-inference",
+        "anthropic-foundry",
+      ]);
+      const actualReserved = new Set(lookup?.getReservedPrefixes?.() ?? []);
+      const reservedMatches =
+        expectedReserved.size === actualReserved.size &&
+        [...expectedReserved].every((p) => actualReserved.has(p));
+      allOk =
+        check(
+          "getReservedPrefixes() returns the four expected prefixes (set equality)",
+          reservedMatches
+        ) && allOk;
+
+      const isOR = (p) => p !== null && typeof p === "object" && p.id === "openrouter";
+
+      // Reserved prefixes — strict lookup
+      allOk =
+        check(
+          "getProvider('openrouter/anthropic/claude-3.5-haiku') → openrouter",
+          isOR(OpenRouterEmbed.getProvider("openrouter/anthropic/claude-3.5-haiku"))
+        ) && allOk;
+      // Was 'azure-openai/gpt-5.4-mini' until Stage 2.1 registered the adapter.
+      // Switched to 'anthropic-foundry/...' which stays unregistered (Stage 4 deferred).
+      allOk =
+        check(
+          "getProvider('anthropic-foundry/foo') → null",
+          OpenRouterEmbed.getProvider("anthropic-foundry/foo") === null
+        ) && allOk;
+      allOk =
+        check(
+          "getProvider('azure-inference/foo') → null",
+          OpenRouterEmbed.getProvider("azure-inference/foo") === null
+        ) && allOk;
+      allOk =
+        check(
+          "getProvider('anthropic-foundry/bar') → null",
+          OpenRouterEmbed.getProvider("anthropic-foundry/bar") === null
+        ) && allOk;
+
+      // Legacy fallback
+      allOk =
+        check(
+          "getProvider('anthropic/claude-3.5-haiku') → openrouter (legacy)",
+          isOR(OpenRouterEmbed.getProvider("anthropic/claude-3.5-haiku"))
+        ) && allOk;
+      allOk =
+        check(
+          "getProvider('mistralai/mistral-large') → openrouter (legacy)",
+          isOR(OpenRouterEmbed.getProvider("mistralai/mistral-large"))
+        ) && allOk;
+      allOk =
+        check(
+          "getProvider('some-bare-model-name') → openrouter (no slash)",
+          isOR(OpenRouterEmbed.getProvider("some-bare-model-name"))
+        ) && allOk;
+
+      // Defensive
+      allOk =
+        check(
+          "getProvider('') → openrouter (defensive)",
+          isOR(OpenRouterEmbed.getProvider(""))
+        ) && allOk;
+      allOk =
+        check(
+          "getProvider(undefined) → openrouter (defensive)",
+          isOR(OpenRouterEmbed.getProvider(undefined))
+        ) && allOk;
+      allOk =
+        check(
+          "getProvider(null) → openrouter (defensive)",
+          isOR(OpenRouterEmbed.getProvider(null))
+        ) && allOk;
+
+      console.log(allOk ? "\n🎉 TEST 2 PASSED!\n" : "\n❌ TEST 2 FAILED.\n");
+      return allOk;
+    } catch (error) {
+      console.error(`❌ TEST 2 FAILED with error: ${error.message}`);
+      return false;
+    }
+  };
+
+  // ============================================================================
+  // SUB-TEST 3: INSTANCE API — provider getter + setModel re-resolution
+  // ============================================================================
+
+  window.testStage1_ProviderAbstraction_InstanceAPI = async function () {
+    console.log("\n🧪 TEST 3: Instance Provider Getter + setModel");
+    console.log("================================================\n");
+    const div = createTestContainer("stage1-providerabs-instance");
+    try {
+      let allOk = true;
+      const embed = new OpenRouterEmbed({
+        containerId: div.id,
+        model: "anthropic/claude-haiku-4.5",
+      });
+      allOk = check("Embed constructed successfully", true) && allOk;
+      allOk =
+        check(
+          "embed.provider returns openrouter (legacy fallback)",
+          embed.provider?.id === "openrouter"
+        ) && allOk;
+
+      // Was 'azure-openai/gpt-5.4-mini' until Stage 2.1 registered the adapter.
+      // Switched to 'anthropic-foundry/...' which stays unregistered (Stage 4 deferred).
+      embed.setModel("anthropic-foundry/foo");
+      allOk =
+        check(
+          "After setModel('anthropic-foundry/...'), embed.provider returns null",
+          embed.provider === null
+        ) && allOk;
+
+      embed.setModel("openrouter/anthropic/claude-3.5-haiku");
+      allOk =
+        check(
+          "After setModel('openrouter/...'), embed.provider returns openrouter",
+          embed.provider?.id === "openrouter"
+        ) && allOk;
+
+      embed.setModel("anthropic/claude-haiku-4.5");
+      allOk =
+        check(
+          "After setModel('anthropic/...'), embed.provider returns openrouter (legacy)",
+          embed.provider?.id === "openrouter"
+        ) && allOk;
+
+      console.log(allOk ? "\n🎉 TEST 3 PASSED!\n" : "\n❌ TEST 3 FAILED.\n");
+      return allOk;
+    } catch (error) {
+      console.error(`❌ TEST 3 FAILED with error: ${error.message}`);
+      return false;
+    } finally {
+      div.remove();
+    }
+  };
+
+  // ============================================================================
+  // SUB-TEST 4: MISCONFIG FAIL-FAST PATH
+  // ============================================================================
+
+  window.testStage1_ProviderAbstraction_MisconfigError = async function () {
+    console.log("\n🧪 TEST 4: Misconfig Fail-Fast (no provider for model)");
+    console.log("========================================================\n");
+    const div = createTestContainer("stage1-providerabs-misconfig");
+    let embed = null;
+    let originalNotifyError = null;
+
+    try {
+      embed = new OpenRouterEmbed({
+        containerId: div.id,
+        model: "anthropic/claude-haiku-4.5",
+      });
+
+      // Spy on notifications.error (per-instance, restored in finally).
+      const notificationCalls = [];
+      originalNotifyError = embed.notifications.error;
+      embed.notifications.error = (msg) => {
+        notificationCalls.push(msg);
+      };
+
+      // Switch to a reserved-but-unregistered model.
+      // Was 'azure-openai/gpt-5.4-mini' until Stage 2.1 registered the adapter.
+      // Switched to 'anthropic-foundry/...' which stays unregistered (Stage 4 deferred).
+      embed.setModel("anthropic-foundry/foo");
+
+      let caughtError = null;
+      try {
+        await embed.sendStreamingRequest({ userPrompt: "hi" });
+      } catch (err) {
+        caughtError = err;
+      }
+
+      let allOk = true;
+      allOk =
+        check("sendStreamingRequest threw", caughtError !== null) && allOk;
+      allOk =
+        check(
+          "Error message names the model",
+          caughtError?.message?.includes("'anthropic-foundry/foo'") === true
+        ) && allOk;
+      allOk =
+        check(
+          "Error message contains 'Registered providers:'",
+          caughtError?.message?.includes("Registered providers:") === true
+        ) && allOk;
+      allOk =
+        check(
+          "Error message contains 'Reserved but not loaded:'",
+          caughtError?.message?.includes("Reserved but not loaded:") === true
+        ) && allOk;
+      allOk =
+        check(
+          "notifications.error was called exactly once",
+          notificationCalls.length === 1
+        ) && allOk;
+      allOk =
+        check(
+          "Notification message contains 'No provider registered for model'",
+          typeof notificationCalls[0] === "string" &&
+            notificationCalls[0].includes("No provider registered for model")
+        ) && allOk;
+
+      console.log(allOk ? "\n🎉 TEST 4 PASSED!\n" : "\n❌ TEST 4 FAILED.\n");
+      return allOk;
+    } catch (error) {
+      console.error(`❌ TEST 4 FAILED with error: ${error.message}`);
+      return false;
+    } finally {
+      if (embed && originalNotifyError !== null) {
+        try {
+          embed.notifications.error = originalNotifyError;
+        } catch (_) {
+          /* defensive — restore best-effort */
+        }
+      }
+      div.remove();
+    }
+  };
+
+  // ============================================================================
+  // SUB-TEST 5: REAL OPENROUTER ROUND-TRIP
+  // ============================================================================
+
+  window.testStage1_ProviderAbstraction_RealDispatch = async function () {
+    console.log("\n🧪 TEST 5: Real OpenRouter Round-Trip Through New Dispatch");
+    console.log("=============================================================\n");
+    const div = createTestContainer("stage1-providerabs-real");
+    try {
+      const embed = new OpenRouterEmbed({
+        containerId: div.id,
+        model: "anthropic/claude-haiku-4.5",
+      });
+
+      let response = null;
+      let networkError = null;
+      try {
+        response = await embed.sendRequest(
+          "Reply with exactly the two characters: OK"
+        );
+      } catch (err) {
+        networkError = err;
+      }
+
+      if (networkError) {
+        console.error(
+          `❌ TEST 5 FAILED — network error: ${networkError.message}`
+        );
+        return false;
+      }
+
+      let allOk = true;
+      allOk =
+        check(
+          "response.text is a non-empty string",
+          typeof response?.text === "string" && response.text.length > 0
+        ) && allOk;
+
+      const trimmed = (response?.text ?? "").trim();
+      allOk =
+        check(
+          "response.text starts with 'OK' (case-insensitive, trailing punctuation allowed)",
+          /^ok\b/i.test(trimmed)
+        ) && allOk;
+      allOk =
+        check("Container was populated", div.innerHTML.length > 0) && allOk;
+
+      console.log(allOk ? "\n🎉 TEST 5 PASSED!\n" : "\n❌ TEST 5 FAILED.\n");
+      return allOk;
+    } catch (error) {
+      console.error(`❌ TEST 5 FAILED with error: ${error.message}`);
+      return false;
+    } finally {
+      div.remove();
+    }
+  };
+
+  // ============================================================================
+  // MASTER RUNNER
+  // ============================================================================
+
+  window.testStage1_ProviderAbstraction_All = async function () {
+    console.clear();
+    console.log(
+      "╔═══════════════════════════════════════════════════════════╗"
+    );
+    console.log("║   OpenRouter Embed - Stage 1 Provider Abstraction Tests  ║");
+    console.log(
+      "╚═══════════════════════════════════════════════════════════╝\n"
+    );
+
+    const results = {
+      registryAndProvider:
+        await window.testStage1_ProviderAbstraction_RegistryAndProvider(),
+      lookupRule: await window.testStage1_ProviderAbstraction_LookupRule(),
+      instanceAPI: await window.testStage1_ProviderAbstraction_InstanceAPI(),
+      misconfigError:
+        await window.testStage1_ProviderAbstraction_MisconfigError(),
+      realDispatch:
+        await window.testStage1_ProviderAbstraction_RealDispatch(),
+    };
+
+    console.log("\n" + "═".repeat(60));
+    console.log("📊 TEST RESULTS");
+    console.log("═".repeat(60));
+
+    const order = [
+      "registryAndProvider",
+      "lookupRule",
+      "instanceAPI",
+      "misconfigError",
+      "realDispatch",
+    ];
+    let passed = 0;
+    for (const key of order) {
+      console.log(results[key] ? `✅ ${key}` : `❌ ${key}`);
+      if (results[key]) passed++;
+    }
+
+    console.log("\n" + "═".repeat(60));
+    if (passed === order.length) {
+      console.log(`🎉 RESULTS: ${passed}/${order.length} tests passed`);
+    } else {
+      console.log(`⚠️ RESULTS: ${passed}/${order.length} tests passed`);
+    }
+    console.log("═".repeat(60));
+
+    if (passed === order.length) {
+      console.log(
+        "\n✅ 🎉 ALL STAGE 1 PROVIDER-ABSTRACTION TESTS PASSED!\n"
+      );
+    } else {
+      console.log(
+        "\n❌ Some tests failed. Please review the output above.\n"
+      );
+    }
+
+    window._stage1ProviderAbstractionResults = {
+      passed,
+      total: order.length,
+      results,
+    };
+
+    return { passed, total: order.length, results };
+  };
+
+  // ============================================================================
+  // INITIALISATION LOG
+  // ============================================================================
+
+  logInfo("Stage 1 Provider Abstraction Tests (Task 1.4) loaded");
+  logInfo("Run all:    await window.testStage1_ProviderAbstraction_All()");
+  logInfo("Run one:    await window.testStage1_ProviderAbstraction_<SubTestName>()");
+})();

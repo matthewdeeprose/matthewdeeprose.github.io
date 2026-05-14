@@ -112,6 +112,24 @@
     null,
   ];
 
+  /** Valid title source values */
+  const VALID_TITLE_SOURCES = [
+    "original",
+    "user",
+    "ai-generated",
+    "ai-reviewed",
+    null,
+  ];
+
+  /** Valid text-in-image source values */
+  const VALID_TEXT_IN_IMAGE_SOURCES = [
+    "original",
+    "user",
+    "ai-generated",
+    "ai-reviewed",
+    null,
+  ];
+
   /** Valid image source types */
   const VALID_IMAGE_SOURCES = ["mathpix-ocr", "user-upload", "user-paste"];
 
@@ -308,6 +326,7 @@
       originalUrl: null,
       pageNumber: null,
       syntax: "markdown",
+      originalSyntax: null,
       lineNumber: null,
 
       // Image data (populated later — not during buildFromMMD)
@@ -322,6 +341,11 @@
       altTextSource: null,
       longDescription: "",
       longDescriptionSource: null,
+      title: "",
+      titleSource: null,
+      decorative: false,
+      textInImage: "",
+      textInImageSource: null,
       userNotes: "",
 
       // State tracking
@@ -472,6 +496,7 @@
       entry.mmdReference = fullMatch;
       entry.originalUrl = url;
       entry.syntax = syntax;
+      entry.originalSyntax = syntax;
       entry.lineNumber = lineNumber;
       entry.source = "mathpix-ocr";
 
@@ -601,7 +626,25 @@
       entry.lineNumber =
         typeof data.lineNumber === "number" ? data.lineNumber : null;
       entry.syntax = data.syntax || "markdown";
+      // Stage 1 prep: originalSyntax remembers the image's syntax at creation
+      // time. Defaults to whatever `syntax` resolves to so the immutable
+      // "where this came from" record is always populated.
+      entry.originalSyntax =
+        data.originalSyntax !== undefined ? data.originalSyntax : entry.syntax;
       entry.userNotes = data.userNotes || "";
+
+      // Phase 14 (alt-text v1): preserve new metadata fields when supplied.
+      if (data.title !== undefined) entry.title = data.title;
+      if (data.titleSource !== undefined) entry.titleSource = data.titleSource;
+      if (data.decorative !== undefined)
+        entry.decorative = Boolean(data.decorative);
+      if (data.textInImage !== undefined) entry.textInImage = data.textInImage;
+      if (data.textInImageSource !== undefined)
+        entry.textInImageSource = data.textInImageSource;
+      if (data.longDescription !== undefined)
+        entry.longDescription = data.longDescription;
+      if (data.longDescriptionSource !== undefined)
+        entry.longDescriptionSource = data.longDescriptionSource;
 
       this._images.set(id, entry);
       this._metadata.lastUpdated = new Date().toISOString();
@@ -677,6 +720,24 @@
         entry.dimensions = newData.dimensions;
       if (newData.mmdReference !== undefined)
         entry.mmdReference = newData.mmdReference;
+      if (newData.syntax !== undefined) entry.syntax = newData.syntax;
+      // Stage 1 prep: originalSyntax stays untouched if not explicitly
+      // overridden. The current `syntax` may change (e.g. when an image is
+      // wrapped in a figure environment), but the origin must persist.
+      if (newData.originalSyntax !== undefined)
+        entry.originalSyntax = newData.originalSyntax;
+
+      // Phase 14 (alt-text v1): preserve new metadata fields if explicitly
+      // supplied during replacement. Existing values stay put otherwise.
+      if (newData.title !== undefined) entry.title = newData.title;
+      if (newData.titleSource !== undefined)
+        entry.titleSource = newData.titleSource;
+      if (newData.decorative !== undefined)
+        entry.decorative = Boolean(newData.decorative);
+      if (newData.textInImage !== undefined)
+        entry.textInImage = newData.textInImage;
+      if (newData.textInImageSource !== undefined)
+        entry.textInImageSource = newData.textInImageSource;
 
       // Update state
       entry.status = "user-replaced";
@@ -771,6 +832,173 @@
     }
 
     /**
+     * Update title (caption) for an image, with source tracking.
+     *
+     * @param {string} id - Image ID
+     * @param {string} title - New title text
+     * @param {string|null} [source] - Title source: "original", "user", "ai-generated", "ai-reviewed"
+     * @returns {boolean} True if updated, false if image not found
+     */
+    updateTitle(id, title, source) {
+      if (!id || typeof id !== "string") {
+        logWarn("updateTitle() called with invalid ID");
+        return false;
+      }
+
+      const entry = this._images.get(id);
+      if (!entry) {
+        logDebug(`updateTitle(): ID "${id}" not found`);
+        return false;
+      }
+
+      entry.title = typeof title === "string" ? title : "";
+
+      if (source === undefined) {
+        // Keep existing source if not specified
+      } else if (VALID_TITLE_SOURCES.includes(source)) {
+        entry.titleSource = source;
+      } else {
+        logWarn(`updateTitle(): Invalid source "${source}", using "user"`);
+        entry.titleSource = "user";
+      }
+
+      entry.isModified = true;
+      this._metadata.lastUpdated = new Date().toISOString();
+
+      logDebug(
+        `Title updated for ${id}: "${title}" (source: ${entry.titleSource})`,
+      );
+      return true;
+    }
+
+    /**
+     * Update the decorative flag for an image. Any truthy/falsy value is
+     * coerced with Boolean() so "true", 1, null, undefined etc. all behave
+     * predictably.
+     *
+     * @param {string} id - Image ID
+     * @param {*} decorative - Value to coerce to boolean
+     * @returns {boolean} True if updated, false if image not found
+     */
+    updateDecorative(id, decorative) {
+      if (!id || typeof id !== "string") {
+        logWarn("updateDecorative() called with invalid ID");
+        return false;
+      }
+
+      const entry = this._images.get(id);
+      if (!entry) {
+        logDebug(`updateDecorative(): ID "${id}" not found`);
+        return false;
+      }
+
+      entry.decorative = Boolean(decorative);
+      entry.isModified = true;
+      this._metadata.lastUpdated = new Date().toISOString();
+
+      logDebug(`Decorative flag updated for ${id}: ${entry.decorative}`);
+      return true;
+    }
+
+    /**
+     * Update text-in-image (verbatim text content of the image), with source
+     * tracking. Stored only — not serialised to MMD in v1.
+     *
+     * @param {string} id - Image ID
+     * @param {string} text - New text-in-image content
+     * @param {string|null} [source] - Source: "original", "user", "ai-generated", "ai-reviewed"
+     * @returns {boolean} True if updated, false if image not found
+     */
+    updateTextInImage(id, text, source) {
+      if (!id || typeof id !== "string") {
+        logWarn("updateTextInImage() called with invalid ID");
+        return false;
+      }
+
+      const entry = this._images.get(id);
+      if (!entry) {
+        logDebug(`updateTextInImage(): ID "${id}" not found`);
+        return false;
+      }
+
+      entry.textInImage = typeof text === "string" ? text : "";
+
+      if (source === undefined) {
+        // Keep existing source if not specified
+      } else if (VALID_TEXT_IN_IMAGE_SOURCES.includes(source)) {
+        entry.textInImageSource = source;
+      } else {
+        logWarn(
+          `updateTextInImage(): Invalid source "${source}", using "user"`,
+        );
+        entry.textInImageSource = "user";
+      }
+
+      entry.isModified = true;
+      this._metadata.lastUpdated = new Date().toISOString();
+
+      logDebug(
+        `Text-in-image updated for ${id}: "${text}" (source: ${entry.textInImageSource})`,
+      );
+      return true;
+    }
+
+    /**
+     * Update an image entry's `mmdReference` and `syntax` in place.
+     *
+     * Used by the alt-text MMD serialiser when wrap/unwrap transformations
+     * change how the image appears in the MMD (e.g. bare `![](url)` becomes a
+     * `\includegraphics` line inside a figure environment) but the underlying
+     * image data is unchanged. Distinct from `replaceImage`, which is for
+     * genuine image-data replacement and intentionally flips `status` to
+     * `"user-replaced"`; this method preserves `status`, `replacedAt`,
+     * `originalUrl`, `dataUri`, `blob`, `mimeType`, `fileSize`, `originalSyntax`,
+     * and every content field (alt text, caption, long description, etc.).
+     *
+     * @param {string} id - Entry ID
+     * @param {string} mmdReference - New literal MMD reference string (e.g. the
+     *   `\includegraphics[...]{url}` line that was just inserted)
+     * @param {string} syntax - New syntax, one of `"markdown"` or `"includegraphics"`
+     * @returns {boolean} True on success, false if id not found or arguments invalid
+     */
+    updateImageReference(id, mmdReference, syntax) {
+      if (!id || typeof id !== "string") {
+        logWarn("updateImageReference() called with invalid ID");
+        return false;
+      }
+
+      const entry = this._images.get(id);
+      if (!entry) {
+        logDebug(`updateImageReference(): ID "${id}" not found`);
+        return false;
+      }
+
+      if (typeof mmdReference !== "string" || mmdReference.length === 0) {
+        logWarn(
+          `updateImageReference(): mmdReference must be a non-empty string (got ${typeof mmdReference})`,
+        );
+        return false;
+      }
+
+      if (syntax !== "markdown" && syntax !== "includegraphics") {
+        logWarn(
+          `updateImageReference(): syntax must be "markdown" or "includegraphics" (got "${syntax}")`,
+        );
+        return false;
+      }
+
+      entry.mmdReference = mmdReference;
+      entry.syntax = syntax;
+      entry.isModified = true;
+      this._metadata.lastUpdated = new Date().toISOString();
+
+      logDebug(
+        `Image reference updated for ${id}: syntax="${syntax}" mmdReference="${mmdReference}"`,
+      );
+      return true;
+    }
+
+    /**
      * Attach a blob to an existing image entry. Used during ZIP restore
      * when blobs are re-attached separately from JSON data.
      *
@@ -852,6 +1080,9 @@
         withAltText: 0,
         withoutAltText: 0,
         withLongDescription: 0,
+        withTitle: 0,
+        withTextInImage: 0,
+        decorativeCount: 0,
         cdnLinked: 0,
         dataUri: 0,
         downloaded: 0,
@@ -890,6 +1121,21 @@
         // Long description
         if (entry.longDescription && entry.longDescription.length > 0) {
           stats.withLongDescription++;
+        }
+
+        // Title (caption)
+        if (entry.title && entry.title.length > 0) {
+          stats.withTitle++;
+        }
+
+        // Text in image
+        if (entry.textInImage && entry.textInImage.length > 0) {
+          stats.withTextInImage++;
+        }
+
+        // Decorative flag
+        if (entry.decorative === true) {
+          stats.decorativeCount++;
         }
 
         // Status
@@ -1041,6 +1287,26 @@
           entry.status = "missing";
         }
 
+        // Phase 14 (alt-text v1): defensively default new fields when reading
+        // legacy data. The field-copying loop above already defaults to the
+        // createDefaultEntry() values when imgData lacks a key, but this guards
+        // against legacy ZIPs that explicitly stored null for fields that
+        // should be strings, or stored non-boolean values for `decorative`.
+        if (typeof entry.title !== "string") entry.title = "";
+        if (entry.titleSource === undefined) entry.titleSource = null;
+        entry.decorative = Boolean(entry.decorative);
+        if (typeof entry.textInImage !== "string") entry.textInImage = "";
+        if (entry.textInImageSource === undefined)
+          entry.textInImageSource = null;
+
+        // Stage 1 prep: legacy ZIPs predate `originalSyntax`. When the key is
+        // absent, retrofill from the stored `syntax` so the immutable-origin
+        // invariant holds. If `syntax` is also absent, fall back to null.
+        if (imgData.originalSyntax === undefined) {
+          entry.originalSyntax =
+            typeof imgData.syntax === "string" ? imgData.syntax : null;
+        }
+
         this._images.set(entry.id, entry);
         restoredCount++;
       }
@@ -1063,6 +1329,30 @@
       this._metadata.lastUpdated = null;
       this._metadata.version = REGISTRY_VERSION;
       logDebug("Registry cleared");
+    }
+
+    // ========================================================================
+    // STATIC HELPERS
+    // ========================================================================
+
+    /**
+     * Classify an entry's alt-text completion state for UI badges.
+     * Pure function — does not touch registry state. Discoverable via the
+     * class namespace (e.g. MathPixImageRegistry.getAltCompletionStatus).
+     *
+     * @param {Object} entry - Registry entry (or clone)
+     * @returns {"has-alt"|"decorative"|"no-alt"} Status keyword
+     */
+    static getAltCompletionStatus(entry) {
+      if (!entry || typeof entry !== "object") {
+        logWarn("getAltCompletionStatus(): invalid entry, returning 'no-alt'");
+        return "no-alt";
+      }
+      if (entry.decorative === true) return "decorative";
+      if (typeof entry.altText === "string" && entry.altText.length > 0) {
+        return "has-alt";
+      }
+      return "no-alt";
     }
   }
 
@@ -2193,6 +2483,806 @@ Some equations here.
     }
 
     // ========================================================================
+    // GROUP 31: TITLE FIELD
+    // ========================================================================
+    console.log("\n--- 31. Title field ---");
+
+    {
+      // Default value on a fresh entry
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const img = reg.getAllImages()[0];
+      assert("Title: default is empty string", img?.title === "");
+      assert("Title: default titleSource is null", img?.titleSource === null);
+    }
+
+    {
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const id = reg.getAllImages()[0]?.id;
+
+      // Set
+      assert(
+        "updateTitle returns true",
+        reg.updateTitle(id, "Figure caption", "user") === true,
+      );
+      assert("Title set", reg.getImage(id)?.title === "Figure caption");
+      assert(
+        "Title source set",
+        reg.getImage(id)?.titleSource === "user",
+      );
+
+      // Change
+      reg.updateTitle(id, "Updated caption", "ai-generated");
+      assert(
+        "Title changed",
+        reg.getImage(id)?.title === "Updated caption",
+      );
+      assert(
+        "Title source changed",
+        reg.getImage(id)?.titleSource === "ai-generated",
+      );
+
+      // Clear
+      reg.updateTitle(id, "", "user");
+      assert("Title cleared", reg.getImage(id)?.title === "");
+
+      // Invalid source falls back to user
+      reg.updateTitle(id, "test", "bogus-source");
+      assert(
+        "Title: invalid source falls back to 'user'",
+        reg.getImage(id)?.titleSource === "user",
+      );
+
+      // Non-existent ID
+      assert(
+        "updateTitle nonexistent returns false",
+        reg.updateTitle("nope", "x", "user") === false,
+      );
+      assert(
+        "updateTitle null ID returns false",
+        reg.updateTitle(null, "x") === false,
+      );
+    }
+
+    {
+      // Valid sources all accepted
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const id = reg.getAllImages()[0]?.id;
+
+      reg.updateTitle(id, "a", "original");
+      assert(
+        "Title source 'original' accepted",
+        reg.getImage(id)?.titleSource === "original",
+      );
+      reg.updateTitle(id, "a", "ai-reviewed");
+      assert(
+        "Title source 'ai-reviewed' accepted",
+        reg.getImage(id)?.titleSource === "ai-reviewed",
+      );
+      reg.updateTitle(id, "a", null);
+      assert(
+        "Title source null accepted",
+        reg.getImage(id)?.titleSource === null,
+      );
+    }
+
+    {
+      // Stats: withTitle increments correctly
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd2); // 3 images
+      const ids = reg.getAllImages().map((i) => i.id);
+
+      let stats = reg.getStats();
+      assert("Stats: withTitle defaults to 0", stats.withTitle === 0);
+
+      reg.updateTitle(ids[0], "Caption A", "user");
+      stats = reg.getStats();
+      assert(
+        "Stats: withTitle = 1 after one title",
+        stats.withTitle === 1,
+        `Got ${stats.withTitle}`,
+      );
+
+      reg.updateTitle(ids[1], "Caption B", "user");
+      stats = reg.getStats();
+      assert("Stats: withTitle = 2 after two titles", stats.withTitle === 2);
+
+      // Empty title does not count
+      reg.updateTitle(ids[0], "", "user");
+      stats = reg.getStats();
+      assert(
+        "Stats: withTitle = 1 after clearing one",
+        stats.withTitle === 1,
+        `Got ${stats.withTitle}`,
+      );
+    }
+
+    {
+      // Round-trip including legacy JSON
+      const reg1 = new MathPixImageRegistry();
+      reg1.buildFromMMD(mmd1);
+      const id = reg1.getAllImages()[0]?.id;
+      reg1.updateTitle(id, "Round-trip caption", "user");
+
+      const json = reg1.toJSON();
+      assert(
+        "toJSON includes title",
+        json.images[0]?.title === "Round-trip caption",
+      );
+      assert(
+        "toJSON includes titleSource",
+        json.images[0]?.titleSource === "user",
+      );
+
+      const reg2 = new MathPixImageRegistry();
+      reg2.fromJSON(JSON.parse(JSON.stringify(json)));
+      assert(
+        "fromJSON restores title",
+        reg2.getImage(id)?.title === "Round-trip caption",
+      );
+      assert(
+        "fromJSON restores titleSource",
+        reg2.getImage(id)?.titleSource === "user",
+      );
+    }
+
+    {
+      // Legacy JSON without title key loads with default ""
+      const reg = new MathPixImageRegistry();
+      const result = reg.fromJSON({
+        version: "1.0",
+        images: [{ id: "img-legacy", originalUrl: "old.png" }],
+      });
+      assert("Legacy fromJSON: title succeeds", result === true);
+      const img = reg.getImage("img-legacy");
+      assert("Legacy fromJSON: title defaults to ''", img?.title === "");
+      assert(
+        "Legacy fromJSON: titleSource defaults to null",
+        img?.titleSource === null,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 32: DECORATIVE FLAG
+    // ========================================================================
+    console.log("\n--- 32. Decorative flag ---");
+
+    {
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const img = reg.getAllImages()[0];
+      assert("Decorative: default is false", img?.decorative === false);
+    }
+
+    {
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const id = reg.getAllImages()[0]?.id;
+
+      // Boolean true
+      assert(
+        "updateDecorative true returns true",
+        reg.updateDecorative(id, true) === true,
+      );
+      assert("Decorative is true", reg.getImage(id)?.decorative === true);
+
+      // Boolean false
+      reg.updateDecorative(id, false);
+      assert(
+        "Decorative is false after false",
+        reg.getImage(id)?.decorative === false,
+      );
+
+      // String "true" → coerced truthy
+      reg.updateDecorative(id, "true");
+      assert(
+        "Decorative: string 'true' coerces to true",
+        reg.getImage(id)?.decorative === true,
+      );
+
+      // Number 1 → truthy
+      reg.updateDecorative(id, 1);
+      assert(
+        "Decorative: number 1 coerces to true",
+        reg.getImage(id)?.decorative === true,
+      );
+
+      // null → falsy
+      reg.updateDecorative(id, null);
+      assert(
+        "Decorative: null coerces to false",
+        reg.getImage(id)?.decorative === false,
+      );
+
+      // undefined → falsy
+      reg.updateDecorative(id, true);
+      reg.updateDecorative(id, undefined);
+      assert(
+        "Decorative: undefined coerces to false",
+        reg.getImage(id)?.decorative === false,
+      );
+
+      // 0 → falsy
+      reg.updateDecorative(id, true);
+      reg.updateDecorative(id, 0);
+      assert(
+        "Decorative: number 0 coerces to false",
+        reg.getImage(id)?.decorative === false,
+      );
+
+      // Non-existent ID
+      assert(
+        "updateDecorative nonexistent returns false",
+        reg.updateDecorative("nope", true) === false,
+      );
+      assert(
+        "updateDecorative null ID returns false",
+        reg.updateDecorative(null, true) === false,
+      );
+    }
+
+    {
+      // Stats: decorativeCount
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd2); // 3 images
+      const ids = reg.getAllImages().map((i) => i.id);
+
+      let stats = reg.getStats();
+      assert(
+        "Stats: decorativeCount defaults to 0",
+        stats.decorativeCount === 0,
+      );
+
+      reg.updateDecorative(ids[0], true);
+      stats = reg.getStats();
+      assert(
+        "Stats: decorativeCount = 1",
+        stats.decorativeCount === 1,
+        `Got ${stats.decorativeCount}`,
+      );
+
+      reg.updateDecorative(ids[1], true);
+      stats = reg.getStats();
+      assert("Stats: decorativeCount = 2", stats.decorativeCount === 2);
+
+      reg.updateDecorative(ids[0], false);
+      stats = reg.getStats();
+      assert(
+        "Stats: decorativeCount = 1 after toggle off",
+        stats.decorativeCount === 1,
+      );
+    }
+
+    {
+      // Legacy JSON without decorative key loads as false
+      const reg = new MathPixImageRegistry();
+      const result = reg.fromJSON({
+        version: "1.0",
+        images: [{ id: "img-legacy-2", originalUrl: "old.png" }],
+      });
+      assert("Legacy fromJSON: decorative succeeds", result === true);
+      const img = reg.getImage("img-legacy-2");
+      assert(
+        "Legacy fromJSON: decorative defaults to false",
+        img?.decorative === false,
+      );
+    }
+
+    {
+      // Decorative round-trip
+      const reg1 = new MathPixImageRegistry();
+      reg1.buildFromMMD(mmd1);
+      const id = reg1.getAllImages()[0]?.id;
+      reg1.updateDecorative(id, true);
+
+      const json = reg1.toJSON();
+      const reg2 = new MathPixImageRegistry();
+      reg2.fromJSON(JSON.parse(JSON.stringify(json)));
+      assert(
+        "Decorative round-trip preserved",
+        reg2.getImage(id)?.decorative === true,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 33: TEXT IN IMAGE
+    // ========================================================================
+    console.log("\n--- 33. Text in image ---");
+
+    {
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const img = reg.getAllImages()[0];
+      assert("textInImage: default is empty", img?.textInImage === "");
+      assert(
+        "textInImageSource: default is null",
+        img?.textInImageSource === null,
+      );
+    }
+
+    {
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const id = reg.getAllImages()[0]?.id;
+
+      // Set
+      assert(
+        "updateTextInImage returns true",
+        reg.updateTextInImage(id, "Hello world inside image", "user") === true,
+      );
+      assert(
+        "textInImage set",
+        reg.getImage(id)?.textInImage === "Hello world inside image",
+      );
+      assert(
+        "textInImageSource set",
+        reg.getImage(id)?.textInImageSource === "user",
+      );
+
+      // Change
+      reg.updateTextInImage(id, "Different text", "ai-generated");
+      assert(
+        "textInImage changed",
+        reg.getImage(id)?.textInImage === "Different text",
+      );
+      assert(
+        "textInImageSource changed",
+        reg.getImage(id)?.textInImageSource === "ai-generated",
+      );
+
+      // Clear
+      reg.updateTextInImage(id, "", "user");
+      assert("textInImage cleared", reg.getImage(id)?.textInImage === "");
+
+      // Invalid source falls back to user
+      reg.updateTextInImage(id, "x", "bogus-source");
+      assert(
+        "textInImage: invalid source falls back to 'user'",
+        reg.getImage(id)?.textInImageSource === "user",
+      );
+
+      // Non-existent ID
+      assert(
+        "updateTextInImage nonexistent returns false",
+        reg.updateTextInImage("nope", "x", "user") === false,
+      );
+      assert(
+        "updateTextInImage null ID returns false",
+        reg.updateTextInImage(null, "x") === false,
+      );
+    }
+
+    {
+      // Valid sources all accepted
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const id = reg.getAllImages()[0]?.id;
+
+      reg.updateTextInImage(id, "a", "original");
+      assert(
+        "textInImage source 'original' accepted",
+        reg.getImage(id)?.textInImageSource === "original",
+      );
+      reg.updateTextInImage(id, "a", "ai-reviewed");
+      assert(
+        "textInImage source 'ai-reviewed' accepted",
+        reg.getImage(id)?.textInImageSource === "ai-reviewed",
+      );
+      reg.updateTextInImage(id, "a", null);
+      assert(
+        "textInImage source null accepted",
+        reg.getImage(id)?.textInImageSource === null,
+      );
+    }
+
+    {
+      // Stats: withTextInImage
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd2); // 3 images
+      const ids = reg.getAllImages().map((i) => i.id);
+
+      let stats = reg.getStats();
+      assert(
+        "Stats: withTextInImage defaults to 0",
+        stats.withTextInImage === 0,
+      );
+
+      reg.updateTextInImage(ids[0], "Some text", "user");
+      stats = reg.getStats();
+      assert(
+        "Stats: withTextInImage = 1",
+        stats.withTextInImage === 1,
+        `Got ${stats.withTextInImage}`,
+      );
+
+      reg.updateTextInImage(ids[1], "More text", "user");
+      stats = reg.getStats();
+      assert(
+        "Stats: withTextInImage = 2",
+        stats.withTextInImage === 2,
+      );
+
+      reg.updateTextInImage(ids[0], "", "user");
+      stats = reg.getStats();
+      assert(
+        "Stats: withTextInImage = 1 after clearing one",
+        stats.withTextInImage === 1,
+      );
+    }
+
+    {
+      // Round-trip + legacy JSON
+      const reg1 = new MathPixImageRegistry();
+      reg1.buildFromMMD(mmd1);
+      const id = reg1.getAllImages()[0]?.id;
+      reg1.updateTextInImage(id, "Round-trip text", "user");
+
+      const json = reg1.toJSON();
+      assert(
+        "toJSON includes textInImage",
+        json.images[0]?.textInImage === "Round-trip text",
+      );
+      assert(
+        "toJSON includes textInImageSource",
+        json.images[0]?.textInImageSource === "user",
+      );
+
+      const reg2 = new MathPixImageRegistry();
+      reg2.fromJSON(JSON.parse(JSON.stringify(json)));
+      assert(
+        "fromJSON restores textInImage",
+        reg2.getImage(id)?.textInImage === "Round-trip text",
+      );
+      assert(
+        "fromJSON restores textInImageSource",
+        reg2.getImage(id)?.textInImageSource === "user",
+      );
+    }
+
+    {
+      // Legacy JSON without textInImage key loads with default ""
+      const reg = new MathPixImageRegistry();
+      const result = reg.fromJSON({
+        version: "1.0",
+        images: [{ id: "img-legacy-3", originalUrl: "old.png" }],
+      });
+      assert("Legacy fromJSON: textInImage succeeds", result === true);
+      const img = reg.getImage("img-legacy-3");
+      assert(
+        "Legacy fromJSON: textInImage defaults to ''",
+        img?.textInImage === "",
+      );
+      assert(
+        "Legacy fromJSON: textInImageSource defaults to null",
+        img?.textInImageSource === null,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 34: getAltCompletionStatus HELPER
+    // ========================================================================
+    console.log("\n--- 34. getAltCompletionStatus helper ---");
+
+    {
+      assert(
+        "Static helper exists on class",
+        typeof MathPixImageRegistry.getAltCompletionStatus === "function",
+      );
+
+      // Empty alt + decorative false → no-alt
+      assert(
+        "Empty alt + decorative false → 'no-alt'",
+        MathPixImageRegistry.getAltCompletionStatus({
+          altText: "",
+          decorative: false,
+        }) === "no-alt",
+      );
+
+      // Alt present + decorative false → has-alt
+      assert(
+        "Alt + decorative false → 'has-alt'",
+        MathPixImageRegistry.getAltCompletionStatus({
+          altText: "A diagram",
+          decorative: false,
+        }) === "has-alt",
+      );
+
+      // Alt present + decorative true → decorative
+      assert(
+        "Alt + decorative true → 'decorative'",
+        MathPixImageRegistry.getAltCompletionStatus({
+          altText: "A diagram",
+          decorative: true,
+        }) === "decorative",
+      );
+
+      // Empty alt + decorative true → decorative
+      assert(
+        "Empty alt + decorative true → 'decorative'",
+        MathPixImageRegistry.getAltCompletionStatus({
+          altText: "",
+          decorative: true,
+        }) === "decorative",
+      );
+
+      // Null entry → no-alt
+      assert(
+        "Null entry → 'no-alt'",
+        MathPixImageRegistry.getAltCompletionStatus(null) === "no-alt",
+      );
+
+      // Non-object entry → no-alt
+      assert(
+        "String entry → 'no-alt'",
+        MathPixImageRegistry.getAltCompletionStatus("string") === "no-alt",
+      );
+      assert(
+        "Number entry → 'no-alt'",
+        MathPixImageRegistry.getAltCompletionStatus(42) === "no-alt",
+      );
+      assert(
+        "Undefined entry → 'no-alt'",
+        MathPixImageRegistry.getAltCompletionStatus(undefined) === "no-alt",
+      );
+
+      // Real registry entry round-trip
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const id = reg.getAllImages()[0]?.id;
+      reg.updateAltText(id, "Real alt text", "user");
+      assert(
+        "Real entry with alt → 'has-alt'",
+        MathPixImageRegistry.getAltCompletionStatus(reg.getImage(id)) ===
+          "has-alt",
+      );
+      reg.updateDecorative(id, true);
+      assert(
+        "Real entry decorative → 'decorative'",
+        MathPixImageRegistry.getAltCompletionStatus(reg.getImage(id)) ===
+          "decorative",
+      );
+    }
+
+    // ========================================================================
+    // GROUP 35: originalSyntax FIELD (Stage 1 prep)
+    // ========================================================================
+    console.log("\n--- 35. originalSyntax field ---");
+
+    {
+      // 1. Default value — the createDefaultEntry() literal is null. Probe via
+      // fromJSON on an imgData object lacking both keys: the retrofill yields
+      // null when there's no syntax to fall back to, which matches the default.
+      const probeReg = new MathPixImageRegistry();
+      probeReg.fromJSON({
+        version: "1.0",
+        images: [{ id: "img-probe" }],
+      });
+      const probe = probeReg.getImage("img-probe");
+      assert(
+        "Default entry: originalSyntax field exists with null default",
+        probe !== null && probe.originalSyntax === null,
+      );
+
+      // 2. Populated on buildFromMMD for markdown image (matches `syntax`)
+      const regMd = new MathPixImageRegistry();
+      regMd.buildFromMMD(mmd1);
+      const mdImg = regMd.getAllImages()[0];
+      assert(
+        "buildFromMMD markdown: originalSyntax === 'markdown' (matches syntax)",
+        mdImg?.originalSyntax === "markdown" &&
+          mdImg?.originalSyntax === mdImg?.syntax,
+      );
+
+      // 3. Populated on buildFromMMD for includegraphics image
+      const regLatex = new MathPixImageRegistry();
+      regLatex.buildFromMMD(mmd8);
+      const latexImg = regLatex.getAllImages()[0];
+      assert(
+        "buildFromMMD includegraphics: originalSyntax === 'includegraphics' (matches syntax)",
+        latexImg?.originalSyntax === "includegraphics" &&
+          latexImg?.originalSyntax === latexImg?.syntax,
+      );
+
+      // 4. addImage default — when originalSyntax not supplied, derives from syntax
+      const regAdd = new MathPixImageRegistry();
+      const addedDefault = regAdd.addImage({ syntax: "markdown" });
+      assert(
+        "addImage without originalSyntax: defaults from syntax 'markdown'",
+        addedDefault?.originalSyntax === "markdown",
+      );
+
+      // 5. addImage explicit — both fields preserved as given
+      const regExplicit = new MathPixImageRegistry();
+      const addedExplicit = regExplicit.addImage({
+        syntax: "includegraphics",
+        originalSyntax: "markdown",
+      });
+      assert(
+        "addImage explicit: syntax preserved as 'includegraphics'",
+        addedExplicit?.syntax === "includegraphics",
+      );
+      assert(
+        "addImage explicit: originalSyntax preserved as 'markdown'",
+        addedExplicit?.originalSyntax === "markdown",
+      );
+
+      // 6. replaceImage preserves originalSyntax when not supplied
+      const regReplace = new MathPixImageRegistry();
+      regReplace.buildFromMMD(mmd1);
+      const replaceId = regReplace.getAllImages()[0]?.id;
+      regReplace.replaceImage(replaceId, {
+        originalUrl: "replaced.png",
+        syntax: "includegraphics",
+      });
+      const replaced = regReplace.getImage(replaceId);
+      assert(
+        "replaceImage: syntax updated to 'includegraphics'",
+        replaced?.syntax === "includegraphics",
+      );
+      assert(
+        "replaceImage: originalSyntax preserved as 'markdown'",
+        replaced?.originalSyntax === "markdown",
+      );
+
+      // 7. toJSON / fromJSON round-trip
+      const regRT1 = new MathPixImageRegistry();
+      regRT1.buildFromMMD(mmd2);
+      const json = JSON.parse(JSON.stringify(regRT1.toJSON()));
+      const regRT2 = new MathPixImageRegistry();
+      regRT2.fromJSON(json);
+      const rtImages = regRT2.getAllImages();
+      const allHaveOriginalSyntax = rtImages.every(
+        (img) => img.originalSyntax === img.syntax,
+      );
+      assert(
+        "toJSON/fromJSON round-trip: originalSyntax survives for all entries",
+        allHaveOriginalSyntax,
+      );
+
+      // 8. Legacy JSON retrofill — markdown
+      const regLegacyMd = new MathPixImageRegistry();
+      regLegacyMd.fromJSON({
+        version: "1.0",
+        images: [{ id: "img-legacy-md", syntax: "markdown" }],
+      });
+      const legacyMd = regLegacyMd.getImage("img-legacy-md");
+      assert(
+        "Legacy JSON (markdown, no originalSyntax): retrofills to 'markdown'",
+        legacyMd?.originalSyntax === "markdown",
+      );
+
+      // 8b. Legacy JSON retrofill — includegraphics
+      const regLegacyLatex = new MathPixImageRegistry();
+      regLegacyLatex.fromJSON({
+        version: "1.0",
+        images: [{ id: "img-legacy-latex", syntax: "includegraphics" }],
+      });
+      const legacyLatex = regLegacyLatex.getImage("img-legacy-latex");
+      assert(
+        "Legacy JSON (includegraphics, no originalSyntax): retrofills to 'includegraphics'",
+        legacyLatex?.originalSyntax === "includegraphics",
+      );
+
+      // 9. Legacy JSON with both syntax and originalSyntax absent → null
+      const regLegacyEmpty = new MathPixImageRegistry();
+      regLegacyEmpty.fromJSON({
+        version: "1.0",
+        images: [{ id: "img-legacy-empty" }],
+      });
+      const legacyEmpty = regLegacyEmpty.getImage("img-legacy-empty");
+      assert(
+        "Legacy JSON (neither field): originalSyntax defaults to null",
+        legacyEmpty?.originalSyntax === null,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 36: updateImageReference — narrow reference refresh
+    // ========================================================================
+    console.log("\n--- 36. updateImageReference ---");
+    {
+      // Shared fixture: CDN-linked markdown image. Initial state is well-known
+      // (status="cdn-linked", replacedAt=null, originalSyntax="markdown",
+      // isModified=false) so we can detect any unintended mutation precisely.
+      const mmdRef = "Hello\n![](https://cdn.mathpix.com/x.png)\nWorld";
+
+      // 1. Method updates fields correctly
+      const reg1 = new MathPixImageRegistry();
+      reg1.buildFromMMD(mmdRef);
+      const id1 = reg1.getAllImages()[0].id;
+      const newRef =
+        "\\includegraphics[alt={},max width=\\textwidth]{https://cdn.mathpix.com/x.png}";
+      const ok1 = reg1.updateImageReference(id1, newRef, "includegraphics");
+      const after1 = reg1.getImage(id1);
+      assert(
+        "updateImageReference: returns true on success",
+        ok1 === true,
+      );
+      assert(
+        "updateImageReference: mmdReference + syntax updated",
+        after1.mmdReference === newRef && after1.syntax === "includegraphics",
+        `mmdReference="${after1.mmdReference}" syntax="${after1.syntax}"`,
+      );
+
+      // 2. Status preserved
+      assert(
+        "updateImageReference: status preserved (cdn-linked, not user-replaced)",
+        after1.status === "cdn-linked",
+        `got "${after1.status}"`,
+      );
+
+      // 3. replacedAt preserved
+      assert(
+        "updateImageReference: replacedAt preserved (null on fresh CDN entry)",
+        after1.replacedAt === null,
+        `got ${JSON.stringify(after1.replacedAt)}`,
+      );
+
+      // 4. originalSyntax preserved
+      assert(
+        "updateImageReference: originalSyntax preserved",
+        after1.originalSyntax === "markdown",
+        `got "${after1.originalSyntax}"`,
+      );
+
+      // 5. isModified set to true
+      assert(
+        "updateImageReference: isModified set to true",
+        after1.isModified === true,
+      );
+
+      // 6. registry-level lastUpdated metadata refreshed.
+      // Note: this entry-shape does NOT carry a per-entry `lastUpdated` field;
+      // the established convention (matching updateAltText / updateTitle / etc.)
+      // is to refresh the registry's `_metadata.lastUpdated`. We assert that
+      // metadata changed across the call, which is the equivalent observable.
+      const reg2 = new MathPixImageRegistry();
+      reg2.buildFromMMD(mmdRef);
+      const id2 = reg2.getAllImages()[0].id;
+      const metaBefore = reg2.getMetadata().lastUpdated;
+      // Force a measurable delay so toISOString differs even on fast clocks.
+      const t0 = Date.now();
+      while (Date.now() === t0) {
+        /* tight loop, exits after 1ms */
+      }
+      reg2.updateImageReference(id2, newRef, "includegraphics");
+      const metaAfter = reg2.getMetadata().lastUpdated;
+      assert(
+        "updateImageReference: registry lastUpdated metadata refreshed",
+        metaBefore !== metaAfter,
+        `before="${metaBefore}" after="${metaAfter}"`,
+      );
+
+      // 7. Returns false for unknown id
+      const reg3 = new MathPixImageRegistry();
+      reg3.buildFromMMD(mmdRef);
+      const beforeAll3 = JSON.stringify(reg3.getAllImages());
+      const ok3 = reg3.updateImageReference("bogus-id-xyz", newRef, "markdown");
+      const afterAll3 = JSON.stringify(reg3.getAllImages());
+      assert(
+        "updateImageReference: returns false on unknown id, no mutation",
+        ok3 === false && beforeAll3 === afterAll3,
+      );
+
+      // 8. Returns false for invalid syntax (entry unchanged)
+      const reg4 = new MathPixImageRegistry();
+      reg4.buildFromMMD(mmdRef);
+      const id4 = reg4.getAllImages()[0].id;
+      const before4 = reg4.getImage(id4);
+      const ok4 = reg4.updateImageReference(id4, newRef, "html");
+      const after4 = reg4.getImage(id4);
+      assert(
+        "updateImageReference: returns false on invalid syntax, entry unchanged",
+        ok4 === false &&
+          after4.mmdReference === before4.mmdReference &&
+          after4.syntax === before4.syntax,
+        `ok=${ok4} mmdRefSame=${after4.mmdReference === before4.mmdReference} syntaxSame=${after4.syntax === before4.syntax}`,
+      );
+    }
+
+    // ========================================================================
     // SUMMARY
     // ========================================================================
 
@@ -2212,6 +3302,10 @@ Some equations here.
 
     return { passed, failed, total: passed + failed, results };
   };
+
+  // Stage alias for use within the alt-text build plan's vocabulary.
+  // Established at module load — must be assignable immediately, not after first run.
+  window.runStage0Tests = window.testImageRegistry;
 
   logInfo("MathPixImageRegistry module loaded");
 })();

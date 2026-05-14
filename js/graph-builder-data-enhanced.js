@@ -58,17 +58,8 @@ const GraphBuilderDataEnhanced = (function () {
   // COLOUR PALETTE
   // ============================================
 
-  // Accessible, high-contrast palette (matches the "accessible-blue" scheme
-  // used by ChartConfigBuilder.getColours but optimised for series distinction
-  // rather than per-datum distinction). Six colours cover the Phase 1 maxColumns.
-  const SERIES_PALETTE = [
-    "#005c84",
-    "#d45087",
-    "#2f4b7c",
-    "#ff7c43",
-    "#665191",
-    "#a05195",
-  ];
+  // Accessible high-contrast palette, optimised for series distinction.
+  const SERIES_PALETTE = ["#005c84", "#d45087", "#2f4b7c", "#ff7c43", "#665191", "#a05195"];
 
   function getSeriesColours(count) {
     if (typeof count !== "number" || count < 1) return [];
@@ -118,21 +109,20 @@ const GraphBuilderDataEnhanced = (function () {
   }
 
   // ============================================
-  // FORMATTERS
+  // FORMATTERS — wire into ticks.callback / tooltip.callbacks
   // ============================================
-
-  // Chart.js tick/tooltip callbacks receive a numeric value (for axes) or a
-  // parsed context (for tooltips). These formatters accept either and return
-  // a display string. Callers wire them into ticks.callback / tooltip.callbacks.
 
   function formatNumber(value) {
     if (value === null || value === undefined || isNaN(value)) return "";
     return Number(value).toLocaleString("en-GB");
   }
 
-  function formatCurrency(value) {
+  // 3.2.b-1: optional `symbol` arg. Default "£" preserves pre-3.2.b call
+  // sites (Test 2 byte-identity). Empty string renders a bare number.
+  function formatCurrency(value, symbol) {
     if (value === null || value === undefined || isNaN(value)) return "";
-    return "£" + Number(value).toLocaleString("en-GB", {
+    var sym = (typeof symbol === "string") ? symbol : "£";
+    return sym + Number(value).toLocaleString("en-GB", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     });
@@ -231,13 +221,8 @@ const GraphBuilderDataEnhanced = (function () {
     const labelCol = columnConfig[labelIdx] || { type: "text" };
     const xAxisType = labelCol.type === "date" ? "time" : "category";
 
-    // For time-axis charts, sort rows chronologically so the polyline is
-    // drawn left-to-right. Chart.js's TimeScale positions ticks by date
-    // value, but line charts connect points in data-array order — an
-    // unsorted input produces zig-zagging segments across the chart
-    // regardless of chronological tick positions. Sorting here is cheap
-    // (≤ 6 columns of typical form data) and keeps Chart.js config-free
-    // of the ordering concern.
+    // Chronological sort for time-axis: TimeScale positions ticks by date
+    // but line charts connect points in array order — unsorted input zig-zags.
     let orderedRows = rows;
     if (xAxisType === "time") {
       orderedRows = rows.slice().sort((a, b) => {
@@ -271,10 +256,14 @@ const GraphBuilderDataEnhanced = (function () {
         _columnType: col.type || "number",
         _columnIndex: colIdx,
       };
-      // Phase 3.1.b: surface per-column chart-type override so the chart
-      // generator can route each dataset to bar or line for combo charts.
+      // 3.1.b: per-column chart-type override for combo charts.
       if (col.chartType === "bar" || col.chartType === "line") {
         ds._columnChartType = col.chartType;
+      }
+      // 3.2.b-1: per-column currency symbol for tooltip + legend rendering.
+      // Default "£" matches column-manager's getColumns fallback.
+      if (col.type === "currency") {
+        ds._columnSymbol = (typeof col.symbol === "string" && col.symbol) ? col.symbol : "£";
       }
       return ds;
     });
@@ -283,6 +272,17 @@ const GraphBuilderDataEnhanced = (function () {
     // null means mixed — the chart generator falls back to numeric.
     const valueTypes = valueIndices.map((i) => (columnConfig[i] && columnConfig[i].type) || "number");
     const uniformValueType = valueTypes.every((t) => t === valueTypes[0]) ? valueTypes[0] : null;
+
+    // 3.2.b-1: shared currency symbol when uniformValueType === "currency".
+    // null means mixed — chart layer falls back per CURRENCY_DISPLAY_OPTIONS.
+    let uniformValueSymbol = null;
+    if (uniformValueType === "currency") {
+      const syms = valueIndices.map((i) => {
+        const c = columnConfig[i] || {};
+        return (typeof c.symbol === "string" && c.symbol) ? c.symbol : "£";
+      });
+      uniformValueSymbol = syms.every((s) => s === syms[0]) ? syms[0] : null;
+    }
 
     const result = {
       labels: labels,
@@ -295,6 +295,7 @@ const GraphBuilderDataEnhanced = (function () {
         valueIndices: valueIndices,
         valueTypes: valueTypes,
         uniformValueType: uniformValueType,
+        uniformValueSymbol: uniformValueSymbol,
         groupingIndices: groupingIndices,
         rowCount: rows.length,
       },
@@ -325,6 +326,7 @@ const GraphBuilderDataEnhanced = (function () {
         valueIndices: [],
         valueTypes: [],
         uniformValueType: null,
+        uniformValueSymbol: null,
         groupingIndices: [],
         rowCount: 0,
       },
@@ -335,11 +337,8 @@ const GraphBuilderDataEnhanced = (function () {
   // BUBBLE PROCESSOR (Phase 3.1.c)
   // ============================================
 
-  // Bubble charts use {x, y, r} point objects instead of scalar arrays.
-  // First two value-role columns map to x and y; the radius-role column
-  // maps to r. Single dataset — rows become individual points. Negative
-  // or zero radii clamp to 1 with a warning so bubbles stay visible;
-  // semantic colour coding for losses is Phase 4 scope.
+  // Bubble: {x,y,r} point objects, not scalar arrays. First two value-role
+  // cols → x/y; radius-role → r. Negative/zero radii clamp to 1.
   function processBubbleData(rawData, columnConfig) {
     if (!rawData || !Array.isArray(rawData.rows)) {
       logWarn("processBubbleData called without valid rawData.rows");

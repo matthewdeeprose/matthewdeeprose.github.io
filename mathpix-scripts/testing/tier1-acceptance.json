@@ -1,0 +1,566 @@
+{
+  "schemaVersion": "1.0",
+  "tier": 1,
+  "description": "Tier 1 Phase 15-1b acceptance fixture set — pre-fix baselines captured pre-Phase-15-2.",
+  "generated": "2026-05-14T11:57:17.006Z",
+  "fixtures": [
+    {
+      "idx": 1,
+      "name": "(S)-alanine",
+      "smilesInput": "C[C@H](N)C(=O)O",
+      "smilesCanonical": "C[C@H](N)C(=O)O",
+      "inchi": "InChI=1S/C3H7NO2/c1-2(4)3(5)6/h2H,4H2,1H3,(H,5,6)/t2-/m0/s1",
+      "pubchemCID": null,
+      "molFormula": "C3H7NO2",
+      "heavyAtomCount": 6,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [
+        {
+          "atomIdx": 1,
+          "cipCode": "S"
+        }
+      ],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "Atom-level CIP consumer (R/S at α-carbon); Phase 15-2a wires consumer.",
+      "expectedCapabilities": [
+        "cipPrefixInOpener",
+        "cipDescriptorInCOMP"
+      ],
+      "baseline": {
+        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears an amine group (–NH₂). The third carbon bears a carboxylic acid group (–COOH). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
+        "std": "A 6-atom, three-carbon chain with a carboxylic acid group (–COOH), and an amine group (–NH₂).",
+        "short": "A three-carbon chain with a carboxylic acid and an amine.",
+        "functionalGroups": [
+          {
+            "shortName": "acid"
+          },
+          {
+            "shortName": "amine"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 3,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 2,
+      "name": "cis-2-butene",
+      "smilesInput": "C/C=C\\C",
+      "smilesCanonical": "C/C=C\\C",
+      "inchi": "InChI=1S/C4H8/c1-3-4-2/h3-4H,1-2H3/b4-3-",
+      "pubchemCID": null,
+      "molFormula": "C4H8",
+      "heavyAtomCount": 4,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [
+        {
+          "bondIdx": 1,
+          "ezCode": "Z"
+        }
+      ],
+      "role": "Coverage",
+      "purpose": "Bond-level stereo consumer (cis/Z); Phase 15-2a wires consumer.",
+      "expectedCapabilities": [
+        "alkeneGeometryInOpener"
+      ],
+      "baseline": {
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a carbon-carbon double bond (C=C). Each carbon carries implicit hydrogens.",
+        "std": "A 4-atom, four-carbon chain with a carbon-carbon double bond (C=C).",
+        "short": "A four-carbon chain with a double bond.",
+        "functionalGroups": [
+          {
+            "shortName": "alkene"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 4,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 3,
+      "name": "trans-2-butene",
+      "smilesInput": "C/C=C/C",
+      "smilesCanonical": "C/C=C/C",
+      "inchi": "InChI=1S/C4H8/c1-3-4-2/h3-4H,1-2H3/b4-3+",
+      "pubchemCID": null,
+      "molFormula": "C4H8",
+      "heavyAtomCount": 4,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [
+        {
+          "bondIdx": 1,
+          "ezCode": "E"
+        }
+      ],
+      "role": "Disambig",
+      "purpose": "Bond-level stereo consumer (trans/E); disambiguates from #2; Phase 15-2a wires consumer.",
+      "expectedCapabilities": [
+        "alkeneGeometryInOpener"
+      ],
+      "baseline": {
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a carbon-carbon double bond (C=C). Each carbon carries implicit hydrogens.",
+        "std": "A 4-atom, four-carbon chain with a carbon-carbon double bond (C=C).",
+        "short": "A four-carbon chain with a double bond.",
+        "functionalGroups": [
+          {
+            "shortName": "alkene"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 4,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 4,
+      "name": "(R)-2-butanol",
+      "smilesInput": "C[C@@H](O)CC",
+      "smilesCanonical": "CC[C@@H](C)O",
+      "inchi": "InChI=1S/C4H10O/c1-3-4(2)5/h4-5H,3H2,1-2H3/t4-/m1/s1",
+      "pubchemCID": null,
+      "molFormula": "C4H10O",
+      "heavyAtomCount": 5,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [
+        {
+          "atomIdx": 1,
+          "cipCode": "R"
+        }
+      ],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "Atom-level CIP consumer (R); already in migration baseline; Phase 15-2a wires consumer.",
+      "expectedCapabilities": [
+        "cipPrefixInOpener",
+        "cipDescriptorInCOMP"
+      ],
+      "baseline": {
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The third carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
+        "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH).",
+        "short": "A four-carbon chain with a hydroxyl group.",
+        "functionalGroups": [
+          {
+            "shortName": "hydroxyl"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 4,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 5,
+      "name": "butan-1-ol",
+      "smilesInput": "CCCCO",
+      "smilesCanonical": "CCCCO",
+      "inchi": "InChI=1S/C4H10O/c1-2-3-4-5/h5H,2-4H2,1H3",
+      "pubchemCID": null,
+      "molFormula": "C4H10O",
+      "heavyAtomCount": 5,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Disambig",
+      "purpose": "Chain locants — primary alcohol on terminal carbon; Phase 15-2b wires.",
+      "expectedCapabilities": [
+        "chainLocantInName"
+      ],
+      "baseline": {
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The fourth carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
+        "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH).",
+        "short": "A four-carbon chain with a hydroxyl group.",
+        "functionalGroups": [
+          {
+            "shortName": "hydroxyl"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 4,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 6,
+      "name": "butan-2-ol",
+      "smilesInput": "CCC(C)O",
+      "smilesCanonical": "CCC(C)O",
+      "inchi": "InChI=1S/C4H10O/c1-3-4(2)5/h4-5H,3H2,1-2H3",
+      "pubchemCID": null,
+      "molFormula": "C4H10O",
+      "heavyAtomCount": 5,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [
+        {
+          "atomIdx": 2,
+          "cipCode": null
+        }
+      ],
+      "bondStereo": [],
+      "role": "Disambig",
+      "purpose": "Chain locants — secondary alcohol on internal carbon; Phase 15-2b wires.",
+      "expectedCapabilities": [
+        "chainLocantInName"
+      ],
+      "baseline": {
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The third carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
+        "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH).",
+        "short": "A four-carbon chain with a hydroxyl group.",
+        "functionalGroups": [
+          {
+            "shortName": "hydroxyl"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 4,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 7,
+      "name": "tert-butanol",
+      "smilesInput": "CC(C)(C)O",
+      "smilesCanonical": "CC(C)(C)O",
+      "inchi": "InChI=1S/C4H10O/c1-4(2,3)5/h5H,1-3H3",
+      "pubchemCID": null,
+      "molFormula": "C4H10O",
+      "heavyAtomCount": 5,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Disambig",
+      "purpose": "Chain locants + branching — tertiary alcohol on quaternary carbon; Phase 15-2b wires.",
+      "expectedCapabilities": [
+        "chainLocantInName"
+      ],
+      "baseline": {
+        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
+        "std": "A 5-atom, branched carbon chain with three carbons in the longest path with a hydroxyl group (–OH).",
+        "short": "A three-carbon chain with a hydroxyl group.",
+        "functionalGroups": [
+          {
+            "shortName": "hydroxyl"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 3,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 8,
+      "name": "propionitrile",
+      "smilesInput": "CCC#N",
+      "smilesCanonical": "CCC#N",
+      "inchi": "InChI=1S/C3H5N/c1-2-3-4/h2H2,1H3",
+      "pubchemCID": null,
+      "molFormula": "C3H5N",
+      "heavyAtomCount": 4,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "Nitrile group classification; Phase 15-2c adds.",
+      "expectedCapabilities": [
+        "functionalGroupClassifier:nitrile"
+      ],
+      "baseline": {
+        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The third carbon bears an amine group (–NH₂). Each carbon carries implicit hydrogens.",
+        "std": "A 4-atom, three-carbon chain with an amine group (–NH₂).",
+        "short": "A three-carbon chain with an amine.",
+        "functionalGroups": [
+          {
+            "shortName": "amine"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 3,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 9,
+      "name": "1-propanethiol",
+      "smilesInput": "CCCS",
+      "smilesCanonical": "CCCS",
+      "inchi": "InChI=1S/C3H8S/c1-2-3-4/h4H,2-3H2,1H3",
+      "pubchemCID": null,
+      "molFormula": "C3H8S",
+      "heavyAtomCount": 4,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "Thiol group classification; Phase 15-2c adds.",
+      "expectedCapabilities": [
+        "functionalGroupClassifier:thiol"
+      ],
+      "baseline": {
+        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. Each carbon carries implicit hydrogens.",
+        "std": "A 4-atom, three-carbon chain.",
+        "short": "A three-carbon chain.",
+        "functionalGroups": [],
+        "rings": [],
+        "chain": {
+          "length": 3,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 10,
+      "name": "dimethyl sulfoxide",
+      "smilesInput": "CS(=O)C",
+      "smilesCanonical": "CS(C)=O",
+      "inchi": "InChI=1S/C2H6OS/c1-4(2)3/h1-2H3",
+      "pubchemCID": null,
+      "molFormula": "C2H6OS",
+      "heavyAtomCount": 4,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "Sulfoxide group classification; Phase 15-2c adds.",
+      "expectedCapabilities": [
+        "functionalGroupClassifier:sulfoxide"
+      ],
+      "baseline": {
+        "comp": "The structure is a single carbon atom.",
+        "std": "A single carbon atom.",
+        "short": "A single carbon atom.",
+        "functionalGroups": [],
+        "rings": [],
+        "chain": {
+          "length": 1,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 11,
+      "name": "diethyl ether",
+      "smilesInput": "CCOCC",
+      "smilesCanonical": "CCOCC",
+      "inchi": "InChI=1S/C4H10O/c1-3-5-4-2/h3-4H2,1-2H3",
+      "pubchemCID": null,
+      "molFormula": "C4H10O",
+      "heavyAtomCount": 5,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "Acyclic ether group classification; Phase 15-2c adds.",
+      "expectedCapabilities": [
+        "functionalGroupClassifier:etherAcyclic"
+      ],
+      "baseline": {
+        "comp": "The structure is a two-carbon chain. The first carbon is bonded to the second carbon by a single bond. Each carbon carries implicit hydrogens.",
+        "std": "A 5-atom, two-carbon chain.",
+        "short": "A two-carbon chain.",
+        "functionalGroups": [],
+        "rings": [],
+        "chain": {
+          "length": 2,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 12,
+      "name": "methylamine",
+      "smilesInput": "CN",
+      "smilesCanonical": "CN",
+      "inchi": "InChI=1S/CH5N/c1-2/h2H2,1H3",
+      "pubchemCID": null,
+      "molFormula": "CH5N",
+      "heavyAtomCount": 2,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "1° amine subtype; Phase 15-2c adds.",
+      "expectedCapabilities": [
+        "functionalGroupClassifier:amineSubtype1"
+      ],
+      "baseline": {
+        "comp": "A single carbon bearing an amine group (–NH₂).",
+        "std": "A methyl group bonded to an amine group (–NH₂).",
+        "short": "A one-carbon chain with an amine.",
+        "functionalGroups": [
+          {
+            "shortName": "amine"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 1,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 13,
+      "name": "dimethylamine",
+      "smilesInput": "CNC",
+      "smilesCanonical": "CNC",
+      "inchi": "InChI=1S/C2H7N/c1-3-2/h3H,1-2H3",
+      "pubchemCID": null,
+      "molFormula": "C2H7N",
+      "heavyAtomCount": 3,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "2° amine subtype; Phase 15-2c adds.",
+      "expectedCapabilities": [
+        "functionalGroupClassifier:amineSubtype2"
+      ],
+      "baseline": {
+        "comp": "A single carbon bearing an amine group (–NH₂).",
+        "std": "A single carbon bearing an amine group (–NH₂).",
+        "short": "A single carbon bearing an amine.",
+        "functionalGroups": [
+          {
+            "shortName": "amine"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 1,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 14,
+      "name": "trimethylamine",
+      "smilesInput": "CN(C)C",
+      "smilesCanonical": "CN(C)C",
+      "inchi": "InChI=1S/C3H9N/c1-4(2)3/h1-3H3",
+      "pubchemCID": null,
+      "molFormula": "C3H9N",
+      "heavyAtomCount": 4,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Coverage",
+      "purpose": "3° amine subtype; Phase 15-2c adds.",
+      "expectedCapabilities": [
+        "functionalGroupClassifier:amineSubtype3"
+      ],
+      "baseline": {
+        "comp": "A single carbon bearing an amine group (–NH₂).",
+        "std": "A single carbon bearing an amine group (–NH₂).",
+        "short": "A single carbon bearing an amine.",
+        "functionalGroups": [
+          {
+            "shortName": "amine"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 1,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    },
+    {
+      "idx": 15,
+      "name": "acetone",
+      "smilesInput": "CC(=O)C",
+      "smilesCanonical": "CC(C)=O",
+      "inchi": "InChI=1S/C3H6O/c1-3(2)4/h1-2H3",
+      "pubchemCID": null,
+      "molFormula": "C3H6O",
+      "heavyAtomCount": 4,
+      "ringCount": 0,
+      "numAromaticRings": 0,
+      "stereoCenters": [],
+      "bondStereo": [],
+      "role": "Sanity",
+      "purpose": "Ketone sanity canary — should already work; catches 15-2c classifier-ordering regressions.",
+      "expectedCapabilities": [
+        "sanityNoRegression"
+      ],
+      "baseline": {
+        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a ketone group (C=O). Each carbon carries implicit hydrogens.",
+        "std": "A 4-atom, three-carbon chain with a ketone group (C=O).",
+        "short": "A three-carbon chain with a ketone.",
+        "functionalGroups": [
+          {
+            "shortName": "ketone"
+          }
+        ],
+        "rings": [],
+        "chain": {
+          "length": 3,
+          "type": null
+        },
+        "scaffoldType": "chain",
+        "locants": null
+      }
+    }
+  ]
+}

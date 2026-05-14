@@ -126,6 +126,20 @@ const GraphBuilderUI = (function () {
         targetScreen.classList.add("active");
         state.currentScreen = screenName;
 
+        // Phase 3.1.b — Refresh chart-type availability whenever the user
+        // enters Stage 2. This is the single chokepoint for both
+        // navigation paths (core.goToChartType + ProgressNavigator) so
+        // gating for combo (and any future column-count-dependent types)
+        // stays in sync with the latest advanced-mode column configuration.
+        if (
+          screenName === "chart-type" &&
+          typeof chartTypeSelector !== "undefined" &&
+          chartTypeSelector &&
+          typeof chartTypeSelector.refreshAvailability === "function"
+        ) {
+          chartTypeSelector.refreshAvailability();
+        }
+
         // Focus management for accessibility
         setTimeout(() => {
           const heading = targetScreen.querySelector("h2");
@@ -361,6 +375,23 @@ const GraphBuilderUI = (function () {
       };
 
       this.renderTable();
+    }
+
+    /**
+     * Refresh just the stats text "X rows, Y columns" without re-rendering
+     * the preview table. Reads counts from the live DOM so it stays accurate
+     * even when rows are added with empty values (which don't pass
+     * validation and therefore don't reach show()). Phase 3.2.b-3.
+     */
+    refreshStats() {
+      if (!this.statsElement) return;
+      const container = document.getElementById("gb-data-rows");
+      if (!container) return;
+      const rows = container.querySelectorAll(".gb-data-row");
+      if (!rows.length) return;
+      const groups = rows[0].querySelectorAll(".gb-input-group");
+      if (!groups.length) return;
+      this.statsElement.textContent = `${rows.length} rows, ${groups.length} columns`;
     }
 
     /**
@@ -664,6 +695,42 @@ const GraphBuilderUI = (function () {
       const nextButton = document.getElementById("gb-chart-next");
       if (nextButton) {
         nextButton.disabled = true;
+      }
+    }
+
+    /**
+     * Phase 3.1.b/c — Refresh availability of chart-type buttons based on
+     * the current column configuration. Combo requires ≥ 2 value columns;
+     * Bubble requires ≥ 2 value + ≥ 1 radius. Basic mode keeps both hidden.
+     * If the currently selected type becomes unavailable, clear the
+     * selection so the user cannot proceed with an invalid choice.
+     */
+    refreshAvailability() {
+      const enhanced = window.GraphBuilderEnhanced;
+      let valueCols = 0;
+      let radiusCols = 0;
+      if (enhanced && typeof enhanced.getColumnConfiguration === "function") {
+        const cols = enhanced.getColumnConfiguration() || [];
+        valueCols = cols.filter((c) => c && c.role === "value").length;
+        radiusCols = cols.filter((c) => c && c.role === "radius").length;
+      } else {
+        valueCols = 1;
+      }
+
+      this._gateButton("combo", valueCols >= 2);
+      this._gateButton("bubble", valueCols >= 2 && radiusCols >= 1);
+    }
+
+    _gateButton(chartType, allowed) {
+      const button = document.querySelector(
+        '.gb-chart-option[data-chart-type="' + chartType + '"]'
+      );
+      if (!button) return;
+      button.style.display = allowed ? "" : "none";
+      button.disabled = !allowed;
+      button.setAttribute("aria-hidden", allowed ? "false" : "true");
+      if (!allowed && state.selectedChartType === chartType) {
+        this.clearSelection();
       }
     }
   }
@@ -1019,6 +1086,7 @@ const GraphBuilderUI = (function () {
     showPreview: (data) => previewManager.show(data),
     hidePreview: () => previewManager.hide(),
     getPreviewState: () => previewManager.getState(),
+    refreshPreviewStats: () => previewManager.refreshStats(),  // 3.2.b-3
 
     // Chart Type Selection
     selectChartType: (element) => chartTypeSelector.selectType(element),

@@ -117,6 +117,148 @@
   const BASELINE_FILENAME = "migration-baseline.json";
 
   // ---------------------------------------------------------------------
+  // Phase 15-1b Tier 1 acceptance fixture set.
+  //
+  // The 15 fixtures locked at chemistry-phase15-plan.md § 5.2 +
+  // prompt-phase15-1b-tier1-fixture-selection.md § Chemistry context, with
+  // two side-assist authoritative pins documented in
+  // phase15-1b-walkthrough.md §§ 1.6 + 1.7:
+  //
+  //   - #1 (S)-alanine: SMILES C[C@H](N)C(=O)O (NOT spec C[C@@H](N)C(=O)O
+  //     which decodes to (R)-alanine; spec documents remain incoherent for
+  //     the duration of 15-1b; three-document cleanup is post-seal hygiene).
+  //   - #4 (R)-2-butanol: SMILES C[C@@H](O)CC (the migration-baseline-
+  //     consistent form, not plan § 5.2's CC[C@H](C)O — both encode the
+  //     same molecule).
+  //
+  // Per-fixture metadata fields (role, purpose, expectedCapabilities) are
+  // set here from the spec; identity + stereo + baseline-snapshot fields
+  // are populated at capture time by runTier1AcceptanceCapture().
+  // ---------------------------------------------------------------------
+  const TIER1_FIXTURES = [
+    {
+      idx: 1,
+      name: "(S)-alanine",
+      smiles: "C[C@H](N)C(=O)O",
+      role: "Coverage",
+      purpose: "Atom-level CIP consumer (R/S at α-carbon); Phase 15-2a wires consumer.",
+      expectedCapabilities: ["cipPrefixInOpener", "cipDescriptorInCOMP"],
+    },
+    {
+      idx: 2,
+      name: "cis-2-butene",
+      smiles: "C/C=C\\C",
+      role: "Coverage",
+      purpose: "Bond-level stereo consumer (cis/Z); Phase 15-2a wires consumer.",
+      expectedCapabilities: ["alkeneGeometryInOpener"],
+    },
+    {
+      idx: 3,
+      name: "trans-2-butene",
+      smiles: "C/C=C/C",
+      role: "Disambig",
+      purpose: "Bond-level stereo consumer (trans/E); disambiguates from #2; Phase 15-2a wires consumer.",
+      expectedCapabilities: ["alkeneGeometryInOpener"],
+    },
+    {
+      idx: 4,
+      name: "(R)-2-butanol",
+      smiles: "C[C@@H](O)CC",
+      role: "Coverage",
+      purpose: "Atom-level CIP consumer (R); already in migration baseline; Phase 15-2a wires consumer.",
+      expectedCapabilities: ["cipPrefixInOpener", "cipDescriptorInCOMP"],
+    },
+    {
+      idx: 5,
+      name: "butan-1-ol",
+      smiles: "CCCCO",
+      role: "Disambig",
+      purpose: "Chain locants — primary alcohol on terminal carbon; Phase 15-2b wires.",
+      expectedCapabilities: ["chainLocantInName"],
+    },
+    {
+      idx: 6,
+      name: "butan-2-ol",
+      smiles: "CCC(C)O",
+      role: "Disambig",
+      purpose: "Chain locants — secondary alcohol on internal carbon; Phase 15-2b wires.",
+      expectedCapabilities: ["chainLocantInName"],
+    },
+    {
+      idx: 7,
+      name: "tert-butanol",
+      smiles: "CC(C)(C)O",
+      role: "Disambig",
+      purpose: "Chain locants + branching — tertiary alcohol on quaternary carbon; Phase 15-2b wires.",
+      expectedCapabilities: ["chainLocantInName"],
+    },
+    {
+      idx: 8,
+      name: "propionitrile",
+      smiles: "CCC#N",
+      role: "Coverage",
+      purpose: "Nitrile group classification; Phase 15-2c adds.",
+      expectedCapabilities: ["functionalGroupClassifier:nitrile"],
+    },
+    {
+      idx: 9,
+      name: "1-propanethiol",
+      smiles: "CCCS",
+      role: "Coverage",
+      purpose: "Thiol group classification; Phase 15-2c adds.",
+      expectedCapabilities: ["functionalGroupClassifier:thiol"],
+    },
+    {
+      idx: 10,
+      name: "dimethyl sulfoxide",
+      smiles: "CS(=O)C",
+      role: "Coverage",
+      purpose: "Sulfoxide group classification; Phase 15-2c adds.",
+      expectedCapabilities: ["functionalGroupClassifier:sulfoxide"],
+    },
+    {
+      idx: 11,
+      name: "diethyl ether",
+      smiles: "CCOCC",
+      role: "Coverage",
+      purpose: "Acyclic ether group classification; Phase 15-2c adds.",
+      expectedCapabilities: ["functionalGroupClassifier:etherAcyclic"],
+    },
+    {
+      idx: 12,
+      name: "methylamine",
+      smiles: "CN",
+      role: "Coverage",
+      purpose: "1° amine subtype; Phase 15-2c adds.",
+      expectedCapabilities: ["functionalGroupClassifier:amineSubtype1"],
+    },
+    {
+      idx: 13,
+      name: "dimethylamine",
+      smiles: "CNC",
+      role: "Coverage",
+      purpose: "2° amine subtype; Phase 15-2c adds.",
+      expectedCapabilities: ["functionalGroupClassifier:amineSubtype2"],
+    },
+    {
+      idx: 14,
+      name: "trimethylamine",
+      smiles: "CN(C)C",
+      role: "Coverage",
+      purpose: "3° amine subtype; Phase 15-2c adds.",
+      expectedCapabilities: ["functionalGroupClassifier:amineSubtype3"],
+    },
+    {
+      idx: 15,
+      name: "acetone",
+      smiles: "CC(=O)C",
+      role: "Sanity",
+      purpose: "Ketone sanity canary — should already work; catches 15-2c classifier-ordering regressions.",
+      expectedCapabilities: ["sanityNoRegression"],
+    },
+  ];
+
+  // ---------------------------------------------------------------------
   // Capture pipeline (SmilesDrawer)
   // ---------------------------------------------------------------------
 
@@ -364,6 +506,15 @@
     return (s || "").replace(/\s+/g, " ").trim();
   }
 
+  function _findFirstDiffOffset(a, b) {
+    const min = Math.min(a.length, b.length);
+    for (let i = 0; i < min; i++) {
+      if (a[i] !== b[i]) return i;
+    }
+    // Strings equal up to min length; if lengths differ, that's the first diff
+    return a.length === b.length ? -1 : min;
+  }
+
   function compareMigrationResults(rdkitRun, baseline) {
     if (!Array.isArray(rdkitRun) || !Array.isArray(baseline)) return null;
     return rdkitRun.map(function (r, i) {
@@ -374,18 +525,387 @@
         const same = _normaliseForDiff(r[t]) === _normaliseForDiff(b[t]);
         out[t + "Changed"] = !same;
         if (!same) {
-          out[t + "Before"] = (b[t] || "").slice(0, 160);
-          out[t + "After"] = (r[t] || "").slice(0, 160);
+          const bRaw = b[t] || "";
+          const rRaw = r[t] || "";
+          const offset = _findFirstDiffOffset(bRaw, rRaw);
+          const windowStart = Math.max(0, offset - 80);
+          const windowEnd = offset + 80;
+          if (offset >= 0) out[t + "Offset"] = offset;
+          out[t + "Before"] = bRaw.slice(windowStart, windowEnd);
+          out[t + "After"] = rRaw.slice(windowStart, windowEnd);
         }
       }
       return out;
     });
   }
 
-  // Expose globally per the 12-0a acceptance criteria.
+  // ---------------------------------------------------------------------
+  // Phase 15-1b: Tier 1 acceptance capture (separate code path; does NOT
+  // touch runMigrationHarness, _captureAllSmilesdrawer, or the 20-fixture
+  // FIXTURES constant per side-assist discipline reminder at Step 3 OQ #5).
+  //
+  // runTier1AcceptanceCapture() drives a sweep of the 15 Tier 1 fixtures,
+  // returning a wrapper object that conforms to the approved schema in
+  // phase15-1b-walkthrough.md § 3 / § 4 (gate-approved at Step 3):
+  //
+  //   {
+  //     schemaVersion: "1.0",
+  //     tier: 1,
+  //     description: <string>,
+  //     generated: <UTC ISO-8601>,
+  //     fixtures: [ /* 15 per-fixture objects */ ]
+  //   }
+  //
+  // Each per-fixture object combines: (a) identity + stereo extracted from
+  // RDKit via mol.get_smiles / mol.get_inchi / mol.get_descriptors /
+  // mol.get_stereo_tags (the same extraction logic verify-tier1-smiles.js
+  // uses), and (b) baseline-snapshot fields captured via the existing
+  // _captureFixtureSmilesdrawer pipeline (same description-engine APIs as
+  // the 20-fixture migration harness).
+  // ---------------------------------------------------------------------
+
+  function _stripParens(s) {
+    return typeof s === "string" && s.startsWith("(") && s.endsWith(")")
+      ? s.slice(1, -1)
+      : s;
+  }
+
+  function _codeToNullable(raw) {
+    const stripped = _stripParens(raw);
+    if (
+      stripped === "R" ||
+      stripped === "S" ||
+      stripped === "E" ||
+      stripped === "Z"
+    ) {
+      return stripped;
+    }
+    // "?" denotes unspecified-but-perceived per the approved-schema null
+    // contract (fixture #6 butan-2-ol case).
+    return null;
+  }
+
+  function _captureTier1Identity(RDKit, fixture) {
+    const result = {
+      smilesCanonical: null,
+      inchi: null,
+      molFormula: null,
+      heavyAtomCount: null,
+      ringCount: null,
+      numAromaticRings: null,
+      stereoCenters: [],
+      bondStereo: [],
+    };
+
+    let mol = null;
+    try {
+      mol = RDKit.get_mol(fixture.smiles);
+      if (!mol || (typeof mol.is_valid === "function" && !mol.is_valid())) {
+        logWarn("Tier 1 identity capture: invalid mol for " + fixture.name);
+        return result;
+      }
+
+      try {
+        if (typeof mol.get_smiles === "function") {
+          result.smilesCanonical = mol.get_smiles();
+        }
+      } catch (e) {
+        logWarn("mol.get_smiles threw for " + fixture.name, {
+          error: e && e.message,
+        });
+      }
+      try {
+        if (typeof mol.get_inchi === "function") {
+          result.inchi = mol.get_inchi("");
+        }
+      } catch (e) {
+        logWarn("mol.get_inchi threw for " + fixture.name, {
+          error: e && e.message,
+        });
+      }
+      try {
+        if (typeof mol.get_descriptors === "function") {
+          const desc = JSON.parse(mol.get_descriptors() || "{}");
+          result.heavyAtomCount =
+            typeof desc.NumHeavyAtoms === "number" ? desc.NumHeavyAtoms : null;
+          result.ringCount =
+            typeof desc.NumRings === "number" ? desc.NumRings : null;
+          result.numAromaticRings =
+            typeof desc.NumAromaticRings === "number"
+              ? desc.NumAromaticRings
+              : null;
+        }
+      } catch (e) {
+        logWarn("mol.get_descriptors threw for " + fixture.name, {
+          error: e && e.message,
+        });
+      }
+
+      // Formula from InChI layer (same approach as the engine's
+      // mathpix-chemistry-utils.js parseInChIFormula at lines 282-336).
+      if (result.inchi && typeof result.inchi === "string") {
+        const parts = result.inchi.split("/");
+        if (parts.length >= 2 && parts[1] && /^[A-Z]/.test(parts[1])) {
+          result.molFormula = parts[1];
+        }
+      }
+
+      // Stereo via mol.get_stereo_tags. CIP_atoms is 2-tuple
+      // [atomIdx, code]; CIP_bonds is 3-tuple [atomIdx1, atomIdx2, code].
+      // Empirically confirmed at Step 4 via
+      // mathpix-scripts/testing/_probe-rdkit-bond-stereo.js (deleted).
+      try {
+        if (typeof mol.get_stereo_tags === "function") {
+          const tags = JSON.parse(mol.get_stereo_tags() || "{}");
+
+          if (Array.isArray(tags.CIP_atoms)) {
+            for (const pair of tags.CIP_atoms) {
+              if (Array.isArray(pair) && pair.length >= 2) {
+                result.stereoCenters.push({
+                  atomIdx: pair[0],
+                  cipCode: _codeToNullable(pair[1]),
+                });
+              }
+            }
+            result.stereoCenters.sort((a, b) => a.atomIdx - b.atomIdx);
+          }
+
+          if (Array.isArray(tags.CIP_bonds) && tags.CIP_bonds.length > 0) {
+            // Map (atomIdx1, atomIdx2) → bondIdx via get_json bonds[].atoms.
+            let bondsList = [];
+            try {
+              if (typeof mol.get_json === "function") {
+                const json = JSON.parse(mol.get_json() || "{}");
+                const molecules = Array.isArray(json.molecules)
+                  ? json.molecules
+                  : [json];
+                bondsList = (molecules[0] && molecules[0].bonds) || [];
+              }
+            } catch (e) {
+              logWarn("get_json for CIP_bonds mapping threw for " + fixture.name, {
+                error: e && e.message,
+              });
+            }
+            const findBondIdx = (a, b) => {
+              for (let bi = 0; bi < bondsList.length; bi++) {
+                const atoms = bondsList[bi] && bondsList[bi].atoms;
+                if (!atoms || atoms.length < 2) continue;
+                if (
+                  (atoms[0] === a && atoms[1] === b) ||
+                  (atoms[0] === b && atoms[1] === a)
+                ) {
+                  return bi;
+                }
+              }
+              return -1;
+            };
+            for (const triple of tags.CIP_bonds) {
+              if (Array.isArray(triple) && triple.length >= 3) {
+                const bondIdx = findBondIdx(triple[0], triple[1]);
+                if (bondIdx >= 0) {
+                  result.bondStereo.push({
+                    bondIdx,
+                    ezCode: _codeToNullable(triple[2]),
+                  });
+                }
+              }
+            }
+            result.bondStereo.sort((a, b) => a.bondIdx - b.bondIdx);
+          }
+        }
+      } catch (e) {
+        logWarn("get_stereo_tags threw for " + fixture.name, {
+          error: e && e.message,
+        });
+      }
+    } catch (err) {
+      logWarn("Tier 1 identity capture threw for " + fixture.name, {
+        error: err && err.message,
+      });
+    } finally {
+      if (mol) {
+        try {
+          mol.delete();
+        } catch (e) {
+          logWarn("mol.delete threw for " + fixture.name, {
+            error: e && e.message,
+          });
+        }
+      }
+    }
+
+    return result;
+  }
+
+  async function _captureAllTier1Acceptance() {
+    const utils = window.MathPixChemistryUtils;
+    if (!utils || typeof utils.renderStructure !== "function") {
+      logError(
+        "MathPixChemistryUtils not available — cannot capture Tier 1 acceptance",
+      );
+      return null;
+    }
+    if (
+      typeof utils.generateComprehensiveDescription !== "function" ||
+      typeof utils.generateStructuralDescription !== "function" ||
+      typeof utils.generateShortDescription !== "function"
+    ) {
+      logError(
+        "Description-engine APIs missing on MathPixChemistryUtils — check load order",
+      );
+      return null;
+    }
+    if (typeof window.initRDKitModule !== "function") {
+      logError(
+        "window.initRDKitModule unavailable — Tier 1 identity capture depends on RDKit-JS",
+      );
+      return null;
+    }
+
+    let RDKit;
+    try {
+      RDKit = await window.initRDKitModule();
+    } catch (err) {
+      logError("initRDKitModule rejected", {
+        error: err && err.message,
+      });
+      return null;
+    }
+    if (!RDKit || typeof RDKit.get_mol !== "function") {
+      logError("RDKit module loaded but get_mol unavailable");
+      return null;
+    }
+
+    if (typeof utils.clearGraphCache === "function") {
+      utils.clearGraphCache();
+    }
+
+    // Single offscreen canvas for the whole sweep — same pattern as
+    // _captureAllSmilesdrawer.
+    const canvas = document.createElement("canvas");
+    canvas.id = "tier1-acceptance-harness-canvas";
+    canvas.width = 300;
+    canvas.height = 300;
+    canvas.style.position = "absolute";
+    canvas.style.left = "-9999px";
+    canvas.style.top = "-9999px";
+    document.body.appendChild(canvas);
+
+    const fixtures = [];
+    try {
+      let idx = 0;
+      for (const fx of TIER1_FIXTURES) {
+        logInfo(
+          "Capturing Tier 1 fixture #" +
+            fx.idx +
+            " " +
+            fx.name +
+            " (" +
+            (idx + 1) +
+            "/" +
+            TIER1_FIXTURES.length +
+            "): " +
+            fx.smiles,
+        );
+
+        // Identity + stereo from RDKit directly.
+        const identity = _captureTier1Identity(RDKit, fx);
+
+        // Baseline snapshot via the same description-engine path the
+        // 20-fixture harness uses. Reuses _captureFixtureSmilesdrawer to
+        // keep the capture-pipeline contract single-sourced.
+        _primeGraphCache(utils, fx.smiles, canvas);
+        if (typeof utils.awaitGraphCached === "function") {
+          await utils.awaitGraphCached(fx.smiles);
+        }
+        const baselineSnap = _captureFixtureSmilesdrawer(utils, {
+          name: fx.name,
+          smiles: fx.smiles,
+        });
+
+        fixtures.push({
+          // Identity (Step-1-verified at file generation)
+          idx: fx.idx,
+          name: fx.name,
+          smilesInput: fx.smiles,
+          smilesCanonical: identity.smilesCanonical,
+          inchi: identity.inchi,
+          pubchemCID: null, // forward-compat hook; not fetched at capture (Q2)
+          molFormula: identity.molFormula,
+          heavyAtomCount: identity.heavyAtomCount,
+          ringCount: identity.ringCount,
+          numAromaticRings: identity.numAromaticRings,
+
+          // Stereo
+          stereoCenters: identity.stereoCenters,
+          bondStereo: identity.bondStereo,
+
+          // Tier-1 metadata (static; from TIER1_FIXTURES)
+          role: fx.role,
+          purpose: fx.purpose,
+          expectedCapabilities: fx.expectedCapabilities.slice(),
+
+          // Baseline snapshots (mirror migration-baseline.json shape)
+          baseline: {
+            comp: baselineSnap.comp,
+            std: baselineSnap.std,
+            short: baselineSnap.short,
+            functionalGroups: baselineSnap.functionalGroups,
+            rings: baselineSnap.rings,
+            chain: baselineSnap.chain,
+            scaffoldType: baselineSnap.scaffoldType,
+            locants: baselineSnap.locants,
+          },
+        });
+
+        idx++;
+      }
+    } finally {
+      if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+    }
+
+    return fixtures;
+  }
+
+  async function runTier1AcceptanceCapture() {
+    const fixtures = await _captureAllTier1Acceptance();
+    if (!fixtures) return null;
+    const wrapper = {
+      schemaVersion: "1.0",
+      tier: 1,
+      description:
+        "Tier 1 Phase 15-1b acceptance fixture set — pre-fix baselines captured pre-Phase-15-2.",
+      generated: new Date().toISOString(), // UTC ISO-8601 per Step 3 OQ #1
+      fixtures,
+    };
+    try {
+      const summary = fixtures.map((f) => ({
+        idx: f.idx,
+        name: f.name,
+        formula: f.molFormula,
+        heavy: f.heavyAtomCount,
+        rings: f.ringCount,
+        stereoCenters: f.stereoCenters.length,
+        bondStereo: f.bondStereo.length,
+        compLen: f.baseline.comp ? f.baseline.comp.length : 0,
+        stdLen: f.baseline.std ? f.baseline.std.length : 0,
+        shortLen: f.baseline.short ? f.baseline.short.length : 0,
+      }));
+      // eslint-disable-next-line no-console
+      console.table(summary);
+    } catch (err) {
+      logWarn("Tier 1 acceptance summary table failed", {
+        error: err && err.message,
+      });
+    }
+    return wrapper;
+  }
+
+  // Expose globally per the 12-0a acceptance criteria + 15-1b additions.
   window.captureDescriptionBaseline = captureDescriptionBaseline;
   window.runMigrationHarness = runMigrationHarness;
   window.compareMigrationResults = compareMigrationResults;
+  window.runTier1AcceptanceCapture = runTier1AcceptanceCapture;
 
   logInfo(
     "Migration harness loaded (Phase 12-0a + 12-2a — async sweep with awaitGraphCached; compareMigrationResults helper exposed)",
