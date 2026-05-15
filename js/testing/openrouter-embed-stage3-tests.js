@@ -218,7 +218,7 @@
       console.log("✅ Error callbacks:", errors.length);
       console.log(
         "✅ Callback order correct:",
-        callLog[callLog.length - 1].type === "complete"
+        callLog[callLog.length - 1].type === "complete",
       );
       console.log("\n🎉 TEST 3 PASSED!\n");
 
@@ -399,7 +399,7 @@
           fullResponse += chunk.text;
           if (chunkCount <= 3) {
             console.log(
-              `   Chunk ${chunkCount}: ${chunk.text.substring(0, 50)}...`
+              `   Chunk ${chunkCount}: ${chunk.text.substring(0, 50)}...`,
             );
           }
         },
@@ -460,16 +460,15 @@
    * Master Test Runner - Stage 3
    */
   window.testEmbedStage3_All = async function () {
-    console.clear();
     console.log(
-      "╔═══════════════════════════════════════════════════════════╗"
+      "╔═══════════════════════════════════════════════════════════╗",
     );
     console.log("║     OpenRouter Embed API - Stage 3 Complete Tests        ║");
     console.log(
-      "║              Streaming Support Testing                    ║"
+      "║              Streaming Support Testing                    ║",
     );
     console.log(
-      "╚═══════════════════════════════════════════════════════════╝\n"
+      "╚═══════════════════════════════════════════════════════════╝\n",
     );
 
     console.log("🤖 RUNNING AUTOMATED TESTS...\n");
@@ -495,7 +494,7 @@
     console.log("════════════════════════════════════════════════════════════");
     console.log("📊 AUTOMATED TEST RESULTS");
     console.log(
-      "════════════════════════════════════════════════════════════\n"
+      "════════════════════════════════════════════════════════════\n",
     );
 
     Object.entries(results).forEach(([name, result]) => {
@@ -506,15 +505,15 @@
     const allPassed = Object.values(results).every((r) => r.success);
 
     console.log(
-      "\n════════════════════════════════════════════════════════════"
+      "\n════════════════════════════════════════════════════════════",
     );
     console.log(
       `Results: ${Object.values(results).filter((r) => r.success).length}/${
         Object.keys(results).length
-      } automated tests passed`
+      } automated tests passed`,
     );
     console.log(
-      "════════════════════════════════════════════════════════════\n"
+      "════════════════════════════════════════════════════════════\n",
     );
 
     if (allPassed) {
