@@ -749,7 +749,7 @@
           id="radioSRannounce"
         ></span>
         <!-- MathJax status indicator for power users -->
-        <div id="mathjax-status" aria-live="polite" data-ready="false">
+        <div id="mathjax-status" aria-live="polite" aria-atomic="true" data-ready="false">
           <span class="mathjax-label">MathJax Loaded:</span>
           <span id="mathjax-status-value">No</span>
         </div>
@@ -5465,8 +5465,8 @@ Science,91</pre
                       <span class="format-content">
                         <span class="format-label">HTML</span>
                         <span class="format-description"
-                          >Web-ready format with MathML and hidden
-                          screen-reader speech text</span
+                          >Web-ready format with MathML and hidden screen-reader
+                          speech text</span
                         >
                       </span>
                     </label>
@@ -6824,12 +6824,16 @@ Science,91</pre
                     class="chemistry-structural-desc"
                     style="display: none"
                   >
-                    <span class="chemistry-preview-pill" aria-hidden="true">Preview</span>
+                    <span class="chemistry-preview-pill" aria-hidden="true"
+                      >Preview</span
+                    >
                     <p id="resume-chemistry-structural-desc-text"></p>
                     <span
                       class="chemistry-preview-disclosure"
                       id="resume-chemistry-structural-description-preview-disclosure"
-                    >This description is generated automatically and is currently being refined for accuracy and coverage.</span>
+                      >This description is generated automatically and is
+                      currently being refined for accuracy and coverage.</span
+                    >
                   </div>
 
                   <!-- Comprehensive description (Phase 8C-CT) -->
@@ -6840,12 +6844,16 @@ Science,91</pre
                   >
                     <details>
                       <summary>Detailed diagram description</summary>
-                      <span class="chemistry-preview-pill" aria-hidden="true">Preview</span>
+                      <span class="chemistry-preview-pill" aria-hidden="true"
+                        >Preview</span
+                      >
                       <div id="resume-chemistry-comprehensive-desc-text"></div>
                       <span
                         class="chemistry-preview-disclosure"
                         id="resume-chemistry-comprehensive-description-preview-disclosure"
-                      >This description is generated automatically and is currently being refined for accuracy and coverage.</span>
+                        >This description is generated automatically and is
+                        currently being refined for accuracy and coverage.</span
+                      >
                     </details>
                   </div>
 
@@ -8584,12 +8592,16 @@ Science,91</pre
                   class="chemistry-structural-desc"
                   style="display: none"
                 >
-                  <span class="chemistry-preview-pill" aria-hidden="true">Preview</span>
+                  <span class="chemistry-preview-pill" aria-hidden="true"
+                    >Preview</span
+                  >
                   <p id="chemistry-structural-desc-text"></p>
                   <span
                     class="chemistry-preview-disclosure"
                     id="chemistry-structural-description-preview-disclosure"
-                  >This description is generated automatically and is currently being refined for accuracy and coverage.</span>
+                    >This description is generated automatically and is
+                    currently being refined for accuracy and coverage.</span
+                  >
                 </div>
 
                 <!-- Comprehensive description (Phase 8C-CT) -->
@@ -8600,12 +8612,16 @@ Science,91</pre
                 >
                   <details>
                     <summary>Detailed diagram description</summary>
-                    <span class="chemistry-preview-pill" aria-hidden="true">Preview</span>
+                    <span class="chemistry-preview-pill" aria-hidden="true"
+                      >Preview</span
+                    >
                     <div id="chemistry-comprehensive-desc-text"></div>
                     <span
                       class="chemistry-preview-disclosure"
                       id="chemistry-comprehensive-description-preview-disclosure"
-                    >This description is generated automatically and is currently being refined for accuracy and coverage.</span>
+                      >This description is generated automatically and is
+                      currently being refined for accuracy and coverage.</span
+                    >
                   </details>
                 </div>
 
@@ -9116,8 +9132,8 @@ Science,91</pre
                     <span class="format-content">
                       <span class="format-label">HTML</span>
                       <span class="format-description"
-                        >Web-ready format with MathML and hidden
-                        screen-reader speech text</span
+                        >Web-ready format with MathML and hidden screen-reader
+                        speech text</span
                       >
                     </span>
                   </label>
@@ -9462,9 +9478,7 @@ Science,91</pre
               </fieldset>
 
               <!-- Page Break Markers (MathPix October 2025 release) -->
-              <fieldset
-                class="mathpix-option-group mathpix-page-break-options"
-              >
+              <fieldset class="mathpix-option-group mathpix-page-break-options">
                 <legend>Page Breaks</legend>
                 <p class="option-group-description">
                   Preserve original page boundaries in exported documents.
@@ -16288,7 +16302,7 @@ Science,91</pre
       if (window.Chart && window.Chart.defaults) {
         window.Chart.defaults.devicePixelRatio = Math.max(
           2,
-          window.devicePixelRatio || 1
+          window.devicePixelRatio || 1,
         );
       }
     </script>
@@ -16580,6 +16594,7 @@ Science,91</pre
     <script src="openrouter-embed/providers/_interface.js"></script>
     <script src="openrouter-embed/providers/_lookup.js"></script>
     <script src="openrouter-embed/providers/openrouter.js"></script>
+    <script src="openrouter-embed/providers/azure-openai-v1.js"></script>
 
     <script
       type="module"
