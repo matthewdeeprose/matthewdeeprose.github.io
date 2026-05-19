@@ -35,8 +35,6 @@ AI, LLMs, and the tools we build when the market doesn’t ship them.
 
 # Slide number: 5
 
-### Picture 9 (no alt text)
-
 
 Act 1
 
@@ -79,8 +77,6 @@ Source: December Snapshot, FPE Enrolments by Disability
 
 # Slide number: 9
 
-### Picture 12 (no alt text)
-
 
 Barriers sit in systems, 
 not in people.
@@ -122,8 +118,6 @@ Culture and digital assets work together. We need to change our culture as part 
 
 # Slide number: 12
 
-### Picture 9 (no alt text)
-
 
 What is the purpose 
 of a higher education institution?
@@ -131,8 +125,6 @@ of a higher education institution?
 <!-- Slide number: 13 -->
 
 # Slide number: 13
-
-### Picture 9 (no alt text)
 
 
 Act 2
@@ -143,8 +135,6 @@ Designing with disabled people.
 <!-- Slide number: 14 -->
 
 # Slide number: 14
-
-### Picture 9 (no alt text)
 
 
 Example 1
@@ -182,8 +172,6 @@ We are ahead of the market — and the vendor values that.
 <!-- Slide number: 17 -->
 
 # Slide number: 17
-
-### Picture 9 (no alt text)
 
 
 Example 2
@@ -252,8 +240,6 @@ The people who use assistive technology helped shape the build.
 
 # Slide number: 21
 
-### Picture 9 (no alt text)
-
 
 Example 3
 
@@ -305,8 +291,6 @@ We're making reasonable adjustments relational, not individual.
 <!-- Slide number: 25 -->
 
 # Slide number: 25
-
-### Picture 9 (no alt text)
 
 
 Act 3
@@ -386,8 +370,6 @@ Better recordings help everyone, especially disabled students.
 
 # Slide number: 32
 
-### Picture 9 (no alt text)
-
 
 Example 6
 
@@ -425,8 +407,6 @@ As inclusive design reduces the need for individual adjustments, the count of di
 <!-- Slide number: 35 -->
 
 # Slide number: 35
-
-### Picture 9 (no alt text)
 
 
 Act 4
@@ -485,8 +465,6 @@ MathML provides hierarchical semantic notation that lets a blind student navigat
 <!-- Slide number: 39 -->
 
 # Slide number: 39
-
-### Picture 9 (no alt text)
 
 
 Using LLMs to create accessibility tools
@@ -625,8 +603,6 @@ Can accessibility work help to close these gaps?
 <!-- Slide number: 48 -->
 
 # Slide number: 48
-
-### Picture 9 (no alt text)
 
 
 Conclusion
