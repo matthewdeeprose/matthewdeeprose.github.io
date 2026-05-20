@@ -12,7 +12,6 @@ University of Southampton
 
 # Slide number: 3
 ## Introduction
-Will add here once the rest is settled.
 
 <!-- Slide number: 4 -->
 
@@ -21,7 +20,7 @@ Will add here once the rest is settled.
 
 1
 The case for change
-Disability trends, where barriers actually live, and what our strategy already commits to.
+Disability trends, where barriers live, and what our strategy already commits to.
 2
 Designing in from the start
 Accessibility as a requirement, not a retrofit.
@@ -31,6 +30,7 @@ Accessibility as the lens that reveals what really needs to change: systems, hab
 4
 What’s next
 AI, LLMs, and the tools we build when the market doesn’t ship them.
+Based on work we have done together over the past year.
 <!-- Slide number: 5 -->
 
 # Slide number: 5
@@ -502,27 +502,20 @@ Using LLMs to create accessibility tools
 # Slide number: 43
 ## MathPix OCR – issues found (2)
 
-### Picture 3
-> themofluids scanned formula
-
-η (efficiency)
-
-<!-- Slide number: 44 -->
-
-# Slide number: 44
-## MathPix OCR – issues found (3)
-
 ### Picture 5
 > Extract from a maths scan
 
 ∃ (existential quantifier)
 r
+ℤ
+Theorem
+The word "theren" is highlighted, it's the word Theorem, but OCR has misspelled it due to the hard to read handwriting in the original.
 
 > The 7 should be an ∃ (existential quantifier), the v should be a r
 
-<!-- Slide number: 45 -->
+<!-- Slide number: 44 -->
 
-# Slide number: 45
+# Slide number: 44
 ## MathPix Document Conversion Workflow
 Refinement loop — optional
 
@@ -576,9 +569,9 @@ Save session (zip)
 >
 > Leaving the refinement loop, the process continues to "Convert to target format," where the digitised document is exported into a wide range of standard formats, including HTML, DOCX, for presentations, PDFs, or LaTeX files. Finally, the user concludes with "Final adjustments," providing opportunities for last refinements and quality checks on the formatted output.
 
-<!-- Slide number: 46 -->
+<!-- Slide number: 45 -->
 
-# Slide number: 46
+# Slide number: 45
 ## Working with Joshie: Academic validation
 
 Subject-matter rigour
@@ -588,9 +581,9 @@ A misplaced subscript, a misidentified Greek letter, or an incorrectly scoped ra
 Why the stakes are high
 A mistake during conversion mean a blind student is being taught incorrect mathematics. 
 Need high confidence before engaging with our Maths school.
-<!-- Slide number: 47 -->
+<!-- Slide number: 46 -->
 
-# Slide number: 47
+# Slide number: 46
 ## Working with Ben: Research and knowledge exchange
 
 Research informed development
@@ -600,9 +593,9 @@ We’re reviewing whether any aspect of this tool can help.
 Opportunities
 The Digital Strategic Plan flags Knowledge Exchange and Enterprise as our weakest Triple Helix link digitally. 
 Can accessibility work help to close these gaps?
-<!-- Slide number: 48 -->
+<!-- Slide number: 47 -->
 
-# Slide number: 48
+# Slide number: 47
 
 
 Conclusion
@@ -610,26 +603,26 @@ Conclusion
 In closing
 Four threads running through everything we have shown you.
 
-<!-- Slide number: 49 -->
+<!-- Slide number: 48 -->
 
-# Slide number: 49
+# Slide number: 48
 ## What we covered today
 
 1
 The case for change
+Disability trends, where barriers live, and what our strategy already commits to.
 2
 Designing in from the start
+Accessibility as a requirement, not a retrofit.
 3
 Transforming the right thing
+Accessibility as the lens that reveals what really needs to change: systems, habits, and data.
 4
 What’s next
-Disability trends, where barriers actually live, and what our strategy already commits to.
-Accessibility as a requirement, not a retrofit.
-Accessibility as the lens that reveals what really needs to change: systems, habits, and data.
 AI, LLMs, and the tools we build when the market doesn’t ship them.
-<!-- Slide number: 50 -->
+<!-- Slide number: 49 -->
 
-# Slide number: 50
+# Slide number: 49
 
 ### Picture 9
 > A broad, diverse, 16:9 flat-vector illustration of a large human crowd, including individuals with visible and invisible disabilities, interacting with an array of text-based Large Language Models. These LLMs are depicted as integrated streams of code, complex text clouds, and digital icons, surrounding and connecting with the group in a harmonious, data-driven environment.
