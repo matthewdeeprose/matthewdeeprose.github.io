@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0",
   "tier": 1,
-  "description": "Tier 1 Phase 15-1b acceptance fixture set — pre-fix baselines captured pre-Phase-15-2.",
-  "generated": "2026-05-14T11:57:17.006Z",
+  "description": "Tier 1 acceptance fixture set — current-state baselines recaptured at the Phase-16-2 SEAL (post-16-2a/b/c).",
+  "generated": "2026-06-09T08:23:07.313Z",
   "fixtures": [
     {
       "idx": 1,
@@ -29,7 +29,7 @@
         "cipDescriptorInCOMP"
       ],
       "baseline": {
-        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears an amine group (–NH₂). The third carbon bears a carboxylic acid group (–COOH). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
+        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The first carbon bears a carboxylic acid group (–COOH). The second carbon bears an amine group (–NH₂). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
         "std": "A 6-atom, three-carbon chain with a carboxylic acid group (–COOH), and an amine group (–NH₂).",
         "short": "A three-carbon chain with a carboxylic acid and an amine.",
         "functionalGroups": [
@@ -73,7 +73,7 @@
         "alkeneGeometryInOpener"
       ],
       "baseline": {
-        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a carbon-carbon double bond (C=C). Each carbon carries implicit hydrogens.",
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a (Z)-configured carbon-carbon double bond (C=C). Each carbon carries implicit hydrogens.",
         "std": "A 4-atom, four-carbon chain with a carbon-carbon double bond (C=C).",
         "short": "A four-carbon chain with a double bond.",
         "functionalGroups": [
@@ -114,7 +114,7 @@
         "alkeneGeometryInOpener"
       ],
       "baseline": {
-        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a carbon-carbon double bond (C=C). Each carbon carries implicit hydrogens.",
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears an (E)-configured carbon-carbon double bond (C=C). Each carbon carries implicit hydrogens.",
         "std": "A 4-atom, four-carbon chain with a carbon-carbon double bond (C=C).",
         "short": "A four-carbon chain with a double bond.",
         "functionalGroups": [
@@ -156,7 +156,7 @@
         "cipDescriptorInCOMP"
       ],
       "baseline": {
-        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The third carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
         "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH).",
         "short": "A four-carbon chain with a hydroxyl group.",
         "functionalGroups": [
@@ -192,9 +192,9 @@
         "chainLocantInName"
       ],
       "baseline": {
-        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The fourth carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
-        "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH).",
-        "short": "A four-carbon chain with a hydroxyl group.",
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The first carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
+        "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH) at C1.",
+        "short": "A four-carbon chain with a hydroxyl group at C1.",
         "functionalGroups": [
           {
             "shortName": "hydroxyl"
@@ -233,9 +233,9 @@
         "chainLocantInName"
       ],
       "baseline": {
-        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The third carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
-        "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH).",
-        "short": "A four-carbon chain with a hydroxyl group.",
+        "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
+        "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH) at C2.",
+        "short": "A four-carbon chain with a hydroxyl group at C2.",
         "functionalGroups": [
           {
             "shortName": "hydroxyl"
@@ -270,8 +270,8 @@
       ],
       "baseline": {
         "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
-        "std": "A 5-atom, branched carbon chain with three carbons in the longest path with a hydroxyl group (–OH).",
-        "short": "A three-carbon chain with a hydroxyl group.",
+        "std": "A 5-atom, branched carbon chain with three carbons in the longest path with a hydroxyl group (–OH) at C2.",
+        "short": "A three-carbon chain with a hydroxyl group at C2.",
         "functionalGroups": [
           {
             "shortName": "hydroxyl"
@@ -305,12 +305,12 @@
         "functionalGroupClassifier:nitrile"
       ],
       "baseline": {
-        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The third carbon bears an amine group (–NH₂). Each carbon carries implicit hydrogens.",
-        "std": "A 4-atom, three-carbon chain with an amine group (–NH₂).",
-        "short": "A three-carbon chain with an amine.",
+        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The first carbon is triple-bonded to a nitrogen atom (forming a nitrile group, –CN). Each carbon carries implicit hydrogens.",
+        "std": "A 4-atom, three-carbon chain with a nitrile group (–CN).",
+        "short": "A three-carbon chain with a nitrile.",
         "functionalGroups": [
           {
-            "shortName": "amine"
+            "shortName": "nitrile"
           }
         ],
         "rings": [],
@@ -341,10 +341,14 @@
         "functionalGroupClassifier:thiol"
       ],
       "baseline": {
-        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. Each carbon carries implicit hydrogens.",
-        "std": "A 4-atom, three-carbon chain.",
-        "short": "A three-carbon chain.",
-        "functionalGroups": [],
+        "comp": "The structure is a three-carbon chain. The first carbon is bonded to the second carbon by a single bond. The first carbon bears a thiol group (–SH). Each carbon carries implicit hydrogens.",
+        "std": "A 4-atom, three-carbon chain with a thiol group (–SH).",
+        "short": "A three-carbon chain with a thiol.",
+        "functionalGroups": [
+          {
+            "shortName": "thiol"
+          }
+        ],
         "rings": [],
         "chain": {
           "length": 3,
@@ -373,16 +377,20 @@
         "functionalGroupClassifier:sulfoxide"
       ],
       "baseline": {
-        "comp": "The structure is a single carbon atom.",
-        "std": "A single carbon atom.",
-        "short": "A single carbon atom.",
-        "functionalGroups": [],
+        "comp": "The structure is a sulphoxide. The central sulphur atom is double-bonded to an oxygen and single-bonded to two methyl carbons (forming a sulphoxide group, S=O). Each methyl carbon carries three implicit hydrogens.",
+        "std": "A 4-atom molecule. A sulphoxide group (S=O) with two methyl substituents.",
+        "short": "A sulphoxide group flanked by two methyl groups.",
+        "functionalGroups": [
+          {
+            "shortName": "sulphoxide"
+          }
+        ],
         "rings": [],
         "chain": {
           "length": 1,
           "type": null
         },
-        "scaffoldType": "chain",
+        "scaffoldType": "central-heteroatom",
         "locants": null
       }
     },
@@ -405,16 +413,20 @@
         "functionalGroupClassifier:etherAcyclic"
       ],
       "baseline": {
-        "comp": "The structure is a two-carbon chain. The first carbon is bonded to the second carbon by a single bond. Each carbon carries implicit hydrogens.",
-        "std": "A 5-atom, two-carbon chain.",
-        "short": "A two-carbon chain.",
-        "functionalGroups": [],
+        "comp": "The structure is an ether. Two ethyl groups are bridged by an oxygen atom. The first ethyl: the first carbon is bonded to the second carbon by a single bond. The second carbon is bonded to the bridging oxygen. The oxygen is bonded to the start of a second ethyl group. The third carbon is bonded to the fourth carbon by a single bond. Each carbon carries implicit hydrogens.",
+        "std": "A 5-atom molecule. Two ethyl groups bridged by an oxygen (an ether linkage).",
+        "short": "Two ethyl groups bridged by an oxygen.",
+        "functionalGroups": [
+          {
+            "shortName": "ether"
+          }
+        ],
         "rings": [],
         "chain": {
           "length": 2,
           "type": null
         },
-        "scaffoldType": "chain",
+        "scaffoldType": "bridged-acyclic",
         "locants": null
       }
     },
@@ -437,9 +449,9 @@
         "functionalGroupClassifier:amineSubtype1"
       ],
       "baseline": {
-        "comp": "A single carbon bearing an amine group (–NH₂).",
-        "std": "A methyl group bonded to an amine group (–NH₂).",
-        "short": "A one-carbon chain with an amine.",
+        "comp": "A single carbon bearing a primary amine group (–NH₂). The nitrogen bears two implicit hydrogens, characteristic of a primary amine.",
+        "std": "A methyl group bonded to a primary amine group (–NH₂).",
+        "short": "A one-carbon chain with a primary amine.",
         "functionalGroups": [
           {
             "shortName": "amine"
@@ -473,9 +485,9 @@
         "functionalGroupClassifier:amineSubtype2"
       ],
       "baseline": {
-        "comp": "A single carbon bearing an amine group (–NH₂).",
-        "std": "A single carbon bearing an amine group (–NH₂).",
-        "short": "A single carbon bearing an amine.",
+        "comp": "The structure is a secondary amine. The nitrogen atom bears one implicit hydrogen and is bonded to two methyl carbons, characteristic of a secondary amine.",
+        "std": "Two methyl groups bonded to a secondary amine (–NH–).",
+        "short": "A secondary amine with two methyl substituents.",
         "functionalGroups": [
           {
             "shortName": "amine"
@@ -486,7 +498,7 @@
           "length": 1,
           "type": null
         },
-        "scaffoldType": "chain",
+        "scaffoldType": "central-heteroatom",
         "locants": null
       }
     },
@@ -509,9 +521,9 @@
         "functionalGroupClassifier:amineSubtype3"
       ],
       "baseline": {
-        "comp": "A single carbon bearing an amine group (–NH₂).",
-        "std": "A single carbon bearing an amine group (–NH₂).",
-        "short": "A single carbon bearing an amine.",
+        "comp": "The structure is a tertiary amine, N(CH₃)₃. The nitrogen atom bears no hydrogens and is bonded to three methyl carbons, characteristic of a tertiary amine.",
+        "std": "Three methyl groups bonded to a tertiary amine nitrogen, N(CH₃)₃.",
+        "short": "A tertiary amine with three methyl substituents.",
         "functionalGroups": [
           {
             "shortName": "amine"
@@ -522,7 +534,7 @@
           "length": 1,
           "type": null
         },
-        "scaffoldType": "chain",
+        "scaffoldType": "central-heteroatom",
         "locants": null
       }
     },

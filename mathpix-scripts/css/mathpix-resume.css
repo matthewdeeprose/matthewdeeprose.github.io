@@ -355,6 +355,7 @@ body.resume-focus-mode .resume-storage-dashboard {
 
 .resume-session-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -415,7 +416,13 @@ body.resume-focus-mode .resume-storage-dashboard {
 
   .resume-session-actions {
     width: 100%;
-    justify-content: flex-end;
+    flex-direction: column;
+  }
+
+  .resume-session-actions .resume-btn,
+  .resume-session-actions .mathpix-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   #resume-drop-zone {
@@ -1750,36 +1757,25 @@ body.resume-focus-mode .resume-focus-mode-btn::after {
 }
 
 @media (max-width: 768px) {
-  /* Force horizontal layout - override mathpix-main.css flex-direction: column */
+  /* Force horizontal layout - override mathpix-main.css flex-direction: column.
+     Uniform rounded chips that wrap onto extra rows for any tab count. */
   #mathpix-resume-mode-container .mathpix-tab-headers {
-    display: flex !important;
+    flex-wrap: wrap !important; /* was: nowrap */
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    gap: 0 !important;
+    gap: 0.25rem !important; /* was: 0 (segmented pill) */
     padding: 0.5rem !important;
     align-items: stretch !important;
   }
 
-  /* Make tabs equal width and visually connected */
+  /* Uniform rounded chips - no positional rounding, no border collapsing */
   #mathpix-resume-mode-container .mathpix-tab-header {
     flex: 1 1 auto !important;
     padding: 0.625rem 0.75rem !important;
     font-size: 0.9rem !important;
-    border-radius: 0 !important;
+    border-radius: 6px !important; /* was: 0 (corners rounded per-position) */
     margin: 0 !important;
     min-width: 0 !important;
     text-align: center !important;
-  }
-
-  /* First tab - rounded left corners */
-  #mathpix-resume-mode-container .mathpix-tab-header:first-of-type {
-    border-radius: 6px 0 0 6px !important;
-  }
-
-  /* Second tab - rounded right corners (focus button is hidden) */
-  #mathpix-resume-mode-container .mathpix-tab-header:nth-of-type(2) {
-    border-radius: 0 6px 6px 0 !important;
-    border-left: none !important;
   }
 
   /* Active tab styling */
@@ -1787,11 +1783,9 @@ body.resume-focus-mode .resume-focus-mode-btn::after {
     border: solid currentColor !important;
   }
 
-  /* Inactive tab - lighter styling without jarring contrast */
+  /* Inactive tab - outlined chip, full-strength label (no dimming) */
   #mathpix-resume-mode-container .mathpix-tab-header:not(.active) {
     background: transparent !important;
-    border: 1px solid currentColor !important;
-    opacity: 0.6 !important;
   }
 
   #mathpix-resume-mode-container .mathpix-tab-header:not(.active):hover,

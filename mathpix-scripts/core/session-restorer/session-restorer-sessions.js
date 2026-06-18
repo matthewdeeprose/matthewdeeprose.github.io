@@ -51,6 +51,29 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
   };
 
   /**
+   * F-O self-heal: coerce a stored MMD field to a usable string, or null.
+   *
+   * Stored session fields (original/baseline/current) must be strings. The F-O
+   * bug wrote empty objects {} into original/baseline (an un-awaited async
+   * getMMDForAPI serialised by JSON.stringify). Because {} is truthy, the
+   * historical `field || fallback` guards did NOT rescue it — a corrupt {}
+   * passed straight through and later threw in computeDiff (`{}.split` is not a
+   * function). Treating any non-string as absent (null) lets the existing
+   * `|| fallback` chains heal such sessions: an empty string still falls
+   * through to the fallback exactly as before, and a corrupt {} now does too.
+   *
+   * This heals sessions already corrupted on disk from before the encoder fix;
+   * it is a read-time guard only, not a localStorage rewrite migration.
+   *
+   * @param {*} value - Raw value read from a parsed localStorage session
+   * @returns {string|null} The value if it is a string, otherwise null
+   * @private
+   */
+  proto._coerceStoredMMDField = function (value) {
+    return typeof value === "string" ? value : null;
+  };
+
+  /**
    * Check for existing localStorage sessions matching the uploaded ZIP
    * Called after ZIP parsing to offer recovery of unsaved edits
    * Returns ALL matching sessions sorted by lastModified (newest first)
@@ -107,7 +130,9 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
       // minor whitespace differences between ZIP original and stored baseline
       const sessionsWithChanges = dedupedSessions.filter((session) => {
         const current = session.data?.current || "";
-        const baseline = session.data?.baseline || "";
+        // F-O: coerce so a corrupt {} baseline is treated as absent, not as a
+        // truthy bogus value (which would wrongly mark a no-edit session as edited).
+        const baseline = this._coerceStoredMMDField(session.data?.baseline) || "";
 
         // If no baseline stored, keep the session (older format)
         if (!baseline) return true;
@@ -170,8 +195,11 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
 
       // Score each session - higher is better
       const scored = group.map((session) => {
-        const hasBaseline = !!session.data?.baseline;
-        const baseline = session.data?.baseline || "";
+        // F-O: coerce so a corrupt {} baseline is treated as absent (legacy-like)
+        // rather than scoring as a real user edit.
+        const baselineStr = this._coerceStoredMMDField(session.data?.baseline);
+        const hasBaseline = !!baselineStr;
+        const baseline = baselineStr || "";
         const current = session.data?.current || "";
         const hasUserEdits = hasBaseline && baseline !== current;
         const isLegacyWithEdits = !hasBaseline; // Legacy sessions without baseline have real edits
@@ -302,7 +330,10 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
     // added here as a data-diff-hint attribute or inline text without running the full diff.
     let diffContent = "Select to preview changes";
 if (context.eagerDiff) {
-      const comparisonContent = session.data?.baseline || originalMMD;
+      // F-O: coerce so a corrupt {} baseline falls back to originalMMD rather than
+      // reaching computeDiff (where `{}.split` throws).
+      const comparisonContent =
+        this._coerceStoredMMDField(session.data?.baseline) || originalMMD;
       const diffResult = this.computeDiff(session.data?.current, comparisonContent);
       if (this._distinguishingLines?.has(index)) {
         diffResult.distinguishingLine = this._distinguishingLines.get(index);
@@ -576,7 +607,10 @@ if (context.eagerDiff) {
         return;
       }
       current = session.data?.current || "";
-      comparison = session.data?.baseline || originalMMD;
+      // F-O: coerce so a corrupt {} baseline falls back to originalMMD rather than
+      // reaching computeDiff (where `{}.split` throws).
+      comparison =
+        this._coerceStoredMMDField(session.data?.baseline) || originalMMD;
     } else if (diffType === "zipEdit") {
       const editArrayIndex = Math.abs(diffIndex) - 2;
       const edit = this._zipEdits?.[editArrayIndex];
@@ -1124,10 +1158,18 @@ if (context.eagerDiff) {
   };
 
   /**
-   * Load the original ZIP contents (discard localStorage version)
+   * Load the original ZIP contents (discard localStorage version).
+   *
+   * Async since post-Stage-6 (Finding 5 retirement): the registry-purge step
+   * now uses _cleanupBuildFromMMDRemoved which awaits Cache API removal.
+   * Both call sites are fire-and-forget — neither consumes the return value,
+   * so awaiting cleanup before the subsequent local assignments is a detached
+   * promise (the post-load flow continues synchronously).
+   *
+   * @returns {Promise<void>}
    * @private
    */
-  proto.loadZIPContents = function () {
+  proto.loadZIPContents = async function () {
     logInfo("Loading original ZIP contents (results folder)");
 
     const originalMMD = this.restoredSession?.originalMMD;
@@ -1137,37 +1179,25 @@ if (context.eagerDiff) {
       this.restoredSession.currentMMD = originalMMD;
       this.restoredSession.baselineMMD = originalMMD;
 
-      // Fix 9: Rebuild registry from original MMD to purge ghost entries.
-      // After reconcileRecoveredImages() runs during auto-restore, the registry
-      // may contain ghost entries (user-added images from a previous session).
-      // The originalMMD only references the 'real' ZIP images, so any registry
-      // entry not referenced in originalMMD is a ghost and must be removed.
+      // Sync registry to original MMD — purge entries not referenced in the
+      // ZIP-original content. Replaces the markdown-only Fix-9 ghost-purge
+      // loop with the Stage 6 reconcile pattern (per Finding 5 of
+      // stage-6-planning-decisions.md and Phase 3 of the post-close interlude).
+      //
+      // originalMMD is in blob form at this point — session-restorer-restore.js:140-142
+      // rewrites it with rewriteMMDWithBlobUrls during the initial restore so the
+      // preview renders correctly. Phase A translates back to CDN form so
+      // buildFromMMD's hash(url+lineNumber) IDs align with the registry's
+      // CDN-derived IDs (same Finding 10 fix as Phase 2b of the manager-open path).
+      // Phase D then restores blob form to mmdReference for findImage and the
+      // live editor.
       if (this.imageRegistry) {
-        const originalImageUrls = new Set();
-        const imgRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
-        let match;
-        while ((match = imgRegex.exec(originalMMD)) !== null) {
-          originalImageUrls.add(match[1]);
-        }
-
-        // Remove registry entries that aren't referenced in original MMD
-        const allImages = this.imageRegistry.getAllImages();
-        for (const img of allImages) {
-          const blobUrl =
-            this.imageBlobUrlMap?.get(img.originalUrl) || img.originalUrl;
-          if (
-            !originalImageUrls.has(blobUrl) &&
-            !originalImageUrls.has(img.originalUrl)
-          ) {
-            logDebug(
-              `loadZIPContents: purging ghost registry entry ${img.id} (status: ${img.status})`,
-            );
-            this.imageRegistry.removeImage(img.id);
-          }
-        }
-
+        const cdnMMD = this._translateBlobUrlsToCdnForMMD(originalMMD);
+        const setDiff = this.imageRegistry.buildFromMMD(cdnMMD);
+        await this._cleanupBuildFromMMDRemoved(setDiff.removed);
+        this.syncRegistryReferencesToBlobUrls();
         logInfo(
-          `loadZIPContents: registry purged to ${this.imageRegistry.getCount()} image(s)`,
+          `loadZIPContents: setDiff added=${setDiff.added.length} removed=${setDiff.removed.length}, registry now ${this.imageRegistry.getCount()} image(s)`,
         );
       }
 
@@ -1177,6 +1207,7 @@ if (context.eagerDiff) {
       this.loadMMDContent(originalMMD, originalMMD);
       this.updateSessionStatus("saved");
       this.hasUnsavedChanges = false;
+      this.hasContextEdits = false;
 
       // Update manage images button state (count may have changed)
       this.updateManageImagesButtonState();
@@ -1206,11 +1237,27 @@ if (context.eagerDiff) {
       this.restoredSession.baselineMMD = editContent;
       this.restoredSession.selectedEdit = zipEdit;
 
+      // Phase 4a.5: sync registry's mmdReference fields to blob-URL form
+      // so the Fix F12 purge below (and downstream consumers) see consistent
+      // references between the registry and the live MMD.
+      this.syncRegistryReferencesToBlobUrls();
+
       // Fix F12: Purge ghost registry entries not referenced in the ZIP edit.
       // Same pattern as Fix 9 (loadZIPContents). The registry was built from
       // the ZIP's image-registry.json but the edit may reference a different
       // set of images (e.g. user added images in a later session that aren't
       // in this edit's MMD).
+      //
+      // Survival note (post-Stage-6 Finding-5 retirement, 2026-05-25):
+      // loadZIPContents and applyRecoveredSession were migrated to the
+      // Stage 6 reconcile pattern (_translateBlobUrlsToCdnForMMD +
+      // buildFromMMD + _cleanupBuildFromMMDRemoved). This loop survives
+      // because it carries a third referential form via
+      // imageFilenameMap[id].filename formatted as "images/<filename>" —
+      // ZIP edits store relative paths inside the archive, and buildFromMMD's
+      // URL-only matching does not reproduce that fallback. Migration is
+      // deferred to Stage 7; see F-B in
+      // pre-stage-7-discoveries-stage6-post-close-audit.md.
       if (this.imageRegistry) {
         const editImageUrls = new Set();
         const imgRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
@@ -1254,6 +1301,7 @@ if (context.eagerDiff) {
       this.loadMMDContent(editContent, originalMMD);
       this.updateSessionStatus("saved");
       this.hasUnsavedChanges = false;
+      this.hasContextEdits = false;
 
       // Update manage images button state (count may have changed)
       this.updateManageImagesButtonState();
@@ -1353,7 +1401,6 @@ if (context.eagerDiff) {
       downloadBtn.className =
         "resume-btn resume-btn-primary resume-download-updated-btn";
       downloadBtn.innerHTML = `${getIcon("download")} Download Updated ZIP`;
-      downloadBtn.title = "Download ZIP archive with your edits";
 
       downloadBtn.addEventListener("click", () =>
         this.triggerUpdatedZIPDownload(),
@@ -1426,7 +1473,13 @@ if (context.eagerDiff) {
 
     // Filter to only sessions with actual user edits (current !== baseline)
     const sessionsWithEdits = allSessions.filter((session) => {
-      const baseline = session.data?.baseline || session.data?.original;
+      // F-O: coerce so a corrupt {} baseline/original is treated as absent. When
+      // neither is a usable string the result is null, so `null !== current`
+      // keeps the session (bias to keep — never hide a session whose edit state
+      // we cannot determine).
+      const baseline =
+        this._coerceStoredMMDField(session.data?.baseline) ||
+        this._coerceStoredMMDField(session.data?.original);
       const current = session.data?.current;
       return baseline !== current;
     });
@@ -1539,9 +1592,36 @@ if (context.eagerDiff) {
       // or stale blobs (previous page loads that getMMDForAPI cannot reverse)
       if (this.imageBlobUrlMap.size > 0 && this.restoredSession.currentMMD) {
         // Step 1: Try standard normalisation (handles CDN URLs and fresh blob URLs)
-        let normalisedContent = this.getMMDForAPI(
+        //
+        // F-M async-conversion fallout: getMMDForAPI became async in F-M Phase 4
+        // (it now encodes image bytes to dataURIs via canvas.toBlob). The await
+        // below is the correctness fix — previously this assigned an unawaited
+        // Promise, so `normalisedContent.includes` threw
+        // "normalisedContent.includes is not a function" whenever this branch ran.
+        //
+        // Throwaway-encoding note (deferred follow-up): the result here is used
+        // ONLY to reverse blob URLs for stale-blob detection. Steps 3–4 below
+        // rewrite back to blob URLs, so the dataURIs getMMDForAPI embeds are
+        // discarded — wasteful encoding on this path. A lighter blob→CDN reverse
+        // (e.g. _translateBlobUrlsToCdnForMMD in session-restorer-images.js) would
+        // avoid it, but switching the helper changes user-added-image handling in
+        // ways that need browser verification, so it is left for a tested follow-up.
+        let normalisedContent = await this.getMMDForAPI(
           this.restoredSession.currentMMD,
         );
+
+        // Defensive (belt-and-braces): getMMDForAPI should resolve to a string,
+        // but session restore is a critical path — guard against any future
+        // return-type surprise so it degrades gracefully rather than throwing and
+        // aborting the whole restore. Fall back to the raw recovered content.
+        if (typeof normalisedContent !== "string") {
+          logWarn(
+            "applyRecoveredSession: getMMDForAPI did not resolve to a string; " +
+              "skipping stale-blob normalisation and using raw recovered content",
+            { resolvedType: typeof normalisedContent },
+          );
+          normalisedContent = this.restoredSession.currentMMD;
+        }
 
         // Step 2: If stale blob URLs remain, fall back to positional replacement
         // using CDN URLs from the raw ZIP original (which was never rewritten)
@@ -1574,6 +1654,11 @@ if (context.eagerDiff) {
         this.restoredSession.currentMMD =
           this.rewriteMMDWithBlobUrls(normalisedContent);
         logDebug("Normalised and rewrote image URLs in recovered session");
+
+        // Phase 4a.5: sync registry's mmdReference fields to blob-URL form
+        // so reconcileRecoveredImages and the Fix 13 purge below see consistent
+        // references between the registry and the live MMD.
+        this.syncRegistryReferencesToBlobUrls();
       }
 
       // Step 5 (Phase 8H.3): Reconcile recovered images — resolve placeholders and legacy data URIs
@@ -1602,7 +1687,10 @@ if (context.eagerDiff) {
               reader.readAsDataURL(img.blob);
             });
             if (dataUri) {
-              this.imageRegistry.replaceImage(img.id, { dataUri });
+              // Discovery 23 — restore-time housekeeping. Generating a
+              // missing dataUri from the recovered blob is bookkeeping;
+              // replaceImage would wrongly flip status to "user-replaced".
+              this.imageRegistry.syncDataUriForRestore(img.id, dataUri);
               logDebug(
                 `Generated dataUri for recovered image ${img.id} (${(dataUri.length / 1024).toFixed(1)} KB)`,
               );
@@ -1613,40 +1701,28 @@ if (context.eagerDiff) {
         }
       }
 
-      // Fix 13: Sync registry to recovered MMD — purge entries not in working content.
-      // The registry was built from the ZIP's image-registry.json (all original images),
-      // but the recovered MMD may have had images deleted by the user before refresh.
-      // Without this sync, deleted images reappear as ghost entries in Image Manager.
+      // Sync registry to recovered MMD — purge entries not referenced in
+      // the working content. Replaces the markdown-only Fix-13 ghost-purge
+      // loop with the Stage 6 reconcile pattern (per Finding 5 of
+      // stage-6-planning-decisions.md and Phase 3 of the post-close interlude).
+      //
+      // The recovered MMD is in blob form here (Step 4 above rewrote it via
+      // rewriteMMDWithBlobUrls). Phase A translates back to CDN form so
+      // buildFromMMD's hash(url+lineNumber) IDs align with the registry's
+      // CDN-derived IDs (same Finding 10 fix as Phase 2b of the manager-open
+      // path). Phase D restores blob form to mmdReference for findImage and
+      // the live editor (the line-1586 syncRegistryReferencesToBlobUrls call
+      // ran BEFORE this block; this second call restores blob form after
+      // buildFromMMD's matched-entry refresh).
       if (this.imageRegistry) {
         const workingMMD = this.restoredSession.currentMMD;
-        const referencedUrls = new Set();
-        const imgRefRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
-        let refMatch;
-        while ((refMatch = imgRefRegex.exec(workingMMD)) !== null) {
-          referencedUrls.add(refMatch[1]);
-        }
-
-        const allImgs = this.imageRegistry.getAllImages();
-        let purgedCount = 0;
-        for (const img of allImgs) {
-          const blobUrl =
-            this.imageBlobUrlMap?.get(img.originalUrl) || img.originalUrl;
-          if (
-            !referencedUrls.has(blobUrl) &&
-            !referencedUrls.has(img.originalUrl)
-          ) {
-            logDebug(
-              `applyRecoveredSession: purging unreferenced registry entry ${img.id} (status: ${img.status})`,
-            );
-            this.imageRegistry.removeImage(img.id);
-            purgedCount++;
-          }
-        }
-        if (purgedCount > 0) {
-          logInfo(
-            `applyRecoveredSession: purged ${purgedCount} unreferenced registry entry/entries`,
-          );
-        }
+        const cdnMMD = this._translateBlobUrlsToCdnForMMD(workingMMD);
+        const setDiff = this.imageRegistry.buildFromMMD(cdnMMD);
+        await this._cleanupBuildFromMMDRemoved(setDiff.removed);
+        this.syncRegistryReferencesToBlobUrls();
+        logInfo(
+          `applyRecoveredSession: setDiff added=${setDiff.added.length} removed=${setDiff.removed.length}`,
+        );
       }
 
       this.restoredSession.loadedFromKey = sessionInfo.key;
@@ -1703,6 +1779,7 @@ if (context.eagerDiff) {
       this.updateUndoRedoButtons();
       this.updateSessionStatus("saved");
       this.hasUnsavedChanges = false;
+      this.hasContextEdits = false;
 
       // Show the switch version button
       this.showSwitchVersionButton();

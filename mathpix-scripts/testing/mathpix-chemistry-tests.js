@@ -3979,5 +3979,434 @@ window.testChemistry8C_ST = function () {
     return { passed: totalPassed, total: totalTests, suites: summary };
   };
 
+// Phase 17-1: matchSmarts SMARTS primitive — assertion harness (wire P).
+// Asserts the parsed shape returned by MathPixChemistryUtils.matchSmarts
+// (a JSON-string match list reduced to atom-index arrays). The primitive is
+// synchronous and throws if RDKit is cold, so this harness is async — it warms
+// RDKit via _rdkitInternals.getRdkit() before running the assertions.
+window.testMatchSmartsPrimitive = async function () {
+  const utils = window.MathPixChemistryUtils;
+  const results = [];
+
+  function check(name, pass, detail) {
+    results.push({ name, pass: !!pass, detail: detail ?? "" });
+  }
+
+  if (!utils || typeof utils.matchSmarts !== "function") {
+    console.error(
+      "testMatchSmartsPrimitive: MathPixChemistryUtils.matchSmarts unavailable",
+    );
+    return { passed: 0, total: 1 };
+  }
+
+  // Warm RDKit — the synchronous primitive throws if the module is cold.
+  const mod = await utils._rdkitInternals.getRdkit();
+  if (!mod) {
+    console.error(
+      "testMatchSmartsPrimitive: RDKit failed to initialise — cannot run primitive",
+    );
+    return { passed: 0, total: 1 };
+  }
+
+  const ACID = "C(=O)[OH]";
+  const AMINE = "[NX3]";
+
+  // Case 1: single exact match — acetic acid carboxyl atoms [[1,2,3]].
+  const c1 = utils.matchSmarts("CC(=O)O", [ACID]);
+  check(
+    "case 1: single exact match -> { ACID: [[1,2,3]] }",
+    c1 &&
+      Array.isArray(c1[ACID]) &&
+      c1[ACID].length === 1 &&
+      JSON.stringify(c1[ACID][0]) === "[1,2,3]",
+    JSON.stringify(c1),
+  );
+
+  // Case 2: no match -> empty array (never undefined/missing).
+  const c2 = utils.matchSmarts("CCCC", [ACID]);
+  check(
+    "case 2: no match -> []",
+    c2 && Array.isArray(c2[ACID]) && c2[ACID].length === 0,
+    JSON.stringify(c2),
+  );
+
+  // Case 3: multi-match -> length 2 (count only; RDKit owns the ordering).
+  const c3 = utils.matchSmarts("OC(=O)C(=O)O", [ACID]);
+  check(
+    "case 3: multi-match (di-acid) -> length 2",
+    c3 && Array.isArray(c3[ACID]) && c3[ACID].length === 2,
+    JSON.stringify(c3),
+  );
+
+  // Case 4: multi-pattern map -> both keys; acid non-empty, amine [].
+  const c4 = utils.matchSmarts("CC(=O)O", [ACID, AMINE]);
+  check(
+    "case 4: multi-pattern map -> both keys, acid non-empty, amine []",
+    c4 &&
+      ACID in c4 &&
+      AMINE in c4 &&
+      Array.isArray(c4[ACID]) &&
+      c4[ACID].length > 0 &&
+      Array.isArray(c4[AMINE]) &&
+      c4[AMINE].length === 0,
+    JSON.stringify(c4),
+  );
+
+  // Case 5: invalid SMILES -> null (propagated from _withRdkitMolSync).
+  const c5 = utils.matchSmarts("not-a-smiles", ["C"]);
+  check("case 5: invalid SMILES -> null", c5 === null, JSON.stringify(c5));
+
+  const passed = results.filter((r) => r.pass).length;
+  console.log("\nPhase 17-1: matchSmarts primitive assertions\n");
+  console.table(results);
+  console.log("\n" + passed + "/" + results.length + " passed");
+  return { passed, total: results.length };
+};
+
+// =========================================================================
+// Phase 17-2a: SMARTS-catalogue equivalence + runner harness (batch 1).
+//
+// The catalogue (FUNCTIONAL_GROUPS + runCatalogue in mathpix-chemistry-
+// classify.js) is DEAD CODE — analyseStructure still runs the legacy passes.
+// These harnesses are the real gate for batch 1:
+//
+//   window.testCatalogueEquivalence — proves runCatalogue's records for the
+//     six ported group types (acid, aldehyde, hydroxyl, thiol, nitrile,
+//     halogen) match the legacy _detectFunctionalGroupsFromGraph passes
+//     field-for-field, over the 20 migration + 15 tier-1 + 4 net-new blind-
+//     pass (halogen) fixtures. Each of the six types must be exercised.
+//   window.testCatalogueRunner — basic unit assertions: known fixtures
+//     produce the expected records; matchSmarts is threaded on the canonical
+//     graphData._smiles (not the raw arg); the catalogue is not consumed by
+//     analyseStructure (dead-code guard).
+//   window.testCatalogueBatch1All — runs both and aggregates.
+//
+// Async (matchSmarts is synchronous and throws if RDKit is cold; the graph
+// cache is primed via renderStructure + awaitGraphCached, mirroring the
+// migration harness). Net-new fixtures live HERE, never in the baselines.
+// =========================================================================
+
+const BATCH1_SHORTNAMES = ["acid", "aldehyde", "hydroxyl", "thiol", "nitrile", "halogen"];
+
+// 20 migration fixtures (mirrors migration-harness.js FIXTURES) + 15 tier-1
+// (mirrors TIER1_FIXTURES) + 4 net-new halogen fixtures. Halogen is BLIND in
+// both baseline sets (findings § 6) — the four net-new cover all four halogen
+// elements and both ring-attached and aliphatic attachment.
+const CATALOGUE_FIXTURES = [
+  // --- migration (20) ---
+  { name: "Caffeine",            smiles: "Cn1c(=O)c2c(ncn2C)n(C)c1=O" },
+  { name: "Theobromine",         smiles: "Cn1cnc2c1c(=O)[nH]c(=O)n2C" },
+  { name: "Theophylline",        smiles: "Cn1c(=O)c2[nH]cnc2n(C)c1=O" },
+  { name: "Paraxanthine",        smiles: "CN1C=NC2=C1C(=O)N(C(=O)N2)C" },
+  { name: "Uracil",              smiles: "O=c1cc[nH]c(=O)[nH]1" },
+  { name: "Cytosine",            smiles: "Nc1cc[nH]c(=O)n1" },
+  { name: "2-Pyridone",          smiles: "O=c1cccc[nH]1" },
+  { name: "Thymine",             smiles: "Cc1c[nH]c(=O)[nH]c1=O" },
+  { name: "Adenine",             smiles: "Nc1ncnc2[nH]cnc12" },
+  { name: "Aspirin",             smiles: "CC(=O)Oc1ccccc1C(=O)O" },
+  { name: "Naproxen",            smiles: "COc1ccc2cc(C(C)C(=O)O)ccc2c1" },
+  { name: "Barbituric acid",     smiles: "O=C1CC(=O)NC(=O)N1" },
+  { name: "Urea",                smiles: "NC(=O)N" },
+  { name: "Guanidine",           smiles: "NC(=N)N" },
+  { name: "Naphthalene",         smiles: "c1ccc2ccccc2c1" },
+  { name: "1-Methylnaphthalene", smiles: "Cc1cccc2ccccc12" },
+  { name: "Benzaldehyde",        smiles: "O=Cc1ccccc1" },
+  { name: "Biphenyl",            smiles: "c1ccc(-c2ccccc2)cc1" },
+  { name: "Ethanol",             smiles: "CCO" },
+  { name: "(R)-2-butanol",       smiles: "C[C@@H](O)CC" },
+  // --- tier-1 (15) ---
+  { name: "(S)-alanine",         smiles: "C[C@H](N)C(=O)O" },
+  { name: "cis-2-butene",        smiles: "C/C=C\\C" },
+  { name: "trans-2-butene",      smiles: "C/C=C/C" },
+  { name: "butan-1-ol",          smiles: "CCCCO" },
+  { name: "butan-2-ol",          smiles: "CCC(C)O" },
+  { name: "tert-butanol",        smiles: "CC(C)(C)O" },
+  { name: "propionitrile",       smiles: "CCC#N" },
+  { name: "1-propanethiol",      smiles: "CCCS" },
+  { name: "dimethyl sulfoxide",  smiles: "CS(=O)C" },
+  { name: "diethyl ether",       smiles: "CCOCC" },
+  { name: "methylamine",         smiles: "CN" },
+  { name: "dimethylamine",       smiles: "CNC" },
+  { name: "trimethylamine",      smiles: "CN(C)C" },
+  { name: "acetone",             smiles: "CC(=O)C" },
+  // --- net-new blind-pass fixtures (halogen — defined here, NOT in baselines) ---
+  { name: "chlorobenzene (net-new halogen, ring-attached Cl)", smiles: "Clc1ccccc1" },
+  { name: "bromoethane (net-new halogen, aliphatic Br)",       smiles: "CCBr" },
+  { name: "fluorobenzene (net-new halogen, ring-attached F)",  smiles: "Fc1ccccc1" },
+  { name: "iodomethane (net-new halogen, aliphatic I)",        smiles: "CI" },
+];
+
+// Shared offscreen-canvas graph-cache primer (mirrors migration-harness).
+async function _primeCatalogueGraph(utils, smiles, canvas) {
+  try {
+    utils.renderStructure(smiles, canvas);
+  } catch (e) {
+    /* SmilesDrawer render warnings are non-fatal — the RDKit graph still caches */
+  }
+  if (typeof utils.awaitGraphCached === "function") {
+    await utils.awaitGraphCached(smiles);
+  }
+  return utils._descriptionInternals.getCachedGraph(smiles);
+}
+
+window.testCatalogueEquivalence = async function () {
+  const utils = window.MathPixChemistryUtils;
+  const classify = window.MathpixChemistryClassify;
+  const results = [];
+  function check(name, pass, detail) {
+    results.push({ name, pass: !!pass, detail: detail ?? "" });
+  }
+
+  if (!utils || typeof utils.renderStructure !== "function" || typeof utils.matchSmarts !== "function") {
+    console.error("testCatalogueEquivalence: MathPixChemistryUtils (renderStructure/matchSmarts) unavailable");
+    return { passed: 0, total: 1 };
+  }
+  const helpers = classify && classify.internals && classify.internals.helpers;
+  if (!helpers || typeof helpers.detectFunctionalGroupsFromGraph !== "function" || typeof helpers.runCatalogue !== "function") {
+    console.error("testCatalogueEquivalence: classify helpers (detectFunctionalGroupsFromGraph/runCatalogue) unavailable");
+    return { passed: 0, total: 1 };
+  }
+  const mod = await utils._rdkitInternals.getRdkit();
+  if (!mod) {
+    console.error("testCatalogueEquivalence: RDKit failed to initialise — cannot run");
+    return { passed: 0, total: 1 };
+  }
+
+  const BATCH1 = new Set(BATCH1_SHORTNAMES);
+  const FIELDS = ["name", "shortName", "shorthand", "attachmentVertexId"];
+  const keyOf = (g) => g.atoms.slice().sort((a, b) => a - b).join(",");
+
+  const canvas = document.createElement("canvas");
+  canvas.id = "catalogue-equivalence-canvas";
+  canvas.width = 300;
+  canvas.height = 300;
+  canvas.style.position = "absolute";
+  canvas.style.left = "-9999px";
+  canvas.style.top = "-9999px";
+  document.body.appendChild(canvas);
+
+  const typeCoverage = {};
+  const mismatchDetail = [];
+  try {
+    for (const fx of CATALOGUE_FIXTURES) {
+      const gd = await _primeCatalogueGraph(utils, fx.smiles, canvas);
+      if (!gd) {
+        check("fixture " + fx.name + ": graph cached", false, "no cached graph");
+        continue;
+      }
+      const adjacency = helpers.buildAdjacencyMap(gd.graph);
+      const oldGroups = helpers
+        .detectFunctionalGroupsFromGraph(gd, adjacency)
+        .filter((g) => BATCH1.has(g.shortName));
+      const newGroups = helpers
+        .runCatalogue(gd._smiles, gd, adjacency)
+        .filter((g) => BATCH1.has(g.shortName));
+      oldGroups.forEach((g) => {
+        typeCoverage[g.shortName] = (typeCoverage[g.shortName] || 0) + 1;
+      });
+
+      const oldMap = new Map(oldGroups.map((g) => [keyOf(g), g]));
+      const newMap = new Map(newGroups.map((g) => [keyOf(g), g]));
+      const allKeys = new Set([...oldMap.keys(), ...newMap.keys()]);
+      const fxMismatches = [];
+      for (const k of allKeys) {
+        const o = oldMap.get(k);
+        const n = newMap.get(k);
+        if (!o) {
+          fxMismatches.push("catalogue-extra [" + k + "] " + JSON.stringify(n));
+          continue;
+        }
+        if (!n) {
+          fxMismatches.push("catalogue-missing [" + k + "] " + JSON.stringify(o));
+          continue;
+        }
+        // Atoms order is load-bearing (§ 2.4 corollary 1 — atoms[0] is read
+        // downstream), so compare the arrays exactly, not just as sets.
+        if (JSON.stringify(o.atoms) !== JSON.stringify(n.atoms)) {
+          fxMismatches.push("atoms-order [" + k + "] old=" + JSON.stringify(o.atoms) + " new=" + JSON.stringify(n.atoms));
+        }
+        for (const f of FIELDS) {
+          if (o[f] !== n[f]) {
+            fxMismatches.push("field " + f + " [" + k + "] old=" + String(o[f]) + " new=" + String(n[f]));
+          }
+        }
+      }
+      check(
+        "fixture " + fx.name + ": six-type records equal (" + oldGroups.length + " grp)",
+        fxMismatches.length === 0,
+        fxMismatches.join(" ; "),
+      );
+      if (fxMismatches.length) mismatchDetail.push({ fixture: fx.name, mismatches: fxMismatches });
+    }
+
+    // Each of the six ported types must be exercised by >= 1 comparator fixture.
+    for (const t of BATCH1_SHORTNAMES) {
+      check("type coverage: " + t + " exercised", (typeCoverage[t] || 0) >= 1, "count=" + (typeCoverage[t] || 0));
+    }
+  } finally {
+    if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+  }
+
+  const passed = results.filter((r) => r.pass).length;
+  console.log("\nPhase 17-2a: SMARTS-catalogue equivalence (legacy passes vs runCatalogue, six ported types)\n");
+  console.table(results);
+  if (mismatchDetail.length) {
+    console.warn("Mismatch detail (fixture → field-level diffs):");
+    console.log(JSON.stringify(mismatchDetail, null, 2));
+  }
+  console.log("\nType coverage:", JSON.stringify(typeCoverage));
+  console.log("\n" + passed + "/" + results.length + " passed");
+  return { passed, total: results.length, typeCoverage };
+};
+
+window.testCatalogueRunner = async function () {
+  const utils = window.MathPixChemistryUtils;
+  const classify = window.MathpixChemistryClassify;
+  const results = [];
+  function check(name, pass, detail) {
+    results.push({ name, pass: !!pass, detail: detail ?? "" });
+  }
+
+  if (!utils || typeof utils.renderStructure !== "function" || typeof utils.matchSmarts !== "function") {
+    console.error("testCatalogueRunner: MathPixChemistryUtils unavailable");
+    return { passed: 0, total: 1 };
+  }
+  const helpers = classify && classify.internals && classify.internals.helpers;
+  if (!helpers || typeof helpers.runCatalogue !== "function") {
+    console.error("testCatalogueRunner: helpers.runCatalogue unavailable");
+    return { passed: 0, total: 1 };
+  }
+  const mod = await utils._rdkitInternals.getRdkit();
+  if (!mod) {
+    console.error("testCatalogueRunner: RDKit failed to initialise");
+    return { passed: 0, total: 1 };
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.id = "catalogue-runner-canvas";
+  canvas.width = 300;
+  canvas.height = 300;
+  canvas.style.position = "absolute";
+  canvas.style.left = "-9999px";
+  canvas.style.top = "-9999px";
+  document.body.appendChild(canvas);
+
+  // Dead-code guard: the catalogue must NOT be consumed by the live path.
+  check(
+    "dead-code: helpers.runCatalogue is a function",
+    typeof helpers.runCatalogue === "function",
+    typeof helpers.runCatalogue,
+  );
+  check(
+    "dead-code: analyseStructure source does not reference runCatalogue",
+    typeof classify.analyseStructure === "function" &&
+      classify.analyseStructure.toString().indexOf("runCatalogue") === -1,
+    "live path still calls _detectFunctionalGroupsFromGraph",
+  );
+  check(
+    "catalogue table: six pure-SMARTS rows",
+    Array.isArray(helpers.functionalGroupsCatalogue) && helpers.functionalGroupsCatalogue.length === 6,
+    "len=" + (helpers.functionalGroupsCatalogue ? helpers.functionalGroupsCatalogue.length : "n/a"),
+  );
+
+  try {
+    // Acetic acid → one acid record [C,=O,OH], shorthand –COOH, no ring.
+    {
+      const gd = await _primeCatalogueGraph(utils, "CC(=O)O", canvas);
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, helpers.buildAdjacencyMap(gd.graph)) : [];
+      const acid = recs.find((r) => r.shortName === "acid");
+      check(
+        "acetic acid: acid record present",
+        recs.length === 1 && !!acid,
+        JSON.stringify(recs),
+      );
+      check(
+        "acetic acid: acid fields (name/shorthand/atoms[3]/attach=null)",
+        !!acid && acid.name === "carboxylic acid" && acid.shorthand === "–COOH" &&
+          JSON.stringify(acid.atoms) === "[1,2,3]" && acid.attachmentVertexId === null,
+        JSON.stringify(acid),
+      );
+    }
+    // Benzaldehyde → aldehyde [C,=O], shorthand –CHO, attachment = ring carbon.
+    {
+      const gd = await _primeCatalogueGraph(utils, "O=Cc1ccccc1", canvas);
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, helpers.buildAdjacencyMap(gd.graph)) : [];
+      const ald = recs.find((r) => r.shortName === "aldehyde");
+      check(
+        "benzaldehyde: aldehyde record (name/shorthand/atoms[1,0])",
+        !!ald && ald.name === "aldehyde" && ald.shorthand === "–CHO" && JSON.stringify(ald.atoms) === "[1,0]",
+        JSON.stringify(ald),
+      );
+    }
+    // Ethanol → hydroxyl [O], –OH, attachment null.
+    {
+      const gd = await _primeCatalogueGraph(utils, "CCO", canvas);
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, helpers.buildAdjacencyMap(gd.graph)) : [];
+      const oh = recs.find((r) => r.shortName === "hydroxyl");
+      check(
+        "ethanol: hydroxyl record (name/shorthand/atoms[2]/attach=null)",
+        !!oh && oh.name === "hydroxyl" && oh.shorthand === "–OH" &&
+          JSON.stringify(oh.atoms) === "[2]" && oh.attachmentVertexId === null,
+        JSON.stringify(oh),
+      );
+    }
+    // Chlorobenzene → halogen [Cl], dynamic shorthand –Cl, ring attachment.
+    {
+      const gd = await _primeCatalogueGraph(utils, "Clc1ccccc1", canvas);
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, helpers.buildAdjacencyMap(gd.graph)) : [];
+      const hal = recs.find((r) => r.shortName === "halogen");
+      check(
+        "chlorobenzene: halogen record (per-element shorthand –Cl, ring attachment non-null)",
+        !!hal && hal.name === "halogen" && hal.shorthand === "–Cl" &&
+          hal.atoms.length === 1 && hal.attachmentVertexId !== null,
+        JSON.stringify(hal),
+      );
+    }
+    // 1-propanethiol → thiol [S], –SH (proves the corrected [SX2H1] row).
+    {
+      const gd = await _primeCatalogueGraph(utils, "CCCS", canvas);
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, helpers.buildAdjacencyMap(gd.graph)) : [];
+      const sh = recs.find((r) => r.shortName === "thiol");
+      check(
+        "1-propanethiol: thiol record (name 'thiol group', –SH, atoms len 1)",
+        !!sh && sh.name === "thiol group" && sh.shorthand === "–SH" && sh.atoms.length === 1,
+        JSON.stringify(sh),
+      );
+    }
+    // Canonical threading: a deliberately wrong raw `smiles` arg must be
+    // ignored in favour of graphData._smiles — the acid record still appears.
+    {
+      const gd = await _primeCatalogueGraph(utils, "CC(=O)O", canvas);
+      const recs = gd ? helpers.runCatalogue("CCCCCCCC", gd, helpers.buildAdjacencyMap(gd.graph)) : [];
+      const acid = recs.find((r) => r.shortName === "acid");
+      check(
+        "canonical threading: bogus raw arg ignored, graphData._smiles used",
+        !!acid && JSON.stringify(acid.atoms) === "[1,2,3]",
+        JSON.stringify(recs),
+      );
+    }
+  } finally {
+    if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+  }
+
+  const passed = results.filter((r) => r.pass).length;
+  console.log("\nPhase 17-2a: SMARTS-catalogue runner unit assertions\n");
+  console.table(results);
+  console.log("\n" + passed + "/" + results.length + " passed");
+  return { passed, total: results.length };
+};
+
+window.testCatalogueBatch1All = async function () {
+  const equiv = await window.testCatalogueEquivalence();
+  const runner = await window.testCatalogueRunner();
+  const passed = (equiv.passed || 0) + (runner.passed || 0);
+  const total = (equiv.total || 0) + (runner.total || 0);
+  console.log(
+    "\nPhase 17-2a batch-1 aggregate: equivalence " + equiv.passed + "/" + equiv.total +
+      ", runner " + runner.passed + "/" + runner.total + " — total " + passed + "/" + total,
+  );
+  return { passed, total };
+};
+
   logInfo("mathpix-chemistry-tests.js loaded — run window.testChemistryAll() to run everything");
 })();

@@ -989,6 +989,145 @@ window.testImageRestore = function () {
   test("Debug info has hasImageRegistry", "hasImageRegistry" in debugInfo);
   test("Debug info has imageRegistryCount", "imageRegistryCount" in debugInfo);
 
+  // Test 10: syncRegistryReferencesToBlobUrls exists
+  console.log("\n--- Phase 4a.5: Registry Sync Helper ---");
+  test(
+    "syncRegistryReferencesToBlobUrls() exists",
+    typeof restorer?.syncRegistryReferencesToBlobUrls === "function",
+  );
+
+  // Test 11: Helper syncs CDN-form mmdReferences to blob-URL form when the
+  // imageBlobUrlMap contains a matching CDN→blob entry.
+  if (typeof window.MathPixImageRegistry === "function") {
+    console.log("\n--- Helper: sync CDN→blob references ---");
+    const cdnUrlA = "https://cdn.mathpix.com/cropped/sync-a.jpg";
+    const cdnUrlB = "https://cdn.mathpix.com/cropped/sync-b.jpg";
+    const blobUrlA = "blob:http://localhost/sync-blob-a";
+    const blobUrlB = "blob:http://localhost/sync-blob-b";
+
+    const reg = new window.MathPixImageRegistry();
+    reg.buildFromMMD(
+      `Intro\n\n![](${cdnUrlA})\n\nMiddle\n\n![](${cdnUrlB})\n\nEnd`,
+    );
+
+    // Capture prior registry state so we can confirm side-effect absence.
+    const idsBefore = reg.getAllImages().map((e) => e.id);
+    const modBefore = reg
+      .getAllImages()
+      .map((e) => e.isModified)
+      .join(",");
+
+    restorer.imageRegistry = reg;
+    restorer.imageBlobUrlMap.clear();
+    restorer.imageBlobUrlMap.set(cdnUrlA, blobUrlA);
+    restorer.imageBlobUrlMap.set(cdnUrlB, blobUrlB);
+
+    restorer.syncRegistryReferencesToBlobUrls();
+
+    const entries = reg.getAllImages();
+    const refA = entries.find((e) => e.id === idsBefore[0])?.mmdReference || "";
+    const refB = entries.find((e) => e.id === idsBefore[1])?.mmdReference || "";
+    const modAfter = entries.map((e) => e.isModified).join(",");
+
+    test(
+      "Test 11a: entry 1 mmdReference rewritten to blob-URL form",
+      refA.includes(blobUrlA) && !refA.includes(cdnUrlA),
+    );
+    test(
+      "Test 11b: entry 2 mmdReference rewritten to blob-URL form",
+      refB.includes(blobUrlB) && !refB.includes(cdnUrlB),
+    );
+    test(
+      "Test 11c: isModified flags NOT touched by sync",
+      modBefore === modAfter,
+    );
+
+    // Cleanup for later tests.
+    restorer.imageBlobUrlMap.clear();
+    restorer.imageRegistry = null;
+  } else {
+    test("Test 11: SKIPPED — MathPixImageRegistry not loaded", true);
+  }
+
+  // Test 12: User-added images (originalUrl not in imageBlobUrlMap) are
+  // skipped naturally — no spurious mutation.
+  if (typeof window.MathPixImageRegistry === "function") {
+    console.log("\n--- Helper: user-added images skip naturally ---");
+    const userBlobUrl = "blob:http://localhost/user-added-12";
+    const cdnUrl12 = "https://cdn.mathpix.com/cropped/ocr-12.jpg";
+    const ocrBlobUrl12 = "blob:http://localhost/ocr-blob-12";
+
+    const reg = new window.MathPixImageRegistry();
+    // OCR image (CDN form)
+    reg.buildFromMMD(`![](${cdnUrl12})`);
+    const ocrId = reg.getAllImages()[0].id;
+    // User-added image (blob form originalUrl, populated like addImageToDocument)
+    const userEntry = reg.addImage({
+      originalUrl: userBlobUrl,
+      mmdReference: `![](${userBlobUrl})`,
+      mimeType: "image/png",
+      fileSize: 1024,
+    });
+
+    restorer.imageRegistry = reg;
+    restorer.imageBlobUrlMap.clear();
+    restorer.imageBlobUrlMap.set(cdnUrl12, ocrBlobUrl12); // only OCR mapped
+
+    const userRefBefore = reg.getImage(userEntry.id).mmdReference;
+    restorer.syncRegistryReferencesToBlobUrls();
+    const userRefAfter = reg.getImage(userEntry.id).mmdReference;
+    const ocrRefAfter = reg.getImage(ocrId).mmdReference;
+
+    test(
+      "Test 12a: user-added mmdReference UNchanged (not in imageBlobUrlMap)",
+      userRefAfter === userRefBefore,
+    );
+    test(
+      "Test 12b: OCR mmdReference IS rewritten alongside",
+      ocrRefAfter.includes(ocrBlobUrl12) && !ocrRefAfter.includes(cdnUrl12),
+    );
+
+    restorer.imageBlobUrlMap.clear();
+    restorer.imageRegistry = null;
+  } else {
+    test("Test 12: SKIPPED — MathPixImageRegistry not loaded", true);
+  }
+
+  // Test 13: Belt-and-braces guard — entry whose originalUrl is NOT literally
+  // present in its mmdReference is left untouched (newMmdRef === mmdReference
+  // after .replace()).
+  if (typeof window.MathPixImageRegistry === "function") {
+    console.log("\n--- Helper: belt-and-braces equality guard ---");
+    const cdnUrl13 = "https://cdn.mathpix.com/cropped/orphan-13.jpg";
+    const blobUrl13 = "blob:http://localhost/orphan-blob-13";
+
+    const reg = new window.MathPixImageRegistry();
+    reg.buildFromMMD(`![](${cdnUrl13})`);
+    const id = reg.getAllImages()[0].id;
+    // Manually corrupt the mmdReference so originalUrl is not literally inside
+    // it — simulates a divergent state .replace() would no-op against.
+    reg.replaceImage(id, {
+      mmdReference: "![](https://elsewhere.example/different-13.jpg)",
+    });
+    const refBefore = reg.getImage(id).mmdReference;
+
+    restorer.imageRegistry = reg;
+    restorer.imageBlobUrlMap.clear();
+    restorer.imageBlobUrlMap.set(cdnUrl13, blobUrl13);
+
+    restorer.syncRegistryReferencesToBlobUrls();
+    const refAfter = reg.getImage(id).mmdReference;
+    test(
+      "Test 13: entry with originalUrl-not-in-mmdReference is left untouched",
+      refAfter === refBefore,
+    );
+
+    restorer.imageBlobUrlMap.clear();
+    restorer.imageRegistry = null;
+  } else {
+    test("Test 13: SKIPPED — MathPixImageRegistry not loaded", true);
+  }
+
   printTestSummary(results, "Phase 8F: Image Restore");
   return results;
 };

@@ -110,6 +110,53 @@
   };
 
   // =========================================================================
+  // Phase 17-2a: SMARTS functional-group catalogue (batch 1 — pure-SMARTS).
+  //
+  // DEAD CODE. The live classification path (analyseStructure →
+  // _detectFunctionalGroupsFromGraph) is UNCHANGED; runCatalogue (below) is
+  // reached only by the equivalence harness (window.testCatalogueEquivalence)
+  // until the consumption switchover lands in a later 17-2 sub-stage. The
+  // migration canary is therefore 20/0 by construction.
+  //
+  // Batch 1 seeds the six Q2-class-(a) "pure-SMARTS, atoms-exact" passes from
+  // phase17-2-investigation-findings.md § 3: carboxylic acid, aldehyde,
+  // hydroxyl, thiol, nitrile, halogen. Each row reproduces the legacy pass's
+  // record shape field-for-field (name / shortName / shorthand / atoms /
+  // attachmentVertexId). For all six the SMARTS-match atom order coincides
+  // with the legacy `atoms` order (acid C(=O)[OH] → [C,=O,OH]; aldehyde
+  // [CX3H1]=O → [C,=O]; nitrile [CX2]#[NX1] → [C,N]; single-atom rows
+  // otherwise), so no role-remap is needed in this batch (§ 2.4 corollary 1).
+  //
+  // Row order encodes the subset of the § 3.2 priority chain that touches
+  // these six: carboxylic acid runs BEFORE hydroxyl so the acid's –OH oxygen
+  // is claimed first and never re-emitted as a stray hydroxyl (the only
+  // intra-batch claim interaction — verified across the 35 migration+tier-1
+  // fixtures). The remaining four rows are element-/H-disjoint from each other
+  // and from the acid/hydroxyl pair.
+  //
+  // SMARTS authority note (surfaced at Gate 0): findings § 3 lists the thiol
+  // pattern as [SX1H1]; that form matches NOTHING on the pinned RDKit build
+  // because X (total connectivity) counts implicit H, so a terminal –SH sulfur
+  // is X2 — exactly like the validated hydroxyl row [OX2H1]. The equivalence-
+  // preserving form is [SX2H1] (live-probe-confirmed: propanethiol CCCS →
+  // [[3]], byte-identical to the legacy thiol record). This is a one-token
+  // correction of an internal inconsistency in the findings (their hydroxyl
+  // row already uses X2 for the same terminal-heteroatom+1H shape), not a
+  // re-derivation.
+  //
+  // halogen.shorthand is null in the table and computed per-match from the
+  // matched atom's element ("–F" / "–Cl" / "–Br" / "–I"), matching the legacy
+  // pass's `"–" + el`.
+  const FUNCTIONAL_GROUPS = [
+    { id: "acid",     smarts: "C(=O)[OH]",      name: "carboxylic acid", shortName: "acid",     shorthand: "–COOH" },
+    { id: "aldehyde", smarts: "[CX3H1]=O",      name: "aldehyde",        shortName: "aldehyde", shorthand: "–CHO" },
+    { id: "hydroxyl", smarts: "[OX2H1]",        name: "hydroxyl",        shortName: "hydroxyl", shorthand: "–OH" },
+    { id: "thiol",    smarts: "[SX2H1]",        name: "thiol group",     shortName: "thiol",    shorthand: "–SH" },
+    { id: "nitrile",  smarts: "[CX2]#[NX1]",    name: "nitrile",         shortName: "nitrile",  shorthand: "–CN" },
+    { id: "halogen",  smarts: "[F,Cl,Br,I;X1]", name: "halogen",         shortName: "halogen",  shorthand: null },
+  ];
+
+  // =========================================================================
   // Leaf primitives (Step 1)
   // =========================================================================
 
@@ -631,6 +678,34 @@
       }
     }
 
+    // 4.5 Sulphoxides — Phase 15-2c (LOCK 2 + R2). S with EXACTLY ONE =O
+    // and exactly two single-bonded C neighbours; non-ring. R2 precision:
+    // =O count must be exactly 1 (rejects sulphone, which has 2). Element
+    // disjoint from ketone/aldehyde Pass 5/6 (S, not C) — no cross-claim.
+    for (const v of vertices) {
+      if (claimed.has(v.id) || elem(v) !== "S" || inRing(v)) continue;
+      const neighbours = adjacency.get(v.id) || [];
+      if (neighbours.length !== 3) continue;
+      const doubleOs = neighbours.filter(
+        n => elem(n.vertex) === "O" && n.edge.bondType === "=" && !claimed.has(n.vertex.id),
+      );
+      if (doubleOs.length !== 1) continue; // R2: rejects sulphone (=O count 2)
+      const singleCs = neighbours.filter(
+        n => elem(n.vertex) === "C" && n.edge.bondType === "-" && !claimed.has(n.vertex.id),
+      );
+      if (singleCs.length !== 2) continue;
+      const oVertex = doubleOs[0].vertex;
+      const atoms = [v.id, oVertex.id];
+      atoms.forEach(a => claimed.add(a));
+      groups.push({
+        name: "sulphoxide group",
+        shortName: "sulphoxide",
+        shorthand: "S=O",
+        atoms,
+        attachmentVertexId: findRingAttachment(atoms),
+      });
+    }
+
     // 5. Ketones — remaining C with =O, having 2+ carbon neighbours
     for (const v of vertices) {
       if (claimed.has(v.id) || elem(v) !== "C") continue;
@@ -690,6 +765,28 @@
           attachmentVertexId: findRingAttachment(atoms),
         });
       }
+    }
+
+    // 7.5 Thiols — Phase 15-2c (LOCK 2). Terminal -SH: S with degree 1,
+    // bracket hcount=1, neighbour C via single bond. Parallel to hydroxyl
+    // in shape (terminal heteroatom + 1 H), element-disjoint by S.
+    for (const v of vertices) {
+      if (claimed.has(v.id) || elem(v) !== "S" || inRing(v)) continue;
+      const neighbours = adjacency.get(v.id) || [];
+      if (neighbours.length !== 1) continue;
+      const n0 = neighbours[0];
+      if (n0.edge.bondType !== "-" || elem(n0.vertex) !== "C") continue;
+      const hcount = v.value?.bracket?.hcount;
+      if (hcount !== 1) continue; // distinguishes from sulphide/disulphide
+      const atoms = [v.id];
+      claimed.add(v.id);
+      groups.push({
+        name: "thiol group",
+        shortName: "thiol",
+        shorthand: "–SH",
+        atoms,
+        attachmentVertexId: findRingAttachment(atoms),
+      });
     }
 
     // 8. Methoxy (Phase 11-1f, N-post10-10). Ring-attached –O–CH₃ that
@@ -752,15 +849,93 @@
       }
     }
 
-    // 9. Amines — N not claimed by amide, not in a ring
+    // 8.5 Acyclic ethers — Phase 15-2c (LOCK 2). Non-ring O with degree 2,
+    // both neighbours C via single bonds. Ester O (Pass 2) and methoxy O
+    // (Pass 8) are already claimed, so this fires only on the residual
+    // acyclic R-O-R' case (e.g. diethyl ether).
+    for (const v of vertices) {
+      if (claimed.has(v.id) || elem(v) !== "O" || inRing(v)) continue;
+      const neighbours = adjacency.get(v.id) || [];
+      if (neighbours.length !== 2) continue;
+      const singleCs = neighbours.filter(
+        n => elem(n.vertex) === "C" && n.edge.bondType === "-",
+      );
+      if (singleCs.length !== 2) continue;
+      const atoms = [v.id];
+      claimed.add(v.id);
+      groups.push({
+        name: "ether",
+        shortName: "ether",
+        shorthand: null, // no compact glyph per findings § 7
+        atoms,
+        attachmentVertexId: findRingAttachment(atoms),
+      });
+    }
+
+    // 9. Amines — N, non-ring, all neighbour edges single-bonded.
+    // Phase 15-2c (LOCK 3 + LOCK 4 + R1): rewritten from element-only to
+    // bond-order-aware + topology-aware. Excludes nitrile [NX1] (any # edge)
+    // and imine [NX2] (any = edge) by construction (KD-8 fix-by-construction
+    // per findings § 3.5). Emits subtype-tagged objects so prose can render
+    // primary/secondary/tertiary + correct H-glyph (KD-3 fix surface).
     for (const v of vertices) {
       if (claimed.has(v.id) || elem(v) !== "N" || inRing(v)) continue;
+      const neighbours = adjacency.get(v.id) || [];
+      // All neighbour edges must be single bonds — rules out nitrile, imine,
+      // enamine (tier-1 boundary per R1: imine/enamine not in corpus yet).
+      if (!neighbours.every(n => n.edge.bondType === "-")) continue;
+      const heavyDegree = neighbours.length;
+      if (heavyDegree < 1 || heavyDegree > 3) continue;
+      // H-count: prefer translator-supplied bracket.hcount, fall back to
+      // (3 − heavyDegree) for neutral trivalent N (per LOCK 3 R1 — both
+      // sources agree for tier-1 amines).
+      const hcount = v.value?.bracket?.hcount ?? (3 - heavyDegree);
+      const subtype = heavyDegree; // 1 / 2 / 3 — also equal to (3 - hcount)
+      // Shorthand parametrised on subtype: 1° -NH₂, 2° -NH-, 3° no glyph.
+      const shorthandForSubtype =
+        subtype === 1 ? "–NH₂" : subtype === 2 ? "–NH–" : null;
+      const nSubstituents = neighbours.map(n => n.vertex.id);
       const atoms = [v.id];
       claimed.add(v.id);
       groups.push({
         name: "amine",
         shortName: "amine",
-        shorthand: "–NH₂",
+        shorthand: shorthandForSubtype,
+        atoms,
+        attachmentVertexId: findRingAttachment(atoms),
+        // Phase 15-2c subtype payload — consumed by prose layer at Commit C.
+        subtype,
+        nSubstituents,
+        nHydrogenCount: hcount,
+      });
+    }
+
+    // 9.5 Imines — Phase 16-3 (KD-9). Additive pass: claims the residual
+    // non-ring N that the amine pass (Pass 9) rejects by construction — a
+    // heavy-degree-1 N whose sole edge is a double bond to an sp² (CX3)
+    // carbon, i.e. [NX2;!R]=[CX3]. Degree-1 is the load-bearing guard: ring
+    // C=N nitrogens (e.g. paraxanthine's surviving Kekulé C=N, heavy-degree
+    // 2) are rejected. !inRing is defence-in-depth + parity with the amine
+    // pass (functionally redundant on this corpus). The `claimed` guard makes
+    // this strictly additive — Pass 9 already claimed the two amine N's, so
+    // this re-claims nothing and adds only the previously-unclaimed =N. See
+    // phase16-3-investigation-findings.md §§ 2-3 (over-claim probe: guanidine
+    // is the sole match across all 20 migration fixtures).
+    for (const v of vertices) {
+      if (claimed.has(v.id) || elem(v) !== "N" || inRing(v)) continue;
+      const neighbours = adjacency.get(v.id) || [];
+      if (neighbours.length !== 1) continue; // heavy-degree 1
+      const n0 = neighbours[0];
+      if (n0.edge.bondType !== "=" || elem(n0.vertex) !== "C") continue;
+      // C-side CX3: the imine carbon is sp² with heavy-atom degree 3.
+      const cNeighbours = adjacency.get(n0.vertex.id) || [];
+      if (cNeighbours.length !== 3) continue;
+      const atoms = [v.id];
+      claimed.add(v.id);
+      groups.push({
+        name: "imine",
+        shortName: "imine",
+        shorthand: "=N–",
         atoms,
         attachmentVertexId: findRingAttachment(atoms),
       });
@@ -920,6 +1095,115 @@
       }
     }
 
+    return groups;
+  }
+
+  /**
+   * Phase 17-2a: standalone ring-attachment finder for the SMARTS-catalogue
+   * runner. Byte-identical in behaviour to the `findRingAttachment` closure
+   * inside _detectFunctionalGroupsFromGraph — for each atom in the group,
+   * return the first neighbour that is a ring member and not itself part of
+   * the group, else null. Reproduced (not shared) because the original is a
+   * private closure over `adjacency`/`inRing`; the equivalence harness
+   * (window.testCatalogueEquivalence) proves the two stay in lockstep.
+   *
+   * @param {number[]} atomIds
+   * @param {Map} adjacency
+   * @returns {number|null}
+   * @private
+   */
+  function _catalogueFindRingAttachment(atomIds, adjacency) {
+    for (const id of atomIds) {
+      const neighbours = adjacency.get(id) || [];
+      for (const n of neighbours) {
+        const isRing = (n.vertex.value?.rings?.length || 0) > 0;
+        if (isRing && !atomIds.includes(n.vertex.id)) {
+          return n.vertex.id;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Phase 17-2a: SMARTS-catalogue functional-group runner (batch 1 — DEAD CODE).
+   *
+   * Matches the six pure-SMARTS rows of FUNCTIONAL_GROUPS against the molecule
+   * and reconstructs the legacy group records they correspond to. NOT called
+   * from analyseStructure / the live path — only the equivalence harness
+   * (window.testCatalogueEquivalence) reaches it until the consumption
+   * switchover sub-stage. Result: the migration canary is 20/0 by construction.
+   *
+   * Q1 index alignment (findings § 2 / § 4): matchSmarts MUST run on the same
+   * canonical SMILES the cached graph was extracted from, else the returned
+   * atom indices reference a different basis than graphData's vertex ids.
+   * graphData._smiles is that canonical string (the get_smiles path on the
+   * pinned RDKit build); the runner threads it. The raw `smiles` arg is a
+   * defensive fallback only (logged if used) — present so the signature reads
+   * runCatalogue(smiles, graphData, adjacency) per the dispatch.
+   *
+   * Claiming: a shared `claimed` Set, with rows processed in FUNCTIONAL_GROUPS
+   * order, reproduces the legacy passes' relative claiming for these six (acid
+   * before hydroxyl). A match any of whose atoms are already claimed is skipped
+   * — equivalent to the legacy per-atom `!claimed` guard for this batch, where
+   * each row claims exactly the atoms it matches.
+   *
+   * The whole catalogue's patterns go to matchSmarts in ONE call, so the mol is
+   * parsed once per structure (no cache — caching is 17-3).
+   *
+   * @param {string} smiles - fallback SMILES (graphData._smiles is preferred).
+   * @param {Object} graphData - cached graph ({ graph, _smiles, ... }).
+   * @param {Map} adjacency - from _buildAdjacencyMap(graphData.graph).
+   * @returns {Object[]} group records matching the legacy detector's shape.
+   */
+  function runCatalogue(smiles, graphData, adjacency) {
+    const groups = [];
+    if (!graphData || !graphData.graph) {
+      logWarn("runCatalogue: missing graphData.graph");
+      return groups;
+    }
+    const canonicalSmiles = graphData._smiles || smiles;
+    if (!canonicalSmiles) {
+      logWarn("runCatalogue: no SMILES available (graphData._smiles absent and no fallback arg)");
+      return groups;
+    }
+    if (!graphData._smiles) {
+      logWarn("runCatalogue: graphData._smiles absent — using raw arg; atom indices may diverge from the cached graph");
+    }
+    if (typeof utils.matchSmarts !== "function") {
+      logError("runCatalogue: MathPixChemistryUtils.matchSmarts unavailable — check load order");
+      return groups;
+    }
+
+    const vertices = graphData.graph.vertices;
+    const patterns = FUNCTIONAL_GROUPS.map(r => r.smarts);
+    const matchMap = utils.matchSmarts(canonicalSmiles, patterns);
+    if (!matchMap) {
+      logWarn("runCatalogue: matchSmarts returned null (invalid SMILES)", { canonicalSmiles });
+      return groups;
+    }
+
+    const claimed = new Set();
+    for (const row of FUNCTIONAL_GROUPS) {
+      const matches = matchMap[row.smarts] || [];
+      for (const atomIdxs of matches) {
+        if (!Array.isArray(atomIdxs) || atomIdxs.length === 0) continue;
+        if (atomIdxs.some(a => claimed.has(a))) continue;
+        atomIdxs.forEach(a => claimed.add(a));
+        let shorthand = row.shorthand;
+        if (row.id === "halogen") {
+          const v = vertices.find(x => x.id === atomIdxs[0]);
+          shorthand = "–" + (v?.value?.element || "");
+        }
+        groups.push({
+          name: row.name,
+          shortName: row.shortName,
+          shorthand,
+          atoms: atomIdxs.slice(),
+          attachmentVertexId: _catalogueFindRingAttachment(atomIdxs, adjacency),
+        });
+      }
+    }
     return groups;
   }
 
@@ -1210,18 +1494,47 @@
     return {
       length: longestPath,
       branched,
+      // Phase 15-2b: expose chain atom set so _findPrincipalFGAnchor + prose
+      // consumers (STD/SHORT/COMP via _orderChainAtoms + _chainLocantSuffix)
+      // can resolve group-to-chain attachment without rebuilding the filter.
+      _atomSet: new Set(carbonIds),
     };
   }
 
   /**
-   * Classify the overall molecular scaffold from ring analysis.
+   * Classify the overall molecular scaffold from ring + group analysis.
+   *
+   * Phase 15-2c (LOCK 5 + R3): acyclic scaffolds may now resolve to two new
+   * topology-only types parallel to the 15-1a `"joined-rings"` precedent —
+   * `"central-heteroatom"` (a heteroatom bearing ≥2 carbon substituents,
+   * zero C–C bonds — serves #10 DMSO / #13 dimethylamine / #14 trimethylamine)
+   * and `"bridged-acyclic"` (two carbon substructures bridged by a non-ring
+   * heteroatom — serves #11 diethyl ether). Types are element-agnostic at
+   * the scaffold layer; prose dispatches on the FG (sulphoxide vs amine
+   * subtype) for element-specific phrasing.
+   *
+   * R3 methylamine boundary: #12 methylamine has 1 C on N (amine subtype=1),
+   * so `_hasCentralHeteroatomGroup` returns false → stays on `"chain"`.
    *
    * @param {Object[]} rings - Array from _classifyRing()
-   * @returns {string} "aromatic-ring", "ring", "fused-rings", "joined-rings", or "chain"
+   * @param {Object[]} [groups] - functional groups from _detectFunctionalGroupsFromGraph();
+   *   omitting the parameter (legacy callers) keeps the pre-15-2c behaviour
+   *   intact since the new arms gate on group presence.
+   * @returns {string} "aromatic-ring", "ring", "fused-rings", "joined-rings",
+   *   "central-heteroatom", "bridged-acyclic", or "chain"
    * @private
    */
-  function _classifyScaffold(rings) {
-    if (rings.length === 0) return "chain";
+  function _classifyScaffold(rings, groups) {
+    if (rings.length === 0) {
+      // Phase 15-2c (LOCK 5): acyclic central-heteroatom + bridged-acyclic
+      // arms checked BEFORE the chain fallback. Arms gate on FG presence,
+      // so pre-15-2c chain fixtures (acetone, ethanol, urea, guanidine, …)
+      // still resolve to "chain" — no behaviour change for any existing
+      // migration fixture (all 20 verified at the Commit B gate).
+      if (_hasCentralHeteroatomGroup(groups)) return "central-heteroatom";
+      if (_hasBridgingGroup(groups)) return "bridged-acyclic";
+      return "chain";
+    }
     if (rings.some(r => r.isFused)) return "fused-rings";
     // Phase 15-1a (KD-1 + KD-2): multi-ring non-fused systems (e.g. biphenyl,
     // SMILES c1ccc(-c2ccccc2)cc1). Tested AFTER fused-rings (so the
@@ -1235,6 +1548,258 @@
     if (rings.length > 1) return "joined-rings";
     if (rings.some(r => r.aromatic)) return "aromatic-ring";
     return "ring";
+  }
+
+  /**
+   * Phase 15-2c (LOCK 5): central-heteroatom predicate. Matches sulphoxide
+   * (S centre with 2 -C neighbours by Pass 4.5 construction) and amine with
+   * subtype ≥ 2 (N centre with 2-or-3 -C neighbours — R3 boundary excludes
+   * subtype 1 / methylamine). Defensive against undefined `groups`.
+   *
+   * @param {Object[]} [groups]
+   * @returns {boolean}
+   * @private
+   */
+  function _hasCentralHeteroatomGroup(groups) {
+    if (!groups || groups.length === 0) return false;
+    return groups.some(g =>
+      g.shortName === "sulphoxide" ||
+      (g.shortName === "amine" && typeof g.subtype === "number" && g.subtype >= 2),
+    );
+  }
+
+  /**
+   * Phase 15-2c (LOCK 5): bridged-acyclic predicate. Matches acyclic ether
+   * (Pass 8.5: non-ring O with 2 -C neighbours). Defensive against undefined
+   * `groups`.
+   *
+   * @param {Object[]} [groups]
+   * @returns {boolean}
+   * @private
+   */
+  function _hasBridgingGroup(groups) {
+    if (!groups || groups.length === 0) return false;
+    return groups.some(g => g.shortName === "ether");
+  }
+
+  /**
+   * Phase 15-2c (LOCK 5): walk a single alkyl-style substituent from the
+   * given carbon root outward. Stops at branching, at non-C, at non-single-
+   * bond, or when no onward C remains. Returns the in-walk atom-id sequence
+   * (root first) and the alkyl descriptor (methyl/ethyl/...). Tier-1 expects
+   * methyl (length 1) for central-heteroatom substituents and ethyl
+   * (length 2) for bridged-acyclic substituents.
+   *
+   * @param {number} startId - the first C off the centre (NOT the centre itself)
+   * @param {number} prevId - the centre atom id (used as visited-seed)
+   * @param {Map} adjacency
+   * @param {Object} graphData
+   * @returns {{ atomIds: number[], descriptor: string|null } | null}
+   * @private
+   */
+  function _walkAlkylSubstituent(startId, prevId, adjacency, graphData) {
+    const atomIds = [];
+    const visited = new Set([prevId]);
+    let currentId = startId;
+    // Length capped at ALKYL_NAMES.length-1 (=8); longer substituents land
+    // null descriptor and the prose layer falls through to a generic walk.
+    while (atomIds.length < ALKYL_NAMES.length - 1) {
+      if (visited.has(currentId)) break;
+      const cVertex = graphData.graph.vertices.find(v => v.id === currentId);
+      if (!cVertex || (cVertex.value?.element || "") !== "C") break;
+      visited.add(currentId);
+      atomIds.push(currentId);
+      const neighbours = adjacency.get(currentId) || [];
+      const onward = neighbours.filter(
+        n => !visited.has(n.vertex.id)
+          && (n.vertex.value?.element || "") === "C"
+          && n.edge.bondType === "-",
+      );
+      if (onward.length === 0) break; // terminal C — valid alkyl
+      if (onward.length > 1) break;   // branched — stop at first branch for tier-1
+      currentId = onward[0].vertex.id;
+    }
+    if (atomIds.length === 0) return null;
+    return { atomIds, descriptor: ALKYL_NAMES[atomIds.length] || null };
+  }
+
+  /**
+   * Phase 15-2c (LOCK 5): analyse a central-heteroatom scaffold. The centre
+   * is the sulphoxide S or amine N (subtype ≥ 2). Substituents are the C
+   * neighbours walked as alkyl chains (terminal-methyl for tier-1). The
+   * centre's own group atoms (e.g. DMSO's =O, claimed by sulphoxide Pass 4.5)
+   * are NOT counted as substituents — they're recorded as multiBondAtoms so
+   * prose can mention them separately (e.g. "double-bonded to an oxygen").
+   *
+   * Return shape per [phase15-2c-investigation-findings.md § 4.3].
+   *
+   * @param {Object[]} groups
+   * @param {Object} graphData
+   * @param {Map} adjacency
+   * @returns {{ atomId:number, element:string,
+   *            substituents:Array<{atomIds:number[],descriptor:string|null}>,
+   *            multiBondAtoms:Array<{atomId:number,element:string,bondType:string}> } | null}
+   * @private
+   */
+  function _analyseCentralHeteroatom(groups, graphData, adjacency) {
+    if (!groups || groups.length === 0) return null;
+    // Centre selection: sulphoxide wins over amine when both present (tier-1
+    // has neither in combination; defensive ordering).
+    let centreGroup = groups.find(g => g.shortName === "sulphoxide");
+    if (!centreGroup) {
+      centreGroup = groups.find(
+        g => g.shortName === "amine" && typeof g.subtype === "number" && g.subtype >= 2,
+      );
+    }
+    if (!centreGroup || !centreGroup.atoms || centreGroup.atoms.length === 0) return null;
+    const centreAtomId = centreGroup.atoms[0];
+    const centreVertex = graphData.graph.vertices.find(v => v.id === centreAtomId);
+    if (!centreVertex) return null;
+    const centreElement = centreVertex.value?.element || "";
+    const groupAtomSet = new Set(centreGroup.atoms);
+
+    const substituents = [];
+    const multiBondAtoms = [];
+    const neighbours = adjacency.get(centreAtomId) || [];
+    for (const n of neighbours) {
+      const nbVertex = n.vertex;
+      const bondType = n.edge.bondType;
+      // Atoms claimed by the centre's own group (e.g. DMSO =O) are recorded
+      // as multi-bond atoms when reached via = or # — NOT as substituents.
+      if (groupAtomSet.has(nbVertex.id)) {
+        if (bondType === "=" || bondType === "#") {
+          multiBondAtoms.push({
+            atomId: nbVertex.id,
+            element: nbVertex.value?.element || "",
+            bondType,
+          });
+        }
+        continue;
+      }
+      // Substituent: walk it as alkyl (tier-1 → methyl).
+      const sub = _walkAlkylSubstituent(nbVertex.id, centreAtomId, adjacency, graphData);
+      if (sub) substituents.push(sub);
+    }
+    return {
+      atomId: centreAtomId,
+      element: centreElement,
+      substituents,
+      multiBondAtoms,
+    };
+  }
+
+  /**
+   * Phase 15-2c (LOCK 5): analyse a bridged-acyclic scaffold. The bridge is
+   * the ether O (Pass 8.5); left/right substructures are the alkyl chains
+   * on either side. Convention for continuous prose numbering across the
+   * bridge: `leftSubstructure.atomIds[0]` is the OUTERMOST atom of the left
+   * chain (furthest from the bridge); `rightSubstructure.atomIds[0]` is the
+   * INNERMOST atom of the right chain (closest to the bridge). For diethyl
+   * ether `CCOCC` this yields atomIds = [C0, C1] / [C3, C4] so prose can
+   * walk "first carbon (C0) → second carbon (C1) → bridge → third carbon
+   * (C3) → fourth carbon (C4)" matching the § 7.4 COMP target.
+   *
+   * Return shape per [phase15-2c-investigation-findings.md § 4.3].
+   *
+   * @param {Object[]} groups
+   * @param {Object} graphData
+   * @param {Map} adjacency
+   * @returns {{ bridgeAtomId:number, bridgeElement:string,
+   *            leftSubstructure:{atomIds:number[],descriptor:string|null}|null,
+   *            rightSubstructure:{atomIds:number[],descriptor:string|null}|null } | null}
+   * @private
+   */
+  function _analyseBridgedAcyclic(groups, graphData, adjacency) {
+    if (!groups || groups.length === 0) return null;
+    const bridgeGroup = groups.find(g => g.shortName === "ether");
+    if (!bridgeGroup || !bridgeGroup.atoms || bridgeGroup.atoms.length === 0) return null;
+    const bridgeAtomId = bridgeGroup.atoms[0];
+    const bridgeVertex = graphData.graph.vertices.find(v => v.id === bridgeAtomId);
+    if (!bridgeVertex) return null;
+    const bridgeElement = bridgeVertex.value?.element || "";
+    const neighbours = adjacency.get(bridgeAtomId) || [];
+    if (neighbours.length !== 2) return null;
+
+    const leftRoot = neighbours[0].vertex.id;
+    const rightRoot = neighbours[1].vertex.id;
+    const leftWalk = _walkAlkylSubstituent(leftRoot, bridgeAtomId, adjacency, graphData);
+    const rightWalk = _walkAlkylSubstituent(rightRoot, bridgeAtomId, adjacency, graphData);
+
+    return {
+      bridgeAtomId,
+      bridgeElement,
+      // Reverse leftWalk so the outermost atom comes first (continuous
+      // prose numbering across the bridge — see function doc).
+      leftSubstructure: leftWalk
+        ? { atomIds: leftWalk.atomIds.slice().reverse(), descriptor: leftWalk.descriptor }
+        : null,
+      rightSubstructure: rightWalk,
+    };
+  }
+
+  // Phase 15-2a: bundled atom-CIP + bond-E/Z stereo emission classifier.
+  // Phase 16-2a (KD-4): bond E/Z now prefers the CIP-resolved
+  // edge._rdkit.bondCipCode ("E"/"Z") over the raw edge._rdkit.stereo
+  // ("cis"/"trans"), which is retained as a fallback. Reads the translator-
+  // supplied flat shapes (vertex.value._rdkit.cipCode now sourced from
+  // get_stereo_tags() CIP_atoms); emits structured
+  // collections consumed by prose's _deriveStereoPrefix for opener-position
+  // prefix injection. Bond filter `e.bondType === "="` is sound for tier-1
+  // — non-stereo C=O / etc. have null _rdkit.stereo so the && guard skips
+  // them (§ 2.2). Acetone (#15) sanity canary returns {atomCIP:[],bondEZ:[]}.
+  function _classifyStereoEmission(graphData) {
+    const atomCIP = [];
+    const bondEZ = [];
+    for (const v of graphData.graph.vertices) {
+      const cip = v.value?._rdkit?.cipCode;
+      if (cip) atomCIP.push({ atomId: v.id, code: cip });
+    }
+    for (const e of graphData.graph.edges) {
+      if (e.bondType !== "=") continue;
+      // Phase 16-2a (KD-4): prefer the CIP-resolved E/Z descriptor
+      // (utils.js get_stereo_tags() → _rdkit.bondCipCode, "E"/"Z"); fall
+      // back to the raw cis/trans stereo-pair perception when no CIP code is
+      // present so a descriptor previously rendered is never lost (lock 4).
+      const cip = e._rdkit?.bondCipCode;
+      const raw = e._rdkit?.stereo;
+      const code = cip || raw;
+      if (code) {
+        bondEZ.push({ bondId: e.id, sourceId: e.sourceId, targetId: e.targetId, code });
+      }
+    }
+    return { atomCIP, bondEZ };
+  }
+
+  // Phase 15-2b: principal-characteristic-group cascade per IUPAC P-43.1, narrowed
+  // to tier-1 fixture coverage (investigation § 7.1). Future tier phases extend
+  // this cascade (esters > amides > acid halides > sulphonic acids > acids ...).
+  // Phase 16-1 (KD-10): thiol added below hydroxyl — IUPAC P-41 suffix seniority
+  // places thiols (chalcogen analogue of alcohols) just below alcohols/phenols and
+  // above amines. Without it, thiol-bearing chains returned principalFGAnchor: null
+  // and numbered in SMILES-atom order (propane-1-thiol mislocated to C3 not C1).
+  const PCG_CASCADE = ["acid", "nitrile", "aldehyde", "ketone", "hydroxyl", "thiol", "amine"];
+
+  // Phase 15-2b: identify the chain-attachment carbon of the highest-priority
+  // PCG group, per IUPAC P-14.5 lowest-locant rule. Returned anchor atom-id
+  // is consumed by prose's _orderChainAtoms (IUPAC-aware endpoint picker) and
+  // _chainLocantSuffix (STD/SHORT scope-guarded suffix). Returns null when no
+  // PCG-cascade group is present (e.g. ethers, thioethers, sulfoxides).
+  function _findPrincipalFGAnchor(groups, chainAtomSet, adjacency) {
+    if (!chainAtomSet || !groups || groups.length === 0) return null;
+    let pcg = null, bestPri = Infinity;
+    for (const g of groups) {
+      const pri = PCG_CASCADE.indexOf(g.shortName);
+      if (pri >= 0 && pri < bestPri) { bestPri = pri; pcg = g; }
+    }
+    if (!pcg) return null;
+    for (const a of pcg.atoms || []) {
+      if (chainAtomSet.has(a)) return a;
+    }
+    for (const a of pcg.atoms || []) {
+      const cn = (adjacency.get(a) || []).find(n => chainAtomSet.has(n.vertex.id));
+      if (cn) return cn.vertex.id;
+    }
+    return null;
   }
 
   // =========================================================================
@@ -1274,12 +1839,38 @@
     const groups = _detectFunctionalGroupsFromGraph(graphData, adjacency);
     const chain = rings.length === 0 ? _analyseChainFromGraph(graphData, adjacency) : null;
 
+    // Phase 15-2b: attach principal-FG anchor for IUPAC P-14.5 lowest-locant
+    // chain ordering. Gate on chain.length > 1 — single-carbon chains (urea,
+    // guanidine, methanol) take dedicated single-carbon prose branches that
+    // never reach the chain-walker.
+    if (chain && chain.length > 1) {
+      chain.principalFGAnchor = _findPrincipalFGAnchor(groups, chain._atomSet, adjacency);
+    }
+
+    // Phase 15-2c (LOCK 5): scaffold type now FG-aware (acyclic central-
+    // heteroatom + bridged-acyclic). Compute first; conditionally attach
+    // the matching analysis blob so prose at Commit C can dispatch without
+    // re-running predicate logic. Both blobs default null when their
+    // scaffold arm is not taken — safe to add to the return shape (no
+    // existing destructure consumer reads them; verified at the Commit B
+    // read-side sweep).
+    const scaffoldType = _classifyScaffold(rings, groups);
+    const centralHeteroatom = scaffoldType === "central-heteroatom"
+      ? _analyseCentralHeteroatom(groups, graphData, adjacency)
+      : null;
+    const bridgedAcyclic = scaffoldType === "bridged-acyclic"
+      ? _analyseBridgedAcyclic(groups, graphData, adjacency)
+      : null;
+
     return {
       rings,
       functionalGroups: groups,
       chain,
       heavyAtomCount: graphData.graph.vertices.length,
-      scaffoldType: _classifyScaffold(rings),
+      scaffoldType,
+      stereoEmission: _classifyStereoEmission(graphData), // Phase 15-2a: atom-CIP + bond-E/Z
+      centralHeteroatom, // Phase 15-2c (LOCK 5): null unless scaffoldType === "central-heteroatom"
+      bridgedAcyclic,    // Phase 15-2c (LOCK 5): null unless scaffoldType === "bridged-acyclic"
       _graphData: graphData, // Phase 7A-4: pass through for _assembleDescription
       _adjacency: adjacency, // Phase 8C-CT: expose for comprehensive tier branch walking
     };
@@ -1306,6 +1897,12 @@
         // Phase 9-3 (CT-4ac): shared with comprehensive tier for ring-internal C=O
         classifyRingInternalCarbonyl: _classifyRingInternalCarbonyl,
         detectFunctionalGroupsFromGraph: _detectFunctionalGroupsFromGraph,
+        // Phase 17-2a: SMARTS-catalogue runner + table (batch 1, DEAD CODE).
+        // Exposed so window.testCatalogueEquivalence can prove record-for-record
+        // equivalence vs the legacy passes. NOT wired into analyseStructure —
+        // the consumption switchover is a later 17-2 sub-stage.
+        runCatalogue: runCatalogue,
+        functionalGroupsCatalogue: FUNCTIONAL_GROUPS,
         // Phase 10-4 (CT-4d-named): shared fused-system + pyrimidine-dione
         // naming so the standard tier (G4) and the comprehensive tier derive
         // the label from the same primitive. Xanthine detection needs graphData
@@ -1313,6 +1910,8 @@
         // have these in scope.
         identifyFusedSystemName: _identifyFusedSystemName,
         identifyPyrimidinePattern: _identifyPyrimidinePattern,
+        // Phase 15-2a: classifier-routed stereo emission helper.
+        classifyStereoEmission: _classifyStereoEmission,
         // Phase 11-2d (N-post10-5): 2-pyridone classifier — sibling of the
         // pyrimidine pattern, fires on aromatic 6-rings with 1 N + 1 exocyclic
         // C=O. Returns "pyridin-2(1H)-one". Consumed by the COMP single-ring
@@ -1322,6 +1921,16 @@
         selectNamedSystemLabel: _selectNamedSystemLabel,
         analyseChainFromGraph: _analyseChainFromGraph,
         classifyScaffold: _classifyScaffold,
+        // Phase 15-2b: principal-FG anchor primitive for chain-locant flow.
+        findPrincipalFGAnchor: _findPrincipalFGAnchor,
+        // Phase 15-2c (LOCK 5): acyclic central-heteroatom + bridged-acyclic
+        // scaffold helpers + alkyl-substituent walker. Mirrors the
+        // analyseChainFromGraph / classifyScaffold publishing pattern.
+        hasCentralHeteroatomGroup: _hasCentralHeteroatomGroup,
+        hasBridgingGroup: _hasBridgingGroup,
+        walkAlkylSubstituent: _walkAlkylSubstituent,
+        analyseCentralHeteroatom: _analyseCentralHeteroatom,
+        analyseBridgedAcyclic: _analyseBridgedAcyclic,
       },
     },
   };

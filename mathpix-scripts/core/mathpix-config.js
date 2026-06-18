@@ -808,8 +808,8 @@ const MATHPIX_CONFIG = {
      * @type {Object}
      */
     CDN: {
-      URL: "https://cdn.jsdelivr.net/npm/mathpix-markdown-it@2.0.6/es5/bundle.js",
-      VERSION: "2.0.6",
+      URL: "https://cdn.jsdelivr.net/npm/mathpix-markdown-it@2.0.40/es5/bundle.js",
+      VERSION: "2.0.40",
       LOAD_TIMEOUT: 15000, // 15 seconds
     },
 
@@ -1053,6 +1053,77 @@ const MATHPIX_CONFIG = {
     MAX_MMD_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
 
     /**
+     * F-M Phase 4 — embedding policy for resume-mode convert.
+     *
+     * Replaces the prior reverse-translation-to-CDN behaviour in
+     * getMMDForAPI with a bytes-first embedding policy. For each image
+     * with live registry bytes (post-swap content, chemistry RDKit
+     * renders, user-added uploads), encode the bytes to the smallest
+     * candidate dataURI and embed. Fall back to CDN URL only when no
+     * live bytes are available.
+     *
+     * See pre-stage-7-prompt-03b-f-m-convert-strategy.md §4 for the
+     * encoder-selection rule and §4a for the WebP-behind-flag rationale.
+     *
+     * @memberof MATHPIX_CONFIG.CONVERT
+     */
+    EMBEDDING: {
+      /**
+       * JPEG quality for the JPEG candidate in the per-image encoder
+       * comparison. q90 balances fidelity against file size; lower
+       * values trade more aggressively. Reserved for tuning if real-
+       * world payloads consistently push past MAX_MMD_SIZE_BYTES.
+       * @type {number}
+       */
+      JPEG_QUALITY: 0.9,
+
+      /**
+       * Master flag for WebP encoder participation in the candidate
+       * comparison. Default is `false` because Mathpix's Convert API
+       * has format-specific WebP bugs in DOCX, PPTX, and LaTeX-PDF
+       * output as of 29 May 2026 (DOCX/PPTX fix in code review, LaTeX-
+       * PDF a separate follow-up). When the fixes deploy, set this to
+       * `true` and the pickEncoders helper will add WebP to the
+       * comparison for safe formats only.
+       *
+       * Flipping this alone does NOT bypass format safety — see
+       * FORMATS_SUPPORTING_WEBP below.
+       * @type {boolean}
+       */
+      ENABLE_WEBP_EMBEDDING: false,
+
+      /**
+       * Output formats that render WebP dataURIs cleanly. The
+       * pickEncoders helper consults this list when ENABLE_WEBP_EMBEDDING
+       * is true: WebP joins the encoder comparison only if EVERY
+       * selected format is on this list (format-aware activation).
+       *
+       * Update list as Mathpix's fixes deploy. Today's WebP-safe set
+       * is the non-DOCX, non-PPTX, non-LaTeX-rendering formats:
+       *   - html, html.zip  (HTML rendering)
+       *   - pdf  (PDF via HTML rendering)
+       *   - md, md.zip, mmd.zip  (markdown / mmd archives, dataURI preserved)
+       *
+       * Excluded today:
+       *   - docx  (Mathpix Content_Types omission, fix in code review)
+       *   - pptx  (same root cause as docx)
+       *   - latex.pdf, tex.zip  (LaTeX engines don't natively support WebP)
+       *
+       * @type {Array<string>}
+       */
+      FORMATS_SUPPORTING_WEBP: ["html", "html.zip", "pdf", "md", "md.zip", "mmd.zip"],
+
+      /**
+       * Maximum encoded MMD size before pre-flight fires. Same as
+       * MAX_MMD_SIZE_BYTES (10MB) — the API limit is the binding
+       * constraint. Surfaced as a separate constant for clarity:
+       * this is "size after embedding" rather than "size before".
+       * @type {number}
+       */
+      MAX_EMBEDDED_MMD_SIZE_BYTES: 10 * 1024 * 1024,
+    },
+
+    /**
      * Available conversion formats with metadata
      * @type {Object}
      * @description Each format includes label, extension, binary flag, MIME type, and priority
@@ -1224,7 +1295,8 @@ const MATHPIX_CONFIG = {
     PRESETS: {
       skeletal: {
         label: "Skeletal",
-        description: "Standard skeletal formula — compact, no explicit hydrogens",
+        description:
+          "Standard skeletal formula — compact, no explicit hydrogens",
         bondLineWidth: 2.0,
         // Bumped from 6/9 to 13/18 (Phase 12-1b follow-up): the previous
         // SmilesDrawer-derived sizes rendered atom labels too small to read
@@ -1258,7 +1330,8 @@ const MATHPIX_CONFIG = {
       },
       monochrome: {
         label: "Monochrome",
-        description: "Single colour — suitable for print or high-contrast needs",
+        description:
+          "Single colour — suitable for print or high-contrast needs",
         bondLineWidth: 2.0,
         // Bumped from 6/9 to 13/18 alongside Skeletal/All hydrogens.
         minFontSize: 13,
@@ -1290,52 +1363,52 @@ const MATHPIX_CONFIG = {
     COLOUR_PALETTES: {
       element: {
         light: {
-          1:  [0.067, 0.067, 0.067],   // H  #111111
-          6:  [0.067, 0.067, 0.067],   // C  #111111
-          7:  [0.051, 0.278, 0.631],   // N  #0d47a1
-          8:  [0.718, 0.110, 0.110],   // O  #b71c1c
-          9:  [0.180, 0.490, 0.196],   // F  #2e7d32
-          15: [0.651, 0.235, 0.000],   // P  #a63c00 (Phase 7C-3 contrast swap)
-          16: [0.478, 0.361, 0.000],   // S  #7a5c00 (Phase 7C-3 contrast swap)
-          17: [0.180, 0.490, 0.196],   // Cl #2e7d32
-          35: [0.553, 0.431, 0.388],   // Br #8d6e63
-          53: [0.416, 0.106, 0.604],   // I  #6a1b9a
-          BACKGROUND: [1.000, 1.000, 1.000],   // #ffffff
+          1: [0.067, 0.067, 0.067], // H  #111111
+          6: [0.067, 0.067, 0.067], // C  #111111
+          7: [0.051, 0.278, 0.631], // N  #0d47a1
+          8: [0.718, 0.11, 0.11], // O  #b71c1c
+          9: [0.18, 0.49, 0.196], // F  #2e7d32
+          15: [0.651, 0.235, 0.0], // P  #a63c00 (Phase 7C-3 contrast swap)
+          16: [0.478, 0.361, 0.0], // S  #7a5c00 (Phase 7C-3 contrast swap)
+          17: [0.18, 0.49, 0.196], // Cl #2e7d32
+          35: [0.553, 0.431, 0.388], // Br #8d6e63
+          53: [0.416, 0.106, 0.604], // I  #6a1b9a
+          BACKGROUND: [1.0, 1.0, 1.0], // #ffffff
         },
         dark: {
-          1:  [0.878, 0.878, 0.878],   // H  #e0e0e0
-          6:  [0.878, 0.878, 0.878],   // C  #e0e0e0
-          7:  [0.392, 0.710, 0.965],   // N  #64b5f6
-          8:  [0.937, 0.325, 0.314],   // O  #ef5350
-          9:  [0.506, 0.780, 0.518],   // F  #81c784
-          15: [1.000, 0.671, 0.569],   // P  #ffab91
-          16: [1.000, 0.945, 0.463],   // S  #fff176
-          17: [0.506, 0.780, 0.518],   // Cl #81c784
-          35: [0.737, 0.667, 0.643],   // Br #bcaaa4
-          53: [0.808, 0.576, 0.847],   // I  #ce93d8
-          BACKGROUND: [0.118, 0.118, 0.118],   // #1e1e1e
+          1: [0.878, 0.878, 0.878], // H  #e0e0e0
+          6: [0.878, 0.878, 0.878], // C  #e0e0e0
+          7: [0.392, 0.71, 0.965], // N  #64b5f6
+          8: [0.937, 0.325, 0.314], // O  #ef5350
+          9: [0.506, 0.78, 0.518], // F  #81c784
+          15: [1.0, 0.671, 0.569], // P  #ffab91
+          16: [1.0, 0.945, 0.463], // S  #fff176
+          17: [0.506, 0.78, 0.518], // Cl #81c784
+          35: [0.737, 0.667, 0.643], // Br #bcaaa4
+          53: [0.808, 0.576, 0.847], // I  #ce93d8
+          BACKGROUND: [0.118, 0.118, 0.118], // #1e1e1e
         },
       },
       monochrome: {
         light: {
-          1:  [0.067, 0.067, 0.067],
-          6:  [0.067, 0.067, 0.067],
-          7:  [0.067, 0.067, 0.067],
-          8:  [0.067, 0.067, 0.067],
-          9:  [0.067, 0.067, 0.067],
+          1: [0.067, 0.067, 0.067],
+          6: [0.067, 0.067, 0.067],
+          7: [0.067, 0.067, 0.067],
+          8: [0.067, 0.067, 0.067],
+          9: [0.067, 0.067, 0.067],
           15: [0.067, 0.067, 0.067],
           16: [0.067, 0.067, 0.067],
           17: [0.067, 0.067, 0.067],
           35: [0.067, 0.067, 0.067],
           53: [0.067, 0.067, 0.067],
-          BACKGROUND: [1.000, 1.000, 1.000],
+          BACKGROUND: [1.0, 1.0, 1.0],
         },
         dark: {
-          1:  [0.878, 0.878, 0.878],
-          6:  [0.878, 0.878, 0.878],
-          7:  [0.878, 0.878, 0.878],
-          8:  [0.878, 0.878, 0.878],
-          9:  [0.878, 0.878, 0.878],
+          1: [0.878, 0.878, 0.878],
+          6: [0.878, 0.878, 0.878],
+          7: [0.878, 0.878, 0.878],
+          8: [0.878, 0.878, 0.878],
+          9: [0.878, 0.878, 0.878],
           15: [0.878, 0.878, 0.878],
           16: [0.878, 0.878, 0.878],
           17: [0.878, 0.878, 0.878],
@@ -1346,30 +1419,30 @@ const MATHPIX_CONFIG = {
       },
       "high-contrast": {
         light: {
-          1:  [0.000, 0.000, 0.000],   // H  #000000
-          6:  [0.000, 0.000, 0.000],   // C  #000000
-          7:  [0.000, 0.000, 0.800],   // N  #0000cc
-          8:  [0.835, 0.000, 0.000],   // O  #d50000
-          9:  [0.000, 0.400, 0.000],   // F  #006600
-          15: [0.800, 0.200, 0.000],   // P  #cc3300
-          16: [0.420, 0.282, 0.000],   // S  #6b4800 (Phase 7C-3 contrast swap)
-          17: [0.000, 0.400, 0.000],   // Cl #006600
-          35: [0.400, 0.200, 0.000],   // Br #663300
-          53: [0.290, 0.000, 0.502],   // I  #4a0080
-          BACKGROUND: [1.000, 1.000, 1.000],   // #ffffff
+          1: [0.0, 0.0, 0.0], // H  #000000
+          6: [0.0, 0.0, 0.0], // C  #000000
+          7: [0.0, 0.0, 0.8], // N  #0000cc
+          8: [0.835, 0.0, 0.0], // O  #d50000
+          9: [0.0, 0.4, 0.0], // F  #006600
+          15: [0.8, 0.2, 0.0], // P  #cc3300
+          16: [0.42, 0.282, 0.0], // S  #6b4800 (Phase 7C-3 contrast swap)
+          17: [0.0, 0.4, 0.0], // Cl #006600
+          35: [0.4, 0.2, 0.0], // Br #663300
+          53: [0.29, 0.0, 0.502], // I  #4a0080
+          BACKGROUND: [1.0, 1.0, 1.0], // #ffffff
         },
         dark: {
-          1:  [1.000, 1.000, 1.000],   // H  #ffffff
-          6:  [1.000, 1.000, 1.000],   // C  #ffffff
-          7:  [0.510, 0.694, 1.000],   // N  #82b1ff
-          8:  [1.000, 0.322, 0.322],   // O  #ff5252
-          9:  [0.412, 0.941, 0.682],   // F  #69f0ae
-          15: [1.000, 0.620, 0.502],   // P  #ff9e80
-          16: [1.000, 1.000, 0.000],   // S  #ffff00
-          17: [0.412, 0.941, 0.682],   // Cl #69f0ae
-          35: [0.843, 0.800, 0.784],   // Br #d7ccc8
-          53: [0.918, 0.502, 0.988],   // I  #ea80fc
-          BACKGROUND: [0.000, 0.000, 0.000],   // #000000
+          1: [1.0, 1.0, 1.0], // H  #ffffff
+          6: [1.0, 1.0, 1.0], // C  #ffffff
+          7: [0.51, 0.694, 1.0], // N  #82b1ff
+          8: [1.0, 0.322, 0.322], // O  #ff5252
+          9: [0.412, 0.941, 0.682], // F  #69f0ae
+          15: [1.0, 0.62, 0.502], // P  #ff9e80
+          16: [1.0, 1.0, 0.0], // S  #ffff00
+          17: [0.412, 0.941, 0.682], // Cl #69f0ae
+          35: [0.843, 0.8, 0.784], // Br #d7ccc8
+          53: [0.918, 0.502, 0.988], // I  #ea80fc
+          BACKGROUND: [0.0, 0.0, 0.0], // #000000
         },
       },
     },

@@ -71,6 +71,21 @@
   // (see foundry-proxy/worker.js#forwardToFoundry).
   const PROXY_PATH = "/openai/v1/chat/completions";
 
+  // localStorage keys for user-configured proxy URL and optional user token.
+  // Set Up tool (setup-tool.js) writes these; this provider reads them as
+  // a fallback when no explicit providerConfig was passed to the embed.
+  const LS_PROXY_URL_KEY = "foundryProxyUrl";
+  const LS_USER_TOKEN_KEY = "foundry-user-token";
+
+  // Built-in last-resort proxy URL. Matches the project's deployed Worker
+  // (see image-describer/image-describer-controller-generate.js where the
+  // same URL was historically the only fallback). Hits this when neither
+  // providerConfig.proxyUrl nor localStorage.getItem('foundryProxyUrl')
+  // yields a non-empty string. Kept here so direct OpenRouterEmbed
+  // instantiation works out of the box for the project author.
+  const DEFAULT_PROXY_URL =
+    "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+
   // SSE [DONE] terminator marker per OpenAI streaming convention.
   const SSE_DONE_MARKER = "[DONE]";
 
@@ -87,6 +102,8 @@
   // the wire-format layer.
   const REASONING_MODEL_PATTERNS = [
     /^gpt-5.*-mini.*$/i, // gpt-5.4-mini, gpt-5.4-mini-2026-03-17, etc.
+    /^gpt-5$/i, // gpt-5 (bare) rejects temperature/top_p — NOT 5.1/5.2/5.4 which accept them
+    /^gpt-oss.*$/i, // gpt-oss-120b, gpt-oss-20b, etc. — reasoning family, reject temperature/top_p
     /^o1.*$/i, // o1, o1-mini, o1-preview, etc.
     /^o3.*$/i, // o3, o3-mini, etc.
     /^o4.*$/i, // o4, o4-mini, etc.
@@ -97,33 +114,89 @@
   // ============================================================================
 
   /**
-   * Extract and validate the provider configuration from request options.
+   * Read a non-empty trimmed string from localStorage, or null on miss / failure.
+   * Swallows errors (private browsing, disabled storage, quota exceeded) so
+   * the provider falls through to the next precedence tier instead of throwing.
    *
-   * Throws a clear error if proxyUrl is missing — Stage 2.2 wires the source
-   * of this config; until then, callers must pass options.providerConfig
-   * explicitly or the dispatch path will surface this error.
+   * @param {string} key
+   * @returns {string|null}
+   * @private
+   */
+  function readLocalStorageString(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (typeof raw !== "string") return null;
+      const trimmed = raw.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    } catch (err) {
+      logDebug(`localStorage read failed for '${key}'; treating as missing`, err);
+      return null;
+    }
+  }
+
+  /**
+   * Resolve the proxy URL + optional user token for the next request.
+   *
+   * Precedence (Task 3.2c — providerConfig-wins decision):
+   *   1. options.providerConfig.{proxyUrl,userToken} if explicitly passed
+   *      and non-empty (explicit caller intent always wins; preserves
+   *      test isolation and backwards compatibility with Image Describer's
+   *      Stage 2 wiring).
+   *   2. localStorage.getItem('foundryProxyUrl' / 'foundry-user-token')
+   *      written by the Set Up tool (Task 3.2b). Read fresh on every call —
+   *      no in-memory cache, so a user changing the URL in Set Up takes
+   *      effect on the next request from any NEW OpenRouterEmbed instance
+   *      without a page reload.
+   *   3. Hardcoded DEFAULT_PROXY_URL fallback (proxy URL only — there is
+   *      no default user token; if neither providerConfig nor localStorage
+   *      supplies one, the request omits the x-user-token header).
+   *
+   * No longer throws: the hardcoded default guarantees a usable proxy URL
+   * in all paths. Pre-3.2c callers that relied on the throw-on-missing
+   * behaviour to surface configuration mistakes will instead silently fall
+   * through to the project's deployed Worker. If your deployment needs a
+   * different default, override via providerConfig or the Set Up tool.
    *
    * @param {Object} options
-   * @returns {{proxyUrl: string, userToken: string|null}}
-   * @throws {Error}
+   * @returns {{proxyUrl: string, userToken: string|null, source: string}}
    * @private
    */
   function readProviderConfig(options) {
-    const cfg = options && options.providerConfig;
-    if (!cfg || typeof cfg.proxyUrl !== "string" || !cfg.proxyUrl.trim()) {
-      throw new Error(
-        "Foundry adapter: providerConfig.proxyUrl is required. " +
-          "Pass it via options.providerConfig.proxyUrl, or wait for Stage 2.2 " +
-          "(openrouter-embed-config.js) which wires the configuration source.",
-      );
+    const cfg = (options && options.providerConfig) || null;
+
+    // Proxy URL precedence: providerConfig → localStorage → hardcoded
+    let proxyUrl = null;
+    let proxyUrlSource = null;
+    if (cfg && typeof cfg.proxyUrl === "string" && cfg.proxyUrl.trim()) {
+      proxyUrl = cfg.proxyUrl.trim();
+      proxyUrlSource = "providerConfig";
+    } else {
+      const fromStorage = readLocalStorageString(LS_PROXY_URL_KEY);
+      if (fromStorage) {
+        proxyUrl = fromStorage;
+        proxyUrlSource = "localStorage";
+      } else {
+        proxyUrl = DEFAULT_PROXY_URL;
+        proxyUrlSource = "default";
+      }
     }
-    return {
-      proxyUrl: cfg.proxyUrl.trim().replace(/\/$/, ""),
-      userToken:
-        typeof cfg.userToken === "string" && cfg.userToken.trim()
-          ? cfg.userToken.trim()
-          : null,
-    };
+    // Normalise: strip trailing slash so PROXY_PATH concatenation is clean.
+    proxyUrl = proxyUrl.replace(/\/+$/, "");
+
+    // User token precedence: providerConfig → localStorage → null
+    let userToken = null;
+    if (cfg && typeof cfg.userToken === "string" && cfg.userToken.trim()) {
+      userToken = cfg.userToken.trim();
+    } else {
+      userToken = readLocalStorageString(LS_USER_TOKEN_KEY);
+    }
+
+    logDebug("Foundry provider config resolved", {
+      proxyUrlSource,
+      hasUserToken: !!userToken,
+    });
+
+    return { proxyUrl, userToken, source: proxyUrlSource };
   }
 
   /**
@@ -258,7 +331,9 @@
      *   - Registry prefix stripped from `options.model` (Task 2.1, fixed
      *     Task 2.2). Azure expects raw deployment names; prefixed ids
      *     produce HTTP 404 DeploymentNotFound.
-     *   - max_tokens → max_completion_tokens (Task 2.1, unconditional).
+     *   - max_tokens → max_completion_tokens (Task 2.1, unconditional),
+     *     OR pass-through of an existing max_completion_tokens (Task 2.5b,
+     *     handles the streaming second-pass scenario).
      *   - Reasoning models (REASONING_MODEL_PATTERNS): `temperature` and
      *     `top_p` dropped from the wire body when the consumer passed them
      *     (Task 2.4). Reasoning families reject these parameters; their
@@ -289,9 +364,26 @@
         messages: messages,
       };
 
-      // max_tokens → max_completion_tokens (Task 2.1 — unconditional).
+      // max_tokens → max_completion_tokens (Task 2.1 — unconditional),
+      // OR pass through an existing max_completion_tokens value directly
+      // (Task 2.5b — handles the streaming second-pass scenario).
+      //
+      // `buildRequest` is invoked twice per streaming request: once via
+      // `buildOptions` to produce canonical options, then again inside
+      // `streamRequest` with `stream: true` added. On the second pass
+      // `max_tokens` is already absent (renamed on the first pass), so
+      // without the pass-through branch below the token cap silently
+      // disappears from the wire body.
+      // Discovered in Task 2.4 Step 6; codified by the regression-guard
+      // assertions in `testEmbedFoundry_ParameterTranslation` (labels
+      // ending "(Task 2.5b)").
+      //
+      // `max_tokens` takes precedence if both are somehow set (unusual
+      // but well-defined — the rename always wins).
       if (typeof options.max_tokens === "number") {
         body.max_completion_tokens = options.max_tokens;
+      } else if (typeof options.max_completion_tokens === "number") {
+        body.max_completion_tokens = options.max_completion_tokens;
       }
 
       // Sampling-parameter drop for reasoning models (Task 2.4).
@@ -353,7 +445,9 @@
      * ourselves — only the optional user token (per worker.js
      * validateUserToken).
      *
-     * @throws {Error} If providerConfig.proxyUrl is missing.
+     * Proxy URL + user token resolution: see readProviderConfig — three-tier
+     * precedence (providerConfig → localStorage → hardcoded DEFAULT_PROXY_URL),
+     * Task 3.2c. Never throws.
      */
     endpoint(model, options) {
       const { proxyUrl, userToken } = readProviderConfig(options);

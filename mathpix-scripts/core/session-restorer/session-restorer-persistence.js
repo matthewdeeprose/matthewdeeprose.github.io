@@ -194,6 +194,7 @@
       await downloader.createArchive(archiveData);
 
       this.hasUnsavedChanges = false;
+      this.hasContextEdits = false;
 
       // Phase 9 Feature 1C: Clear image save warning after successful download
       this._clearImageSaveWarning();
@@ -460,6 +461,7 @@
 
     // 5. Reset unsaved changes flag (loaded content is considered "saved")
     this.hasUnsavedChanges = false;
+    this.hasContextEdits = false;
     this.updateSessionStatus("saved");
 
     // 6. Update undo/redo stacks for session restorer

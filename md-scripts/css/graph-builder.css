@@ -959,6 +959,40 @@
   align-items: center;
   justify-content: center;
 }
+
+/* Optional action-button slot sitting between .gb-toast-content and the
+   .gb-toast-close button. Buttons use currentColor so they inherit the toast
+   type's text colour and theme cleanly across light/dark. Neutral/outline
+   styling — the toast already carries semantic colour via icon and background,
+   so the action button is the actionable affordance, not redundant colour. */
+.gb-toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
+
+.gb-toast-actions:empty {
+  display: none;
+}
+
+.gb-toast-action {
+  background: transparent;
+  color: currentColor;
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85em;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  outline: 0.2rem solid transparent;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
 .gb-toast-progress {
   position: absolute;
   bottom: 0;

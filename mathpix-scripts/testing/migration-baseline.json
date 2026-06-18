@@ -363,9 +363,9 @@
   {
     "name": "Guanidine",
     "smiles": "NC(=N)N",
-    "comp": "A single carbon bearing three amine groups (–NH₂).",
-    "std": "A single carbon bearing three amine groups (–NH₂).",
-    "short": "A single carbon bearing three amines.",
+    "comp": "A single carbon bearing two amine groups (–NH₂), and an imine group (=N–).",
+    "std": "A single carbon bearing two amine groups (–NH₂), and an imine group (=N–).",
+    "short": "A single carbon bearing two amines and an imine.",
     "functionalGroups": [
       {
         "shortName": "amine"
@@ -374,7 +374,7 @@
         "shortName": "amine"
       },
       {
-        "shortName": "amine"
+        "shortName": "imine"
       }
     ],
     "rings": [],
@@ -476,9 +476,9 @@
   {
     "name": "Ethanol",
     "smiles": "CCO",
-    "comp": "The structure is a two-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
-    "std": "A 3-atom, two-carbon chain with a hydroxyl group (–OH).",
-    "short": "A two-carbon chain with a hydroxyl group.",
+    "comp": "The structure is a two-carbon chain. The first carbon is bonded to the second carbon by a single bond. The first carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens.",
+    "std": "A 3-atom, two-carbon chain with a hydroxyl group (–OH) at C1.",
+    "short": "A two-carbon chain with a hydroxyl group at C1.",
     "functionalGroups": [
       {
         "shortName": "hydroxyl"
@@ -495,7 +495,7 @@
   {
     "name": "(R)-2-butanol",
     "smiles": "C[C@@H](O)CC",
-    "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The third carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
+    "comp": "The structure is a four-carbon chain. The first carbon is bonded to the second carbon by a single bond. The second carbon bears a hydroxyl group (–OH). Each carbon carries implicit hydrogens. Contains one defined stereocenter.",
     "std": "A 5-atom, four-carbon chain with a hydroxyl group (–OH).",
     "short": "A four-carbon chain with a hydroxyl group.",
     "functionalGroups": [

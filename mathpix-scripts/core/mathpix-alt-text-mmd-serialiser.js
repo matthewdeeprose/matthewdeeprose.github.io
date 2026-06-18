@@ -149,11 +149,25 @@
    * match on `entry.mmdReference` first, then falls back to a URL-pattern
    * regex based on `entry.originalSyntax`.
    *
+   * Discovery 18: the URL-regex fallback is two-prong. When a CDN→blob
+   * `imageBlobUrlMap` is supplied (restored sessions hold it on the
+   * session-restorer instance), the fallback first builds a regex from
+   * the blob URL form and scans the MMD. If that misses, it falls back
+   * to the CDN URL form as a safety net. The safety net always runs
+   * even when the map HAS an entry — needed in case the blob URL has
+   * been revoked from the MMD between the map being populated and the
+   * lookup running (e.g. a hand-edit that removed the blob form).
+   *
+   * Omitting the third argument preserves the legacy single-prong
+   * fallback that matches against `entry.originalUrl` directly.
+   *
    * @param {string} mmd
    * @param {Object} entry - Registry entry (must have at least mmdReference + originalUrl).
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Optional CDN→blob URL map.
+   *   When provided, the URL-regex fallback tries the blob form before the CDN form.
    * @returns {{ found: boolean, lineIndex?: number, viaFallback?: boolean }}
    */
-  function findImage(mmd, entry) {
+  function findImage(mmd, entry, imageBlobUrlMap = null) {
     if (typeof mmd !== "string" || !entry) return { found: false };
     const lines = mmd.split("\n");
 
@@ -165,8 +179,23 @@
       }
     }
 
-    if (entry.originalUrl) {
-      const escapedUrl = escapeRegExp(entry.originalUrl);
+    if (!entry.originalUrl) return { found: false };
+
+    // Two-prong fallback: try the blob URL first (if the map has it),
+    // then the CDN URL as the always-tried safety net. Order matters
+    // for restored sessions; the safety net catches the case where the
+    // map's blob URL has been revoked from the MMD since population.
+    const candidateUrls = [];
+    if (imageBlobUrlMap && typeof imageBlobUrlMap.get === "function") {
+      const blobUrl = imageBlobUrlMap.get(entry.originalUrl);
+      if (blobUrl && blobUrl !== entry.originalUrl) {
+        candidateUrls.push(blobUrl);
+      }
+    }
+    candidateUrls.push(entry.originalUrl);
+
+    for (const url of candidateUrls) {
+      const escapedUrl = escapeRegExp(url);
       let pattern;
       if (entry.originalSyntax === "includegraphics") {
         pattern = new RegExp(
@@ -513,8 +542,9 @@
    * in the Stage 1 build plan (§ "Behaviour spec") is realised here.
    *
    * When a `registry` is provided, wrap and unwrap transformations also refresh
-   * the entry's `mmdReference` and `syntax` in-place via `replaceImage`, so a
-   * subsequent call on the same `(mmd, registry)` pair locates the image
+   * the entry's `mmdReference` and `syntax` in-place via `updateImageReference`
+   * (see `_refreshEntryReference` for the deliberate choice over `replaceImage`),
+   * so a subsequent call on the same `(mmd, registry)` pair locates the image
    * correctly instead of falling through to `image-not-found`. `originalSyntax`
    * is preserved across the refresh. No-op / replace-caption / empty-caption /
    * insert-caption do not touch the registry — they only mutate the caption line.
@@ -524,15 +554,18 @@
    * @param {Object} [opts] - Same shape as `DEFAULT_OPTIONS`.
    * @param {Object} [registry] - MathPixImageRegistry instance. Optional;
    *   when supplied, wrap/unwrap refresh `entry.mmdReference` and `entry.syntax`.
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Discovery 18 — passed through
+   *   to `findImage` so the URL-regex fallback can match blob-URL-rewritten MMD on
+   *   restored sessions.
    * @returns {{ mmd: string, transformed: boolean, action: string }}
    */
-  function writeCaption(mmd, entry, opts, registry) {
+  function writeCaption(mmd, entry, opts, registry, imageBlobUrlMap = null) {
     const options = Object.assign({}, DEFAULT_OPTIONS, opts || {});
     if (typeof mmd !== "string" || !entry) {
       return { mmd: mmd || "", transformed: false, action: "no-op" };
     }
 
-    const loc = findImage(mmd, entry);
+    const loc = findImage(mmd, entry, imageBlobUrlMap);
     if (!loc.found) {
       logWarn(`writeCaption(): image not found for entry ${entry.id || "?"}`);
       return { mmd, transformed: false, action: "image-not-found" };
@@ -609,9 +642,11 @@
    * @param {string} mmd
    * @param {Object} registry - MathPixImageRegistry instance (exposes getAllImages()).
    * @param {Object} [opts]
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Discovery 18 — passed through
+   *   to each `writeCaption` call so post-restore image lookups succeed.
    * @returns {{ mmd: string, transformations: number, actions: Object }}
    */
-  function writeAllCaptions(mmd, registry, opts) {
+  function writeAllCaptions(mmd, registry, opts, imageBlobUrlMap = null) {
     if (!registry || typeof registry.getAllImages !== "function") {
       logError("writeAllCaptions(): registry is missing getAllImages()");
       return { mmd: mmd || "", transformations: 0, actions: {} };
@@ -620,7 +655,7 @@
     let transformations = 0;
     const actions = {};
     for (const entry of registry.getAllImages()) {
-      const result = writeCaption(current, entry, opts, registry);
+      const result = writeCaption(current, entry, opts, registry, imageBlobUrlMap);
       current = result.mmd;
       if (result.transformed) transformations++;
       actions[result.action] = (actions[result.action] || 0) + 1;
@@ -643,9 +678,11 @@
    *
    * @param {string} mmd
    * @param {Object} registry - MathPixImageRegistry instance.
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Discovery 18 — passed through
+   *   to `findImage` so post-restore image lookups succeed.
    * @returns {{ processed: number, updated: number, skipped: number, notFound: number }}
    */
-  function parseCaptions(mmd, registry) {
+  function parseCaptions(mmd, registry, imageBlobUrlMap = null) {
     if (!registry || typeof registry.getAllImages !== "function") {
       logError("parseCaptions(): registry is missing getAllImages()");
       return { processed: 0, updated: 0, skipped: 0, notFound: 0 };
@@ -663,7 +700,7 @@
 
     for (const entry of registry.getAllImages()) {
       processed++;
-      const loc = findImage(mmd, entry);
+      const loc = findImage(mmd, entry, imageBlobUrlMap);
       if (!loc.found) {
         logWarn(`parseCaptions(): image not found for entry ${entry.id || "?"}`);
         notFound++;

@@ -1269,7 +1269,13 @@
     }
 
     const registry = new MathPixImageRegistry();
-    const count = registry.buildFromMMD(mmdContent);
+    // F-L Phase 2 — buildFromMMD returns {added, removed}, not a number.
+    // The pre-fix line `const count = buildFromMMD(...)` would have logged
+    // `Registry: [object Object] images`. Mirror the TotalDownloader fix
+    // shape: read count from the registry itself (decouples this caller
+    // from buildFromMMD's return shape).
+    registry.buildFromMMD(mmdContent);
+    const count = registry.getAllImages().length;
     console.log(`Registry: ${count} images\n`);
 
     // Run download

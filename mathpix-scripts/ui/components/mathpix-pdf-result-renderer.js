@@ -2518,7 +2518,8 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       "htmlzip",
       "confidence", // Phase 3.2: PDF Confidence Visualiser tab
       "chemistry", // Phase 6B: Chemistry structures tab
-    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latexpdf" | Phase 2: Added "pptx" | Phase 2B: Added archive formats | Phase 3.2: confidence | Phase 6B: chemistry
+      "context", // Stage 7 P5: Context form tab (inherits group click + keyboard machinery)
+    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latexpdf" | Phase 2: Added "pptx" | Phase 2B: Added archive formats | Phase 3.2: confidence | Phase 6B: chemistry | Stage 7 P5: context
 
     formats.forEach((format) => {
       // Use direct DOM queries instead of cached elements to ensure we find existing elements
@@ -4213,6 +4214,12 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
             // Preserve MMD panel's static HTML structure (view controls, editor, session banner)
             // Only clear the content within the structure
             this.resetMMDPanelContent(panel);
+          } else if (format === "context") {
+            // Stage 7 P5: leave the Context panel entirely alone. It contains
+            // hand-written form markup (HTML-first — JavaScript never generates
+            // it, so a wiped form cannot be rebuilt). The typed values live in
+            // MathPixContextManager (the manager holds the truth; the DOM is a
+            // view), but the view itself must survive clearing.
           } else {
             panel.innerHTML = "";
           }
@@ -4326,6 +4333,12 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
               </div>
             `;
           }
+        } else if (format === "context") {
+          // Stage 7 P5: leave the Context panel entirely alone. It contains
+          // hand-written form markup (HTML-first — JavaScript never generates
+          // it, so a wiped form cannot be rebuilt). The typed values live in
+          // MathPixContextManager (the manager holds the truth; the DOM is a
+          // view), but the view itself must survive clearing.
         } else {
           panel.innerHTML = "";
         }

@@ -72,6 +72,10 @@
   padding: 0.5rem 0.75rem;
   border-radius: 4px;
   min-height: 44px;
+  /* When the row is too narrow for icon + label + value on one line (high zoom
+   * or a narrow column), let the value drop to its own line rather than
+   * overflowing the container. */
+  flex-wrap: wrap;
 }
 
 .setup-status-icon {
@@ -91,6 +95,57 @@
 .setup-status-value {
   margin-left: auto;
   font-size: 0.9rem;
+  /* Allow the value to shrink below its content width and wrap, so it stays
+   * inside the row instead of overflowing at narrow widths. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Per-type model breakdown chips (Local AI Models row). Drops to its own line
+ * under the icon/label/value via flex-basis. Colours are inherited from the
+ * row's status class (theme-aware) and the SVG icons use currentColor, so no
+ * light/dark overrides are needed. */
+.setup-status-types {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.setup-status-types:empty {
+  display: none;
+}
+
+.setup-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.setup-type-chip .icon {
+  width: 1em;
+  height: 1em;
+}
+
+/* Local AI Models progress-bar fill.
+ * The fill colours live in light.css/dark.css (.setup-status-partial); here we
+ * only register the custom property so the gradient colour-stop can animate, and
+ * declare the transition. The fill is decorative — the aria-live value span
+ * ("11 of 15 downloaded") remains the accessible source of truth.
+ * @property fallback: browsers without it simply snap to the new value.
+ * Reduced-motion users also snap, via the .setup-status-item rule in the
+ * prefers-reduced-motion block above. */
+@property --setup-fill {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+.setup-status-partial {
+  --setup-fill: 0%;
+  transition: --setup-fill 0.4s ease;
 }
 
 /* ------------------------------------------------------------
@@ -124,6 +179,12 @@
   font-weight: 600;
   font-size: 1rem;
   list-style: none;
+  /* Override the global `summary { text-decoration: underline }` rule
+   * from main.css. The disclosure triangle (::before above) is the
+   * primary interactivity cue; underlining non-link text inside the
+   * summary reads as a hyperlink and is visually inconsistent across
+   * the four credential cards under flex layout (3.4b follow-up). */
+  text-decoration: none;
 }
 
 /* Remove default marker in all browsers */
@@ -182,7 +243,8 @@
 }
 
 .setup-input-row input[type="password"],
-.setup-input-row input[type="text"] {
+.setup-input-row input[type="text"],
+.setup-input-row input[type="url"] {
   flex: 1;
   min-width: 0;
   padding: 0.6rem 0.75rem;
@@ -195,12 +257,10 @@
 }
 
 .setup-toggle-visibility {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 24px;
+  min-height: 24px;
   padding: 0.5rem;
-  border: 2px solid currentColor;
   border-radius: 4px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -278,7 +338,6 @@
   cursor: pointer;
   font-weight: bold;
   font-size: 0.9rem;
-  border: 2px solid currentColor;
 }
 
 /* ------------------------------------------------------------

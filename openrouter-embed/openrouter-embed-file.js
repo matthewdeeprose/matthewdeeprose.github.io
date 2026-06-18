@@ -507,6 +507,11 @@ class EmbedFileUtils {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const reader = new FileReader();
+      // Declared at the promise-executor scope so img.onerror and
+      // reader.onerror can pass `canvas` to _cleanupCompressionResources
+      // without a ReferenceError. Assigned inside img.onload once the
+      // canvas is actually created. (Task 2.5b — pre-existing rot fix.)
+      let canvas = null;
 
       reader.onload = (e) => {
         img.onload = () => {
@@ -530,8 +535,10 @@ class EmbedFileUtils {
               logDebug("Image within size limits, only adjusting quality");
             }
 
-            // Create canvas and draw resized image
-            const canvas = document.createElement("canvas");
+            // Create canvas and draw resized image. `canvas` is declared
+            // at the promise-executor scope above so error handlers can
+            // include it in cleanup even if onload never runs.
+            canvas = document.createElement("canvas");
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext("2d");

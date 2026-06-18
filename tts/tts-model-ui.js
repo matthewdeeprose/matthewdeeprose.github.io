@@ -166,9 +166,7 @@
         if (cached.icon) {
             var iconName = STATE_ICONS[state] || "download";
             cached.icon.setAttribute("data-icon", iconName);
-            if (typeof window.getIcon === "function") {
-                cached.icon.innerHTML = window.getIcon(iconName);
-            }
+            if (typeof window.refreshIcons === "function") window.refreshIcons(cached.icon);
         }
 
         // Update state text

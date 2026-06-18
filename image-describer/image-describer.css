@@ -1374,6 +1374,89 @@
   font-weight: normal;
 }
 
+/* Model filter bar (family + search + count + reset) */
+.imgdesc-model-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  /* Align columns at the top so the Family and Search labels line up, even
+     though a <select> and <input> have slightly different intrinsic heights. */
+  align-items: flex-start;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Family and Search share a row and wrap to stacked when space is tight. */
+.imgdesc-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+/* Override the block .imgdesc-field label rule for the compact filter labels;
+   the flex gap provides the spacing instead. */
+.imgdesc-model-filterbar label {
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}
+
+/* border-box so width:100% + padding never overflows into a neighbour
+   (the rest of the codebase is content-box — see .imgdesc-field width:95%). */
+.imgdesc-model-family-select,
+.imgdesc-model-search-input {
+  box-sizing: border-box;
+  width: 100%;
+  /* The <select> carries a 0.5rem UA/base vertical margin that the <input>
+     does not — zero it on both so their tops/bottoms align. */
+  margin: 0;
+  /* A <select> ignores author line-height for its box height (resolves to
+     "normal") while the input honours it, so the two render ~2-3px apart.
+     Pin both to the same min-height for an exact match regardless. */
+  min-height: 2.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  background-color: inherit;
+  color: inherit;
+}
+
+/* Count + Reset on their own full-width row: count left, reset right. */
+.imgdesc-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1 1 100%;
+}
+
+.imgdesc-model-count {
+  margin-right: auto;
+  font-size: 0.9rem;
+}
+
+.imgdesc-model-filter-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background-color: inherit;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.imgdesc-model-filter-reset svg {
+  width: 1em;
+  height: 1em;
+}
+
 /* Cost estimate display */
 .imgdesc-cost-estimate {
   padding: 0.75rem;

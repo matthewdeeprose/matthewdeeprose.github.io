@@ -82,6 +82,136 @@ const EnhancedModelSelection = (function () {
   let isUpdatingSelect = false; // Flag to prevent recursive updates
 
   // ============================================================================
+  // PROVIDER-AWARE FILTERING (Stage 3a Task 3.6a)
+  // ============================================================================
+  // The legacy chat tool only supports OpenRouter. When the global provider
+  // switch (ProviderSwitcher) reports a non-OpenRouter active provider, narrow
+  // the model list via ProviderSwitcher.filterToActiveProvider() and, if the
+  // result is empty, render the standard mismatch notice (ProviderMismatchNotice)
+  // in a sibling container and clear the dropdown. Both behaviours degrade
+  // safely if the embed-library modules aren't loaded (defensive WARN + skip).
+
+  const PROVIDER_MISMATCH_CONTAINER_ID = "chat-provider-mismatch-notice";
+  const OPENROUTER_PROVIDER_ID = "openrouter";
+  const CHAT_ALTERNATIVE_PROVIDER_ID = "openrouter";
+  let _providerEventsSubscribed = false;
+
+  function _getActiveProvider() {
+    if (
+      window.ProviderSwitcher &&
+      typeof window.ProviderSwitcher.getActive === "function"
+    ) {
+      try {
+        return window.ProviderSwitcher.getActive();
+      } catch (err) {
+        logWarn("ProviderSwitcher.getActive() threw", err);
+      }
+    }
+    return OPENROUTER_PROVIDER_ID;
+  }
+
+  function _providerFilterModels(models) {
+    if (!Array.isArray(models)) return [];
+    if (
+      !window.ProviderSwitcher ||
+      typeof window.ProviderSwitcher.filterToActiveProvider !== "function"
+    ) {
+      logWarn(
+        "ProviderSwitcher not loaded; chat tool falling back to unfiltered model list"
+      );
+      return models.slice();
+    }
+    try {
+      const result = window.ProviderSwitcher.filterToActiveProvider(models);
+      return Array.isArray(result) ? result : [];
+    } catch (err) {
+      logWarn(
+        "ProviderSwitcher.filterToActiveProvider() threw; falling back to unfiltered list",
+        err
+      );
+      return models.slice();
+    }
+  }
+
+  function _ensureMismatchNoticeContainer(dropdownElement) {
+    let container = document.getElementById(PROVIDER_MISMATCH_CONTAINER_ID);
+    if (container) return container;
+
+    if (!dropdownElement || !dropdownElement.parentElement) {
+      logWarn(
+        "Cannot create mismatch notice container — dropdown has no parentElement"
+      );
+      return null;
+    }
+
+    const dropdownWrapper = dropdownElement.parentElement; // .model-selection
+    const wrapperParent = dropdownWrapper.parentElement;
+    if (!wrapperParent) {
+      logWarn(
+        "Cannot create mismatch notice container — dropdown wrapper has no parentElement"
+      );
+      return null;
+    }
+
+    container = document.createElement("div");
+    container.id = PROVIDER_MISMATCH_CONTAINER_ID;
+    wrapperParent.insertBefore(container, dropdownWrapper.nextSibling);
+    return container;
+  }
+
+  function _hideMismatchNotice() {
+    const container = document.getElementById(PROVIDER_MISMATCH_CONTAINER_ID);
+    if (container && container.innerHTML !== "") {
+      container.innerHTML = "";
+    }
+  }
+
+  function _renderMismatchNotice(dropdownElement, activeProvider) {
+    if (
+      !window.ProviderMismatchNotice ||
+      typeof window.ProviderMismatchNotice.render !== "function"
+    ) {
+      logWarn(
+        "ProviderMismatchNotice not loaded; dropdown cleared but no notice rendered"
+      );
+      return false;
+    }
+    const container = _ensureMismatchNoticeContainer(dropdownElement);
+    if (!container) return false;
+    return window.ProviderMismatchNotice.render(container, {
+      requiredCapabilities: "this chat tool",
+      activeProvider,
+      alternativeProvider: CHAT_ALTERNATIVE_PROVIDER_ID,
+      focusAfterSwitch: "#model-select",
+    });
+  }
+
+  function _subscribeProviderEvents() {
+    if (_providerEventsSubscribed) return;
+    const handler = () => {
+      if (!isInitialised) {
+        logDebug(
+          "provider/credentials event received before init complete; ignoring"
+        );
+        return;
+      }
+      applyFilters();
+    };
+    window.addEventListener("provider:changed", handler);
+    window.addEventListener("credentials:changed", handler);
+    _providerEventsSubscribed = true;
+    logInfo("Subscribed to provider:changed and credentials:changed");
+
+    // Sync initial state — page may have loaded with a non-OR active
+    // provider, in which case applyFilters() needs to run once to put
+    // the chat tool in the correct state. The provider system's initial
+    // event may fire before this subscription is wired, so re-reading
+    // current state here closes the gap. Subsequent runs are triggered
+    // by provider:changed and credentials:changed events.
+    applyFilters();
+  }
+
+  // ============================================================================
   // MODEL REGISTRY DETECTION AND LOADING
   // ============================================================================
 
@@ -871,6 +1001,11 @@ const EnhancedModelSelection = (function () {
     updateFilterSummary(); // ADD this line
 
     isInitialised = true;
+
+    // Task 3.6a — subscribe to provider:changed and credentials:changed once
+    // the dropdown is wired. Guard against double-subscription on re-init.
+    _subscribeProviderEvents();
+
     logInfo("Initialisation complete", {
       modelCount: allModels.length,
       categories: [...new Set(allModels.map((m) => m.category))].length,
@@ -1346,9 +1481,56 @@ const EnhancedModelSelection = (function () {
   // ============================================================================
 
   function applyFilters() {
+    // Task 3.6a — the legacy chat tool's transport is OpenRouter-specific.
+    // Any non-OpenRouter active provider means this tool can't function,
+    // regardless of what the registry happens to contain. Surface the
+    // mismatch notice unconditionally and clear the dropdown.
+    const activeProvider = _getActiveProvider();
+
+    if (activeProvider !== OPENROUTER_PROVIDER_ID) {
+      logInfo(
+        `Active provider '${activeProvider}' isn't OpenRouter; chat tool unavailable — rendering mismatch notice and clearing dropdown`
+      );
+      filteredModels = [];
+      updateModelSelect();
+      updateModelCount();
+      updateFilterSummary();
+      _renderMismatchNotice(elements.modelSelect, activeProvider);
+
+      // Send button must reflect the mismatch — otherwise a click reaches
+      // the request manager and throws "No model selected". The mismatch
+      // notice above the dropdown already explains why; no extra label
+      // is added to the button itself.
+      const sendButton = document.getElementById("process-btn");
+      if (sendButton) {
+        sendButton.disabled = true;
+        sendButton.classList.remove("button-enabled");
+        sendButton.classList.add("button-disabled");
+      }
+      return;
+    }
+
+    // OpenRouter active — make sure any previously-rendered notice is cleared,
+    // then proceed with the user-filter chain on the provider-narrowed pool.
+    // _providerFilterModels is a no-op for OR today (returns all OR models)
+    // but kept here as a defensive pre-filter against future cases where
+    // multiple providers might share OR-namespaced entries.
+    _hideMismatchNotice();
+
+    // Trigger existing input-length logic to re-evaluate the send button's
+    // enabled state. If the textarea has content, the existing handler
+    // will re-enable the button; if not, it'll stay disabled. Either way,
+    // this delegates to InputHandler — the chat tool's single source of
+    // truth for button state.
+    const userInput = document.getElementById("user-input");
+    if (userInput) {
+      userInput.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    const providerFilteredPool = _providerFilterModels(allModels);
+
     logDebug("Applying filters with current state:", currentFilters);
 
-    filteredModels = allModels.filter((model) => {
+    filteredModels = providerFilteredPool.filter((model) => {
       // Search filter with enhanced logging
       if (currentFilters.search) {
         const searchLower = currentFilters.search;

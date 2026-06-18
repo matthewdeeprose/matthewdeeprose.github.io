@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "documentKey": "Handwritten-Maths-Moderate-33",
+  "documentName": "Handwritten-Maths---Moderate-33.pdf",
+  "notes": "Three known defects identified by human review of the 2026-05-18 Opus 4.7 enhancement run. The AI fixed many similar issues elsewhere in the document but missed these specific cases. Each defect represents a class of error generalisable to other documents.",
+  "defects": [
+    {
+      "id": "missed-blackboard-bold-inline",
+      "category": "missed_number_system_notation",
+      "description": "Inline 'in $Z$' was not converted to 'in $\\mathbb{Z}$' on line 53, despite the AI correctly applying the same conversion in six other math-mode positions within the same document.",
+      "mustNotContain": "inequalities $\\leq$ in $Z$",
+      "mustContain": "inequalities $\\leq$ in $\\mathbb{Z}$"
+    },
+    {
+      "id": "bar-mistaken-for-bracket",
+      "category": "bar_bracket_confusion",
+      "description": "On the induction conclusion line, '|n+1|^{2}' should be '(n+1)^{2}' — the expression appears correctly as '(n+1)^{2}' in eight other lines of the same proof, making this an outlier that any internal-consistency check would catch.",
+      "mustNotContain": "n^{2}|n+1|^{2}",
+      "mustContain": ["n^{2}(n+1)^{2}", "n^2(n+1)^2"]
+    },
+    {
+      "id": "slash-instead-of-divides",
+      "category": "divides_slash_confusion",
+      "description": "In the Remainder Theorem proof, '5 / n' appears four times but should be '5 \\mid n' (number theory 'divides' notation). The OCR was internally inconsistent — it produced '5 \\mid n' correctly in the question stem and final conclusion. The AI should have harmonised the four wrong instances to match.",
+      "mustNotContain": "$5 / n",
+      "mustContain": "$5 \\mid n"
+    }
+  ]
+}

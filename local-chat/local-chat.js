@@ -321,6 +321,7 @@
     M.addFormattedCopyButton(assistantBubble, S.messages.length - 1);
     M.addRegenerateButton(assistantBubble);
     M.addReadAloudButton(assistantBubble);
+    M.addSaveAudioButton(assistantBubble);
     M.addTimestamp(assistantBubble);
     updateStats(response.metadata);
     S.isGenerating = false;
@@ -737,6 +738,7 @@
         M.addFormattedCopyButton(lastBubble, S.messages.length - 1);
         M.addRegenerateButton(lastBubble);
         M.addReadAloudButton(lastBubble);
+        M.addSaveAudioButton(lastBubble);
         M.addTimestamp(lastBubble);
       }
     }

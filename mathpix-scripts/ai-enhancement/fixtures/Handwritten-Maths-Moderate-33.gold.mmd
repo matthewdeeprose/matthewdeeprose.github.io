@@ -1,0 +1,151 @@
+\section*{Name.}
+
+MATH1001: Number Theory - Class Test
+Duration: $4 5$ minutes
+Year: 2024/25, Semester: 1
+Date: 21st November 2024
+
+Student Number: $\_\_\_\_$ Solutions
+
+There are four questions for a total of $4 0$ marks. Marks for each question are indicated in brackets.
+Answer ALL questions
+
+This is a CLOSED BOOK test.
+A University Approved Calculator MAY be used.
+
+DO NOT turn over the paper until you are told to do so.
+\pagebreak
+
+(1) [10 marks] (a) Write down the truth table for $P \Longrightarrow Q$
+
+\begin{tabular}{|c|c|c|}
+\hline$P$ & $Q$ & $P \Longrightarrow Q$ \\
+\hline$T$ & $T$ & $T$ \\
+\hline$T$ & $F$ & $F$ \\
+\hline$F$ & $T$ & $T$ \\
+\hline$F$ & $F$ & $T$ \\
+\hline
+\end{tabular}
+(b) Use a truth table to show that $(P \wedge Q) \Longrightarrow P$ is a tautology
+
+\begin{tabular}{|c|c|c|c|}
+\hline$P$ & $Q$ & $P \wedge Q$ & $(P \wedge Q) \Longrightarrow Q$ \\
+\hline$T$ & $T$ & $T$ & $T$ \\
+\hline$T$ & $F$ & $F$ & $T$ \\
+\hline$F$ & $T$ & $F$ & $T$ \\
+\hline$F$ & $F$ & $F$ & $T$ \\
+\hline
+\end{tabular}
+(c) Now use the rules of logic (Associativity, de Morgan's rule, Complement rule, etc) to show that $(P \wedge Q) \Longrightarrow P$ is a tautology.
+You should indicate what rule you are using at each step.
+You may assume/use the absorption rule $R \vee T \equiv T$ (where $T$ denotes true).
+$$\begin{aligned}
+P \wedge Q \Rightarrow P & \equiv \neg(P \wedge Q) \vee P \text { (def of ⇒ ) } \\
+& \equiv(\neg P \vee \neg Q) \vee P \text { (de Morgan) } \\
+& \equiv(\neg Q \vee \neg P) \vee P \text { (Commut.) } \\
+& \equiv \neg Q \vee(\neg P \vee P) \text { (Assoc) } \\
+& \equiv \neg Q \vee T \quad \text { (Complement) } \\
+& \equiv T \quad \text { (Absorption) }
+\end{aligned}$$
+\pagebreak
+
+(2) [12 marks]
+(a) State the following axioms for inequalities $\leq$ in $\mathbb{Z}$.
+
+The axioms should include appropriate quantifiers.
+Transitive (Tr)
+$$\forall a, b, c \in \mathbb{Z} \quad a \leq b \wedge b \leq c \Rightarrow a \leq c$$
+
+Shift (Sh)
+$$\forall a, b, c \in \mathbb{Z} \quad a \leqslant b \Rightarrow a+c \leqslant b+c$$
+(b) Prove the following statement:
+$$\forall a, b, c, d \in \mathbb{Z} , \text { if } a \leq c \text { and } b \leq d \text { then } a+b \leq c+d .$$
+
+You should justify each line of your proof, clearly indicating the premise and any axioms that you use (including the above axioms).
+
+\section*{Proof:}
+$$\begin{array}{ll}
+a \leq c \text { and } b \leq d & \text { (premise) } \\
+a+b \leq c+b & \text { (sh) from premise } \\
+b+c \leq d+c & \text { (sh) from premise } \\
+c+b \leq c+d & \text { (comm.) } \\
+a+b \leq c+d & \text { (Tr) from lines 2,4. }
+\end{array}$$
+\pagebreak
+
+(c) Prove by induction that for all $n \geq 1$
+$$\sum_{k=1}^{n} 4 k^{3}=n^{2}(n+1)^{2}$$
+
+You do not need to indicate which axioms you use at each step but you should indicate the logical steps of the proof by induction.
+
+Base step: $n=1$
+$$\begin{aligned}
+& \sum_{k=1}^{n} 4 k^{3}=4 \cdot 1^{3}=4 \quad n^{2}(n+1)^{2}=1^{2} \cdot 2^{2}=4 \\
+& \text { so } \sum_{k=1}^{n} 4 k^{3}=n^{2}(n+1)^{2}
+\end{aligned}$$
+
+Induction step: suppose that for
+some n: $\sum_{k=1}^{n} 4 k^{3}=n^{2}(n+1)^{2} \quad \begin{gathered}(\text { induction } \\ \text { hyp). }\end{gathered}$
+Then $\sum_{k=1}^{n+1} 4 k^{3}=\sum_{k=1}^{n} 4 k^{3}+4(n+1)^{3}\binom{\text { def of }}{\sum}$
+$$\begin{aligned}
+& =n^{2}(n+1)^{2}+4(n+1)^{3} \quad \text{(sub.)} \\
+& =\left(n^{2}+4(n+1)\right) \cdot(n+1)^{2} \\
+& =\left(n^{2}+4 n+4\right) \cdot(n+1)^{2} \\
+& =(n+1)^{2}(n+2)^{2} .
+\end{aligned}$$
+so result holds for $n+1$.
+Hence by induction $\sum_{k=1}^{n} 4 k^{3}=n^{2}(n+1)^{2}$
+for all $n \geqslant 1$
+\pagebreak
+
+(3) [6 marks]
+
+Use the Remainder Theorem to show that if $n$ is a square number then $5 \mid n-1$ or $5 \mid n$ or $5 \mid n+1$.
+$n$ square so $n=k^{2}$ some $k \in \mathbb{Z}$ By Remainder Theorem $\exists q, r \in \mathbb{Z}$
+$$k=5 q+r \quad 0 \leq r<4$$
+$n=k^{2}=(5 q+r)^{2}=5\left(5 q^{2}+2 q r\right)+r^{2}$
+If $r=0$ then $n=5\left(5 q^{2}\right)$ so $5 \vert n$
+if $r=1$ then $n=5\left(5 q^{2}+2 q\right)+1$ so $5 \vert n-1$
+if $r=2$ then $n=5\left(5 q^{2}+4 q\right)+4$ so $5 \vert n+1$
+If $r=3$ then $n=5\left(5 q^{2}+6 q\right)+9$
+$$\text { so } 5 \vert n+1$$
+if $r=4$ then $n=5\left(5 q^{2}+8 q\right)+16$
+$$\text { so } 5 \mid n-1 \text {. }$$
+\pagebreak
+
+(4) [12 marks]
+(a) State Bezout's identity.
+
+For $a, b \in \mathbb{Z}$ not both zero
+$\exists u, v \in \mathbb{Z}$ such that $a u+b v=\operatorname{gcd}(a, b)$
+The gcd is least positive value of $au+bv$.
+(b) Use the Euclidean algorithm to find the greatest common divisor $d$ of the integers 31542 and 3120 .
+$$\begin{aligned}
+& 31542=3120 \cdot 10+342 \\
+& 3120=342 \cdot 9+42 \\
+& 342=42 \cdot 8+6 \\
+& 42=6 \cdot 7+0 \\
+& \text { Thus gcd }=6
+\end{aligned}$$
+\pagebreak
+
+(c) Find integers $u, v$ such that $31542 u+3120 v=d$
+$$\begin{aligned}
+6 & =342-42 \cdot 8 \\
+& =342-(3120-342 \cdot 9) \cdot 8 \\
+& =342 \cdot 73-3120 \cdot 8 \\
+& =(31542-3120 \cdot 10) \cdot 73-3120 \cdot 8 \\
+& =31542 \cdot 73-3120 \cdot 738
+\end{aligned}$$
+(d) Does the equation $31542 x+3120 y=2$ have integer solutions for $x, y$ ? Justify your answer.
+
+> There are no integer solutions
+> because $\gcd=6 \ \& \ 6 \nmid 2$.
+\pagebreak
+
+Extra space for your answers, if needed (if you use this space, please clearly indicate the question number). Please CROSS THROUGH any rough working that is not intended as an answer.
+\pagebreak
+
+Extra space for your answers, if needed (if you use this space, please clearly indicate the question number).
+Please CROSS THROUGH any rough working that is not intended as an answer.
+\pagebreak

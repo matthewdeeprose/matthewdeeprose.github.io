@@ -60,7 +60,9 @@
   padding: 0.75rem 1rem;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   min-height: 44px;
   min-width: 44px;
 }
@@ -109,6 +111,23 @@
 
 .mathpix-convert-status {
   font-size: 0.9rem;
+}
+
+.mathpix-convert-size-readout,
+.mathpix-convert-size-detail {
+  flex-basis: 100%;
+}
+
+.mathpix-convert-size-detail {
+  font-size: 0.85rem;
+}
+
+.mathpix-convert-size-readout[data-band="close"],
+.mathpix-convert-size-readout[data-band="over"] {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border-left-width: 4px;
+  border-left-style: solid;
 }
 
 .mathpix-btn,
@@ -558,6 +577,8 @@
   min-height: 44px;
   min-width: 44px;
   transition: opacity 0.15s ease;
+  outline: 0.2rem solid transparent !important;
+  border: 0.2rem solid transparent;
 }
 
 .convert-upload-label:focus-within {
@@ -568,6 +589,20 @@
 .convert-toolbar-btn .icon {
   width: 24px;
   height: 24px;
+}
+
+/* --------------------------------------------------------------------------
+   Speak Button (Y.4-early) — CSS-selected labels per engine state
+   -------------------------------------------------------------------------- */
+
+.convert-speak-btn .convert-speak-label {
+  display: none;
+}
+.convert-speak-btn[data-tts-state="idle"] [data-state-idle],
+.convert-speak-btn[data-tts-state="loading"] [data-state-loading],
+.convert-speak-btn[data-tts-state="speaking"] [data-state-speaking],
+.convert-speak-btn[data-tts-state="paused"] [data-state-paused] {
+  display: inline;
 }
 
 /* --------------------------------------------------------------------------

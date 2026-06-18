@@ -184,6 +184,16 @@
     xanthine: "purine-2,6-dione",
   };
 
+  // Phase 15-2c (LOCK 3): amine subtype labels. Emitted at sites that
+  // already know the molecule context warrants subtype emission (e.g. the
+  // simple-molecule shortcut for methylamine, the central-heteroatom
+  // dispatch arms for dimethylamine / trimethylamine). NOT spliced into
+  // _groupDisplayName / _shortGroupName because guanidine + urea also
+  // carry subtype=1 amine groups and their corrected baselines emit the
+  // bare "amine" label — propagating the subtype label there would
+  // regress those migration fixtures (post-baseline-correction).
+  const AMINE_SUBTYPE_NAMES = { 1: "primary amine", 2: "secondary amine", 3: "tertiary amine" };
+
   // =========================================================================
   // Comprehensive-tier leaf utilities (Step 1)
   //   _elem, _elementName, _aOrAnElement, _ordinal,
@@ -579,7 +589,127 @@
     return capitalised + " " + sample.type + " rings joined by " + bondPhrase;
   }
 
-  function _buildOpener(pubchemData) {
+  // Phase 15-2a: L15 lexical-suppression stereo prefix derivation. Consumes
+  // analysis.stereoEmission (from classifier _classifyStereoEmission) + the
+  // PubChem display name. Suppresses prefix when name already lexically
+  // carries a stereo descriptor.
+  //
+  // Phase 16-2a (KD-4 + KD-7):
+  //   • L15 broadened to also match locant-prefixed combined descriptors
+  //     (e.g. "(2S,3E)-") so a name already carrying them is not double-
+  //     emitted; the original "(R)-"/"(S)-"/"(E)-"/"(Z)-"/cis-/trans- set
+  //     is preserved (the new pattern is a strict superset).
+  //   • Locant-prefixed ascending-locant concatenation: bond E/Z and any
+  //     combined atom+bond case render "(2E)-" / "(2S,3E)-", with locants
+  //     drawn from the IUPAC-ordered chain (anchored on the principal FG —
+  //     matches the name's own suffix numbering).
+  //   • A lone atom-CIP stereocentre keeps the legacy un-locanted "(R)-"/
+  //     "(S)-" form (preserves the 15-2a tier-1 #1/#4 openers; KD-6 owns
+  //     the later redundant-CIP suppression).
+  // chain + adjacency are optional — when absent (ring stereo, out of tier
+  // scope) the descriptors render without locants rather than not at all.
+  function _deriveStereoPrefix(stereoEmission, name, chain, adjacency) {
+    if (!stereoEmission || !name) return "";
+    const { atomCIP = [], bondEZ = [] } = stereoEmission;
+    if (atomCIP.length === 0 && bondEZ.length === 0) return "";
+
+    // KD-6 (Phase 16-2b): Fischer-convention-aware suppression, BEFORE the L15
+    // lexical match. When the PubChem name already leads with a capital Fischer
+    // descriptor (e.g. "L-alanine", "D-glucose"), that authoritative name
+    // already encodes the stereochemistry in the convention the curriculum
+    // teaches for amino acids/sugars. Emit nothing so the opener shows the name
+    // verbatim ("L-alanine"), not the redundant double-described "(S)-L-alanine".
+    //
+    // Suppress-don't-map: nothing is converted between conventions — there is no
+    // L→S / D→R table and (deliberately) no cysteine carve-out. The name is
+    // shown as-is and the computed CIP descriptor is dropped; that is the whole
+    // behaviour change.
+    //
+    // Case-sensitive (/^[LD]-/, NO `i` flag) is the over-suppression guard: only
+    // a capital L-/D- triggers suppression. A lowercase or non-Fischer leading
+    // letter falls through to the L15 match below, so a non-Fischer name with a
+    // computed stereocentre keeps its prefix. Racemic "DL-" names do not match
+    // /^[LD]-/ (the second char is "L", not "-") and correctly fall through.
+    if (/^[LD]-/.test(name)) return "";
+
+    if (/^(\(\d*[srez](,\d*[srez])*\)|cis|trans)-/i.test(name)) return "";
+
+    // Lone atom-CIP stereocentre → legacy un-locanted form (tier-1 #1/#4).
+    if (atomCIP.length === 1 && bondEZ.length === 0) {
+      return "(" + atomCIP[0].code + ")-";
+    }
+
+    // Resolve chain locants once (null for non-chain scaffolds).
+    let chainOrder = null;
+    if (chain && chain._atomSet && adjacency) {
+      chainOrder = _orderChainAtoms(chain._atomSet, adjacency, chain.principalFGAnchor);
+    }
+    const locantOf = (atomId) => {
+      if (!chainOrder) return null;
+      const pos = chainOrder.indexOf(atomId);
+      return pos >= 0 ? pos + 1 : null;
+    };
+
+    const descriptors = [];
+    for (const a of atomCIP) {
+      descriptors.push({ locant: locantOf(a.atomId), code: a.code });
+    }
+    for (const b of bondEZ) {
+      const l1 = locantOf(b.sourceId);
+      const l2 = locantOf(b.targetId);
+      const locant =
+        l1 != null && l2 != null ? Math.min(l1, l2) : l1 != null ? l1 : l2;
+      descriptors.push({ locant, code: b.code });
+    }
+    if (descriptors.length === 0) return "";
+
+    // KD-7: ascending-locant ordering; un-locanted entries sort last (stable).
+    descriptors.sort((x, y) => {
+      if (x.locant == null && y.locant == null) return 0;
+      if (x.locant == null) return 1;
+      if (y.locant == null) return -1;
+      return x.locant - y.locant;
+    });
+
+    const inner = descriptors
+      .map((d) => (d.locant != null ? d.locant : "") + d.code)
+      .join(",");
+    return "(" + inner + ")-";
+  }
+
+  // Phase 16-2c (P-14.5.2): leading italicised affixes stay lower-case.
+  //
+  // The three opener handlers capitalise the opener via
+  // displayName.charAt(0).toUpperCase(). When displayName (a name, or a
+  // stereo-prefixed name) begins with an italicised P-14.5.2 affix, that wrongly
+  // emits "Tert-butanol" / "Cis-2-butene" / "Trans-2-butene". IUPAC P-14.5.2
+  // keeps the affix lower-case. Minimal rule: if displayName begins with an
+  // affix from the set, leave it exactly as given (affix lower-case, the rest
+  // keeps its own casing — no stem rewrite, per the 15-3 ruling); otherwise
+  // capitalise the first character as before.
+  //
+  // Case-sensitive, leading-token match. The n-/N- distinction is load-bearing:
+  // lower-case "n-" (normal-, a structural affix) matches; capital "N-" (a
+  // nitrogen-substituent locant) is a legitimately different affix and MUST keep
+  // its capital. The set therefore holds lower-case "n-" only and startsWith is
+  // case-sensitive, so "N-methyl…" never matches.
+  //
+  // Deferred (no fixture exercises them; the single-letter forms risk false
+  // matches): o-/m-/p-/ortho-/meta-/para-. Extend the constant when needed.
+  //
+  // One shared helper called at all three opener sites → tier-consistent by
+  // construction (L11), matching the stereo-prefix three-site pattern.
+  const P1452_ITALIC_AFFIXES = ["tert-", "sec-", "n-", "cis-", "trans-"];
+
+  function _capitaliseOpener(displayName) {
+    if (!displayName) return displayName;
+    for (const affix of P1452_ITALIC_AFFIXES) {
+      if (displayName.startsWith(affix)) return displayName;
+    }
+    return displayName.charAt(0).toUpperCase() + displayName.slice(1);
+  }
+
+  function _buildOpener(pubchemData, stereoEmission, chain, adjacency) {
     const commonName = pubchemData?.commonNames?.[0];
     const iupacName = pubchemData?.iupacName;
     const name = commonName || iupacName || null;
@@ -587,7 +717,12 @@
     const weight = pubchemData?.molecularWeight;
     const formulaUnicode = formula ? _formatFormulaUnicode(formula.raw) : null;
     let opener = "";
-    if (name) opener = name.charAt(0).toUpperCase() + name.slice(1);
+    if (name) {
+      // Phase 16-2a: chain + adjacency feed locant-prefixed stereo (KD-4/KD-7).
+      const stereoPrefix = _deriveStereoPrefix(stereoEmission, name, chain, adjacency);
+      const displayName = stereoPrefix + name;
+      opener = _capitaliseOpener(displayName); // P-14.5.2 affix-aware (16-2c)
+    }
     if (formulaUnicode && weight) {
       const p = "(" + formulaUnicode + ", molecular weight " + weight + ")";
       opener = opener ? opener + " " + p : p;
@@ -873,28 +1008,75 @@
   //   _escapeHtml, _finaliseDescription
   // =========================================================================
 
-  /** Phase 8C-CT-3a B6: order non-ring carbon chain atoms so ordinals can be assigned. */
-  function _orderChainAtoms(chainAtomSet, adjacency) {
+  /**
+   * Phase 8C-CT-3a B6: order non-ring carbon chain atoms so ordinals can be assigned.
+   * Phase 15-2b: optional anchor parameter applies IUPAC P-14.5 lowest-locant rule —
+   * picks the endpoint that gives the anchor atom the lowest position. Math.min
+   * endpoint tie-break preserves symmetric-canary direction (#7 tert-butanol,
+   * #15 acetone) byte-identically against the legacy `Math.min(...endpoints)` start.
+   */
+  function _orderChainAtoms(chainAtomSet, adjacency, anchorAtomId = null) {
     const endpoints = [];
     for (const id of chainAtomSet) {
       const chainNeighbours = (adjacency.get(id) || []).filter(n => chainAtomSet.has(n.vertex.id));
       if (chainNeighbours.length <= 1) endpoints.push(id);
     }
     if (endpoints.length === 0) return Array.from(chainAtomSet);
-    const start = Math.min(...endpoints);
-    const order = [start];
-    let prev = null;
-    let current = start;
-    while (true) {
-      const next = (adjacency.get(current) || []).find(
-        n => chainAtomSet.has(n.vertex.id) && n.vertex.id !== prev && !order.includes(n.vertex.id),
-      );
-      if (!next) break;
-      prev = current;
-      current = next.vertex.id;
-      order.push(current);
+    function walkFrom(start) {
+      const order = [start];
+      let prev = null, current = start;
+      while (true) {
+        const next = (adjacency.get(current) || []).find(
+          n => chainAtomSet.has(n.vertex.id) && n.vertex.id !== prev && !order.includes(n.vertex.id),
+        );
+        if (!next) break;
+        prev = current; current = next.vertex.id; order.push(current);
+      }
+      return order;
     }
-    return order;
+    if (anchorAtomId == null || endpoints.length === 1) {
+      return walkFrom(Math.min(...endpoints));
+    }
+    let bestOrder = null, bestPos = Infinity, bestEp = Infinity;
+    for (const ep of endpoints) {
+      const order = walkFrom(ep);
+      const pos = order.indexOf(anchorAtomId) + 1;
+      if (pos > 0 && (pos < bestPos || (pos === bestPos && ep < bestEp))) {
+        bestPos = pos; bestOrder = order; bestEp = ep;
+      }
+    }
+    return bestOrder || walkFrom(Math.min(...endpoints));
+  }
+
+  // Phase 15-2b: compute locant string ("at C{N}") for a group on the
+  // IUPAC-ordered chain. Scope guard (per Step 2 side-assist refinement):
+  //   (1) group must be hydroxyl — restricts emission to the chain-locant
+  //       cluster (#5/#6/#7); excludes #15 acetone ketone (symmetric STD/SHORT
+  //       canary) and out-of-cluster cascade groups (#8 nitrile,
+  //       #12/#13/#14 amines).
+  //   (2) no active stereo descriptors — when atomCIP or bondEZ is present,
+  //       the 15-2a opener-prefix carries the disambiguation; an inline
+  //       locant suffix would break STD/SHORT byte-identical PREFIX
+  //       preservation for #1–#4 (15-2a SEAL invariant). #4 specifically
+  //       exercises this branch.
+  // COMP behaviour intentionally not gated by stereo — _orderChainAtoms
+  // chain-direction flip is the cross-sub-stage primitive for #1/#4 COMP
+  // refinement (investigation § 6.1 Sequence Option A).
+  function _chainLocantSuffix(group, chain, stereoEmission, graphData, adjacency) {
+    if (!chain || !chain._atomSet || chain.principalFGAnchor == null) return "";
+    if (group.shortName !== "hydroxyl") return "";
+    if (stereoEmission && (stereoEmission.atomCIP?.length > 0 || stereoEmission.bondEZ?.length > 0)) return "";
+    const chainOrder = _orderChainAtoms(chain._atomSet, adjacency, chain.principalFGAnchor);
+    const atoms = group.atoms || [];
+    let attach = atoms.find(a => chain._atomSet.has(a));
+    if (attach == null) {
+      for (const a of atoms) {
+        const cn = (adjacency.get(a) || []).find(n => chain._atomSet.has(n.vertex.id));
+        if (cn) { attach = cn.vertex.id; break; }
+      }
+    }
+    const pos = attach != null ? chainOrder.indexOf(attach) + 1 : 0;
+    return pos > 0 ? " at C" + pos : "";
   }
 
   /** Phase 8C-CT-3a B5: count stereocenters from SMILES. Each "[C@H]" or "[C@@H]" contributes one. */
@@ -902,6 +1084,23 @@
     if (!smiles || typeof smiles !== "string") return 0;
     const matches = smiles.match(/@+/g);
     return matches ? matches.length : 0;
+  }
+
+  // Phase 16-2a (KD-4): match an alkene functional group to its bond-E/Z
+  // descriptor by atom set, returning the CIP code ("E"/"Z") only — a raw
+  // cis/trans code (the get_stereo_tags-absent fallback) returns null so it
+  // is not promoted into comprehensive prose.
+  function _matchBondEZ(group, stereoEmission) {
+    if (!group || !stereoEmission || !Array.isArray(stereoEmission.bondEZ)) return null;
+    const atoms = group.atoms || [];
+    if (atoms.length < 2) return null;
+    const atomSet = new Set(atoms);
+    for (const b of stereoEmission.bondEZ) {
+      if (atomSet.has(b.sourceId) && atomSet.has(b.targetId)) {
+        return b.code === "E" || b.code === "Z" ? b.code : null;
+      }
+    }
+    return null;
   }
 
   /**
@@ -917,9 +1116,11 @@
    * appends it to the tail paragraph.
    */
   function _buildComprehensiveSections(analysis, pubchemData) {
-    const { rings, functionalGroups, chain, heavyAtomCount, scaffoldType, _graphData, _adjacency } = analysis;
+    // Phase 15-2c (LOCK 5): centralHeteroatom + bridgedAcyclic added.
+    const { rings, functionalGroups, chain, heavyAtomCount, scaffoldType, stereoEmission,
+            centralHeteroatom, bridgedAcyclic, _graphData, _adjacency } = analysis;
     const groups = functionalGroups || [];
-    const opener = _buildOpener(pubchemData);
+    const opener = _buildOpener(pubchemData, stereoEmission, chain, _adjacency); // Phase 15-2a: stereo-aware; 16-2a: locant-prefixed
     const intro = [];
     if (opener) intro.push(opener);
 
@@ -1000,6 +1201,110 @@
         : _buildImplicitHydrogenTail(allRingMembers, substitutedPos, _graphData, _adjacency, null, rings);
       if (branchEntries.length === 0 && tail.length === 0) return { singleParagraph: intro };
       return { intro, branches: branchEntries, tail };
+    }
+
+    if (scaffoldType === "central-heteroatom") {
+      // Phase 15-2c (LOCK 5): acyclic central-heteroatom COMP prose.
+      // Dispatches on FG element-specifier; targets per § 7 verbatim.
+      // CHEMISTRY-CRITICAL invariants enforced inline:
+      //   - #14 trimethylamine (subtype 3) emits NO H-bearing-N glyph;
+      //     COMP explicitly says "bears no hydrogens" (curriculum-load-
+      //     bearing distinction: 3° vs 1°/2° characterised partly by N–H
+      //     absence — findings § 7.7).
+      //   - #13 dimethylamine (subtype 2) uses (–NH–) at STD; COMP says
+      //     "bears one implicit hydrogen". No (–NH₂) glyph anywhere.
+      const sulphoxideGroup = groups.find(g => g.shortName === "sulphoxide");
+      if (sulphoxideGroup && centralHeteroatom) {
+        // § 7.3 COMP target:
+        //   "The structure is a sulphoxide. The central sulphur atom is
+        //    double-bonded to an oxygen and single-bonded to two methyl
+        //    carbons (forming a sulphoxide group, S=O). Each methyl carbon
+        //    carries three implicit hydrogens."
+        const elemWord = _elementName(centralHeteroatom.element); // "sulphur"
+        const subCount = centralHeteroatom.substituents.length;
+        intro.push("The structure is a sulphoxide.");
+        intro.push(
+          "The central " + elemWord + " atom is double-bonded to an oxygen and single-bonded to " +
+          _numberWord(subCount) + " methyl carbons (forming a sulphoxide group, S=O)."
+        );
+        intro.push("Each methyl carbon carries three implicit hydrogens.");
+        return { singleParagraph: intro };
+      }
+      const amineGroup = groups.find(g => g.shortName === "amine" && typeof g.subtype === "number" && g.subtype >= 2);
+      if (amineGroup && centralHeteroatom) {
+        const subtypeName = AMINE_SUBTYPE_NAMES[amineGroup.subtype]; // "secondary amine" / "tertiary amine"
+        const subCount = centralHeteroatom.substituents.length;
+        const hcount = amineGroup.nHydrogenCount;
+        const hPhrase = hcount === 0
+          ? "no hydrogens"
+          : hcount === 1
+            ? "one implicit hydrogen"
+            : _numberWord(hcount) + " implicit hydrogens";
+        if (amineGroup.subtype === 3) {
+          // § 7.7 COMP: "The structure is a tertiary amine, N(CH₃)₃. ..."
+          intro.push("The structure is a " + subtypeName + ", N(CH₃)₃.");
+        } else {
+          // § 7.6 COMP: "The structure is a secondary amine. ..."
+          intro.push("The structure is a " + subtypeName + ".");
+        }
+        intro.push(
+          "The nitrogen atom bears " + hPhrase + " and is bonded to " +
+          _numberWord(subCount) + " methyl carbons, characteristic of a " + subtypeName + "."
+        );
+        return { singleParagraph: intro };
+      }
+      // Defensive: scaffoldType claimed central-heteroatom but no centre
+      // FG found — fall through to other arms (should not fire in tier-1).
+    }
+
+    if (scaffoldType === "bridged-acyclic") {
+      // Phase 15-2c (LOCK 5): acyclic bridged-heteroatom COMP prose.
+      // Walks leftSubstructure.atomIds in ARRAY ORDER (outermost-first per
+      // _analyseBridgedAcyclic convention), then bridge, then
+      // rightSubstructure.atomIds in ARRAY ORDER (innermost-first). MUST
+      // NOT normalise the two arrays to match — the continuous ordinal
+      // walk depends on the helper's deliberate left/right asymmetry.
+      // For diethyl ether (#11): left=[C0,C1], right=[C3,C4] → "first"
+      // (C0) → "second" (C1) → bridge → "third" (C3) → "fourth" (C4).
+      if (bridgedAcyclic && bridgedAcyclic.leftSubstructure && bridgedAcyclic.rightSubstructure) {
+        const left = bridgedAcyclic.leftSubstructure;
+        const right = bridgedAcyclic.rightSubstructure;
+        const leftLen = left.atomIds.length;
+        const rightLen = right.atomIds.length;
+        const leftDesc = left.descriptor || "alkyl";
+        const rightDesc = right.descriptor || "alkyl";
+        const bridgeElem = _elementName(bridgedAcyclic.bridgeElement);
+
+        intro.push("The structure is an ether.");
+        intro.push("Two " + leftDesc + " groups are bridged by " + _aOrAnElement(bridgeElem) + " " + bridgeElem + " atom.");
+        // Left side: outermost-first walk. First sentence carries the
+        // "The first <descriptor>:" prefix to mark the substructure start.
+        if (leftLen >= 2) {
+          intro.push(
+            "The first " + leftDesc + ": the " + _ordinal(1) +
+            " carbon is bonded to the " + _ordinal(2) + " carbon by a single bond."
+          );
+          for (let i = 1; i < leftLen - 1; i++) {
+            intro.push(
+              "The " + _ordinal(i + 1) + " carbon is bonded to the " +
+              _ordinal(i + 2) + " carbon by a single bond."
+            );
+          }
+        }
+        // Bridge transition.
+        intro.push("The " + _ordinal(leftLen) + " carbon is bonded to the bridging " + bridgeElem + ".");
+        intro.push("The " + bridgeElem + " is bonded to the start of a second " + rightDesc + " group.");
+        // Right side: innermost-first walk; ordinals continue from leftLen+1.
+        const rightStart = leftLen + 1;
+        for (let i = 0; i < rightLen - 1; i++) {
+          intro.push(
+            "The " + _ordinal(rightStart + i) + " carbon is bonded to the " +
+            _ordinal(rightStart + i + 1) + " carbon by a single bond."
+          );
+        }
+        intro.push("Each carbon carries implicit hydrogens.");
+        return { singleParagraph: intro };
+      }
     }
 
     if (scaffoldType === "aromatic-ring" || scaffoldType === "ring") {
@@ -1083,10 +1388,40 @@
         if (groups.length === 0) {
           intro.push("The structure is a single carbon atom.");
         } else {
-          const groupLabels = helpers.collapseGroupList
-            ? helpers.collapseGroupList(groups)
-            : groups.map(g => helpers.groupDisplayName(g));
+          // Phase 15-2c (LOCK 3): subtype-aware amine display for methylamine
+          // (#12). Inline rather than via _groupDisplayName so guanidine /
+          // urea's collapsed amine paths stay on "amine groups" (baseline).
+          // Trigger: exactly one subtype-tagged amine in the group list.
+          let groupLabels;
+          const singleSubtypeAmine = groups.length === 1
+            && groups[0].shortName === "amine"
+            && typeof groups[0].subtype === "number";
+          if (singleSubtypeAmine) {
+            const g = groups[0];
+            const subWord = AMINE_SUBTYPE_NAMES[g.subtype] || "amine";
+            const display = "a " + subWord + " group" + (g.shorthand ? " (" + g.shorthand + ")" : "");
+            groupLabels = [display];
+          } else {
+            groupLabels = helpers.collapseGroupList
+              ? helpers.collapseGroupList(groups)
+              : groups.map(g => helpers.groupDisplayName(g));
+          }
           intro.push("A single carbon bearing " + helpers.formatList(groupLabels) + ".");
+          // Phase 15-2c (LOCK 3): append H-count characterisation clause
+          // for subtype-tagged amine. § 7.5 COMP for methylamine:
+          //   "The nitrogen bears two implicit hydrogens, characteristic of
+          //    a primary amine."
+          if (singleSubtypeAmine) {
+            const g = groups[0];
+            const subWord = AMINE_SUBTYPE_NAMES[g.subtype];
+            const hcount = g.nHydrogenCount;
+            const hPhrase = hcount === 0
+              ? "no implicit hydrogens"
+              : hcount === 1
+                ? "one implicit hydrogen"
+                : _numberWord(hcount) + " implicit hydrogens";
+            intro.push("The nitrogen bears " + hPhrase + ", characteristic of a " + subWord + ".");
+          }
         }
         return { singleParagraph: intro };
       }
@@ -1097,7 +1432,10 @@
       for (const v of _graphData.graph.vertices) {
         if (_elem(v) === "C" && !(v.value?.rings?.length > 0)) chainAtomSet.add(v.id);
       }
-      const chainOrder = _orderChainAtoms(chainAtomSet, _adjacency);
+      // Phase 15-2b: pass principal-FG anchor for IUPAC-aware endpoint pick
+      // (chain-direction flip for #1/#4/#5/#6; preserves #7/#15 symmetric
+      // canaries via Math.min tie-break inside _orderChainAtoms).
+      const chainOrder = _orderChainAtoms(chainAtomSet, _adjacency, chain.principalFGAnchor);
       const chainWord = helpers.numberWord(chain.length);
       intro.push("The structure is a " + chainWord + "-carbon chain.");
       if (chain.length >= 2 && chainOrder.length >= 2) {
@@ -1137,6 +1475,40 @@
       });
       for (const idx of orderedKeys) {
         const bucket = byChainIdx.get(idx);
+        // Phase 15-2c (LOCK 2 / § 7.1): chemistry-accurate nitrile COMP
+        // sentence — surfaces the triple-bond C≡N geometry rather than
+        // generic "bears a nitrile group". For #8 propionitrile (CCC#N):
+        //   "The third carbon is triple-bonded to a nitrogen atom
+        //    (forming a nitrile group, –CN)."
+        // Falls through to the generic "Nth carbon bears X" template when
+        // the bucket is not a lone nitrile (preserves all other behaviours
+        // including the #15 acetone canary "second carbon bears a ketone
+        // group (C=O)" emission).
+        if (bucket.length === 1 && bucket[0].shortName === "nitrile" && idx >= 0) {
+          intro.push(
+            "The " + _ordinal(idx + 1) + " carbon is triple-bonded to a nitrogen atom" +
+            " (forming a nitrile group, –CN)."
+          );
+          continue;
+        }
+        // Phase 16-2a (KD-4, lock 5): a stereo-defined C=C surfaces its
+        // CIP (E)/(Z) descriptor inline at the double-bond mention — the
+        // COMP render site tier-consistent with the opener prefix. Only a
+        // CIP-resolved code is promoted (raw cis/trans is not surfaced in
+        // COMP prose); falls through to the generic template otherwise, so
+        // builds without get_stereo_tags keep the plain sentence.
+        if (bucket.length === 1 && bucket[0].shortName === "alkene" && idx >= 0) {
+          const ez = _matchBondEZ(bucket[0], stereoEmission);
+          if (ez === "E" || ez === "Z") {
+            // Article by spoken letter sound: "an (E)" (ee), "a (Z)" (zed).
+            const article = ez === "E" ? "an" : "a";
+            intro.push(
+              "The " + _ordinal(idx + 1) + " carbon bears " + article + " (" + ez +
+              ")-configured carbon-carbon double bond (C=C)."
+            );
+            continue;
+          }
+        }
         const items = helpers.collapseGroupList
           ? helpers.collapseGroupList(bucket)
           : bucket.map(g => helpers.groupDisplayName(g));
@@ -1408,10 +1780,23 @@
       hydroxyl: "a hydroxyl group",
       amine: "an amine group",
       nitrile: "a nitrile group",
+      // Phase 16-3 (KD-9): imine. Explicit entry required — the generic
+      // fallback ("a " + shortName) emits the ungrammatical "a imine group".
+      // Carries the "=N–" shorthand via the parenthetical mechanism (COMP/STD).
+      imine: "an imine group",
       alkene: "a carbon-carbon double bond",
       alkyne: "a carbon-carbon triple bond",
       sulphonamide: "a sulphonamide group",
       "sulphonic acid": "a sulphonic acid group",
+      // Phase 15-2c (LOCK 2): new tier-1 FG entries. Subtype-aware "primary
+      // amine" / "secondary amine" / "tertiary amine" prose is composed
+      // INLINE at the prose dispatch sites (simple-molecule shortcut,
+      // central-heteroatom dispatch arm) — NOT here — so guanidine/urea's
+      // subtype=1 amines continue to read as plain "amine groups" via
+      // _collapseGroupList per the corrected migration baseline (f91362e).
+      thiol: "a thiol group",
+      sulphoxide: "a sulphoxide group",
+      ether: "an ether group",
     };
     let baseName;
     if (group.shortName === "halogen") {
@@ -1461,10 +1846,20 @@
       methoxy: "a methoxy group",
       amine: "an amine",
       nitrile: "a nitrile",
+      // Phase 16-3 (KD-9): imine SHORT entry. Drops the shorthand per the
+      // SHORT convention; "an" article (fallback would mis-emit "a imine").
+      imine: "an imine",
       alkene: "a double bond",
       alkyne: "a triple bond",
       sulphonamide: "a sulphonamide",
       "sulphonic acid": "a sulphonic acid",
+      // Phase 15-2c (LOCK 2): new tier-1 SHORT entries. "an ether" article
+      // explicit (fallback "a " + shortName would mis-emit "a ether").
+      // Subtype-aware amine SHORT is inlined at the chain branch single-
+      // group case — NOT here — for the same reason as _groupDisplayName.
+      thiol: "a thiol",
+      sulphoxide: "a sulphoxide",
+      ether: "an ether",
     };
     if (group.shortName === "halogen") {
       return "a halogen" + (group.shorthand ? " (" + group.shorthand + ")" : "");
@@ -1661,7 +2056,11 @@
   function _assembleDescription(analysis, pubchemData, options) {
     const detail = options?.detail ?? "standard";
     const maxWords = options?.maxWords ?? 150;
-    const { rings, functionalGroups, chain, heavyAtomCount, scaffoldType, _graphData, _adjacency } = analysis;
+    // Phase 15-2c (LOCK 5): centralHeteroatom + bridgedAcyclic added to
+    // destructure; populated only when scaffoldType matches their respective
+    // arm, null otherwise (analyseStructure return-shape is purely additive).
+    const { rings, functionalGroups, chain, heavyAtomCount, scaffoldType, stereoEmission,
+            centralHeteroatom, bridgedAcyclic, _graphData, _adjacency } = analysis;
     const groups = functionalGroups || [];
 
     // Short tier — delegate to dedicated assembler
@@ -1698,7 +2097,12 @@
     const formulaUnicode = formula ? _formatFormulaUnicode(formula.raw) : null;
     let opener = "";
     if (name) {
-      opener = name.charAt(0).toUpperCase() + name.slice(1);
+      // Phase 15-2a: stereo prefix injection (atom-CIP + bond-E/Z) with
+      // L15 lexical suppression. Tier-consistent with SHORT + COMP openers.
+      // Phase 16-2a: chain + adjacency feed locant-prefixed stereo (KD-4/KD-7).
+      const stereoPrefix = _deriveStereoPrefix(stereoEmission, name, chain, _adjacency);
+      const displayName = stereoPrefix + name;
+      opener = _capitaliseOpener(displayName); // P-14.5.2 affix-aware (16-2c)
     }
     if (formulaUnicode && weight) {
       const parenthetical = "(" + formulaUnicode + ", molecular weight " + weight + ")";
@@ -1734,7 +2138,18 @@
 
     // Simple molecule shortcut: ≤2 heavy atoms, exactly 1 group, no rings
     if (heavyAtomCount <= 2 && groups.length === 1 && rings.length === 0) {
-      parts.push("A methyl group bonded to " + _groupDisplayName(groups[0]) + ".");
+      // Phase 15-2c (LOCK 3): subtype-aware amine display for methylamine
+      // (#12). Inline here rather than via _groupDisplayName so guanidine /
+      // urea continue to read as plain "amine" in their collapsed-list paths.
+      const g = groups[0];
+      let display;
+      if (g.shortName === "amine" && typeof g.subtype === "number") {
+        const subWord = AMINE_SUBTYPE_NAMES[g.subtype] || "amine";
+        display = "a " + subWord + " group" + (g.shorthand ? " (" + g.shorthand + ")" : "");
+      } else {
+        display = _groupDisplayName(g);
+      }
+      parts.push("A methyl group bonded to " + display + ".");
       return parts.join(" ").replace(/\.\./g, ".").trim();
     }
 
@@ -1754,6 +2169,49 @@
       // carry-forward). No current fixture exercises that path; if a future
       // joined-non-fused fixture has non-identical rings, surface the
       // silent-no-op as a finding and design a fallback template.
+    } else if (scaffoldType === "central-heteroatom") {
+      // Phase 15-2c (LOCK 5): acyclic central-heteroatom STD prose. Dispatches
+      // on FG element-specifier: sulphoxide (S centre) vs amine subtype>=2
+      // (N centre). Per § 7 verbatim targets — DMSO #10, dimethylamine #13,
+      // trimethylamine #14.
+      const sulphoxideGroup = groups.find(g => g.shortName === "sulphoxide");
+      if (sulphoxideGroup && centralHeteroatom) {
+        // § 7.3 STD: "A 4-atom molecule. A sulphoxide group (S=O) with two methyl substituents."
+        const subCount = centralHeteroatom.substituents.length;
+        parts.push(
+          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule. " +
+          "A sulphoxide group (S=O) with " + _numberWord(subCount) + " methyl substituents."
+        );
+      } else {
+        const amineGroup = groups.find(g => g.shortName === "amine" && typeof g.subtype === "number" && g.subtype >= 2);
+        if (amineGroup && centralHeteroatom) {
+          const subCount = centralHeteroatom.substituents.length;
+          const countWord = _numberWord(subCount);
+          const cap = countWord.charAt(0).toUpperCase() + countWord.slice(1);
+          if (amineGroup.subtype === 2) {
+            // § 7.6 STD: "Two methyl groups bonded to a secondary amine (–NH–)."
+            parts.push(cap + " methyl groups bonded to a secondary amine (–NH–).");
+          } else if (amineGroup.subtype === 3) {
+            // § 7.7 STD: "Three methyl groups bonded to a tertiary amine nitrogen, N(CH₃)₃."
+            // CHEMISTRY-CRITICAL: no H-bearing-N glyph (no –NH₂, no –NH–, no >NH).
+            parts.push(cap + " methyl groups bonded to a tertiary amine nitrogen, N(CH₃)₃.");
+          }
+        }
+      }
+    } else if (scaffoldType === "bridged-acyclic") {
+      // Phase 15-2c (LOCK 5): acyclic bridged-heteroatom STD prose. Tier-1
+      // is diethyl ether (#11); generic on substituent descriptor + bridge
+      // element word for future fixtures.
+      if (bridgedAcyclic && bridgedAcyclic.leftSubstructure) {
+        const desc = bridgedAcyclic.leftSubstructure.descriptor || "alkyl";
+        const bridgeElem = _elementName(bridgedAcyclic.bridgeElement);
+        // § 7.4 STD: "A 5-atom molecule. Two ethyl groups bridged by an oxygen (an ether linkage)."
+        parts.push(
+          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule. " +
+          "Two " + desc + " groups bridged by " + _aOrAnElement(bridgeElem) + " " + bridgeElem +
+          " (an ether linkage)."
+        );
+      }
     } else if (scaffoldType === "aromatic-ring" || scaffoldType === "ring") {
       // Single ring
       const ring = rings[0];
@@ -1960,7 +2418,12 @@
             // collapsed strings and _formatList handles the single-item
             // case cleanly.
             const displayItems = _collapseGroupList(groups);
-            parts[parts.length - 1] += " with " + _formatList(displayItems) + ".";
+            // Phase 15-2b: emit "at C{N}" suffix when single hydroxyl group
+            // + no stereo descriptors active (guard inside _chainLocantSuffix).
+            const locantSuffix = groups.length === 1
+              ? _chainLocantSuffix(groups[0], chain, stereoEmission, _graphData, _adjacency)
+              : "";
+            parts[parts.length - 1] += " with " + _formatList(displayItems) + locantSuffix + ".";
           } else {
             parts[parts.length - 1] += ".";
           }
@@ -1997,7 +2460,10 @@
    * @private
    */
   function _assembleShortDescription(analysis, pubchemData) {
-    const { rings, functionalGroups, chain, heavyAtomCount, scaffoldType, _graphData, _adjacency } = analysis;
+    // Phase 15-2c (LOCK 5): centralHeteroatom + bridgedAcyclic added (matches
+    // _assembleDescription's destructure for tier-consistency).
+    const { rings, functionalGroups, chain, heavyAtomCount, scaffoldType, stereoEmission,
+            centralHeteroatom, bridgedAcyclic, _graphData, _adjacency } = analysis;
     const groups = functionalGroups || [];
     const parts = [];
 
@@ -2024,7 +2490,12 @@
 
     let opener = "";
     if (name) {
-      opener = name.charAt(0).toUpperCase() + name.slice(1);
+      // Phase 15-2a: stereo prefix injection (atom-CIP + bond-E/Z) with
+      // L15 lexical suppression. Tier-consistent with STD + COMP openers.
+      // Phase 16-2a: chain + adjacency feed locant-prefixed stereo (KD-4/KD-7).
+      const stereoPrefix = _deriveStereoPrefix(stereoEmission, name, chain, _adjacency);
+      const displayName = stereoPrefix + name;
+      opener = _capitaliseOpener(displayName); // P-14.5.2 affix-aware (16-2c)
       if (formulaUnicode) {
         opener += " (" + formulaUnicode + ")";
       }
@@ -2048,6 +2519,32 @@
       }
       // Helper returns null for non-identical-ring scaffolds (Phase 15+
       // carry-forward; see _assembleDescription's matching note).
+    } else if (scaffoldType === "central-heteroatom") {
+      // Phase 15-2c (LOCK 5): acyclic central-heteroatom SHORT prose.
+      // Dispatches on FG element-specifier; targets per § 7 verbatim.
+      const sulphoxideGroup = groups.find(g => g.shortName === "sulphoxide");
+      if (sulphoxideGroup && centralHeteroatom) {
+        // § 7.3 SHORT: "A sulphoxide group flanked by two methyl groups."
+        const subCount = centralHeteroatom.substituents.length;
+        parts.push("A sulphoxide group flanked by " + _numberWord(subCount) + " methyl groups.");
+      } else {
+        const amineGroup = groups.find(g => g.shortName === "amine" && typeof g.subtype === "number" && g.subtype >= 2);
+        if (amineGroup && centralHeteroatom) {
+          const subCount = centralHeteroatom.substituents.length;
+          const subtypeName = AMINE_SUBTYPE_NAMES[amineGroup.subtype] || "amine";
+          // § 7.6 SHORT: "A secondary amine with two methyl substituents."
+          // § 7.7 SHORT: "A tertiary amine with three methyl substituents."
+          parts.push("A " + subtypeName + " with " + _numberWord(subCount) + " methyl substituents.");
+        }
+      }
+    } else if (scaffoldType === "bridged-acyclic") {
+      // Phase 15-2c (LOCK 5): acyclic bridged-heteroatom SHORT prose.
+      if (bridgedAcyclic && bridgedAcyclic.leftSubstructure) {
+        const desc = bridgedAcyclic.leftSubstructure.descriptor || "alkyl";
+        const bridgeElem = _elementName(bridgedAcyclic.bridgeElement);
+        // § 7.4 SHORT: "Two ethyl groups bridged by an oxygen."
+        parts.push("Two " + desc + " groups bridged by " + _aOrAnElement(bridgeElem) + " " + bridgeElem + ".");
+      }
     } else if (scaffoldType === "aromatic-ring" || scaffoldType === "ring") {
       const ring = rings[0];
       // Phase 9-4 (CT-4h): share the _enumerateRingBranchPoints primitive
@@ -2197,7 +2694,19 @@
         if (groups.length === 0) {
           parts.push(scaffold + ".");
         } else if (groups.length === 1) {
-          parts.push(scaffold + " with " + _shortGroupName(groups[0]) + ".");
+          // Phase 15-2b: locant suffix per scope guard (hydroxyl + no stereo).
+          const locantSuffix = _chainLocantSuffix(groups[0], chain, stereoEmission, _graphData, _adjacency);
+          // Phase 15-2c (LOCK 3): subtype-aware amine SHORT for methylamine
+          // (#12). Inline rather than via _shortGroupName so guanidine's
+          // collapsed 2-amine SHORT path stays on "two amines" (baseline).
+          const g = groups[0];
+          let shortName;
+          if (g.shortName === "amine" && typeof g.subtype === "number") {
+            shortName = "a " + (AMINE_SUBTYPE_NAMES[g.subtype] || "amine");
+          } else {
+            shortName = _shortGroupName(g);
+          }
+          parts.push(scaffold + " with " + shortName + locantSuffix + ".");
         } else if (groups.length <= 3) {
           // Phase 11-1c (N-post10-7): collapse duplicate short-form names so
           // guanidine's three amines surface as "three amines" rather than

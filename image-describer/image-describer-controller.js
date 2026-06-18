@@ -233,6 +233,9 @@
         // Bind show all models checkbox
         this.bindShowAllModelsCheckbox();
 
+        // Bind model filter bar (family + search + reset)
+        this.bindModelFilters();
+
         // Set initial button states
         this.updateButtonStates();
 
@@ -253,6 +256,12 @@
         window.addEventListener("resize", () => {
           this.positionGenerateButton();
         });
+
+        // Subscribe to provider/credential events (Task 3.5b).
+        // Added before _initialized = true so handlers no-op if an event
+        // arrives in the millisecond gap between subscription and the flag
+        // flipping — at that point selectors may not yet be fully populated.
+        this._subscribeProviderEvents();
 
         // Mark as initialised
         this._initialized = true;
@@ -289,6 +298,12 @@
         costEstimate: document.getElementById("imgdesc-cost-estimate"),
         rememberModel: document.getElementById("imgdesc-remember-model"),
         showAllModels: document.getElementById("imgdesc-show-all-models"),
+
+        // Model filter bar (family + search + count + reset)
+        modelFamily: document.getElementById("imgdesc-model-family"),
+        modelSearch: document.getElementById("imgdesc-model-search"),
+        modelCount: document.getElementById("imgdesc-model-count"),
+        modelFilterReset: document.getElementById("imgdesc-model-filter-reset"),
 
         // Layout panels (Phase 2B.2)
         configPanel: document.getElementById("imgdesc-config-panel"),
@@ -1079,6 +1094,71 @@
       });
 
       logDebug("Clipboard paste handler bound successfully");
+    },
+
+    // ========================================================================
+    // PROVIDER EVENT SUBSCRIPTIONS (Task 3.5b)
+    // ========================================================================
+
+    /**
+     * Subscribe to provider and credential change events.
+     * Re-populates both model selectors when the active provider changes or
+     * when credentials are saved/cleared (new vision deployments may have
+     * become available).
+     *
+     * Both handlers guard on `this._initialized` so that any event arriving
+     * before the controller finishes initialising is dropped — selectors
+     * may not yet be in a populatable state.
+     *
+     * Subscribes via window.addEventListener (the canonical channel per
+     * Stage 3a). setup-tool.js bridges EmbedEventEmitter.emit('credentials:changed')
+     * to window.dispatchEvent so this subscription receives real save/clear
+     * events from the Set Up tool.
+     */
+    _subscribeProviderEvents() {
+      this._providerChangedHandler = (event) => {
+        if (!this._initialized) {
+          logDebug(
+            "provider:changed received before init complete; ignoring",
+          );
+          return;
+        }
+        const newProvider = event?.detail?.newProvider;
+        logInfo(
+          `provider:changed → re-populating Image Describer selectors (new: ${newProvider})`,
+        );
+        const showAll = this.elements.showAllModels?.checked || false;
+        this.populateModelSelector(showAll);
+        this.populateVerificationModelSelector();
+      };
+
+      this._credentialsChangedHandler = (event) => {
+        if (!this._initialized) {
+          logDebug(
+            "credentials:changed received before init complete; ignoring",
+          );
+          return;
+        }
+        const service = event?.detail?.service;
+        // Only re-populate when openrouter or foundry (azure-openai)
+        // credentials change. MathPix / Ally don't affect our selectors.
+        if (service !== "openrouter" && service !== "azure-openai" && service !== "foundry") {
+          return;
+        }
+        logInfo(
+          `credentials:changed (${service}, ${event?.detail?.action}) → re-populating selectors`,
+        );
+        const showAll = this.elements.showAllModels?.checked || false;
+        this.populateModelSelector(showAll);
+        this.populateVerificationModelSelector();
+      };
+
+      window.addEventListener("provider:changed", this._providerChangedHandler);
+      window.addEventListener(
+        "credentials:changed",
+        this._credentialsChangedHandler,
+      );
+      logDebug("Subscribed to provider:changed and credentials:changed");
     },
 
     // ========================================================================

@@ -45,6 +45,21 @@ const MathPixChemistryUtils = (function () {
   /** SMILES tag regex — captures attributes (group 1) and notation (group 2) */
   const SMILES_REGEX = /<smiles([^>]*)>(.*?)<\/smiles>/g;
 
+  /**
+   * Combined SMILES regex — matches both:
+   *   1. <smiles attrs>NOTATION</smiles>  → group 1 = attrs, group 2 = notation
+   *   2. ```smiles\nNOTATION\n```         → group 3 = notation (no attrs)
+   *
+   * Used by extractChemistryFromResponse to find both forms in source order
+   * (Markdown code-fences and HTML tags can appear interleaved in user-authored
+   * MMD). The mathpix-markdown-it library renders each separately:
+   *   - <smiles> tag form    → <div class="smiles-inline">
+   *   - ```smiles fence form → <div class="smiles">
+   * Both forms need aria-labels for TTS to read intelligibly (Stage Y.2a).
+   */
+  const SMILES_OR_FENCE_REGEX =
+    /<smiles([^>]*)>([\s\S]*?)<\/smiles>|```smiles[ \t]*\n([\s\S]*?)\n```/g;
+
   /** Formula element regex — e.g. "C24", "H", "N1" */
   const ELEMENT_REGEX = /([A-Z][a-z]?)(\d*)/g;
 
@@ -196,14 +211,19 @@ const MathPixChemistryUtils = (function () {
     const smilesArray = [];
     const text = apiResponse.text || "";
 
-    // 1. Extract from response text
+    // 1. Extract from response text — both <smiles>...</smiles> tags AND
+    //    ```smiles\n...\n``` Markdown code-fences (Stage Y.2a: the latter is
+    //    user-authored, the former is what the Mathpix API emits; we accept
+    //    both so Convert mode's uploaded MMD works alongside API results).
     let match;
-    // Reset lastIndex in case regex was used before
-    SMILES_REGEX.lastIndex = 0;
+    SMILES_OR_FENCE_REGEX.lastIndex = 0;
 
-    while ((match = SMILES_REGEX.exec(text)) !== null) {
-      const attributes = match[1] || "";
-      const notation = match[2];
+    while ((match = SMILES_OR_FENCE_REGEX.exec(text)) !== null) {
+      // Tag form: match[2] holds notation, match[1] holds attributes.
+      // Fence form: match[3] holds notation, no attributes.
+      const isTagForm = match[2] !== undefined;
+      const notation = isTagForm ? match[2] : match[3];
+      const attributes = isTagForm ? match[1] || "" : "";
       const parsed = parseAttributes(attributes);
 
       // For MMD text (PDF mode), try caption extraction first
@@ -468,6 +488,95 @@ const MathPixChemistryUtils = (function () {
     return parts.join(". ");
   }
 
+  /**
+   * Stage Y.2a: Apply role="img" + aria-label to every `.smiles-inline`
+   * element inside `container`, indexed against `items`. Single source of
+   * truth for the three-tier description cascade (SHORT → STRUCTURAL → BASIC)
+   * shared by:
+   *
+   *   - `MathPixResultRenderer.addChemistryAltText` (API-result path,
+   *     items sourced from `this._chemistryData`).
+   *   - `MathPixConvertMode.renderPreview` (uploaded-MMD path, items
+   *     sourced by re-extracting `<smiles>` tags from the source content).
+   *
+   * Future MathPix consumers that render chemistry (PDF mode, Resume mode,
+   * etc.) can delegate to this same utility — they just need to supply the
+   * `items` array. `role="img"` is set unconditionally on every match so
+   * screen readers always have the atomic-image hint; aria-label content
+   * comes from whichever description tier resolves first.
+   *
+   * @param {HTMLElement} container - element containing one or more
+   *   `.smiles-inline` descendants. Mutated in place.
+   * @param {Array<Object>} items - chemistry items in the same order as the
+   *   `.smiles-inline` elements appear in `container`. Each item should
+   *   carry at least a `notation` (SMILES string) and optionally `inchi`,
+   *   `_resolvedName`, and the PubChem-shaped fields consumed by the SHORT
+   *   tier (`_buildPubchemDataFromItem(item)` is called internally).
+   * @returns {number} count of `.smiles-inline` elements processed (0 if
+   *   none were found).
+   */
+  function applyAriaLabelsToSmilesInline(container, items) {
+    if (!container) return 0;
+    // Match both wrapper shapes the mathpix-markdown-it library produces:
+    //   - `.smiles-inline` — from <smiles>...</smiles> HTML tags
+    //   - `.smiles`        — from ```smiles\n...\n``` Markdown code-fences
+    // Both wrap an SVG of identical shape; both need role + aria-label for
+    // TTS to read intelligibly. Selector order (`.smiles-inline, .smiles`)
+    // doesn't affect querySelectorAll output — DOM order is preserved.
+    const smilesElements = container.querySelectorAll(
+      ".smiles-inline, .smiles",
+    );
+    if (smilesElements.length === 0) return 0;
+
+    const itemsArray = Array.isArray(items) ? items : [];
+
+    smilesElements.forEach((el, index) => {
+      const chemItem = itemsArray[index] || {};
+
+      el.setAttribute("role", "img");
+
+      // Tier 1 — SHORT (Phase 8C-ST): preferred for aria-label.
+      const pubchemObj = _buildPubchemDataFromItem(chemItem);
+      const shortAria = MathPixChemistryUtils.generateShortDescriptionForAria?.(
+        chemItem.notation, pubchemObj,
+      );
+      if (shortAria) {
+        el.setAttribute("aria-label", shortAria);
+        return;
+      }
+
+      // Tier 2 — STRUCTURAL (Phase 7A-2).
+      const structural = MathPixChemistryUtils.generateStructuralDescription?.(
+        chemItem.notation, pubchemObj,
+      );
+      if (structural) {
+        el.setAttribute("aria-label", structural);
+        return;
+      }
+
+      // Tier 3 — BASIC (Phase 7A — last-resort, formula-only fallback).
+      const parsed = chemItem.inchi ? parseInChIFormula(chemItem.inchi) : null;
+      const descData = {
+        notation: chemItem.notation || "",
+        formula: parsed,
+        iupacName: chemItem._resolvedName || null,
+      };
+      const basic = generateBasicAccessibleDescription(descData);
+
+      el.setAttribute(
+        "aria-label",
+        basic || "Chemical structure: " + (chemItem.notation || "unknown"),
+      );
+    });
+
+    logDebug("applyAriaLabelsToSmilesInline applied", {
+      count: smilesElements.length,
+      itemsProvided: itemsArray.length,
+    });
+
+    return smilesElements.length;
+  }
+
   // Track current rendering for theme-change re-render
   let currentRenderState = null;
 
@@ -698,6 +807,28 @@ const MathPixChemistryUtils = (function () {
     return "-";
   }
 
+  // Phase 16-2a (KD-4): normalise an RDKit get_stereo_tags() CIP code. The
+  // tags arrive parenthesised — "(R)" / "(S)" / "(E)" / "(Z)" — and an
+  // unspecified-but-perceived centre as "(?)". Returns the bare letter for a
+  // defined descriptor, or null for "?" / anything unrecognised (an
+  // unspecified centre must not emit a descriptor).
+  function _stripCipParens(raw) {
+    if (typeof raw !== "string") return null;
+    const inner = raw.startsWith("(") && raw.endsWith(")")
+      ? raw.slice(1, -1)
+      : raw;
+    return inner === "R" || inner === "S" || inner === "E" || inner === "Z"
+      ? inner
+      : null;
+  }
+
+  // Phase 16-2a (KD-4): order-independent key for a bond's atom pair, so a
+  // get_stereo_tags() CIP_bonds entry (atomIdx1, atomIdx2) maps onto the
+  // get_json() bond regardless of which end RDKit lists first.
+  function _bondPairKey(a, b) {
+    return a < b ? a + "-" + b : b + "-" + a;
+  }
+
   /**
    * Phase 12-2a (extracted at 12-5b-4): parse RDKit's get_json() output for
    * one mol and emit a SmilesDrawer-shape graph. See header comment above
@@ -783,6 +914,46 @@ const MathPixChemistryUtils = (function () {
       }
     }
 
+    // ----- Phase 16-2a (KD-4): CIP-resolved stereo via get_stereo_tags ----
+    // One call yields CIP_atoms ([[atomIdx,"(R)"]]) and CIP_bonds
+    // ([[atomIdx1,atomIdx2,"(E)"]]) on a single, consistent atom-index basis
+    // (KD-7 locant concatenation depends on that shared basis). CIP_atoms
+    // supersedes the legacy ext.cipCodes mining above — letter-stable
+    // equivalence confirmed live for (R)-2-butanol / naproxen / (S)-alanine /
+    // pent-3-en-2-ol (phase16-2a-walkthrough § 3). CIP_bonds is the ONLY
+    // source of CIP-resolved bond E/Z in this RDKit build: the
+    // rdkitRepresentation extension carries no bond-CIP array (§ 2A).
+    // Defensive: builds without get_stereo_tags fall back to ext.cipCodes for
+    // atoms (raw bond stereo retained either way — see edge map below).
+    const cipAtomsByAtom = {};
+    const bondCipByPair = {};
+    if (typeof mol.get_stereo_tags === "function") {
+      try {
+        const tags = JSON.parse(mol.get_stereo_tags() || "{}");
+        if (Array.isArray(tags.CIP_atoms)) {
+          for (const entry of tags.CIP_atoms) {
+            if (Array.isArray(entry) && entry.length >= 2) {
+              const code = _stripCipParens(entry[1]);
+              if (code) cipAtomsByAtom[entry[0]] = code;
+            }
+          }
+        }
+        if (Array.isArray(tags.CIP_bonds)) {
+          for (const entry of tags.CIP_bonds) {
+            if (Array.isArray(entry) && entry.length >= 3) {
+              const code = _stripCipParens(entry[2]);
+              if (code) bondCipByPair[_bondPairKey(entry[0], entry[1])] = code;
+            }
+          }
+        }
+      } catch (err) {
+        logWarn("_extractGraphFromRdkit: get_stereo_tags parse failed", {
+          smiles,
+          error: err && err.message,
+        });
+      }
+    }
+
     // Per-atom ring-membership map (atomIdx → array of ring indices).
     const ringMembership = new Map();
     atomRings.forEach((ring, ringIdx) => {
@@ -819,7 +990,10 @@ const MathPixChemistryUtils = (function () {
             ? atom.isotope
             : null;
       const stereo = atom.stereo || null;
-      const cipCode = cipCodesByAtom[i] || null;
+      // Phase 16-2a (KD-4): prefer get_stereo_tags() CIP_atoms; fall back to
+      // the legacy ext.cipCodes map on builds lacking the API.
+      const cipCode =
+        cipAtomsByAtom[i] != null ? cipAtomsByAtom[i] : cipCodesByAtom[i] || null;
       const isAromatic = aromaticAtomSet.has(i);
 
       return {
@@ -893,6 +1067,10 @@ const MathPixChemistryUtils = (function () {
         isPartOfAromaticRing: isAromatic,
         _rdkit: {
           stereo: bond.stereo || null,
+          // Phase 16-2a (KD-4): CIP-resolved E/Z from get_stereo_tags()
+          // CIP_bonds (null when the bond carries no CIP descriptor; raw
+          // `stereo` above is retained as the fallback — lock 4).
+          bondCipCode: bondCipByPair[_bondPairKey(sourceId, targetId)] || null,
           kekuleBondOrder: rawOrder,
         },
       };
@@ -2967,6 +3145,77 @@ const MathPixChemistryUtils = (function () {
     }
   }
 
+  /**
+   * Phase 17-1: SMARTS substructure-match primitive (wire P).
+   *
+   * Matches each SMARTS pattern in `patternList` against `smiles` and returns
+   * a map from pattern → array of matches, where each match is the array of
+   * 0-based atom indices the pattern matched. This is the mechanism the
+   * functional-group catalogue (Phase 17-2) is built on; at 17-1 it is
+   * additive and unconsumed (dead code) — nothing outside the assertion
+   * harness calls it.
+   *
+   * Owns its own mol scope via `_withRdkitMolSync` — it never reuses a snapshot
+   * mol, because `_extractGraphFromRdkitSync` disposes its mols in `finally`.
+   * The wrapper disposes the mol; this function disposes each qmol it creates
+   * in a per-iteration `finally`, so a malformed pattern can't leak a query
+   * handle.
+   *
+   * `mol.get_substruct_matches(qmol)` returns a JSON *string*. On a match it is
+   * an array of `{ atoms: number[], bonds: number[] }` objects (verified live at
+   * the 17-1 recon against the pinned RDKit MinimalLib build: acetic acid
+   * CC(=O)O vs C(=O)[OH] → '[{"atoms":[1,2,3],"bonds":[1,2]}]'). On NO match the
+   * same build returns the empty-object string '{}' — NOT '[]' — so we coerce
+   * any non-array parse result to `[]` before mapping. A pattern with no match
+   * therefore yields `[]` (never undefined/missing). The '{}' no-match sentinel
+   * was discovered by live probe at 17-1 implementation (the recon had only
+   * probed the match case — see the L28 carry-forward).
+   *
+   * @param {string} smiles - SMILES string to match against.
+   * @param {string[]} patternList - SMARTS query patterns.
+   * @returns {Object<string, number[][]> | null} Map of pattern → array of
+   *   atom-index arrays, or null for invalid SMILES (propagated from
+   *   `_withRdkitMolSync`).
+   */
+  function matchSmarts(smiles, patternList) {
+    return _withRdkitMolSync(smiles, (mol) => {
+      const result = {};
+      for (const smarts of patternList) {
+        let qmol = null;
+        try {
+          qmol = _rdkitModule.get_qmol(smarts);
+          if (!qmol || !qmol.is_valid()) {
+            logWarn("matchSmarts: invalid SMARTS pattern", { smarts });
+            result[smarts] = [];
+            continue;
+          }
+          const matchesJson = mol.get_substruct_matches(qmol);
+          const parsed = JSON.parse(matchesJson);
+          // RDKit MinimalLib returns the array '[{atoms,bonds},...]' on a
+          // match but the empty-object string '{}' on no match — coerce any
+          // non-array result to [] so a no-match is always an empty list.
+          const matches = Array.isArray(parsed) ? parsed : [];
+          result[smarts] = matches.map((m) => m.atoms);
+          logDebug("matchSmarts: pattern matched", {
+            smarts,
+            count: result[smarts].length,
+          });
+        } finally {
+          if (qmol) {
+            try {
+              qmol.delete();
+            } catch (delErr) {
+              logWarn("matchSmarts: qmol.delete threw", {
+                error: delErr && delErr.message,
+              });
+            }
+          }
+        }
+      }
+      return result;
+    });
+  }
+
   // =========================================================================
   // Phase 12-3a: InChI auxinfo → input-atom-index → InChI-canonical-number map
   // =========================================================================
@@ -3248,8 +3497,10 @@ const MathPixChemistryUtils = (function () {
     formatFormulaForScreenReader,
     formatFormulaAsHTML,
     generateBasicAccessibleDescription,
+    applyAriaLabelsToSmilesInline, // Stage Y.2a — shared utility for chemistry aria-labels (see mmd-tts-audit.md)
     renderStructure, // Phase 5C-2
     renderStructureToBlob, // Phase 6G
+    matchSmarts, // Phase 17-1 — SMARTS substructure-match primitive (wire P); dead code until 17-2 catalogue consumes it
     awaitGraphCached, // Phase 12-2b — populated-cache guarantee for cold-start
     getLastRenderedSvgString, // Phase 12-1d
     lookupPubChem, // Phase 5D-1

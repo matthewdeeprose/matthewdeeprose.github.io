@@ -1014,8 +1014,11 @@
   /**
    * Master Test Runner - Stage 4 Phase 2
    */
-  window.testEmbedStage4_Phase2_All = async function () {
-    console.clear();
+  window.testEmbedStage4_Phase2_All = async function (options) {
+    // clearConsole defaults OFF so a chained/consolidated run is not wiped.
+    // Pass { clearConsole: true } to restore the clean-slate banner behaviour.
+    const { clearConsole = false } = options || {};
+    if (clearConsole) console.clear();
     console.log(
       "╔═══════════════════════════════════════════════════════════╗"
     );

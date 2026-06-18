@@ -261,6 +261,14 @@
       this.hasUnsavedChanges = false;
 
       /**
+       * Flag for tracking unsaved Context-tab edits (Stage 9, Q4). Set by the
+       * mathpix:context-edited listener; OR'd into the download-button show
+       * condition; cleared on save and on session/document boundaries.
+       * @type {boolean}
+       */
+      this.hasContextEdits = false;
+
+      /**
        * Flag for tracking unsaved image changes (Phase 9 Feature 1C)
        * Only cleared by downloading an updated ZIP
        * @type {boolean}

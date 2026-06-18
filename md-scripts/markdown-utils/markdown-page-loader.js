@@ -203,12 +203,10 @@ const MarkdownPageLoader = (function () {
             md.use(plugin, 'info').use(plugin, 'warning').use(plugin, 'danger');
           } else if (name === 'anchor') {
             md.use(plugin, {
-              permalink: plugin.permalink.linkInsideHeader({
+              permalink: plugin.permalink.linkAfterHeader({
                 class: 'header-anchor',
                 symbol: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>',
-                placement: 'after',
-                space: true,
-                ariaHidden: false
+                style: 'aria-labelledby'
               }),
               slugify: function (s) {
                 return String(s)
@@ -423,18 +421,6 @@ const MarkdownPageLoader = (function () {
   }
 
   /**
-   * Enhance header anchors for accessibility
-   * @param {string} html - Rendered HTML
-   * @returns {string} Enhanced HTML
-   */
-  function enhanceHeaderAnchors(html) {
-    return html.replace(
-      /<a class="header-anchor"([^>]*)>/g,
-      '<a class="header-anchor" aria-label="Link to this section"$1>'
-    );
-  }
-
-  /**
    * Fetch markdown content from URL
    * @param {string} src - URL of markdown file
    * @returns {Promise<string>} Markdown content
@@ -524,10 +510,7 @@ const MarkdownPageLoader = (function () {
   async function renderToElement(markdownText, target) {
     try {
       const md = initializeMarkdownIt();
-      let htmlResult = md.render(markdownText);
-
-      // Enhance header anchors
-      htmlResult = enhanceHeaderAnchors(htmlResult);
+      const htmlResult = md.render(markdownText);
 
       // Insert content
       target.innerHTML = htmlResult;

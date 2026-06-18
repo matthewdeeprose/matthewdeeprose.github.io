@@ -43,7 +43,7 @@ modelRegistry.registerModel("anthropic/claude-3.7-sonnet", {
   provider: "anthropic",
   name: "Claude 3.7 Sonnet",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Claude 3.7 Sonnet is an advanced large language model with improved reasoning, coding, and problem-solving capabilities. It introduces a hybrid reasoning approach, allowing users to choose between rapid responses and extended, step-by-step processing for complex tasks.",
   costs: {
@@ -148,7 +148,7 @@ modelRegistry.registerModel("meta-llama/llama-3.3-70b-instruct", {
     "science",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar performance characteristics
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar performance characteristics
   isFree: false,
   metadata: {
     categoryDescription:
@@ -397,7 +397,7 @@ modelRegistry.registerModel("anthropic/claude-3-opus", {
   costs: { input: 15.0, output: 75.0 },
   capabilities: ["text", "code", "analysis", "vision"],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription: "Premium tier model with highest capabilities",
@@ -608,7 +608,7 @@ modelRegistry.registerModel("x-ai/grok-vision-beta", {
   provider: "xAI",
   name: "Grok Vision Beta",
   category: "Vision", // Using existing Vision category
-  disabled: false,
+  disabled: true,
   description:
     "Grok Vision Beta is xAI's experimental language model with vision capability.",
   costs: {
@@ -618,7 +618,7 @@ modelRegistry.registerModel("x-ai/grok-vision-beta", {
   },
   capabilities: ["vision", "text", "multimodal"],
   maxContext: 8192,
-  fallbackTo: "meta-llama/llama-3.2-90b-vision-instruct:free", // Similar vision model
+  fallbackTo: "google/gemma-3-12b-it", // Similar vision model
   isFree: false,
   metadata: {
     categoryDescription: "Vision models supporting image analysis capabilities",
@@ -720,7 +720,7 @@ modelRegistry.registerModel("google/gemini-pro-vision", {
   provider: "google",
   name: "Gemini Pro Vision 1.0",
   category: "Vision", // Using our Vision category for multimodal models
-  disabled: false,
+  disabled: true,
   description:
     "Google's flagship multimodal model, supporting image and video in text or chat prompts for a text or code response.",
   costs: {
@@ -730,7 +730,7 @@ modelRegistry.registerModel("google/gemini-pro-vision", {
   },
   capabilities: ["text", "vision", "video", "multimodal", "code", "chat"],
   maxContext: 16384,
-  fallbackTo: "meta-llama/llama-3.2-90b-vision-instruct:free", // Similar vision capabilities
+  fallbackTo: "google/gemma-3-12b-it", // Similar vision capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -836,7 +836,7 @@ modelRegistry.registerModel("amazon/nova-lite-v1", {
   },
   capabilities: ["text", "vision", "video", "document-analysis", "real-time"],
   maxContext: 300000,
-  fallbackTo: "meta-llama/llama-3.2-90b-vision-instruct:free",
+  fallbackTo: "google/gemma-3-12b-it",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -943,7 +943,7 @@ modelRegistry.registerModel("anthropic/claude-3.5-sonnet", {
   provider: "anthropic",
   name: "Claude 3.5 Sonnet",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Balanced performance and cost with strong capabilities in text, code, and analysis",
   costs: { input: 3.0, output: 15.0 },
@@ -957,7 +957,7 @@ modelRegistry.registerModel("anthropic/claude-3.5-sonnet", {
     "contextual_reasoning",
   ],
   maxContext: 100000,
-  fallbackTo: "openai/o1-mini",
+  fallbackTo: "openai/gpt-5-nano",
   isDefault: false,
   isFree: false,
   responseFormatCapabilities: {
@@ -1106,7 +1106,7 @@ modelRegistry.registerModel("google/gemini-flash-1.5", {
   provider: "google",
   name: "Gemini Flash 1.5",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "High-speed multimodal model optimized for cost-effective, high-volume processing",
   costs: {
@@ -1245,7 +1245,7 @@ modelRegistry.registerModel("openai/o1-mini", {
   provider: "openai",
   name: "O1 Mini",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Latest OpenAI model optimized for STEM tasks with enhanced reasoning capabilities",
   costs: {
@@ -1265,7 +1265,7 @@ modelRegistry.registerModel("openai/o1-mini", {
     "biology",
   ],
   maxContext: 128000, // Updated to correct context window
-  fallbackTo: "google/gemini-2.0-flash-exp:free",
+  fallbackTo: "google/gemma-3-12b-it",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -1396,7 +1396,7 @@ modelRegistry.registerModel("microsoft/phi-3-mini-128k-instruct", {
   provider: "Microsoft",
   name: "Phi-3 Mini 128K Instruct",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "Phi-3 Mini is a powerful 3.8B parameter model designed for advanced language understanding, reasoning, and instruction following. Optimized through supervised fine-tuning and preference adjustments, it excels in tasks involving common sense, mathematics, logical reasoning, and code processing. At time of release, Phi-3 Medium demonstrated state-of-the-art performance among lightweight models. This model is static, trained on an offline dataset with an October 2023 cutoff date.",
   costs: {
@@ -1488,7 +1488,7 @@ modelRegistry.registerModel("openchat/openchat-7b", {
   provider: "OpenChat",
   name: "OpenChat 3.5 7B",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     'OpenChat 7B is a library of open-source language models, fine-tuned with "C-RLFT (Conditioned Reinforcement Learning Fine-Tuning)" - a strategy inspired by offline reinforcement learning. It has been trained on mixed-quality data without preference labels. * For OpenChat fine-tuned on Mistral 7B, check out OpenChat 7B. * For OpenChat fine-tuned on Llama 8B, check out OpenChat 8B.',
   costs: {
@@ -1556,7 +1556,7 @@ modelRegistry.registerModel("undi95/toppy-m-7b", {
   provider: "Undi95",
   name: "Toppy M 7B",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "A wild 7B parameter model that merges several models using the new task_arithmetic merge method from mergekit. List of merged models: NousResearch/Nous-Capybara-7B-V1.9, HuggingFaceH4/zephyr-7b-beta, lemonilia/AshhLimaRP-Mistral-7B, Vulkane/120-Days-of-Sodom-LoRA-Mistral-7b, Undi95/Mistral-pippa-sharegpt-7b-qlora. #merge #uncensored",
   costs: {
@@ -1655,7 +1655,7 @@ modelRegistry.registerModel("nousresearch/hermes-2-pro-llama-3-8b", {
   provider: "nousresearch",
   name: "Hermes 2 Pro (Llama-3 8B)",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Cost-effective model with strong function calling and JSON structuring capabilities",
   costs: {
@@ -2034,7 +2034,7 @@ modelRegistry.registerModel("mistralai/mistral-7b-instruct", {
   provider: "Mistral",
   name: "Mistral 7B Instruct",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "A high-performing, industry-standard 7.3B parameter model, with optimizations for speed and context length. Mistral 7B Instruct has multiple version variants, and this is intended to be the latest version.",
   costs: {
@@ -2140,7 +2140,7 @@ modelRegistry.registerModel("amazon/nova-pro-v1", {
     "multimodal",
   ],
   maxContext: 300000, // 300K context window
-  fallbackTo: "meta-llama/llama-3.2-90b-vision-instruct:free", // Similar vision capability
+  fallbackTo: "google/gemma-3-12b-it", // Similar vision capability
   isFree: false,
   metadata: {
     categoryDescription:
@@ -2246,7 +2246,7 @@ modelRegistry.registerModel("mistralai/pixtral-12b", {
   provider: "mistralai",
   name: "Pixtral 12B",
   category: "Vision",
-  disabled: false,
+  disabled: true,
   description:
     "A high-performance multimodal model from Mistral AI that excels at instruction following while maintaining strong text capabilities. Features variable image size support, native multimodal training, and strong performance on visual reasoning tasks.",
   costs: {
@@ -2267,7 +2267,7 @@ modelRegistry.registerModel("mistralai/pixtral-12b", {
     "variable-image-size",
   ],
   maxContext: 128000, // 128K tokens as specified
-  fallbackTo: "meta-llama/llama-3.2-90b-vision-instruct:free", // Fallback to free vision model
+  fallbackTo: "google/gemma-3-12b-it", // Fallback to free vision model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -2609,7 +2609,7 @@ modelRegistry.registerModel("microsoft/phi-3.5-mini-128k-instruct", {
   provider: "microsoft",
   name: "Phi-3.5 Mini 128K Instruct",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Lightweight but powerful model with strong reasoning capabilities",
   costs: {
@@ -2883,7 +2883,7 @@ modelRegistry.registerModel("openai/gpt-4o-mini", {
     // +6 additional categories
   ],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar capabilities at comparable price
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar capabilities at comparable price
   isFree: false,
   metadata: {
     categoryDescription:
@@ -3037,7 +3037,7 @@ modelRegistry.registerModel("qwen/qwen-2.5-72b-instruct", {
     "long_context",
   ],
   maxContext: 32768,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -3136,7 +3136,7 @@ modelRegistry.registerModel("mistralai/mistral-tiny", {
   provider: "mistralai",
   name: "Mistral Tiny",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description: "Cost-effective model optimized for batch processing tasks",
   costs: { input: 0.25, output: 0.25 },
   capabilities: ["text", "batch_processing"],
@@ -3218,7 +3218,7 @@ modelRegistry.registerModel("infermatic/mn-inferor-12b", {
   provider: "Infermatic",
   name: "Mistral Nemo Inferor 12B",
   category: "Chat",
-  disabled: false,
+  disabled: true,
   description:
     "Inferor 12B is a merge of top roleplay models, expert on immersive narratives and storytelling. This model was merged using the Model Stock merge method using anthracite-org/magnum-v4-12b as a base.",
   costs: {
@@ -3331,7 +3331,7 @@ modelRegistry.registerModel("minimax/minimax-01", {
     "lightning_attention",
   ],
   maxContext: 4000000, // 4M tokens
-  fallbackTo: "google/gemini-pro-1.5", // Similar large context model
+  fallbackTo: "google/gemma-3-12b-it", // Similar large context model
   isFree: false,
   metadata: {
     categoryDescription: "Models supporting extensive context windows",
@@ -3430,7 +3430,7 @@ modelRegistry.registerModel("mistralai/codestral-2501", {
   provider: "mistralai",
   name: "Codestral 25.01",
   category: "Code",
-  disabled: false,
+  disabled: true,
   description:
     "Cutting-edge code-specialized model with rapid completion and fill-in-the-middle capabilities",
   costs: {
@@ -3447,7 +3447,7 @@ modelRegistry.registerModel("mistralai/codestral-2501", {
     "low-latency",
   ],
   maxContext: 256000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -3552,7 +3552,7 @@ modelRegistry.registerModel("qwen/qwen-2-vl-72b-instruct", {
   provider: "qwen",
   name: "Qwen2-VL 72B Instruct",
   category: "Vision",
-  disabled: false,
+  disabled: true,
   description:
     "Advanced multimodal model with state-of-the-art performance in visual understanding, video processing, and multilingual support",
   costs: {
@@ -3574,7 +3574,7 @@ modelRegistry.registerModel("qwen/qwen-2-vl-72b-instruct", {
     "real-time-interaction",
   ],
   maxContext: 4096,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Fallback to strong general model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Fallback to strong general model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -3916,7 +3916,7 @@ modelRegistry.registerModel("liquid/lfm-3b", {
   provider: "liquid",
   name: "LFM 3B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "High-performance 3B parameter model optimized for mobile and edge applications, outperforming many larger models while maintaining efficiency",
   costs: {
@@ -3931,7 +3931,7 @@ modelRegistry.registerModel("liquid/lfm-3b", {
     "efficient-inference",
   ],
   maxContext: 32768,
-  fallbackTo: "microsoft/phi-3-mini-128k-instruct",
+  fallbackTo: "microsoft/phi-4",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -3996,7 +3996,7 @@ modelRegistry.registerModel("liquid/lfm-7b", {
   provider: "liquid",
   name: "LFM 7B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Best-in-class multilingual model specializing in English, Arabic, and Japanese. Features low memory footprint and fast inference speed.",
   costs: {
@@ -4080,7 +4080,7 @@ modelRegistry.registerModel("perplexity/sonar", {
     "lightweight",
   ],
   maxContext: 127072, // 127K context window
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar lightweight but powerful model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar lightweight but powerful model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -4191,7 +4191,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-qwen-14b", {
   provider: "deepseek",
   name: "DeepSeek R1 Distill Qwen 14B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Highly capable distilled model excelling in mathematical reasoning and problem-solving, with optimized performance for reasoning tasks. Features efficient processing with low latency and high throughput.",
   costs: {
@@ -4208,7 +4208,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-qwen-14b", {
     "high-throughput",
   ],
   maxContext: 131072, // 131K tokens
-  fallbackTo: "microsoft/phi-3.5-mini-128k-instruct", // Similar reasoning capabilities
+  fallbackTo: "microsoft/phi-4", // Similar reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -4330,7 +4330,7 @@ modelRegistry.registerModel("perplexity/sonar-reasoning", {
   provider: "perplexity",
   name: "Sonar Reasoning",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Advanced reasoning model with built-in web search capabilities, based on DeepSeek R1. Features long chain-of-thought reasoning and is hosted in US datacenters.",
   costs: {
@@ -4455,7 +4455,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-qwen-32b", {
   provider: "deepseek",
   name: "DeepSeek R1 Distill Qwen 32B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A distilled large language model based on Qwen 2.5 32B, using outputs from DeepSeek R1. It outperforms OpenAI's o1-mini across various benchmarks, achieving new state-of-the-art results for dense models.",
   costs: {
@@ -4471,7 +4471,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-qwen-32b", {
     "structured_output",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar performance characteristics
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar performance characteristics
   isFree: false,
   metadata: {
     categoryDescription:
@@ -4736,7 +4736,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-qwen-1.5b", {
   provider: "deepseek",
   name: "DeepSeek R1 Distill Qwen 1.5B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A highly efficient 1.5B parameter model distilled from Qwen 2.5 Math using DeepSeek R1 outputs. Excels at mathematical reasoning and achieves competitive performance comparable to larger frontier models.",
   costs: {
@@ -4752,7 +4752,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-qwen-1.5b", {
     "low_resource",
   ],
   maxContext: 131072,
-  fallbackTo: "microsoft/phi-3-mini-128k-instruct", // Similar small efficient model
+  fallbackTo: "microsoft/phi-4", // Similar small efficient model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -4873,7 +4873,7 @@ modelRegistry.registerModel("qwen/qwen-max", {
   provider: "qwen",
   name: "Qwen-Max",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Qwen-Max, based on Qwen2.5, provides the best inference performance among Qwen models, especially for complex multi-step tasks. It's a large-scale MoE model that has been pretrained on over 20 trillion tokens and further post-trained with curated Supervised Fine-Tuning (SFT) and Reinforcement Learning from Human Feedback (RLHF) methodologies. The parameter count is unknown.",
   costs: {
@@ -4888,7 +4888,7 @@ modelRegistry.registerModel("qwen/qwen-max", {
     "tool_calling",
   ],
   maxContext: 32768,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Fallback to reliable general model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Fallback to reliable general model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -4971,7 +4971,7 @@ modelRegistry.registerModel("qwen/qwen-turbo", {
   provider: "qwen",
   name: "Qwen-Turbo",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Qwen-Turbo, based on Qwen2.5, is a 1M context model that provides fast speed and low cost, suitable for simple tasks.",
   costs: {
@@ -5025,7 +5025,7 @@ modelRegistry.registerModel("aion-labs/aion-1.0-mini", {
   },
   capabilities: ["mathematics", "coding", "logic", "reasoning"],
   maxContext: 16384,
-  fallbackTo: "deepseek/deepseek-r1-distill-qwen-32b",
+  fallbackTo: "qwen/qwen3.5-flash-02-23",
   isFree: false,
   parameterSupport: {
     supported: [
@@ -5104,7 +5104,7 @@ modelRegistry.registerModel("aion-labs/aion-1.0", {
     "mixture_of_experts",
   ],
   maxContext: 16384,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Suggesting a fallback to a reliable model with similar capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Suggesting a fallback to a reliable model with similar capabilities
   isFree: false,
   parameterSupport: {
     supported: [
@@ -5242,7 +5242,7 @@ modelRegistry.registerModel("qwen/qwen-vl-plus:free", {
   provider: "qwen",
   name: "Qwen VL Plus",
   category: "FreeTier", // Using FreeTier since it's explicitly marked as free
-  disabled: false,
+  disabled: true,
   description:
     "Qwen's Enhanced Large Visual Language Model. Significantly upgraded for detailed recognition capabilities and text recognition abilities, supporting ultra-high pixel resolutions up to millions of pixels and extreme aspect ratios for image input. It delivers significant performance across a broad range of visual tasks.",
   costs: {
@@ -5326,14 +5326,14 @@ modelRegistry.registerModel("google/gemini-2.0-flash-001", {
   provider: "google",
   name: "Gemini Flash 2.0",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Gemini Flash 2.0 offers a significantly faster time to first token (TTFT) compared to Gemini Flash 1.5, while maintaining quality on par with larger models like Gemini Pro 1.5. It introduces notable enhancements in multimodal understanding, coding capabilities, complex instruction following, and function calling. These advancements come together to deliver more seamless and robust agentic experiences.",
   costs: {
     input: 0.1, // $0.1/M tokens
     output: 0.4, // $0.4/M tokens
   },
-  capabilities: ["legal", "health", "translation", "finance"],
+  capabilities: ["vision", "legal", "health", "translation", "finance"],
   maxContext: 1000000, // 1M tokens
   fallbackTo: "meta-llama/llama-3.2-3b-instruct:free", // Fallback to free model
   isFree: false,
@@ -5416,7 +5416,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-llama-8b", {
   provider: "deepseek",
   name: "DeepSeek R1 Distill Llama 8B",
   category: "GeneralPurpose", // Since it's a general language model
-  disabled: false,
+  disabled: true,
   description:
     "DeepSeek R1 Distill Llama 8B is a distilled large language model based on Llama-3.1-8B-Instruct, using outputs from DeepSeek R1. The model combines advanced distillation techniques to achieve high performance across multiple benchmarks.",
   costs: {
@@ -5425,7 +5425,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-llama-8b", {
   },
   capabilities: ["text", "mathematics", "coding"],
   maxContext: 32000,
-  fallbackTo: "microsoft/phi-3-mini-128k-instruct", // Similar size model with math capabilities
+  fallbackTo: "microsoft/phi-4", // Similar size model with math capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -5483,7 +5483,7 @@ modelRegistry.registerModel("allenai/llama-3.1-tulu-3-405b", {
   provider: "allenai",
   name: "Llama 3.1 Tulu 3 405B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Tülu 3 405B is the largest model in the Tülu 3 family, applying fully open post-training recipes at a 405B parameter scale. Built on the Llama 3.1 405B base, it leverages Reinforcement Learning with Verifiable Rewards (RLVR) to enhance instruction following, MATH, GSM8K, and IFEval performance. As part of Tülu 3's fully open-source approach, it offers state-of-the-art capabilities while surpassing prior open-weight models like Llama 3.1 405B Instruct and Nous Hermes 3 405B on multiple benchmarks.",
   costs: {
@@ -5492,7 +5492,7 @@ modelRegistry.registerModel("allenai/llama-3.1-tulu-3-405b", {
   },
   capabilities: ["text", "math", "instruction_following", "problem_solving"],
   maxContext: 16000,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Fallback to reliable general model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Fallback to reliable general model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -5588,7 +5588,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1", {
     "structured_output",
   ],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Suggesting a fallback to another strong general model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Suggesting a fallback to another strong general model
   isFree: false,
   metadata: {
     categoryDescription: "High-performance open-source language model",
@@ -6062,7 +6062,7 @@ modelRegistry.registerModel("meta-llama/llama-guard-3-8b", {
   provider: "meta",
   name: "Llama Guard 3 8B",
   category: "GeneralPurpose", // Using general purpose since it's a core text model
-  disabled: false,
+  disabled: true,
   description:
     "Llama Guard 3 is a Llama-3.1-8B pretrained model, fine-tuned for content safety classification. It can classify content in both LLM inputs (prompt classification) and LLM responses (response classification), generating text that indicates whether content is safe or unsafe along with violated content categories.",
   costs: {
@@ -6178,7 +6178,7 @@ modelRegistry.registerModel("perplexity/r1-1776", {
   provider: "perplexity",
   name: "R1 1776",
   category: "GeneralPurpose", // Using general purpose since it's a chat model with broad capabilities
-  disabled: false,
+  disabled: true,
   description:
     "R1 1776 is a version of DeepSeek-R1 post-trained to provide unbiased, accurate, and factual information while maintaining strong reasoning capabilities. This offline chat model features comprehensive multilingual support and advanced mathematical reasoning abilities.",
   costs: {
@@ -6187,7 +6187,7 @@ modelRegistry.registerModel("perplexity/r1-1776", {
   },
   capabilities: ["text", "math", "reasoning", "multilingual", "offline_chat"],
   maxContext: 128000, // 128K context as specified
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Fallback to reliable general model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Fallback to reliable general model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -6282,7 +6282,7 @@ modelRegistry.registerModel("google/gemini-2.0-flash-lite-001", {
   provider: "google",
   name: "Gemini 2.0 Flash Lite",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Gemini 2.0 Flash Lite offers a significantly faster time to first token (TTFT) compared to Gemini Flash 1.5, while maintaining quality on par with larger models like Gemini Pro 1.5, all at extremely economical token prices.",
   costs: {
@@ -6373,7 +6373,7 @@ modelRegistry.registerModel("qwen/qwen2.5-32b-instruct", {
   provider: "qwen",
   name: "Qwen2.5 32B Instruct",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Instruction-tuned variant of the latest Qwen large language model series with enhanced instruction-following capabilities, improved coding and mathematics proficiency, and robust handling of structured data.",
   costs: {
@@ -6544,7 +6544,7 @@ modelRegistry.registerModel("perplexity/sonar-deep-research", {
     "long_context",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3-opus-20240229", // Similar high-capability research model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar high-capability research model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -6681,7 +6681,7 @@ modelRegistry.registerModel("perplexity/sonar-pro", {
     "research",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar premium model with research capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar premium model with research capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -6796,7 +6796,7 @@ modelRegistry.registerModel("perplexity/sonar-reasoning-pro", {
   },
   capabilities: ["text", "reasoning", "search", "citations", "long_context"],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar reasoning capability model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capability model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -6913,7 +6913,7 @@ modelRegistry.registerModel("microsoft/phi-4-multimodal-instruct", {
   provider: "microsoft",
   name: "Phi 4 Multimodal Instruct",
   category: "MultimodalVision",
-  disabled: false,
+  disabled: true,
   description:
     "A versatile 5.6B parameter foundation model combining advanced reasoning and instruction-following capabilities across both text and visual inputs, optimised for edge and mobile deployments.",
   costs: {
@@ -6931,7 +6931,7 @@ modelRegistry.registerModel("microsoft/phi-4-multimodal-instruct", {
     "document_reasoning",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar multimodal performance model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar multimodal performance model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -7081,7 +7081,7 @@ modelRegistry.registerModel("thedrummer/skyfall-36b-v2", {
     "dialogue",
   ],
   maxContext: 32768,
-  fallbackTo: "anthropic/claude-3-sonnet", // Similar creative-oriented model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar creative-oriented model
   isFree: false,
   metadata: {
     categoryDescription: "Specialised model for creative content generation",
@@ -7193,7 +7193,7 @@ modelRegistry.registerModel("latitudegames/wayfarer-large-70b-llama-3.3", {
   provider: "latitudegames",
   name: "Wayfarer Large 70B Llama 3.3",
   category: "CreativeWriting", // Most appropriate category for a roleplay/text-adventure model
-  disabled: false,
+  disabled: true,
   description:
     "A roleplay and text-adventure model fine-tuned from Meta's Llama-3.3-70B-Instruct. Optimized for narrative-driven scenarios with realistic stakes, conflicts, and consequences.",
   costs: {
@@ -7325,7 +7325,7 @@ modelRegistry.registerModel("thedrummer/anubis-pro-105b-v1", {
   provider: "thedrummer",
   name: "Anubis Pro 105B V1",
   category: "CreativeWriting", // Based on the description focusing on narrative and roleplay
-  disabled: false,
+  disabled: true,
   description:
     "An expanded and refined variant of Meta's Llama 3.3 70B with 50% additional layers, enhanced for narrative, roleplay, and instructional tasks with superior emotional intelligence and creativity.",
   costs: {
@@ -7481,7 +7481,7 @@ modelRegistry.registerModel("google/gemma-3-27b-it", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "google/gemini-pro", // Similar model from same provider
+  fallbackTo: "google/gemma-3-12b-it", // Similar model from same provider
   isFree: false,
   metadata: {
     categoryDescription:
@@ -7626,7 +7626,7 @@ modelRegistry.registerModel("google/gemma-3-27b-it:free", {
     "long_context",
   ],
   maxContext: 96000,
-  fallbackTo: "mistralai/mistral-large-2:latest", // Similar performance model
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct", // Similar performance model
   isFree: true,
   metadata: {
     categoryDescription: "Multimodal model with extensive language support",
@@ -7924,7 +7924,7 @@ modelRegistry.registerModel(
     provider: "tokyotech-llm",
     name: "Llama 3.1 Swallow 70B Instruct V0.3",
     category: "GeneralPurpose",
-    disabled: false,
+    disabled: true,
     description:
       "Enhanced Llama 3.1 70B model with improved Japanese language capabilities whilst maintaining English language performance. Built through continual pre-training and instruction tuning with Japanese-focused data.",
     costs: {
@@ -8253,7 +8253,7 @@ modelRegistry.registerModel("cohere/command-a", {
     "structured_outputs",
   ],
   maxContext: 256000,
-  fallbackTo: "anthropic/claude-3-opus", // Similar high-performance model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar high-performance model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -8392,7 +8392,7 @@ modelRegistry.registerModel("google/gemma-3-12b-it:free", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "google/gemini-1.5-flash-latest", // Similar Google model
+  fallbackTo: "google/gemma-3-12b-it", // Similar Google model
   isFree: true,
   metadata: {
     categoryDescription:
@@ -8529,7 +8529,7 @@ modelRegistry.registerModel("ai21/jamba-1.6-mini", {
   provider: "ai21",
   name: "Jamba Mini 1.6",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A hybrid foundation model combining State Space Models (Mamba) with Transformer attention mechanisms, excelling in extremely long-context tasks and superior inference efficiency.",
   costs: {
@@ -8546,7 +8546,7 @@ modelRegistry.registerModel("ai21/jamba-1.6-mini", {
     "json",
   ],
   maxContext: 256000,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Similar performance model with long context
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Similar performance model with long context
   isFree: false,
   metadata: {
     categoryDescription:
@@ -8651,7 +8651,7 @@ modelRegistry.registerModel("ai21/jamba-1.6-large", {
   provider: "ai21",
   name: "Jamba 1.6 Large",
   category: "AdvancedModel",
-  disabled: false,
+  disabled: true,
   description:
     "High-performance hybrid foundation model combining State Space Models (Mamba) with Transformer attention mechanisms, excelling in extremely long-context handling and structured outputs.",
   costs: {
@@ -8791,7 +8791,7 @@ modelRegistry.registerModel("google/gemma-3-4b-it:free", {
     "function_calling",
   ],
   maxContext: 131072,
-  fallbackTo: "google/gemini-1.5-pro-001", // Similar model from same provider
+  fallbackTo: "google/gemma-3-12b-it", // Similar model from same provider
   isFree: true,
   metadata: {
     categoryDescription:
@@ -8934,7 +8934,7 @@ modelRegistry.registerModel("google/gemma-3-1b-it:free", {
     "function_calling",
   ],
   maxContext: 32000,
-  fallbackTo: "meta-llama/llama-3-8b-instruct:free", // Similar performance free model
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct", // Similar performance free model
   isFree: true,
   metadata: {
     categoryDescription:
@@ -9070,7 +9070,7 @@ modelRegistry.registerModel("allenai/olmo-2-0325-32b-instruct", {
   provider: "allenai",
   name: "Olmo 2 32B Instruct",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A supervised instruction-finetuned model excelling in complex reasoning and instruction-following tasks across diverse benchmarks.",
   costs: {
@@ -9199,7 +9199,7 @@ modelRegistry.registerModel("steelskull/l3.3-electra-r1-70b", {
   provider: "steelskull",
   name: "L3.3 Electra R1 70B",
   category: "CreativeWriting", // Assuming the best category based on character insights focus
-  disabled: false,
+  disabled: true,
   description:
     "Built on a DeepSeek R1 Distill base, Electra-R1 integrates specialized components for intelligent, coherent responses with deep character insights and advanced reasoning capabilities.",
   costs: {
@@ -9346,7 +9346,7 @@ modelRegistry.registerModel("open-r1/olympiccoder-32b:free", {
     "chain_of_thought",
   ],
   maxContext: 32768,
-  fallbackTo: "meta-llama/llama-3-70b-instruct:free", // Similar free model with coding capabilities
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct", // Similar free model with coding capabilities
   isFree: true,
   metadata: {
     categoryDescription:
@@ -9484,7 +9484,7 @@ modelRegistry.registerModel("open-r1/olympiccoder-7b:free", {
     "competitive_programming",
   ],
   maxContext: 32768,
-  fallbackTo: "meta-llama/llama-3-8b-instruct:free", // Reasonable free fallback
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct", // Reasonable free fallback
   isFree: true,
   metadata: {
     categoryDescription:
@@ -9632,7 +9632,7 @@ modelRegistry.registerModel("mistralai/mistral-small-3.1-24b-instruct", {
     "multimodal",
   ],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3-opus-20240229", // Similar performance model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar performance model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -9916,7 +9916,7 @@ modelRegistry.registerModel("featherless/qwerky-72b:free", {
   provider: "featherless",
   name: "Qwerky 72b (free)",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "A linear-attention RWKV variant of the Qwen 2.5 72B model, optimized for reduced computational cost while maintaining competitive performance on standard benchmarks.",
   costs: {
@@ -9931,7 +9931,7 @@ modelRegistry.registerModel("featherless/qwerky-72b:free", {
     "long_context",
   ],
   maxContext: 32768,
-  fallbackTo: "google/gemini-2.0-flash-thinking-experimental:free", // Similar free model
+  fallbackTo: "google/gemma-3-12b-it", // Similar free model
   isFree: true,
   metadata: {
     categoryDescription:
@@ -10079,7 +10079,7 @@ modelRegistry.registerModel("deepseek/deepseek-chat-v3-0324", {
   },
   capabilities: ["text", "finance", "programming", "tool_use", "long_context"],
   maxContext: 64000,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Reasonable fallback based on capabilities
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Reasonable fallback based on capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -10185,7 +10185,7 @@ modelRegistry.registerModel("qwen/qwen2.5-vl-32b-instruct:free", {
   provider: "qwen",
   name: "Qwen2.5 VL 32B Instruct (free)",
   category: "Multimodal",
-  disabled: false,
+  disabled: true,
   description:
     "A multimodal vision-language model fine-tuned for enhanced mathematical reasoning, structured outputs, and visual problem-solving capabilities.",
   costs: {
@@ -10203,7 +10203,7 @@ modelRegistry.registerModel("qwen/qwen2.5-vl-32b-instruct:free", {
     "video_analysis",
   ],
   maxContext: 8192,
-  fallbackTo: "google/gemini-2.0-flash-thinking-experimental", // Similar multimodal capability
+  fallbackTo: "google/gemma-3-12b-it", // Similar multimodal capability
   isFree: true,
   metadata: {
     categoryDescription:
@@ -10354,7 +10354,7 @@ modelRegistry.registerModel("google/gemini-2.5-pro-exp-03-25:free", {
     "tools",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar performance model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar performance model
   isFree: true,
   metadata: {
     categoryDescription:
@@ -10477,7 +10477,7 @@ modelRegistry.registerModel("qwen/qwen2.5-vl-3b-instruct:free", {
   provider: "qwen",
   name: "Qwen2.5 VL 3B Instruct (free)",
   category: "MultimodalVision",
-  disabled: false,
+  disabled: true,
   description:
     "A free multimodal LLM from the Qwen Team with state-of-the-art image understanding, agent capabilities, and multilingual support.",
   costs: {
@@ -10493,7 +10493,7 @@ modelRegistry.registerModel("qwen/qwen2.5-vl-3b-instruct:free", {
     "agent",
   ],
   maxContext: 64000,
-  fallbackTo: "google/gemini-2.0-flash-thinking-experimental:free", // Similar multimodal model
+  fallbackTo: "google/gemma-3-12b-it", // Similar multimodal model
   isFree: true,
   metadata: {
     categoryDescription: "Vision-language model with agent capabilities",
@@ -10638,7 +10638,7 @@ modelRegistry.registerModel("mistral/ministral-8b", {
   provider: "mistral",
   name: "Ministral 8B",
   category: "EdgeComputing", // New category for on-device/edge models - you may need to register this category if it doesn't exist
-  disabled: false,
+  disabled: true,
   description:
     "State-of-the-art language model optimized for on-device and edge computing with efficient performance for knowledge-intensive tasks, commonsense reasoning, and function-calling.",
   costs: {
@@ -10655,7 +10655,7 @@ modelRegistry.registerModel("mistral/ministral-8b", {
     "structured_outputs",
   ],
   maxContext: 131072,
-  fallbackTo: "mistral/mistral-7b-instruct", // Similar provider model as fallback
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct", // Similar provider model as fallback
   isFree: false,
   metadata: {
     categoryDescription:
@@ -10778,7 +10778,7 @@ modelRegistry.registerModel("all-hands/openhands-lm-32b-v0.1", {
   provider: "all-hands",
   name: "OpenHands LM 32B V0.1",
   category: "CodingSpecialist", // This seems most appropriate based on description
-  disabled: false,
+  disabled: true,
   description:
     "A 32B open-source coding model fine-tuned from Qwen2.5-Coder-32B-Instruct, optimized for autonomous software development agents with strong performance on SWE-Bench Verified.",
   costs: {
@@ -10793,7 +10793,7 @@ modelRegistry.registerModel("all-hands/openhands-lm-32b-v0.1", {
     "autonomous_agents",
   ],
   maxContext: 16384, // From the provided details
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Parent model would be reasonable fallback
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Parent model would be reasonable fallback
   isFree: false,
   metadata: {
     categoryDescription:
@@ -10898,7 +10898,7 @@ modelRegistry.registerModel("google/gemini-2.5-pro-preview-03-25", {
   provider: "google",
   name: "Gemini 2.5 Pro Preview",
   category: "Advanced",
-  disabled: false,
+  disabled: true,
   description:
     "Google's state-of-the-art AI model with advanced reasoning, coding, mathematics, and scientific capabilities. Features 'thinking' capabilities for enhanced accuracy and nuanced context handling.",
   costs: {
@@ -10916,7 +10916,7 @@ modelRegistry.registerModel("google/gemini-2.5-pro-preview-03-25", {
     "structured_data",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar capability model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar capability model
   isFree: false,
   metadata: {
     categoryDescription: "Advanced reasoning model with million-token context",
@@ -11034,7 +11034,7 @@ modelRegistry.registerModel("mistral/ministral-8b", {
   provider: "mistral",
   name: "Ministral 8B",
   category: "EfficientModels",
-  disabled: false,
+  disabled: true,
   description:
     "A state-of-the-art language model optimised for on-device and edge computing with excellent knowledge-intensive tasks and commonsense reasoning capabilities.",
   costs: {
@@ -11051,7 +11051,7 @@ modelRegistry.registerModel("mistral/ministral-8b", {
     "edge_computing",
   ],
   maxContext: 131072,
-  fallbackTo: "mistral/mistral-small-latest", // Similar smaller mistral model
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct", // Similar smaller mistral model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -11170,7 +11170,7 @@ modelRegistry.registerModel("all-hands/openhands-lm-32b-v0.1", {
   provider: "all-hands",
   name: "OpenHands LM 32B V0.1",
   category: "CodeGeneration",
-  disabled: false,
+  disabled: true,
   description:
     "A 32B open-source coding model fine-tuned from Qwen2.5-Coder-32B-Instruct using reinforcement learning. Optimized for autonomous software development agents with strong performance on SWE-Bench Verified.",
   costs: {
@@ -11186,7 +11186,7 @@ modelRegistry.registerModel("all-hands/openhands-lm-32b-v0.1", {
     "software_agents",
   ],
   maxContext: 16384, // From the provided details
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Similar base model
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Similar base model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -11329,7 +11329,7 @@ modelRegistry.registerModel("meta-llama/llama-4-scout", {
     "visual_reasoning",
   ],
   maxContext: 327680,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar performance multimodal model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar performance multimodal model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -11493,7 +11493,7 @@ modelRegistry.registerModel("meta-llama/llama-4-maverick", {
     "structured_outputs",
   ],
   maxContext: 1048576,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar multimodal capability
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar multimodal capability
   isFree: false,
   metadata: {
     categoryDescription:
@@ -12103,7 +12103,7 @@ modelRegistry.registerModel("x-ai/grok-3-beta", {
   provider: "x-ai",
   name: "Grok 3 Beta",
   category: "EnterpriseGrade",
-  disabled: false,
+  disabled: true,
   description:
     "xAI's flagship model excelling at enterprise use cases like data extraction, coding, and text summarization. Features deep domain knowledge in finance, healthcare, law, and science.",
   costs: {
@@ -12122,7 +12122,7 @@ modelRegistry.registerModel("x-ai/grok-3-beta", {
     "tools",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3-opus-20240229", // Similar high-end enterprise model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar high-end enterprise model
   isFree: false,
   metadata: {
     categoryDescription: "Enterprise-grade model with deep domain expertise",
@@ -12258,7 +12258,7 @@ modelRegistry.registerModel("x-ai/grok-3-mini-beta", {
   provider: "x-ai",
   name: "Grok 3 Mini Beta",
   category: "ReasoningModels", // Suggesting a category based on its reasoning focus
-  disabled: false,
+  disabled: true,
   description:
     "A lightweight, smaller thinking model that processes before responding, ideal for reasoning-heavy tasks and math-specific use cases.",
   costs: {
@@ -12274,7 +12274,7 @@ modelRegistry.registerModel("x-ai/grok-3-mini-beta", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar reasoning capability
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capability
   isFree: false,
   metadata: {
     categoryDescription: "Models with enhanced reasoning capabilities",
@@ -12397,7 +12397,7 @@ modelRegistry.registerModel("alfredpros/codellama-7b-instruct-solidity", {
   provider: "alfredpros",
   name: "CodeLLaMa 7B Instruct Solidity",
   category: "Coding",
-  disabled: false,
+  disabled: true,
   description:
     "A finetuned 7 billion parameters Code LLaMA - Instruct model specialised for generating Solidity smart contracts using 4-bit QLoRA finetuning.",
   costs: {
@@ -12528,7 +12528,7 @@ modelRegistry.registerModel("eleutherai/llemma_7b", {
   provider: "eleutherai",
   name: "Llemma 7B",
   category: "Mathematics", // Specialized model for mathematics
-  disabled: false,
+  disabled: true,
   description:
     "A language model specialized for mathematics, initialized with Code Llama 7B weights and trained on the Proof-Pile-2 for 200B tokens. Particularly strong at chain-of-thought mathematical reasoning and using computational tools.",
   costs: {
@@ -12675,7 +12675,7 @@ modelRegistry.registerModel("openai/gpt-4.1-nano", {
     "translation",
   ],
   maxContext: 1047576,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar performance model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar performance model
   isFree: false,
   metadata: {
     categoryDescription: "Fast, efficient model with long context support",
@@ -13072,7 +13072,7 @@ modelRegistry.registerModel("qwen/qwen2.5-coder-7b-instruct", {
   provider: "qwen",
   name: "Qwen2.5 Coder 7B Instruct",
   category: "CodeSpecialist", // Assuming you have this category, create if needed
-  disabled: false,
+  disabled: true,
   description:
     "7B parameter instruction-tuned model optimized for code generation, reasoning, and bug fixing with support for multiple programming languages.",
   costs: {
@@ -13246,7 +13246,7 @@ modelRegistry.registerModel("openai/o4-mini", {
     "long_context",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3-opus", // Similar reasoning capability
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capability
   isFree: false,
   metadata: {
     categoryDescription:
@@ -13480,7 +13480,7 @@ modelRegistry.registerModel("qwen/qwen3-235b-a22b", {
   ],
   maxContext: 40960, // Default context window
   extendedContext: 131072, // Extended context with YaRN scaling
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Fallback to the previous Qwen model
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Fallback to the previous Qwen model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -13630,7 +13630,7 @@ modelRegistry.registerModel("qwen/qwen3-32b", {
     "long_context",
   ],
   maxContext: 40960,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Similar capability model
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Similar capability model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -13811,7 +13811,7 @@ modelRegistry.registerModel("qwen/qwen3-14b", {
     "long_context",
   ],
   maxContext: 40960,
-  fallbackTo: "mistralai/mixtral-8x7b-instruct", // Similar performance model
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct", // Similar performance model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -13967,7 +13967,7 @@ modelRegistry.registerModel("qwen/qwen3-30b-a3b", {
     "creative",
   ],
   maxContext: 40960,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Fall back to previous Qwen generation
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Fall back to previous Qwen generation
   isFree: false,
   metadata: {
     categoryDescription:
@@ -14107,7 +14107,7 @@ modelRegistry.registerModel("microsoft/phi-4-reasoning-plus", {
   provider: "microsoft",
   name: "Phi 4 Reasoning Plus",
   category: "Reasoning",
-  disabled: false,
+  disabled: true,
   description:
     "Enhanced 14B parameter model fine-tuned from Phi-4 with additional reinforcement learning focused on step-by-step reasoning for math, science, and code tasks.",
   costs: {
@@ -14123,7 +14123,7 @@ modelRegistry.registerModel("microsoft/phi-4-reasoning-plus", {
     "step-by-step",
   ],
   maxContext: 32768,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Similar reasoning capability
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Similar reasoning capability
   isFree: false,
   metadata: {
     categoryDescription:
@@ -14269,7 +14269,7 @@ modelRegistry.registerModel("arcee-ai/virtuoso-medium-v2", {
   provider: "arcee-ai",
   name: "Virtuoso Medium V2",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A 32B model distilled from DeepSeek-v3 logits and merged with a Qwen 2.5 backbone, offering enhanced factuality and performance for enterprise chat, technical writing, and code drafting.",
   costs: {
@@ -14285,7 +14285,7 @@ modelRegistry.registerModel("arcee-ai/virtuoso-medium-v2", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Similar size model
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Similar size model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -14433,7 +14433,7 @@ modelRegistry.registerModel("arcee-ai/coder-large", {
     "long_context",
   ],
   maxContext: 32768,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Makes sense as it's built on this model
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Makes sense as it's built on this model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -14585,7 +14585,7 @@ modelRegistry.registerModel("arcee-ai/maestro-reasoning", {
   provider: "arcee-ai",
   name: "Maestro Reasoning",
   category: "Reasoning",
-  disabled: false,
+  disabled: true,
   description:
     "Flagship 32B-parameter reasoning model tuned with DPO and chain-of-thought RL for step-by-step logic, optimised for structured 'thought → answer' traces.",
   costs: {
@@ -14602,7 +14602,7 @@ modelRegistry.registerModel("arcee-ai/maestro-reasoning", {
     "structured_output",
   ],
   maxContext: 131072,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Similar performance model
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Similar performance model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -14736,7 +14736,7 @@ modelRegistry.registerModel("arcee-ai/spotlight", {
   provider: "arcee-ai",
   name: "Spotlight",
   category: "VisionLanguage", // Assuming we have this category for multimodal models
-  disabled: false,
+  disabled: true,
   description:
     "A 7-billion-parameter vision-language model derived from Qwen 2.5-VL, fine-tuned for tight image-text grounding tasks with 32K token context window.",
   costs: {
@@ -14754,7 +14754,7 @@ modelRegistry.registerModel("arcee-ai/spotlight", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3-haiku-20240307", // Similar performance model with vision capability
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar performance model with vision capability
   isFree: false,
   metadata: {
     categoryDescription:
@@ -14883,7 +14883,7 @@ modelRegistry.registerModel("arcee-ai/caller-large", {
   provider: "arcee-ai",
   name: "Caller Large",
   category: "ToolCallingSpecialist", // Specialized category for function-calling
-  disabled: false,
+  disabled: true,
   description:
     "Specialist function-calling model built to orchestrate external tools and APIs with focus on structured JSON outputs, parameter extraction and multi-step tool chains.",
   costs: {
@@ -14900,7 +14900,7 @@ modelRegistry.registerModel("arcee-ai/caller-large", {
     "parameter_extraction",
   ],
   maxContext: 32768,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar tool-using capability model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar tool-using capability model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -15045,7 +15045,7 @@ modelRegistry.registerModel("mistralai/mistral-medium-3", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Similar enterprise-grade model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar enterprise-grade model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -15164,7 +15164,7 @@ modelRegistry.registerModel("qwen/qwen2.5-7b-instruct", {
   provider: "qwen",
   name: "Qwen2.5 7B Instruct",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A 7.6B parameter instruction-tuned language model from Alibaba Cloud's Qwen2.5 series with improved capabilities in instruction following, coding, math, and multilingual understanding.",
   costs: {
@@ -15308,7 +15308,7 @@ modelRegistry.registerModel("meta-llama/llama-3.3-8b-instruct:free", {
   provider: "meta-llama",
   name: "Llama 3.3 8B Instruct (free)",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A lightweight and ultra-fast variant of Llama 3.3 70B, for use when quick response times are needed most.",
   costs: {
@@ -15324,7 +15324,7 @@ modelRegistry.registerModel("meta-llama/llama-3.3-8b-instruct:free", {
     "long_context",
   ],
   maxContext: 128000,
-  fallbackTo: "openai/gpt-3.5-turbo:free", // Similar free tier model
+  fallbackTo: "openai/gpt-5-nano", // Similar free tier model
   isFree: true,
   metadata: {
     categoryDescription:
@@ -15438,7 +15438,7 @@ modelRegistry.registerModel("mistralai/devstral-small", {
   provider: "mistralai",
   name: "Devstral Small",
   category: "Programming",
-  disabled: false,
+  disabled: true,
   description:
     "24B parameter agentic LLM fine-tuned from Mistral-Small-3.1, optimised for advanced software engineering tasks including codebase exploration, multi-file editing, and integration into coding agents.",
   costs: {
@@ -15455,7 +15455,7 @@ modelRegistry.registerModel("mistralai/devstral-small", {
     "codebase_exploration",
   ],
   maxContext: 131072,
-  fallbackTo: "deepseek/deepseek-v3", // Similar coding-focused model
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct", // Similar coding-focused model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -15612,7 +15612,7 @@ modelRegistry.registerModel("anthropic/claude-sonnet-4", {
     "multimodal",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Previous generation fallback
+  fallbackTo: "anthropic/claude-haiku-4.5", // Previous generation fallback
   isFree: false,
   metadata: {
     categoryDescription:
@@ -15749,7 +15749,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4", {
     "multimodal",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3-5-sonnet", // Reasonable Anthropic fallback
+  fallbackTo: "anthropic/claude-haiku-4.5", // Reasonable Anthropic fallback
   isFree: false,
   metadata: {
     categoryDescription:
@@ -15864,7 +15864,7 @@ modelRegistry.registerModel("thedrummer/valkyrie-49b-v1", {
   provider: "thedrummer",
   name: "Valkyrie 49B V1",
   category: "Creative",
-  disabled: false,
+  disabled: true,
   description:
     "Built on top of NVIDIA's Llama 3.3 Nemotron Super 49B, Valkyrie is TheDrummer's newest model drop for creative writing.",
   costs: {
@@ -15880,7 +15880,7 @@ modelRegistry.registerModel("thedrummer/valkyrie-49b-v1", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "eva-unit-01/eva-llama-3.33-70b", // Similar creative writing model
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct", // Similar creative writing model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -15998,7 +15998,7 @@ modelRegistry.registerModel("sarvamai/sarvam-m", {
   provider: "sarvamai",
   name: "Sarvam-M",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "24B-parameter instruction-tuned model optimised for English and eleven major Indic languages, with dual-mode interface offering both low-latency chat and chain-of-thought reasoning.",
   costs: {
@@ -16181,7 +16181,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-0528", {
     "long_context",
   ],
   maxContext: 163840,
-  fallbackTo: "openai/o1-preview", // Similar reasoning-focused model
+  fallbackTo: "openai/gpt-5-nano", // Similar reasoning-focused model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -16463,7 +16463,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-0528-qwen3-8b", {
   provider: "deepseek",
   name: "DeepSeek R1 0528 Qwen3 8B",
   category: "Reasoning",
-  disabled: false,
+  disabled: true,
   description:
     "Distilled variant of DeepSeek R1 with chain-of-thought reasoning capabilities in an 8B parameter form. Excels in mathematics, programming, and logic tasks with step-change reasoning depth.",
   costs: {
@@ -16480,7 +16480,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-0528-qwen3-8b", {
     "dialogue",
   ],
   maxContext: 128000,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Similar reasoning-capable model
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Similar reasoning-capable model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -16611,7 +16611,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-qwen-7b", {
   provider: "deepseek",
   name: "R1 Distill Qwen 7B",
   category: "Programming",
-  disabled: false,
+  disabled: true,
   description:
     "7 billion parameter dense language model distilled from DeepSeek-R1 with reinforcement learning-enhanced reasoning capabilities for mathematics, coding, and general reasoning tasks.",
   costs: {
@@ -16739,7 +16739,7 @@ modelRegistry.registerModel(
     provider: "sentientagi",
     name: "Dobby Mini Plus Llama 3.1 8B",
     category: "GeneralPurpose",
-    disabled: false,
+    disabled: true,
     description:
       "Fine-tuned Llama 3.1 8B model with unique personality traits and strong convictions towards personal freedom, decentralisation, and cryptocurrency topics.",
     costs: {
@@ -16887,7 +16887,7 @@ modelRegistry.registerModel("mistralai/magistral-medium-2506:thinking", {
   provider: "mistralai",
   name: "Magistral Medium 2506 (thinking)",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Mistral's first reasoning model ideal for general purpose use requiring longer thought processing and better accuracy. Excels at multi-step challenges where transparency and precision are critical.",
   costs: {
@@ -16904,7 +16904,7 @@ modelRegistry.registerModel("mistralai/magistral-medium-2506:thinking", {
     "multi_step_reasoning",
   ],
   maxContext: 40960,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -17030,7 +17030,7 @@ modelRegistry.registerModel("mistralai/magistral-medium-2506", {
   provider: "mistral",
   name: "Magistral Medium 2506",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Mistral's first reasoning model ideal for general purpose use requiring longer thought processing and better accuracy. Excels at multi-step challenges where transparency and precision are critical.",
   costs: {
@@ -17048,7 +17048,7 @@ modelRegistry.registerModel("mistralai/magistral-medium-2506", {
     "tools",
   ],
   maxContext: 40960,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -17193,7 +17193,7 @@ modelRegistry.registerModel("mistralai/mistral-small-3.2-24b-instruct", {
     "tool_use",
   ],
   maxContext: 32768,
-  fallbackTo: "mistralai/mistral-7b-instruct", // Similar Mistral model
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct", // Similar Mistral model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -17316,7 +17316,7 @@ modelRegistry.registerModel("inception/mercury", {
   provider: "inception",
   name: "Mercury",
   category: "Speed", // New category for ultra-fast models, or use "GeneralPurpose" if preferred
-  disabled: false,
+  disabled: true,
   description:
     "First diffusion large language model (dLLM) running 5-10x faster than speed optimised models while matching their performance. Revolutionary coarse-to-fine generation process with parallel token processing.",
   costs: {
@@ -17451,7 +17451,7 @@ modelRegistry.registerModel("thedrummer/anubis-70b-v1.1", {
   provider: "thedrummer",
   name: "Anubis 70B V1.1",
   category: "Creative", // This appears to be a creative/roleplay focused model
-  disabled: false,
+  disabled: true,
   description:
     "Unaligned, creative Llama 3.3 70B model focused on character-driven roleplay and stories. Excels at gritty, visceral prose, unique character adherence, and coherent narratives.",
   costs: {
@@ -17589,7 +17589,7 @@ modelRegistry.registerModel("baidu/ernie-4.5-300b-a47b", {
   provider: "baidu",
   name: "ERNIE 4.5 300B A47B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "ERNIE-4.5-300B-A47B is a 300B parameter Mixture-of-Experts (MoE) language model with 47B active parameters per token. Optimised for high-throughput inference with advanced reasoning capabilities and support for both English and Chinese text generation.",
   costs: {
@@ -17730,7 +17730,7 @@ modelRegistry.registerModel("x-ai/grok-4", {
   provider: "xai",
   name: "Grok 4",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Grok 4 is xAI's latest reasoning model with a 256k context window. It supports parallel tool calling, structured outputs, and both image and text inputs. Features built-in reasoning capabilities that cannot be disabled.",
   costs: {
@@ -17748,7 +17748,7 @@ modelRegistry.registerModel("x-ai/grok-4", {
     "vision",
   ],
   maxContext: 256000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar reasoning capabilities and pricing
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities and pricing
   isFree: false,
   metadata: {
     categoryDescription:
@@ -18010,7 +18010,7 @@ modelRegistry.registerModel("mistralai/devstral-small", {
   provider: "mistral",
   name: "Devstral Small 1.1",
   category: "Code",
-  disabled: false,
+  disabled: true,
   description:
     "Devstral Small 1.1 is a 24B parameter open-weight language model for software engineering agents. Optimised for agentic coding workflows including codebase exploration, multi-file edits, and integration into autonomous development agents.",
   costs: {
@@ -18181,7 +18181,7 @@ modelRegistry.registerModel("mistralai/devstral-medium", {
   provider: "mistral",
   name: "Devstral Medium",
   category: "Code",
-  disabled: false,
+  disabled: true,
   description:
     "Devstral Medium is a high-performance code generation and agentic reasoning model developed jointly by Mistral AI and All Hands AI. Achieves 61.6% on SWE-Bench Verified, outperforming Gemini 2.5 Pro and GPT-4.1 in code-related tasks at a fraction of the cost.",
   costs: {
@@ -18198,7 +18198,7 @@ modelRegistry.registerModel("mistralai/devstral-medium", {
     "enterprise_deployment",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar code capabilities and reasoning
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar code capabilities and reasoning
   isFree: false,
   metadata: {
     categoryDescription:
@@ -18325,7 +18325,7 @@ modelRegistry.registerModel("thudm/glm-4.1v-9b-thinking", {
   provider: "thudm",
   name: "GLM 4.1V 9B Thinking",
   category: "Vision",
-  disabled: false,
+  disabled: true,
   description:
     "GLM-4.1V-9B-Thinking is a 9B parameter vision-language model with a reasoning-centric 'thinking paradigm' enhanced with reinforcement learning. Optimised for multimodal reasoning, long-context understanding, and complex problem solving with state-of-the-art performance in its class.",
   costs: {
@@ -18504,7 +18504,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2", {
     "advanced_synthesis",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar agentic and reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar agentic and reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -18667,7 +18667,7 @@ modelRegistry.registerModel("switchpoint/router", {
     "optimisation",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Fallback to a reliable general-purpose model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Fallback to a reliable general-purpose model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -18776,7 +18776,7 @@ modelRegistry.registerModel("qwen/qwen3-235b-a22b-07-25", {
   provider: "qwen",
   name: "Qwen3 235B A22B 2507",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Qwen3-235B-A22B-Instruct-2507 is a multilingual, instruction-tuned mixture-of-experts language model with 22B active parameters per forward pass. Optimised for general-purpose text generation, instruction following, logical reasoning, mathematics, code, and tool usage with native 262K context support.",
   costs: {
@@ -18796,7 +18796,7 @@ modelRegistry.registerModel("qwen/qwen3-235b-a22b-07-25", {
     "instruction_following",
   ],
   maxContext: 262144,
-  fallbackTo: "qwen/qwen2.5-32b-instruct", // Fallback to smaller Qwen model in same family
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Fallback to smaller Qwen model in same family
   isFree: false,
   metadata: {
     categoryDescription:
@@ -19258,7 +19258,7 @@ modelRegistry.registerModel("z-ai/glm-4-32b", {
   provider: "z-ai",
   name: "GLM 4 32B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "GLM 4 32B is a cost-effective foundation language model with significantly enhanced capabilities in tool use, online search, and code-related intelligent tasks. Developed by the same lab behind the THUDM models, it excels at complex reasoning and provides exceptional value for comprehensive AI applications.",
   costs: {
@@ -19688,7 +19688,7 @@ modelRegistry.registerModel("baidu/ernie-4.5-300b-a47b", {
   provider: "baidu",
   name: "ERNIE 4.5 300B A47B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "ERNIE-4.5-300B-A47B is a 300B parameter Mixture-of-Experts (MoE) language model with 47B active parameters per token. Optimised for high-throughput inference with advanced reasoning capabilities and support for both English and Chinese text generation.",
   costs: {
@@ -19848,7 +19848,7 @@ modelRegistry.registerModel("z-ai/glm-4.5", {
     "thinking_mode",
   ],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar agent and reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar agent and reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -20115,7 +20115,7 @@ modelRegistry.registerModel("mistralai/codestral-2508", {
     "low_latency",
   ],
   maxContext: 256000,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Strong coding capabilities as fallback
+  fallbackTo: "anthropic/claude-haiku-4.5", // Strong coding capabilities as fallback
   isFree: false,
   metadata: {
     categoryDescription:
@@ -20258,7 +20258,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4.1", {
     "data_analysis",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Fallback to other advanced Claude model
+  fallbackTo: "anthropic/claude-haiku-4.5", // Fallback to other advanced Claude model
   isFree: false,
   metadata: {
     categoryDescription:
@@ -21097,7 +21097,7 @@ modelRegistry.registerModel("openai/gpt-5-chat", {
     "advanced_conversation",
   ],
   maxContext: 400000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar advanced reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar advanced reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -21360,7 +21360,7 @@ modelRegistry.registerModel("ai21/jamba-mini-1.7", {
   provider: "ai21",
   name: "Jamba Mini 1.7",
   category: "LargeContext",
-  disabled: false,
+  disabled: true,
   description:
     "Jamba Mini 1.7 is a compact and efficient member of the Jamba open model family with SSM-Transformer hybrid architecture. Features improved grounding and instruction-following capabilities whilst maintaining a 256K context window despite its compact size.",
   costs: {
@@ -21498,7 +21498,7 @@ modelRegistry.registerModel("z-ai/glm-4.5v", {
     "tool_calling",
   ],
   maxContext: 65536,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar vision and reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar vision and reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -21671,7 +21671,7 @@ modelRegistry.registerModel("mistralai/mistral-medium-3.1", {
     "STEM",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar enterprise capabilities and performance
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar enterprise capabilities and performance
   isFree: false,
   metadata: {
     categoryDescription:
@@ -21789,7 +21789,7 @@ modelRegistry.registerModel("baidu/ernie-4.5-vl-28b-a3b", {
   provider: "baidu",
   name: "ERNIE 4.5 VL 28B A3B",
   category: "Vision",
-  disabled: false,
+  disabled: true,
   description:
     "A powerful multimodal Mixture-of-Experts chat model featuring 28B total parameters with 3B activated per token. Delivers exceptional text and vision understanding through innovative heterogeneous MoE structure with modality-isolated routing and advanced cross-modal reasoning capabilities.",
   costs: {
@@ -21807,7 +21807,7 @@ modelRegistry.registerModel("baidu/ernie-4.5-vl-28b-a3b", {
     "extended_context",
   ],
   maxContext: 30000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar vision and reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar vision and reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -21948,7 +21948,7 @@ modelRegistry.registerModel("baidu/ernie-4.5-21b-a3b", {
   provider: "baidu",
   name: "ERNIE 4.5 21B A3B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A sophisticated Mixture-of-Experts (MoE) model with 21B total parameters and 3B activated per token. Features exceptional multimodal understanding through heterogeneous MoE structures with modality-isolated routing and advanced post-training optimisation techniques.",
   costs: {
@@ -22587,7 +22587,7 @@ modelRegistry.registerModel("x-ai/grok-code-fast-1", {
   provider: "x-ai",
   name: "Grok Code Fast 1",
   category: "Code",
-  disabled: false,
+  disabled: true,
   description:
     "A speedy and economical reasoning model that excels at agentic coding with visible reasoning traces in responses. Designed for high-quality developer workflows with transparent decision-making processes.",
   costs: {
@@ -22737,7 +22737,7 @@ modelRegistry.registerModel("qwen/qwen3-30b-a3b-thinking-2507", {
     "agentic_workflows",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -22916,7 +22916,7 @@ modelRegistry.registerModel("qwen/qwen3-max", {
     "instruction_following",
   ],
   maxContext: 256000,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar reasoning and instruction-following capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning and instruction-following capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -23064,7 +23064,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2-0905", {
     "web_development",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar agentic and coding capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar agentic and coding capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -23221,7 +23221,7 @@ modelRegistry.registerModel("nvidia/nemotron-nano-9b-v2", {
   provider: "nvidia",
   name: "Nemotron Nano 9B V2",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "NVIDIA-Nemotron-Nano-9B-v2 is a unified large language model designed for both reasoning and non-reasoning tasks. It generates reasoning traces before providing final responses, with controllable reasoning capabilities via system prompts.",
   costs: {
@@ -23363,7 +23363,7 @@ modelRegistry.registerModel("qwen/qwen-plus-2025-07-28", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar reasoning capabilities but smaller context
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities but smaller context
   isFree: false,
   metadata: {
     categoryDescription:
@@ -23495,7 +23495,7 @@ modelRegistry.registerModel("qwen/qwen-plus-2025-07-28:thinking", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -23619,7 +23619,7 @@ modelRegistry.registerModel("meituan/longcat-flash-chat", {
   provider: "meituan",
   name: "LongCat Flash Chat",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "LongCat-Flash-Chat is a large-scale Mixture-of-Experts (MoE) model with 560B total parameters and 27B average active parameters. Features shortcut-connected MoE design for high throughput and optimised for conversational and agentic tasks with strong tool use capabilities.",
   costs: {
@@ -23987,7 +23987,7 @@ modelRegistry.registerModel("qwen/qwen-plus-2025-07-28", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar reasoning capabilities but smaller context
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities but smaller context
   isFree: false,
   metadata: {
     categoryDescription:
@@ -24119,7 +24119,7 @@ modelRegistry.registerModel("qwen/qwen-plus-2025-07-28:thinking", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -24263,7 +24263,7 @@ modelRegistry.registerModel("qwen/qwen3-next-80b-a3b-thinking", {
     "step_by_step_reasoning",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.7-sonnet", // Similar reasoning capabilities and extended thinking features
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar reasoning capabilities and extended thinking features
   isFree: false,
   metadata: {
     categoryDescription:
@@ -24421,7 +24421,7 @@ modelRegistry.registerModel("arcee-ai/afm-4.5b", {
   provider: "arcee-ai",
   name: "AFM 4.5B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "AFM-4.5B is a 4.5 billion parameter instruction-tuned language model developed by Arcee AI. Trained on 8 trillion tokens with emphasis on mathematical reasoning and code generation. Optimised for efficiency and adaptability across deployment environments.",
   costs: {
@@ -24597,7 +24597,7 @@ modelRegistry.registerModel("qwen/qwen3-max", {
     "tool_calling",
   ],
   maxContext: 256000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -24719,7 +24719,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-235b-a22b-instruct", {
     "reasoning",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -24852,7 +24852,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-235b-a22b-thinking", {
     "multilingual",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -24988,7 +24988,7 @@ modelRegistry.registerModel("deepseek/deepseek-v3.1-terminus", {
     "mathematics",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -25114,7 +25114,7 @@ modelRegistry.registerModel("thedrummer/cydonia-24b-v4.1", {
     "multilingual",
   ],
   maxContext: 131072,
-  fallbackTo: "mistralai/mistral-small",
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -25234,7 +25234,7 @@ modelRegistry.registerModel("deepseek/deepseek-v3.2-exp", {
     "multilingual",
   ],
   maxContext: 163840,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -25371,7 +25371,7 @@ modelRegistry.registerModel("anthropic/claude-sonnet-4.5", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -25499,7 +25499,7 @@ modelRegistry.registerModel("z-ai/glm-4.6", {
     "multilingual",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar general-purpose capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar general-purpose capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -25625,7 +25625,7 @@ modelRegistry.registerModel("openai/gpt-5-pro", {
     "tool_calling",
   ],
   maxContext: 400000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -25738,7 +25738,7 @@ modelRegistry.registerModel("google/gemini-2.5-flash-image", {
   },
   capabilities: ["text", "dialogue", "vision"],
   maxContext: 32768,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -25832,7 +25832,7 @@ modelRegistry.registerModel("baidu/ernie-4.5-21b-a3b-thinking", {
   provider: "baidu",
   name: "ERNIE 4.5 21B A3B Thinking",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Baidu's upgraded lightweight MoE model with enhanced reasoning capabilities. Optimised for logical puzzles, mathematics, science, coding, text generation, and expert-level academic benchmarks with efficient tool usage and 128K context understanding.",
   costs: {
@@ -25849,7 +25849,7 @@ modelRegistry.registerModel("baidu/ernie-4.5-21b-a3b-thinking", {
     "multilingual",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -26130,7 +26130,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-8b-instruct", {
     "tool_calling",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -26273,7 +26273,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-8b-thinking", {
     "tool_calling",
   ],
   maxContext: 256000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -26399,6 +26399,7 @@ modelRegistry.registerModel("anthropic/claude-haiku-4.5", {
   },
   capabilities: [
     "text",
+    "vision",
     "dialogue",
     "code",
     "reasoning",
@@ -26406,7 +26407,7 @@ modelRegistry.registerModel("anthropic/claude-haiku-4.5", {
     "mathematics",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -26640,7 +26641,7 @@ modelRegistry.registerModel("deepcogito/cogito-v2-preview-llama-405b", {
   provider: "deep_cogito",
   name: "Cogito V2 Preview Llama 405B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "Dense hybrid reasoning model that combines direct answering capabilities with advanced self-reflection. Represents a significant step toward frontier intelligence with dense architecture delivering performance competitive with leading closed models. Advanced reasoning system optimised for exceptional capabilities through policy improvement and massive scale.",
   costs: {
@@ -26921,7 +26922,7 @@ modelRegistry.registerModel("liquid/lfm-2.2-6b", {
   provider: "liquid",
   name: "LFM2-2.6B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "LFM2 is a new generation of hybrid model developed by Liquid AI, specifically designed for edge AI and on-device deployment. It sets a new standard in terms of quality, speed, and memory efficiency, making it ideal for resource-constrained environments.",
   costs: {
@@ -27023,7 +27024,7 @@ modelRegistry.registerModel("liquid/lfm2-8b-a1b", {
   provider: "liquid",
   name: "LFM2-8B-A1B",
   category: "Specialized",
-  disabled: false,
+  disabled: true,
   description:
     "Liquid AI's on-device Mixture-of-Experts model optimised for mobile and embedded systems. Features 8.3B total parameters with only 1.5B active per token, delivering efficient performance under tight memory and latency constraints. Specialised for instruction-following, mathematics, multilingual tasks, and code generation while maintaining competitive quality comparable to 3-4B dense models.",
   costs: {
@@ -27172,7 +27173,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-32b-instruct", {
     "tool_calling",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription: "Advanced multimodal model for vision-language tasks",
@@ -27282,7 +27283,7 @@ modelRegistry.registerModel("minimax/minimax-m2:free", {
   provider: "minimax",
   name: "MiniMax M2 (Free)",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "Compact, high-efficiency large language model optimised for end-to-end coding and agentic workflows. Delivers near-frontier intelligence across general reasoning, tool use, and multi-step task execution with 10 billion activated parameters and exceptional cost efficiency.",
   costs: {
@@ -27299,7 +27300,7 @@ modelRegistry.registerModel("minimax/minimax-m2:free", {
     "multilingual",
   ],
   maxContext: 204800,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: true,
   metadata: {
     categoryDescription: "High-performance model available at no cost",
@@ -27416,7 +27417,7 @@ modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
   },
   capabilities: ["text", "dialogue", "reasoning", "tool_calling"],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription: "Purpose-built safety and content moderation model",
@@ -27526,7 +27527,7 @@ modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
   provider: "nvidia",
   name: "Nemotron Nano 12B 2 VL",
   category: "Vision",
-  disabled: false,
+  disabled: true,
   description:
     "Advanced 12-billion-parameter multimodal reasoning model optimised for video understanding and document intelligence. Features hybrid Transformer-Mamba architecture combining transformer-level accuracy with memory-efficient sequence modelling for enhanced throughput and reduced latency. Specialises in optical character recognition, chart reasoning, and multimodal comprehension with leading performance on OCRBench v2 and strong results across vision-language benchmarks.",
   costs: {
@@ -27544,7 +27545,7 @@ modelRegistry.registerModel("nvidia/nemotron-nano-12b-v2-vl", {
     "tool_calling",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -27682,7 +27683,7 @@ modelRegistry.registerModel("mistralai/voxtral-small-24b-2507", {
   },
   capabilities: ["text", "dialogue", "audio", "multilingual", "tool_calling"],
   maxContext: 32000,
-  fallbackTo: "mistralai/mistral-small",
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -27804,7 +27805,7 @@ modelRegistry.registerModel("perplexity/sonar-pro-search", {
     "structured_outputs",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription: "Advanced agentic search model for research workflows",
@@ -27904,7 +27905,7 @@ modelRegistry.registerModel("mistralai/codestral-embed-2505", {
   provider: "mistralai",
   name: "Codestral Embed 2505",
   category: "Code",
-  disabled: false,
+  disabled: true,
   description:
     "Specialised embedding model designed specifically for code, optimised for embedding code databases, repositories, and powering coding assistants with state-of-the-art retrieval capabilities.",
   costs: {
@@ -27913,7 +27914,7 @@ modelRegistry.registerModel("mistralai/codestral-embed-2505", {
   },
   capabilities: ["text", "code"],
   maxContext: 8192,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription: "Code embedding and retrieval specialist",
@@ -28020,7 +28021,7 @@ modelRegistry.registerModel("amazon/nova-premier-v1", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription: "Premium multimodal reasoning model for complex tasks",
@@ -28128,7 +28129,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
     "multilingual",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription: "Advanced reasoning model with agentic capabilities",
@@ -28249,7 +28250,7 @@ modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
   provider: "moonshotai",
   name: "Kimi Linear 48B A3B Instruct",
   category: "LargeContext",
-  disabled: false,
+  disabled: true,
   description:
     "Advanced hybrid linear attention architecture optimised for long-context processing with Kimi Delta Attention (KDA). Delivers superior performance and hardware efficiency, reducing KV cache requirements by 75% and boosting decoding throughput by 6x for contexts up to 1M tokens. Specialised for extended document analysis and memory-efficient processing.",
   costs: {
@@ -28258,7 +28259,7 @@ modelRegistry.registerModel("moonshotai/kimi-linear-48b-a3b-instruct", {
   },
   capabilities: ["text", "dialogue", "reasoning", "multilingual"],
   maxContext: 1048576, // 1M+ context window
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar long-context capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar long-context capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -28386,7 +28387,7 @@ modelRegistry.registerModel("openai/gpt-5.1-chat", {
     "multilingual",
   ],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -28517,7 +28518,7 @@ modelRegistry.registerModel("openai/gpt-5.1", {
     "structured_outputs",
   ],
   maxContext: 400000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -28625,7 +28626,7 @@ modelRegistry.registerModel("x-ai/grok-4.1-fast", {
   provider: "xAI",
   name: "Grok 4.1 Fast",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "xAI's best agentic tool calling model optimised for real-world applications including customer support and deep research. Features a massive 2M context window with optional reasoning capabilities that can be enabled or disabled via API parameters.",
   costs: {
@@ -28749,7 +28750,7 @@ modelRegistry.registerModel("allenai/olmo-3-7b-think", {
   provider: "allenai",
   name: "Olmo 3 7B Think",
   category: "Specialized",
-  disabled: false,
+  disabled: true,
   description:
     "Research-oriented language model in the Olmo family designed for advanced reasoning and instruction-driven tasks. Excels at multi-step problem solving, logical inference, and maintaining coherent conversational context. Developed by Ai2 under Apache 2.0 licence, supporting transparent experimentation and providing a capable foundation for academic research and practical NLP workflows.",
   costs: {
@@ -28864,7 +28865,7 @@ modelRegistry.registerModel("allenai/olmo-3-7b-instruct", {
   provider: "allenai",
   name: "Olmo 3 7B Instruct",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A supervised instruction-fine-tuned variant optimised for instruction-following, question-answering, and natural conversational dialogue. Developed by AI2 with an open training pipeline, it delivers strong performance across everyday NLP tasks whilst remaining accessible and easy to integrate. Built under Apache 2.0 licence for transparent, community-friendly applications.",
   costs: {
@@ -29131,7 +29132,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4.5", {
     "multilingual",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -29246,7 +29247,7 @@ modelRegistry.registerModel("tngtech/tng-r1t-chimera", {
   provider: "tng",
   name: "TNG R1T Chimera",
   category: "Specialized",
-  disabled: false,
+  disabled: true,
   description:
     "An experimental LLM specialised in creative storytelling and character interaction. This derivative of the original TNG/DeepSeek-R1T-Chimera features enhanced emotional intelligence, improved reasoning consistency, and superior tool calling capabilities. Designed for creative applications with a pleasant, engaging personality.",
   costs: {
@@ -29261,7 +29262,7 @@ modelRegistry.registerModel("tngtech/tng-r1t-chimera", {
     "tool_calling",
   ],
   maxContext: 163840,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -29386,7 +29387,7 @@ modelRegistry.registerModel("prime-intellect/intellect-3", {
     "tool_calling",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -29514,7 +29515,7 @@ modelRegistry.registerModel("deepseek/deepseek-v3.2", {
     "multilingual",
   ],
   maxContext: 163840,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -29630,7 +29631,7 @@ modelRegistry.registerModel("deepseek/deepseek-v3.2-speciale", {
   provider: "deepseek",
   name: "DeepSeek V3.2 Speciale",
   category: "Specialized",
-  disabled: false,
+  disabled: true,
   description:
     "High-compute variant of DeepSeek V3.2 optimised for maximum reasoning and agentic performance. Built on DeepSeek Sparse Attention (DSA) for efficient long-context processing with scaled post-training reinforcement learning. Delivers exceptional performance on complex reasoning workloads while maintaining strong coding and tool-use reliability through large-scale agentic task synthesis.",
   costs: {
@@ -29646,7 +29647,7 @@ modelRegistry.registerModel("deepseek/deepseek-v3.2-speciale", {
     "multilingual",
   ],
   maxContext: 163840, // Context window size
-  fallbackTo: "deepseek/deepseek-v3", // Base model variant
+  fallbackTo: "meta-llama/llama-3.3-70b-instruct", // Base model variant
   isFree: false,
   metadata: {
     categoryDescription:
@@ -29780,7 +29781,7 @@ modelRegistry.registerModel("arcee-ai/trinity-mini", {
   },
   capabilities: ["text", "dialogue", "reasoning", "tool_calling", "code"],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -29914,7 +29915,7 @@ modelRegistry.registerModel("mistralai/mistral-large-2512", {
     "tool_calling",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -30058,7 +30059,7 @@ modelRegistry.registerModel("amazon/nova-2-lite-v1", {
     "multilingual",
   ],
   maxContext: 1000000, // 1M context window
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar multimodal reasoning capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar multimodal reasoning capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -30301,7 +30302,7 @@ modelRegistry.registerModel("z-ai/glm-4.6v", {
     "multilingual",
   ],
   maxContext: 131072,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -30410,7 +30411,7 @@ modelRegistry.registerModel("mistralai/devstral-2512:free", {
   provider: "mistralai",
   name: "Devstral 2 2512 (free)",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "State-of-the-art open-source model by Mistral AI specialising in agentic coding. This 123B-parameter dense transformer excels at exploring codebases and orchestrating changes across multiple files whilst maintaining architecture-level context. Capable of tracking framework dependencies, detecting failures, and retrying with corrections for complex tasks like bug fixing and modernising legacy systems.",
   costs: {
@@ -30537,7 +30538,7 @@ modelRegistry.registerModel("mistralai/devstral-2512", {
   },
   capabilities: ["text", "dialogue", "code", "reasoning", "tool_calling"],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -30664,7 +30665,7 @@ modelRegistry.registerModel("openai/gpt-5.2", {
     "multilingual",
   ],
   maxContext: 400000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -30928,7 +30929,7 @@ modelRegistry.registerModel("openai/gpt-5.2-chat", {
     "tool_calling",
   ],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -31025,7 +31026,7 @@ modelRegistry.registerModel("xiaomi/mimo-v2-flash:free", {
   provider: "xiaomi",
   name: "MiMo-V2-Flash (free)",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "Open-source Mixture-of-Experts foundation language model with 309B total parameters and 15B active parameters. Features hybrid attention architecture with hybrid-thinking toggle and 256K context window. Excels at reasoning, coding, and agent scenarios, ranking #1 amongst open-source models on SWE-bench Verified and Multilingual benchmarks.",
   costs: {
@@ -31149,7 +31150,7 @@ modelRegistry.registerModel("allenai/olmo-3.1-32b-think:free", {
   provider: "allenai",
   name: "Olmo 3.1 32B Think",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "A 32-billion-parameter model specialised in deep reasoning, complex multi-step logic, and advanced instruction following. Built on the Olmo 3 series with refined reasoning behaviour and strong performance across demanding evaluations and conversational tasks. Developed by Ai2 under Apache 2.0 licence with full transparency in model weights, code, and training methodology.",
   costs: {
@@ -31272,7 +31273,7 @@ modelRegistry.registerModel("mistralai/mistral-small-creative", {
   provider: "mistralai",
   name: "Mistral Small Creative",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "An experimental small model specialised for creative writing, narrative generation, roleplay, and character-driven dialogue. Optimised for conversational agents and general-purpose instruction following with enhanced creative capabilities.",
   costs: {
@@ -31281,7 +31282,7 @@ modelRegistry.registerModel("mistralai/mistral-small-creative", {
   },
   capabilities: ["text", "dialogue", "tool_calling", "reasoning"],
   maxContext: 32768,
-  fallbackTo: "mistralai/mistral-7b-instruct",
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct",
   isFree: false,
   metadata: {
     categoryDescription: "Versatile model with creative writing specialisation",
@@ -31384,7 +31385,7 @@ modelRegistry.registerModel("z-ai/glm-4.7", {
     "mathematics",
   ],
   maxContext: 202752,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -31507,7 +31508,7 @@ modelRegistry.registerModel("minimax/minimax-m2.1", {
     "tool_calling",
   ],
   maxContext: 204800,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -31642,7 +31643,7 @@ modelRegistry.registerModel("bytedance-seed/seed-1.6", {
     "tool_calling",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -31776,7 +31777,7 @@ modelRegistry.registerModel("bytedance-seed/seed-1.6-flash", {
     "tool_calling",
   ],
   maxContext: 262144, // 256K context window
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Similar multimodal vision capabilities
+  fallbackTo: "anthropic/claude-haiku-4.5", // Similar multimodal vision capabilities
   isFree: false,
   metadata: {
     categoryDescription:
@@ -31877,7 +31878,7 @@ modelRegistry.registerModel("bytedance-seed/seedream-4.5", {
   provider: "bytedance_seed",
   name: "ByteDance Seed: Seedream 4.5",
   category: "Vision",
-  disabled: false,
+  disabled: true,
   description:
     "Advanced image generation model from ByteDance with comprehensive improvements over Seedream 4.0. Excels in editing consistency, subject detail preservation, lighting and colour tone accuracy, portrait refinement, and small-text rendering. Features enhanced multi-image composition capabilities and superior visual aesthetics for professional creative work.",
   costs: {
@@ -31887,7 +31888,7 @@ modelRegistry.registerModel("bytedance-seed/seedream-4.5", {
   },
   capabilities: ["text", "vision", "multilingual", "dialogue"],
   maxContext: 4096,
-  fallbackTo: "openai/dalle-3",
+  fallbackTo: "openai/gpt-5-nano",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -31989,7 +31990,7 @@ modelRegistry.registerModel("allenai/olmo-3.1-32b-instruct", {
   provider: "allenai",
   name: "Olmo 3.1 32B Instruct",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true,
   description:
     "A large-scale, 32-billion-parameter instruction-tuned language model optimised for high-performance conversational AI, multi-turn dialogue, and practical instruction following. Developed by AI2 under Apache 2.0 licence, this model demonstrates strong capabilities across reasoning and coding benchmarks whilst maintaining robust chat interactions and responsiveness to complex user directions.",
   costs: {
@@ -32098,7 +32099,7 @@ modelRegistry.registerModel("allenai/molmo-2-8b:free", {
   provider: "allenai",
   name: "Molmo2 8B (free)",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "Open vision-language model from Allen Institute for AI, specialised for image, video, and multi-image understanding with grounding capabilities. Built on Qwen3-8B with SigLIP 2 vision backbone, excelling at short video analysis, counting, and captioning whilst remaining competitive on long-video tasks.",
   costs: {
@@ -32230,7 +32231,7 @@ modelRegistry.registerModel("z-ai/glm-4.7-flash", {
   },
   capabilities: ["text", "dialogue", "code", "reasoning", "tool_calling"],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -32565,7 +32566,7 @@ modelRegistry.registerModel("writer/palmyra-x5", {
     "multilingual",
   ],
   maxContext: 1040000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -32676,7 +32677,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2.5", {
     "multilingual",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -32785,7 +32786,7 @@ modelRegistry.registerModel("stepfun/step-3.5-flash:free", {
   provider: "stepfun",
   name: "Step 3.5 Flash (free)",
   category: "FreeTier",
-  disabled: false,
+  disabled: true,
   description:
     "StepFun's most capable open-source foundation model built on sparse Mixture of Experts (MoE) architecture. Selectively activates only 11B of its 196B parameters per token, making it incredibly speed-efficient at long contexts whilst maintaining strong reasoning capabilities.",
   costs: {
@@ -33036,9 +33037,16 @@ modelRegistry.registerModel("anthropic/claude-opus-4.6", {
     input: 5.0, // Per million tokens
     output: 25.0, // Per million tokens
   },
-  capabilities: ["text", "dialogue", "code", "reasoning", "tool_calling"],
+  capabilities: [
+    "text",
+    "vision",
+    "dialogue",
+    "code",
+    "reasoning",
+    "tool_calling",
+  ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -33172,7 +33180,7 @@ modelRegistry.registerModel("qwen/qwen3-max-thinking", {
     "tool_calling",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -33540,7 +33548,7 @@ modelRegistry.registerModel("qwen/qwen3.5-397b-a17b", {
     "agent",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -33785,6 +33793,7 @@ modelRegistry.registerModel("anthropic/claude-sonnet-4.6", {
   },
   capabilities: [
     "text",
+    "vision",
     "dialogue",
     "code",
     "reasoning",
@@ -33793,7 +33802,7 @@ modelRegistry.registerModel("anthropic/claude-sonnet-4.6", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -33928,7 +33937,7 @@ modelRegistry.registerModel("google/gemini-3.1-pro-preview", {
     "structured_outputs",
   ],
   maxContext: 1048576, // 1M token context window
-  fallbackTo: "google/gemini-2.0-flash-preview", // Similar multimodal capabilities with lower cost
+  fallbackTo: "google/gemma-3-12b-it", // Similar multimodal capabilities with lower cost
   isFree: false,
   metadata: {
     categoryDescription:
@@ -34388,7 +34397,7 @@ modelRegistry.registerModel("qwen/qwen3.5-122b-a10b", {
     "tool_calling",
   ],
   maxContext: 262144,
-  fallbackTo: "qwen/qwen3.5-32b-a10b",
+  fallbackTo: "qwen/qwen3.5-flash-02-23",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -34513,7 +34522,7 @@ modelRegistry.registerModel("qwen/qwen3.5-27b", {
     "multilingual",
   ],
   maxContext: 262144,
-  fallbackTo: "qwen/qwen-max", // Similar vision-language capabilities with broader support
+  fallbackTo: "qwen/qwen3.5-flash-02-23", // Similar vision-language capabilities with broader support
   isFree: false,
   metadata: {
     categoryDescription:
@@ -35103,7 +35112,7 @@ modelRegistry.registerModel("inception/mercury-2", {
     "mathematics",
   ],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -35737,7 +35746,7 @@ modelRegistry.registerModel("mistralai/mistral-small-2603", {
     "structured_outputs",
   ],
   maxContext: 262144,
-  fallbackTo: "mistralai/mistral-large-latest", // Similar multimodal capabilities with extended context
+  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct", // Similar multimodal capabilities with extended context
   isFree: false,
   metadata: {
     categoryDescription:
@@ -35955,6 +35964,7 @@ modelRegistry.registerModel("openai/gpt-5.4-mini", {
     errorMessage: null,
   },
 });
+
 // Insert into model-definitions.js in the OpenAI models section
 
 modelRegistry.registerModel("openai/gpt-5.4-nano", {
@@ -36201,7 +36211,7 @@ modelRegistry.registerModel("xiaomi/mimo-v2-pro", {
   provider: "xiaomi",
   name: "MiMo-V2-Pro",
   category: "LargeContext",
-  disabled: false,
+  disabled: true,
   description:
     "Xiaomi's flagship foundation model featuring over 1T parameters and 1M context length, deeply optimised for agentic scenarios. Ranks amongst global top tier in PinchBench and ClawBench benchmarks with performance approaching Opus 4.6. Designed as the brain of agent systems, orchestrating complex workflows and driving production engineering tasks.",
   costs: {
@@ -36218,7 +36228,7 @@ modelRegistry.registerModel("xiaomi/mimo-v2-pro", {
     "agent_orchestration",
   ],
   maxContext: 1048576,
-  fallbackTo: "anthropic/claude-3.5-sonnet", // Comparable reasoning capabilities and general-purpose strength for agent scenarios
+  fallbackTo: "anthropic/claude-haiku-4.5", // Comparable reasoning capabilities and general-purpose strength for agent scenarios
   isFree: false,
   metadata: {
     categoryDescription:
@@ -36317,7 +36327,7 @@ modelRegistry.registerModel("xiaomi/mimo-v2-omni", {
   provider: "xiaomi",
   name: "MiMo-V2-Omni",
   category: "Vision",
-  disabled: false,
+  disabled: true,
   description:
     "Frontier omni-modal model natively processing image, video, and audio inputs within a unified architecture. Combines strong multimodal perception with agentic capabilities including visual grounding, multi-step planning, tool use, and code execution. Well-suited for complex real-world tasks spanning multiple modalities with a 256K context window.",
   costs: {
@@ -36336,7 +36346,7 @@ modelRegistry.registerModel("xiaomi/mimo-v2-omni", {
     "multimodal",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -36461,7 +36471,7 @@ modelRegistry.registerModel("x-ai/grok-4.20", {
     "structured_outputs",
   ],
   maxContext: 2000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -36670,7 +36680,7 @@ modelRegistry.registerModel("z-ai/glm-5v-turbo", {
   provider: "z_ai",
   name: "GLM-5V Turbo",
   category: "Vision",
-  disabled: false,
+  disabled: true,
   description:
     "Z.ai's native multimodal agent foundation model engineered for vision-based coding and agent-driven tasks. Natively processes image, video, and text inputs with excellence in long-horizon planning, complex coding, and task execution. Seamlessly integrates with agents to complete the full perception-planning-execution loop.",
   costs: {
@@ -36687,7 +36697,7 @@ modelRegistry.registerModel("z-ai/glm-5v-turbo", {
     "multilingual",
   ],
   maxContext: 202752,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -36941,7 +36951,7 @@ modelRegistry.registerModel("z-ai/glm-5.1", {
     "multilingual",
   ],
   maxContext: 202752,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -37068,7 +37078,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4.7", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -37195,7 +37205,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2.6", {
     "multilingual",
   ],
   maxContext: 262144,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -37489,7 +37499,7 @@ modelRegistry.registerModel("xiaomi/mimo-v2.5-pro", {
     "multilingual",
   ],
   maxContext: 1048576,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -37906,7 +37916,7 @@ modelRegistry.registerModel("openai/gpt-5.5", {
     "multilingual",
   ],
   maxContext: 1050000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -38048,7 +38058,7 @@ modelRegistry.registerModel("openai/gpt-5.5-pro", {
     "multilingual",
   ],
   maxContext: 1050000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -38640,7 +38650,7 @@ modelRegistry.registerModel("qwen/qwen3.5-plus-20260420", {
     "multilingual",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -38920,7 +38930,7 @@ modelRegistry.registerModel("x-ai/grok-4.3", {
     "code",
   ],
   maxContext: 1000000,
-  fallbackTo: "anthropic/claude-3.5-sonnet",
+  fallbackTo: "anthropic/claude-haiku-4.5",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -39179,6 +39189,1380 @@ modelRegistry.registerModel("google/gemini-3.1-flash-lite", {
         processing: "Processing request with Gemini 3.1 Flash Lite model",
         complete: "Response ready from Gemini 3.1 Flash Lite",
         thinking: "Applying reasoning to request with Gemini 3.1 Flash Lite",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert in Vision Models section of model-definitions.js
+
+modelRegistry.registerModel("perceptron/perceptron-mk1", {
+  provider: "perceptron",
+  name: "Perceptron Mk1",
+  category: "Vision",
+  disabled: false,
+  description:
+    "Perceptron Mk1 (Mark One) is Perceptron's highest-quality vision-language model specialising in video and embodied reasoning. It accepts image and video inputs paired with natural language queries, producing detailed visual understanding responses in structured or natural language formats. Excels at video understanding tasks including video question-answering, summarisation, and event detection. On image inputs, it performs point-by-example grounding from multimodal prompts, optical character recognition and document parsing on real-world inputs, open vocabulary object detection and counting, and hand pose estimation. Reasoning can be enabled per request to trade latency for deeper analysis. Structured annotations (point, box, polygon for images; clip timestamps for video) are emitted inline only when explicitly requested via annotation_format parameter.",
+  costs: {
+    input: 0.15,
+    output: 1.5,
+    image: 0.0,
+    video: 0.0,
+  },
+  capabilities: ["text", "dialogue", "vision", "reasoning", "multilingual"],
+  maxContext: 33000,
+  fallbackTo: "anthropic/claude-haiku-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced vision-language model with specialised capabilities in video understanding and embodied reasoning tasks",
+    releaseDate: "2026-05-12",
+    modelArchitecture: {
+      parameters: "Proprietary",
+      type: "Vision-language instruction-tuned",
+      specialisation: "Video understanding and embodied reasoning",
+      inputModalities: ["text", "image", "video"],
+      outputFormats: ["natural-language", "structured-annotations"],
+    },
+    policyLinks: {
+      privacyPolicy: "",
+      acceptableUse: "",
+      termsOfService: "",
+      lastUpdated: "2026-05-12",
+    },
+    bestFor: [
+      "Video question-answering",
+      "Video summarisation",
+      "Event detection in video",
+      "Optical character recognition",
+      "Document parsing on real-world inputs",
+      "Object detection and counting",
+      "Hand pose estimation",
+      "Point-by-example visual grounding",
+      "Embodied reasoning tasks",
+    ],
+    weeklyTokenVolume: "121M",
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "top_k",
+      "frequency_penalty",
+      "presence_penalty",
+      "structured_outputs",
+      "annotation_format",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "video-processing",
+      "image-processing",
+      "reasoning-mode",
+      "structured-annotations",
+      "spatial-localization",
+      "temporal-segmentation",
+      "ocr-capability",
+      "document-parsing",
+      "embodied-reasoning",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "video-analysis",
+      "document-accessibility",
+      "ocr-tasks",
+      "spatial-reasoning",
+      "temporal-understanding",
+      "accessibility-compliance-checking",
+    ],
+    warnings: [
+      "Reasoning mode significantly increases latency — ensure application timeout policies accommodate extended processing times",
+      "Annotation format output (point, box, polygon, clip) requires explicit parameter configuration; default returns natural language only",
+      "Video inputs require proper temporal framing and encoding — refer to documentation for supported formats",
+      "Hand pose estimation has accuracy limitations on occluded or low-resolution inputs",
+      "OCR performance varies significantly on document quality and image clarity",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Perceptron Mk1 - Vision-language model with video understanding, 33K context, structured annotation support",
+      parameterSection:
+        "Parameter controls for Perceptron Mk1 visual reasoning and annotation configuration",
+      statusMessages: {
+        processing: "Processing visual input with Perceptron Mk1 model",
+        complete: "Visual analysis complete from Perceptron Mk1",
+        reasoning: "Performing deep visual reasoning with Perceptron Mk1",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other Google models in model-definitions.js
+
+modelRegistry.registerModel("google/gemini-3.5-flash", {
+  provider: "google",
+  name: "Gemini 3.5 Flash",
+  category: "GeneralPurpose",
+  disabled: false,
+  description:
+    "Gemini 3.5 Flash is Google's high-efficiency multimodal model delivering near-Pro level coding and reasoning capabilities at Flash-tier cost and speed. Highly optimised for coding proficiency and parallel agentic execution loops. Supports text, image, video, audio, and PDF inputs. Defaults to medium thinking effort for faster and more cost-efficient responses, with full support for configurable thinking levels (minimal, low, medium, high) enabling fine-grained cost and performance trade-offs.",
+  costs: {
+    input: 1.5,
+    output: 9.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "google/gemma-3-12b-it",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "High-efficiency multimodal model optimised for coding and agentic workflows",
+    releaseDate: "2026-05-19",
+    modelArchitecture: {
+      type: "Large multimodal model with configurable thinking",
+      thinkingLevels: ["minimal", "low", "medium", "high"],
+      defaultThinking: "medium",
+      modalities: ["text", "image", "video", "audio", "pdf"],
+    },
+    policyLinks: {
+      privacyPolicy: "https://policies.google.com/privacy",
+      acceptableUse: "https://ai.google.dev/terms",
+      termsOfService: "https://policies.google.com/terms",
+      lastUpdated: "2026-05-19",
+    },
+    languageSupport: [
+      "English",
+      "Spanish",
+      "French",
+      "German",
+      "Italian",
+      "Portuguese",
+      "Dutch",
+      "Russian",
+      "Chinese",
+      "Japanese",
+      "Korean",
+      "Arabic",
+      "Hindi",
+    ],
+    bestFor: [
+      "Code generation and debugging",
+      "Parallel agentic execution",
+      "Multimodal analysis (images, video, audio, PDFs)",
+      "Cost-optimised reasoning tasks",
+      "Real-time application development",
+      "Complex problem solving with configurable thinking",
+      "Structured data extraction",
+    ],
+    weeklyTokenUsage: "37.1B",
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "seed",
+      "response_format",
+      "stop",
+      "structured_outputs",
+      "tool_choice",
+      "tools",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "multimodal-input",
+      "configurable-thinking",
+      "function-calling",
+      "structured-outputs",
+      "pdf-processing",
+      "audio-processing",
+      "video-processing",
+      "tool-integration",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "code-generation",
+      "agentic-workflows",
+      "multimodal-analysis",
+      "reasoning-tasks",
+      "pdf-document-processing",
+      "audio-analysis",
+      "real-time-applications",
+    ],
+    warnings: [
+      "Configurable thinking levels significantly impact latency and cost — ensure application documentation clearly explains trade-offs",
+      "Default medium thinking effort may require adjustment for high-complexity tasks",
+      "Audio and video processing require appropriate file format compatibility checks",
+      "PDF processing may have size limitations — test with target document types",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Gemini 3.5 Flash - High-efficiency multimodal model with 1M context, configurable thinking, coding optimised",
+      parameterSection:
+        "Parameter controls for Gemini 3.5 Flash thinking and output configuration",
+      statusMessages: {
+        processing: "Processing request with Gemini 3.5 Flash model",
+        complete: "Response ready from Gemini 3.5 Flash",
+        reasoning: "Generating reasoning output with Gemini 3.5 Flash",
+        thinkingConfig: "Configuring thinking level for Gemini 3.5 Flash",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other Qwen models in model-definitions.js
+
+modelRegistry.registerModel("qwen/qwen3.7-max", {
+  provider: "qwen",
+  name: "Qwen 3.7 Max",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "Qwen 3.7 Max is the flagship model in Alibaba's Qwen 3.7 series, optimised for agent-centric workloads and autonomous execution. With a 1M token context window, it delivers substantial improvements in coding performance, agentic capabilities, and long-horizon task execution over previous Qwen generations. Supports explicit prompt caching for efficient repeated context use, making it ideal for productivity tasks, code generation, and complex multi-step workflows. Text input and output modalities.",
+  costs: {
+    input: 2.5,
+    output: 7.5,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "multilingual",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-haiku-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Ultra-large context window model optimised for extended autonomous execution and agent-centric applications",
+    releaseDate: "2026-05-21",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "Dense instruction-tuned",
+      contextWindow: "1M tokens",
+      specialFeatures: "Prompt caching, agent-optimised",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.alibabacloud.com/help/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.alibabacloud.com/help/terms",
+      lastUpdated: "2026-05-21",
+    },
+    languageSupport: [
+      "English",
+      "Chinese (Simplified)",
+      "Chinese (Traditional)",
+      "Spanish",
+      "French",
+      "German",
+      "Japanese",
+      "Korean",
+    ],
+    bestFor: [
+      "Agent-centric applications",
+      "Long-horizon autonomous execution",
+      "Code generation and refactoring",
+      "Office and productivity automation",
+      "Extended context reasoning",
+      "Multi-step task orchestration",
+      "Prompt caching scenarios",
+    ],
+    weeklyTokenUsage: "2.92B",
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "seed",
+      "presence_penalty",
+      "response_format",
+      "tools",
+      "tool_choice",
+      "structured_outputs",
+      "logprobs",
+      "top_logprobs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0.5, p90: 1 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "prompt-caching",
+      "agent-optimisation",
+      "long-context-reasoning",
+      "function-calling",
+      "structured-outputs",
+      "reasoning-mode",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "agent-applications",
+      "autonomous-execution",
+      "code-generation",
+      "long-horizon-tasks",
+      "productivity-automation",
+      "multi-step-workflows",
+      "extended-reasoning",
+    ],
+    warnings: [
+      "Premium pricing — monitor token usage for cost control in high-volume applications",
+      "1M context window may impact performance characteristics — test thoroughly before scaling",
+      "Agent-centric optimisation means performance varies significantly by use case type",
+      "Prompt caching requires specific API usage patterns for optimal cost efficiency",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Qwen 3.7 Max - Ultra-large context flagship model, 1M tokens, agent-optimised, code-focused",
+      parameterSection:
+        "Parameter controls for Qwen 3.7 Max reasoning and agent configuration",
+      statusMessages: {
+        processing: "Processing request with Qwen 3.7 Max model",
+        complete: "Response ready from Qwen 3.7 Max",
+        caching:
+          "Utilising prompt cache with Qwen 3.7 Max for efficient context reuse",
+        reasoning: "Generating reasoning output with Qwen 3.7 Max",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other Anthropic models in model-definitions.js
+
+modelRegistry.registerModel("anthropic/claude-opus-4.8", {
+  provider: "anthropic",
+  name: "Claude Opus 4.8",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "Claude Opus 4.8 is Anthropic's most capable generally available model in the Opus family. Supporting text, image, and file inputs with a 1M-token context window, it excels at highly autonomous agents, long-horizon agentic work, knowledge work, and memory-driven tasks requiring coherence across extended sessions. Particularly strong on multi-step reasoning, complex coding, end-to-end project orchestration, large codebases, multi-stage debugging, and long-running asynchronous agent pipelines. Handles knowledge work including document drafting, presentation building, and data analysis whilst maintaining quality across very long outputs.",
+  costs: {
+    input: 5.0,
+    output: 25.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-haiku-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Most capable model in Anthropic's Opus family with 1M token context window for complex, long-horizon tasks",
+    releaseDate: "2026-05-27",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "Instruction-tuned transformer",
+      contextWindow: "1M tokens",
+      capabilities: "Multimodal (text, image, file input)",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.anthropic.com/privacy",
+      acceptableUse: "https://www.anthropic.com/legal/acceptable-use-policy",
+      termsOfService: "https://www.anthropic.com/legal/terms-of-service",
+      lastUpdated: "2026-05-27",
+    },
+    languageSupport: [
+      "English",
+      "Spanish",
+      "French",
+      "German",
+      "Italian",
+      "Portuguese",
+      "Dutch",
+      "Russian",
+      "Polish",
+      "Chinese",
+      "Japanese",
+      "Korean",
+    ],
+    bestFor: [
+      "Autonomous agents and agentic systems",
+      "Long-horizon task orchestration",
+      "Complex multi-step reasoning",
+      "Large codebase analysis and debugging",
+      "Knowledge work and document generation",
+      "Data analysis and presentation building",
+      "Long-running asynchronous pipelines",
+      "Extended session coherence and memory",
+    ],
+    domainExpertise: {
+      reasoning: 10,
+      coding: 10,
+      knowledgeWork: 9,
+      multiStepTasks: 10,
+      longContext: 10,
+      projectOrchestration: 9,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "stop",
+      "reasoning",
+      "include_reasoning",
+      "tool_choice",
+      "tools",
+      "response_format",
+      "verbosity",
+      "structured_outputs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "extended-reasoning",
+      "tool-use",
+      "structured-outputs",
+      "multimodal-input",
+      "verbosity-control",
+      "file-input-support",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "autonomous-agents",
+      "long-context-tasks",
+      "complex-reasoning",
+      "code-analysis",
+      "knowledge-work",
+      "extended-sessions",
+      "multi-stage-projects",
+    ],
+    warnings: [
+      "Premium pricing ($5/$25 per 1M tokens) — suitable for high-value, computationally-intensive tasks",
+      "Reasoning mode may significantly increase latency and token usage — budget accordingly in applications",
+      "1M token context may require careful memory management in streaming applications",
+      "File input processing depends on file type and size — test thoroughly with expected document formats",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Claude Opus 4.8 - Anthropic's most capable model with 1M token context, multimodal input, and extended reasoning",
+      parameterSection:
+        "Parameter controls for Claude Opus 4.8 reasoning, tool use, and output formatting",
+      statusMessages: {
+        processing: "Processing request with Claude Opus 4.8 model",
+        complete: "Response ready from Claude Opus 4.8",
+        reasoning: "Generating extended reasoning output with Claude Opus 4.8",
+        thinking: "Claude Opus 4.8 is thinking through this complex task",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other StepFun models in model-definitions.js
+
+modelRegistry.registerModel("stepfun/step-3.7-flash", {
+  provider: "stepfun",
+  name: "Step 3.7 Flash",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "Step 3.7 Flash is StepFun's latest high-efficiency multimodal Mixture-of-Experts model. It pairs a 196B-parameter language backbone with a vision encoder for native image and video understanding, activating approximately 11B parameters per token. Supports a 256K context window with selectable reasoning levels (high/medium/low) to trade off speed, cost, and reasoning depth. Optimised for coding, agentic workflows, structured outputs, and long-context productivity tasks.",
+  costs: {
+    input: 0.2,
+    output: 1.15,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 256000,
+  fallbackTo: "google/gemma-4-26b-a4b-it",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Extended context window model with efficient reasoning and multimodal capabilities",
+    releaseDate: "2026-05-28",
+    modelArchitecture: {
+      parameters: "196B (11B active)",
+      type: "Mixture-of-Experts instruction-tuned",
+      activeParameters: "11B",
+      totalParameters: "196B",
+      architecture: "MoE with sparse activation and vision encoder",
+      visionCapabilities: "Native image and video understanding",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.stepfun.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.stepfun.com/terms",
+      lastUpdated: "2026-05-28",
+    },
+    bestFor: [
+      "Coding and software development",
+      "Agentic workflows and autonomous tasks",
+      "Long-context document analysis",
+      "Structured data generation",
+      "Vision-based reasoning",
+      "Cost-optimised inference at scale",
+      "Multi-step reasoning tasks",
+    ],
+    weeklyTokenVolume: "155M",
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "temperature",
+      "max_tokens",
+      "tools",
+      "top_p",
+      "stop",
+      "frequency_penalty",
+      "logprobs",
+      "top_logprobs",
+      "response_format",
+      "structured_outputs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "selective-reasoning-levels",
+      "high-medium-low-reasoning",
+      "vision-encoding",
+      "video-understanding",
+      "function-calling",
+      "structured-outputs",
+      "logprobs-support",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "long-context-tasks",
+      "code-generation",
+      "agentic-workflows",
+      "structured-outputs",
+      "vision-reasoning",
+      "cost-optimised-applications",
+    ],
+    warnings: [
+      "Reasoning level selection impacts latency and token consumption — document trade-offs in application UI",
+      "Vision processing adds latency — ensure appropriate timeout configurations",
+      "256K context window requires careful token management for optimal performance",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Step 3.7 Flash - Efficient MoE model with 256K context, selectable reasoning levels, multimodal input",
+      parameterSection:
+        "Parameter controls for Step 3.7 Flash reasoning level and output configuration",
+      statusMessages: {
+        processing: "Processing request with Step 3.7 Flash model",
+        complete: "Response ready from Step 3.7 Flash",
+        reasoning: "Generating reasoning output with Step 3.7 Flash",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other MiniMax models in model-definitions.js
+
+modelRegistry.registerModel("minimax/minimax-m3", {
+  provider: "minimax",
+  name: "MiniMax M3",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "MiniMax-M3 is a multimodal foundation model supporting text, image, and video inputs with text output. Built on MiniMax Sparse Attention (MSA), it replaces full attention with KV-block selection, reducing per-token compute costs to approximately 1/20th of the previous generation at 1M tokens whilst maintaining substantially faster prefill and decode performance. Features a 1M-token context window optimised for long-horizon agentic work, coding, and tool use. Trained as a native multimodal model on interleaved data and tuned via an interactive user-simulator framework for sustained, multi-step tasks and production-like multi-turn collaboration.",
+  costs: {
+    input: 0.6,
+    output: 2.4,
+    image: 0.0,
+    video: 0.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "google/gemma-4-26b-a4b-it",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Advanced multimodal model with 1M-token context window for extended agentic and collaborative tasks",
+    releaseDate: "2026-05-31",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "Multimodal foundation model",
+      attentionMechanism: "MiniMax Sparse Attention (MSA)",
+      attentionOptimisation: "KV-block selection replaces full attention",
+      computeEfficiency: "~1/20th cost of previous generation at 1M tokens",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.minimaxi.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.minimaxi.com/terms",
+      lastUpdated: "2026-05-31",
+    },
+    languageSupport: [
+      "English",
+      "Chinese",
+      "Spanish",
+      "French",
+      "German",
+      "Japanese",
+      "Korean",
+    ],
+    bestFor: [
+      "Long-horizon agentic work",
+      "Extended multi-turn conversations",
+      "Video understanding and analysis",
+      "Code generation and debugging",
+      "Tool use and integration",
+      "Complex reasoning over extended contexts",
+      "Production-like collaborative tasks",
+      "Multi-step task orchestration",
+    ],
+    trainingApproach:
+      "Native multimodal training on interleaved data with interactive user-simulator tuning",
+    weeklyTokensProcessed: "33.7B",
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "response_format",
+      "tool_choice",
+      "tools",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "multimodal-input",
+      "video-processing",
+      "function-calling",
+      "reasoning-mode",
+      "long-context-optimisation",
+      "sparse-attention",
+      "tool-integration",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "long-horizon-tasks",
+      "multi-turn-collaboration",
+      "extended-reasoning",
+      "video-analysis",
+      "code-generation",
+      "agentic-workflows",
+      "complex-document-processing",
+    ],
+    warnings: [
+      "1M-token context window requires careful memory management in client applications",
+      "Sparse Attention mechanism introduces specialised optimisations — ensure sufficient latency buffers for initial prefill",
+      "Best suited for sustained, multi-step tasks — may be over-provisioned for single-turn queries",
+      "Video processing capabilities require appropriate media configuration",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "MiniMax M3 - Multimodal model with 1M-token context, sparse attention optimisation, video support",
+      parameterSection:
+        "Parameter controls for MiniMax M3 reasoning and tool integration configuration",
+      statusMessages: {
+        processing: "Processing request with MiniMax M3 model",
+        complete: "Response ready from MiniMax M3",
+        reasoning: "Generating reasoning output with MiniMax M3",
+        longContext:
+          "Processing extended context with MiniMax M3 sparse attention",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other Qwen models in model-definitions.js
+
+modelRegistry.registerModel("qwen/qwen3.7-plus", {
+  provider: "qwen",
+  name: "Qwen3.7 Plus",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "Qwen3.7 Plus is a cost-effective multimodal model from Alibaba's Qwen3.7 series, delivering comprehensive vision-language capabilities alongside full-stack agent-level intelligence for coding, tool use, and productivity workflows. Supports text and image input with text output. Distinguishing features include interactive hybrid agent capabilities: perceiving real-world scenes, reading and interacting with graphical user interfaces, generating code from visual references, and performing end-to-end navigation within mobile applications. Boasts a 1M token context window for extended reasoning and task execution.",
+  costs: {
+    input: 0.4,
+    output: 1.6,
+    image: 0.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-haiku-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Extended context window model with advanced multimodal and agent capabilities",
+    releaseDate: "2026-06-03",
+    modelArchitecture: {
+      parameters: "Not specified",
+      type: "Vision-language agent model",
+      multimodalCapabilities: "Text and image input, text output",
+      agentCapabilities:
+        "GUI interaction, mobile app navigation, visual code generation",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.aliyun.com/en/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.aliyun.com/en/terms",
+      lastUpdated: "2026-06-03",
+    },
+    languageSupport: [
+      "English",
+      "Chinese (Simplified)",
+      "Chinese (Traditional)",
+      "Spanish",
+      "French",
+      "German",
+      "Italian",
+      "Japanese",
+      "Korean",
+      "Portuguese",
+      "Russian",
+    ],
+    bestFor: [
+      "GUI and screen reading automation",
+      "Mobile app interaction and navigation",
+      "Visual code generation from screenshots",
+      "Multimodal agent workflows",
+      "Real-world scene understanding",
+      "Extended context reasoning tasks",
+      "Productivity and tool orchestration",
+      "End-to-end autonomous task execution",
+    ],
+    usageMetrics: {
+      weeklyTokens: "2.92B",
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "seed",
+      "presence_penalty",
+      "response_format",
+      "logprobs",
+      "top_logprobs",
+      "tools",
+      "tool_choice",
+      "structured_outputs",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0.5 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.8, p50: 0.95, p90: 1 },
+    },
+    features: [
+      "vision-language",
+      "gui-interaction",
+      "screen-reading",
+      "mobile-navigation",
+      "reasoning-mode",
+      "tool-calling",
+      "structured-outputs",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "gui-automation",
+      "screen-reading-tasks",
+      "visual-code-generation",
+      "mobile-app-navigation",
+      "multimodal-reasoning",
+      "extended-context-tasks",
+      "agent-workflows",
+    ],
+    warnings: [
+      "GUI interaction capabilities require precise image formatting and resolution standards — consult documentation",
+      "Mobile app navigation may have timing constraints — implement appropriate retry logic",
+      "1M context window incurs significant latency for some operations — test throughput requirements",
+      "Vision processing quality depends on image clarity and format — validate preprocessing pipelines",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Qwen3.7 Plus - Multimodal agent model with 1M context, GUI interaction, screen reading capabilities",
+      parameterSection:
+        "Parameter controls for Qwen3.7 Plus reasoning, tool use, and multimodal configuration",
+      statusMessages: {
+        processing: "Processing multimodal request with Qwen3.7 Plus model",
+        complete: "Response ready from Qwen3.7 Plus",
+        visionProcessing:
+          "Analysing image input with Qwen3.7 Plus vision capabilities",
+        agentExecuting: "Executing agent task with Qwen3.7 Plus",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other Anthropic models in model-definitions.js
+
+modelRegistry.registerModel("anthropic/claude-fable-5", {
+  provider: "anthropic",
+  name: "Claude Fable 5",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "Claude Fable 5 is a Mythos-class model from Anthropic, purpose-built for autonomous knowledge work and complex coding tasks. With a 1M-token context window and extended reasoning capabilities, it excels at long-running, ambiguous, and highly multi-step problems that would typically require days or weeks of human effort. The model executes well-scoped tasks with minimal errors, automatically self-correcting through verification loops, and includes robust safeguards. Supports text, image, and file inputs with text output. Note: does not support zero data retention setting.",
+  costs: {
+    input: 10.0,
+    output: 50.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "vision",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-haiku-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Enterprise-grade Mythos-class model for autonomous knowledge work with extended context and reasoning",
+    releaseDate: "2026-06-09",
+    modelArchitecture: {
+      parameters: "Unknown (Mythos-class)",
+      type: "Instruction-tuned with extended reasoning",
+      modelClass: "Mythos",
+      specialisation: "Autonomous knowledge work and coding",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.anthropic.com/privacy",
+      acceptableUse: "https://www.anthropic.com/acceptable-use-policy",
+      termsOfService: "https://www.anthropic.com/terms",
+      lastUpdated: "2026-06-09",
+    },
+    importantNotes: [
+      "Does not support zero data retention setting",
+      "Designed for long-running, asynchronous tasks",
+      "Includes automatic self-correction through verification loops",
+    ],
+    bestFor: [
+      "Autonomous knowledge work",
+      "Complex multi-step coding projects",
+      "Long-running tasks requiring minimal human check-ins",
+      "Ambiguous problems with high complexity",
+      "End-to-end project completion",
+      "Research and analysis tasks",
+      "Comprehensive codebase refactoring",
+      "Data processing and transformation",
+    ],
+    domainExpertise: {
+      autonomousWork: 10,
+      codingComplex: 10,
+      reasoning: 9,
+      multiStepPlanning: 10,
+      selfCorrection: 9,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "stop",
+      "reasoning",
+      "include_reasoning",
+      "tool_choice",
+      "tools",
+      "structured_outputs",
+      "response_format",
+      "verbosity",
+      "max_completion_tokens",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "extended-reasoning",
+      "autonomous-task-execution",
+      "self-correction-loops",
+      "tool-integration",
+      "structured-outputs",
+      "multimodal-input",
+      "file-processing",
+      "verbosity-control",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "long-running-tasks",
+      "autonomous-workflows",
+      "complex-coding",
+      "multi-step-projects",
+      "research-analysis",
+      "knowledge-work",
+      "minimal-human-oversight",
+    ],
+    warnings: [
+      "Higher cost tier — monitor usage and token consumption for budget management",
+      "Does not support zero data retention — ensure data privacy compliance requirements are met before deployment",
+      "Extended reasoning may increase latency — design user interfaces to accommodate potentially longer processing times",
+      "Designed for autonomous execution — implement appropriate oversight and verification mechanisms in production",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Claude Fable 5 - Enterprise Mythos-class model with 1M context for autonomous knowledge work",
+      parameterSection:
+        "Parameter controls for Claude Fable 5 reasoning and autonomous task configuration",
+      statusMessages: {
+        processing: "Processing autonomous task with Claude Fable 5",
+        complete: "Task completed by Claude Fable 5",
+        reasoning: "Activating extended reasoning with Claude Fable 5",
+        selfCorrecting:
+          "Claude Fable 5 executing self-correction verification loop",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other MoonshotAI models in model-definitions.js
+
+modelRegistry.registerModel("moonshotai/kimi-k2.7-code", {
+  provider: "moonshotai",
+  name: "Kimi K2.7 Code",
+  category: "Code",
+  disabled: false,
+  description:
+    "Kimi K2.7 Code is a coding-focused model in Moonshot AI's Kimi K2 family, purpose-built to complete end-to-end programming tasks reliably over extended contexts. It features a native multimodal Mixture-of-Experts architecture that accepts text, image, and video input. The model operates in continuous thinking mode, preserving full reasoning content across multi-turn conversations. With a 256K-token context window, it targets long-horizon coding projects, agentic task decomposition, and complex multi-turn dialogue. Activates 32B parameters from a total of approximately 1 trillion.",
+  costs: {
+    input: 0.95,
+    output: 4.0,
+    image: 0.0,
+    video: 0.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 262144,
+  fallbackTo: "anthropic/claude-haiku-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Specialised coding model with extended context for complex programming tasks and agentic decomposition",
+    releaseDate: "2026-06-12",
+    modelArchitecture: {
+      parameters: "32B active",
+      totalParameters: "~1T",
+      type: "Mixture-of-Experts instruction-tuned",
+      activeParameters: "32B",
+      architecture: "Multimodal MoE with continuous reasoning",
+      thinkingMode: "Always active, multi-turn preservation",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.moonshot.cn/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.moonshot.cn/terms",
+      lastUpdated: "2026-06-12",
+    },
+    languageSupport: [
+      "English",
+      "Chinese (Simplified)",
+      "Chinese (Traditional)",
+      "Japanese",
+      "Korean",
+    ],
+    bestFor: [
+      "End-to-end code generation",
+      "Complex software architecture design",
+      "Multi-file project completion",
+      "Agentic task decomposition",
+      "Code refactoring and optimisation",
+      "Technical documentation generation",
+      "Video-assisted coding workflows",
+      "Long-context programming problems",
+    ],
+    domainExpertise: {
+      "software-development": 9,
+      "code-generation": 9,
+      "system-design": 8,
+      "debugging-analysis": 8,
+      "mathematical-coding": 8,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "stop",
+      "frequency_penalty",
+      "presence_penalty",
+      "structured_outputs",
+      "response_format",
+      "tool_choice",
+      "tools",
+      "temperature",
+      "top_p",
+      "seed",
+      "top_k",
+      "repetition_penalty",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0.5 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0.5 },
+      repetition_penalty: { p10: 1, p50: 1.05, p90: 1.1 },
+      temperature: { p10: 0.1, p50: 0.5, p90: 0.8 },
+      top_k: { p10: 0, p50: 0, p90: 40 },
+      top_p: { p10: 0.8, p50: 0.95, p90: 1 },
+    },
+    features: [
+      "continuous-reasoning",
+      "multimodal-input",
+      "code-generation",
+      "function-calling",
+      "structured-outputs",
+      "video-support",
+      "tool-integration",
+      "agentic-decomposition",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "software-development",
+      "code-generation",
+      "system-architecture",
+      "agentic-workflows",
+      "long-context-coding",
+      "multi-turn-dialogue",
+    ],
+    warnings: [
+      "Always operates in thinking mode — reasoning output included in all responses, increasing token usage",
+      "Specialised for coding tasks — performance on general-purpose tasks not optimised",
+      "High output cost ($4.00/M tokens) — consider for complex tasks where quality justifies expense",
+      "Active parameter count (32B) differs significantly from total parameters (~1T) — document sparsity in user guides",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Kimi K2.7 Code - Coding-specialised MoE model with 256K context, continuous reasoning, multimodal input",
+      parameterSection:
+        "Parameter controls for Kimi K2.7 Code reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing coding task with Kimi K2.7 Code model",
+        complete: "Code generation complete from Kimi K2.7 Code",
+        reasoning: "Generating detailed reasoning for Kimi K2.7 Code response",
+        thinkingActive: "Continuous thinking mode active for Kimi K2.7 Code",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+// Insert after other Z.ai models in model-definitions.js
+
+modelRegistry.registerModel("z-ai/glm-5.2", {
+  provider: "z-ai",
+  name: "GLM 5.2",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "GLM 5.2 is a large-scale reasoning model from Z.ai optimised for complex multi-step tasks and long-horizon agent workflows. With a 1M-token context window, it excels at project-level software engineering, maintaining engineering context and following development standards consistently through entire workflows — from requirements gathering to multi-platform deployment. Supports configurable reasoning efforts (high and xhigh, with xhigh mapping to maximum reasoning). Particularly strong at coding, tool use, and long-running automation tasks.",
+  costs: {
+    input: 1.4,
+    output: 4.4,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "multilingual",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-haiku-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Ultra-long context reasoning model for extended agent workflows and comprehensive software engineering tasks",
+    releaseDate: "2026-06-16",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "Large-scale reasoning transformer",
+      specialisations: [
+        "Extended context processing",
+        "Complex reasoning chains",
+        "Engineering workflow automation",
+        "Multi-step task orchestration",
+      ],
+    },
+    policyLinks: {
+      privacyPolicy: "",
+      acceptableUse: "",
+      termsOfService: "",
+      lastUpdated: "2026-06-16",
+    },
+    languageSupport: [
+      "English",
+      "Chinese",
+      "Spanish",
+      "French",
+      "German",
+      "Japanese",
+      "Korean",
+    ],
+    bestFor: [
+      "Long-horizon agent workflows",
+      "Project-level software engineering",
+      "Complex multi-step automation",
+      "End-to-end development tasks",
+      "Multi-platform deployment coordination",
+      "Extended reasoning and planning",
+      "Code generation with full project context",
+      "Tool orchestration across long workflows",
+    ],
+    domainExpertise: {
+      "software-engineering": 10,
+      "code-generation": 10,
+      reasoning: 10,
+      "tool-use": 9,
+      "project-management": 8,
+      mathematics: 8,
+    },
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "temperature",
+      "top_p",
+      "top_k",
+      "seed",
+      "repetition_penalty",
+      "frequency_penalty",
+      "presence_penalty",
+      "min_p",
+      "stop",
+      "logit_bias",
+      "tools",
+      "structured_outputs",
+      "response_format",
+      "tool_choice",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0.1, p90: 0.2 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1.1 },
+      temperature: { p10: 0.2, p50: 0.7, p90: 1.2 },
+      top_k: { p10: 0, p50: 40, p90: 100 },
+      top_p: { p10: 0.8, p50: 0.95, p90: 1 },
+    },
+    features: [
+      "extended-reasoning",
+      "configurable-reasoning-effort",
+      "tool-calling",
+      "structured-outputs",
+      "ultra-long-context",
+      "engineering-optimised",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "long-context-tasks",
+      "software-engineering",
+      "code-generation",
+      "multi-step-reasoning",
+      "agent-workflows",
+      "tool-orchestration",
+      "project-level-automation",
+    ],
+    warnings: [
+      "High cost per token — consider implementing usage monitoring and cost controls",
+      "Reasoning effort xhigh significantly increases latency — set appropriate timeout values for long-running workflows",
+      "1M context window requires careful memory management in client applications",
+      "Optimal performance requires detailed system prompts and clear task specifications",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "GLM 5.2 - Ultra-long context reasoning model with 1M tokens, optimised for software engineering workflows",
+      parameterSection:
+        "Parameter controls for GLM 5.2 reasoning effort and output configuration",
+      statusMessages: {
+        processing: "Processing extended reasoning task with GLM 5.2",
+        complete: "Response ready from GLM 5.2",
+        reasoning: "Generating high-effort reasoning output with GLM 5.2",
+        highReasoning:
+          "Executing maximum reasoning effort with GLM 5.2 — this may require additional processing time",
       },
     },
   },

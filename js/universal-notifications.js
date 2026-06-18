@@ -219,6 +219,19 @@ const UniversalNotifications = (function () {
      * Main show method that determines display mode
      * If modal is active, use in-modal notification
      * Otherwise, show as toast
+     * @param {string} message - Notification text
+     * @param {string} [type="info"] - "success" | "error" | "warning" | "info" | "loading"
+     * @param {Object} [options] - Per-notification options
+     * @param {number} [options.duration] - Auto-dismiss ms (type default if omitted)
+     * @param {boolean} [options.dismissible=true] - Show dismiss control
+     * @param {boolean} [options.persistent=false] - Toast-only: never auto-dismiss
+     * @param {Array}   [options.actions] - Action-button definitions
+     * @param {boolean} [options.forceToast=false] - Bypass the modal-active
+     *   routing check and always render as a global toast. Used by callers
+     *   that fire a notification while a modal is about to close (e.g. the
+     *   image manager's X-button save-on-close interceptor), where the
+     *   in-modal status host would be destroyed by the close animation
+     *   before the user could see the toast. See Discovery 19.
      * @returns {string|null} Toast ID if toast shown, null if in-modal notification or duplicate suppressed
      */
     show(message, type = "info", options = {}) {
@@ -237,8 +250,11 @@ const UniversalNotifications = (function () {
       // Update last notification tracking
       this.lastNotification = { message, type, timestamp: now };
 
-      // If modal is active, use in-modal notification
-      if (this.isModalActive()) {
+      // If modal is active AND not forced to toast, use in-modal notification.
+      // forceToast: true is used by callers that know the modal is about
+      // to close (e.g. save-on-X-close) so the toast would otherwise be
+      // eaten by the close animation. See Discovery 19.
+      if (this.isModalActive() && !options.forceToast) {
         this.showInModalNotification(message, type, options);
         return null; // In-modal notifications don't have IDs
       } else {
@@ -261,6 +277,7 @@ const UniversalNotifications = (function () {
         UniversalModal.showStatus(message, type, {
           duration: duration,
           dismissible: options.dismissible !== false,
+          actions: options.actions,
         });
 
         logDebug(`In-modal notification shown: ${type} - ${message}`);
@@ -303,7 +320,7 @@ const UniversalNotifications = (function () {
         type,
         dismissible,
         duration,
-        { allowHtml: options.allowHtml },
+        { allowHtml: options.allowHtml, actions: options.actions },
       );
 
       // Store reference
@@ -377,6 +394,7 @@ const UniversalNotifications = (function () {
         <div class="gb-toast-content">${
           options.allowHtml ? message : this.escapeHtml(message)
         }</div>
+        <div class="gb-toast-actions"></div>
         ${
           showCloseButton
             ? `
@@ -387,6 +405,37 @@ const UniversalNotifications = (function () {
             : ""
         }
       `;
+
+      // Populate optional action buttons. Sits alongside .gb-toast-content,
+      // outside any aria-live region — labels won't pollute SR announcements.
+      const actionsSlot = toast.querySelector(".gb-toast-actions");
+      if (
+        actionsSlot &&
+        Array.isArray(options.actions) &&
+        options.actions.length > 0
+      ) {
+        options.actions.forEach((action) => {
+          if (!action || typeof action.onClick !== "function") return;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "gb-toast-action";
+          btn.textContent = action.label || "";
+          if (action.ariaLabel) {
+            btn.setAttribute("aria-label", action.ariaLabel);
+          }
+          btn.addEventListener("click", () => {
+            try {
+              action.onClick();
+            } catch (err) {
+              logError("Toast action onClick threw:", err);
+            }
+            if (action.dismissOnClick !== false) {
+              this.dismiss(toastId);
+            }
+          });
+          actionsSlot.appendChild(btn);
+        });
+      }
 
       // Add close functionality (only if close button was rendered)
       if (showCloseButton) {

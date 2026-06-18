@@ -35,7 +35,7 @@
 // ============================================================================
 
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
@@ -286,7 +286,7 @@ class MathPixConvertUI {
 
     // Cache the format checkboxes
     this.elements.formatCheckboxes = document.querySelectorAll(
-      'input[name="convert-format"]'
+      'input[name="convert-format"]',
     );
 
     if (this.elements.formatCheckboxes.length === 0) {
@@ -308,7 +308,7 @@ class MathPixConvertUI {
   attachEventListeners() {
     // Select All checkbox functionality
     const selectAllCheckbox = document.getElementById(
-      "convert-select-all-formats"
+      "convert-select-all-formats",
     );
 
     if (selectAllCheckbox) {
@@ -327,10 +327,10 @@ class MathPixConvertUI {
         // Update Select All state based on individual checkboxes
         if (selectAllCheckbox) {
           const allChecked = Array.from(this.elements.formatCheckboxes).every(
-            (cb) => cb.checked
+            (cb) => cb.checked,
           );
           const someChecked = Array.from(this.elements.formatCheckboxes).some(
-            (cb) => cb.checked
+            (cb) => cb.checked,
           );
           selectAllCheckbox.checked = allChecked;
           selectAllCheckbox.indeterminate = someChecked && !allChecked;
@@ -535,7 +535,7 @@ class MathPixConvertUI {
     const client = window.getMathPixConvertClient?.();
     if (!client) {
       this.showError(
-        "Convert API client not available. Please refresh the page."
+        "Convert API client not available. Please refresh the page.",
       );
       return;
     }
@@ -584,7 +584,7 @@ class MathPixConvertUI {
           onError: (error) => {
             logWarn("Format error:", error.message);
           },
-        }
+        },
       );
 
       // Store results (also process ZIPs)
@@ -763,7 +763,7 @@ class MathPixConvertUI {
     // Update overall status
     if (status.completed && status.total) {
       this.updateStatus(
-        `Converting: ${status.completed}/${status.total} formats complete...`
+        `Converting: ${status.completed}/${status.total} formats complete...`,
       );
     }
 
@@ -772,7 +772,7 @@ class MathPixConvertUI {
       Object.entries(status.formatStatuses).forEach(
         ([format, formatStatus]) => {
           const item = document.querySelector(
-            `.mathpix-progress-item[data-format="${format}"]`
+            `.mathpix-progress-item[data-format="${format}"]`,
           );
           if (item) {
             item.dataset.status = formatStatus.status || "processing";
@@ -781,7 +781,7 @@ class MathPixConvertUI {
               statusEl.textContent = this.getStatusText(formatStatus.status);
             }
           }
-        }
+        },
       );
     }
   }
@@ -813,7 +813,7 @@ class MathPixConvertUI {
 
     // Update progress item
     const item = document.querySelector(
-      `.mathpix-progress-item[data-format="${format}"]`
+      `.mathpix-progress-item[data-format="${format}"]`,
     );
     if (item) {
       item.dataset.status = "completed";
@@ -1097,7 +1097,7 @@ class MathPixConvertUI {
     } catch (error) {
       logWarn(
         "Total Downloader not available, falling back to standalone ZIP:",
-        error
+        error,
       );
     }
 
@@ -1115,7 +1115,7 @@ class MathPixConvertUI {
     if (typeof JSZip === "undefined") {
       logError("JSZip not available for ZIP creation");
       this.showError(
-        "ZIP download not available. Please download files individually."
+        "ZIP download not available. Please download files individually.",
       );
       return;
     }

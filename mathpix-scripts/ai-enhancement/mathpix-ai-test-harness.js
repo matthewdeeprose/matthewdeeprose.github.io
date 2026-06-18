@@ -82,7 +82,149 @@
 
     /** Enhancement prompt version being tested */
     PROMPT_VERSION: "2.4.1",
+
+    FIXTURES_PATH: "mathpix-scripts/ai-enhancement/fixtures/",
   };
+
+  function getCurrentPromptInfo() {
+    try {
+      const enhancer = window.getMathPixAIEnhancer?.();
+      if (enhancer && typeof enhancer.getPromptVersion === "function") {
+        const info = enhancer.getPromptVersion();
+        if (info && info.identifier) {
+          return info;
+        }
+      }
+    } catch (error) {
+      logWarn(
+        "getCurrentPromptInfo: enhancer not available, using fallback",
+        error.message,
+      );
+    }
+
+    return {
+      path: null,
+      version: HARNESS_CONFIG.PROMPT_VERSION,
+      label: null,
+      identifier: HARNESS_CONFIG.PROMPT_VERSION,
+    };
+  }
+
+  // ============================================================================
+  // FIXTURE LOADING (Step 2B)
+  // ============================================================================
+
+  async function loadFixtures(docKey) {
+    const fixtures = {
+      docKey,
+      goldMMD: null,
+      goldMMDPath: null,
+      defects: null,
+      defectsPath: null,
+      available: false,
+    };
+
+    if (!docKey || typeof docKey !== "string") {
+      logWarn("loadFixtures: docKey must be a non-empty string");
+      return fixtures;
+    }
+
+    const base = HARNESS_CONFIG.FIXTURES_PATH;
+    const goldPath = `${base}${docKey}.gold.mmd`;
+    const defectsPath = `${base}${docKey}.defects.json`;
+
+    try {
+      const response = await fetch(goldPath);
+      if (response.ok) {
+        fixtures.goldMMD = await response.text();
+        fixtures.goldMMDPath = goldPath;
+        logInfo(
+          `Loaded gold MMD: ${goldPath} (${fixtures.goldMMD.length} chars)`,
+        );
+      } else {
+        logDebug(`No gold MMD at ${goldPath} (HTTP ${response.status})`);
+      }
+    } catch (error) {
+      logDebug(`Gold MMD fetch failed for ${goldPath}: ${error.message}`);
+    }
+
+    try {
+      const response = await fetch(defectsPath);
+      if (response.ok) {
+        const parsed = await response.json();
+        if (parsed && Array.isArray(parsed.defects)) {
+          fixtures.defects = parsed;
+          fixtures.defectsPath = defectsPath;
+          logInfo(
+            `Loaded defects file: ${defectsPath} (${parsed.defects.length} defect(s))`,
+          );
+        } else {
+          logWarn(`Defects file at ${defectsPath} has unexpected shape`);
+        }
+      } else {
+        logDebug(`No defects file at ${defectsPath} (HTTP ${response.status})`);
+      }
+    } catch (error) {
+      logDebug(`Defects file fetch failed for ${defectsPath}: ${error.message}`);
+    }
+
+    fixtures.available = !!(fixtures.goldMMD || fixtures.defects);
+    return fixtures;
+  }
+
+  function toPatternArray(value) {
+    if (typeof value === "string" && value.length > 0) return [value];
+    if (Array.isArray(value)) return value.filter((s) => typeof s === "string" && s.length > 0);
+    return [];
+  }
+
+  function checkDefects(enhancedMMD, defectsFile) {
+    const summary = {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      results: [],
+      docKey: defectsFile?.documentKey || null,
+    };
+
+    if (!defectsFile || !Array.isArray(defectsFile.defects)) {
+      return summary;
+    }
+
+    if (typeof enhancedMMD !== "string") {
+      logWarn("checkDefects: enhancedMMD must be a string");
+      return summary;
+    }
+
+    summary.results = defectsFile.defects.map((defect) => {
+      const badPatterns = toPatternArray(defect.mustNotContain);
+      const goodPatterns = toPatternArray(defect.mustContain);
+      const hasBadCheck = badPatterns.length > 0;
+      const hasGoodCheck = goodPatterns.length > 0;
+
+      const badPresent = hasBadCheck ? badPatterns.some((p) => enhancedMMD.includes(p)) : false;
+      const goodPresent = hasGoodCheck ? goodPatterns.some((p) => enhancedMMD.includes(p)) : true;
+
+      const pass = !badPresent && goodPresent;
+
+      return {
+        id: defect.id || "(no id)",
+        category: defect.category || "uncategorised",
+        description: defect.description || "",
+        pass,
+        hasBadCheck,
+        hasGoodCheck,
+        badPresent,
+        goodPresent,
+      };
+    });
+
+    summary.total = summary.results.length;
+    summary.passed = summary.results.filter((r) => r.pass).length;
+    summary.failed = summary.total - summary.passed;
+
+    return summary;
+  }
 
   // ============================================================================
   // EVALUATION PROMPT
@@ -92,27 +234,61 @@
    * Build the system prompt for the Opus evaluator.
    * Adapted from the Phase 7.5A evaluation prompt v1.1 for API use.
    */
-  function buildEvalSystemPrompt() {
+  function buildEvalSystemPrompt(options) {
+    const opts = options || {};
+    const hasGoldMMD = opts.hasGoldMMD === true;
+
+    const artefactSection = hasGoldMMD
+      ? [
+          "You will be given four artefacts for a single document:",
+          "- Source PDF: The original document image (ultimate authority on genuine ambiguity)",
+          "- Original MMD: OCR output from MathPix (contains recognition errors)",
+          "- Enhanced MMD: The result of sending the original MMD + source PDF to an LLM for correction (THIS is what you are evaluating)",
+          "- Gold MMD: A human-verified, manually corrected version of the document (PRIMARY reference for what the Enhanced MMD should contain)",
+          "",
+          "IMPORTANT: With the Gold MMD available, use it as your primary reference. The Source PDF remains the ultimate authority for genuinely ambiguous cases (handwriting interpretation, intentional notation variation). If you find a conflict between Gold and PDF, flag it in the summary — trust the Gold MMD by default since it has been human-verified.",
+        ].join("\n")
+      : [
+          "You will be given three artefacts for a single document:",
+          "- Source PDF: The ground truth",
+          "- Original MMD: OCR output from MathPix (contains recognition errors)",
+          "- Enhanced MMD: The result of sending the original MMD + source PDF to an LLM for correction",
+        ].join("\n");
+
+    const processSection = hasGoldMMD
+      ? [
+          "1. Study the Gold MMD carefully — this is what the Enhanced MMD should match",
+          "2. Read the Source PDF to ground your understanding (resolve any Gold/PDF disagreements)",
+          "3. Compare the Enhanced MMD against the Gold MMD line-by-line:",
+          "   - For each difference: classify the verdict (missed_error, normalisation, new_error, etc.)",
+          "   - Where Enhanced matches Gold but differs from Original MMD: correct_fix",
+          "   - Where Enhanced matches Original MMD but differs from Gold: missed_error",
+          "   - Where Enhanced differs from both Original and Gold: investigate (likely new_error or normalisation)",
+          "4. Check prompt compliance (line preservation, uncertainty marking, no explanations, table format, no normalisation)",
+          "5. Score each category using the anchors below",
+          "6. Produce the JSON evaluation report",
+        ].join("\n")
+      : [
+          "1. Study the source PDF carefully -- note all symbols, equations, structure, formatting",
+          "2. Audit the original MMD against the PDF to establish the error inventory",
+          "3. Audit the enhanced MMD against both PDF and original MMD:",
+          "   - For each OCR error: was it fixed correctly, missed, or made worse?",
+          "   - Scan for NEW problems the enhancement introduced",
+          "   - Check for notation normalisation (equivalent substitutions that are not corrections)",
+          "4. Check prompt compliance (line preservation, uncertainty marking, no explanations, table format, no normalisation)",
+          "5. Score each category using the anchors below",
+          "6. Produce the JSON evaluation report",
+        ].join("\n");
+
     return [
       "You are an expert evaluator assessing the quality of AI-enhanced OCR output.",
       "You have deep knowledge of mathematics, LaTeX, and Mathpix Markdown (MMD) formatting.",
       "",
-      "You will be given three artefacts for a single document:",
-      "- Source PDF: The ground truth",
-      "- Original MMD: OCR output from MathPix (contains recognition errors)",
-      "- Enhanced MMD: The result of sending the original MMD + source PDF to an LLM for correction",
+      artefactSection,
       "",
       "## Evaluation Process",
       "",
-      "1. Study the source PDF carefully -- note all symbols, equations, structure, formatting",
-      "2. Audit the original MMD against the PDF to establish the error inventory",
-      "3. Audit the enhanced MMD against both PDF and original MMD:",
-      "   - For each OCR error: was it fixed correctly, missed, or made worse?",
-      "   - Scan for NEW problems the enhancement introduced",
-      "   - Check for notation normalisation (equivalent substitutions that are not corrections)",
-      "4. Check prompt compliance (line preservation, uncertainty marking, no explanations, table format, no normalisation)",
-      "5. Score each category using the anchors below",
-      "6. Produce the JSON evaluation report",
+      processSection,
       "",
       "## Scoring Categories and Weights",
       "",
@@ -186,8 +362,8 @@
   /**
    * Build the user prompt with test data for evaluation.
    */
-  function buildEvalUserPrompt(testData) {
-    const schema = buildOutputSchema();
+  function buildEvalUserPrompt(testData, fixtures) {
+    const schema = buildOutputSchema(fixtures);
 
     const pass1EqualPass2 = testData.pass1MMD === testData.enhancedMMD;
     const multiPassInfo = testData.multiPassEnabled
@@ -215,16 +391,34 @@
           ].join("\n")
         : "";
 
+    const goldMMDSection =
+      fixtures && fixtures.goldMMD
+        ? [
+            "",
+            "## Gold MMD (Human-Verified Reference) — PRIMARY REFERENCE",
+            "",
+            "The following is a human-corrected version of this document. Treat it as the primary reference for what the Enhanced MMD should contain. Compare the Enhanced MMD against this Gold MMD when assessing accuracy. The Source PDF remains the authority on genuine ambiguity.",
+            "",
+            "```",
+            fixtures.goldMMD,
+            "```",
+            "",
+            `Reference: ${fixtures.goldMMDPath} (${fixtures.goldMMD.length} chars)`,
+            "",
+          ].join("\n")
+        : "";
+
     return [
       "## Enhancement Context",
       "",
       `Document: ${testData.documentName}`,
       `Enhancement model: ${testData.model}`,
       `PDF engine: ${testData.engine}`,
-      `Enhancement prompt: v${HARNESS_CONFIG.PROMPT_VERSION} (chain-of-thought with structural inventory + semantic context)`,
+      `Enhancement prompt: ${testData.promptVariant || HARNESS_CONFIG.PROMPT_VERSION} (chain-of-thought with structural inventory + semantic context)`,
       `Temperature: 0.3, Top-p: 0.9`,
       multiPassInfo,
       `Total enhancement time: ${testData.totalTimeMs}ms`,
+      `Gold MMD: ${fixtures && fixtures.goldMMD ? "PROVIDED — use as primary reference" : "not provided — use PDF as reference"}`,
       "",
       "The enhancement prompt uses a 4-step chain-of-thought structure:",
       "Step 1: Document Understanding, Step 2: Structural Inventory (from MMD Analyser),",
@@ -247,7 +441,7 @@
       "```",
       testData.enhancedMMD,
       "```",
-      "",
+      goldMMDSection,
       "## Required JSON Output Schema",
       "",
       "Produce ONLY a JSON object matching this schema. Every field is required unless marked optional.",
@@ -263,10 +457,12 @@
   /**
    * Build the JSON output schema for the evaluator.
    */
-  function buildOutputSchema() {
+  function buildOutputSchema(fixtures) {
+    const hasGoldMMD = !!(fixtures && fixtures.goldMMD);
+
     return JSON.stringify(
       {
-        evaluationVersion: "1.1",
+        evaluationVersion: "1.2",
         metadata: {
           documentFilename: "string",
           documentType: "string",
@@ -278,6 +474,8 @@
           promptVersion: "string",
           temperature: 0.3,
           multiPassEnabled: false,
+          goldMMDUsed: hasGoldMMD,
+          goldMMDPath: hasGoldMMD ? (fixtures.goldMMDPath || "string") : null,
           notes: "string (optional)",
         },
         errorInventory: {
@@ -443,6 +641,8 @@
       enhancer.getSourceFilename?.() ||
       "unknown";
 
+    const promptInfo = getCurrentPromptInfo();
+
     // Clean document name for use as key (remove extension and common suffixes)
     const docKey = documentName.replace(/\.pdf$/i, "").replace(/[-_\s]+/g, "-");
 
@@ -457,6 +657,10 @@
       model: enhancer.selectedModel,
       engine: enhancer.selectedEngine,
       multiPassEnabled: enhancer.multiPassEnabled,
+      promptVariant: promptInfo.identifier,
+      promptVariantPath: promptInfo.path,
+      promptVariantVersion: promptInfo.version,
+      promptVariantLabel: promptInfo.label,
       timestamp: new Date().toISOString(),
 
       // Content
@@ -522,7 +726,8 @@
       .replace("anthropic/claude-", "")
       .replace(/-\d+$/, "");
     const mp = testData.multiPassEnabled ? "+mp" : "";
-    return `${testData.docKey}|${modelShort}|${testData.engine}${mp}`;
+    const variant = testData.promptVariant || "unknown";
+    return `${testData.docKey}|${modelShort}|${testData.engine}${mp}|${variant}`;
   }
 
   // ============================================================================
@@ -533,7 +738,7 @@
    * Send test data to Opus for evaluation.
    * Returns the parsed JSON evaluation report.
    */
-  async function callEvaluator(testData) {
+  async function callEvaluator(testData, fixtures) {
     const apiKey = localStorage.getItem("openrouter_api_key");
     if (!apiKey) {
       throw new Error(
@@ -565,8 +770,15 @@
       );
     }
 
-    const systemPrompt = buildEvalSystemPrompt();
-    const userPrompt = buildEvalUserPrompt(testData);
+    const hasGoldMMD = !!(fixtures && fixtures.goldMMD);
+    const systemPrompt = buildEvalSystemPrompt({ hasGoldMMD });
+    const userPrompt = buildEvalUserPrompt(testData, fixtures);
+
+    if (hasGoldMMD) {
+      logInfo(
+        `Evaluator will use Gold MMD as primary reference (${fixtures.goldMMD.length} chars)`,
+      );
+    }
 
     logInfo(`Sending evaluation to ${HARNESS_CONFIG.EVALUATOR_MODEL}...`);
     logInfo(
@@ -762,6 +974,12 @@
         model: testData.model,
         engine: testData.engine,
         multiPassEnabled: testData.multiPassEnabled,
+        promptVariant: testData.promptVariant,
+        promptVariantPath: testData.promptVariantPath,
+        promptVariantVersion: testData.promptVariantVersion,
+        promptVariantLabel: testData.promptVariantLabel,
+        fixtures: testData.fixtures || null,
+        defectCheck: testData.defectCheck || null,
         timestamp: testData.timestamp,
         totalTimeMs: testData.totalTimeMs,
         pass1TimeMs: testData.pass1TimeMs,
@@ -922,6 +1140,40 @@
       console.log(`Multi-pass: ${testData.multiPassEnabled}`);
       console.log(`Key: ${testData.resultKey}`);
 
+      logInfo("Step 1.5: Loading fixtures and running local defect check...");
+      const fixtures = await loadFixtures(testData.docKey);
+      testData.fixtures = {
+        available: fixtures.available,
+        goldMMDLoaded: !!fixtures.goldMMD,
+        goldMMDPath: fixtures.goldMMDPath,
+        goldMMDChars: fixtures.goldMMD?.length || 0,
+        defectsLoaded: !!fixtures.defects,
+        defectsPath: fixtures.defectsPath,
+        defectsCount: fixtures.defects?.defects?.length || 0,
+      };
+
+      let defectCheck = null;
+      if (fixtures.defects) {
+        defectCheck = checkDefects(testData.enhancedMMD, fixtures.defects);
+        console.log(`\n--- LOCAL DEFECT CHECK ---`);
+        console.log(`Source: ${fixtures.defectsPath}`);
+        console.log(`Result: ${defectCheck.passed}/${defectCheck.total} passed`);
+        defectCheck.results.forEach((r) => {
+          const mark = r.pass ? "  ✓" : "  ✗";
+          console.log(`${mark} [${r.category}] ${r.id}`);
+          if (!r.pass) {
+            const reasons = [];
+            if (r.hasBadCheck && r.badPresent) reasons.push("bad text still present");
+            if (r.hasGoodCheck && !r.goodPresent) reasons.push("good text not found");
+            console.log(`       reason: ${reasons.join(", ") || "unknown"}`);
+            if (r.description) console.log(`       ${r.description}`);
+          }
+        });
+      } else {
+        logInfo("No defects fixture for this document — skipping local check");
+      }
+      testData.defectCheck = defectCheck;
+
       // 2. Check for existing result
       if (allResults[testData.resultKey]) {
         logWarn(
@@ -931,7 +1183,7 @@
 
       // 3. Call evaluator
       logInfo("Step 2: Sending to evaluator (this takes 30-60 seconds)...");
-      const evalReport = await callEvaluator(testData);
+      const evalReport = await callEvaluator(testData, fixtures);
 
       // 4. Verify scores BEFORE storing (L.1 fix — was previously after store/download)
       const scoreCheck = verifyScores(evalReport);
@@ -1048,6 +1300,10 @@
       Model: r.testData.model.replace("anthropic/claude-", ""),
       Engine: r.testData.engine,
       MP: r.testData.multiPassEnabled ? "ON" : "OFF",
+      Variant: r.testData.promptVariant || "—",
+      Defects: r.testData.defectCheck
+        ? `${r.testData.defectCheck.passed}/${r.testData.defectCheck.total}`
+        : "—",
       Weighted: r.evaluation?.overallScore?.weighted?.toFixed(2) ?? "ERR",
       Net: r.evaluation?.netAssessment?.netScore?.toFixed(1) ?? "ERR",
       Math: r.evaluation?.scores?.mathSymbolAccuracy?.score ?? "?",
@@ -1113,6 +1369,10 @@
       Model: r.testData.model.replace("anthropic/claude-", ""),
       Engine: r.testData.engine,
       MP: r.testData.multiPassEnabled ? "ON" : "OFF",
+      Variant: r.testData.promptVariant || "—",
+      Defects: r.testData.defectCheck
+        ? `${r.testData.defectCheck.passed}/${r.testData.defectCheck.total}`
+        : "—",
       Weighted: r.evaluation?.overallScore?.weighted?.toFixed(2) ?? "ERR",
       Net: r.evaluation?.netAssessment?.netScore?.toFixed(1) ?? "ERR",
       Math: r.evaluation?.scores?.mathSymbolAccuracy?.score ?? "?",
@@ -1365,6 +1625,12 @@
     listResults,
     showHelp,
     verifyScores,
+    getCurrentPromptInfo,
+    loadFixtures,
+    checkDefects,
+    buildEvalSystemPrompt,
+    buildEvalUserPrompt,
+    buildOutputSchema,
   };
 
   // Convenience shortcuts

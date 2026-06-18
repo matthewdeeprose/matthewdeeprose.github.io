@@ -150,6 +150,10 @@
     "anthropic-foundry": "Claude via Foundry",  // Stage 4 placeholder
   };
 
+  // A UI provider may surface models from more than one routing provider (surface).
+  // "azure-openai" (Microsoft Foundry) covers both the chat and Responses surfaces.
+  const PROVIDER_GROUPS = { "azure-openai": ["azure-openai", "azure-responses"] };
+
   /**
    * Cost tier thresholds (per 1M tokens, combined input/output average)
    */
@@ -673,9 +677,12 @@
       for (const model of allModels) {
         if (!model || model.disabled === true) continue;
 
-        // Provider gate: does this model's id-prefix resolve to the target provider?
+        // Provider gate: does this model's id-prefix resolve to the target
+        // provider, or to a surface grouped under it (e.g. azure-openai surfaces
+        // both azure-openai and azure-responses models — see PROVIDER_GROUPS)?
         const modelProvider = this._resolveProviderForModel(model);
-        if (!modelProvider || modelProvider.id !== id) continue;
+        const memberIds = PROVIDER_GROUPS[id] || [id];
+        if (!modelProvider || !memberIds.includes(modelProvider.id)) continue;
 
         // Model-level capability gate (reuses existing CAPABILITY_MAPPING)
         if (!this._modelHasCapabilities(model, capabilities)) continue;

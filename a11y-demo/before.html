@@ -1,0 +1,229 @@
+<!-- before.html — the BROKEN demo form. -->
+<!--
+  It looks like a normal, tidy registration form to a sighted user, but it seeds
+  six accessibility faults in its SEMANTICS (not its appearance). Each fault is
+  marked with an HTML comment naming it and which tool catches it. The matching
+  correct page is after.html. Nothing is sent anywhere; submit is inert.
+
+  Why a disconnected <label> rather than a placeholder for the unnamed field:
+  a placeholder actually FEEDS the accessible name, so the screen reader would
+  announce a name and axe would not flag it (both verified). A visible label
+  that is not linked to its box gives the intended outcome — the reader says
+  "textbox" with no name, and IBM/axe flag a missing label — while looking
+  identical to a real label.
+-->
+<!-- FAULT (g): the <html> element has NO lang attribute. -->
+<!--            IBM html_lang_exists and axe html-has-lang both flag this. -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Conference registration</title>
+    <link rel="stylesheet" href="demo.css" />
+    <style>
+      /* Page-specific styling for the BROKEN page. The faults live in the
+         markup; these rules only make the broken constructions LOOK like the
+         correct ones, so the page appears visually fine. */
+
+      /* The grouped choice is a plain <div> with a <p> title (no fieldset /
+         legend). Style the title to look like a normal group heading. */
+      .choice-title {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+      }
+
+      /* FAULT (d) visual: the validation error text is reddish but BELOW the
+         4.5:1 contrast minimum (about 2.2:1 on white) — almost no one can read
+         it, and the only other signal is the red border (colour alone). */
+      .field-error-before {
+        margin-top: 0.4rem;
+        color: #d99a9a;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1 class="form-title">Conference registration</h1>
+      <p class="form-intro">
+        Register for the 2026 Accessibility in Practice conference. Fields marked
+        with an asterisk (*) are required.
+      </p>
+
+      <form novalidate>
+        <!-- FAULT (a): the label's "for" points to an id that does not exist
+             ("full-name-x" vs the input id "full-name"), so the label is NOT
+             linked to the box. It looks identical to a real label, but the
+             virtual reader announces just "textbox" with no name, and IBM
+             input_label_exists / axe "label" flag a missing label. -->
+        <div class="field">
+          <label class="field-label" for="full-name-x">Full name *</label>
+          <input type="text" id="full-name" name="full-name" />
+        </div>
+
+        <div class="field" id="email-field">
+          <div class="label-row">
+            <label class="field-label" for="email">Email address *</label>
+            <!-- FAULT (b): icon-only help control built as a <span> with an
+                 onclick. It has no accessible name, no role, and is not
+                 keyboard-focusable. The virtual reader does not announce it as
+                 a named control, and keyboard users cannot reach it. -->
+            <span class="help-toggle" onclick="demoToggleHelp()">?</span>
+          </div>
+          <input type="email" id="email" name="email" />
+          <p class="help-text" id="email-help" hidden>
+            We use your email only to send your booking confirmation.
+          </p>
+          <!-- FAULT (d): validation by COLOUR ONLY. On submit a red border
+               appears on the box and this low-contrast red text is shown, but
+               nothing is tied to the field (no aria-describedby, no
+               aria-invalid) and focus never moves — so a screen reader
+               announces nothing. Colour-only is the manual point the aside
+               explains; the low text contrast is what IBM/axe flag when the
+               message is on screen. -->
+          <p class="field-error-before" id="email-error" hidden>
+            Enter a valid email address.
+          </p>
+        </div>
+
+        <!-- FAULT (c): a grouped choice with NO <fieldset>/<legend>. The
+             "Preferred campus" text is just a paragraph, not the group's name,
+             so the radios are announced with no group context — a screen-reader
+             user hears "Highfield, Avenue, Boldrewood" but never hears that they
+             are choosing a campus. -->
+        <div class="choice">
+          <p class="choice-title">Preferred campus *</p>
+          <div class="option">
+            <input type="radio" id="c-highfield" name="campus" value="highfield" />
+            <label for="c-highfield">Highfield</label>
+          </div>
+          <div class="option">
+            <input type="radio" id="c-avenue" name="campus" value="avenue" />
+            <label for="c-avenue">Avenue</label>
+          </div>
+          <div class="option">
+            <input type="radio" id="c-boldrewood" name="campus" value="boldrewood" />
+            <label for="c-boldrewood">Boldrewood</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="comments">
+            Anything we should know? (optional)
+          </label>
+          <textarea id="comments" name="comments"
+            placeholder="Access requirements, dietary needs, anything else…"></textarea>
+        </div>
+
+        <!-- FAULT (e): the submit is a styled <div>, not a <button>. It works on
+             mouse click only — not keyboard-operable (no tabindex, no role, no
+             key handler) — and the virtual reader announces it as plain text
+             "Register", not as a button. -->
+        <div class="submit-btn" onclick="demoFakeSubmit()">Register</div>
+
+        <p class="confirmation" id="confirm" hidden>
+          Thank you — your registration has been received.
+        </p>
+      </form>
+
+      <!-- Real page content for the audience (not tool output): plain-language
+           summary of what goes wrong for a screen-reader user. -->
+      <aside class="demo-aside demo-aside--warn" aria-labelledby="before-aside-title">
+        <h2 id="before-aside-title">What a screen-reader user hits here</h2>
+        <ul>
+          <li>
+            The <strong>Full name</strong> box has no connected label, so a
+            screen reader just says “edit text” — you cannot tell what to type.
+          </li>
+          <li>
+            The <strong>?</strong> help control is not a real button: keyboard
+            users cannot reach it, and a screen reader does not announce it as
+            something you can press.
+          </li>
+          <li>
+            The <strong>campus</strong> options are read out as “Highfield,
+            Avenue, Boldrewood” with no heading — you never hear that you are
+            choosing a campus.
+          </li>
+          <li>
+            If your email is wrong, the only sign is a red outline. A screen
+            reader announces nothing, and the message itself is too faint to
+            read.
+          </li>
+          <li>
+            The <strong>Register</strong> button is really just coloured text —
+            you cannot reach or press it with the keyboard.
+          </li>
+          <li>
+            The page does not declare its language, so a screen reader may use
+            the wrong voice and mispronounce words.
+          </li>
+        </ul>
+      </aside>
+    </main>
+
+    <script>
+      // Behaviour for the BROKEN demo form. IIFE + the project logging standard
+      // (British spelling). Everything here is inert: no data leaves the page.
+      (function () {
+        const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+        const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+        const ENABLE_ALL_LOGGING = false;
+        const DISABLE_ALL_LOGGING = false;
+
+        function shouldLog(level) {
+          if (DISABLE_ALL_LOGGING) return false;
+          if (ENABLE_ALL_LOGGING) return true;
+          return level <= DEFAULT_LOG_LEVEL;
+        }
+        function logError(message, ...args) {
+          if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+        }
+        function logWarn(message, ...args) {
+          if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+        }
+        function logInfo(message, ...args) {
+          if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+        }
+        function logDebug(message, ...args) {
+          if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+        }
+
+        // Help toggle — wired to a <span> via onclick: mouse only, no keyboard,
+        // no accessible name. (One of the seeded faults.)
+        window.demoToggleHelp = function () {
+          const help = document.getElementById("email-help");
+          if (!help) return;
+          help.hidden = !help.hidden;
+          logDebug("help toggled; hidden =", help.hidden);
+        };
+
+        // Fake submit — wired to a <div> via onclick (mouse only, not a button).
+        // Inert: nothing is sent. Validation is signalled by COLOUR ONLY, with
+        // low-contrast text and NO programmatic association or focus move.
+        window.demoFakeSubmit = function () {
+          const field = document.getElementById("email-field");
+          const input = document.getElementById("email");
+          const error = document.getElementById("email-error");
+          const confirmation = document.getElementById("confirm");
+          const value = ((input && input.value) || "").trim();
+          const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+          if (!valid) {
+            field.classList.add("field--invalid"); // red border (colour only)
+            error.hidden = false; // low-contrast red text, not announced
+            if (confirmation) confirmation.hidden = true;
+            logInfo("invalid email: showed colour-only error (nothing announced to AT)");
+            return; // deliberately no focus move and no ARIA
+          }
+
+          field.classList.remove("field--invalid");
+          error.hidden = true;
+          if (confirmation) confirmation.hidden = false; // shown, but not announced
+          logInfo("inert submit accepted (no data sent anywhere)");
+        };
+      })();
+    </script>
+  </body>
+</html>

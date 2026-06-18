@@ -1,0 +1,82 @@
+<!-- fixture-broken.html -->
+<!-- This page deliberately seeds SEVEN accessibility faults so we can prove -->
+<!-- the audit engines detect them. Each fault is marked with a comment. -->
+<!-- FAULT (g): the <html> element below has NO lang attribute. -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fixture: Broken (seeded accessibility faults)</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 2rem;
+        color: #000000;
+        background: #ffffff;
+      }
+      /* FAULT (c): this colour (#999999) on white is about 2.8:1, */
+      /* which FAILS the 4.5:1 minimum for normal-size text. */
+      .low-contrast {
+        color: #999999;
+        background: #ffffff;
+      }
+      /* FAULT (f): 18px by 18px buttons packed together with zero spacing, */
+      /* below the 24px minimum target size (WCAG 2.2, SC 2.5.8). They must */
+      /* sit immediately next to one another: SC 2.5.8's spacing exception */
+      /* means a single isolated small target would otherwise PASS, so the */
+      /* faults are only real when undersized targets crowd each other. */
+      .tiny-toolbar {
+        display: flex;
+        gap: 0; /* no spacing between adjacent targets */
+      }
+      .tiny-target {
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        margin: 0;
+        border: 1px solid #000000;
+        font-size: 8px;
+        line-height: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Broken fixture page</h1>
+
+    <p class="low-contrast">
+      <!-- FAULT (c): low-contrast text, fails 4.5:1 contrast minimum. -->
+      This grey text does not have enough contrast against the white
+      background to be readable by people with low vision.
+    </p>
+
+    <p>
+      <!-- FAULT (a): this image has NO alt attribute at all. -->
+      <img src="https://via.placeholder.com/120" width="120" height="120" />
+    </p>
+
+    <form>
+      <p>
+        <!-- FAULT (b): this text input has NO associated label. -->
+        <input type="text" name="searchterm" />
+      </p>
+    </form>
+
+    <p>
+      <!-- FAULT (d): this link has NO accessible name (it is empty). -->
+      <a href="https://example.com"></a>
+    </p>
+
+    <!-- FAULT (e): the two paragraphs below SHARE the same id "duplicate". -->
+    <p id="duplicate">First element using the duplicated id.</p>
+    <p id="duplicate">Second element using the duplicated id.</p>
+
+    <!-- FAULT (f): a toolbar of 18x18px buttons packed with no spacing, -->
+    <!-- so each undersized target sits flush against its neighbours and -->
+    <!-- fails the target size minimum (WCAG 2.2, SC 2.5.8). -->
+    <div class="tiny-toolbar">
+      <button type="button" class="tiny-target" aria-label="Bold">B</button>
+      <button type="button" class="tiny-target" aria-label="Italic">I</button>
+      <button type="button" class="tiny-target" aria-label="Underline">U</button>
+    </div>
+  </body>
+</html>

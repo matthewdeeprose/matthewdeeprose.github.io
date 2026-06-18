@@ -1217,6 +1217,17 @@ class MathPixController {
     this.clearDebugPanel();
     logDebug("[Controller] ✓ Debug panel cleared");
 
+    // Stage 8 (Q4): document boundary — the context dies where the document
+    // dies. Guarded like the surrounding clears; never throws.
+    if (window.MathPixContextManager) {
+      window.MathPixContextManager.reset();
+      logDebug("[Controller] ✓ Document context cleared");
+    } else {
+      logWarn(
+        "[Controller] Context manager unavailable — document context not cleared",
+      );
+    }
+
     logInfo("[Controller] ✅ All session data cleared successfully", {
       textAPICleared: !!this.apiClient,
       strokesAPICleared: !!this.strokesAPIClient,

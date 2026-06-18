@@ -914,7 +914,8 @@
       persistenceSession.original &&
       persistenceSession.current !== persistenceSession.original;
 
-    const hasEdits = hasEditsFromRestorer || hasEditsFromPersistence;
+    const hasEdits =
+      hasEditsFromRestorer || hasEditsFromPersistence || this.hasContextEdits;
 
     logDebug("Download button visibility check:", {
       hasEditsFromRestorer,
@@ -939,6 +940,10 @@
 
     this.autoSaveTimer = setTimeout(() => {
       this.saveContentToStorage(content);
+      // Refresh the convert-size indicator on the same debounce. Fire-and-
+      // forget: the orchestrator is async and catches its own errors, so it
+      // never blocks or breaks the synchronous save above.
+      this._refreshConvertSizeIndicator?.();
     }, 1000); // 1 second debounce
   };
 
@@ -983,11 +988,15 @@
           // Content — all stored with CDN URLs (blob URLs are ephemeral)
           // Phase 8H.3: current uses getMMDForStorage (compact placeholders for user-added images)
           // to avoid localStorage quota overflow from embedded data URIs
-          original: this.getMMDForAPI(
+          // F-O: original/baseline must use getMMDForStorage too. getMMDForAPI
+          // became async in F-M Phase 4; un-awaited here it serialised to {}
+          // (silent corruption). getMMDForStorage is synchronous and matches the
+          // encoding used by current, so all three fields are now consistent.
+          original: this.getMMDForStorage(
             this.restoredSession.baselineMMD ||
               this.restoredSession.originalMMD,
           ),
-          baseline: this.getMMDForAPI(this.restoredSession.baselineMMD),
+          baseline: this.getMMDForStorage(this.restoredSession.baselineMMD),
           current: this.getMMDForStorage(content),
 
           // Edit history — sanitise blob URLs before persisting (Fix F13)
@@ -1013,6 +1022,7 @@
 
       this.updateSessionStatus("saved");
       this.hasUnsavedChanges = false;
+      this.hasContextEdits = false;
 
       logDebug("Content auto-saved");
     } catch (error) {
@@ -1237,6 +1247,7 @@
     }
 
     this.hasUnsavedChanges = false;
+    this.hasContextEdits = false;
 
     // Update status
     if (this.elements.mmdSessionStatus) {
@@ -1273,6 +1284,7 @@
 
     this.restoredSession = null;
     this.hasUnsavedChanges = false;
+    this.hasContextEdits = false;
 
     this.resetToUploadState();
     this.showNotification("Session cleared", "info");

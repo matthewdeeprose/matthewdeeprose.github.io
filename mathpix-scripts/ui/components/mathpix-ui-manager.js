@@ -725,6 +725,20 @@ class MathPixUIManager extends MathPixBaseModule {
       );
     }
 
+    // App Key show/hide toggle — surfaces Chrome autofill swaps that would
+    // otherwise be invisible (see mathpix-convert-api-client.js _buildHeaders
+    // for the related credential-priority safety net).
+    const appKeyToggleBtn = document.getElementById(
+      "mathpix-app-key-toggle-btn",
+    );
+    if (appKeyToggleBtn) {
+      const toggleHandler = () => {
+        this.toggleLegacyAppKeyVisibility();
+      };
+      appKeyToggleBtn.addEventListener("click", toggleHandler);
+      this.trackEventListener(appKeyToggleBtn, "click", toggleHandler);
+    }
+
     // Listen for credential changes from Set Up (Phase SU-3)
     if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.on === 'function') {
       const self = this;
@@ -1727,6 +1741,30 @@ class MathPixUIManager extends MathPixBaseModule {
     this.configLoaded = true;
     this.showNotification("Configuration saved successfully", "success");
     logInfo("API configuration saved");
+  }
+
+  /**
+   * Toggle the legacy MathPix App Key input between password and text type.
+   * Mirrors the Set Up tool's pattern (setup-tool.js toggleMathPixVisibility).
+   * Lets the user verify the field hasn't been silently overwritten by a
+   * browser password autofill — the original symptom of the Convert API
+   * AUTH_ERROR class of bugs.
+   */
+  toggleLegacyAppKeyVisibility() {
+    const input = document.getElementById("mathpix-app-key");
+    const btn = document.getElementById("mathpix-app-key-toggle-btn");
+    if (!input || !btn) return;
+
+    const showing = input.type === "password";
+    input.type = showing ? "text" : "password";
+    btn.setAttribute("aria-label", showing ? "Hide App Key" : "Show App Key");
+
+    const iconSpan = btn.querySelector("[data-icon]");
+    if (iconSpan) {
+      btn.innerHTML = "";
+      btn.appendChild(iconSpan);
+      btn.appendChild(document.createTextNode(showing ? " Hide" : " Show"));
+    }
   }
 
   /**

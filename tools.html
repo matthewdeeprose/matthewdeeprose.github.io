@@ -2,6 +2,46 @@
 <html lang="en-GB">
   <head>
     <meta charset="utf-8" />
+    <!--
+      DEV-ONLY local test-key bootstrap (localhost only). Seeds localStorage from
+      a gitignored test-secrets.local.json BEFORE the app modules read it, so the
+      OpenRouter key (and any other test secrets) persist across the Playwright /
+      Chrome / Firefox MCP browser profiles without re-pasting each session. It is
+      a no-op unless served from localhost AND the file is present, so it ships
+      harmless in production (the file 404s -> nothing happens). NEVER commit
+      test-secrets.local.json. Schema + one-time setup: test-secrets.local.example.json
+      and DEV-TEST-KEYS.md.
+    -->
+    <script>
+      (function () {
+        var host = location.hostname;
+        if (host !== "localhost" && host !== "127.0.0.1") return;
+        // Already seeded in this browser profile -> nothing to do.
+        if (localStorage.getItem("openrouter_api_key")) return;
+        // Probe the file at most once per tab session (avoids repeat work).
+        if (sessionStorage.getItem("__dev_secrets_probed")) return;
+        sessionStorage.setItem("__dev_secrets_probed", "1");
+        try {
+          // Synchronous on purpose: localStorage must be populated BEFORE the
+          // ES module bundle (config.js) reads it on the same load. Dev-only.
+          var xhr = new XMLHttpRequest();
+          xhr.open("GET", "/test-secrets.local.json?ts=" + Date.now(), false);
+          xhr.send(null);
+          if (xhr.status === 200 && xhr.responseText) {
+            var secrets = JSON.parse(xhr.responseText);
+            Object.keys(secrets).forEach(function (k) {
+              if (secrets[k]) localStorage.setItem(k, String(secrets[k]).trim());
+            });
+            console.info(
+              "[dev-secrets] seeded localStorage from test-secrets.local.json:",
+              Object.keys(secrets).join(", ")
+            );
+          }
+        } catch (e) {
+          /* missing/invalid file: leave the app key-less, exactly as before */
+        }
+      })();
+    </script>
     <meta name="description" content="Accessibility tools" />
     <meta
       name="keywords"
@@ -47,6 +87,7 @@
       rel="stylesheet"
       href="mathpix-scripts/css/mathpix-image-manager.css"
     />
+    <link rel="stylesheet" href="mathpix-scripts/css/mathpix-context.css" />
     <link rel="stylesheet" href="md-scripts/css/chart-controls.css" />
     <link rel="stylesheet" href="md-scripts/css/markdown-editor.css" />
     <link rel="stylesheet" href="md-scripts/css/mermaid-view-controls.css" />
@@ -335,11 +376,8 @@
                 viewBox="0 0 21 21"
                 width="45"
                 xmlns="http://www.w3.org/2000/svg"
-                aria-labelledby="svgTitle svgDesc"
-                role="img"
+                aria-hidden="true"
               >
-                <title id="svgTitle">Change theme</title>
-                <desc id="svgDesc">Select to switch to light theme</desc>
                 <g
                   fill="none"
                   fill-rule="evenodd"
@@ -367,10 +405,8 @@
                 viewBox="0 0 21 21"
                 width="45"
                 xmlns="http://www.w3.org/2000/svg"
-                aria-labelledby="svgTitleX svgDescX"
+                aria-hidden="true"
               >
-                <title id="svgTitleX">Change theme</title>
-                <desc id="svgDescX">Select to switch to dark theme</desc>
                 <g
                   fill="none"
                   fill-rule="evenodd"
@@ -472,6 +508,7 @@
           aria-live="polite"
           aria-label="Notifications"
         ></div>
+
         <nav aria-label="tool menu" class="tool-selection">
           <fieldset id="toolSelection" class="boiler">
             <legend class="sr-only">Choose tool</legend>
@@ -749,7 +786,12 @@
           id="radioSRannounce"
         ></span>
         <!-- MathJax status indicator for power users -->
-        <div id="mathjax-status" aria-live="polite" aria-atomic="true" data-ready="false">
+        <div
+          id="mathjax-status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-ready="false"
+        >
           <span class="mathjax-label">MathJax Loaded:</span>
           <span id="mathjax-status-value">No</span>
         </div>
@@ -770,7 +812,8 @@
                     class="setup-status-value"
                     id="setup-summary-or-value"
                     aria-live="polite"
-                    >Checking...</span
+                    aria-atomic="true"
+                    ><span class="visually-hidden">OpenRouter: </span><span class="setup-status-text">Checking...</span></span
                   >
                 </li>
                 <li class="setup-status-item" id="setup-summary-mathpix">
@@ -782,7 +825,21 @@
                     class="setup-status-value"
                     id="setup-summary-mp-value"
                     aria-live="polite"
-                    >Checking...</span
+                    aria-atomic="true"
+                    ><span class="visually-hidden">MathPix: </span><span class="setup-status-text">Checking...</span></span
+                  >
+                </li>
+                <li class="setup-status-item" id="setup-summary-foundry">
+                  <span class="setup-status-icon" aria-hidden="true"
+                    ><span aria-hidden="true" data-icon="flame"></span
+                  ></span>
+                  <span class="setup-status-label">Microsoft Foundry</span>
+                  <span
+                    class="setup-status-value"
+                    id="setup-summary-fdy-value"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    ><span class="visually-hidden">Microsoft Foundry: </span><span class="setup-status-text">Checking...</span></span
                   >
                 </li>
                 <li class="setup-status-item" id="setup-summary-ally">
@@ -794,7 +851,8 @@
                     class="setup-status-value"
                     id="setup-summary-ally-value"
                     aria-live="polite"
-                    >Checking...</span
+                    aria-atomic="true"
+                    ><span class="visually-hidden">Ally: </span><span class="setup-status-text">Checking...</span></span
                   >
                 </li>
                 <li class="setup-status-item" id="setup-summary-models">
@@ -806,8 +864,10 @@
                     class="setup-status-value"
                     id="setup-summary-models-value"
                     aria-live="polite"
-                    >Checking...</span
+                    aria-atomic="true"
+                    ><span class="visually-hidden">Local AI Models: </span><span class="setup-status-text">Checking...</span></span
                   >
+                  <span class="setup-status-types" id="setup-summary-models-types"></span>
                 </li>
               </ul>
             </div>
@@ -824,6 +884,13 @@
                 <dd>
                   Send prompts to a wide range of AI models. Requires an
                   OpenRouter API key.
+                </dd>
+
+                <dt>Microsoft Foundry</dt>
+                <dd>
+                  Alternative provider for AI tools, using Microsoft AI
+                  models via your own proxy. Requires deploying a
+                  Cloudflare Worker.
                 </dd>
 
                 <dt>Markdown Editor</dt>
@@ -862,7 +929,52 @@
           <!-- Credentials Section -->
           <section class="setup-credentials-section">
             <h2>API Credentials</h2>
+            <!-- Stage 3a Task 3.3a — Global provider switch.
+             HTML markup only. Task 3.4a wires JS (populates status sub-labels
+             on DOMContentLoaded, attaches change handler). Task 3.5a delivers
+             CSS (touch targets, row layout, theme support). Status sub-labels
+             are intentionally empty at parse time — they're populated by
+             ProviderSwitcher.getKnown() in 3.4a. -->
+            <fieldset id="provider-switch-fieldset" class="provider-switch">
+              <legend>Active Provider</legend>
 
+              <div class="provider-switch-option">
+                <input
+                  type="radio"
+                  name="provider-switch"
+                  id="provider-switch-openrouter"
+                  value="openrouter"
+                  checked
+                />
+                <label for="provider-switch-openrouter">
+                  <span class="provider-switch-label">OpenRouter</span>
+                  <span
+                    class="provider-switch-status"
+                    id="provider-switch-openrouter-status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    ><span class="visually-hidden">OpenRouter: </span><span class="setup-status-text"></span></span>
+                </label>
+              </div>
+
+              <div class="provider-switch-option">
+                <input
+                  type="radio"
+                  name="provider-switch"
+                  id="provider-switch-azure-openai"
+                  value="azure-openai"
+                />
+                <label for="provider-switch-azure-openai">
+                  <span class="provider-switch-label">Microsoft Foundry</span>
+                  <span
+                    class="provider-switch-status"
+                    id="provider-switch-azure-openai-status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    ><span class="visually-hidden">Microsoft Foundry: </span><span class="setup-status-text"></span></span>
+                </label>
+              </div>
+            </fieldset>
             <!-- OpenRouter Credentials -->
             <details class="setup-credential-section" id="setup-openrouter">
               <summary id="openrouterSummary">
@@ -871,7 +983,8 @@
                   class="setup-credential-summary-status"
                   id="setup-or-status-badge"
                   aria-live="polite"
-                  >Not configured</span
+                  aria-atomic="true"
+                  ><span class="visually-hidden">OpenRouter: </span><span class="setup-status-text">Not configured</span></span
                 >
               </summary>
               <div class="setup-credential-body">
@@ -881,8 +994,10 @@
                     <input
                       type="password"
                       id="setup-or-api-key"
-                      autocomplete="off"
+                      name="openrouter_credential_api_key_setup"
+                      autocomplete="new-password"
                       spellcheck="false"
+                      data-form-type="other"
                       placeholder="sk-or-v1-..."
                     />
                     <button
@@ -927,7 +1042,8 @@
                   class="setup-credential-summary-status"
                   id="setup-mp-status-badge"
                   aria-live="polite"
-                  >Not configured</span
+                  aria-atomic="true"
+                  ><span class="visually-hidden">MathPix: </span><span class="setup-status-text">Not configured</span></span
                 >
               </summary>
               <div class="setup-credential-body">
@@ -937,8 +1053,10 @@
                     <input
                       type="text"
                       id="setup-mp-app-id"
-                      autocomplete="off"
+                      name="mathpix_credential_app_id_setup"
+                      autocomplete="new-password"
                       spellcheck="false"
+                      data-form-type="other"
                       placeholder="Enter your MathPix App ID"
                     />
                   </div>
@@ -949,8 +1067,10 @@
                     <input
                       type="password"
                       id="setup-mp-app-key"
-                      autocomplete="off"
+                      name="mathpix_credential_app_key_setup"
+                      autocomplete="new-password"
                       spellcheck="false"
+                      data-form-type="other"
                       placeholder="Enter your MathPix App Key"
                     />
                     <button
@@ -997,6 +1117,101 @@
               </div>
             </details>
 
+            <!-- Foundry Credentials -->
+            <details class="setup-credential-section" id="setup-foundry">
+              <summary id="foundrySummary">
+                <span id="foundrySpan">Microsoft Foundry</span>
+                <span
+                  class="setup-active-badge"
+                  id="setup-fdy-active-badge"
+                  hidden
+                  >Active</span
+                >
+                <span
+                  class="setup-credential-summary-status"
+                  id="setup-fdy-status-badge"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  ><span class="visually-hidden">Microsoft Foundry: </span><span class="setup-status-text">Not configured</span></span
+                >
+              </summary>
+              <div class="setup-credential-body">
+                <div class="setup-input-group">
+                  <label for="setup-fdy-proxy-url"
+                    >Cloudflare Worker Proxy URL</label
+                  >
+                  <div class="setup-input-row">
+                    <input
+                      type="url"
+                      id="setup-fdy-proxy-url"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="https://your-proxy.workers.dev"
+                    />
+                  </div>
+                </div>
+                <div class="setup-input-group">
+                  <label for="setup-fdy-user-token"
+                    >User token (optional)</label
+                  >
+                  <div class="setup-input-row">
+                    <input
+                      type="password"
+                      id="setup-fdy-user-token"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="Optional access token"
+                    />
+                    <button
+                      type="button"
+                      class="setup-toggle-visibility"
+                      onclick="setupToggleFoundry()"
+                      aria-label="Show user token"
+                      id="setup-fdy-toggle-btn"
+                    >
+                      <span aria-hidden="true" data-icon="eye"></span> Show
+                    </button>
+                  </div>
+                  <p class="setup-help-text">
+                    Microsoft Foundry provides Azure-hosted OpenAI models via a
+                    Cloudflare Worker proxy. The proxy URL is required; the
+                    user token is optional and only needed if your proxy
+                    requires per-user authentication. Credentials are stored
+                    locally in your browser.
+                  </p>
+                </div>
+                <div class="setup-button-group">
+                  <button
+                    type="button"
+                    class="primary-button"
+                    onclick="setupSaveFoundry()"
+                    id="setup-fdy-save-btn"
+                  >
+                    <span aria-hidden="true" data-icon="disk"></span> Save
+                    Configuration
+                  </button>
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    onclick="setupClearFoundry()"
+                    id="setup-fdy-clear-btn"
+                  >
+                    <span aria-hidden="true" data-icon="trash"></span> Clear
+                    Configuration
+                  </button>
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    onclick="setupTestFoundry()"
+                    id="setup-fdy-test-btn"
+                  >
+                    <span aria-hidden="true" data-icon="refresh"></span> Test
+                    Connection
+                  </button>
+                </div>
+              </div>
+            </details>
+
             <!-- Ally Credentials -->
             <details class="setup-credential-section" id="setup-ally">
               <summary id="allySummary">
@@ -1005,13 +1220,18 @@
                   class="setup-credential-summary-status"
                   id="setup-ally-status-badge"
                   aria-live="polite"
-                  >Not configured</span
+                  aria-atomic="true"
+                  ><span class="visually-hidden">Ally: </span><span class="setup-status-text">Not configured</span></span
                 >
               </summary>
               <div class="setup-credential-body">
                 <div class="setup-input-group">
-                  <label for="setup-ally-region">Region</label>
-                  <select id="setup-ally-region" class="setup-select">
+                  <label id="setup-ally-region-label" for="setup-ally-region">Region</label>
+                  <select
+                    id="setup-ally-region"
+                    class="setup-select"
+                    aria-labelledby="setup-ally-region-label"
+                  >
                     <option value="EU" selected>EU (European Union)</option>
                     <option value="US">US (United States)</option>
                     <option value="CA">CA (Canada)</option>
@@ -1029,8 +1249,10 @@
                     <input
                       type="text"
                       id="setup-ally-client-id"
-                      autocomplete="off"
+                      name="ally_credential_client_id_setup"
+                      autocomplete="new-password"
                       spellcheck="false"
+                      data-form-type="other"
                       placeholder="e.g., 577"
                     />
                   </div>
@@ -1041,8 +1263,10 @@
                     <input
                       type="password"
                       id="setup-ally-token"
-                      autocomplete="off"
+                      name="ally_credential_api_token_setup"
+                      autocomplete="new-password"
                       spellcheck="false"
+                      data-form-type="other"
                       placeholder="Bearer token from Institutional Report"
                     />
                     <button
@@ -1062,8 +1286,13 @@
                   </p>
                 </div>
                 <div class="setup-checkbox-group">
-                  <input type="checkbox" id="setup-ally-remember" checked />
-                  <label for="setup-ally-remember"
+                  <input
+                    type="checkbox"
+                    id="setup-ally-remember"
+                    aria-labelledby="setup-ally-remember-label"
+                    checked
+                  />
+                  <label id="setup-ally-remember-label" for="setup-ally-remember"
                     >Remember credentials in this browser</label
                   >
                   <p class="setup-help-text">
@@ -2139,6 +2368,28 @@
                         </p>
                       </div>
 
+                      <!-- Code block reading mode (Stage Y.2b) -->
+                      <div class="tts-field">
+                        <label for="tts-code-mode">Code blocks</label>
+                        <select
+                          id="tts-code-mode"
+                          aria-describedby="tts-code-mode-hint"
+                        >
+                          <option value="summary-with-first-line">
+                            Summarise with first line
+                          </option>
+                          <option value="summary">Summarise</option>
+                          <option value="verbatim">Read all code</option>
+                        </select>
+                        <p class="tts-field-hint" id="tts-code-mode-hint">
+                          Choose how code blocks are read aloud. "Summarise
+                          with first line" announces the language, line count,
+                          and the first non-blank line. "Summarise" announces
+                          only the language and line count. "Read all code"
+                          reads every character, including punctuation.
+                        </p>
+                      </div>
+
                       <!-- Preview button -->
                       <button
                         type="button"
@@ -2181,6 +2432,7 @@
                 <div
                   class="imgdesc-mm-storage"
                   id="setup-mm-storage"
+                  role="group"
                   aria-label="Browser storage summary"
                 >
                   <div class="imgdesc-mm-storage-text">
@@ -3139,14 +3391,17 @@
             <!-- API Configuration -->
             <details class="openrouter-config" id="openrouter-api-config">
               <summary>OpenRouter API Configuration</summary>
-              <form class="config-inputs" onsubmit="return false;">
+              <form class="config-inputs" onsubmit="return false;" autocomplete="off">
                 <label for="openrouter-api-key">API Key:</label>
                 <div class="api-key-input-group">
                   <input
                     type="password"
                     id="openrouter-api-key"
+                    name="openrouter_credential_api_key_legacy"
                     placeholder="Enter OpenRouter API Key (sk-or-v1-...)"
-                    autocomplete="off"
+                    autocomplete="new-password"
+                    spellcheck="false"
+                    data-form-type="other"
                     aria-describedby="api-key-help"
                   />
                   <button
@@ -5339,6 +5594,43 @@ Science,91</pre
                   </label>
                 </div>
 
+                <div class="convert-toolbar-group convert-toolbar-tts-group">
+                  <button
+                    type="button"
+                    id="convert-speak-btn"
+                    class="convert-toolbar-btn convert-speak-btn"
+                    data-tts-state="idle"
+                    aria-describedby="convert-editor-status"
+                    onclick="handleConvertModeSpeak()"
+                  >
+                    <span
+                      aria-hidden="true"
+                      class="convert-speak-icon"
+                      data-icon="message"
+                    ></span>
+                    <span class="convert-speak-label" data-state-idle
+                      >Read Aloud</span
+                    >
+                    <span class="convert-speak-label" data-state-loading
+                      >Preparing&hellip;</span
+                    >
+                    <span class="convert-speak-label" data-state-speaking
+                      >Stop</span
+                    >
+                    <span class="convert-speak-label" data-state-paused
+                      >Resume</span
+                    >
+                  </button>
+                  <a
+                    href="#tts-voice-settings"
+                    class="tts-settings-link convert-toolbar-link"
+                    aria-describedby="convert-editor-status"
+                  >
+                    <span aria-hidden="true" data-icon="settings"></span> Voice
+                    Settings
+                  </a>
+                </div>
+
                 <div
                   id="convert-editor-status"
                   class="convert-editor-status"
@@ -5945,6 +6237,18 @@ Science,91</pre
                     >
                       <span aria-hidden="true" data-icon="coffee"></span>
                       Chemistry
+                    </button>
+                    <!-- Stage 7 Parcel 3: Context tab for resume mode (no data-format — generic handler moves focus only, never routes into showFormat) -->
+                    <button
+                      id="resume-tab-context"
+                      type="button"
+                      class="mathpix-tab-header"
+                      role="tab"
+                      aria-selected="false"
+                      aria-controls="resume-panel-context"
+                      tabindex="-1"
+                    >
+                      Context
                     </button>
                   </div>
                   <div
@@ -7083,6 +7387,125 @@ Science,91</pre
                     </section>
                   </div>
                 </div>
+
+                <!-- Stage 7 Parcel 3: Context panel for resume mode (must live inside #mathpix-resume-mode-container — the reset loop hides panels by container selector) -->
+                <div
+                  id="resume-panel-context"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="resume-tab-context"
+                  hidden
+                >
+                  <form id="resume-context-form" class="mathpix-context-form">
+                    <fieldset>
+                      <legend>Document context</legend>
+                      <div class="mathpix-context-field">
+                        <label for="resume-context-subjectArea"
+                          >Subject Area</label
+                        >
+                        <input
+                          type="text"
+                          id="resume-context-subjectArea"
+                          data-context-key="subjectArea"
+                          aria-describedby="resume-context-subjectArea-hint"
+                        />
+                        <p id="resume-context-subjectArea-hint" class="field-hint">The broad subject area, for example Mathematics, Physics, or Economics.</p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-context-specificTopic"
+                          >Specific Topic</label
+                        >
+                        <input
+                          type="text"
+                          id="resume-context-specificTopic"
+                          data-context-key="specificTopic"
+                          aria-describedby="resume-context-specificTopic-hint"
+                        />
+                        <p id="resume-context-specificTopic-hint" class="field-hint">The particular topic covered, for example integration or projectile motion.</p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-context-learningObjective"
+                          >Learning Objective</label
+                        >
+                        <input
+                          type="text"
+                          id="resume-context-learningObjective"
+                          data-context-key="learningObjective"
+                          aria-describedby="resume-context-learningObjective-hint"
+                        />
+                        <p id="resume-context-learningObjective-hint" class="field-hint">What a reader should be able to do after studying this material.</p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-context-moduleName"
+                          >Module / Course Name</label
+                        >
+                        <input
+                          type="text"
+                          id="resume-context-moduleName"
+                          data-context-key="moduleName"
+                          aria-describedby="resume-context-moduleName-hint"
+                        />
+                        <p id="resume-context-moduleName-hint" class="field-hint">The name of the module or course this document belongs to.</p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-context-moduleCode"
+                          >Module Code</label
+                        >
+                        <input
+                          type="text"
+                          id="resume-context-moduleCode"
+                          data-context-key="moduleCode"
+                          aria-describedby="resume-context-moduleCode-hint"
+                        />
+                        <p id="resume-context-moduleCode-hint" class="field-hint">The module or course reference code, if there is one.</p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-context-audienceLevel"
+                          >Audience Level</label
+                        >
+                        <select
+                          id="resume-context-audienceLevel"
+                          data-context-key="audienceLevel"
+                          aria-describedby="resume-context-audienceLevel-hint"
+                        >
+                          <option value="">Please select</option>
+                        </select>
+                        <p id="resume-context-audienceLevel-hint" class="field-hint">Roughly who the document is for, for example first-year undergraduates.</p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-context-documentType"
+                          >Document Type</label
+                        >
+                        <select
+                          id="resume-context-documentType"
+                          data-context-key="documentType"
+                          aria-describedby="resume-context-documentType-hint"
+                        >
+                          <option value="">Please select</option>
+                          <option value="solution-sheet">Solution sheet</option>
+                          <option value="handout">Handout</option>
+                          <option value="article">Article</option>
+                          <option value="past-exam-paper">Past exam paper</option>
+                          <option value="lecture-notes">Lecture notes</option>
+                          <option value="worksheet">Worksheet</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <p id="resume-context-documentType-hint" class="field-hint">The kind of document this is, such as a handout, worksheet, or past exam paper.</p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-context-extraInformation"
+                          >Extra Information</label
+                        >
+                        <textarea
+                          id="resume-context-extraInformation"
+                          data-context-key="extraInformation"
+                          aria-describedby="resume-context-extraInformation-hint"
+                        ></textarea>
+                        <p id="resume-context-extraInformation-hint" class="field-hint">Anything else that would help describe the content accurately.</p>
+                      </div>
+                    </fieldset>
+                  </form>
+                </div>
               </div>
 
               <!-- Convert Section (Phase 8.2) -->
@@ -7296,7 +7719,7 @@ Science,91</pre
                       id="resume-convert-btn"
                       class="mathpix-btn mathpix-btn-primary"
                       disabled
-                      aria-describedby="resume-convert-status"
+                      aria-describedby="resume-convert-size-readout"
                     >
                       <span aria-hidden="true" data-icon="refresh"></span>
                       Convert Selected
@@ -7314,6 +7737,19 @@ Science,91</pre
                     <span
                       id="resume-convert-status"
                       class="mathpix-convert-status"
+                      aria-live="polite"
+                    ></span>
+                    <span
+                      id="resume-convert-size-readout"
+                      class="mathpix-convert-size-readout"
+                    ></span>
+                    <span
+                      id="resume-convert-size-detail"
+                      class="mathpix-convert-size-detail"
+                    ></span>
+                    <span
+                      id="resume-convert-size-announce"
+                      class="sr-only"
                       aria-live="polite"
                     ></span>
                   </div>
@@ -7725,61 +8161,53 @@ Science,91</pre
               </div>
             </div>
             <div class="mathpix-comparison-panel">
-              <div
+              <h3
+                class="mathpix-comparison-title"
                 style="
-                  justify-content: space-between;
-                  align-items: center;
+                  font-weight: 600;
+                  font-size: 1.1rem;
                   margin: 1.25rem 1.25rem 0.75rem 1.25rem;
+                  padding-bottom: 0.5rem;
                 "
               >
-                <h3
-                  class="mathpix-comparison-title"
-                  style="
-                    font-weight: 600;
-                    font-size: 1.1rem;
-                    margin: 0;
-                    padding-bottom: 0.5rem;
-
-                    flex: 1;
-                  "
-                >
-                  Approximate Processed Output
-                </h3>
+                Processed Output
+              </h3>
+              <div id="mathpix-rendered-output" class="mathpix-rendered-output">
+                <!-- MathJax rendered output will appear here -->
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 0.5rem;
+                  flex-wrap: wrap;
+                  margin: 0.75rem 1.25rem;
+                "
+              >
                 <button
                   id="mathpix-fullscreen-btn"
                   class="mathpix-zoom-button"
                   aria-label="View full screen"
                 >
-                  <svg
-                    height="21"
-                    viewBox="0 0 21 21"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(2 2)"
-                    >
-                      <path d="m16.5 5.5v-4.978l-5.5.014" />
-                      <path d="m16.5.522-6 5.907" />
-                      <path d="m11 16.521 5.5.002-.013-5.5" />
-                      <path d="m16.5 16.429-6-5.907" />
-                      <path d="m.5 5.5v-5h5.5" />
-                      <path d="m6.5 6.429-6-5.907" />
-                      <path d="m6 16.516-5.5.007v-5.023" />
-                      <path d="m6.5 10.5-6 6" />
-                    </g>
-                  </svg>
+                  <span aria-hidden="true" data-icon="fullscreenEnter"></span>
                   Full Screen
                 </button>
-              </div>
-              <div id="mathpix-rendered-output" class="mathpix-rendered-output">
-                <!-- MathJax rendered output will appear here -->
+                <button
+                  type="button"
+                  id="mathpix-rendered-output-speak"
+                  class="mathpix-zoom-button"
+                  aria-label="Read rendered output aloud"
+                  hidden
+                >
+                  <span aria-hidden="true" data-icon="message"></span>
+                  <span id="mathpix-rendered-output-speak-label">Speak</span>
+                </button>
+                <span
+                  id="mathpix-rendered-output-speak-status"
+                  class="visually-hidden"
+                  role="status"
+                  aria-live="polite"
+                ></span>
               </div>
               <!-- Phase 7B: Human-readable text description -->
               <div
@@ -10146,6 +10574,19 @@ Science,91</pre
                     <span aria-hidden="true" data-icon="coffee"></span>
                     Chemistry
                   </button>
+                  <!-- Stage 7 Parcel 3: Context tab for PDF results (statically visible; data-format required — it is the click/keyboard binding key) -->
+                  <button
+                    type="button"
+                    id="tab-context"
+                    class="mathpix-tab-header"
+                    role="tab"
+                    aria-controls="panel-context"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-format="context"
+                  >
+                    Context
+                  </button>
                 </div>
 
                 <!-- MMD Results Panel -->
@@ -11551,6 +11992,114 @@ Science,91</pre
               >
                 <!-- Chemistry content will be moved here dynamically from mathpix-output-smiles -->
               </div>
+              <!-- Stage 7 Parcel 3: Context panel for PDF results (copies #panel-chemistry's static attribute pattern) -->
+              <div
+                id="panel-context"
+                class="mathpix-tab-panel"
+                role="tabpanel"
+                aria-labelledby="tab-context"
+                hidden
+              >
+                <form id="context-form" class="mathpix-context-form">
+                  <fieldset>
+                    <legend>Document context</legend>
+                    <div class="mathpix-context-field">
+                      <label for="context-subjectArea">Subject Area</label>
+                      <input
+                        type="text"
+                        id="context-subjectArea"
+                        data-context-key="subjectArea"
+                        aria-describedby="context-subjectArea-hint"
+                      />
+                      <p id="context-subjectArea-hint" class="field-hint">The broad subject area, for example Mathematics, Physics, or Economics.</p>
+                    </div>
+                    <div class="mathpix-context-field">
+                      <label for="context-specificTopic">Specific Topic</label>
+                      <input
+                        type="text"
+                        id="context-specificTopic"
+                        data-context-key="specificTopic"
+                        aria-describedby="context-specificTopic-hint"
+                      />
+                      <p id="context-specificTopic-hint" class="field-hint">The particular topic covered, for example integration or projectile motion.</p>
+                    </div>
+                    <div class="mathpix-context-field">
+                      <label for="context-learningObjective"
+                        >Learning Objective</label
+                      >
+                      <input
+                        type="text"
+                        id="context-learningObjective"
+                        data-context-key="learningObjective"
+                        aria-describedby="context-learningObjective-hint"
+                      />
+                      <p id="context-learningObjective-hint" class="field-hint">What a reader should be able to do after studying this material.</p>
+                    </div>
+                    <div class="mathpix-context-field">
+                      <label for="context-moduleName"
+                        >Module / Course Name</label
+                      >
+                      <input
+                        type="text"
+                        id="context-moduleName"
+                        data-context-key="moduleName"
+                        aria-describedby="context-moduleName-hint"
+                      />
+                      <p id="context-moduleName-hint" class="field-hint">The name of the module or course this document belongs to.</p>
+                    </div>
+                    <div class="mathpix-context-field">
+                      <label for="context-moduleCode">Module Code</label>
+                      <input
+                        type="text"
+                        id="context-moduleCode"
+                        data-context-key="moduleCode"
+                        aria-describedby="context-moduleCode-hint"
+                      />
+                      <p id="context-moduleCode-hint" class="field-hint">The module or course reference code, if there is one.</p>
+                    </div>
+                    <div class="mathpix-context-field">
+                      <label for="context-audienceLevel">Audience Level</label>
+                      <select
+                        id="context-audienceLevel"
+                        data-context-key="audienceLevel"
+                        aria-describedby="context-audienceLevel-hint"
+                      >
+                        <option value="">Please select</option>
+                      </select>
+                      <p id="context-audienceLevel-hint" class="field-hint">Roughly who the document is for, for example first-year undergraduates.</p>
+                    </div>
+                    <div class="mathpix-context-field">
+                      <label for="context-documentType">Document Type</label>
+                      <select
+                        id="context-documentType"
+                        data-context-key="documentType"
+                        aria-describedby="context-documentType-hint"
+                      >
+                        <option value="">Please select</option>
+                        <option value="solution-sheet">Solution sheet</option>
+                        <option value="handout">Handout</option>
+                        <option value="article">Article</option>
+                        <option value="past-exam-paper">Past exam paper</option>
+                        <option value="lecture-notes">Lecture notes</option>
+                        <option value="worksheet">Worksheet</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <p id="context-documentType-hint" class="field-hint">The kind of document this is, such as a handout, worksheet, or past exam paper.</p>
+                    </div>
+                    <div class="mathpix-context-field">
+                      <label for="context-extraInformation"
+                        >Extra Information</label
+                      >
+                      <textarea
+                        id="context-extraInformation"
+                        data-context-key="extraInformation"
+                        aria-describedby="context-extraInformation-hint"
+                      ></textarea>
+                      <p id="context-extraInformation-hint" class="field-hint">Anything else that would help describe the content accurately.</p>
+                    </div>
+                  </fieldset>
+                </form>
+              </div>
               <!-- Page Navigation with Integrated Statistics -->
               <div
                 id="mathpix-page-navigation"
@@ -12244,21 +12793,38 @@ Science,91</pre
           <!-- API Configuration (Development Only) -->
           <details class="mathpix-config">
             <summary>API Configuration</summary>
-            <form class="config-inputs" onsubmit="return false;">
+            <form class="config-inputs" onsubmit="return false;" autocomplete="off">
               <label for="mathpix-app-id">App ID:</label>
               <input
                 type="text"
                 id="mathpix-app-id"
+                name="mathpix_credential_app_id_legacy"
                 placeholder="Enter MathPix App ID"
+                autocomplete="new-password"
+                spellcheck="false"
+                data-form-type="other"
               />
 
               <label for="mathpix-app-key">App Key:</label>
-              <input
-                type="password"
-                id="mathpix-app-key"
-                placeholder="Enter MathPix App Key"
-                autocomplete="off"
-              />
+              <div class="api-key-input-group">
+                <input
+                  type="password"
+                  id="mathpix-app-key"
+                  name="mathpix_credential_app_key_legacy"
+                  placeholder="Enter MathPix App Key"
+                  autocomplete="new-password"
+                  spellcheck="false"
+                  data-form-type="other"
+                />
+                <button
+                  type="button"
+                  id="mathpix-app-key-toggle-btn"
+                  class="toggle-visibility-btn"
+                  aria-label="Show App Key"
+                >
+                  <span aria-hidden="true" data-icon="eye"></span> Show
+                </button>
+              </div>
 
               <button id="mathpix-save-config" type="button">
                 Save Configuration
@@ -13264,6 +13830,54 @@ Science,91</pre
                               >(Choose quality vs. cost)</span
                             >
                           </label>
+                          <!-- Model filter bar (family + search + count + reset) -->
+                          <div
+                            class="imgdesc-model-filterbar"
+                            role="group"
+                            aria-label="Filter available models"
+                          >
+                            <div class="imgdesc-filter-field">
+                              <label for="imgdesc-model-family">Family</label>
+                              <select
+                                id="imgdesc-model-family"
+                                class="imgdesc-model-family-select"
+                              >
+                                <option value="">All families</option>
+                              </select>
+                            </div>
+                            <div
+                              class="imgdesc-filter-field imgdesc-filter-search"
+                            >
+                              <label for="imgdesc-model-search">Search</label>
+                              <input
+                                type="search"
+                                id="imgdesc-model-search"
+                                class="imgdesc-model-search-input"
+                                placeholder="Search by name or provider…"
+                                autocomplete="off"
+                              />
+                            </div>
+                            <div class="imgdesc-filter-actions">
+                              <span
+                                id="imgdesc-model-count"
+                                class="imgdesc-model-count"
+                                role="status"
+                                aria-live="polite"
+                                aria-atomic="true"
+                              ></span>
+                              <button
+                                type="button"
+                                id="imgdesc-model-filter-reset"
+                                class="imgdesc-model-filter-reset"
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  data-icon="reset"
+                                ></span>
+                                Reset
+                              </button>
+                            </div>
+                          </div>
                           <select
                             id="imgdesc-model"
                             class="imgdesc-model-selector"
@@ -14078,6 +14692,13 @@ Science,91</pre
                   id="imgdesc-output"
                   class="imgdesc-output"
                   aria-live="polite"
+                ></div>
+
+                <!-- Reasoning Disclosure (conditional; the component reveals
+                     itself only when a reasoning model returns a summary) -->
+                <div
+                  id="imgdesc-reasoning-disclosure"
+                  class="imgdesc-reasoning-disclosure"
                 ></div>
 
                 <!-- Verification Results (conditional) -->
@@ -15766,7 +16387,7 @@ Science,91</pre
                 </h2>
               </summary>
 
-              <form id="ally-config-form" onsubmit="return false;">
+              <form id="ally-config-form" onsubmit="return false;" autocomplete="off">
                 <div class="ally-form-group">
                   <label for="ally-region-select">Server Region</label>
                   <select
@@ -15792,9 +16413,11 @@ Science,91</pre
                   <input
                     type="text"
                     id="ally-client-id"
-                    name="ally-client-id"
+                    name="ally_credential_client_id_legacy"
                     placeholder="e.g., 577"
-                    autocomplete="username"
+                    autocomplete="new-password"
+                    spellcheck="false"
+                    data-form-type="other"
                   />
                 </div>
 
@@ -15804,9 +16427,11 @@ Science,91</pre
                     <input
                       type="password"
                       id="ally-api-token"
-                      name="ally-api-token"
+                      name="ally_credential_api_token_legacy"
                       placeholder="Bearer token from Institutional Report"
-                      autocomplete="current-password"
+                      autocomplete="new-password"
+                      spellcheck="false"
+                      data-form-type="other"
                     />
                     <button
                       type="button"
@@ -16100,6 +16725,14 @@ Science,91</pre
             Clear conversation
           </button>
 
+          <!-- Engine badge (Stage 4 TTS) — conversation-level, shows
+               "Natural voice" / "Browser voice" while a bubble is playing -->
+          <span
+            id="local-chat-read-aloud-engine"
+            class="imgdesc-engine-badge"
+            hidden
+          ></span>
+
           <!-- Voice Settings link -->
           <a
             href="#setup-tts-heading"
@@ -16193,9 +16826,9 @@ Science,91</pre
         aria-live="polite"
         aria-atomic="true"
       ></div>
-      <aside class="page-sidebar related">
+      <aside class="page-sidebar related" aria-labelledby="related-content-heading">
         <section class="related">
-          <h2>Related content</h2>
+          <h2 id="related-content-heading">Related content</h2>
           <ul class="relUL">
             <li>
               <a href="panoptoText">Download Text / Captions from Panopto</a>
@@ -16494,22 +17127,22 @@ Science,91</pre
     <script src="mathpix-scripts/core/mathpix-mmd-display-layer.js"></script>
     <!-- Session Restorer — modular files (load order is critical) -->
     <!-- Old monolith (mathpix-session-restorer.js) replaced by modular files below -->
-    <script src="mathpix-scripts/core/session-restorer/session-restorer-core.js?v=8.2"></script>
-    <script src="mathpix-scripts/core/session-restorer/session-restorer-init.js?v=8.2"></script>
-    <script src="mathpix-scripts/core/session-restorer/session-restorer-sessions.js?v=8.2"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-core.js?v=9.0"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-init.js?v=9.0"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-sessions.js?v=9.0"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-session-manager.js"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-file-handling.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-diff-preview.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-edit-dialog.js?v=8.2"></script>
-    <script src="mathpix-scripts/core/session-restorer/session-restorer-restore.js?v=8.2"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-restore.js?v=8.3"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-images.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-display-layer.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-pdf.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-editor.js?v=8.2"></script>
-    <script src="mathpix-scripts/core/session-restorer/session-restorer-confidence.js?v=8.2"></script>
-    <script src="mathpix-scripts/core/session-restorer/session-restorer-persistence.js?v=8.2"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-confidence.js?v=9.0"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-persistence.js?v=9.0"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-convert.js?v=8.2"></script>
-    <script src="mathpix-scripts/core/session-restorer/session-restorer-file-registration.js?v=8.2"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-file-registration.js?v=9.0"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-index.js?v=8.2"></script>
     <script
       type="module"
@@ -16526,11 +17159,21 @@ Science,91</pre
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-diff-engine.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-mmd-analyser.js"></script>
     <script src="mathpix-scripts/core/mathpix-image-registry.js"></script>
+    <script src="mathpix-scripts/core/mathpix-context-manager.js?v=9.0"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-mmd-serialiser.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-integrator.js"></script>
     <script src="mathpix-scripts/testing/mathpix-alt-text-serialiser-tests.js"></script>
     <script src="mathpix-scripts/testing/mathpix-alt-text-integrator-tests.js"></script>
     <script src="mathpix-scripts/ui/components/mathpix-image-manager-ui.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-stage4-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-stage5-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-stage6-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-stage7-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-stage8-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-stage9-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-stage10-tests.js"></script>
+    <!-- F-L Phase 2: round-trip regression tests (window.runPreStage7RoundtripTests) -->
+    <script src="mathpix-scripts/testing/mathpix-pre-stage-7-roundtrip-tests.js"></script>
     <script src="mathpix-scripts/core/mathpix-image-downloader.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-semantic-mapper.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-multipass.js"></script>
@@ -16538,11 +17181,25 @@ Science,91</pre
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-data-provider.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-enhancer.js"></script>
     <script src="mathpix-scripts/testing/mathpix-session-restorer-refactor-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-convert-size-tests.js"></script>
+    <!-- Phase 2 Stage 1: Context auto-fill pure prompt/parse/coerce core (window.MathPixContextAI) -->
+    <script src="mathpix-scripts/ai-enhancement/mathpix-context-ai.js"></script>
+    <!-- Phase 2 Stage 1: Context auto-fill preflight harness (window.runContextAITests) -->
+    <script src="mathpix-scripts/testing/mathpix-context-ai-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-f-o-storage-corruption-tests.js"></script>
+    <script src="mathpix-scripts/testing/mathpix-item2-warn-gate-tests.js"></script>
     <script src="mathpix-scripts/testing/mathpix-phase5-testing.js"></script>
     <script src="mathpix-scripts/testing/mathpix-phase6-testing.js"></script>
     <script src="mathpix-scripts/testing/mathpix-chemistry-tests.js"></script>
     <!-- Phase 12-0a: description-engine migration harness (SmilesDrawer baseline + stub RDKit) -->
     <script src="mathpix-scripts/testing/migration-harness.js"></script>
+
+    <!-- OpenRouter Embed Reasoning Disclosure (Reasoning Disclosure Task 3) —
+         reusable <details> disclosure for model reasoning summaries. Plain IIFE,
+         depends only on window.markdownit (loaded earlier) and optionally
+         window.MarkdownEditor; NO dependency on core. Loaded here so it precedes
+         the diagnostic/test scripts that reference window.EmbedReasoningDisclosure. -->
+    <script src="openrouter-embed/openrouter-embed-reasoning-disclosure.js"></script>
 
     <!-- OpenRouter Embed Diagnostics -->
     <script src="openrouter-embed/openrouter-embed-diagnostic.js"></script>
@@ -16572,6 +17229,14 @@ Science,91</pre
     <script src="openrouter-embed/openrouter-embed-retry.js"></script>
 
     <script src="openrouter-embed/openrouter-embed-events.js"></script>
+    <script src="openrouter-embed/provider-switcher.js"></script>
+    <script src="openrouter-embed/provider-mismatch-notice.js"></script>
+    <script src="openrouter-embed/provider-switcher-ui.js"></script>
+
+    <!-- Browser-autofill defence: must load before any mode controller so
+         its DOMContentLoaded listener registers first and applies the
+         readonly-until-focus mask before loadStoredConfig() runs. -->
+    <script src="autofill-defence.js"></script>
 
     <!-- Set Up Tool -->
     <script src="setup-tool/setup-tool.js"></script>
@@ -16595,6 +17260,7 @@ Science,91</pre
     <script src="openrouter-embed/providers/_lookup.js"></script>
     <script src="openrouter-embed/providers/openrouter.js"></script>
     <script src="openrouter-embed/providers/azure-openai-v1.js"></script>
+    <script src="openrouter-embed/providers/azure-openai-responses.js"></script>
 
     <script
       type="module"
@@ -16636,6 +17302,12 @@ Science,91</pre
 
     <!-- TTS Semantic — S2: DOM-to-spoken-text lineariser -->
     <script src="tts/tts-semantic.js"></script>
+
+    <!-- TTS SRE Loader — Stage 0: shared Clearspeak engine loader -->
+    <script src="tts/tts-sre-loader.js"></script>
+
+    <!-- TTS Rewriters — Stage 2: shared per-element rewriter helpers (tables, …) -->
+    <script src="tts/tts-rewriters.js"></script>
 
     <!-- TTS Controller — Phase 1: Web Speech API backend -->
     <script src="tts/tts-controller.js"></script>
@@ -18032,6 +18704,13 @@ Science,91</pre
       function enhanceSingleMathElement(mathEl, index = 0) {
         // Skip if already processed (enhanced or defused)
         if (mathEl.getAttribute("data-mathpix-enhanced")) {
+          return;
+        }
+
+        // Local Chat owns its own math a11y (see local-chat-messages.js
+        // enhanceMathA11y). Skip so the global mathpix enhancement and its
+        // MutationObserver do not stamp data-mathpix-enhanced on chat math.
+        if (mathEl.closest && mathEl.closest(".local-chat-bubble")) {
           return;
         }
 

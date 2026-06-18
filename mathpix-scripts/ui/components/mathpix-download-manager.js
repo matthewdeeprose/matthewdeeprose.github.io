@@ -348,7 +348,11 @@ class MathPixDownloadManager extends MathPixBaseModule {
 
       // Create the archive
       logInfo("Calling TotalDownloader.createArchive()...");
-      await this.downloader.createArchive({
+      // F-L Phase 2 — createArchive now returns:
+      //   - { filename, imageCount } on success
+      //   - null when the user cancels at the Document Health Check modal
+      //     (incomplete-archive confirmation)
+      const archiveResult = await this.downloader.createArchive({
         sourceState,
         response,
         request,
@@ -356,13 +360,21 @@ class MathPixDownloadManager extends MathPixBaseModule {
         linesData, // Include lines data for confidence visualisation
       });
 
-      // Success!
       this.hideProgress(apiType);
 
-      if (typeof notifySuccess === "function") {
-        notifySuccess("Archive downloaded successfully!");
+      if (archiveResult === null) {
+        // User declined to save an incomplete archive via the Health Check
+        // modal. createArchive already fired notifyInfo("Download cancelled.")
+        // — nothing more to surface here.
+        logInfo("✓ Download cancelled by user");
+        return;
       }
 
+      // F-L Phase 2 — createArchive now fires its own positive
+      // notifySuccess with image count ("Saved successfully — includes N
+      // image(s)" or "Saved successfully"). The generic "Archive downloaded
+      // successfully!" toast that used to fire here is removed to avoid a
+      // double-notification.
       logInfo("✓ Download complete");
     } catch (error) {
       logError("Download failed:", error);

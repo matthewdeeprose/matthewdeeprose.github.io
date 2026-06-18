@@ -1,0 +1,209 @@
+<!-- after.html — the CORRECT demo form. -->
+<!--
+  Visually near-identical to before.html, but built semantic-HTML-first so it
+  works for everyone. Each line below repairs a seeded fault from before.html.
+  Nothing is sent anywhere; submit is inert and shows an accessible confirmation.
+-->
+<!-- FIX (g): the <html> element declares its language. -->
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Conference registration</title>
+    <link rel="stylesheet" href="demo.css" />
+  </head>
+  <body>
+    <main class="card">
+      <h1 class="form-title">Conference registration</h1>
+      <p class="form-intro">
+        Register for the 2026 Accessibility in Practice conference. Fields marked
+        with an asterisk (*) are required.
+      </p>
+
+      <form id="reg-form" novalidate onsubmit="return demoSubmit(event);">
+        <!-- FIX (a): a real <label> whose "for" matches the input id, so the box
+             has a proper accessible name. -->
+        <div class="field">
+          <label class="field-label" for="full-name">Full name *</label>
+          <input type="text" id="full-name" name="full-name" />
+        </div>
+
+        <div class="field" id="email-field">
+          <div class="label-row">
+            <label class="field-label" for="email">Email address *</label>
+            <!-- FIX (b): the help control is a native <button> with a clear
+                 accessible name (aria-label); the "?" glyph is decorative
+                 (aria-hidden). It is keyboard-operable and exposes its state
+                 with aria-expanded / aria-controls. -->
+            <button
+              type="button"
+              class="help-toggle"
+              id="email-help-btn"
+              aria-expanded="false"
+              aria-controls="email-help"
+              aria-label="Help: how we use your email address"
+              onclick="demoToggleHelp(this);"
+            >
+              <span aria-hidden="true">?</span>
+            </button>
+          </div>
+          <input type="email" id="email" name="email" />
+          <p class="help-text" id="email-help" hidden>
+            We use your email only to send your booking confirmation.
+          </p>
+          <!-- FIX (d): the validation error meets contrast (~7.7:1), carries a
+               decorative icon AND text (not colour alone), is tied to the field
+               with aria-describedby, and the field is marked aria-invalid. On
+               submit, focus moves here so a screen-reader user learns what went
+               wrong. Hidden until submit. -->
+          <p class="field-error" id="email-error" tabindex="-1" hidden>
+            <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="9" fill="currentColor" />
+              <rect x="9" y="4.5" width="2" height="7" fill="#ffffff" />
+              <rect x="9" y="13.5" width="2" height="2" fill="#ffffff" />
+            </svg>
+            <span>Enter a valid email address.</span>
+          </p>
+        </div>
+
+        <!-- FIX (c): the grouped choice is a real <fieldset> with a <legend>, so
+             the group's purpose is conveyed; every option keeps its own label. -->
+        <fieldset class="choice">
+          <legend>Preferred campus *</legend>
+          <div class="option">
+            <input type="radio" id="c-highfield" name="campus" value="highfield" />
+            <label for="c-highfield">Highfield</label>
+          </div>
+          <div class="option">
+            <input type="radio" id="c-avenue" name="campus" value="avenue" />
+            <label for="c-avenue">Avenue</label>
+          </div>
+          <div class="option">
+            <input type="radio" id="c-boldrewood" name="campus" value="boldrewood" />
+            <label for="c-boldrewood">Boldrewood</label>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label class="field-label" for="comments">
+            Anything we should know? (optional)
+          </label>
+          <textarea id="comments" name="comments"
+            placeholder="Access requirements, dietary needs, anything else…"></textarea>
+        </div>
+
+        <!-- FIX (e): a native <button type="submit"> — keyboard-operable and
+             announced as a button. -->
+        <button type="submit" class="submit-btn">Register</button>
+
+        <p class="confirmation" id="confirm" role="status" hidden>
+          Thank you — your registration has been received.
+        </p>
+      </form>
+
+      <!-- Real page content for the audience: the contrast in experience.
+           Named the same way as the before page's aside (aria-labelledby). -->
+      <aside class="demo-aside demo-aside--good" aria-labelledby="after-aside-title">
+        <h2 id="after-aside-title">How a screen-reader user experiences this</h2>
+        <ul>
+          <li>
+            The <strong>Full name</strong> box is announced with its label, so
+            you know exactly what to type.
+          </li>
+          <li>
+            The <strong>help</strong> control is a real button with a clear name
+            — reachable by keyboard and announced as “Help: how we use your email
+            address, button”.
+          </li>
+          <li>
+            The <strong>campus</strong> options are announced inside a group
+            called “Preferred campus”, so you always know what you are choosing.
+          </li>
+          <li>
+            If your email is wrong, focus moves to the error, which is read out,
+            tied to the field, and meets contrast — you learn what to fix.
+          </li>
+          <li>
+            The <strong>Register</strong> button is a real button — reachable and
+            operable with the keyboard, and announced as a button.
+          </li>
+          <li>
+            The page declares its language, so a screen reader uses the right
+            voice.
+          </li>
+        </ul>
+      </aside>
+    </main>
+
+    <script>
+      // Behaviour for the CORRECT demo form. IIFE + the project logging standard
+      // (British spelling). Everything here is inert: no data leaves the page.
+      (function () {
+        const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+        const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+        const ENABLE_ALL_LOGGING = false;
+        const DISABLE_ALL_LOGGING = false;
+
+        function shouldLog(level) {
+          if (DISABLE_ALL_LOGGING) return false;
+          if (ENABLE_ALL_LOGGING) return true;
+          return level <= DEFAULT_LOG_LEVEL;
+        }
+        function logError(message, ...args) {
+          if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+        }
+        function logWarn(message, ...args) {
+          if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+        }
+        function logInfo(message, ...args) {
+          if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+        }
+        function logDebug(message, ...args) {
+          if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+        }
+
+        // Help toggle — a real button: flip aria-expanded and show/hide the help.
+        window.demoToggleHelp = function (btn) {
+          const help = document.getElementById("email-help");
+          if (!help) return;
+          const open = help.hidden; // about to open if currently hidden
+          help.hidden = !open;
+          btn.setAttribute("aria-expanded", String(open));
+          logDebug("help toggled; expanded =", open);
+        };
+
+        // Inert submit. On an invalid email: mark the field invalid, tie the
+        // error to it, and MOVE FOCUS to the error so it is announced. On
+        // success: show a polite confirmation (role="status"). No data is sent.
+        window.demoSubmit = function (event) {
+          event.preventDefault();
+          const field = document.getElementById("email-field");
+          const input = document.getElementById("email");
+          const error = document.getElementById("email-error");
+          const confirmation = document.getElementById("confirm");
+          const value = (input.value || "").trim();
+          const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+          if (!valid) {
+            field.classList.add("field--invalid");
+            input.setAttribute("aria-invalid", "true");
+            input.setAttribute("aria-describedby", "email-error");
+            error.hidden = false;
+            confirmation.hidden = true;
+            error.focus(); // focus the message so it is read out
+            logInfo("invalid email: error announced and tied to the field");
+            return false;
+          }
+
+          field.classList.remove("field--invalid");
+          input.removeAttribute("aria-invalid");
+          input.removeAttribute("aria-describedby");
+          error.hidden = true;
+          confirmation.hidden = false; // role="status" announces this politely
+          logInfo("inert submit accepted (no data sent anywhere)");
+          return false;
+        };
+      })();
+    </script>
+  </body>
+</html>

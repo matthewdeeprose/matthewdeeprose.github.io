@@ -79,6 +79,96 @@
   // =========================================================================
 
   /**
+   * Stage 8 (Q3/Q5): restore the document context from the session ZIP.
+   *
+   * Early, discrete, non-fatal step in restoreSession. Order is locked:
+   * manager-presence check (absent → the WHOLE step is skipped, including
+   * the reset — nothing exists to clear) → restore-start reset() (every
+   * restored document begins blank) → load trichotomy on
+   * metadata/context.json, classified at PARSE level, never by outcome:
+   * ABSENT → silent blank (pre-Stage-8 ZIPs load gracefully); VALID = any
+   * plain object, even one with no usable keys → setContext(parsed),
+   * silent (the legitimately empty eight-blank file stays silent);
+   * MALFORMED = JSON.parse throws OR the parsed value is not a plain
+   * object (null, array, primitive) → blank + WARN + one guarded user
+   * notification. A missing ZIP handle is a graceful blank with no reload
+   * fallback. The form repopulates reactively via the manager's
+   * setContext/reset contract — no render call here.
+   *
+   * Touches only this.restoredSession plus window-level globals, so tests
+   * may drive it via
+   * MathPixSessionRestorer.prototype.extractAndRestoreContext.call(
+   *   { restoredSession: { zip: constructedZip } })
+   * on a bare page. Catches everything internally; never throws.
+   *
+   * @returns {Promise<{branch: "skipped"|"missing-handle"|"absent"|"valid"|"malformed"}>}
+   */
+  proto.extractAndRestoreContext = async function () {
+    const malformed = (reason) => {
+      // Blank is already guaranteed by the restore-start reset above.
+      logWarn(
+        "metadata/context.json present but malformed — context stays blank:",
+        reason,
+      );
+      if (typeof window.notifyWarning === "function") {
+        window.notifyWarning(
+          "This session's document context couldn't be read — please check the Context tab before generating alt text.",
+        );
+      } else {
+        logWarn("notifyWarning unavailable — malformed-context notice logged only");
+      }
+      return { branch: "malformed" };
+    };
+    try {
+      if (!window.MathPixContextManager) {
+        logWarn("Context manager unavailable — context restore skipped");
+        return { branch: "skipped" };
+      }
+
+      // Restore-start reset (Q3): the single definition of blank.
+      window.MathPixContextManager.reset();
+
+      const zip = this.restoredSession?.zip;
+      if (!zip) {
+        logDebug("No ZIP handle on restored session — context stays blank");
+        return { branch: "missing-handle" };
+      }
+
+      // Exact-path lookup; null return means ABSENT (a pre-Stage-8 archive).
+      const file = zip.file("metadata/context.json");
+      if (!file) {
+        logDebug(
+          "metadata/context.json absent — pre-Stage-8 archive, context stays blank",
+        );
+        return { branch: "absent" };
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(await file.async("text"));
+      } catch (readOrParseError) {
+        return malformed(readOrParseError.message);
+      }
+      if (
+        parsed === null ||
+        typeof parsed !== "object" ||
+        Array.isArray(parsed)
+      ) {
+        return malformed("parsed value is not a plain object");
+      }
+
+      window.MathPixContextManager.setContext(parsed);
+      logInfo("Document context restored from session ZIP");
+      return { branch: "valid" };
+    } catch (error) {
+      // Paranoia backstop honouring the never-throws contract; unreachable
+      // in practice and deliberately silent towards the user.
+      logError("Context restore failed unexpectedly (non-fatal):", error);
+      return { branch: "malformed" };
+    }
+  };
+
+  /**
    * Restore session from parse result
    * @param {Object} parseResult - Parsed ZIP data
    * @param {Object|null} selectedEdit - User's edit selection (or null for original)
@@ -115,6 +205,10 @@
       // This enables confidence display to show pencil icon for edited lines
       this.setOriginalMmdContent(parseResult.results.mmd);
 
+      // Stage 8 (Q3): restore the document context — early, discrete,
+      // non-fatal; every restored document starts from a blank context.
+      await this.extractAndRestoreContext();
+
       // Phase 8F: Extract images from ZIP and restore registry
       // Must happen before loadMMDContent so blob URLs are in place for preview
       try {
@@ -140,6 +234,11 @@
           this.restoredSession.originalMMD = this.rewriteMMDWithBlobUrls(
             this.restoredSession.originalMMD,
           );
+
+          // Phase 4a.5: sync registry's mmdReference fields to blob-URL form
+          // so substring-matching consumers (e.g. the alt-text serialiser's
+          // findImage) can bridge registry entries to the live MMD.
+          this.syncRegistryReferencesToBlobUrls();
 
           // Store registry on session for external access (AI enhancer, etc.)
           this.restoredSession.imageRegistry = this.imageRegistry;
@@ -229,6 +328,8 @@
         logDebug("Convert section shown");
       }
       this.updateConvertButtonState();
+      // Populate the convert-size indicator as soon as the convert UI appears.
+      this._refreshConvertSizeIndicator?.();
 
       // Check if there are multiple versions to switch between
       const zipEdits = parseResult.edits?.files || [];
@@ -1943,8 +2044,17 @@
       persistence.init();
     }
 
-    // Start a new session with our restored content
-    const mmdContent = this.getMMDForAPI(
+    // Start a new session with our restored content.
+    // F-O: _translateBlobUrlsToCdnForMMD (synchronous, pure blob→CDN reverse).
+    // getMMDForAPI became async in F-M Phase 4, and an un-awaited Promise here
+    // was silently rejected by startSession's `typeof content !== "string"`
+    // guard, so the editor persistence session never started in resume mode.
+    // We deliberately do NOT use getMMDForStorage here: the editor persistence
+    // module stores content verbatim and has no [user-image:...] placeholder
+    // resolver (verified empirically), so placeholder-form content would persist
+    // as un-renderable literals. This pure reverse keeps content renderable
+    // (CDN URLs) and matches the pre-F-M behaviour of getMMDForAPI on this path.
+    const mmdContent = this._translateBlobUrlsToCdnForMMD(
       this.restoredSession?.originalMMD || "",
     );
     if (mmdContent) {

@@ -270,6 +270,36 @@
   padding-left: 0.75em;
 }
 
+/* ── Tables inside assistant bubbles ─────────────────────────
+   Bubbles are max-width 80%; tables with multiple columns of
+   MathJax-rendered content can otherwise overflow their cells
+   and visually collide with neighbours. display:block + overflow-x
+   gives a horizontal scrollbar when content cannot fit.
+   ───────────────────────────────────────────────────────────── */
+
+.local-chat-bubble-assistant table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+}
+
+.local-chat-bubble-assistant table th,
+.local-chat-bubble-assistant table td {
+  padding: 0.4em 0.6em;
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  vertical-align: top;
+  text-align: left;
+  white-space: normal;
+}
+
+.local-chat-bubble-assistant table td mjx-container,
+.local-chat-bubble-assistant table th mjx-container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 /* ── Code block copy button ─────────────────────────────────── */
 
 .local-chat-code-wrapper {
@@ -385,6 +415,7 @@
 
 .local-chat-bubble-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
@@ -400,6 +431,15 @@
   font-size: 0.8em;
   min-height: 44px;
   min-width: 44px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Save-as-Audio is a split-button group — keep the main + caret together
+   when the row wraps so they never end up on separate lines. */
+.local-chat-bubble-actions .imgdesc-save-audio-split {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
 .local-chat-copy:hover,
@@ -423,6 +463,19 @@
 
 .local-chat-voice-settings [data-icon] {
   vertical-align: middle;
+}
+
+/* ── Save-as-Audio split-button caret (Stage 4 TTS) ──────────── */
+
+/* Image Describer's .imgdesc-format-toggle svg rule sizes the caret at
+   0.75em — sized to its parent button's font-size (~1em / ~16px).
+   Local Chat's bubble action buttons inherit font-size: 0.8em (see
+   .local-chat-read-aloud above), which compounds to a sub-legible
+   ~9px caret. Override to scale up in this context only — leaves
+   Image Describer's sizing untouched. */
+.local-chat-bubble-actions .imgdesc-format-toggle svg {
+  width: 1.1em;
+  height: 1.1em;
 }
 
 /* ── No WebGPU message ──────────────────────────────────────── */

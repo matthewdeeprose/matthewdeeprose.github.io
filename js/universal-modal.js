@@ -526,6 +526,7 @@ const UniversalModal = (function () {
       statusArea.innerHTML = `
         <span class="universal-modal-status-icon" aria-hidden="true"></span>
         <div class="universal-modal-status-text" role="status" aria-live="polite"></div>
+        <div class="universal-modal-status-actions"></div>
         <button type="button" class="universal-modal-status-dismiss" aria-label="Dismiss notification" style="display: none;">
           <span aria-hidden="true">×</span>
         </button>
@@ -553,6 +554,9 @@ const UniversalModal = (function () {
       );
       const textElement = statusArea.querySelector(
         ".universal-modal-status-text",
+      );
+      const actionsSlot = statusArea.querySelector(
+        ".universal-modal-status-actions",
       );
       const dismissBtn = statusArea.querySelector(
         ".universal-modal-status-dismiss",
@@ -586,6 +590,35 @@ const UniversalModal = (function () {
       }
 
       textElement.textContent = message;
+
+      // Populate optional action buttons (cleared on every show — handler
+      // closures GC'd via parent clearance).
+      if (actionsSlot) {
+        actionsSlot.innerHTML = "";
+        if (Array.isArray(options.actions) && options.actions.length > 0) {
+          options.actions.forEach((action) => {
+            if (!action || typeof action.onClick !== "function") return;
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "universal-modal-status-action";
+            btn.textContent = action.label || "";
+            if (action.ariaLabel) {
+              btn.setAttribute("aria-label", action.ariaLabel);
+            }
+            btn.addEventListener("click", () => {
+              try {
+                action.onClick();
+              } catch (err) {
+                logError("Status action onClick threw:", err);
+              }
+              if (action.dismissOnClick !== false) {
+                this.hideModalStatus(modalId);
+              }
+            });
+            actionsSlot.appendChild(btn);
+          });
+        }
+      }
 
       if (options.dismissible !== false && type !== "loading") {
         dismissBtn.style.display = "block";
@@ -625,6 +658,10 @@ const UniversalModal = (function () {
             "";
           statusArea.querySelector(".universal-modal-status-icon").textContent =
             "";
+          const actionsSlot = statusArea.querySelector(
+            ".universal-modal-status-actions",
+          );
+          if (actionsSlot) actionsSlot.innerHTML = "";
           statusArea.className = "universal-modal-status normal-viewport";
         }
       }, 300);

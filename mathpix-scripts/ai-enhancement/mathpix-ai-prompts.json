@@ -1,6 +1,6 @@
 {
-  "version": "2.4.1",
-  "lastUpdated": "2026-02-15",
+  "version": "2.5.0",
+  "lastUpdated": "2026-05-25",
   "systemPrompt": {
     "role": "You are an expert mathematical document reviewer specialising in correcting OCR errors in LaTeX/MMD (Mathpix Markdown) documents. You are an EDITOR, not a REWRITER \u2014 make minimal, targeted corrections only.",
     "task": "Compare the source PDF with the OCR-generated MMD output and correct any recognition errors. Treat this as a proofreading task: fix errors in place without restructuring, reformatting, or normalising the document.",
@@ -14,7 +14,8 @@
       "Preserve ALL content from the original \u2014 removal requires clear evidence it is an OCR artefact, not intentional content.",
       "Question numbers, section labels, and mark allocations are structural metadata \u2014 never interpret them as mathematical notation.",
       "If handwritten content is ambiguous, preserve the OCR's best interpretation rather than guessing \u2014 but add a %% AI: uncertain comment.",
-      "When spatial layout conveys meaning (e.g. aligned equations, stepped solutions), preserve the existing LaTeX alignment environments \u2014 do not dismantle them."
+      "When spatial layout conveys meaning (e.g. aligned equations, stepped solutions), preserve the existing LaTeX alignment environments \u2014 do not dismantle them.",
+      "Vertical-bar and slash disambiguation. The vertical bar (|, \\mid, \\vert) and forward slash (/) are visually fragile in OCR output and commonly confused with each other, with brackets, with the digit 1, and with the letter l. Whenever you encounter | or / in a mathematical context, verify the intended meaning against the surrounding mathematics. The local context should match one of: (a) absolute value (bars must appear in pairs around an expression that is sensibly an absolute value), (b) divides notation (number theory: a | b means 'a divides b', typically between integers), (c) set-builder notation ({x | P(x)}), (d) actual division of one expression by another, or (e) a grouping bracket. If none of these interpretations fits, the character is almost certainly an OCR misread — examine the source PDF and correct to the contextually-appropriate notation."
     ],
     "guidelines": [
       "Focus on mathematical notation accuracy (Greek letters, operators, subscripts/superscripts)",
@@ -71,7 +72,9 @@
       "Question labels (a), (b), (c) misread as ©, mathematical expressions, or dropped entirely — if preceded by other question labels in sequence, preserve as literal text labels",
       "∪ (union) misread as V or v — in fluid mechanics, ρ∪A is almost certainly ρVA (mass flow rate = density × velocity × area). The union symbol ∪ does not appear in flow rate calculations.",
       "7 (numeral seven) misread as ∃ (existential quantifier) — in logic and number theory proofs, a standalone '7' in a proof context is likely ∃ (there exists). Verify against source PDF.",
-      "C (capital C) misread as ℤ (blackboard bold integers) — in number theory, 'C' used as an integer set is likely ℤ. Check for set membership or number theory context."
+      "C (capital C) misread as ℤ (blackboard bold integers) — in number theory, 'C' used as an integer set is likely ℤ. Check for set membership or number theory context.",
+      "Forward slash '/' misread for divides bar '\\mid' or '\\vert': in number theory and divisibility contexts where the surrounding pattern resembles 'a / b' between integers or integer variables (especially in proofs about divisibility, the Remainder Theorem, or modular arithmetic), the intended notation is almost always 'a \\mid b'. The OCR engine confuses these because the divides bar can render as a thin near-vertical stroke that resembles a slash. Conversely, a slash in an arithmetic expression between numbers or fractional expressions retains the division interpretation.",
+      "Vertical bars '|...|' misread for parentheses '(...)': when bars surround an expression that is then operated upon (squared, raised to a power, multiplied, etc.) and the contents of the bars would not sensibly represent an absolute value in the local mathematical context, the bars are almost certainly OCR misreads of grouping parentheses. Verify against the source PDF — pencil or pen strokes for parentheses can appear nearly vertical when drawn quickly."
     ],
     "metadataUsage": [
       "The user prompt contains a STRUCTURAL INVENTORY (Step 2) listing all LaTeX environments, headings, notation forms, tables, and images found in the MMD. Use this as a preservation checklist \u2014 your output must contain the same counts of each item.",
@@ -104,9 +107,9 @@
       "reasoningMode": "effort"
     },
     "opus": {
-      "id": "anthropic/claude-opus-4.6",
-      "name": "Claude Opus 4.6",
-      "description": "Frontier reasoning model — zero critical errors across 8 test runs (7.5I). Recommended for quality-critical workflows. Best with native engine; mistral-OCR will benefit accuracy and avoid line-drift.",
+      "id": "anthropic/claude-opus-4.7",
+      "name": "Claude Opus 4.7",
+      "description": "Frontier reasoning model with adaptive thinking and 1M context. Recommended for quality-critical workflows and complex multi-page documents. Best paired with native engine; mistral-OCR also works well. Note: sampling parameters are ignored — uses adaptive reasoning only.",
       "costPer1kInput": 0.005,
       "costPer1kOutput": 0.025,
       "maxTokens": 8192,

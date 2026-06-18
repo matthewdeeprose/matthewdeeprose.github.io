@@ -48,6 +48,226 @@
   };
 
   /**
+   * Read the convert size limit using the same three-tier fallback the gate
+   * has always used, so the gate and the convert-size indicator read one
+   * limit. EMBEDDING override → CONVERT default → hard-coded 10 MB.
+   * @returns {number} the limit in bytes
+   * @private
+   */
+  proto._getConvertSizeLimit = function () {
+    return (
+      window.MATHPIX_CONFIG?.CONVERT?.EMBEDDING?.MAX_EMBEDDED_MMD_SIZE_BYTES ??
+      window.MATHPIX_CONFIG?.CONVERT?.MAX_MMD_SIZE_BYTES ??
+      10 * 1024 * 1024
+    );
+  };
+
+  /**
+   * Build the over-limit alert prose (the P8b wording) so the gate and the
+   * convert-size indicator speak with one voice. Pure: depends only on the two
+   * byte counts. Keeps the gate's existing fmtSize format (two-decimal MB)
+   * verbatim — do not switch this to _formatBytes.
+   * @param {number} embeddedSize - measured embedded MMD size in bytes
+   * @param {number} maxBytes - the limit in bytes
+   * @returns {string} the over-limit message
+   * @private
+   */
+  proto._buildOverLimitMessage = function (embeddedSize, maxBytes) {
+    const limitMB = (maxBytes / (1024 * 1024)).toFixed(0);
+    const fmtSize = (bytes) => {
+      if (bytes >= 1024 * 1024)
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+      if (bytes >= 1024) return `${Math.ceil(bytes / 1024)} KB`;
+      return `${bytes} bytes`;
+    };
+    const overBy = fmtSize(embeddedSize - maxBytes);
+    const totalSize = fmtSize(embeddedSize);
+    return `This document is too large to convert via the API after embedding image data — about ${overBy} over the ${limitMB} MB limit (${totalSize} total). Try converting fewer formats at once, or contact support if this is a persistent issue with this document.`;
+  };
+
+  /**
+   * Compose the visible readout text from a size breakdown and band. Pure.
+   * The "over" detail reuses the P8b wording so the indicator and the gate
+   * speak with one voice; the "close" detail surfaces the actionable image
+   * breakdown; "under" shows the size alone. An unavailable estimate (a
+   * chemistry image that could not be measured) overrides the band.
+   * @param {{total:number, imageBytes:number, textBytes:number}} breakdown
+   * @param {"under"|"close"|"over"} band
+   * @param {number} limit - limit in bytes
+   * @param {boolean} unavailable - true when an image could not be measured
+   * @returns {{readout:string, detail:string}}
+   */
+  proto._composeConvertSizeReadout = function (breakdown, band, limit, unavailable) {
+    if (unavailable) {
+      return {
+        readout: "Projected size: unavailable",
+        detail:
+          "An image could not be measured. Check your connection and try again.",
+      };
+    }
+    const total = this._formatBytes(breakdown.total);
+    const limitMB = (limit / (1024 * 1024)).toFixed(0);
+    if (band === "over") {
+      return {
+        readout: `Projected size: ${total} — over the ${limitMB} MB limit`,
+        detail: this._buildOverLimitMessage(breakdown.total, limit),
+      };
+    }
+    if (band === "close") {
+      return {
+        readout: `Projected size: ${total} — close to the ${limitMB} MB limit`,
+        detail: `Images ${this._formatBytes(breakdown.imageBytes)}, text ${this._formatBytes(breakdown.textBytes)}. Remove or shrink images to stay under the limit.`,
+      };
+    }
+    return { readout: `Projected size: ${total}`, detail: "" };
+  };
+
+  /**
+   * Decide the band-transition announcement. Pure. Returns null on the first
+   * compute (previousBand null) and when the band is unchanged, so a freshly
+   * loaded document never startles and steady editing stays silent. Otherwise
+   * it speaks for the band just entered.
+   * @param {?("under"|"close"|"over")} previousBand
+   * @param {"under"|"close"|"over"} nextBand
+   * @returns {?string} the announcement, or null for no announcement
+   */
+  proto._convertSizeTransition = function (previousBand, nextBand) {
+    if (previousBand == null || previousBand === nextBand) return null;
+    if (nextBand === "over") return "Projected convert size is over the limit.";
+    if (nextBand === "close")
+      return "Projected convert size is close to the limit.";
+    return "Projected convert size is back under the limit.";
+  };
+
+  /**
+   * Infer whether the estimate is incomplete because a chemistry embed failed
+   * (offline). A failed embed shows as a chemistry CDN URL that is present in
+   * the MMD with a blobUrl in the live map, yet absent from the manifest the
+   * estimator built. Pure aside from reading the live preview map. Returns
+   * false when there is no chemistry, or every expected embed is present.
+   * @param {string} mmdContent
+   * @param {Array<{url:string, replacement:string}>} manifest
+   * @returns {boolean}
+   */
+  proto._convertSizeUnavailable = function (mmdContent, manifest) {
+    if (!mmdContent) return false;
+    const chemMap =
+      typeof window.getMathPixMMDPreview === "function"
+        ? window.getMathPixMMDPreview()?.chemistryBlobUrlMap
+        : null;
+    if (!chemMap || chemMap.size === 0) return false;
+    const embedded = new Set(manifest.map((entry) => entry.url));
+    for (const [cdnUrl, chemEntry] of chemMap.entries()) {
+      if (!chemEntry?.blobUrl) continue;
+      if (!mmdContent.includes(cdnUrl)) continue;
+      if (!embedded.has(cdnUrl)) return true;
+    }
+    return false;
+  };
+
+  /**
+   * Write a band-transition message to the dedicated polite announce region.
+   * Mirrors announceToScreenReader's set-then-clear, but on the convert-size
+   * region (#resume-convert-size-announce), which is cleanly polite — unlike
+   * the shared app announcer, which also carries role="alert". No-ops when the
+   * region is absent (the indicator is an enhancement).
+   * @param {string} message
+   * @private
+   */
+  proto._announceConvertSize = function (message) {
+    const region = this.elements?.convertSizeAnnounce;
+    if (!region || !message) return;
+    region.textContent = message;
+    clearTimeout(this._convertSizeAnnounceTimer);
+    this._convertSizeAnnounceTimer = setTimeout(() => {
+      region.textContent = "";
+    }, 3000);
+  };
+
+  /**
+   * Refresh the convert-size indicator: read the same MMD and formats the gate
+   * uses, project the embedded size and breakdown, write the readout silently,
+   * and announce only on a genuine band transition. Fire-and-forget safe — it
+   * catches its own errors and no-ops when the markup is absent, so it never
+   * breaks the auto-save it hangs off. Matches the gate exactly via
+   * getCurrentMMDContent + getSelectedConvertFormats, so the readout and the
+   * gate never disagree on the boundary.
+   * @private
+   */
+  proto._refreshConvertSizeIndicator = async function () {
+    try {
+      const readoutEl = this.elements?.convertSizeReadout;
+      if (!readoutEl) return; // enhancement absent — nothing to update
+      const detailEl = this.elements?.convertSizeDetail;
+
+      const mmd = this.getCurrentMMDContent();
+      if (!mmd) {
+        readoutEl.hidden = true;
+        readoutEl.textContent = "";
+        readoutEl.removeAttribute("data-band");
+        if (detailEl) {
+          detailEl.hidden = true;
+          detailEl.textContent = "";
+        }
+        this._lastConvertSizeBand = null;
+        return;
+      }
+
+      const selectedFormats = this.getSelectedConvertFormats();
+      // One manifest build for the offline check; the breakdown rebuilds it,
+      // but P3's encode cache makes the second build cheap.
+      const manifest = await this.buildManifest(mmd, selectedFormats);
+      const unavailable = this._convertSizeUnavailable(mmd, manifest);
+      const breakdown = await this._estimateConvertSizeBreakdown(
+        mmd,
+        selectedFormats,
+      );
+      const limit = this._getConvertSizeLimit();
+
+      let band = null;
+      let readout;
+      let detail;
+      if (unavailable) {
+        ({ readout, detail } = this._composeConvertSizeReadout(
+          breakdown,
+          "under",
+          limit,
+          true,
+        ));
+      } else {
+        band = this._convertSizeBand(breakdown.total, limit);
+        ({ readout, detail } = this._composeConvertSizeReadout(
+          breakdown,
+          band,
+          limit,
+          false,
+        ));
+      }
+
+      readoutEl.hidden = false;
+      readoutEl.textContent = readout;
+      readoutEl.dataset.band = unavailable ? "unavailable" : band;
+      if (detailEl) {
+        detailEl.hidden = detail === "";
+        detailEl.textContent = detail;
+      }
+
+      // Announce only on a real band change; stay silent while unavailable so
+      // a transient offline blip does not speak, and keep the last known band.
+      if (!unavailable) {
+        const speech = this._convertSizeTransition(
+          this._lastConvertSizeBand,
+          band,
+        );
+        if (speech) this._announceConvertSize(speech);
+        this._lastConvertSizeBand = band;
+      }
+    } catch (err) {
+      logError("_refreshConvertSizeIndicator failed", err);
+    }
+  };
+
+  /**
    * Handle convert button click
    * Follows the pattern from mathpix-convert-ui.js
    * @private
@@ -76,9 +296,35 @@
       return;
     }
 
-    // Phase 8F: Swap blob URLs back to CDN URLs for the convert API
-    // Blob URLs are local to the browser and cannot be resolved by MathPix's server
-    mmdContent = this.getMMDForAPI(mmdContent);
+    // F-M Phase 4 (was Phase 8F): bytes-first embedding for the convert
+    // API. getMMDForAPI now encodes live registry bytes as dataURIs for
+    // OCR replacements, chemistry RDKit renders, and user-added uploads;
+    // falls back to CDN URLs when no bytes are available. Async because
+    // canvas.toBlob() is callback-based — selectedFormats drive
+    // pickEncoders' WebP gate.
+    mmdContent = await this.getMMDForAPI(mmdContent, selectedFormats);
+
+    // F-M Phase 4: pre-flight size guard. Embedding can push MMD size
+    // from ~6 KB to multi-MB; the Convert API enforces a 10 MB JSON
+    // body limit. Surface an actionable safeAlert rather than letting
+    // the API reject with a generic error.
+    const maxBytes = this._getConvertSizeLimit();
+    const embeddedSize = new Blob([mmdContent]).size;
+    logDebug(
+      `Site 3 convert: post-embedding MMD size = ${embeddedSize} bytes (limit ${maxBytes})`,
+    );
+    if (embeddedSize > maxBytes) {
+      const message = this._buildOverLimitMessage(embeddedSize, maxBytes);
+      logError(
+        `Site 3 convert: payload too large after embedding (${embeddedSize} > ${maxBytes})`,
+      );
+      if (typeof window.safeAlert === "function") {
+        await window.safeAlert(message, "Document too large to convert");
+      } else {
+        this.showNotification(message, "error");
+      }
+      return;
+    }
 
     // Get the API client
     const client = window.getMathPixConvertClient?.();

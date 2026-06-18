@@ -302,20 +302,40 @@ class MathPixConvertAPIClient {
    * existing UI manager pattern in mathpix-ui-manager.js
    */
   _buildHeaders() {
-    // Credential priority: config > DOM form inputs > localStorage
-    // Phase 8 Bible Lesson 24: "Credentials live in the DOM, not in module state"
+    // Credential priority: config (test override) → localStorage (canonical,
+    // saved via Set Up or legacy form) → DOM (last resort).
+    //
+    // localStorage is preferred over DOM because the password-type App Key
+    // input is a frequent target of Chrome's password autofill heuristic
+    // (it can silently swap in an OpenRouter key from a nearby
+    // type=password input). Saved credentials are authoritative; an
+    // autofilled DOM value can no longer override them.
     const appId =
       (typeof MATHPIX_CONFIG !== "undefined" && MATHPIX_CONFIG.APP_ID) ||
-      document.querySelector("#mathpix-app-id")?.value ||
-      localStorage.getItem("mathpix-app-id");
-    const appKey =
+      localStorage.getItem("mathpix-app-id") ||
+      document.querySelector("#mathpix-app-id")?.value;
+    let appKey =
       (typeof MATHPIX_CONFIG !== "undefined" && MATHPIX_CONFIG.APP_KEY) ||
-      document.querySelector("#mathpix-app-key")?.value ||
-      localStorage.getItem("mathpix-app-key");
+      localStorage.getItem("mathpix-app-key") ||
+      document.querySelector("#mathpix-app-key")?.value;
+
+    // Autofill safety net: if the resolved App Key looks like an
+    // OpenRouter key (sk-or-…), refuse rather than send it. The priority
+    // reorder above already prevents the common case; this guards the
+    // edge case where localStorage is empty AND Chrome has autofilled the
+    // DOM with the wrong key on a fresh setup.
+    if (appKey && /^sk-or-/i.test(appKey)) {
+      logError(
+        "MathPix App Key looks like an OpenRouter key (sk-or-*) — refusing to send. Likely browser autofill corruption. Re-save credentials in Set Up.",
+      );
+      throw new ConvertError(CONVERT_ERRORS.AUTH_ERROR);
+    }
 
     if (!appId || !appKey) {
       logError("API credentials not configured");
-      logDebug("Checked: MATHPIX_CONFIG.APP_ID, localStorage 'mathpix-app-id'");
+      logDebug(
+        "Checked: MATHPIX_CONFIG.APP_ID/APP_KEY, localStorage 'mathpix-app-id'/'mathpix-app-key', DOM #mathpix-app-id/#mathpix-app-key",
+      );
       throw new ConvertError(CONVERT_ERRORS.AUTH_ERROR);
     }
 

@@ -378,23 +378,6 @@ const GraphBuilderUI = (function () {
     }
 
     /**
-     * Refresh just the stats text "X rows, Y columns" without re-rendering
-     * the preview table. Reads counts from the live DOM so it stays accurate
-     * even when rows are added with empty values (which don't pass
-     * validation and therefore don't reach show()). Phase 3.2.b-3.
-     */
-    refreshStats() {
-      if (!this.statsElement) return;
-      const container = document.getElementById("gb-data-rows");
-      if (!container) return;
-      const rows = container.querySelectorAll(".gb-data-row");
-      if (!rows.length) return;
-      const groups = rows[0].querySelectorAll(".gb-input-group");
-      if (!groups.length) return;
-      this.statsElement.textContent = `${rows.length} rows, ${groups.length} columns`;
-    }
-
-    /**
      * Hide data preview
      */
     hide() {
@@ -1086,7 +1069,6 @@ const GraphBuilderUI = (function () {
     showPreview: (data) => previewManager.show(data),
     hidePreview: () => previewManager.hide(),
     getPreviewState: () => previewManager.getState(),
-    refreshPreviewStats: () => previewManager.refreshStats(),  // 3.2.b-3
 
     // Chart Type Selection
     selectChartType: (element) => chartTypeSelector.selectType(element),

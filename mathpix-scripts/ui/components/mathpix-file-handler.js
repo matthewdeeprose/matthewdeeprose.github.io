@@ -227,6 +227,22 @@ class MathPixFileHandler extends MathPixBaseModule {
         return false;
       }
 
+      // Stage 8 (Q4) CONTRACT: successful staging of a NEW document blanks
+      // the document context — any future caller that re-stages the SAME
+      // document must not route through this method without revisiting the
+      // Stage 8 lifecycle. Positioned immediately after the validation
+      // early-return (replan F2.1): a failed validation returns above and
+      // leaves the previous document's context untouched; the reset below
+      // aligns with the actual staging commit. Guarded; never throws.
+      if (window.MathPixContextManager) {
+        window.MathPixContextManager.reset();
+        logDebug("Document context cleared at staging boundary");
+      } else {
+        logWarn(
+          "Context manager unavailable — document context not cleared at staging",
+        );
+      }
+
       // Store current file for preview and processing
       this.currentUploadedFile = file;
 

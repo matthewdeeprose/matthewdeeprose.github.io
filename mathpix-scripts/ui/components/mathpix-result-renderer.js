@@ -32,73 +32,9 @@ function logDebug(message, ...args) {
 // wired, no DOM queries run). Useful when demoing other features.
 const ENABLE_RENDERED_OUTPUT_TTS = true;
 
-// =============================================================================
-// SRE (Speech Rule Engine) — lazy CDN loader
-// =============================================================================
-// Used by the Speak-aloud feature to convert MathML to Clearspeak speech text.
-// Loaded on first Speak click only, never at module init or page load. Idempotent
-// — concurrent callers share one in-flight promise. On failure the promise
-// reference is cleared so the next click can retry.
-//
-// The bundled MathJax SRE (Path 1) and the MMD-CDN's `latexToSpeech` (Path 2)
-// produce inconsistent speech across the dual-renderer setup; loading SRE
-// directly here gives us one Clearspeak source-of-truth for TTS without
-// touching either of those existing screen-reader pipelines.
-//
-// SCOPE: this loader is for math elements only. Chemistry SMILES rendering
-// (`.smiles-inline`, role="img") has its own aria-label pipeline in
-// `addChemistryAltText` / `MathPixChemistryUtils` and is never passed to SRE.
-
-const SRE_CDN_URL = "https://cdn.jsdelivr.net/npm/speech-rule-engine@4/lib/sre.js";
-let _srePromise = null;
-
-function loadSRE() {
-  if (_srePromise) return _srePromise;
-  _srePromise = (async () => {
-    if (typeof window.SRE === "undefined") {
-      await new Promise((resolve, reject) => {
-        const existing = document.querySelector(
-          'script[data-sre-loader="true"]',
-        );
-        if (existing) {
-          existing.addEventListener("load", resolve, { once: true });
-          existing.addEventListener(
-            "error",
-            () => reject(new Error("SRE script tag failed")),
-            { once: true },
-          );
-          return;
-        }
-        const script = document.createElement("script");
-        script.src = SRE_CDN_URL;
-        script.async = true;
-        script.dataset.sreLoader = "true";
-        script.addEventListener("load", resolve, { once: true });
-        script.addEventListener(
-          "error",
-          () => reject(new Error("SRE script failed to load")),
-          { once: true },
-        );
-        document.head.appendChild(script);
-      });
-    }
-    if (typeof window.SRE === "undefined" || !window.SRE.setupEngine) {
-      throw new Error("SRE library loaded but window.SRE.setupEngine missing");
-    }
-    await window.SRE.setupEngine({
-      domain: "clearspeak",
-      style: "default",
-      modality: "speech",
-      locale: "en",
-    });
-    return window.SRE;
-  })();
-  // Allow retry on failure: clear the cached promise so the next call re-tries.
-  _srePromise.catch(() => {
-    _srePromise = null;
-  });
-  return _srePromise;
-}
+// SRE (Speech Rule Engine) is loaded via the shared `tts/tts-sre-loader.js`
+// module — see `window.TTSSreLoader.loadSRE()`. The call site lives in
+// `_prepareRenderedOutputForTts`.
 
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
@@ -5046,11 +4982,13 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     try {
       // Use the same render options as the MMD Preview system
-      const renderOptions = MATHPIX_CONFIG.MMD_PREVIEW?.RENDER_OPTIONS || {
-        htmlTags: true,
-        mmdExtensions: { smiles: true },
-        accessibility: { assistiveMml: true },
-      };
+      const renderOptions = MATHPIX_CONFIG?.MMD_PREVIEW?.RENDER_OPTIONS || {};
+      if (Object.keys(renderOptions).length === 0) {
+        logWarn(
+          "Phase-6J CDN render path: RENDER_OPTIONS unavailable; " +
+            "using library defaults",
+        );
+      }
 
       const html = window.markdownToHTML(content, renderOptions);
 
@@ -6121,54 +6059,34 @@ class MathPixResultRenderer extends MathPixBaseModule {
    * Phase 7B: Add accessible alt text to CDN-rendered chemistry structures.
    * Finds .smiles-inline elements and adds role="img" and aria-label.
    *
+   * Stage Y.2a (2026-05-22): the per-element cascade (SHORT → STRUCTURAL →
+   * BASIC) moved to MathPixChemistryUtils.applyAriaLabelsToSmilesInline so
+   * non-API consumers (Convert mode, future PDF/Resume modes, etc.) can
+   * reuse it with their own notation source. This method stays as the
+   * API-result-path entry point — it sources notations from this._chemistryData
+   * (populated upstream by populateChemistryFormat) and delegates to the
+   * shared utility.
+   *
    * @param {HTMLElement} container - Container with CDN-rendered content
    */
   addChemistryAltText(container) {
     if (!container) return;
 
-    const smilesElements = container.querySelectorAll(".smiles-inline");
-    if (smilesElements.length === 0) return;
-
     const utils = window.MathPixChemistryUtils;
-    const chemData = this._chemistryData || [];
-
-    smilesElements.forEach((el, index) => {
-      const chemItem = chemData[index] || {};
-
-      el.setAttribute("role", "img");
-
-      // Phase 8C-ST: use short description for aria-label on MMD preview
-      const pubchemObj = utils._buildPubchemDataFromItem(chemItem);
-      const shortAria = utils?.generateShortDescriptionForAria?.(
-        chemItem.notation, pubchemObj,
+    if (!utils || typeof utils.applyAriaLabelsToSmilesInline !== "function") {
+      logWarn(
+        "MathPixChemistryUtils.applyAriaLabelsToSmilesInline unavailable — chemistry aria-labels skipped",
       );
-      if (shortAria) {
-        el.setAttribute("aria-label", shortAria);
-        return;
-      }
+      return;
+    }
 
-      // Fallback: try standard structural description
-      const structural = utils?.generateStructuralDescription?.(
-        chemItem.notation, pubchemObj,
-      );
-      if (structural) {
-        el.setAttribute("aria-label", structural);
-        return;
-      }
-
-      // Fallback to basic description
-      const parsed = chemItem.inchi ? utils?.parseInChIFormula(chemItem.inchi) : null;
-      const descData = {
-        notation: chemItem.notation || "",
-        formula: parsed,
-        iupacName: chemItem._resolvedName || null,
-      };
-      const basic = utils?.generateBasicAccessibleDescription?.(descData);
-
-      el.setAttribute("aria-label", basic || "Chemical structure: " + (chemItem.notation || "unknown"));
-    });
-
-    logInfo("Chemistry alt text applied", { count: smilesElements.length });
+    const count = utils.applyAriaLabelsToSmilesInline(
+      container,
+      this._chemistryData || [],
+    );
+    if (count > 0) {
+      logInfo("Chemistry alt text applied", { count });
+    }
   }
 
   /**
@@ -6589,225 +6507,41 @@ class MathPixResultRenderer extends MathPixBaseModule {
   }
 
   /**
-   * Clone the rendered output and replace each math element with a synthetic
-   * `<mjx-container>` carrying SRE-generated Clearspeak as its aria-label, so
-   * the lineariser produces consistent natural-language speech regardless of
-   * which renderer (MathJax fallback or MMD CDN) populated the output.
+   * Clone the rendered output and run the shared prepare-for-TTS pipeline
+   * (math rewriter + table rewriter) via window.TTSRewriters.preparePanelForTts.
    *
-   * Falls back to the element's existing aria-label if SRE is unavailable
-   * (offline, blocked CDN) or fails on a particular formula.
+   * Stage 4.1 (post-Stage-3) — MathPix joins Image Describer and Local Chat
+   * in delegating to the shared orchestrator. The previous inline implementation
+   * was byte-identical to the shared one (same selectors, same MathML
+   * extraction, same synthetic mjx-container placeholders, same data-mathpix-
+   * enhanced=duplicate skip, same table rewriter call). Chemistry SMILES
+   * exclusion remains implicit via selector scope — the shared orchestrator's
+   * math selectors do not match `[role="img"]` or `.smiles-inline`, so
+   * chemistry aria-labels from addChemistryAltText pass through untouched.
    *
-   * SAFETY: only math elements are touched. Chemistry SMILES (`[role="img"]`,
-   * `.smiles-inline`) have their own aria-labels from `addChemistryAltText`
-   * and are walked by TTSSemantic with those labels intact — SRE is never
-   * invoked on them, since the math selectors below don't match.
+   * MathPix-specific post-processing (stripping MathJax context-menu cues via
+   * _cleanRenderedOutputTtsPayload) stays where it is — it runs in
+   * _handleRenderedOutputTtsClick after TTSSemantic.linearise, not inside the
+   * prepare step.
    *
    * Returns a detached clone safe to pass to TTSSemantic.linearise. The
    * original DOM is untouched.
    */
   async _prepareRenderedOutputForTts(output) {
-    const clone = output.cloneNode(true);
-
-    // Try SRE; if it fails, every formula falls back to its existing aria-label.
-    let sre = null;
-    try {
-      sre = await loadSRE();
-    } catch (err) {
-      logWarn(
-        "SRE unavailable — falling back to existing aria-labels for TTS",
-        err,
-      );
+    if (!output) return null;
+    if (
+      window.TTSRewriters &&
+      typeof window.TTSRewriters.preparePanelForTts === "function"
+    ) {
+      return window.TTSRewriters.preparePanelForTts(output);
     }
-
-    // Path 2: CDN wrappers — `<span role="math" aria-label="…">` containing
-    // hidden source-format tags (<mathml>, <asciimath>, <latex>) plus the
-    // rendered <mjx-container>. The wrapper's aria-label is set by
-    // `latexToSpeech` (tools.html). We replace it with a synthetic
-    // mjx-container so downstream linearisation treats it atomically.
-    const cdnWrappers = clone.querySelectorAll('[role="math"][aria-label]');
-    cdnWrappers.forEach((wrapper) => {
-      const speech =
-        this._sreSpeechFor(wrapper, sre) || wrapper.getAttribute("aria-label");
-      if (!speech || !speech.trim()) return;
-      const placeholder = document.createElement("mjx-container");
-      placeholder.setAttribute("aria-label", speech);
-      wrapper.replaceWith(placeholder);
-    });
-
-    // Path 1: bare `<mjx-container>` — produced by the MathJax fallback
-    // render path (no role="math" wrapper). Their aria-labels come from the
-    // bundled MathJax SRE and default to MathSpeak. Overwrite with our own
-    // Clearspeak generation when SRE is available.
-    const mjxContainers = clone.querySelectorAll("mjx-container");
-    mjxContainers.forEach((mjx) => {
-      // Skip duplicates marked by the post-render enhancement wrapper.
-      if (mjx.getAttribute("data-mathpix-enhanced") === "duplicate") return;
-      const speech = this._sreSpeechFor(mjx, sre);
-      if (!speech || !speech.trim()) return;
-      mjx.setAttribute("aria-label", speech);
-    });
-
-    // Tables: MathPix's CDN renders all cells as <td> with no <thead>, so
-    // TTSSemantic's lineariseTable treats the header row as data and emits
-    // 11+ short sentences ("Row 1, Column 1: …") that Web Speech glitches on
-    // at chunk boundaries. Rewrite each table into a single header-aware
-    // paragraph that produces ~4 sentences instead. Math inside cells is
-    // already SRE-processed (above), so the aria-label-aware cell extractor
-    // picks up the right speech for those.
-    const tables = clone.querySelectorAll("table");
-    tables.forEach((table) => {
-      const replacement = this._rewriteTableForTts(table);
-      if (replacement) table.replaceWith(replacement);
-    });
-
-    return clone;
-  }
-
-  /**
-   * Build a header-aware speech paragraph for a table and return a `<div>`
-   * suitable for replacing the original `<table>` in the cloned tree.
-   * Returns null when the table is empty, has no rows, or exceeds the soft
-   * cap (in which case TTSSemantic's lineariseTable handles it).
-   *
-   * Header detection (in priority order):
-   *   1. <thead><tr> — semantic table.
-   *   2. First row contains any <th> — partial semantic markup.
-   *   3. Otherwise the first row is treated as headers heuristically. This
-   *      is the MathPix-CDN signature: the renderer emits all cells as <td>
-   *      regardless of role.
-   */
-  _rewriteTableForTts(table) {
-    const SOFT_CAP_CELLS = 50;
-
-    const allRows = Array.from(table.querySelectorAll("tr"));
-    if (allRows.length === 0) return null;
-
-    let headerCells, dataRows;
-    const theadRow = table.querySelector("thead tr");
-    if (theadRow) {
-      headerCells = Array.from(theadRow.querySelectorAll("th, td"));
-      const tbody = table.querySelector("tbody");
-      dataRows = tbody
-        ? Array.from(tbody.querySelectorAll("tr"))
-        : allRows.filter((r) => !theadRow.contains(r) && r !== theadRow);
-    } else {
-      const firstRowThs = allRows[0].querySelectorAll("th");
-      if (firstRowThs.length > 0) {
-        headerCells = Array.from(firstRowThs);
-        dataRows = allRows.slice(1);
-      } else {
-        headerCells = Array.from(allRows[0].querySelectorAll("td"));
-        dataRows = allRows.slice(1);
-      }
-    }
-
-    const totalCells =
-      headerCells.length +
-      dataRows.reduce(
-        (acc, r) => acc + r.querySelectorAll("td, th").length,
-        0,
-      );
-    if (totalCells === 0) return null;
-    if (totalCells > SOFT_CAP_CELLS) {
-      logDebug(
-        "Table exceeds soft cap (" +
-          totalCells +
-          " cells) — falling back to TTSSemantic.lineariseTable",
-      );
-      return null;
-    }
-
-    const headerLabels = headerCells.map((h) => this._extractCellSpeech(h));
-    const colCount = headerLabels.length;
-    const rowCount = dataRows.length;
-
-    const sentences = [];
-    // Prefix each header with its column position, so the listener can map
-    // a cell to a column without having to count headers in real time.
-    const headerWithPos = headerLabels.map((h, i) =>
-      h ? "Column " + (i + 1) + " " + h : "Column " + (i + 1),
+    // Defensive fallback — return an unmodified clone so linearise still
+    // has a tree to walk. Mirrors the Image Describer / Local Chat
+    // graceful-degradation posture.
+    logWarn(
+      "TTSRewriters.preparePanelForTts not available — returning unmodified clone",
     );
-
-    if (rowCount === 0 && colCount > 0) {
-      sentences.push(
-        "Table with " + colCount + " column" + (colCount === 1 ? "" : "s") + ".",
-      );
-      sentences.push("Headers: " + headerWithPos.join(", ") + ".");
-    } else {
-      sentences.push(
-        "Table with " +
-          colCount +
-          " column" +
-          (colCount === 1 ? "" : "s") +
-          " and " +
-          rowCount +
-          " data row" +
-          (rowCount === 1 ? "" : "s") +
-          ".",
-      );
-      if (headerLabels.length > 0 && headerLabels.some((h) => h)) {
-        sentences.push("Headers: " + headerWithPos.join(", ") + ".");
-      }
-      dataRows.forEach((tr, rowIdx) => {
-        const cells = Array.from(tr.querySelectorAll("td, th"));
-        const cellTexts = cells.map((c, colIdx) => {
-          const value = this._extractCellSpeech(c);
-          const header = headerLabels[colIdx];
-          return header ? header + " " + value : value;
-        });
-        sentences.push("Row " + (rowIdx + 1) + ": " + cellTexts.join(", ") + ".");
-      });
-    }
-
-    const wrapper = document.createElement("div");
-    const p = document.createElement("p");
-    p.textContent = sentences.join(" ");
-    wrapper.appendChild(p);
-    return wrapper;
-  }
-
-  /**
-   * Extract speakable text from a table cell. If the cell contains math
-   * elements (already SRE-processed by the math pass above), substitute
-   * their aria-labels for the otherwise-empty SVG textContent. Falls back
-   * to plain textContent for cells with no math.
-   */
-  _extractCellSpeech(cell) {
-    if (!cell) return "";
-    const hasMath = !!cell.querySelector("mjx-container[aria-label]");
-    if (!hasMath) {
-      return (cell.textContent || "").replace(/\s+/g, " ").trim();
-    }
-    // Clone the cell so we can mutate it without affecting the parent tree.
-    const cellClone = cell.cloneNode(true);
-    cellClone
-      .querySelectorAll("mjx-container[aria-label]")
-      .forEach((el) => {
-        el.replaceWith(
-          document.createTextNode(" " + el.getAttribute("aria-label") + " "),
-        );
-      });
-    return (cellClone.textContent || "").replace(/\s+/g, " ").trim();
-  }
-
-  /**
-   * Run SRE.toSpeech on an element's MathML. Returns the Clearspeak text or
-   * null if SRE is unavailable, no MathML was found, or the call failed.
-   */
-  _sreSpeechFor(el, sre) {
-    if (!sre || !el) return null;
-    // Both paths embed real MathML inside the element (CDN: <mathml><math>…,
-    // MathJax: <mjx-assistive-mml><math>…). The first <math> descendant is
-    // the canonical source.
-    const mathEl = el.querySelector("math");
-    if (!mathEl) return null;
-    try {
-      const speech = sre.toSpeech(mathEl.outerHTML);
-      return speech && typeof speech === "string" ? speech.trim() : null;
-    } catch (err) {
-      logWarn("SRE.toSpeech failed for formula — using fallback", err);
-      return null;
-    }
+    return output.cloneNode(true);
   }
 
   /**

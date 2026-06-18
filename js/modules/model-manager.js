@@ -387,6 +387,35 @@ export class ModelManager {
       return;
     }
 
+    // Task 3.6a follow-up #3 — provider-aware skip. ModelManager's
+    // initialize() waits for parameterController via requestAnimationFrame,
+    // so this method routinely runs AFTER EnhancedModelSelection.init() has
+    // already entered its mismatch branch (cleared dropdown, rendered notice,
+    // disabled #process-btn) when the active provider isn't OpenRouter.
+    // Unconditionally populating here silently overwrites that state.
+    // Skip the option-population block when non-OR is active; still attach
+    // the change listener so future user-driven selection — after the user
+    // switches back to OR and EnhancedModelSelection's applyFilters
+    // re-populates via updateModelSelect — updates the model info display.
+    const activeProvider =
+      window.ProviderSwitcher &&
+      typeof window.ProviderSwitcher.getActive === "function"
+        ? window.ProviderSwitcher.getActive()
+        : "openrouter";
+
+    if (activeProvider !== "openrouter") {
+      this.logInfo(
+        `Active provider '${activeProvider}' isn't OpenRouter; skipping ModelManager populate (EnhancedModelSelection owns the dropdown in mismatch state)`
+      );
+
+      modelSelect.addEventListener("change", () => {
+        this.logDebug(`Model selection changed to: ${modelSelect.value}`);
+        this.updateModelInfo(modelSelect.value);
+      });
+
+      return;
+    }
+
     this.logInfo("Populating model select dropdown");
     modelSelect.innerHTML = "";
 

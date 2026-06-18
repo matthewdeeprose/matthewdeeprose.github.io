@@ -186,7 +186,7 @@
       // Send simple request
       console.log("⏳ Sending request to API...");
       const response = await embed.sendRequest(
-        'Say "Hello from OpenRouter Embed API!" and nothing else.'
+        'Say "Hello from OpenRouter Embed API!" and nothing else.',
       );
 
       console.log("✅ Response received");
@@ -197,7 +197,7 @@
       console.log(
         "✅ Processing time:",
         response.metadata.processingTime,
-        "ms"
+        "ms",
       );
 
       // Verify content was injected
@@ -254,16 +254,16 @@
       // Check if response has pirate-like language
       const pirateWords = ["arr", "ahoy", "matey", "ye", "aye", "ship", "sea"];
       const hasPirateLanguage = pirateWords.some((word) =>
-        response.text.toLowerCase().includes(word)
+        response.text.toLowerCase().includes(word),
       );
 
       if (hasPirateLanguage) {
         console.log(
-          "✅ System prompt appears to be working (pirate language detected)"
+          "✅ System prompt appears to be working (pirate language detected)",
         );
       } else {
         console.log(
-          "⚠️ No obvious pirate language, but system prompt was sent"
+          "⚠️ No obvious pirate language, but system prompt was sent",
         );
       }
 
@@ -310,7 +310,7 @@
           "**Bold text** and *italic text*\n\n" +
           "- List item 1\n" +
           "- List item 2\n\n" +
-          "`code snippet`"
+          "`code snippet`",
       );
 
       console.log("✅ Response received");
@@ -331,13 +331,13 @@
           passedChecks++;
         } else {
           console.log(
-            `⚠️ ${check.name} not found (may be due to AI response variation)`
+            `⚠️ ${check.name} not found (may be due to AI response variation)`,
           );
         }
       });
 
       console.log(
-        `\n✅ Markdown processing: ${passedChecks}/${checks.length} elements found`
+        `\n✅ Markdown processing: ${passedChecks}/${checks.length} elements found`,
       );
 
       console.log("\n🎉 TEST 5 PASSED!\n");
@@ -389,13 +389,17 @@
       embed.setSystemPrompt(null);
       console.log("✅ System prompt removed:", embed.systemPrompt === null);
 
-      // Test invalid updates
+      // Test invalid updates. Value chosen to sit safely outside the
+      // setTemperature 0–2 bound (widened in Task 2.5b to match the
+      // OpenAI surface and EmbedConfiguration.validateTemperature).
       try {
-        embed.setTemperature(2.0);
-        console.error("❌ Should have rejected invalid temperature");
+        embed.setTemperature(2.5);
+        console.error(
+          "❌ Should have rejected invalid temperature (2.5 > 2.0)",
+        );
         return false;
       } catch (e) {
-        console.log("✅ Correctly rejected invalid temperature");
+        console.log("✅ Correctly rejected invalid temperature (2.5 > 2.0)");
       }
 
       console.log("\n🎉 TEST 6 PASSED!\n");
@@ -561,7 +565,7 @@
     console.log(
       `${
         passed === total ? "🎉" : "⚠️"
-      } RESULTS: ${passed}/${total} tests passed`
+      } RESULTS: ${passed}/${total} tests passed`,
     );
     console.log("=".repeat(60) + "\n");
 
@@ -571,6 +575,10 @@
       console.log("❌ Some tests failed. Please review the output above.\n");
     }
 
+    // Expose the count (additive — return type stays boolean for callers like
+    // testEmbedStage3_Regressions) so runAllEmbedSuites can record 8/8 rather
+    // than a lossy 1/1.
+    window._embedStage1Results = { passed, total };
     return passed === total;
   };
 

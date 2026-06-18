@@ -52,7 +52,7 @@ var TTSReadAloud = (function () {
   // STATE
   // ==========================================================================
 
-  var STATES = { IDLE: 'idle', SPEAKING: 'speaking', PAUSED: 'paused' };
+  var STATES = { IDLE: 'idle', LOADING: 'loading', SPEAKING: 'speaking', PAUSED: 'paused' };
   var currentState = STATES.IDLE;
   var observer = null;
   var initialised = false;
@@ -155,10 +155,20 @@ var TTSReadAloud = (function () {
     var icon = els.button.querySelector('[data-icon]');
 
     switch (state) {
+      case STATES.LOADING:
+        els.label.textContent = 'Preparing…';
+        if (icon) icon.setAttribute('data-icon', 'hourglass');
+        els.button.setAttribute('aria-label', 'Preparing description, please wait');
+        els.button.disabled = true;
+        announce('Preparing description');
+        logDebug('State → loading');
+        break;
+
       case STATES.SPEAKING:
         els.label.textContent = 'Stop';
         if (icon) icon.setAttribute('data-icon', 'close');
         els.button.setAttribute('aria-label', 'Stop reading');
+        els.button.disabled = false;
         showEngineBadge();
         announce('Reading description aloud');
         logDebug('State → speaking');
@@ -168,6 +178,7 @@ var TTSReadAloud = (function () {
         els.label.textContent = 'Resume';
         if (icon) icon.setAttribute('data-icon', 'message');
         els.button.setAttribute('aria-label', 'Resume reading');
+        els.button.disabled = false;
         logDebug('State → paused');
         break;
 
@@ -237,6 +248,13 @@ var TTSReadAloud = (function () {
    * Extract a semantic result object from the Image Describer output container.
    * Returns { text, sections } when TTSSemantic is available, or
    * { text, sections: null } as a fallback (controller uses legacy chunking).
+   *
+   * Synchronous text extraction — used by refreshButtonEnabled and
+   * refreshSaveAudioEnabled for enabled-state checks (called on every
+   * MutationObserver tick, so running SRE here would be wasteful). The
+   * Clearspeak payload (with maths rewritten via SRE) is built only on actual
+   * Speak/Save click via getPreparedOutputResult().
+   *
    * @returns {{ text: string, sections: Array|null }|null}
    */
   function getOutputResult() {
@@ -257,6 +275,65 @@ var TTSReadAloud = (function () {
   }
 
   // ==========================================================================
+  // CLEARSPEAK REWRITER (Stages 1 + 2 — delegated to TTSRewriters in Stage 3)
+  // ==========================================================================
+
+  /**
+   * Clone the Image Describer output and replace each math element with a
+   * synthetic <mjx-container> carrying SRE-generated Clearspeak as its
+   * aria-label. The lineariser then produces consistent natural-language
+   * speech regardless of which renderer (MathJax fallback or MMD CDN)
+   * populated the output.
+   *
+   * Stage 3 moved the orchestration into window.TTSRewriters.preparePanelForTts
+   * so Local Chat (third consumer) doesn't duplicate the same ~30 LOC. The
+   * silent-degradation contract is unchanged: SRE failure leaves formulas
+   * with their existing aria-labels; table-rewriter failure leaves the
+   * original <table> for TTSSemantic.lineariseTable to handle.
+   */
+  function prepareImgdescOutputForTts(outputEl) {
+    if (window.TTSRewriters && typeof window.TTSRewriters.preparePanelForTts === 'function') {
+      return window.TTSRewriters.preparePanelForTts(outputEl);
+    }
+    // Defensive fallback: if the shared helper is missing (load order
+    // broken, file failed to fetch), return the clone unchanged so the
+    // lineariser still has something to walk. Mirrors the Stage 1 / Stage 2
+    // graceful-degradation posture.
+    logWarn('TTSRewriters.preparePanelForTts not available — returning unmodified clone');
+    return Promise.resolve(outputEl ? outputEl.cloneNode(true) : null);
+  }
+
+  /**
+   * Async counterpart to getOutputResult — runs the SRE rewriter pipeline
+   * before linearising, so maths is spoken in Clearspeak rather than the
+   * MathJax-default MathSpeak. Returns a {text, sections} payload suitable
+   * for TTSController.speak(), or null on empty/missing output.
+   *
+   * On SRE failure, prepareImgdescOutputForTts resolves with the clone
+   * unchanged (formulas keep their existing aria-labels), so this function
+   * never throws — degradation is silent and audio remains intelligible.
+   */
+  function getPreparedOutputResult() {
+    var output = els.output || document.getElementById('imgdesc-output');
+    if (!output) return Promise.resolve(null);
+
+    return prepareImgdescOutputForTts(output).then(function (target) {
+      if (!target) return null;
+      if (window.TTSSemantic && typeof window.TTSSemantic.linearise === 'function') {
+        var result = window.TTSSemantic.linearise(target, {
+          verbosity: window.TTSSemantic.getVerbosity(),
+          // Belt-and-braces: any source-format tags missed by the math
+          // selectors above (e.g. unwrapped formulas) are skipped here.
+          skipSelectors: 'mathml, asciimath, latex'
+        });
+        if (result && result.text) return result;
+      }
+      var plain = (target.innerText || target.textContent || '').trim();
+      return plain ? { text: plain, sections: null } : null;
+    });
+  }
+
+  // ==========================================================================
   // BUTTON ENABLE / DISABLE
   // ==========================================================================
 
@@ -267,6 +344,11 @@ var TTSReadAloud = (function () {
    */
   function refreshButtonEnabled() {
     if (!els.button) return;
+    // State machine owns the disabled flag while LOADING / SPEAKING / PAUSED.
+    // Without this guard, a MutationObserver tick during the SRE prepare wait
+    // (or mid-playback) could re-enable a "Preparing…" button or disable a
+    // "Stop" button, both of which look wrong. Only refresh in IDLE.
+    if (currentState !== STATES.IDLE) return;
 
     var result = getOutputResult();
     var hasText = !!(result && result.text);
@@ -431,13 +513,18 @@ var TTSReadAloud = (function () {
       return;
     }
 
-    var result = getOutputResult();
-    if (!result || !result.text) {
+    // Cheap synchronous text-presence check up-front. The actual payload sent
+    // to the controller is the Clearspeak-rewritten one from
+    // getPreparedOutputResult() below \u2014 see Stage 1 of semantic-tts-plan.md.
+    var preflight = getOutputResult();
+    if (!preflight || !preflight.text) {
       logWarn('No text to export');
       return;
     }
 
-    // Prevent double-click
+    // Lock UI immediately \u2014 the existing "Generating\u2026" + disabled state covers
+    // both the SRE wait (first call only) and the subsequent chunk-generation
+    // phase, so no separate LOADING mirror is needed.
     exporting = true;
     els.saveAudioButton.disabled = true;
     if (els.saveAudioFormatButton) els.saveAudioFormatButton.disabled = true;
@@ -450,7 +537,13 @@ var TTSReadAloud = (function () {
     showExportProgress();
     announce('Generating ' + format.toUpperCase() + ' audio file\u2026');
 
-    exportFn.call(window.TTSController, result)
+    getPreparedOutputResult()
+      .then(function (result) {
+        if (!result || !result.text) {
+          throw new Error('No text to export after rewriter pipeline');
+        }
+        return exportFn.call(window.TTSController, result);
+      })
       .then(function () {
         announce('Audio file saved');
         if (typeof window.notifySuccess === 'function') {
@@ -502,13 +595,47 @@ var TTSReadAloud = (function () {
 
     switch (currentState) {
       case STATES.IDLE:
-        var result = getOutputResult();
-        if (!result || !result.text) {
-          logWarn('No text to read');
-          return;
+        // Skip the LOADING frame entirely on cache-hit clicks — SRE is
+        // already initialised so the prepare-pipeline resolves synchronously
+        // from the user's perspective. Asymmetric vs MathPix Processed
+        // Output (which always shows LOADING briefly); see Stage 1 lessons
+        // learned in semantic-tts-plan.md.
+        var sreCached = !!(
+          window.TTSSreLoader &&
+          typeof window.TTSSreLoader.isLoaded === 'function' &&
+          window.TTSSreLoader.isLoaded()
+        );
+        if (!sreCached) {
+          setButtonState(STATES.LOADING);
         }
-        logInfo('Starting speech, text length:', result.text.length);
-        window.TTSController.speak(result);
+
+        var output = els.output || document.getElementById('imgdesc-output');
+        getPreparedOutputResult()
+          .then(function (result) {
+            // If the user has switched modes / cleared the output during the
+            // await, bail. The MutationObserver will refresh button state.
+            if (!output || !document.contains(output)) {
+              if (currentState === STATES.LOADING) setButtonState(STATES.IDLE);
+              return;
+            }
+            if (!result || !result.text) {
+              logWarn('No text to read');
+              if (currentState === STATES.LOADING) setButtonState(STATES.IDLE);
+              return;
+            }
+            logInfo('Starting speech, text length:', result.text.length);
+            // tts:start will transition us to SPEAKING via the existing
+            // event listener; that re-enables the button so the user can
+            // click "Stop".
+            window.TTSController.speak(result);
+          })
+          .catch(function (err) {
+            // prepareImgdescOutputForTts swallows SRE failures internally,
+            // so reaching here means linearise itself threw — degrade to
+            // IDLE rather than leaving the button stuck on LOADING.
+            logError('Prepare-output pipeline failed', err);
+            if (currentState === STATES.LOADING) setButtonState(STATES.IDLE);
+          });
         break;
 
       case STATES.SPEAKING:
@@ -519,6 +646,13 @@ var TTSReadAloud = (function () {
       case STATES.PAUSED:
         logInfo('Resuming speech');
         window.TTSController.resume();
+        break;
+
+      case STATES.LOADING:
+        // Re-entrancy guard — a click during LOADING is a no-op. The button
+        // is already disabled in this state; this branch is defensive
+        // against state desync (e.g. external code calling handleClick).
+        logDebug('Click during LOADING ignored');
         break;
     }
   }

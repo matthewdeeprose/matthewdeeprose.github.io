@@ -68,6 +68,7 @@
     this.parseResult = null;
     this.selectedEdit = null;
     this.hasUnsavedChanges = false;
+    this.hasContextEdits = false;
 
     // Phase 8F: Clear raw ZIP file reference
     this._rawZIPFile = null;
@@ -112,6 +113,7 @@
     this.selectedEdit = null;
     this.restoredSession = null;
     this.hasUnsavedChanges = false;
+    this.hasContextEdits = false;
     this.pdfRenderedForComparison = false;
 
     // Phase 8F: Clear image restore state

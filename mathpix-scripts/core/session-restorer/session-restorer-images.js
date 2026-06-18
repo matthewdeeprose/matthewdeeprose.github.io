@@ -18,6 +18,184 @@
   const proto = MathPixSessionRestorer.prototype;
 
   // =========================================================================
+  // F-M PHASE 4: BYTES-FIRST EMBEDDING HELPERS
+  //
+  // Convert-time image embedding for getMMDForAPI. The pre-Phase-4 helper
+  // reverse-translated blob URLs back to CDN URLs, which silently lost
+  // (a) user replacements (the swap's bytes never reached the API), and
+  // (b) chemistry RDKit renders (the API fetched the original Mathpix
+  // crops). The bytes-first policy embeds the live registry blob as a
+  // dataURI; CDN fallback applies only when no blob is available.
+  //
+  // See pre-stage-7-prompt-03b-f-m-convert-strategy.md.
+  // =========================================================================
+
+  /**
+   * Wrap canvas.toBlob in a Promise for use in async encode chains.
+   * Supports both HTMLCanvasElement and OffscreenCanvas; we use the
+   * HTMLCanvasElement path for broadest compatibility.
+   * @param {HTMLCanvasElement} canvas
+   * @param {string} mime - e.g. "image/png", "image/jpeg", "image/webp"
+   * @param {number} [quality] - 0-1 quality for lossy formats
+   * @returns {Promise<Blob>}
+   */
+  function canvasToBlobPromise(canvas, mime, quality) {
+    return new Promise((resolve, reject) => {
+      try {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error(`canvas.toBlob produced null for ${mime}`));
+          },
+          mime,
+          quality,
+        );
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  /**
+   * Read a Blob as a data: URI via FileReader.
+   * @param {Blob} blob
+   * @returns {Promise<string>} data URI string
+   */
+  function blobToDataURI(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error("FileReader failed"));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /**
+   * Pick the encoder candidates for a per-image comparison, given the
+   * formats the user has selected for conversion. Always includes PNG and
+   * JPEG; adds WebP only when ENABLE_WEBP_EMBEDDING is true AND every
+   * selected format is on FORMATS_SUPPORTING_WEBP (format-aware
+   * activation per §4a of the strategy doc).
+   *
+   * @param {Array<string>} selectedFormats - Convert API format keys
+   * @returns {Array<string>} encoder format keys, e.g. ["png", "jpeg"] or ["png", "jpeg", "webp"]
+   */
+  function pickEncoders(selectedFormats) {
+    const config = window.MATHPIX_CONFIG?.CONVERT?.EMBEDDING;
+    const candidates = ["png", "jpeg"];
+    if (!config) return candidates;
+    if (!config.ENABLE_WEBP_EMBEDDING) return candidates;
+    if (!Array.isArray(selectedFormats) || selectedFormats.length === 0) {
+      return candidates;
+    }
+    const safeList = config.FORMATS_SUPPORTING_WEBP || [];
+    const allSafe = selectedFormats.every((f) => safeList.includes(f));
+    if (allSafe) candidates.push("webp");
+    return candidates;
+  }
+
+  /**
+   * Encode a Blob to a dataURI using each allowed encoder and return the
+   * smallest result. PNG and JPEG are always attempted; WebP joins when
+   * pickEncoders returned it.
+   *
+   * Uses canvas.toBlob() in parallel per encoder so the total cost is
+   * dominated by the slowest single encoder rather than their sum.
+   *
+   * @param {Blob} sourceBlob - Bytes to encode
+   * @param {Array<string>} allowedEncoders - Output of pickEncoders()
+   * @returns {Promise<string>} The smallest dataURI candidate
+   * @throws if no encoder succeeds
+   */
+  async function encodeBestDataURI(sourceBlob, allowedEncoders) {
+    if (!(sourceBlob instanceof Blob) || sourceBlob.size === 0) {
+      throw new Error("encodeBestDataURI: empty or non-Blob input");
+    }
+
+    const jpegQuality =
+      window.MATHPIX_CONFIG?.CONVERT?.EMBEDDING?.JPEG_QUALITY ?? 0.9;
+
+    // Decode source bytes to a canvas. createImageBitmap is the modern,
+    // efficient path; fall back to an <img> load if it throws (extremely
+    // old engines).
+    let imageBitmap;
+    try {
+      imageBitmap = await createImageBitmap(sourceBlob);
+    } catch (e) {
+      logWarn(
+        "encodeBestDataURI: createImageBitmap failed; falling back to <img> load",
+        e,
+      );
+      imageBitmap = await loadBlobAsImage(sourceBlob);
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = imageBitmap.width || imageBitmap.naturalWidth;
+    canvas.height = imageBitmap.height || imageBitmap.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(imageBitmap, 0, 0);
+    if (typeof imageBitmap.close === "function") imageBitmap.close();
+
+    const encodePromises = allowedEncoders.map(async (format) => {
+      const mime = format === "jpeg" ? "image/jpeg" : `image/${format}`;
+      const quality = format === "jpeg" ? jpegQuality : undefined;
+      try {
+        const encodedBlob = await canvasToBlobPromise(canvas, mime, quality);
+        const uri = await blobToDataURI(encodedBlob);
+        return { format, uri, size: uri.length };
+      } catch (err) {
+        logDebug(`encodeBestDataURI: ${format} encoder failed`, err);
+        return null;
+      }
+    });
+
+    const results = (await Promise.all(encodePromises)).filter(Boolean);
+    if (results.length === 0) {
+      throw new Error(
+        "encodeBestDataURI: no encoder candidate succeeded",
+      );
+    }
+
+    results.sort((a, b) => a.size - b.size);
+    logDebug(
+      `encodeBestDataURI: chose ${results[0].format} (${results[0].size} chars; candidates: ${results.map((r) => `${r.format}=${r.size}`).join(", ")})`,
+    );
+    return results[0].uri;
+  }
+
+  /**
+   * Last-resort image decoder for engines without createImageBitmap.
+   * Returns an HTMLImageElement that can be drawn to a canvas.
+   * @param {Blob} blob
+   * @returns {Promise<HTMLImageElement>}
+   */
+  function loadBlobAsImage(blob) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Image decode failed"));
+      };
+      img.src = url;
+    });
+  }
+
+  // Expose for tests (window-side so tests can verify encoder selection
+  // and dataURI shape without driving a full convert flow).
+  if (typeof window !== "undefined") {
+    window._fmEmbedHelpers = {
+      pickEncoders,
+      encodeBestDataURI,
+      blobToDataURI,
+    };
+  }
+
+  // =========================================================================
   // PHASE 8F: IMAGE RESTORE FROM ZIP
   // =========================================================================
 
@@ -189,7 +367,12 @@
                 reader.readAsDataURL(typedBlob);
               });
               if (dataUri) {
-                registry.replaceImage(imageId, { dataUri });
+                // Discovery 23 — restore-time housekeeping. The earlier
+                // replaceImage call here wrongly flipped status to
+                // "user-replaced" because the registry sees the dataUri
+                // field as a content change; this is just re-deriving
+                // dataUri from the restored blob, not a user replacement.
+                registry.syncDataUriForRestore(imageId, dataUri);
                 logDebug(
                   `Regenerated dataUri for user-added image ${imageId} (${(dataUri.length / 1024).toFixed(1)} KB)`,
                 );
@@ -274,52 +457,636 @@
   };
 
   /**
-   * Get MMD content with blob URLs swapped back to original CDN URLs.
-   * Required for the convert API, which cannot resolve blob: protocol URLs.
+   * Sync each registry entry's `mmdReference` from CDN-URL form to
+   * blob-URL form, mirroring what `rewriteMMDWithBlobUrls()` just did
+   * to the MMD string itself. Must be called immediately after
+   * `rewriteMMDWithBlobUrls()` during session restore.
+   *
+   * Without this sync the registry's `mmdReference` field keeps pointing
+   * at the original CDN URL while the live MMD holds blob URLs, so any
+   * consumer that does substring matching (e.g. the alt-text serialiser's
+   * `findImage`) can no longer bridge the two forms.
+   *
+   * User-added images skip naturally because their `originalUrl` is a
+   * blob URL not present as a key in `imageBlobUrlMap`. A belt-and-braces
+   * equality check after `.replace()` covers the residual case where
+   * `originalUrl` is not literally present in `mmdReference`.
+   *
+   * @private
+   */
+  proto.syncRegistryReferencesToBlobUrls = function () {
+    if (!this.imageRegistry || this.imageBlobUrlMap.size === 0) {
+      return;
+    }
+
+    const entries = this.imageRegistry.getAllImages();
+    let syncedCount = 0;
+
+    for (const entry of entries) {
+      if (!entry.originalUrl || !entry.mmdReference) continue;
+
+      const blobUrl = this.imageBlobUrlMap.get(entry.originalUrl);
+      if (!blobUrl) continue; // user-added images skip naturally
+
+      const newMmdRef = entry.mmdReference.replace(entry.originalUrl, blobUrl);
+      if (newMmdRef === entry.mmdReference) continue; // belt-and-braces
+
+      const ok = this.imageRegistry.syncMmdReferenceForRestore(
+        entry.id,
+        newMmdRef,
+      );
+      if (ok) syncedCount++;
+    }
+
+    logInfo(
+      `Synced ${syncedCount} registry mmdReference(s) to blob-URL form`,
+    );
+  };
+
+  /**
+   * Get MMD content with image bytes embedded for the convert API.
+   *
+   * Thin orchestrator (P1b): builds the ordered substitution manifest via
+   * buildManifest, then replays it against the original MMD via applyManifest.
+   * The embedded output is byte-for-byte identical to the pre-P1b single-pass
+   * method — the branch/encode logic lives in buildManifest now.
    *
    * @param {string} mmdContent - MMD content potentially containing blob URLs
-   * @returns {string} MMD with original CDN URLs restored
+   *   or chemistry CDN references
+   * @param {Array<string>} [selectedFormats] - Output formats requested for
+   *   this convert (see buildManifest / pickEncoders). Optional.
+   * @returns {Promise<string>} MMD with image bytes embedded where present,
+   *   CDN URLs preserved otherwise
    */
-  proto.getMMDForAPI = function (mmdContent) {
+  proto.getMMDForAPI = async function (mmdContent, selectedFormats) {
     if (!mmdContent) return mmdContent;
+    const manifest = await this.buildManifest(mmdContent, selectedFormats);
+    return this.applyManifest(mmdContent, manifest);
+  };
+
+  /**
+   * Build the ordered substitution manifest for convert-time image embedding.
+   *
+   * F-M Phase 4 — bytes-first policy. For each image referenced in the
+   * MMD (OCR blob URL, chemistry CDN URL with cached RDKit render, or
+   * user-added blob URL), if live bytes exist in the registry or
+   * chemistry cache, encode them with the smallest-candidate selection
+   * (PNG vs JPEG, optionally WebP — see pickEncoders) and record a
+   * dataURI substitution. Fall back to the original CDN URL only when no
+   * bytes are available.
+   *
+   * Three steps in order:
+   *   1. OCR images via imageBlobUrlMap — replaces the pre-Phase-4
+   *      reverse-to-CDN step which silently lost user swaps and chemistry
+   *      RDKit content.
+   *   2. Chemistry RDKit renders via chemistryBlobUrlMap (read from
+   *      mathpix-mmd-preview) — embed when the CDN URL appears in the
+   *      MMD and a cached blob URL exists.
+   *   3. User-added images (blob URL is the originalUrl) — embed bytes
+   *      or fall back to cached dataURI from add-time encoding.
+   *
+   * The internal `apiSafe` working copy is mutated at each step exactly as the
+   * pre-P1b method did, because Step 2's `apiSafe.includes(cdnUrl)` gate and
+   * Step 3's blob: scan must see the post-prior-stage string. That working copy
+   * is discarded; getMMDForAPI rebuilds the output by replaying the manifest.
+   *
+   * Async because canvas.toBlob() is callback-style. Site 3
+   * (session-restorer-convert.js handleConvert) already awaits.
+   *
+   * See pre-stage-7-prompt-03b-f-m-convert-strategy.md for the locked
+   * strategy and rationale.
+   *
+   * Step 1's blob→CDN regex-escape shares its vocabulary with two sibling
+   * helpers (see F-E in pre-stage-7-discoveries-stage6-post-close-audit.md):
+   * proto._translateBlobUrlsToCdnForMMD (this file) and
+   * MathPixImageManagerUI._translateBlobUrlsToCdn (manager-side). Drift risk on
+   * the regex-escape pattern is real but small — fix one, fix all.
+   *
+   * @param {string} mmdContent - MMD content potentially containing blob URLs
+   *   or chemistry CDN references
+   * @param {Array<string>} [selectedFormats] - Output formats requested
+   *   for this convert. Drives pickEncoders' decision about WebP
+   *   participation. Optional; defaults to PNG+JPEG only.
+   * @returns {Promise<Array<{url: string, replacement: string}>>} ordered
+   *   substitution manifest — each (url, replacement) recorded in application
+   *   order; replaying it via applyManifest reproduces the embedded MMD.
+   */
+  proto.buildManifest = async function (mmdContent, selectedFormats) {
+    if (!mmdContent) return [];
 
     let apiSafe = mmdContent;
+    const manifest = [];
+    const allowedEncoders = pickEncoders(selectedFormats);
 
-    // Step 1: Reverse blob URLs to CDN URLs for OCR images
+    // -------------------------------------------------------------------
+    // Step 1: OCR images via imageBlobUrlMap.
+    //
+    // The map is CDN_URL → blob_URL where blob_URL is the LIVE URL
+    // (post-swap if the user replaced the image, original-fetch otherwise).
+    // The MMD contains the blob URLs (the editor's preview rewrote them
+    // in for display). For each, find the registry entry by its
+    // originalUrl (the CDN URL key) and embed entry.blob bytes.
+    // -------------------------------------------------------------------
     if (this.imageBlobUrlMap && this.imageBlobUrlMap.size > 0) {
-      for (const [originalUrl, blobUrl] of this.imageBlobUrlMap) {
-        if (!blobUrl) {
-          logWarn(
-            `getMMDForAPI: skipping undefined blobUrl for ${originalUrl}`,
-          );
-          continue;
-        }
-        const escapedBlobUrl = blobUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const regex = new RegExp(escapedBlobUrl, "g");
-        apiSafe = apiSafe.replace(regex, originalUrl);
+      const registryImages = this.imageRegistry?.getAllImages() || [];
+
+      const ocrSubs = await Promise.all(
+        Array.from(this.imageBlobUrlMap.entries()).map(
+          async ([originalUrl, blobUrl]) => {
+            if (!blobUrl) {
+              logWarn(
+                `buildManifest: skipping undefined blobUrl for ${originalUrl}`,
+              );
+              return null;
+            }
+            const entry = registryImages.find(
+              (img) => img.originalUrl === originalUrl,
+            );
+            let replacement;
+            if (entry?.blob instanceof Blob && entry.blob.size > 0) {
+              try {
+                replacement = await this._encodeCached(
+                  entry.id,
+                  entry.blob,
+                  allowedEncoders,
+                );
+                logDebug(
+                  `buildManifest: embedded OCR bytes for ${originalUrl.substring(0, 60)} (${replacement.length} chars)`,
+                );
+              } catch (encodeError) {
+                logWarn(
+                  `buildManifest: encode failed for ${originalUrl.substring(0, 60)}; falling back to CDN`,
+                  encodeError,
+                );
+                replacement = originalUrl;
+              }
+            } else if (entry?.dataUri) {
+              replacement = entry.dataUri;
+              logDebug(
+                `buildManifest: used cached dataURI for ${originalUrl.substring(0, 60)}`,
+              );
+            } else {
+              replacement = originalUrl;
+              logDebug(
+                `buildManifest: no bytes; CDN fallback for ${originalUrl.substring(0, 60)}`,
+              );
+            }
+            return { blobUrl, replacement };
+          },
+        ),
+      );
+
+      for (const sub of ocrSubs) {
+        if (!sub) continue;
+        const escaped = sub.blobUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        apiSafe = apiSafe.replace(new RegExp(escaped, "g"), sub.replacement);
+        manifest.push({ url: sub.blobUrl, replacement: sub.replacement });
       }
     }
 
-    // Step 2: Handle remaining blob URLs (user-added images) — Phase 8H.1
-    if (this.imageRegistry && apiSafe.includes("blob:")) {
-      const blobUrlRegex = /blob:https?:\/\/[^\s)}"\\]+/g;
-      apiSafe = apiSafe.replace(blobUrlRegex, (blobUrl) => {
-        const images = this.imageRegistry.getAllImages();
-        const entry = images.find((img) => img.originalUrl === blobUrl);
-        if (entry && entry.dataUri) {
-          logDebug(
-            `getMMDForAPI: embedded user-added image ${entry.id} as data URI`,
-          );
-          return entry.dataUri;
-        }
-        logWarn(
-          `getMMDForAPI: unresolvable blob URL: ${blobUrl.substring(0, 60)}…`,
-        );
-        return blobUrl;
-      });
+    // -------------------------------------------------------------------
+    // Step 2: Chemistry RDKit renders via mathpix-mmd-preview's
+    // chemistryBlobUrlMap (CDN_URL → { blobUrl, fingerprint }).
+    //
+    // Unlike Step 1, the chemistry blob URLs typically do NOT appear in
+    // the MMD textbox — the editor holds CDN URLs throughout, and only
+    // the rendered preview DOM swaps to blob URLs visually. The fix:
+    // walk the chemistry map; for each CDN URL that appears in the MMD
+    // AND has a cached blob URL, fetch the blob bytes and embed.
+    // -------------------------------------------------------------------
+    const mmdPreview =
+      typeof window.getMathPixMMDPreview === "function"
+        ? window.getMathPixMMDPreview()
+        : null;
+    const chemMap = mmdPreview?.chemistryBlobUrlMap;
+    if (chemMap && chemMap.size > 0) {
+      const chemSubs = await Promise.all(
+        Array.from(chemMap.entries()).map(async ([cdnUrl, chemEntry]) => {
+          const blobUrl = chemEntry?.blobUrl;
+          if (!blobUrl) return null;
+          if (!apiSafe.includes(cdnUrl)) return null;
+          try {
+            this._encodeMemo ??= new Map();
+            let replacement = this._encodeMemo.get(cdnUrl);
+            if (replacement === undefined) {
+              const blob = await fetch(blobUrl).then((r) => r.blob());
+              if (!blob || blob.size === 0) return null;
+              replacement = await encodeBestDataURI(blob, allowedEncoders);
+              this._encodeMemo.set(cdnUrl, replacement);
+              logDebug(
+                `buildManifest: embedded chemistry RDKit bytes for ${cdnUrl.substring(0, 60)} (${replacement.length} chars)`,
+              );
+            } else {
+              logDebug(
+                `buildManifest: chemistry cache hit for ${cdnUrl.substring(0, 60)}`,
+              );
+            }
+            return { cdnUrl, replacement };
+          } catch (chemErr) {
+            logWarn(
+              `buildManifest: chemistry embed failed for ${cdnUrl.substring(0, 60)}; preserving CDN URL`,
+              chemErr,
+            );
+            return null;
+          }
+        }),
+      );
+
+      for (const sub of chemSubs) {
+        if (!sub) continue;
+        const escaped = sub.cdnUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        apiSafe = apiSafe.replace(new RegExp(escaped, "g"), sub.replacement);
+        manifest.push({ url: sub.cdnUrl, replacement: sub.replacement });
+      }
     }
 
+    // -------------------------------------------------------------------
+    // Step 3: User-added images.
+    //
+    // Any blob URLs still present in apiSafe after Step 1 are user-added
+    // uploads — their originalUrl IS the blob URL (created at upload via
+    // URL.createObjectURL). Prefer encode-from-blob; fall back to the
+    // cached dataURI the registry stored at add time.
+    // -------------------------------------------------------------------
+    if (this.imageRegistry && apiSafe.includes("blob:")) {
+      const blobUrlRegex = /blob:https?:\/\/[^\s)}"\\]+/g;
+      const matches = [...apiSafe.matchAll(blobUrlRegex)];
+      const seen = new Set();
+      const userAddedSubs = [];
+
+      for (const match of matches) {
+        const blobUrl = match[0];
+        if (seen.has(blobUrl)) continue;
+        seen.add(blobUrl);
+
+        const images = this.imageRegistry.getAllImages();
+        const entry = images.find((img) => img.originalUrl === blobUrl);
+        if (!entry) {
+          logWarn(
+            `buildManifest: unresolvable blob URL: ${blobUrl.substring(0, 60)}…`,
+          );
+          continue;
+        }
+
+        let replacement;
+        if (entry.blob instanceof Blob && entry.blob.size > 0) {
+          try {
+            replacement = await this._encodeCached(
+              entry.id,
+              entry.blob,
+              allowedEncoders,
+            );
+            logDebug(
+              `buildManifest: embedded user-added bytes for ${entry.id}`,
+            );
+          } catch (encodeError) {
+            replacement = entry.dataUri;
+            if (!replacement) {
+              logWarn(
+                `buildManifest: user-added encode failed and no cached dataURI for ${entry.id}`,
+                encodeError,
+              );
+              continue;
+            }
+          }
+        } else if (entry.dataUri) {
+          replacement = entry.dataUri;
+          logDebug(
+            `buildManifest: used cached dataURI for user-added ${entry.id}`,
+          );
+        } else {
+          logWarn(
+            `buildManifest: user-added image ${entry.id} has neither blob nor dataUri`,
+          );
+          continue;
+        }
+
+        userAddedSubs.push({ blobUrl, replacement });
+      }
+
+      for (const sub of userAddedSubs) {
+        const escaped = sub.blobUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        apiSafe = apiSafe.replace(new RegExp(escaped, "g"), sub.replacement);
+        manifest.push({ url: sub.blobUrl, replacement: sub.replacement });
+      }
+    }
+
+    return manifest;
+  };
+
+  /**
+   * Replay a recorded substitution manifest against the original MMD.
+   *
+   * Uses the SAME regex-escape and global replace the pre-P1b method applied,
+   * in the SAME order the manifest records, so the output is byte-for-byte
+   * identical to the original single-pass embedding.
+   *
+   * @param {string} mmdContent - the original MMD (the unmutated input)
+   * @param {Array<{url: string, replacement: string}>} manifest - ordered
+   *   substitutions from buildManifest
+   * @returns {string} MMD with each recorded substitution applied in order
+   */
+  proto.applyManifest = function (mmdContent, manifest) {
+    let apiSafe = mmdContent;
+    for (const { url, replacement } of manifest) {
+      const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      apiSafe = apiSafe.replace(new RegExp(escaped, "g"), replacement);
+    }
     return apiSafe;
+  };
+
+  /**
+   * Estimate the convert payload's byte size after image embedding, without
+   * committing the embedded string anywhere downstream.
+   *
+   * Shares getMMDForAPI's exact path: build the ordered substitution manifest,
+   * replay it against the MMD, and measure the result. Measuring the replayed
+   * output (rather than predicting it from a raw-MMD occurrence count) keeps the
+   * estimate byte-identical to the convert gate's own new Blob([...]).size,
+   * including the cascade where a later step's URL exists only after an earlier
+   * step has run. The size returned equals
+   *   Blob([textMMD]).size + sum over images of (dataURIbytes - URLbytes) * occurrences
+   * but that sum is realised by the replay, so occurrences and ordering match
+   * the gate by construction rather than by a re-derived count.
+   *
+   * The encode is the cost; it lives in buildManifest (P3 will cache it).
+   * Building and measuring the string is light and runs on the auto-save debounce.
+   *
+   * @param {string} mmdContent - the MMD to size
+   * @param {Array<string>} [selectedFormats] - formats for this convert; drives
+   *   pickEncoders inside buildManifest. Optional.
+   * @returns {Promise<number>} projected convert-payload size in bytes (0 for
+   *   empty input, matching getMMDForAPI's early return)
+   */
+  proto._estimateConvertSize = async function (mmdContent, selectedFormats) {
+    if (!mmdContent) return 0;
+    const manifest = await this.buildManifest(mmdContent, selectedFormats);
+    const embedded = this.applyManifest(mmdContent, manifest);
+    const size = new Blob([embedded]).size;
+    logDebug(
+      `_estimateConvertSize: ${size} bytes (${manifest.length} substitution(s))`,
+    );
+    return size;
+  };
+
+  // ---------------------------------------------------------------------
+  // Convert-size encode cache (P3)
+  //
+  // _estimateConvertSize calls buildManifest on every auto-save debounce,
+  // which would re-encode every embedded image each tick. This per-instance
+  // memo caches each image's encoded dataURI by stable identity so repeat
+  // ticks skip the encode — and, for chemistry, the network fetch. Keys:
+  // registry entry id for OCR and user-added images; CDN URL for chemistry
+  // renders (one CDN URL is one fixed molecule render, so its bytes are
+  // stable). Only SUCCESSFUL encodes are stored, so a failed encode falls
+  // back exactly as before and is never memoised. The memo is instance-
+  // scoped and lazily created, so each restorer (and each test stand-in)
+  // owns its own and it clears with the instance.
+  // ---------------------------------------------------------------------
+
+  /**
+   * Return the memoised encoded dataURI for `key`, or encode `blob` once and
+   * cache it. The encoder's throw propagates so the caller's existing
+   * fallback path runs unchanged and no fallback is memoised.
+   * @param {string} key - stable identity (registry id or CDN URL)
+   * @param {Blob} blob - source bytes to encode on a miss
+   * @param {Array<string>} allowedEncoders - from pickEncoders
+   * @returns {Promise<string>} encoded dataURI
+   */
+  proto._encodeCached = async function (key, blob, allowedEncoders) {
+    if (key == null) {
+      // No stable identity — do not cache (keyless images would collide).
+      return encodeBestDataURI(blob, allowedEncoders);
+    }
+    this._encodeMemo ??= new Map();
+    if (this._encodeMemo.has(key)) {
+      logDebug(`_encodeCached: hit for ${String(key).substring(0, 60)}`);
+      return this._encodeMemo.get(key);
+    }
+    const dataUri = await encodeBestDataURI(blob, allowedEncoders);
+    this._encodeMemo.set(key, dataUri);
+    return dataUri;
+  };
+
+  /**
+   * Evict one image's memoised encode by key. Called by swapImage (bytes
+   * changed) and deleteImage (image removed). Safe before the memo exists.
+   * @param {string} key - the registry id (or CDN URL) to drop
+   */
+  proto._invalidateEncode = function (key) {
+    this._encodeMemo?.delete(key);
+  };
+
+  /**
+   * Estimate the convert payload size AND split it into embedded-image bytes
+   * versus text, in a single counting replay of the manifest. The breakdown
+   * surfaces the actionable number ("images 9.2 MB") near or over the limit.
+   *
+   * The replay mirrors applyManifest exactly — same order, same escape, same
+   * global replace — but counts how many times each url is actually replaced,
+   * so the image tally is replay-aware and stays consistent with the gate
+   * total even in the cascade case (a url that exists only after an earlier
+   * step has run). total therefore equals _estimateConvertSize, and
+   * imageBytes + textBytes === total by construction. Only data: replacements
+   * are image bytes; a CDN-fallback url is text, not embedded image data.
+   *
+   * @param {string} mmdContent - the MMD to size
+   * @param {Array<string>} [selectedFormats] - formats; drives buildManifest
+   * @returns {Promise<{total:number, imageBytes:number, textBytes:number}>}
+   */
+  proto._estimateConvertSizeBreakdown = async function (
+    mmdContent,
+    selectedFormats,
+  ) {
+    if (!mmdContent) return { total: 0, imageBytes: 0, textBytes: 0 };
+    const manifest = await this.buildManifest(mmdContent, selectedFormats);
+    let embedded = mmdContent;
+    let imageBytes = 0;
+    for (const { url, replacement } of manifest) {
+      const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      let count = 0;
+      embedded = embedded.replace(new RegExp(escaped, "g"), () => {
+        count += 1;
+        return replacement;
+      });
+      // data: replacements are embedded image bytes; the dataURI is ASCII so
+      // its character length equals its UTF-8 byte length. A CDN-fallback url
+      // is text and contributes nothing to the image tally.
+      if (replacement.startsWith("data:")) {
+        imageBytes += replacement.length * count;
+      }
+    }
+    const total = new Blob([embedded]).size;
+    return { total, imageBytes, textBytes: total - imageBytes };
+  };
+
+  // The projection enters the "close" band at this fraction of the limit, so
+  // the indicator warns before Convert would fail. Tune here if needed.
+  const CONVERT_SIZE_CLOSE_FRACTION = 0.9;
+
+  /**
+   * Classify a projected size against the limit: "under", "close" (at or above
+   * 90% and below the limit), or "over" (at or above the limit). Pure; the
+   * caller supplies the limit via _getConvertSizeLimit so the band and the
+   * gate share one boundary.
+   * @param {number} total - projected bytes
+   * @param {number} limit - limit in bytes
+   * @returns {"under"|"close"|"over"}
+   */
+  proto._convertSizeBand = function (total, limit) {
+    if (total >= limit) return "over";
+    if (total >= limit * CONVERT_SIZE_CLOSE_FRACTION) return "close";
+    return "under";
+  };
+
+  // =========================================================================
+  // POST-STAGE-6 GHOST-PURGE RETIREMENT (Finding 5 of stage-6-planning-decisions.md)
+  //
+  // The two helpers below replace the hand-rolled markdown-only ghost-purge
+  // loops that used to live at proto.loadZIPContents and proto.applyRecoveredSession
+  // in session-restorer-sessions.js. They consolidate the work that used to be
+  // done by ad-hoc regex scans + removeImage(id) calls into the Stage 6 Phase 1
+  // pattern: registry.buildFromMMD(cdnMMD) for set-diff, then the Q3 four-step
+  // cleanup for external state.
+  //
+  // Three locked-as-improvement gains over the old loops:
+  //   - Handles \includegraphics references as well as markdown ![](url). The
+  //     old loops used markdown-only regex; entries referenced via includegraphics
+  //     would be wrongly purged on session restore. See Group C, Case C4.
+  //   - Performs the full Q3 four-step cleanup (blob revocation, imageBlobUrlMap
+  //     trim, Cache API removal). The old loops called removeImage(id) only and
+  //     leaked both Cache API entries and imageBlobUrlMap entries indefinitely.
+  //     See Group C, Cases C1/C2 assertions on removedCacheKeys / blobMap.size.
+  //   - Detects and adds MMD-referenced images that aren't in the registry. The
+  //     old loops had no add path. See Group C, Case C3.
+  //
+  // The retirement keeps cleanup at session-load time (no trigger-point shift):
+  // moving it to manager-open would mean updateManageImagesButtonState sees the
+  // wrong count between session-load and first-manager-open. The replacement is
+  // implementation-pattern only.
+  // =========================================================================
+
+  /**
+   * Translate blob URLs back to their CDN form using imageBlobUrlMap.
+   * Walks the map and substitutes each blobUrl back to its originalUrl in the
+   * MMD string. User-added images and any blob URL not present in the map pass
+   * through unchanged.
+   *
+   * Used by the post-Stage-6 ghost-purge retirement at proto.loadZIPContents
+   * and proto.applyRecoveredSession (session-restorer-sessions.js): the registry's
+   * IDs are hash(originalUrl + lineNumber) computed against CDN form, so any
+   * MMD passed to registry.buildFromMMD must be translated to CDN form first
+   * or every entry lands in setDiff.removed (the Phase 2b discovery from
+   * stage-6-planning-decisions.md Finding 10).
+   *
+   * Sibling helpers carrying the same regex-escape vocabulary (see F-E in
+   * pre-stage-7-discoveries-stage6-post-close-audit.md):
+   *   - MathPixImageManagerUI._translateBlobUrlsToCdn (manager-side, identical
+   *     shape, used in _reconcileOnOpen Phase A).
+   *   - proto.getMMDForAPI Step 1 (this file, kept inline because Step 2 composes
+   *     with user-added dataURI embedding).
+   * Drift risk on the regex-escape pattern is real but small — fix one, fix all.
+   *
+   * @param {string} mmd - Live MMD content (may contain blob URLs)
+   * @returns {string} MMD with restorer-substituted blob URLs reversed to CDN form
+   * @private
+   */
+  proto._translateBlobUrlsToCdnForMMD = function (mmd) {
+    if (!mmd || !this.imageBlobUrlMap || this.imageBlobUrlMap.size === 0) {
+      return mmd;
+    }
+
+    let result = mmd;
+    for (const [cdnUrl, blobUrl] of this.imageBlobUrlMap) {
+      if (!cdnUrl || !blobUrl) continue;
+      const escaped = blobUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      result = result.replace(new RegExp(escaped, "g"), cdnUrl);
+    }
+    return result;
+  };
+
+  /**
+   * Per-entry cleanup for entries returned in buildFromMMD's setDiff.removed.
+   * Implements Q3's mandatory four-step ordering (per
+   * stage-6-planning-decisions.md). Adapted from deleteImage's cleanup block
+   * (lines 1062-1091 of this file) minus the user-initiated extras (no undo
+   * push, no auto-save, no display refresh — those belong to interactive
+   * delete, not reconcile).
+   *
+   * Step 1 MUST run before Step 2: the CDN-mapped lookup in Step 1 uses
+   * imageBlobUrlMap.get(entry.originalUrl), and Step 2 removes that map entry.
+   * Flipping the order makes the lookup miss.
+   *
+   * Mirror of MathPixImageManagerUI._cleanupRemovedEntries (manager-side, Stage 6
+   * Phase 2) — same four-step ordering, same null guards, same per-entry try/catch.
+   * Collaborator access differs by file: this restorer-side helper reads
+   * this.imageBlobUrlMap / this.imageFilenameMap / this._removeCachedImage
+   * directly (it IS the restorer), whereas the manager's reference reaches
+   * through this.restorer.* indirection.
+   *
+   * Cache-recovery fidelity note (F-K of
+   * pre-stage-7-discoveries-stage6-post-close-audit.md): the isUserAdded
+   * predicate below intentionally omits source === "cache-recovery" to
+   * mirror the manager's reference exactly. Cache-recovery entries store
+   * their blob URL in originalUrl (no imageBlobUrlMap key), so they leak the
+   * blob URL through Step 3 if they ever land in setDiff.removed. This is a
+   * pre-existing bug in the reference pattern, deferred to Stage 7 for a
+   * coordinated fix across both helpers — DO NOT widen the predicate here
+   * alone, that would create a fidelity gap.
+   *
+   * @param {Object[]} removedClones - Entry clones from setDiff.removed
+   *   (full clones via buildFromMMD's Phase 3 snapshot, blob field excluded)
+   * @returns {Promise<void>}
+   * @private
+   */
+  proto._cleanupBuildFromMMDRemoved = async function (removedClones) {
+    if (!Array.isArray(removedClones) || removedClones.length === 0) return;
+
+    for (const entry of removedClones) {
+      try {
+        // Step 1: Resolve blobUrl FIRST (before Step 2's map.delete invalidates the lookup).
+        const isUserAdded =
+          entry.source === "user-upload" || entry.status === "user-added";
+        const blobUrl = isUserAdded
+          ? entry.originalUrl
+          : this.imageBlobUrlMap?.get(entry.originalUrl);
+
+        // Step 2: Remove from imageBlobUrlMap (CDN-mapped entries only).
+        if (
+          !isUserAdded &&
+          entry.originalUrl &&
+          this.imageBlobUrlMap &&
+          this.imageBlobUrlMap.has(entry.originalUrl)
+        ) {
+          this.imageBlobUrlMap.delete(entry.originalUrl);
+        }
+
+        // Step 3: Revoke the blob URL — guard against revoking CDN URLs.
+        if (
+          blobUrl &&
+          typeof blobUrl === "string" &&
+          blobUrl.startsWith("blob:")
+        ) {
+          URL.revokeObjectURL(blobUrl);
+        }
+
+        // Step 4: Remove from Cache API. Filename is the secondary key;
+        // null is safe when filenameMap has no record for this entry.
+        const filename = this.imageFilenameMap?.[entry.id]?.filename || null;
+        if (typeof this._removeCachedImage === "function") {
+          await this._removeCachedImage(entry.id, filename);
+        }
+      } catch (err) {
+        logWarn(
+          `_cleanupBuildFromMMDRemoved: error cleaning up entry ${entry?.id}:`,
+          err,
+        );
+      }
+    }
+
+    logInfo(
+      `_cleanupBuildFromMMDRemoved: completed for ${removedClones.length} entries`,
+    );
   };
 
   /**
@@ -366,9 +1133,38 @@
           const suffix = fnEntry?.filename ? `|${fnEntry.filename}` : "";
           return `[user-image:${entry.id}${suffix}]`;
         }
-        logWarn(
-          `getMMDForStorage: unresolvable blob URL: ${blobUrl.substring(0, 60)}…`,
-        );
+        // Item 2 — distinguish an EXPECTED stale-snapshot blob (case a) from a
+        // GENUINE unreversible live blob (case b) before warning.
+        //
+        // getMMDForStorage is called with snapshots as `mmdContent` (undo/redo
+        // entries, baseline, original) as well as the live `current`. A blob can
+        // strand here because a swap revoked the pre-swap blob and overwrote its
+        // map mapping (CDN→new): that OLD blob survives in older snapshots but is
+        // no longer reversible — and that is the working-as-designed outcome, not
+        // a failure (the durable copy is the ZIP, not localStorage).
+        //
+        // The reliable signal (confirmed empirically — re-swap-proof, and the
+        // mmdReference/user-replaced signal was refuted) is the LIVE document:
+        // `this.restoredSession.currentMMD` — NOT the `mmdContent`/`storageSafe`
+        // being processed. If the stranded blob is NOT present in the live
+        // document, it is a stale snapshot artifact → downgrade to debug.
+        //
+        // Fail-toward-warn (load-bearing): downgrade ONLY when currentMMD is a
+        // string AND does not contain the blob. Anything else — currentMMD
+        // missing/non-string, or the blob IS live in it — keeps the warning, so
+        // genuine corruption is never silenced.
+        const liveMMD = this.restoredSession?.currentMMD;
+        const isStaleSnapshotArtifact =
+          typeof liveMMD === "string" && !liveMMD.includes(blobUrl);
+        if (isStaleSnapshotArtifact) {
+          logDebug(
+            `getMMDForStorage: stale snapshot blob (not in live document), reversed to CDN — expected: ${blobUrl.substring(0, 60)}…`,
+          );
+        } else {
+          logWarn(
+            `getMMDForStorage: unresolvable blob URL: ${blobUrl.substring(0, 60)}…`,
+          );
+        }
         return blobUrl;
       });
     }
@@ -518,21 +1314,22 @@
           );
 
           if (existingBlobUrl) {
-            // Reuse the blob URL from extraction — avoids orphaned duplicates
+            // Reuse the blob URL from extraction — avoids orphaned duplicates.
+            // Discovery 23 — restore-time housekeeping: replaceImage would
+            // flip status to "user-replaced", but this is bookkeeping that
+            // refreshes the persisted URL from the just-extracted ZIP, not
+            // a user-initiated replacement.
             blobUrl = existingBlobUrl;
-            this.imageRegistry.replaceImage(imageId, {
-              originalUrl: blobUrl,
-            });
+            this.imageRegistry.syncOriginalUrlForRestore(imageId, blobUrl);
             logInfo(
               `rewriteRelativePathsToBlobUrls: reused extraction blob URL for user-added image ${imageId}`,
             );
           } else if (registryEntry.blob instanceof Blob) {
-            // Fallback: create a fresh blob URL from extracted blob data
+            // Fallback: create a fresh blob URL from extracted blob data.
+            // Same housekeeping rationale as above — see Discovery 23.
             blobUrl = URL.createObjectURL(registryEntry.blob);
             this.objectURLs.push(blobUrl);
-            this.imageRegistry.replaceImage(imageId, {
-              originalUrl: blobUrl,
-            });
+            this.imageRegistry.syncOriginalUrlForRestore(imageId, blobUrl);
             logInfo(
               `rewriteRelativePathsToBlobUrls: created fresh blob URL for user-added image ${imageId}`,
             );
@@ -620,9 +1417,14 @@
               this.objectURLs.push(freshBlobUrl);
               // Look up the actual ID used in the registry (may differ from placeholder ID)
               const actualId = entry.id;
-              this.imageRegistry.replaceImage(actualId, {
-                originalUrl: freshBlobUrl,
-              });
+              // Discovery 23 — restore-time housekeeping: this branch
+              // refreshes a stale persisted blob URL from the just-extracted
+              // ZIP blob. replaceImage would wrongly flip status to
+              // "user-replaced"; this is bookkeeping, not user replacement.
+              this.imageRegistry.syncOriginalUrlForRestore(
+                actualId,
+                freshBlobUrl,
+              );
               logInfo(
                 `reconcileRecoveredImages: created fresh blob URL for ${actualId}`,
               );
@@ -821,6 +1623,9 @@
     }
 
     this.imageRegistry.replaceImage(imageId, replaceData);
+    // Convert-size encode cache: the bytes for this image id changed, so its
+    // memoised dataURI is stale. Evict it; the next estimate re-encodes.
+    this._invalidateEncode(imageId);
 
     // Update blob map for OCR images (overwrites old mapping)
     if (entry.source !== "user-upload" && entry.status !== "user-added") {
@@ -1002,6 +1807,9 @@
 
     // Remove from registry
     this.imageRegistry.removeImage(imageId);
+    // Convert-size encode cache: image removed, so drop any memoised dataURI
+    // for its id to prevent a stale embed in a later estimate.
+    this._invalidateEncode(imageId);
 
     // Remove from blob map if applicable
     if (entry.source !== "user-upload" && entry.originalUrl) {

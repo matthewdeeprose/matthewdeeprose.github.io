@@ -123,6 +123,27 @@
   color: #495961;
 }
 
+/* Model filter bar (family + search + count + reset) */
+.imgdesc-model-family-select,
+.imgdesc-model-search-input {
+  background-color: #fffff4;
+}
+
+.imgdesc-model-family-select:focus-visible,
+.imgdesc-model-search-input:focus-visible,
+.imgdesc-model-filter-reset:focus-visible {
+  outline: 3px solid #005c84;
+  outline-offset: 2px;
+}
+
+.imgdesc-model-filter-reset:hover {
+  background-color: #e1e8ec;
+}
+
+.imgdesc-model-count {
+  color: #495961;
+}
+
 /* ── Expert Mode (Phase 4A) ── */
 
 .imgdesc-expert-subsection {
@@ -2205,6 +2226,20 @@ body.resume-focus-mode .mathpix-tab-headers {
 .mathpix-convert-section {
   border: 4px solid #00131d;
   background-color: #fffff4;
+}
+
+.mathpix-convert-size-detail {
+  color: #495961;
+}
+
+.mathpix-convert-size-readout[data-band="close"] {
+  border-left-color: #946800;
+  background-color: #fff8e6;
+}
+
+.mathpix-convert-size-readout[data-band="over"] {
+  border-left-color: var(--warning-color);
+  background-color: var(--warning-bg);
 }
 
 .mathpix-convert-progress {
@@ -4462,6 +4497,40 @@ input[type="file"] {
   background-color: #9fb1bd;
 }
 
+/* OpenRouter Embed: Reasoning Disclosure
+   (themes the inline-styled <details> from
+   openrouter-embed-reasoning-disclosure.js) */
+
+.embed-reasoning-disclosure {
+  border: 1px solid #758d9a;
+  border-radius: 4px;
+  background-color: #fffff4;
+}
+
+.embed-reasoning-disclosure__summary {
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: #00131d;
+  background-color: #e1e8ec;
+}
+
+.embed-reasoning-disclosure__summary:hover {
+  background-color: #9fb1bd;
+}
+
+.embed-reasoning-disclosure__summary:focus-visible {
+  outline: 3px solid #005c84;
+  outline-offset: 2px;
+}
+
+.embed-reasoning-disclosure__body {
+  color: #231f20;
+  /* Recolour the neutral grey left border set inline in the JS;
+     width/style stay as the inline 3px solid. */
+  border-left-color: #005c84 !important;
+}
+
 /* Chart controls */
 
 .chart-description,
@@ -4893,13 +4962,18 @@ input[type="number"]:hover {
   box-shadow: 0 0 0 0.4rem #005c84;
   outline: 2px solid white !important;
 }
+/* 2.4.7: textarea & select share the themed text-input focus outline */
 input[type="text"]:focus-visible,
-input[type="number"]:focus-visible {
+input[type="number"]:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
   background-color: #fffff4;
   color: #00131d;
   box-shadow: 0 0 0 0.4rem #fffff4;
   border: 0.2rem solid #231f20;
   outline: 0.2rem solid #005c84 !important;
+  /* gap between the dark border and the blue focus outline */
+  outline-offset: 0.2rem;
 }
 
 #myMessage {
@@ -5624,7 +5698,22 @@ pre.language-json {
 
 .setup-status-not-configured {
   background-color: #f5f5f5;
-  color: #6c757d;
+  /* #6c757d gave only 4.3:1 on #f5f5f5 (fails WCAG AA 4.5:1); darkened to
+   * #5a6268 (~5.7:1) while keeping the muted "not done yet" appearance. */
+  color: #5a6268;
+}
+
+/* Progress-bar fill: configured-green up to --setup-fill, not-configured-grey
+ * after. The doubled colour-stop produces a crisp edge (no gradient blur). */
+.setup-status-partial {
+  background-image: linear-gradient(
+    to right,
+    #d4edda 0,
+    #d4edda var(--setup-fill, 0%),
+    #f5f5f5 var(--setup-fill, 0%),
+    #f5f5f5 100%
+  );
+  color: #155724;
 }
 
 .setup-credential-section {
@@ -5802,3 +5891,245 @@ pre.language-json {
   border: 1px solid #495961;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
 }
+
+/* Stage 4 — image manager coverage counter complete state */
+.mmd-image-manager-coverage-counter--complete {
+  color: #005051;
+}
+
+.mmd-image-manager-edit-form .field-group input:focus-visible,
+.mmd-image-manager-edit-form .field-group textarea:focus-visible {
+  outline: 0.2rem solid transparent !important;
+  outline: 0.2rem solid #005c84 !important;
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Provider switch + mismatch notice (Stage 3a Task 3.5a)
+   Styles for the global provider switch fieldset in the Set Up
+   tool's credentials section, and for the inline mismatch
+   notice rendered by provider-mismatch-notice.js. Modelled on
+   the existing .ally-endpoint-option radio-card vocabulary so
+   the two groups read as visually related.
+   British spelling in comments. Colour palette reused from
+   existing tokens (#005c84 accent, #e1e8ec surface tint,
+   #b45309 darker warning amber for AA non-text contrast,
+   #fffff4 panel bg, #495961 muted text, #231f20 text).
+   ============================================================ */
+
+/* Outer fieldset — group container.
+   1px currentcolor border + radius match .ally-endpoint-fieldset.
+   Flex parent so the two .provider-switch-option children sit
+   side-by-side on a normal viewport and wrap on narrow ones. */
+#provider-switch-fieldset.provider-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+  padding: 0.75rem 1rem 1rem 1rem;
+  margin: 0.5rem 0 1.5rem 0;
+}
+
+/* Legend takes a full row above the radios. The global `legend`
+   rule already supplies the inverted dark-on-cream colouring;
+   only structural placement is added here. */
+#provider-switch-fieldset legend {
+  flex-basis: 100%;
+  padding: 0.15rem 0.5rem;
+  font-weight: 600;
+}
+
+/* Per-radio wrapper — grid lays the input next to the stacked
+   label + status span. flex: 1 1 200px gives each option an
+   equal share of the row above ~440px and full-width wrap below. */
+.provider-switch-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.5rem;
+  align-items: start;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  /* Transparent 2px border reserves the space the checked-state
+     border will occupy — prevents any layout shift on selection. */
+  border: 2px solid transparent;
+  background-color: transparent;
+  position: relative;
+  cursor: pointer;
+  flex: 1 1 200px;
+  min-height: 44px;
+}
+
+.provider-switch-option input[type="radio"] {
+  grid-row: 1 / 3;
+  margin-top: 0.25rem;
+  accent-color: #005c84;
+}
+
+.provider-switch-option label {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: block;
+  cursor: pointer;
+}
+
+/* Make the entire option a click target. The pseudo-element
+   covers the wrapper; clicks on it fall through to the label
+   (via its [for] attribute) and select the radio. Matches the
+   .ally-endpoint-label::before pattern. */
+.provider-switch-option label::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.provider-switch-label {
+  display: block;
+  font-weight: 600;
+}
+
+/* Secondary "Configured" / "Not configured" sub-label — smaller
+   text in a muted slate-grey so it sits behind the provider name
+   in visual hierarchy without losing readability. */
+.provider-switch-status {
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 0.125rem;
+  color: #495961;
+}
+
+/* Hover — subtle light-grey surface tint, visibly distinct from
+   the page's #fffff4 background. */
+.provider-switch-option:hover {
+  background-color: #e1e8ec;
+}
+
+/* Selected — accent border colour swap (no width change → no
+   layout shift) plus the same surface tint. */
+.provider-switch-option:has(input[type="radio"]:checked) {
+  background-color: #e1e8ec;
+  border-color: #005c84;
+}
+
+/* Keyboard focus — high-contrast 3px ring around the option,
+   reached through :has() from the radio's :focus-visible.
+   Distinct from the 2px checked border so a focused-and-checked
+   option reads as both. SC 2.4.11 (Focus Appearance). */
+.provider-switch-option:has(input[type="radio"]:focus-visible) {
+  outline: 3px solid #005c84;
+  outline-offset: 2px;
+}
+
+/* Transitions — only when reduced motion is not preferred. */
+@media (prefers-reduced-motion: no-preference) {
+  .provider-switch-option {
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+}
+
+/* ─────────────────── Mismatch notice ────────────────────────
+   Inline warning-toned panel rendered by
+   provider-mismatch-notice.js. The button picks up the global
+   `button` styles (bg / border / hover / focus-visible ring);
+   only positioning, a stronger focus outline and a pressed-state
+   cue are layered on here. */
+
+.provider-mismatch-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background-color: #fffff4;
+  border: 1px solid #758d9a;
+  /* Warning-amber accent stripe. #b45309 (the project's darker
+     warning amber, used for OCR medium-confidence labels) clears
+     SC 1.4.11 non-text contrast against the cream notice bg —
+     the brighter #fcbc00 used in the dark theme would be only
+     ~1.7:1 here. Both themes still read as "amber warning". */
+  border-left: 4px solid #b45309;
+  border-radius: 4px;
+  color: #231f20;
+}
+
+.provider-mismatch-notice-text {
+  margin: 0;
+  color: #231f20;
+}
+
+.provider-mismatch-notice-button {
+  margin: 0;
+}
+
+/* Higher-contrast focus ring for the button, distinct from
+   the global box-shadow hover style and from the warning
+   amber stripe. SC 2.4.11. */
+.provider-mismatch-notice-button:focus-visible {
+  outline: 3px solid #005c84;
+  outline-offset: 2px;
+}
+
+/* Pressed-state cue — only animated when motion is permitted. */
+@media (prefers-reduced-motion: no-preference) {
+  .provider-mismatch-notice-button {
+    transition: transform 0.05s ease;
+  }
+  .provider-mismatch-notice-button:active {
+    transform: translateY(1px);
+  }
+}
+
+/* ============================================================
+ * Task 3.4b — Setup tool status error state + Active provider badge
+ * Added 2026-05-24. See foundry-integration-staged-plan.md Task 3.4b.
+ * ============================================================ */
+
+/* Connection-error state for status summary items and badges.
+ * Distinguished from .setup-status-not-configured (muted grey,
+ * "you haven't done this yet") by a red-leaning palette plus a
+ * ::before warning glyph. Used when a Test Connection attempt
+ * has failed (set by setup-tool/setup-tool.js's
+ * updateFoundryStatus). Distinguishable beyond colour per
+ * WCAG SC 1.4.1 — the leading ⚠ glyph reads in monochrome too.
+ * Reuses the project's established Bootstrap-derived danger
+ * palette (#f8d7da bg + #721c24 text + #dc3545 accent) already
+ * present in file-upload.css and main.css. Contrast ~8.6:1.
+ */
+.setup-status-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #dc3545;
+}
+
+.setup-status-error::before {
+  content: "⚠ ";
+  font-weight: bold;
+  margin-right: 0.25em;
+}
+
+/* Active provider badge.
+ * Inline pill marker on the credential card summary line
+ * indicating this provider matches ProviderSwitcher.getActive().
+ * Hidden by the `hidden` HTML attribute when inactive; 3.4b
+ * styles the visible state only. Uses the project primary accent
+ * (#005c84) for theme integration. Non-actionable — does not
+ * receive focus or hover treatment. white-space:nowrap keeps the
+ * short "Active" label on one line inside the flex summary row.
+ */
+.setup-active-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: #005c84;
+  border: 1px solid #005c84;
+  border-radius: 3px;
+  background-color: transparent;
+  white-space: nowrap;
+}
+

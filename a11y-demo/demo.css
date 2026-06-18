@@ -1,0 +1,247 @@
+/* demo.css — shared look for the before/after accessibility demo.
+ *
+ * BOTH a11y-demo/before.html and a11y-demo/after.html link this file so they
+ * render near-identically to a sighted user. The DIFFERENCES between the two
+ * pages live in their semantics (markup) and in small page-specific <style>
+ * overrides on the BEFORE page — NOT here. This file is deliberately clean and
+ * accessible (sufficient contrast, visible focus, adequate target sizes) so the
+ * AFTER page inherits a passing appearance.
+ *
+ * British spelling in comments; CSS properties use the required American forms
+ * (color, background-color) per the project convention.
+ */
+
+:root {
+  --ink: #1a1a1a;            /* body text — ~16:1 on white          */
+  --ink-muted: #444444;      /* secondary text — ~9.7:1 on white     */
+  --field-border: #595959;   /* input borders — ~7:1 on white (>3:1) */
+  --brand: #005fcc;          /* primary — white text on it ~5.8:1    */
+  --brand-dark: #00439e;     /* hover                                */
+  --error: #b00020;          /* accessible error red — ~7.7:1        */
+  --page-bg: #eef1f5;
+  --card-bg: #ffffff;
+  --focus: #005fcc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ink);
+  background-color: var(--page-bg);
+  margin: 0;
+  padding: 2rem 1rem;
+  line-height: 1.5;
+}
+
+.card {
+  max-width: 640px;
+  margin: 0 auto;
+  background-color: var(--card-bg);
+  border: 1px solid #d7dce2;
+  border-radius: 10px;
+  padding: 2rem 2rem 2.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.form-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.6rem;
+}
+
+.form-intro {
+  margin: 0 0 1.5rem;
+  color: var(--ink-muted);
+}
+
+/* --- fields ------------------------------------------------------------- */
+
+.field { margin-bottom: 1.25rem; }
+
+.field-label,
+.choice legend {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.field-hint {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+input[type="text"],
+input[type="email"],
+textarea {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--ink);
+  background-color: #ffffff;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+}
+
+/* overflow: hidden is deliberate. axe-core's colour-contrast check bails out
+ * on a scrollable textarea ("elmPartiallyObscured") and returns "can't tell",
+ * which the pa11y axe runner then reports as a contrast ERROR — a false
+ * positive (the computed contrast is ~16:1). Hiding overflow lets axe measure
+ * it; resize:vertical is kept so users can still enlarge the box. */
+textarea { min-height: 6.5rem; resize: vertical; overflow: hidden; }
+
+/* Explicit placeholder colour with sufficient contrast (~7:1). Without this,
+ * the browser default placeholder is low-contrast grey, and axe cannot measure
+ * an empty textarea's contrast at all (it returns "can't tell", which the
+ * pa11y axe runner then surfaces as an error). A real <label> is still present
+ * on every field — placeholders here are supplementary, never the label. */
+input::placeholder,
+textarea::placeholder {
+  color: #595959;
+  opacity: 1;
+}
+
+/* Visible focus for everything interactive (WCAG 2.4.7). */
+input:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+.submit-btn:focus-visible,
+.help-toggle:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* --- help toggle (the little "?" by a field) ---------------------------- */
+/* Styled by CLASS so it looks identical whether it is a real <button> (after)
+ * or a faux <span> (before). Sized >=24px for target-size (SC 2.5.8). */
+.help-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 0.4rem;
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--brand);
+  background-color: #ffffff;
+  border: 2px solid var(--brand);
+  border-radius: 50%;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.label-row { display: flex; align-items: center; }
+.label-row .field-label { margin-bottom: 0; }
+
+.help-text {
+  margin: 0.5rem 0 0;
+  padding: 0.6rem 0.75rem;
+  background-color: #eaf2ff;
+  border-left: 4px solid var(--brand);
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+.help-text[hidden] { display: none; }
+
+/* --- grouped choice ----------------------------------------------------- */
+.choice {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem 1rem;
+  border: 1px solid #d7dce2;
+  border-radius: 8px;
+  min-inline-size: 0; /* let the fieldset size normally, not to min-content */
+}
+/* Render the real <legend> (after.html) so it looks IDENTICAL to the broken
+ * page's faux <p> title (before.html): a full-width title inside the box, with
+ * no default border-notch. Floating the legend removes it from the fieldset's
+ * special legend slot, so the top border draws complete and the title sits in
+ * normal flow; the first option clears the float to start below it. */
+.choice legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+.choice > .option:first-of-type { clear: both; }
+
+/* Options spaced so native radios clear the 24px target-size circle. */
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0;
+}
+.option input { width: 18px; height: 18px; }
+.option label { font-weight: 400; }
+
+/* --- validation error --------------------------------------------------- */
+/* Accessible default (used as-is by AFTER): real contrast + room for an icon.
+ * BEFORE overrides only the COLOUR to a low-contrast value in its own <style>. */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  color: var(--error);
+  font-weight: 700;
+}
+.field-error svg { flex: 0 0 auto; }
+/* .field-error is display:flex, which would override the hidden attribute's
+ * UA display:none — restore it so the after page can toggle the error. */
+.field-error[hidden] { display: none; }
+.field--invalid input { border-color: var(--error); border-width: 2px; }
+
+/* --- submit ------------------------------------------------------------- */
+/* Styled by CLASS so a real <button> (after) and a faux <div> (before) match. */
+.submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.6rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #ffffff;
+  background-color: var(--brand);
+  border: 2px solid var(--brand);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.submit-btn:hover { background-color: #00408c; border-color: #00408c; }
+
+/* --- inert submit confirmation ------------------------------------------ */
+.confirmation {
+  margin-top: 1.25rem;
+  padding: 0.75rem 1rem;
+  background-color: #e9f7ef;
+  border: 1px solid #0b6b3a;
+  border-left-width: 5px;
+  border-radius: 6px;
+  color: #0b3d24;
+  font-weight: 700;
+}
+.confirmation[hidden] { display: none; }
+
+/* --- the plain-language aside (real page content for the audience) ------ */
+.demo-aside {
+  margin-top: 1.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+}
+.demo-aside h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+.demo-aside ul { margin: 0; padding-left: 1.2rem; }
+.demo-aside li { margin-bottom: 0.35rem; }
+
+/* Amber for "what goes wrong", green for "how it works" — set per page. */
+.demo-aside--warn { background-color: #fff4e5; border-left: 5px solid #b35900; }
+.demo-aside--good { background-color: #e9f7ef; border-left: 5px solid #0b6b3a; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .help-text { transition: none; } /* nothing animates; declared for intent */
+}

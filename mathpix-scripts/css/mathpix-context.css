@@ -1,0 +1,121 @@
+/**
+ * @fileoverview MathPix Context Form Styles — Stage 7 (alt-text), Parcel 4
+ * @module mathpix-context.css
+ *
+ * @description
+ * Layout-only styling for the two Document Context forms added in Parcel 3:
+ *   - #resume-context-form  (inside #resume-panel-context)
+ *   - #context-form         (inside #panel-context)
+ * Both share the .mathpix-context-form class, so EVERY selector here is
+ * scoped under that class and nothing in this file affects any other
+ * component.
+ *
+ * Theming approach: this project keeps component stylesheets colour-free —
+ * structural files use `currentColor` and neutral values while the actual
+ * light/dark colours live per-selector in light.css / dark.css. This file
+ * follows that convention so it inherits BOTH themes for free: text colour
+ * is inherited from the active theme and borders/focus use `currentColor`.
+ * It deliberately introduces no colour literals.
+ *
+ * Form controls inherit their look and their focus indicator from the app's
+ * existing stylesheets: light.css / dark.css give input[type="text"] and
+ * textarea a themed border AND a themed :focus-visible outline (both
+ * !important); selects fall back to the browser's own border and focus ring.
+ * This file therefore adds NO focus styling (doing so would override the
+ * app's themed focus outline) — it only gives the selects a matching border
+ * so the three control types sit comfortably together, and handles layout.
+ *
+ * WCAG 2.2 AA: stacked-then-two-column reflow with no horizontal scroll at
+ * 320px / 200% zoom (1.4.10). The keyboard focus indicator (2.4.7) is
+ * supplied by the app's global rules, not here.
+ */
+
+/* ============================================================================
+   FIELDSET — base (narrow viewports): stacked, label above control
+   ============================================================================ */
+
+/* Strip the default fieldset chrome and, crucially, reset its intrinsic
+   min-width (browsers default fieldsets to min-width: min-content, which
+   would prevent shrinking and cause horizontal overflow at 320px). */
+.mathpix-context-form fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.mathpix-context-form legend {
+  /* legend keeps the app's global legend typography; just give it room
+     above the stacked fields. */
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+/* Each field stacks its label above its single control. */
+.mathpix-context-form .mathpix-context-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0; /* allow the control to shrink rather than overflow */
+}
+
+.mathpix-context-form label {
+  font-weight: 600;
+}
+
+/* Context-field hints — mirror the Edit-Alt callout treatment so help
+   reads consistently across the Edit and Context forms (Stage 10).
+   No colour set: contrast is inherited from body text, unchanged from
+   the P4 baseline. */
+.mathpix-context-form .field-hint {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border-left: 3px solid currentColor;
+  background: transparent;
+}
+
+/* ============================================================================
+   CONTROLS — fill their column and bring the selects into line
+   ============================================================================ */
+
+/* Borders are deliberately NOT set here: light.css / dark.css already theme
+   the border of input[type="text"], textarea AND select (0.2rem solid), so
+   all three control types pick up a consistent, themed border for free.
+   This rule only handles sizing/alignment and normalises the selects, whose
+   global rule otherwise forces a monospace 1.2rem font and stray margins
+   that would break column alignment. */
+.mathpix-context-form input[type="text"],
+.mathpix-context-form select,
+.mathpix-context-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0; /* clears the global select margins so columns align */
+  font-family: inherit; /* the global `select` rule forces monospace */
+  font-size: 1rem;
+  padding: 0.5rem 0.625rem;
+}
+
+/* ============================================================================
+   TWO-COLUMN GRID — wide viewports (>=768px)
+   ============================================================================ */
+
+@media (min-width: 768px) {
+  .mathpix-context-form fieldset {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.5rem;
+  }
+
+  /* Legend and the Extra Information textarea each span both columns. */
+  .mathpix-context-form legend {
+    grid-column: 1 / -1;
+  }
+
+  .mathpix-context-form .mathpix-context-field:has(textarea) {
+    grid-column: 1 / -1;
+  }
+}

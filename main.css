@@ -3317,6 +3317,13 @@ div#titleLink {
 
 div#titleLink,
 div#logo {
+  /* The inset box-shadow paints the dark backing behind the near-white text,
+   * but contrast checkers (and Windows High Contrast) ignore box-shadow as a
+   * background, and axe will not resolve a semi-transparent one. Declare a
+   * solid brand-dark background (matches the #00131d border) so the computed
+   * contrast is honest (~18:1) and the text stays legible if shadows are
+   * suppressed. The box-shadow is now visually redundant but harmless. */
+  background-color: #00131d;
   box-shadow: inset 0 0 0 1000px rgba(0, 19, 29, 0.7);
   border-radius: 4px;
 }

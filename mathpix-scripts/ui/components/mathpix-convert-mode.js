@@ -20,12 +20,14 @@
  * - WCAG 2.2 AA compliant
  */
 
+import { attachConvertSpeak } from "./mathpix-convert-tts.js";
+
 // ============================================================================
 // Logging Configuration
 // ============================================================================
 
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
@@ -161,6 +163,18 @@ class MathPixConvertMode {
 
     /** @type {Function|null} Unsubscribe function for MathJax recovery events */
     this.mathJaxRecoveryUnsubscribe = null;
+
+    /** @type {boolean} True while a render is waiting on MathJax/CDN to become ready */
+    this.pendingPreviewRender = false;
+
+    /** @type {string|null} MMD content awaiting a successful render */
+    this.pendingPreviewContent = null;
+
+    /** @type {number|null} Handle for the CDN-library monitor interval */
+    this._cdnMonitorInterval = null;
+
+    /** @type {number|null} Handle for the MathJax-initial-ready monitor interval */
+    this._mathJaxMonitorInterval = null;
   }
   /**
    * Initialise the convert mode controller
@@ -177,6 +191,25 @@ class MathPixConvertMode {
       this.attachEventListeners();
       this.attachTextareaListeners();
       this.subscribeToMathJaxRecovery();
+
+      // Y.4-early: attach Speak (Read Aloud) wiring. The returned handle's
+      // detach() is intentionally NOT called on mode-exit — speech continues
+      // on switch-away by design, and attach runs once per lifetime so a
+      // teardown here could not be re-attached. See attachConvertSpeak().
+      this._convertSpeakHandle = attachConvertSpeak(this, {
+        speakBtn: this.elements.speakBtn,
+        statusEl: this.elements.editorStatusText,
+        panelEl: document.getElementById("convert-preview-rendered-content"),
+        flushPendingRender: () => {
+          if (this.previewDebounceTimer) {
+            clearTimeout(this.previewDebounceTimer);
+            this.previewDebounceTimer = null;
+            return this.renderPreview(this.currentMMDContent);
+          }
+          return Promise.resolve();
+        },
+      });
+
       this.initialised = true;
 
       // Always-on edit mode - no toggle needed
@@ -205,7 +238,18 @@ class MathPixConvertMode {
       !window.mathJaxManager ||
       typeof window.mathJaxManager.onRecovery !== "function"
     ) {
-      logDebug("MathJax Manager not available for recovery subscription");
+      logDebug(
+        "MathJax Manager not available for recovery subscription - will retry",
+      );
+      // Retry subscription after a delay - mirrors session-restorer pattern
+      setTimeout(() => {
+        if (
+          window.mathJaxManager?.onRecovery &&
+          !this.mathJaxRecoveryUnsubscribe
+        ) {
+          this.subscribeToMathJaxRecovery();
+        }
+      }, 2000);
       return;
     }
 
@@ -219,17 +263,134 @@ class MathPixConvertMode {
       async (eventData) => {
         logInfo(
           "MathJax recovery notification received in Convert Mode",
-          eventData
+          eventData,
         );
 
         // Only proceed if MathJax is now healthy
         if (eventData.healthy) {
           await this.handleMathJaxRecovery();
         }
-      }
+      },
     );
 
     logDebug("Convert Mode subscribed to MathJax recovery events");
+
+    // Also poll for first-time readiness — the recovery callback only fires on
+    // state CHANGE, so it won't fire if MathJax or the CDN are still in their
+    // initial load when renderPreview() is called.
+    this.monitorMathJaxInitialReady();
+    this.monitorCDNLibraryReady();
+  }
+
+  /**
+   * Poll for MathJax Manager to become healthy for the first time.
+   * The onRecovery callback only fires on state change, so a renderPreview()
+   * call made before MathJax has ever been healthy would otherwise never get
+   * a recovery notification. Mirrors session-restorer-init.js:133-199.
+   * @private
+   */
+  monitorMathJaxInitialReady() {
+    // Don't double-start
+    if (this._mathJaxMonitorInterval) {
+      return;
+    }
+
+    // Already healthy with pending content? Trigger immediately.
+    if (
+      window.mathJaxManager?.isHealthy &&
+      (this.pendingPreviewRender || this.pendingPreviewContent)
+    ) {
+      logInfo(
+        "MathJax already healthy with pending content - triggering recovery",
+      );
+      setTimeout(() => this.handleMathJaxRecovery(), 500);
+      return;
+    }
+
+    let checkCount = 0;
+    const maxChecks = 60; // 30 seconds at 500ms
+
+    this._mathJaxMonitorInterval = setInterval(() => {
+      checkCount++;
+
+      const mathJaxHealthy = !!window.mathJaxManager?.isHealthy;
+      const hasPending =
+        this.pendingPreviewRender || !!this.pendingPreviewContent;
+
+      if (mathJaxHealthy && hasPending) {
+        clearInterval(this._mathJaxMonitorInterval);
+        this._mathJaxMonitorInterval = null;
+
+        logInfo(
+          "MathJax healthy AND pending content detected - triggering recovery",
+          { checkCount, pendingPreviewRender: this.pendingPreviewRender },
+        );
+
+        setTimeout(() => this.handleMathJaxRecovery(), 500);
+      } else if (checkCount >= maxChecks) {
+        clearInterval(this._mathJaxMonitorInterval);
+        this._mathJaxMonitorInterval = null;
+
+        if (!mathJaxHealthy) {
+          logWarn(
+            "MathJax initial ready monitor timed out - MathJax never became healthy",
+          );
+        } else {
+          logDebug(
+            "MathJax initial ready monitor complete - no pending content needed",
+          );
+        }
+      }
+    }, 500);
+
+    logDebug("Started monitoring for MathJax initial ready state");
+  }
+
+  /**
+   * Poll for the mathpix-markdown-it CDN library to become available.
+   * Mirrors session-restorer-init.js:205-240.
+   * @private
+   */
+  monitorCDNLibraryReady() {
+    if (this._cdnMonitorInterval) {
+      return;
+    }
+
+    // Already loaded? Nothing to monitor.
+    if (
+      typeof window.MathpixMarkdownModel !== "undefined" ||
+      typeof window.markdownToHTML !== "undefined"
+    ) {
+      logDebug("CDN library already available - no monitor needed");
+      return;
+    }
+
+    logDebug("Monitoring for CDN library availability...");
+
+    let checkCount = 0;
+    const maxChecks = 30; // 30 seconds at 1000ms
+
+    this._cdnMonitorInterval = setInterval(() => {
+      checkCount++;
+
+      const cdnReady =
+        typeof window.MathpixMarkdownModel !== "undefined" ||
+        typeof window.markdownToHTML !== "undefined";
+
+      if (cdnReady) {
+        clearInterval(this._cdnMonitorInterval);
+        this._cdnMonitorInterval = null;
+        logInfo("CDN library became available - checking for pending render");
+
+        if (this.pendingPreviewRender && this.pendingPreviewContent) {
+          this.handleMathJaxRecovery();
+        }
+      } else if (checkCount >= maxChecks) {
+        clearInterval(this._cdnMonitorInterval);
+        this._cdnMonitorInterval = null;
+        logWarn("CDN library monitor timed out - library may not be loading");
+      }
+    }, 1000);
   }
 
   /**
@@ -237,30 +398,48 @@ class MathPixConvertMode {
    * @private
    */
   async handleMathJaxRecovery() {
-    // Check if we have content to re-render
-    if (!this.currentMMDContent || !this.currentMMDContent.trim()) {
+    // Pick the source content — prefer the pending render (set by renderPreview
+    // when deps weren't ready), fall back to the editor's current source.
+    const contentToRender =
+      this.pendingPreviewContent ||
+      (this.currentMMDContent && this.currentMMDContent.trim()
+        ? this.currentMMDContent
+        : null);
+
+    if (!contentToRender) {
       logDebug("No content to re-render after MathJax recovery");
       return;
     }
 
-    // Check if there are MathJax errors in the preview
+    // Check the preview container
     const previewContainer = this.elements.previewRenderedContent;
     if (!previewContainer) {
       logDebug("Preview container not found for MathJax recovery");
       return;
     }
 
+    // Recover when ANY of these are true:
+    //   1. MathJax produced error nodes (original trigger)
+    //   2. The "Loading preview renderer..." placeholder is still on screen
+    //   3. A pending render is flagged (deps weren't ready last time)
     const hasMathErrors = previewContainer.querySelector("mjx-merror") !== null;
-    if (!hasMathErrors) {
+    const hasLoadingPlaceholder =
+      previewContainer.querySelector(".mmd-preview-loading") !== null;
+    const needsRerender =
+      hasMathErrors || hasLoadingPlaceholder || this.pendingPreviewRender;
+
+    if (!needsRerender) {
       logDebug(
-        "No MathJax errors found in preview, skipping recovery re-render"
+        "No recovery needed (no errors, no loading placeholder, no pending render)",
       );
       return;
     }
 
-    logInfo(
-      "MathJax errors detected in Convert preview, attempting recovery..."
-    );
+    logInfo("Convert preview recovery triggered", {
+      hasMathErrors,
+      hasLoadingPlaceholder,
+      pendingPreviewRender: this.pendingPreviewRender,
+    });
 
     // Get the MMD Preview system to ensure CDN library is loaded
     const mmdPreview = window.getMathPixMMDPreview?.();
@@ -280,16 +459,18 @@ class MathPixConvertMode {
         } catch (cdnError) {
           logWarn(
             "CDN library retry failed, will use fallback rendering:",
-            cdnError.message
+            cdnError.message,
           );
-          // Continue anyway - renderPreview will use fallback
+          // Continue anyway - _doRender will use the fallback path
         }
       }
     }
 
-    // Re-render the preview
+    // Call _doRender directly (NOT renderPreview) to bypass the readiness
+    // gate. If we routed through renderPreview and the gate failed again,
+    // it would re-arm pendingPreviewRender and we'd loop.
     try {
-      await this.renderPreview(this.currentMMDContent);
+      await this._doRender(contentToRender, previewContainer, mmdPreview);
       logInfo("Convert preview re-rendered after MathJax recovery");
 
       // Announce to screen readers
@@ -297,7 +478,7 @@ class MathPixConvertMode {
     } catch (error) {
       logError(
         "Failed to re-render Convert preview after MathJax recovery:",
-        error
+        error,
       );
     }
   }
@@ -334,15 +515,15 @@ class MathPixConvertMode {
       previewSection: document.getElementById("convert-mode-preview-section"),
       previewCodeBtn: document.getElementById("convert-preview-code-btn"),
       previewRenderedBtn: document.getElementById(
-        "convert-preview-rendered-btn"
+        "convert-preview-rendered-btn",
       ),
       previewCodePane: document.getElementById("convert-preview-code"),
       previewRenderedPane: document.getElementById("convert-preview-rendered"),
       previewCodeContent: document.getElementById(
-        "convert-preview-code-content"
+        "convert-preview-code-content",
       ),
       previewRenderedContent: document.getElementById(
-        "convert-preview-rendered-content"
+        "convert-preview-rendered-content",
       ),
 
       // Phase 6.4: Editor toolbar elements
@@ -354,6 +535,9 @@ class MathPixConvertMode {
       uploadMmdInput: document.getElementById("convert-upload-mmd-input"),
       editorStatus: document.getElementById("convert-editor-status"),
       editorStatusText: document.getElementById("convert-editor-status-text"),
+
+      // Y.4-early: Speak (Read Aloud) button
+      speakBtn: document.getElementById("convert-speak-btn"),
 
       // Phase 6.4: Edit overlay elements
       editOverlay: document.getElementById("convert-edit-overlay"),
@@ -371,22 +555,22 @@ class MathPixConvertMode {
   attachEventListeners() {
     // Input method toggle
     this.elements.pasteRadio?.addEventListener("change", () =>
-      this.switchInputMethod("paste")
+      this.switchInputMethod("paste"),
     );
     this.elements.uploadRadio?.addEventListener("change", () =>
-      this.switchInputMethod("upload")
+      this.switchInputMethod("upload"),
     );
 
     // Textarea input monitoring
     this.elements.textarea?.addEventListener("input", () =>
-      this.updateLoadButtonState()
+      this.updateLoadButtonState(),
     );
 
     // File dropzone events
     const dropzone = this.elements.dropzone;
     if (dropzone) {
       dropzone.addEventListener("click", () =>
-        this.elements.fileInput?.click()
+        this.elements.fileInput?.click(),
       );
       dropzone.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -401,7 +585,7 @@ class MathPixConvertMode {
 
     // File input change
     this.elements.fileInput?.addEventListener("change", (e) =>
-      this.handleFileSelect(e)
+      this.handleFileSelect(e),
     );
 
     logDebug("Event listeners attached");
@@ -531,7 +715,7 @@ class MathPixConvertMode {
    */
   updateExportSectionVisibility() {
     const exportSection = document.getElementById(
-      "convert-mode-export-section"
+      "convert-mode-export-section",
     );
     const hasContent =
       this.currentMMDContent && this.currentMMDContent.trim().length > 0;
@@ -736,7 +920,7 @@ class MathPixConvertMode {
       logError("Failed to load content:", error);
       this.showNotification(
         `Failed to load content: ${error.message}`,
-        "error"
+        "error",
       );
       return false;
     }
@@ -789,7 +973,7 @@ class MathPixConvertMode {
 
     // Announce to screen readers
     this.announceToScreenReader(
-      "Preview updated with source and rendered views"
+      "Preview updated with source and rendered views",
     );
   }
 
@@ -804,17 +988,89 @@ class MathPixConvertMode {
       this.elements.previewRenderedContent ||
       document.getElementById("convert-preview-rendered-content");
 
-    if (!container) {
-      logWarn("Preview container not found");
+    if (!container || !container.isConnected) {
+      logWarn("Preview container not found / not connected");
       return;
     }
 
-    // Ensure container is in DOM and visible
-    if (!container.isConnected) {
-      logWarn("Preview container not connected to DOM");
+    // Always retain the latest content so recovery can re-render it later
+    this.pendingPreviewContent = content;
+
+    // Readiness gate — both the CDN library and MathJax must be available
+    // before we attempt a real render. Otherwise we'd silently produce broken
+    // output and never auto-recover when the libraries eventually finish loading.
+    const cdnReady =
+      typeof window.MathpixMarkdownModel !== "undefined" ||
+      typeof window.markdownToHTML !== "undefined";
+    const mathJaxReady =
+      !!window.MathJaxEnhancementReady &&
+      !!window.mathJaxManager?.isHealthy &&
+      typeof window.MathJax?.typesetPromise === "function";
+
+    const mmdPreview =
+      window.getMathPixMMDPreview?.() ||
+      window.getMathPixController?.()?.getMMDPreview?.();
+    const libraryReady =
+      !!mmdPreview && mmdPreview.isReady?.() && cdnReady && mathJaxReady;
+
+    if (!libraryReady) {
+      // Verbatim Resume loading markup (CSS class .mmd-preview-loading already styled)
+      container.innerHTML = `
+        <div class="mmd-preview-loading" role="status">
+          <p>Loading preview renderer...</p>
+          <p class="mmd-preview-fallback-note">
+            <small>Mathematical content will render when the library loads.</small>
+          </p>
+        </div>
+      `;
+      this.pendingPreviewRender = true;
+
+      // Y.4-early: tell readiness consumers (e.g. Speak button) the preview
+      // is not currently usable.
+      container.dispatchEvent(
+        new CustomEvent("convert-preview-loading", { bubbles: false }),
+      );
+
+      if (window.mathJaxManager?.registerPendingElement) {
+        window.mathJaxManager.registerPendingElement(container, {
+          source: "convert-mode",
+          reason: !cdnReady
+            ? "cdn-not-ready"
+            : !mathJaxReady
+              ? "mathjax-not-ready"
+              : "mmd-preview-missing",
+          contentLength: content.length,
+        });
+      }
+
+      logInfo("Convert preview deferred - showing loading state", {
+        cdnReady,
+        mathJaxReady,
+        hasMmdPreview: !!mmdPreview,
+      });
+
+      // Ensure monitors are running so we recover as soon as deps arrive.
+      // If they've already timed out or never started, this restarts them.
+      this.monitorMathJaxInitialReady();
+      this.monitorCDNLibraryReady();
       return;
     }
 
+    // Happy path: delegate to the leaf renderer
+    await this._doRender(content, container, mmdPreview);
+  }
+
+  /**
+   * Leaf rendering method. Assumes the caller has already verified that
+   * mmdPreview, the CDN library, and MathJax are all ready. Both renderPreview
+   * (after its readiness gate) and handleMathJaxRecovery (after explicit
+   * loadLibrary) call this directly. Keeps recursion out of the recovery path.
+   * @param {string} content
+   * @param {HTMLElement} container
+   * @param {Object} mmdPreview
+   * @private
+   */
+  async _doRender(content, container, mmdPreview) {
     // Clear any previous MathJax processing
     if (window.MathJax?.typesetClear) {
       try {
@@ -824,20 +1080,44 @@ class MathPixConvertMode {
       }
     }
 
-    // Try to use existing MMD preview system first (better rendering)
-    const mmdPreview = window.getMathPixMMDPreview?.();
     if (mmdPreview) {
       try {
-        // Check if library is ready, if not load it first
-        if (!mmdPreview.isReady()) {
-          logDebug("MMD library not ready, loading...");
-          await mmdPreview.loadLibrary();
-          logDebug("MMD library loaded successfully");
-        }
-
         // Now render the content
         const html = mmdPreview.renderToString(content);
         container.innerHTML = html;
+
+        // Stage Y.2a: apply chemistry aria-labels post-render. The
+        // mathpix-markdown-it library renders <smiles> as .smiles-inline
+        // SVG but does not set role="img" + aria-label — so the Stage X
+        // TTS rewriter (which keys on .smiles-inline[role="img"][aria-label])
+        // would find nothing and the SVG geometry would bleed into TTS as
+        // gibberish. We re-extract SMILES notations from the source MMD
+        // (which still contains the <smiles> tags) and delegate to the
+        // shared MathPixChemistryUtils helper that the API-result-path
+        // (addChemistryAltText) also calls. See tts/docs/mmd-tts-audit.md.
+        const chemUtils = window.MathPixChemistryUtils;
+        if (
+          chemUtils &&
+          typeof chemUtils.extractChemistryFromResponse === "function" &&
+          typeof chemUtils.applyAriaLabelsToSmilesInline === "function"
+        ) {
+          try {
+            const items = chemUtils.extractChemistryFromResponse({
+              text: content,
+            });
+            if (items.length > 0) {
+              chemUtils.applyAriaLabelsToSmilesInline(container, items);
+              logDebug("Chemistry aria-labels applied to Convert preview", {
+                count: items.length,
+              });
+            }
+          } catch (err) {
+            // Non-fatal: TTS will still work for non-chemistry content; the
+            // chemistry SVGs just won't have a label. Same posture as the
+            // SRE-loader failure path in tts-rewriters.js.
+            logWarn("Chemistry aria-label step failed (non-fatal):", err);
+          }
+        }
 
         // Trigger MathJax typesetting if available
         if (window.MathJax?.typesetPromise) {
@@ -848,6 +1128,15 @@ class MathPixConvertMode {
           }
         }
         logDebug("Preview rendered using MMD preview system");
+
+        // Successful render — clear pending-recovery state
+        this.pendingPreviewRender = false;
+        this.pendingPreviewContent = null;
+
+        // Y.4-early: announce readiness for downstream consumers (Speak button).
+        container.dispatchEvent(
+          new CustomEvent("convert-preview-rendered", { bubbles: false }),
+        );
         return;
       } catch (error) {
         logWarn("MMD preview system failed, using fallback:", error);
@@ -884,14 +1173,14 @@ class MathPixConvertMode {
     displayMathBlocks.forEach((mathContent, index) => {
       html = html.replace(
         `%%DISPLAY_MATH_${index}%%`,
-        `<div class="math-display">$$${mathContent}$$</div>`
+        `<div class="math-display">$$${mathContent}$$</div>`,
       );
     });
 
     inlineMathBlocks.forEach((mathContent, index) => {
       html = html.replace(
         `%%INLINE_MATH_${index}%%`,
-        `<span class="math-inline">$${mathContent}$</span>`
+        `<span class="math-inline">$${mathContent}$</span>`,
       );
     });
 
@@ -911,6 +1200,17 @@ class MathPixConvertMode {
         logWarn("MathJax typesetting failed:", error);
       }
     }
+
+    // Fallback rendered something — clear pending-recovery state
+    this.pendingPreviewRender = false;
+    this.pendingPreviewContent = null;
+
+    // Y.4-early: announce readiness for downstream consumers (Speak button).
+    // Fallback path is still a valid TTS target; rewriters cope with whatever
+    // MathJax was able to typeset.
+    container.dispatchEvent(
+      new CustomEvent("convert-preview-rendered", { bubbles: false }),
+    );
   }
 
   /**
@@ -1032,7 +1332,7 @@ class MathPixConvertMode {
 
     // Show the standalone export section (inside convert mode container)
     const exportSection = document.getElementById(
-      "convert-mode-export-section"
+      "convert-mode-export-section",
     );
     if (exportSection) {
       exportSection.hidden = false;
@@ -1049,7 +1349,7 @@ class MathPixConvertMode {
 
     logInfo(
       "Standalone convert section activated with filename:",
-      this.filename
+      this.filename,
     );
   }
 
@@ -1087,7 +1387,7 @@ class MathPixConvertMode {
 
     // Hide the standalone export section
     const exportSection = document.getElementById(
-      "convert-mode-export-section"
+      "convert-mode-export-section",
     );
     if (exportSection) {
       exportSection.hidden = true;
@@ -1136,7 +1436,7 @@ class MathPixConvertMode {
 
     // Hide export section (standalone convert mode)
     const exportSection = document.getElementById(
-      "convert-mode-export-section"
+      "convert-mode-export-section",
     );
     if (exportSection) {
       exportSection.hidden = true;
@@ -1144,7 +1444,7 @@ class MathPixConvertMode {
 
     // Reset format checkboxes
     const formatCheckboxes = document.querySelectorAll(
-      'input[name="convert-mode-format"]'
+      'input[name="convert-mode-format"]',
     );
     formatCheckboxes.forEach((cb) => {
       cb.checked = false;
@@ -1169,7 +1469,7 @@ class MathPixConvertMode {
     // Clear progress and downloads lists
     const progressList = document.getElementById("convert-mode-progress-list");
     const downloadsList = document.getElementById(
-      "convert-mode-downloads-list"
+      "convert-mode-downloads-list",
     );
     const errorsList = document.getElementById("convert-mode-errors-list");
 
@@ -1195,7 +1495,7 @@ class MathPixConvertMode {
     if (showNotification) {
       this.showNotification(
         "Convert mode cleared and ready for new content",
-        "info"
+        "info",
       );
     }
 
@@ -1284,7 +1584,7 @@ class MathPixConvertMode {
    */
   getSelectedFormats() {
     const checkboxes = document.querySelectorAll(
-      'input[name="convert-mode-format"]:checked'
+      'input[name="convert-mode-format"]:checked',
     );
     return Array.from(checkboxes).map((cb) => cb.value);
   }
@@ -1308,7 +1608,7 @@ class MathPixConvertMode {
    */
   toggleSelectAll(selectAllCheckbox) {
     const checkboxes = document.querySelectorAll(
-      'input[name="convert-mode-format"]'
+      'input[name="convert-mode-format"]',
     );
     checkboxes.forEach((cb) => {
       cb.checked = selectAllCheckbox.checked;
@@ -1322,7 +1622,7 @@ class MathPixConvertMode {
   updateSelectAllState() {
     const selectAll = document.getElementById("convert-mode-select-all");
     const checkboxes = document.querySelectorAll(
-      'input[name="convert-mode-format"]'
+      'input[name="convert-mode-format"]',
     );
     const allChecked = Array.from(checkboxes).every((cb) => cb.checked);
     const someChecked = Array.from(checkboxes).some((cb) => cb.checked);
@@ -1382,15 +1682,15 @@ class MathPixConvertMode {
           (format) => `
     <div class="mathpix-progress-item" id="convert-progress-${format.replace(
       /\./g,
-      "-"
+      "-",
     )}" data-format="${format}" data-status="pending">
       <span class="mathpix-progress-icon" aria-hidden="true" data-icon="hourglass"></span>
       <span class="mathpix-progress-label">${this.getFormatDisplayName(
-        format
+        format,
       )}</span>
       <span class="mathpix-progress-status">Waiting...</span>
     </div>
-  `
+  `,
         )
         .join("");
 
@@ -1422,7 +1722,7 @@ class MathPixConvertMode {
                 this.updateProgressItem(
                   format,
                   "downloading",
-                  "Downloading..."
+                  "Downloading...",
                 );
               });
             }
@@ -1433,7 +1733,7 @@ class MathPixConvertMode {
 
             // Store result
             const downloadFilename = `${this.filename}.${this.getFileExtension(
-              format
+              format,
             )}`;
             this.completedDownloads.set(format, {
               blob: blob,
@@ -1448,11 +1748,11 @@ class MathPixConvertMode {
               this.updateProgressItem(
                 error.format,
                 "error",
-                `Error: ${error.message || "Failed"}`
+                `Error: ${error.message || "Failed"}`,
               );
             }
           },
-        }
+        },
       );
 
       logInfo("Conversion complete, results:", results.size);
@@ -1461,7 +1761,7 @@ class MathPixConvertMode {
       results.forEach((blob, format) => {
         if (!this.completedDownloads.has(format)) {
           const downloadFilename = `${this.filename}.${this.getFileExtension(
-            format
+            format,
           )}`;
           this.completedDownloads.set(format, {
             blob: blob,
@@ -1477,7 +1777,7 @@ class MathPixConvertMode {
       selectedFormats.forEach((format) => {
         if (!this.completedDownloads.has(format)) {
           const progressItem = document.getElementById(
-            `convert-progress-${format.replace(".", "-")}`
+            `convert-progress-${format.replace(".", "-")}`,
           );
           const statusEl = progressItem?.querySelector(".progress-status");
           if (statusEl) statusEl.textContent = `Failed: ${error.message}`;
@@ -1511,12 +1811,12 @@ class MathPixConvertMode {
     if (this.completedDownloads.size > 0 && errors.length === 0) {
       this.showNotification(
         `Successfully converted to ${this.completedDownloads.size} format(s)`,
-        "success"
+        "success",
       );
     } else if (this.completedDownloads.size > 0) {
       this.showNotification(
         `Converted ${this.completedDownloads.size} format(s) with ${errors.length} error(s)`,
-        "warning"
+        "warning",
       );
     } else {
       this.showNotification("All conversions failed", "error");
@@ -1585,10 +1885,10 @@ class MathPixConvertMode {
   showDownloads() {
     const downloadsSection = document.getElementById("convert-mode-downloads");
     const downloadsList = document.getElementById(
-      "convert-mode-downloads-list"
+      "convert-mode-downloads-list",
     );
     const downloadAllBtn = document.getElementById(
-      "convert-mode-download-all-btn"
+      "convert-mode-download-all-btn",
     );
 
     if (!downloadsSection || !downloadsList) return;
@@ -1617,7 +1917,7 @@ class MathPixConvertMode {
       `;
       link.setAttribute(
         "aria-label",
-        `Download ${this.getFormatDisplayName(format)} file`
+        `Download ${this.getFormatDisplayName(format)} file`,
       );
 
       // Track download for logging (does not affect download behaviour)
@@ -1638,7 +1938,7 @@ class MathPixConvertMode {
     // Announce to screen readers
     const fileWord = this.completedDownloads.size === 1 ? "file" : "files";
     this.announceToScreenReader(
-      `${this.completedDownloads.size} ${fileWord} ready for download`
+      `${this.completedDownloads.size} ${fileWord} ready for download`,
     );
 
     logDebug("Download links shown:", this.completedDownloads.size);
@@ -1728,7 +2028,7 @@ class MathPixConvertMode {
         // Fallback: If programmatic download didn't work (async user gesture issue),
         // replace the Download All button with a direct download link
         const downloadAllBtn = document.getElementById(
-          "convert-mode-download-all-btn"
+          "convert-mode-download-all-btn",
         );
         if (downloadAllBtn) {
           // Create a direct download link as fallback
@@ -1753,7 +2053,7 @@ class MathPixConvertMode {
 
           this.showNotification(
             "ZIP ready - click 'Click to Save ZIP' to download",
-            "success"
+            "success",
           );
           logInfo("Fallback download link created for ZIP");
         }
@@ -1777,7 +2077,8 @@ class MathPixConvertMode {
 
     errorsList.innerHTML = errors
       .map(
-        (e) => `<li><strong>${e.format.toUpperCase()}:</strong> ${e.error}</li>`
+        (e) =>
+          `<li><strong>${e.format.toUpperCase()}:</strong> ${e.error}</li>`,
       )
       .join("");
 
@@ -1856,7 +2157,7 @@ class MathPixConvertMode {
     this.announceToScreenReader(
       this.isFullscreen
         ? "Fullscreen edit mode enabled. Press Escape to exit."
-        : "Fullscreen edit mode disabled"
+        : "Fullscreen edit mode disabled",
     );
 
     logDebug("Fullscreen mode:", this.isFullscreen);
@@ -1885,7 +2186,7 @@ class MathPixConvertMode {
       if (this.elements.fullscreenBtn) {
         this.elements.fullscreenBtn.setAttribute(
           "aria-label",
-          "Toggle fullscreen edit mode"
+          "Toggle fullscreen edit mode",
         );
         this.elements.fullscreenBtn.innerHTML = getIcon("fullscreenEnter");
       }
@@ -2263,7 +2564,7 @@ class MathPixConvertMode {
     // Warn about unsaved changes
     if (this.currentMMDContent && this.undoStack.length > 0) {
       const confirmed = await this.confirmAction(
-        "Loading a new file will replace the current content. Your current content will be added to undo history. Continue?"
+        "Loading a new file will replace the current content. Your current content will be added to undo history. Continue?",
       );
       if (!confirmed) {
         this.resetUploadInput();
@@ -2421,6 +2722,18 @@ function toggleConvertModeFullscreen() {
   mode.toggleFullscreen();
 }
 
+/**
+ * Y.4-early: Handle Speak button click in convert mode
+ * Called by Speak button onclick — delegates to the wiring attached
+ * in init() via attachConvertSpeak.
+ */
+function handleConvertModeSpeak() {
+  const mode = getMathPixConvertMode();
+  if (mode && typeof mode._convertSpeakClick === "function") {
+    mode._convertSpeakClick();
+  }
+}
+
 // ----------------------------------------------------------------------------
 // Phase 6.3: Original Functions
 // ----------------------------------------------------------------------------
@@ -2545,11 +2858,11 @@ function validatePhase63() {
   // Test class availability
   test(
     "MathPixConvertMode class exists",
-    typeof MathPixConvertMode === "function"
+    typeof MathPixConvertMode === "function",
   );
   test(
     "getMathPixConvertMode function exists",
-    typeof getMathPixConvertMode === "function"
+    typeof getMathPixConvertMode === "function",
   );
 
   // Test singleton
@@ -2569,27 +2882,27 @@ function validatePhase63() {
   // Test global functions
   test(
     "loadConvertModeContent exists",
-    typeof loadConvertModeContent === "function"
+    typeof loadConvertModeContent === "function",
   );
   test(
     "clearConvertModeFile exists",
-    typeof clearConvertModeFile === "function"
+    typeof clearConvertModeFile === "function",
   );
   test(
     "switchConvertPreviewMode exists",
-    typeof switchConvertPreviewMode === "function"
+    typeof switchConvertPreviewMode === "function",
   );
 
   // Test integration points
   test(
     "getMathPixConvertUI available",
-    typeof window.getMathPixConvertUI === "function"
+    typeof window.getMathPixConvertUI === "function",
   );
 
   // Summary
   console.log("-".repeat(60));
   console.log(
-    `Results: ${results.passed}/${results.passed + results.failed} tests passed`
+    `Results: ${results.passed}/${results.passed + results.failed} tests passed`,
   );
   console.log("=".repeat(60));
 
@@ -2633,7 +2946,7 @@ function validatePhase64() {
   test("maxUndoLevels property exists", typeof mode.maxUndoLevels === "number");
   test(
     "previewDebounceDelay property exists",
-    typeof mode.previewDebounceDelay === "number"
+    typeof mode.previewDebounceDelay === "number",
   );
 
   // Test Phase 6.4 DOM elements
@@ -2651,7 +2964,7 @@ function validatePhase64() {
   console.log("\n--- Class Methods ---");
   test(
     "toggleEditMode method exists",
-    typeof mode.toggleEditMode === "function"
+    typeof mode.toggleEditMode === "function",
   );
   test("enterEditMode method exists", typeof mode.enterEditMode === "function");
   test("exitEditMode method exists", typeof mode.exitEditMode === "function");
@@ -2660,43 +2973,43 @@ function validatePhase64() {
   test("pushUndoState method exists", typeof mode.pushUndoState === "function");
   test(
     "updateUndoRedoButtons method exists",
-    typeof mode.updateUndoRedoButtons === "function"
+    typeof mode.updateUndoRedoButtons === "function",
   );
   test("downloadMMD method exists", typeof mode.downloadMMD === "function");
   test(
     "handleMMDUpload method exists",
-    typeof mode.handleMMDUpload === "function"
+    typeof mode.handleMMDUpload === "function",
   );
   test(
     "showEditorToolbar method exists",
-    typeof mode.showEditorToolbar === "function"
+    typeof mode.showEditorToolbar === "function",
   );
   test(
     "hideEditorToolbar method exists",
-    typeof mode.hideEditorToolbar === "function"
+    typeof mode.hideEditorToolbar === "function",
   );
 
   // Test Phase 6.4 global functions
   console.log("\n--- Global Functions ---");
   test(
     "toggleConvertModeEdit exists",
-    typeof toggleConvertModeEdit === "function"
+    typeof toggleConvertModeEdit === "function",
   );
   test("undoConvertModeEdit exists", typeof undoConvertModeEdit === "function");
   test("redoConvertModeEdit exists", typeof redoConvertModeEdit === "function");
   test(
     "downloadConvertModeMMD exists",
-    typeof downloadConvertModeMMD === "function"
+    typeof downloadConvertModeMMD === "function",
   );
   test(
     "handleConvertModeMMDUpload exists",
-    typeof handleConvertModeMMDUpload === "function"
+    typeof handleConvertModeMMDUpload === "function",
   );
 
   // Summary
   console.log("\n" + "-".repeat(60));
   console.log(
-    `Results: ${results.passed}/${results.passed + results.failed} tests passed`
+    `Results: ${results.passed}/${results.passed + results.failed} tests passed`,
   );
   console.log("=".repeat(60));
 
@@ -2729,6 +3042,9 @@ window.downloadConvertModeMMD = downloadConvertModeMMD;
 window.handleConvertModeMMDUpload = handleConvertModeMMDUpload;
 window.validatePhase64 = validatePhase64;
 window.toggleConvertModeFullscreen = toggleConvertModeFullscreen;
+
+// Y.4-early: Speak (Read Aloud) global handler
+window.handleConvertModeSpeak = handleConvertModeSpeak;
 
 // ============================================================================
 // Export (ES6 Module Support)

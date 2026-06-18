@@ -1175,7 +1175,9 @@
         // Data restored from cache — inform user, disable controls
         btn.disabled = true;
         btn.innerHTML =
-          '<span aria-hidden="true" data-icon="check"></span> Restored from cache';
+          '<span aria-hidden="true">' +
+          window.getIcon("check") +
+          "</span> Restored from cache";
         if (captionCb) captionCb.disabled = true;
         if (ocrCb) ocrCb.disabled = true;
 
@@ -1199,7 +1201,9 @@
         // Default state — ready to run
         btn.disabled = !florenceReady || !hasImage;
         btn.innerHTML =
-          '<span aria-hidden="true" data-icon="aiSparkle"></span> Run Florence-2';
+          '<span aria-hidden="true">' +
+          window.getIcon("aiSparkle") +
+          "</span> Run Florence-2";
         if (captionCb) captionCb.disabled = false;
         if (ocrCb) ocrCb.disabled = false;
         if (statusEl) {
@@ -1268,7 +1272,9 @@
         prompt.hidden = false;
         prompt.innerHTML =
           '<span class="imgdesc-florence-ocr-running-text">' +
-          '<span aria-hidden="true" data-icon="aiSparkle"></span> ' +
+          '<span aria-hidden="true">' +
+          window.getIcon("aiSparkle") +
+          "</span> " +
           "Loading Florence-2\u2026" +
           "</span>";
         prompt.classList.add("imgdesc-florence-ocr-prompt--running");
@@ -1281,7 +1287,9 @@
         prompt.hidden = false;
         prompt.innerHTML =
           '<span class="imgdesc-florence-ocr-running-text">' +
-          '<span aria-hidden="true" data-icon="aiSparkle"></span> ' +
+          '<span aria-hidden="true">' +
+          window.getIcon("aiSparkle") +
+          "</span> " +
           "Detecting text\u2026" +
           "</span>" +
           '<span class="imgdesc-florence-ocr-hint">' +
@@ -1302,7 +1310,9 @@
         prompt.innerHTML =
           '<button type="button" class="imgdesc-florence-ocr-btn" ' +
           'onclick="ImageDescriberController.runFlorenceOCRDirect()">' +
-          '<span aria-hidden="true" data-icon="aiSparkle"></span> ' +
+          '<span aria-hidden="true">' +
+          window.getIcon("aiSparkle") +
+          "</span> " +
           "Florence-2 loaded: Enhance text detection" +
           "</button>" +
           '<span class="imgdesc-florence-ocr-hint">' +
@@ -1323,7 +1333,9 @@
         prompt.innerHTML =
           '<button type="button" class="imgdesc-florence-ocr-btn" ' +
           'onclick="ImageDescriberController.runFlorenceOCRDirect()">' +
-          '<span aria-hidden="true" data-icon="aiSparkle"></span> ' +
+          '<span aria-hidden="true">' +
+          window.getIcon("aiSparkle") +
+          "</span> " +
           "Load Florence-2 and enhance text detection" +
           "</button>" +
           '<span class="imgdesc-florence-ocr-hint">' +
@@ -1337,7 +1349,9 @@
         prompt.innerHTML =
           '<button type="button" class="imgdesc-florence-ocr-link" ' +
           'onclick="ImageDescriberController.runFlorenceOCRDirect()">' +
-          '<span aria-hidden="true" data-icon="download"></span> ' +
+          '<span aria-hidden="true">' +
+          window.getIcon("download") +
+          "</span> " +
           "Get Florence-2 for enhanced text detection" +
           "</button>";
         prompt.classList.remove("imgdesc-florence-ocr-prompt--ready");

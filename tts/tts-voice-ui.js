@@ -53,6 +53,7 @@ window.TTSVoiceUI = (function () {
     els.rateValue         = document.getElementById('tts-rate-value');
     els.previewBtn        = document.getElementById('tts-preview-btn');
     els.verbosityToggle   = document.getElementById('tts-verbosity-toggle');
+    els.codeMode          = document.getElementById('tts-code-mode');
   }
 
   // ── Helpers ────────────────────────────────────────────────────
@@ -248,6 +249,15 @@ window.TTSVoiceUI = (function () {
     logInfo('[TTSVoiceUI] Verbosity set to:', value);
   }
 
+  function onCodeModeChange() {
+    if (!els.codeMode) return;
+    var value = els.codeMode.value;
+    if (window.TTSRewriters && typeof window.TTSRewriters.setCodeMode === 'function') {
+      window.TTSRewriters.setCodeMode(value);
+    }
+    logInfo('[TTSVoiceUI] Code mode set to:', value);
+  }
+
   function onExternalEngineChange(data) {
     // Fired by TTSController when engine changes programmatically.
     // Payload arrives directly from EmbedEventEmitter (not wrapped in .detail).
@@ -301,6 +311,7 @@ window.TTSVoiceUI = (function () {
     if (els.rateSlider)        els.rateSlider.addEventListener('input', onRateInput);
     if (els.previewBtn)        els.previewBtn.addEventListener('click', onPreviewClick);
     if (els.verbosityToggle)   els.verbosityToggle.addEventListener('change', onVerbosityChange);
+    if (els.codeMode)          els.codeMode.addEventListener('change', onCodeModeChange);
 
     // "Voice Settings" link(s) — may appear in Image Describer or future tools
     var settingsLinks = document.querySelectorAll('.tts-settings-link');
@@ -348,6 +359,12 @@ window.TTSVoiceUI = (function () {
     if (els.verbosityToggle && window.TTSSemantic &&
         typeof window.TTSSemantic.getVerbosity === 'function') {
       els.verbosityToggle.checked = (window.TTSSemantic.getVerbosity() === 'on');
+    }
+
+    // Code-block reading mode (Stage Y.2b)
+    if (els.codeMode && window.TTSRewriters &&
+        typeof window.TTSRewriters.getCodeMode === 'function') {
+      els.codeMode.value = window.TTSRewriters.getCodeMode();
     }
 
     // Web Speech voices (async — may not be ready immediately)

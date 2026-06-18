@@ -2,13 +2,15 @@
  * MathPix Chemistry Description Migration Harness
  *
  * Phase 12-0a: re-runnable harness that captures the description engine's
- * COMP/STD/SHORT outputs for the 17-fixture post-11-2d audit set under the
- * current SmilesDrawer pipeline. Signature is stable across Phase 12 sub-
+ * COMP/STD/SHORT outputs for the 20-fixture post-11-2d audit set (17 original
+ * fixtures + 3 Phase 14-1b regression canaries: Biphenyl, Ethanol,
+ * (R)-2-butanol) under the current SmilesDrawer pipeline. Signature is stable
+ * across Phase 12 sub-
  * stages — the same harness re-runs unchanged at 12-5a against the post-
  * migration RDKit pipeline; only the call-site `source` arg differs.
  *
  * Public API (window):
- *   captureDescriptionBaseline()         — runs all 17 fixtures, returns
+ *   captureDescriptionBaseline()         — runs all 20 fixtures, returns
  *                                          the array of entries, downloads
  *                                          migration-baseline.json
  *   runMigrationHarness()                — same fixture sweep, returns the
@@ -874,7 +876,7 @@
       schemaVersion: "1.0",
       tier: 1,
       description:
-        "Tier 1 Phase 15-1b acceptance fixture set — pre-fix baselines captured pre-Phase-15-2.",
+        "Tier 1 acceptance fixture set — current-state baselines recaptured at the Phase-16-2 SEAL (post-16-2a/b/c).",
       generated: new Date().toISOString(), // UTC ISO-8601 per Step 3 OQ #1
       fixtures,
     };

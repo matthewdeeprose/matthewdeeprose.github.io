@@ -1073,7 +1073,7 @@ class OpenRouterEmbed {
    */
   async sendStreamingRequest(options) {
     // Validation
-    const { userPrompt, onChunk, onComplete, onError } = options;
+    const { userPrompt, onChunk, onComplete, onError, onReasoning } = options;
 
     if (!userPrompt?.trim()) {
       throw new Error("User prompt is required");
@@ -1282,7 +1282,18 @@ class OpenRouterEmbed {
         onComplete,
         onError,
         onProgress: options.onProgress || null,
+        // Liveness heartbeat during a provider's reasoning phase (distinct from
+        // onProgress, which reports text-streaming progress). Currently emitted
+        // only by transport-owning providers that surface structural events
+        // (e.g. azure-responses); other providers never fire it.
+        onReasoning: onReasoning || null,
       };
+
+      // Reset the per-request reasoning-summary accumulator. onReasoning text
+      // deltas append here through the stream; buildFinalResponse reads it to
+      // expose response.reasoning (Reasoning Disclosure). Reset before dispatch
+      // so a prior request's summary never leaks into this one.
+      this.streamReasoningBuffer = "";
 
       // Phase 4: Store request info for debug data
       this._currentRequestTiming.requestInfo = {
@@ -1401,6 +1412,33 @@ class OpenRouterEmbed {
 
         onError: (error) => {
           this.handleStreamError(error, capturedStreamId);
+        },
+
+        // Liveness heartbeat from a transport-owning provider during a
+        // reasoning phase. Emit a `streamReasoning` event AND forward to the
+        // public onReasoning callback. Carries no content — purely a "still
+        // working" signal so the UI need not look frozen. Providers that never
+        // call this (OpenRouter, azure-openai-v1) are unaffected.
+        onReasoning: (info) => {
+          // Accumulate any reasoning TEXT so buildFinalResponse can expose the
+          // whole summary as response.reasoning without the caller re-assembling
+          // deltas. Provider-agnostic: core keys on the presence of text, not on
+          // a provider-specific type. Heartbeats carry no text and are skipped.
+          // Today the only text-carrying payload is azure-responses' summary
+          // delta ({ type: "summary", text }). The event and callback fan-out
+          // below is unchanged: info still passes through verbatim.
+          if (info && typeof info.text === "string" && info.text) {
+            this.streamReasoningBuffer =
+              (this.streamReasoningBuffer || "") + info.text;
+          }
+          this._emitEvent("streamReasoning", info);
+          if (this.streamingCallbacks && this.streamingCallbacks.onReasoning) {
+            try {
+              this.streamingCallbacks.onReasoning(info);
+            } catch (error) {
+              logWarn("onReasoning callback failed:", error);
+            }
+          }
         },
       };
 
@@ -1579,6 +1617,18 @@ class OpenRouterEmbed {
         processingTime: processingTime,
       },
     };
+
+    // Surface the reasoning summary at the top level, mirroring the streaming
+    // path's response.reasoning. parseResponse attaches it for reasoning models
+    // (absent otherwise); without this copy it would survive only under
+    // response.raw.reasoning. (Reasoning Disclosure.)
+    if (
+      apiResponse &&
+      typeof apiResponse.reasoning === "string" &&
+      apiResponse.reasoning.trim() !== ""
+    ) {
+      response.reasoning = apiResponse.reasoning;
+    }
 
     logInfo("Response processed successfully", {
       textLength: rawText.length,
@@ -2107,7 +2157,7 @@ class OpenRouterEmbed {
    * @private
    */
   buildFinalResponse(text, responseData) {
-    return {
+    const response = {
       text: text,
       html: this.processMarkdownWithFallback(text),
       markdown: text,
@@ -2119,6 +2169,19 @@ class OpenRouterEmbed {
         processingTime: responseData?.processingTime || 0,
       },
     };
+
+    // Reasoning summary accumulated from onReasoning text deltas during this
+    // stream (Reasoning Disclosure). Attached only when present, so a
+    // non-reasoning stream, or a cancel before the late summary burst, exposes
+    // no empty field.
+    if (
+      this.streamReasoningBuffer &&
+      this.streamReasoningBuffer.trim() !== ""
+    ) {
+      response.reasoning = this.streamReasoningBuffer;
+    }
+
+    return response;
   }
 
   /**
@@ -2584,11 +2647,11 @@ class OpenRouterEmbed {
 
   /**
    * Update temperature
-   * @param {number} temperature - Temperature value (0-1)
+   * @param {number} temperature - Temperature value (0-2 per OpenAI surface)
    */
   setTemperature(temperature) {
-    if (typeof temperature !== "number" || temperature < 0 || temperature > 1) {
-      throw new Error("Temperature must be a number between 0 and 1");
+    if (typeof temperature !== "number" || temperature < 0 || temperature > 2) {
+      throw new Error("Temperature must be a number between 0 and 2");
     }
 
     const oldTemp = this.temperature;

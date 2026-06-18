@@ -727,12 +727,16 @@
 
         // Content for recovery — all stored with CDN URLs (blob URLs are ephemeral)
         // Phase 8H.3: current uses getMMDForStorage (compact placeholders for user-added images)
-        original: this.getMMDForAPI(
+        // F-O: original/baseline must use getMMDForStorage too. getMMDForAPI
+        // became async in F-M Phase 4; un-awaited here it serialised to {}
+        // (silent corruption). getMMDForStorage is synchronous and matches the
+        // encoding used by current, so all three fields are now consistent.
+        original: this.getMMDForStorage(
           this.restoredSession?.baselineMMD ||
             this.restoredSession?.originalMMD ||
             "",
         ),
-        baseline: this.getMMDForAPI(
+        baseline: this.getMMDForStorage(
           this.restoredSession?.baselineMMD ||
             this.restoredSession?.currentMMD ||
             "",

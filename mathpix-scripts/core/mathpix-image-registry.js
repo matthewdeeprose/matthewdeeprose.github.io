@@ -139,6 +139,24 @@
     /mathpix-ocr-examples\.s3\.amazonaws\.com/,
   ];
 
+  // ----------------------------------------------------------------------------
+  // Image-detection regexes (module-scoped, hoisted out of buildFromMMD per
+  // Stage 6 Q3 optional defensive technique — avoids per-call allocation).
+  // Both carry the `g` flag, so callers MUST reset `.lastIndex = 0` before
+  // each new input string to avoid state bleeding across calls.
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Markdown image syntax: `![alt](url)`. Alt text may contain `]` (e.g.
+   * SMILES `[nH]`); the proper terminator is `](`, not the first `]`. Allow
+   * `]` in alt-text only when it isn't followed by `(` so chemistry images on
+   * markdown-form lines register instead of silently dropping out.
+   */
+  const MD_IMG_REGEX = /!\[((?:[^\]]|\](?!\())*)\]\(([^)]+)\)/g;
+
+  /** LaTeX `\includegraphics[options]{url}` — options bracket is optional. */
+  const LATEX_IMG_REGEX = /\\includegraphics\s*(\[[^\]]*\])?\s*\{([^}]+)\}/g;
+
   /** MIME type inference from file extensions */
   const EXTENSION_MIME_MAP = {
     ".jpg": "image/jpeg",
@@ -181,6 +199,14 @@
    * @returns {string} Stable ID in format "img-XXXXXXXX"
    */
   function generateStableId(url, lineNumber) {
+    // F-N (2026-05-30) note: line-number-in-hash is a known fragility.
+    // The Phase B URL-fallback in buildFromMMD compensates by matching
+    // candidates whose ID-hash misses to existing entries by originalUrl,
+    // preserving the old ID across line shifts. Any new code path that
+    // recomputes IDs from scratch via this function (outside buildFromMMD)
+    // would reintroduce the F-N cascade — see f-n-investigation-tracker.md
+    // and prefer matching by originalUrl when reconciling against existing
+    // registry state.
     const hashInput = `${url}::${lineNumber}`;
     return `img-${stableHash(hashInput)}`;
   }
@@ -387,79 +413,305 @@
     // ========================================================================
 
     /**
-     * Parse MMD content, detect all image references, and populate the registry.
-     * Clears any existing entries first. Leverages the same detection patterns
-     * as mathpix-ai-mmd-analyser.js detectImages().
+     * Parse MMD content, detect all image references, and reconcile the
+     * registry against them.
+     *
+     * Build-or-sync contract (Stage 6 Q2/Q3, 2026-05-23):
+     *
+     * - When called on an empty registry, behaves like a fresh build —
+     *   every detected reference is added.
+     * - When called on a populated registry, preserves user metadata on
+     *   entries whose IDs match newly-detected references, adds entries
+     *   for newly-detected references, and removes entries whose IDs are
+     *   no longer detected (hard-delete per Q3).
+     *
+     * For matched entries, exactly three structural fields are refreshed
+     * from the candidate: `mmdReference`, `lineNumber`, `syntax`. Every
+     * other field is preserved — user metadata (`altText`, `title`,
+     * `decorative`, `longDescription`, `textInImage`, all `*Source`
+     * provenance markers), state tracking (`status`, `isModified`,
+     * `originalSyntax`, `originalUrl`), and image data (`blob`, `dataUri`,
+     * `mimeType`, `fileSize`, `dimensions`).
+     *
+     * The `status` preservation is what allows Discovery 23's restored-
+     * entry correction to survive reconcile calls. `originalSyntax`
+     * preservation is part of Stage 1's state-machine invariant.
+     *
+     * Identity reconciliation (F-N, 2026-05-30): a candidate matches an
+     * existing entry by exact ID first; failing that, it falls back to
+     * matching by `originalUrl` so a line-shifting edit (e.g. writeCaption's
+     * figure-wrap, which changes the `url::lineNumber` hash and therefore the
+     * ID) is treated as the same entry rather than a remove+add pair. When two
+     * or more candidates and two or more existing entries share a URL, the
+     * i-th candidate (by ascending lineNumber) matches the i-th existing entry
+     * (by ascending lineNumber) — an order-preserving tiebreak.
+     *
+     * Documented invariant (F-N Phase 1.5): the alt-text serialiser's write
+     * paths preserve document order of image references. The buildFromMMD
+     * set-diff's URL-fallback tiebreak depends on this invariant; any future
+     * write path that reorders images must either update the tiebreak strategy
+     * or refactor the identity scheme to not depend on order.
+     *
+     * Returns a diff describing what changed so the caller can clean up
+     * external state (blob URLs, blob-URL maps, Cache API entries). The
+     * registry itself performs no external-state cleanup — per its
+     * "Zero external dependencies — pure data transformation" principle.
      *
      * @param {string} mmd - Raw MMD content
-     * @returns {number} Number of images detected (0 for invalid input)
+     * @returns {{added: string[], removed: Object[], matched: number, urlFallback: number}}
+     *   Set-diff describing the mutation: `added` lists newly-inserted entry
+     *   IDs; `removed` lists clones of entries that were deleted from the
+     *   registry. Removed clones match `getImage()`'s shape with the `blob`
+     *   field excluded for size. `matched` is the count of entries reconciled
+     *   in place (exact-ID matches plus F-N URL-fallback matches); `urlFallback`
+     *   is how many of those were recovered by the URL-fallback (0 when no line
+     *   shift occurred). On invalid input (null, undefined, non-string) the
+     *   defensive empty shape `{added: [], removed: []}` is returned without
+     *   throwing.
      */
     buildFromMMD(mmd) {
-      if (!mmd || typeof mmd !== "string") {
-        logWarn("buildFromMMD() called with empty or invalid input");
-        return 0;
+      // Defensive input handling — never throw on bad input. Empty string
+      // proceeds normally; on a populated registry it will remove every
+      // existing entry (no candidates detected).
+      if (typeof mmd !== "string") {
+        logWarn("buildFromMMD() called with invalid input (not a string)");
+        return { added: [], removed: [] };
       }
 
       const startTime = performance.now();
-      logInfo("Building image registry from MMD...", { length: mmd.length });
-
-      // Clear existing entries
-      this._images.clear();
+      logInfo("Reconciling image registry from MMD...", { length: mmd.length });
 
       const lines = mmd.split("\n");
-      let detectedCount = 0;
+
+      // ----- Phase 1: Detect candidates with per-candidate try/catch -----
+      // Build a temporary map keyed by computed ID. One bad detection
+      // (malformed URL, _createEntryFromDetection throw) does not abort
+      // the whole reconcile — log and continue.
+      const candidates = new Map();
+      let malformedCount = 0;
 
       for (let i = 0; i < lines.length; i++) {
         const lineNum = i + 1;
         const line = lines[i];
 
-        // --- Markdown images: ![alt](url) ---
-        // Alt text may contain `]` (e.g. SMILES `[nH]`); the proper terminator
-        // is `](`, not the first `]`. Allow `]` in alt-text only when it isn't
-        // followed by `(` so chemistry images on markdown-form lines register
-        // instead of silently dropping out of the image registry.
-        const mdImgRegex = /!\[((?:[^\]]|\](?!\())*)\]\(([^)]+)\)/g;
+        // Module-scoped regexes carry shared `lastIndex` state — reset
+        // before each line.
+        MD_IMG_REGEX.lastIndex = 0;
         let match;
-        while ((match = mdImgRegex.exec(line)) !== null) {
-          const altText = match[1];
-          const url = match[2];
-          const fullMatch = match[0];
-
-          const entry = this._createEntryFromDetection({
-            url,
-            altText,
-            fullMatch,
-            lineNumber: lineNum,
-            syntax: "markdown",
-          });
-
-          this._images.set(entry.id, entry);
-          detectedCount++;
+        while ((match = MD_IMG_REGEX.exec(line)) !== null) {
+          try {
+            const entry = this._createEntryFromDetection({
+              url: match[2],
+              altText: match[1],
+              fullMatch: match[0],
+              lineNumber: lineNum,
+              syntax: "markdown",
+            });
+            candidates.set(entry.id, entry);
+          } catch (err) {
+            malformedCount++;
+            logWarn(
+              `buildFromMMD: skipped malformed markdown image at line ${lineNum}: ${match[0]}`,
+              err,
+            );
+          }
         }
 
-        // --- LaTeX \includegraphics[options]{url} ---
-        // Use global regex to catch multiple on same line
-        const latexImgRegex =
-          /\\includegraphics\s*(\[[^\]]*\])?\s*\{([^}]+)\}/g;
+        LATEX_IMG_REGEX.lastIndex = 0;
         let latexMatch;
-        while ((latexMatch = latexImgRegex.exec(line)) !== null) {
-          const url = latexMatch[2];
-          const fullMatch = latexMatch[0];
-
-          const entry = this._createEntryFromDetection({
-            url,
-            altText: "",
-            fullMatch,
-            lineNumber: lineNum,
-            syntax: "includegraphics",
-          });
-
-          this._images.set(entry.id, entry);
-          detectedCount++;
+        while ((latexMatch = LATEX_IMG_REGEX.exec(line)) !== null) {
+          try {
+            const entry = this._createEntryFromDetection({
+              url: latexMatch[2],
+              altText: "",
+              fullMatch: latexMatch[0],
+              lineNumber: lineNum,
+              syntax: "includegraphics",
+            });
+            candidates.set(entry.id, entry);
+          } catch (err) {
+            malformedCount++;
+            logWarn(
+              `buildFromMMD: skipped malformed includegraphics at line ${lineNum}: ${latexMatch[0]}`,
+              err,
+            );
+          }
         }
       }
 
-      // Update metadata
+      // ----- Phase 2: Compute the mutation plan without mutating -----
+      //
+      // Two-pass matching (F-N, 2026-05-30). Pass 1 is the original exact-ID
+      // match. Pass 2 is the URL-fallback that recovers entries whose
+      // hash-derived ID drifted because a line-changing edit (writeCaption's
+      // figure-wrap) shifted their lineNumber — generateStableId hashes
+      // `url::lineNumber`, so a pure line shift produces a different ID for an
+      // otherwise-identical reference. Without Pass 2 the set-diff reports a
+      // false-positive added=N/removed=N pair and the caller's cleanup drains
+      // imageBlobUrlMap and revokes the live blob URLs (the F-N cascade). See
+      // f-n-investigation-tracker.md and pre-stage-7-prompt-04-f-n-strategy.md.
+      const matchedIds = new Set();
+      const addedIds = new Set();
+      const removedIds = new Set();
+      const claimedExistingIds = new Set();
+      // URL-fallback pairs: { existingId, candidate }. The OLD existingId is
+      // the registry Map key that survives; the candidate's hash-derived id is
+      // discarded — only its three structural fields are adopted in Phase 4.
+      const urlMatches = [];
+
+      // Candidates MUST be iterated in deterministic ascending-lineNumber
+      // order so the order-preserving tiebreak below is reproducible — do NOT
+      // rely on Map insertion order (strategy §11.1).
+      const orderedCandidates = Array.from(candidates.values()).sort(
+        (a, b) => a.lineNumber - b.lineNumber,
+      );
+
+      // Pass 1 — exact ID-match. MUST precede the URL-fallback so a candidate
+      // whose line did NOT shift locks onto its existing entry before the
+      // fallback could claim that entry for a same-URL sibling (strategy §4,
+      // simulation finding ii).
+      const unmatchedCandidates = [];
+      for (const candidate of orderedCandidates) {
+        if (this._images.has(candidate.id)) {
+          matchedIds.add(candidate.id);
+          claimedExistingIds.add(candidate.id);
+        } else {
+          unmatchedCandidates.push(candidate);
+        }
+      }
+
+      // Pass 2 — URL-fallback for candidates whose ID-hash missed. Group both
+      // the unmatched candidates and the still-unclaimed existing entries by
+      // originalUrl; within each URL group, sort by lineNumber ascending and
+      // match the i-th candidate to the i-th existing entry (order-preserving
+      // tiebreak, strategy §4). The "claimed" Set prevents a second same-URL
+      // candidate from re-binding an already-matched existing entry.
+      if (unmatchedCandidates.length > 0) {
+        const existingByUrl = new Map();
+        for (const existing of this._images.values()) {
+          if (claimedExistingIds.has(existing.id)) continue;
+          const key = existing.originalUrl;
+          if (!existingByUrl.has(key)) existingByUrl.set(key, []);
+          existingByUrl.get(key).push(existing);
+        }
+        for (const list of existingByUrl.values()) {
+          list.sort((a, b) => a.lineNumber - b.lineNumber);
+        }
+
+        // unmatchedCandidates is already in ascending-lineNumber order (it is
+        // built from orderedCandidates), so each URL group's candidate list
+        // inherits that order.
+        const candidatesByUrl = new Map();
+        for (const candidate of unmatchedCandidates) {
+          const key = candidate.originalUrl;
+          if (!candidatesByUrl.has(key)) candidatesByUrl.set(key, []);
+          candidatesByUrl.get(key).push(candidate);
+        }
+
+        for (const [url, candList] of candidatesByUrl) {
+          const existList = existingByUrl.get(url) || [];
+          let i = 0;
+          for (; i < candList.length && i < existList.length; i++) {
+            const existing = existList[i];
+            urlMatches.push({ existingId: existing.id, candidate: candList[i] });
+            claimedExistingIds.add(existing.id);
+          }
+          // Surplus candidates (more references to this URL than existing
+          // entries claim) are genuinely new → added.
+          for (; i < candList.length; i++) {
+            addedIds.add(candList[i].id);
+          }
+        }
+      }
+
+      // Existing entries claimed by neither pass are genuinely gone → removed.
+      for (const existingId of this._images.keys()) {
+        if (!claimedExistingIds.has(existingId)) {
+          removedIds.add(existingId);
+        }
+      }
+
+      // Belt-and-braces invariant assertions (Q3 optional defensive
+      // technique). The algorithm structure makes these inconsistencies
+      // impossible, but the checks are cheap and would surface any
+      // future refactor that breaks the phasing.
+      for (const id of addedIds) {
+        if (matchedIds.has(id)) {
+          logError(
+            `buildFromMMD: invariant violation — id ${id} appears in both addedIds and matchedIds`,
+          );
+        }
+      }
+      for (const id of removedIds) {
+        if (!this._images.has(id)) {
+          logError(
+            `buildFromMMD: invariant violation — removed id ${id} not in registry`,
+          );
+        }
+      }
+      for (const { existingId } of urlMatches) {
+        if (!this._images.has(existingId)) {
+          logError(
+            `buildFromMMD: invariant violation — url-matched id ${existingId} not in registry`,
+          );
+        }
+        if (removedIds.has(existingId)) {
+          logError(
+            `buildFromMMD: invariant violation — url-matched id ${existingId} also in removedIds`,
+          );
+        }
+      }
+
+      // ----- Phase 3: Snapshot removed entries BEFORE deletion -----
+      // Must precede Phase 4. Once the entries are deleted from _images
+      // their data is gone, and the caller's cleanup logic depends on
+      // `entry.source`, `entry.status`, `entry.originalUrl` (per
+      // deleteImage's reference cleanup pattern).
+      const removedClones = [];
+      for (const id of removedIds) {
+        const existing = this._images.get(id);
+        if (existing) {
+          // Exclude blob from the clone — deleteImage's cleanup pattern
+          // never reads entry.blob, and user-added entries can carry
+          // multi-megabyte blobs which would bloat the return value.
+          removedClones.push(deepClone(existing, true));
+        }
+      }
+
+      // ----- Phase 4: Apply mutations as a synchronous block -----
+      // No await, no setTimeout, no callbacks. JS's cooperative
+      // concurrency makes this effectively atomic.
+      for (const id of matchedIds) {
+        const existing = this._images.get(id);
+        const candidate = candidates.get(id);
+        if (existing && candidate) {
+          // Refresh exactly three structural fields. Preserve everything
+          // else (per Q2's preserve-vs-refresh bucketing).
+          existing.mmdReference = candidate.mmdReference;
+          existing.lineNumber = candidate.lineNumber;
+          existing.syntax = candidate.syntax;
+        }
+      }
+      // F-N URL-fallback: refresh the OLD entry's structural fields from the
+      // line-shifted candidate. The OLD id (the Map key) is preserved and the
+      // candidate's hash-derived id is discarded — same three-field refresh as
+      // the exact-ID matched branch above.
+      for (const { existingId, candidate } of urlMatches) {
+        const existing = this._images.get(existingId);
+        if (existing && candidate) {
+          existing.mmdReference = candidate.mmdReference;
+          existing.lineNumber = candidate.lineNumber;
+          existing.syntax = candidate.syntax;
+        }
+      }
+      for (const id of addedIds) {
+        this._images.set(id, candidates.get(id));
+      }
+      for (const id of removedIds) {
+        this._images.delete(id);
+      }
+
+      // ----- Phase 5: Update metadata and return -----
       const now = new Date().toISOString();
       if (!this._metadata.createdAt) {
         this._metadata.createdAt = now;
@@ -467,12 +719,22 @@
       this._metadata.lastUpdated = now;
 
       const elapsed = (performance.now() - startTime).toFixed(1);
-      logInfo(`Registry built in ${elapsed}ms`, {
-        images: detectedCount,
-        lines: lines.length,
-      });
+      logInfo(
+        `buildFromMMD: added=${addedIds.size} removed=${removedIds.size} matched=${matchedIds.size + urlMatches.length} lines=${lines.length} (${elapsed}ms)`,
+        { malformed: malformedCount, urlFallback: urlMatches.length },
+      );
 
-      return detectedCount;
+      return {
+        added: Array.from(addedIds),
+        removed: removedClones,
+        // Counts (not arrays) — additive observability for the F-N
+        // URL-fallback. `matched` is the total reconciled count (exact-ID
+        // matches plus URL-fallback matches); `urlFallback` isolates how many
+        // of those were recovered by the URL-fallback because their ID-hash
+        // drifted. Callers that only read `added`/`removed` are unaffected.
+        matched: matchedIds.size + urlMatches.length,
+        urlFallback: urlMatches.length,
+      };
     }
 
     /**
@@ -617,7 +879,7 @@
       entry.originalUrl = data.originalUrl || null;
       entry.mmdReference = data.mmdReference || null;
       entry.altText = data.altText || "";
-      entry.altTextSource = data.altText ? "user" : null;
+      entry.altTextSource = data.altTextSource !== undefined ? data.altTextSource : (data.altText ? "user" : null);
       entry.mimeType = data.mimeType || null;
       entry.blob = data.blob instanceof Blob ? data.blob : null;
       entry.fileSize = typeof data.fileSize === "number" ? data.fileSize : null;
@@ -999,6 +1261,141 @@
     }
 
     /**
+     * Sync an image entry's `mmdReference` to a new value during session
+     * restore, after the MMD has been rewritten from CDN URLs to blob URLs.
+     *
+     * Distinct from both `updateImageReference` (which sets `isModified` and
+     * touches `lastUpdated` — appropriate for user edits) and `replaceImage`
+     * (which flips `status` to "user-replaced"). This method touches ONLY
+     * `entry.mmdReference` and is intended exclusively for restore-time
+     * bookkeeping that keeps the registry's references in sync with the
+     * live MMD after `rewriteMMDWithBlobUrls()` runs.
+     *
+     * The caller is expected to emit one summary `logInfo` after the bulk
+     * loop; per-entry logging here is at `logDebug` to avoid noise.
+     *
+     * @param {string} id - Entry ID
+     * @param {string} mmdReference - New literal MMD reference string with
+     *   blob URL substituted for the original CDN URL
+     * @returns {boolean} True on success, false if id not found or arguments invalid
+     */
+    syncMmdReferenceForRestore(id, mmdReference) {
+      if (!id || typeof id !== "string") {
+        logWarn("syncMmdReferenceForRestore() called with invalid ID");
+        return false;
+      }
+
+      const entry = this._images.get(id);
+      if (!entry) {
+        logDebug(`syncMmdReferenceForRestore(): ID "${id}" not found`);
+        return false;
+      }
+
+      if (typeof mmdReference !== "string" || mmdReference.length === 0) {
+        logWarn(
+          `syncMmdReferenceForRestore(): mmdReference must be a non-empty string (got ${typeof mmdReference})`,
+        );
+        return false;
+      }
+
+      entry.mmdReference = mmdReference;
+
+      logDebug(
+        `Synced mmdReference for ${id} to blob-URL form (restore bookkeeping)`,
+      );
+      return true;
+    }
+
+    /**
+     * Sync an image entry's `originalUrl` to a new value during session
+     * restore. Sibling of `syncMmdReferenceForRestore` for the case where
+     * the ZIP-restored entry's stored URL is stale (e.g. a different CDN
+     * host than the one currently in the MMD) and needs refreshing
+     * without losing the entry's restore-time status / isModified.
+     *
+     * Distinct from `replaceImage` (which flips `status` to "user-replaced"
+     * — wrong for restore-time bookkeeping). This setter touches ONLY
+     * `entry.originalUrl`.
+     *
+     * The caller is expected to emit one summary `logInfo` after the bulk
+     * loop; per-entry logging here is at `logDebug` to avoid noise.
+     *
+     * @param {string} id - Entry ID
+     * @param {string} originalUrl - New originalUrl value (non-empty string)
+     * @returns {boolean} True on success, false if id not found or arguments invalid
+     */
+    syncOriginalUrlForRestore(id, originalUrl) {
+      if (!id || typeof id !== "string") {
+        logWarn("syncOriginalUrlForRestore() called with invalid ID");
+        return false;
+      }
+
+      const entry = this._images.get(id);
+      if (!entry) {
+        logDebug(`syncOriginalUrlForRestore(): ID "${id}" not found`);
+        return false;
+      }
+
+      if (typeof originalUrl !== "string" || originalUrl.length === 0) {
+        logWarn(
+          `syncOriginalUrlForRestore(): originalUrl must be a non-empty string (got ${typeof originalUrl})`,
+        );
+        return false;
+      }
+
+      entry.originalUrl = originalUrl;
+
+      logDebug(
+        `Synced originalUrl for ${id} (restore bookkeeping)`,
+      );
+      return true;
+    }
+
+    /**
+     * Sync an image entry's `dataUri` to a new value during session
+     * restore. Sibling of `syncMmdReferenceForRestore` for the case where
+     * the restored entry needs its inline base64 data URI re-attached
+     * without losing the entry's restore-time status / isModified.
+     *
+     * Distinct from `replaceImage` (which flips `status` to "user-replaced"
+     * — wrong for restore-time bookkeeping). This setter touches ONLY
+     * `entry.dataUri`.
+     *
+     * The caller is expected to emit one summary `logInfo` after the bulk
+     * loop; per-entry logging here is at `logDebug` to avoid noise.
+     *
+     * @param {string} id - Entry ID
+     * @param {string} dataUri - New dataUri value (non-empty string)
+     * @returns {boolean} True on success, false if id not found or arguments invalid
+     */
+    syncDataUriForRestore(id, dataUri) {
+      if (!id || typeof id !== "string") {
+        logWarn("syncDataUriForRestore() called with invalid ID");
+        return false;
+      }
+
+      const entry = this._images.get(id);
+      if (!entry) {
+        logDebug(`syncDataUriForRestore(): ID "${id}" not found`);
+        return false;
+      }
+
+      if (typeof dataUri !== "string" || dataUri.length === 0) {
+        logWarn(
+          `syncDataUriForRestore(): dataUri must be a non-empty string (got ${typeof dataUri})`,
+        );
+        return false;
+      }
+
+      entry.dataUri = dataUri;
+
+      logDebug(
+        `Synced dataUri for ${id} (restore bookkeeping)`,
+      );
+      return true;
+    }
+
+    /**
      * Attach a blob to an existing image entry. Used during ZIP restore
      * when blobs are re-attached separately from JSON data.
      *
@@ -1354,6 +1751,55 @@
       }
       return "no-alt";
     }
+
+    /**
+     * Compute the full accessibility-metadata status for a registry entry,
+     * suitable for driving the Stage 4 grid badge cluster. Returns the state
+     * for the three user-editable accessibility dimensions surfaced in the
+     * manager UI: caption (title), alt text, and long description.
+     *
+     * Decorative === true causes both altState and longDescState to return
+     * "decorative" regardless of the stored values, matching Q1 in
+     * stage-4-planning-decisions.md. Caption is decorative-agnostic.
+     *
+     * The altState dimension delegates to getAltCompletionStatus so we do
+     * not duplicate the three-state classifier logic.
+     *
+     * @param {Object} entry - Registry entry (or clone)
+     * @returns {{
+     *   hasCaption: boolean,
+     *   altState: "has-alt" | "no-alt" | "decorative",
+     *   longDescState: "has-longdesc" | "no-longdesc" | "decorative"
+     * }}
+     */
+    static getMetadataStatus(entry) {
+      if (!entry || typeof entry !== "object") {
+        return {
+          hasCaption: false,
+          altState: "no-alt",
+          longDescState: "no-longdesc",
+        };
+      }
+
+      const hasCaption =
+        typeof entry.title === "string" && entry.title.length > 0;
+
+      const altState = MathPixImageRegistry.getAltCompletionStatus(entry);
+
+      let longDescState;
+      if (entry.decorative === true) {
+        longDescState = "decorative";
+      } else if (
+        typeof entry.longDescription === "string" &&
+        entry.longDescription.length > 0
+      ) {
+        longDescState = "has-longdesc";
+      } else {
+        longDescState = "no-longdesc";
+      }
+
+      return { hasCaption, altState, longDescState };
+    }
   }
 
   // ============================================================================
@@ -1453,8 +1899,12 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd1);
-      assert("mmd1: Detects 1 image", count === 1, `Got ${count}`);
+      const setDiff = reg.buildFromMMD(mmd1);
+      assert(
+        "mmd1: Detects 1 image (setDiff.added.length === 1)",
+        setDiff.added.length === 1,
+        `Got ${setDiff.added.length}`,
+      );
       const images = reg.getAllImages();
       assert(
         "mmd1: Alt text is 'A diagram'",
@@ -1492,8 +1942,12 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd2);
-      assert("mmd2: Detects 3 images", count === 3, `Got ${count}`);
+      const setDiff = reg.buildFromMMD(mmd2);
+      assert(
+        "mmd2: Detects 3 images (setDiff.added.length === 3)",
+        setDiff.added.length === 3,
+        `Got ${setDiff.added.length}`,
+      );
       const images = reg.getAllImages();
 
       const markdownImages = images.filter((i) => i.syntax === "markdown");
@@ -1532,8 +1986,12 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd3);
-      assert("mmd3: Detects 1 image", count === 1, `Got ${count}`);
+      const setDiff = reg.buildFromMMD(mmd3);
+      assert(
+        "mmd3: Detects 1 image (setDiff.added.length === 1)",
+        setDiff.added.length === 1,
+        `Got ${setDiff.added.length}`,
+      );
       const img = reg.getAllImages()[0];
       assert("mmd3: Status is data-uri", img?.status === "data-uri");
       assert("mmd3: MIME type is image/png", img?.mimeType === "image/png");
@@ -1556,8 +2014,12 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd4);
-      assert("mmd4: Detects 0 images", count === 0, `Got ${count}`);
+      const setDiff = reg.buildFromMMD(mmd4);
+      assert(
+        "mmd4: Detects 0 images (setDiff.added.length === 0)",
+        setDiff.added.length === 0,
+        `Got ${setDiff.added.length}`,
+      );
       assert(
         "mmd4: getAllImages() returns empty array",
         reg.getAllImages().length === 0,
@@ -1572,11 +2034,11 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd5);
+      const setDiff = reg.buildFromMMD(mmd5);
       assert(
         "mmd5: Detects 2 entries (same URL, different lines)",
-        count === 2,
-        `Got ${count}`,
+        setDiff.added.length === 2,
+        `Got ${setDiff.added.length}`,
       );
       const images = reg.getAllImages();
       assert("mmd5: Different IDs", images[0]?.id !== images[1]?.id);
@@ -1627,8 +2089,12 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd7);
-      assert("mmd7: Detects 2 images", count === 2, `Got ${count}`);
+      const setDiff = reg.buildFromMMD(mmd7);
+      assert(
+        "mmd7: Detects 2 images (setDiff.added.length === 2)",
+        setDiff.added.length === 2,
+        `Got ${setDiff.added.length}`,
+      );
       const images = reg.getAllImages();
       assert(
         "mmd7: Both on line 1",
@@ -1647,8 +2113,12 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd8);
-      assert("mmd8: Detects 1 image", count === 1, `Got ${count}`);
+      const setDiff = reg.buildFromMMD(mmd8);
+      assert(
+        "mmd8: Detects 1 image (setDiff.added.length === 1)",
+        setDiff.added.length === 1,
+        `Got ${setDiff.added.length}`,
+      );
       const img = reg.getAllImages()[0];
       assert(
         "mmd8: Syntax is includegraphics",
@@ -1667,8 +2137,12 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd9);
-      assert("mmd9: Detects image inside table", count === 1, `Got ${count}`);
+      const setDiff = reg.buildFromMMD(mmd9);
+      assert(
+        "mmd9: Detects image inside table (setDiff.added.length === 1)",
+        setDiff.added.length === 1,
+        `Got ${setDiff.added.length}`,
+      );
       assert("mmd9: Line is 3", reg.getAllImages()[0]?.lineNumber === 3);
     }
 
@@ -1713,11 +2187,11 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      const count = reg.buildFromMMD(mmd13);
+      const setDiff = reg.buildFromMMD(mmd13);
       assert(
         "mmd13: Image between math blocks detected",
-        count === 1,
-        `Got ${count}`,
+        setDiff.added.length === 1,
+        `Got ${setDiff.added.length}`,
       );
       assert(
         "mmd13: Line number is 4",
@@ -1732,10 +2206,45 @@ Some equations here.
 
     {
       const reg = new MathPixImageRegistry();
-      assert("null input returns 0", reg.buildFromMMD(null) === 0);
-      assert("undefined input returns 0", reg.buildFromMMD(undefined) === 0);
-      assert("number input returns 0", reg.buildFromMMD(42) === 0);
-      assert("empty string returns 0", reg.buildFromMMD("") === 0);
+      // Stage 6 Q3: invalid input returns defensive empty shape, not 0.
+      // Empty string is now valid input — on a fresh registry it returns
+      // the same empty diff, but on a populated one it removes every entry.
+      const nullDiff = reg.buildFromMMD(null);
+      assert(
+        "null input returns defensive empty shape",
+        !!nullDiff &&
+          Array.isArray(nullDiff.added) &&
+          nullDiff.added.length === 0 &&
+          Array.isArray(nullDiff.removed) &&
+          nullDiff.removed.length === 0,
+      );
+      const undefDiff = reg.buildFromMMD(undefined);
+      assert(
+        "undefined input returns defensive empty shape",
+        !!undefDiff &&
+          Array.isArray(undefDiff.added) &&
+          undefDiff.added.length === 0 &&
+          Array.isArray(undefDiff.removed) &&
+          undefDiff.removed.length === 0,
+      );
+      const numDiff = reg.buildFromMMD(42);
+      assert(
+        "number input returns defensive empty shape",
+        !!numDiff &&
+          Array.isArray(numDiff.added) &&
+          numDiff.added.length === 0 &&
+          Array.isArray(numDiff.removed) &&
+          numDiff.removed.length === 0,
+      );
+      const emptyDiff = reg.buildFromMMD("");
+      assert(
+        "empty string returns empty diff on fresh registry",
+        !!emptyDiff &&
+          Array.isArray(emptyDiff.added) &&
+          emptyDiff.added.length === 0 &&
+          Array.isArray(emptyDiff.removed) &&
+          emptyDiff.removed.length === 0,
+      );
     }
 
     // ========================================================================
@@ -1919,6 +2428,57 @@ Some equations here.
       assert(
         "replaceImage null data returns null",
         reg.replaceImage(id, null) === null,
+      );
+    }
+
+    // Stage 4.A (Q7 addendum): verify all user-editable metadata fields
+    // survive replaceImage when not supplied in newData. The block above
+    // covers altText / altTextSource; this block extends coverage to the
+    // other five fields (title, titleSource, longDescription,
+    // longDescriptionSource, decorative, textInImage, textInImageSource).
+    {
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd1);
+      const id = reg.getAllImages()[0]?.id;
+
+      reg.updateTitle(id, "Test caption", "user");
+      reg.updateAltText(id, "Test alt", "user");
+      reg.updateLongDescription(id, "Test long description", "user");
+      reg.updateDecorative(id, true);
+      reg.updateTextInImage(id, "Test text in image", "user");
+
+      const replaced = reg.replaceImage(id, {
+        originalUrl: "https://example.com/swapped.png",
+        mimeType: "image/png",
+      });
+
+      assert(
+        "Stage 4.A: replaceImage preserves title",
+        replaced?.title === "Test caption",
+      );
+      assert(
+        "Stage 4.A: replaceImage preserves titleSource",
+        replaced?.titleSource === "user",
+      );
+      assert(
+        "Stage 4.A: replaceImage preserves longDescription",
+        replaced?.longDescription === "Test long description",
+      );
+      assert(
+        "Stage 4.A: replaceImage preserves longDescriptionSource",
+        replaced?.longDescriptionSource === "user",
+      );
+      assert(
+        "Stage 4.A: replaceImage preserves decorative",
+        replaced?.decorative === true,
+      );
+      assert(
+        "Stage 4.A: replaceImage preserves textInImage",
+        replaced?.textInImage === "Test text in image",
+      );
+      assert(
+        "Stage 4.A: replaceImage preserves textInImageSource",
+        replaced?.textInImageSource === "user",
       );
     }
 
@@ -2410,12 +2970,25 @@ Some equations here.
     }
 
     {
-      // buildFromMMD clears previous state
+      // Stage 6 Q2: buildFromMMD is non-destructive — a second call with
+      // a fully-disjoint MMD removes everything from the first and adds
+      // the new entries. Final count is therefore still 1, but via the
+      // set-diff path rather than clear-and-rebuild.
       const reg = new MathPixImageRegistry();
       reg.buildFromMMD(mmd5); // 2 images
       assert("First build: 2 images", reg.getCount() === 2);
-      reg.buildFromMMD(mmd1); // 1 image
-      assert("Second build clears and rebuilds: 1 image", reg.getCount() === 1);
+      const setDiff = reg.buildFromMMD(mmd1); // 1 image (disjoint URLs)
+      assert(
+        "Second build set-diffs: removed 2 (disjoint URLs)",
+        setDiff.removed.length === 2,
+        `Got ${setDiff.removed.length}`,
+      );
+      assert(
+        "Second build set-diffs: added 1 (new URL)",
+        setDiff.added.length === 1,
+        `Got ${setDiff.added.length}`,
+      );
+      assert("Final count is 1", reg.getCount() === 1);
     }
 
     // ========================================================================
@@ -3279,6 +3852,1106 @@ Some equations here.
           after4.mmdReference === before4.mmdReference &&
           after4.syntax === before4.syntax,
         `ok=${ok4} mmdRefSame=${after4.mmdReference === before4.mmdReference} syntaxSame=${after4.syntax === before4.syntax}`,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 37: getMetadataStatus (Stage 4.A) — locks the Q3 helper
+    // ========================================================================
+    console.log("\n--- 37. getMetadataStatus (Stage 4.A) ---");
+
+    {
+      // 1. Defensive defaults — null
+      const nullResult = MathPixImageRegistry.getMetadataStatus(null);
+      assert(
+        "getMetadataStatus(null): hasCaption === false",
+        nullResult.hasCaption === false,
+      );
+      assert(
+        "getMetadataStatus(null): altState === 'no-alt'",
+        nullResult.altState === "no-alt",
+      );
+      assert(
+        "getMetadataStatus(null): longDescState === 'no-longdesc'",
+        nullResult.longDescState === "no-longdesc",
+      );
+
+      // 2. Defensive defaults — non-object (string)
+      const stringResult = MathPixImageRegistry.getMetadataStatus(
+        "not an object",
+      );
+      assert(
+        "getMetadataStatus(string): defensive defaults across all three dimensions",
+        stringResult.hasCaption === false &&
+          stringResult.altState === "no-alt" &&
+          stringResult.longDescState === "no-longdesc",
+      );
+
+      // 3. Defensive defaults — undefined
+      const undefResult = MathPixImageRegistry.getMetadataStatus(undefined);
+      assert(
+        "getMetadataStatus(undefined): defensive defaults across all three dimensions",
+        undefResult.hasCaption === false &&
+          undefResult.altState === "no-alt" &&
+          undefResult.longDescState === "no-longdesc",
+      );
+
+      // 4. Empty entry — all empty strings, not decorative
+      const emptyEntry = {
+        title: "",
+        altText: "",
+        longDescription: "",
+        decorative: false,
+      };
+      const emptyResult = MathPixImageRegistry.getMetadataStatus(emptyEntry);
+      assert(
+        "Empty entry: hasCaption === false",
+        emptyResult.hasCaption === false,
+      );
+      assert(
+        "Empty entry: altState === 'no-alt'",
+        emptyResult.altState === "no-alt",
+      );
+      assert(
+        "Empty entry: longDescState === 'no-longdesc'",
+        emptyResult.longDescState === "no-longdesc",
+      );
+
+      // 5. Caption only
+      const captionOnly = {
+        title: "A caption",
+        altText: "",
+        longDescription: "",
+        decorative: false,
+      };
+      const captionResult = MathPixImageRegistry.getMetadataStatus(captionOnly);
+      assert(
+        "Caption only: hasCaption === true",
+        captionResult.hasCaption === true,
+      );
+      assert(
+        "Caption only: altState === 'no-alt'",
+        captionResult.altState === "no-alt",
+      );
+      assert(
+        "Caption only: longDescState === 'no-longdesc'",
+        captionResult.longDescState === "no-longdesc",
+      );
+
+      // 6. Alt only
+      const altOnly = {
+        title: "",
+        altText: "Some alt",
+        longDescription: "",
+        decorative: false,
+      };
+      const altResult = MathPixImageRegistry.getMetadataStatus(altOnly);
+      assert(
+        "Alt only: hasCaption === false",
+        altResult.hasCaption === false,
+      );
+      assert(
+        "Alt only: altState === 'has-alt'",
+        altResult.altState === "has-alt",
+      );
+      assert(
+        "Alt only: longDescState === 'no-longdesc'",
+        altResult.longDescState === "no-longdesc",
+      );
+
+      // 7. Long description only
+      const longDescOnly = {
+        title: "",
+        altText: "",
+        longDescription: "Some long description",
+        decorative: false,
+      };
+      const longDescResult =
+        MathPixImageRegistry.getMetadataStatus(longDescOnly);
+      assert(
+        "Long description only: hasCaption === false",
+        longDescResult.hasCaption === false,
+      );
+      assert(
+        "Long description only: altState === 'no-alt'",
+        longDescResult.altState === "no-alt",
+      );
+      assert(
+        "Long description only: longDescState === 'has-longdesc'",
+        longDescResult.longDescState === "has-longdesc",
+      );
+
+      // 8. All three set, not decorative
+      const allSet = {
+        title: "Caption",
+        altText: "Alt",
+        longDescription: "Long",
+        decorative: false,
+      };
+      const allSetResult = MathPixImageRegistry.getMetadataStatus(allSet);
+      assert(
+        "All three set: hasCaption === true",
+        allSetResult.hasCaption === true,
+      );
+      assert(
+        "All three set: altState === 'has-alt'",
+        allSetResult.altState === "has-alt",
+      );
+      assert(
+        "All three set: longDescState === 'has-longdesc'",
+        allSetResult.longDescState === "has-longdesc",
+      );
+
+      // 9. Decorative, caption set, alt/longDesc empty
+      const decorativeCaption = {
+        title: "Caption",
+        altText: "",
+        longDescription: "",
+        decorative: true,
+      };
+      const decorativeCaptionResult =
+        MathPixImageRegistry.getMetadataStatus(decorativeCaption);
+      assert(
+        "Decorative + caption: hasCaption === true",
+        decorativeCaptionResult.hasCaption === true,
+      );
+      assert(
+        "Decorative + caption: altState === 'decorative'",
+        decorativeCaptionResult.altState === "decorative",
+      );
+      assert(
+        "Decorative + caption: longDescState === 'decorative'",
+        decorativeCaptionResult.longDescState === "decorative",
+      );
+
+      // 10. Decorative + altText/longDescription conflict (legacy/MMD-reconcile path)
+      const decorativeConflict = {
+        title: "",
+        altText: "Should be invisible",
+        longDescription: "Should also be invisible",
+        decorative: true,
+      };
+      const decorativeConflictResult =
+        MathPixImageRegistry.getMetadataStatus(decorativeConflict);
+      assert(
+        "Decorative + altText conflict: altState === 'decorative' (decorative wins, stored altText hidden per Q2)",
+        decorativeConflictResult.altState === "decorative",
+      );
+      assert(
+        "Decorative + longDescription conflict: longDescState === 'decorative' (same logic)",
+        decorativeConflictResult.longDescState === "decorative",
+      );
+
+      // 11. Integration with getAltCompletionStatus — delegation contract
+      const integrationEntry = {
+        title: "",
+        altText: "Alt",
+        longDescription: "",
+        decorative: false,
+      };
+      const metaState =
+        MathPixImageRegistry.getMetadataStatus(integrationEntry).altState;
+      const altCompletionState =
+        MathPixImageRegistry.getAltCompletionStatus(integrationEntry);
+      assert(
+        "Integration: getMetadataStatus.altState === getAltCompletionStatus (delegation contract)",
+        metaState === altCompletionState,
+      );
+
+      // 12. Legacy entry without new fields
+      const legacyEntry = {
+        id: "img-legacy",
+        syntax: "markdown",
+        originalUrl: "test.png",
+      };
+      const legacyResult = MathPixImageRegistry.getMetadataStatus(legacyEntry);
+      assert(
+        "Legacy entry: hasCaption === false",
+        legacyResult.hasCaption === false,
+      );
+      assert(
+        "Legacy entry: altState === 'no-alt'",
+        legacyResult.altState === "no-alt",
+      );
+      assert(
+        "Legacy entry: longDescState === 'no-longdesc'",
+        legacyResult.longDescState === "no-longdesc",
+      );
+    }
+
+    // ========================================================================
+    // GROUP 38: syncMmdReferenceForRestore — narrow restore-time sync
+    // ========================================================================
+    console.log("\n--- 38. syncMmdReferenceForRestore ---");
+    {
+      // Shared fixture: CDN-linked markdown image. Initial state is well-known
+      // so we can detect any unintended side effect precisely. This setter is
+      // intentionally distinct from updateImageReference (GROUP 36): it MUST
+      // NOT flip isModified and MUST NOT touch _metadata.lastUpdated, because
+      // it represents restore-time bookkeeping rather than a user edit.
+      const mmdRefFixture =
+        "Hello\n![](https://cdn.mathpix.com/sync.png)\nWorld";
+
+      // 1. Method updates mmdReference correctly and returns true
+      const regA = new MathPixImageRegistry();
+      regA.buildFromMMD(mmdRefFixture);
+      const idA = regA.getAllImages()[0].id;
+      const newRefA = "![](blob:http://localhost/sync-A)";
+      const okA = regA.syncMmdReferenceForRestore(idA, newRefA);
+      const afterA = regA.getImage(idA);
+      assert(
+        "syncMmdReferenceForRestore: returns true on success",
+        okA === true,
+      );
+      assert(
+        "syncMmdReferenceForRestore: mmdReference updated to new value",
+        afterA.mmdReference === newRefA,
+        `got "${afterA.mmdReference}"`,
+      );
+
+      // 2. syntax is preserved (no syntax parameter on this setter)
+      assert(
+        "syncMmdReferenceForRestore: syntax preserved (no syntax param)",
+        afterA.syntax === "markdown",
+        `got "${afterA.syntax}"`,
+      );
+
+      // 3. isModified MUST remain false (restore is bookkeeping, not user edit)
+      assert(
+        "syncMmdReferenceForRestore: isModified remains false (not a user edit)",
+        afterA.isModified === false,
+        `got ${afterA.isModified}`,
+      );
+
+      // 4. status preserved
+      assert(
+        "syncMmdReferenceForRestore: status preserved (cdn-linked)",
+        afterA.status === "cdn-linked",
+        `got "${afterA.status}"`,
+      );
+
+      // 5. _metadata.lastUpdated NOT touched
+      const regB = new MathPixImageRegistry();
+      regB.buildFromMMD(mmdRefFixture);
+      const idB = regB.getAllImages()[0].id;
+      const metaBeforeB = regB.getMetadata().lastUpdated;
+      // Force a measurable delay so toISOString would differ if anything ticked.
+      const t0 = Date.now();
+      while (Date.now() === t0) {
+        /* tight loop, exits after 1ms */
+      }
+      regB.syncMmdReferenceForRestore(
+        idB,
+        "![](blob:http://localhost/sync-B)",
+      );
+      const metaAfterB = regB.getMetadata().lastUpdated;
+      assert(
+        "syncMmdReferenceForRestore: registry lastUpdated metadata NOT touched",
+        metaBeforeB === metaAfterB,
+        `before="${metaBeforeB}" after="${metaAfterB}"`,
+      );
+
+      // 6. isModified preserved when it was true before the call
+      //    (the setter must not REGRESS state either — if a prior user edit
+      //    set isModified, restore bookkeeping shouldn't undo that.)
+      const regC = new MathPixImageRegistry();
+      regC.buildFromMMD(mmdRefFixture);
+      const idC = regC.getAllImages()[0].id;
+      regC.updateAltText(idC, "user edited", "user"); // flips isModified=true
+      const isModifiedBeforeC = regC.getImage(idC).isModified;
+      regC.syncMmdReferenceForRestore(
+        idC,
+        "![user edited](blob:http://localhost/sync-C)",
+      );
+      const isModifiedAfterC = regC.getImage(idC).isModified;
+      assert(
+        "syncMmdReferenceForRestore: isModified preserved (true stays true)",
+        isModifiedBeforeC === true && isModifiedAfterC === true,
+        `before=${isModifiedBeforeC} after=${isModifiedAfterC}`,
+      );
+
+      // 7. Returns false for unknown id, no mutation
+      const regD = new MathPixImageRegistry();
+      regD.buildFromMMD(mmdRefFixture);
+      const beforeAllD = JSON.stringify(regD.getAllImages());
+      const okD = regD.syncMmdReferenceForRestore(
+        "bogus-id-xyz",
+        "![](blob:nope)",
+      );
+      const afterAllD = JSON.stringify(regD.getAllImages());
+      assert(
+        "syncMmdReferenceForRestore: returns false on unknown id, no mutation",
+        okD === false && beforeAllD === afterAllD,
+      );
+
+      // 8. Returns false for invalid (non-string) id
+      const regE = new MathPixImageRegistry();
+      regE.buildFromMMD(mmdRefFixture);
+      const okE1 = regE.syncMmdReferenceForRestore(null, "![](blob:x)");
+      const okE2 = regE.syncMmdReferenceForRestore(123, "![](blob:x)");
+      const okE3 = regE.syncMmdReferenceForRestore("", "![](blob:x)");
+      assert(
+        "syncMmdReferenceForRestore: returns false on null/non-string/empty id",
+        okE1 === false && okE2 === false && okE3 === false,
+        `null=${okE1} number=${okE2} empty=${okE3}`,
+      );
+
+      // 9. Returns false for empty/non-string mmdReference (entry unchanged)
+      const regF = new MathPixImageRegistry();
+      regF.buildFromMMD(mmdRefFixture);
+      const idF = regF.getAllImages()[0].id;
+      const refBeforeF = regF.getImage(idF).mmdReference;
+      const okF1 = regF.syncMmdReferenceForRestore(idF, "");
+      const okF2 = regF.syncMmdReferenceForRestore(idF, null);
+      const okF3 = regF.syncMmdReferenceForRestore(idF, 42);
+      const refAfterF = regF.getImage(idF).mmdReference;
+      assert(
+        "syncMmdReferenceForRestore: returns false on empty/non-string ref, entry unchanged",
+        okF1 === false &&
+          okF2 === false &&
+          okF3 === false &&
+          refAfterF === refBeforeF,
+        `okF1=${okF1} okF2=${okF2} okF3=${okF3} refSame=${refAfterF === refBeforeF}`,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 39: syncOriginalUrlForRestore — narrow restore-time sync
+    // (Discovery 23 — mirrors GROUP 38's syncMmdReferenceForRestore shape)
+    // ========================================================================
+    console.log("\n--- 39. syncOriginalUrlForRestore ---");
+    {
+      // Shared fixture: CDN-linked markdown image. Initial state is well-known
+      // so we can detect any unintended side effect precisely. This setter is
+      // intentionally distinct from replaceImage: it MUST NOT flip status to
+      // "user-replaced", MUST NOT flip isModified, and MUST NOT touch
+      // _metadata.lastUpdated, because it represents restore-time bookkeeping
+      // rather than a user-initiated replacement.
+      const urlFixture =
+        "Hello\n![](https://cdn.mathpix.com/orig.png)\nWorld";
+
+      // 1. Method updates originalUrl correctly and returns true
+      const regA = new MathPixImageRegistry();
+      regA.buildFromMMD(urlFixture);
+      const idA = regA.getAllImages()[0].id;
+      const newUrlA = "https://cdn.example.test/refreshed-A.png";
+      const okA = regA.syncOriginalUrlForRestore(idA, newUrlA);
+      const afterA = regA.getImage(idA);
+      assert(
+        "syncOriginalUrlForRestore: returns true on success",
+        okA === true,
+      );
+      assert(
+        "syncOriginalUrlForRestore: originalUrl updated to new value",
+        afterA.originalUrl === newUrlA,
+        `got "${afterA.originalUrl}"`,
+      );
+
+      // 2. mmdReference preserved (not touched by this setter)
+      assert(
+        "syncOriginalUrlForRestore: mmdReference preserved",
+        afterA.mmdReference === regA.getAllImages()[0].mmdReference,
+      );
+
+      // 3. isModified MUST remain false (restore is bookkeeping, not user edit)
+      assert(
+        "syncOriginalUrlForRestore: isModified remains false (not a user edit)",
+        afterA.isModified === false,
+        `got ${afterA.isModified}`,
+      );
+
+      // 4. status MUST NOT flip to "user-replaced" (the bug Discovery 23 fixes)
+      assert(
+        "syncOriginalUrlForRestore: status preserved (cdn-linked, NOT user-replaced)",
+        afterA.status === "cdn-linked",
+        `got "${afterA.status}"`,
+      );
+
+      // 5. _metadata.lastUpdated NOT touched
+      const regB = new MathPixImageRegistry();
+      regB.buildFromMMD(urlFixture);
+      const idB = regB.getAllImages()[0].id;
+      const metaBeforeB = regB.getMetadata().lastUpdated;
+      const t0 = Date.now();
+      while (Date.now() === t0) {
+        /* tight loop, exits after 1ms */
+      }
+      regB.syncOriginalUrlForRestore(
+        idB,
+        "https://cdn.example.test/refreshed-B.png",
+      );
+      const metaAfterB = regB.getMetadata().lastUpdated;
+      assert(
+        "syncOriginalUrlForRestore: registry lastUpdated metadata NOT touched",
+        metaBeforeB === metaAfterB,
+        `before="${metaBeforeB}" after="${metaAfterB}"`,
+      );
+
+      // 6. isModified preserved when it was true before the call
+      const regC = new MathPixImageRegistry();
+      regC.buildFromMMD(urlFixture);
+      const idC = regC.getAllImages()[0].id;
+      regC.updateAltText(idC, "user edited", "user"); // flips isModified=true
+      const isModifiedBeforeC = regC.getImage(idC).isModified;
+      regC.syncOriginalUrlForRestore(
+        idC,
+        "https://cdn.example.test/refreshed-C.png",
+      );
+      const isModifiedAfterC = regC.getImage(idC).isModified;
+      assert(
+        "syncOriginalUrlForRestore: isModified preserved (true stays true)",
+        isModifiedBeforeC === true && isModifiedAfterC === true,
+        `before=${isModifiedBeforeC} after=${isModifiedAfterC}`,
+      );
+
+      // 7. Returns false for unknown id, no mutation
+      const regD = new MathPixImageRegistry();
+      regD.buildFromMMD(urlFixture);
+      const beforeAllD = JSON.stringify(regD.getAllImages());
+      const okD = regD.syncOriginalUrlForRestore(
+        "bogus-id-xyz",
+        "https://cdn.example.test/nope.png",
+      );
+      const afterAllD = JSON.stringify(regD.getAllImages());
+      assert(
+        "syncOriginalUrlForRestore: returns false on unknown id, no mutation",
+        okD === false && beforeAllD === afterAllD,
+      );
+
+      // 8. Returns false for invalid (null/non-string/empty) id
+      const regE = new MathPixImageRegistry();
+      regE.buildFromMMD(urlFixture);
+      const okE1 = regE.syncOriginalUrlForRestore(null, "https://cdn.example.test/x.png");
+      const okE2 = regE.syncOriginalUrlForRestore(123, "https://cdn.example.test/x.png");
+      const okE3 = regE.syncOriginalUrlForRestore("", "https://cdn.example.test/x.png");
+      assert(
+        "syncOriginalUrlForRestore: returns false on null/non-string/empty id",
+        okE1 === false && okE2 === false && okE3 === false,
+        `null=${okE1} number=${okE2} empty=${okE3}`,
+      );
+
+      // 9. Returns false for empty/non-string url (entry unchanged)
+      const regF = new MathPixImageRegistry();
+      regF.buildFromMMD(urlFixture);
+      const idF = regF.getAllImages()[0].id;
+      const urlBeforeF = regF.getImage(idF).originalUrl;
+      const okF1 = regF.syncOriginalUrlForRestore(idF, "");
+      const okF2 = regF.syncOriginalUrlForRestore(idF, null);
+      const okF3 = regF.syncOriginalUrlForRestore(idF, 42);
+      const urlAfterF = regF.getImage(idF).originalUrl;
+      assert(
+        "syncOriginalUrlForRestore: returns false on empty/non-string url, entry unchanged",
+        okF1 === false &&
+          okF2 === false &&
+          okF3 === false &&
+          urlAfterF === urlBeforeF,
+        `okF1=${okF1} okF2=${okF2} okF3=${okF3} urlSame=${urlAfterF === urlBeforeF}`,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 40: syncDataUriForRestore — narrow restore-time sync
+    // (Discovery 23 — mirrors GROUP 38's syncMmdReferenceForRestore shape)
+    // ========================================================================
+    console.log("\n--- 40. syncDataUriForRestore ---");
+    {
+      // Shared fixture: CDN-linked markdown image. Tests parallel GROUP 39's
+      // structure exactly — only the field name and target value differ.
+      const dataUriFixture =
+        "Hello\n![](https://cdn.mathpix.com/du.png)\nWorld";
+      const sampleDataUri =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=";
+
+      // 1. Method updates dataUri correctly and returns true
+      const regA = new MathPixImageRegistry();
+      regA.buildFromMMD(dataUriFixture);
+      const idA = regA.getAllImages()[0].id;
+      const okA = regA.syncDataUriForRestore(idA, sampleDataUri);
+      const afterA = regA.getImage(idA);
+      assert(
+        "syncDataUriForRestore: returns true on success",
+        okA === true,
+      );
+      assert(
+        "syncDataUriForRestore: dataUri updated to new value",
+        afterA.dataUri === sampleDataUri,
+      );
+
+      // 2. mmdReference preserved (not touched by this setter)
+      assert(
+        "syncDataUriForRestore: mmdReference preserved",
+        afterA.mmdReference === regA.getAllImages()[0].mmdReference,
+      );
+
+      // 3. isModified MUST remain false (restore is bookkeeping, not user edit)
+      assert(
+        "syncDataUriForRestore: isModified remains false (not a user edit)",
+        afterA.isModified === false,
+        `got ${afterA.isModified}`,
+      );
+
+      // 4. status MUST NOT flip to "user-replaced" (the bug Discovery 23 fixes)
+      assert(
+        "syncDataUriForRestore: status preserved (cdn-linked, NOT user-replaced)",
+        afterA.status === "cdn-linked",
+        `got "${afterA.status}"`,
+      );
+
+      // 5. _metadata.lastUpdated NOT touched
+      const regB = new MathPixImageRegistry();
+      regB.buildFromMMD(dataUriFixture);
+      const idB = regB.getAllImages()[0].id;
+      const metaBeforeB = regB.getMetadata().lastUpdated;
+      const t0 = Date.now();
+      while (Date.now() === t0) {
+        /* tight loop, exits after 1ms */
+      }
+      regB.syncDataUriForRestore(idB, sampleDataUri);
+      const metaAfterB = regB.getMetadata().lastUpdated;
+      assert(
+        "syncDataUriForRestore: registry lastUpdated metadata NOT touched",
+        metaBeforeB === metaAfterB,
+        `before="${metaBeforeB}" after="${metaAfterB}"`,
+      );
+
+      // 6. isModified preserved when it was true before the call
+      const regC = new MathPixImageRegistry();
+      regC.buildFromMMD(dataUriFixture);
+      const idC = regC.getAllImages()[0].id;
+      regC.updateAltText(idC, "user edited", "user"); // flips isModified=true
+      const isModifiedBeforeC = regC.getImage(idC).isModified;
+      regC.syncDataUriForRestore(idC, sampleDataUri);
+      const isModifiedAfterC = regC.getImage(idC).isModified;
+      assert(
+        "syncDataUriForRestore: isModified preserved (true stays true)",
+        isModifiedBeforeC === true && isModifiedAfterC === true,
+        `before=${isModifiedBeforeC} after=${isModifiedAfterC}`,
+      );
+
+      // 7. Returns false for unknown id, no mutation
+      const regD = new MathPixImageRegistry();
+      regD.buildFromMMD(dataUriFixture);
+      const beforeAllD = JSON.stringify(regD.getAllImages());
+      const okD = regD.syncDataUriForRestore("bogus-id-xyz", sampleDataUri);
+      const afterAllD = JSON.stringify(regD.getAllImages());
+      assert(
+        "syncDataUriForRestore: returns false on unknown id, no mutation",
+        okD === false && beforeAllD === afterAllD,
+      );
+
+      // 8. Returns false for invalid (null/non-string/empty) id
+      const regE = new MathPixImageRegistry();
+      regE.buildFromMMD(dataUriFixture);
+      const okE1 = regE.syncDataUriForRestore(null, sampleDataUri);
+      const okE2 = regE.syncDataUriForRestore(123, sampleDataUri);
+      const okE3 = regE.syncDataUriForRestore("", sampleDataUri);
+      assert(
+        "syncDataUriForRestore: returns false on null/non-string/empty id",
+        okE1 === false && okE2 === false && okE3 === false,
+        `null=${okE1} number=${okE2} empty=${okE3}`,
+      );
+
+      // 9. Returns false for empty/non-string dataUri (entry unchanged)
+      const regF = new MathPixImageRegistry();
+      regF.buildFromMMD(dataUriFixture);
+      const idF = regF.getAllImages()[0].id;
+      const duBeforeF = regF.getImage(idF).dataUri;
+      const okF1 = regF.syncDataUriForRestore(idF, "");
+      const okF2 = regF.syncDataUriForRestore(idF, null);
+      const okF3 = regF.syncDataUriForRestore(idF, 42);
+      const duAfterF = regF.getImage(idF).dataUri;
+      assert(
+        "syncDataUriForRestore: returns false on empty/non-string dataUri, entry unchanged",
+        okF1 === false &&
+          okF2 === false &&
+          okF3 === false &&
+          duAfterF === duBeforeF,
+        `okF1=${okF1} okF2=${okF2} okF3=${okF3} duSame=${duAfterF === duBeforeF}`,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 41: buildFromMMD — Q2 preserve / refresh bucketing
+    // (Stage 6 — non-destructive reconcile on a populated registry)
+    // ========================================================================
+    console.log("\n--- 41. buildFromMMD: Q2 preserve / refresh bucketing ---");
+
+    {
+      // Fixture: a registry built from one MMD that includes a markdown
+      // image plus an includegraphics reference, then user-edited so every
+      // preservable field carries a recognisable value. The "same MMD again"
+      // reconcile call must leave all those values intact and refresh only
+      // the three structural fields.
+      const seedMmd =
+        "Intro.\n![Initial alt](https://cdn.mathpix.com/g41.png)\nMore text.\n\\includegraphics{https://cdn.mathpix.com/g41inc.png}";
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(seedMmd);
+      const ids = reg.getAllImages().map((i) => i.id);
+      const idMd = reg
+        .getAllImages()
+        .find((i) => i.syntax === "markdown").id;
+      const idInc = reg
+        .getAllImages()
+        .find((i) => i.syntax === "includegraphics").id;
+
+      // User edits the markdown entry across every preservable surface.
+      reg.updateAltText(idMd, "User-edited alt text", "user");
+      reg.updateTitle(idMd, "User caption", "user");
+      reg.updateLongDescription(idMd, "A long description.", "user");
+      reg.updateDecorative(idMd, true);
+      reg.updateTextInImage(idMd, "Visible label", "user");
+      // Mimic a restore-time provenance touch so we can also confirm status.
+      // Discovery 23's setter leaves status as "cdn-linked" — keep that.
+      const beforeMd = reg.getImage(idMd);
+      assert(
+        "41-pre: idMd starts at status cdn-linked",
+        beforeMd.status === "cdn-linked",
+      );
+
+      // Same MMD again — set-diff should be empty.
+      const setDiff1 = reg.buildFromMMD(seedMmd);
+      assert(
+        "41.1a: same MMD → setDiff.added is empty",
+        setDiff1.added.length === 0,
+        `got ${setDiff1.added.length}`,
+      );
+      assert(
+        "41.1b: same MMD → setDiff.removed is empty",
+        setDiff1.removed.length === 0,
+        `got ${setDiff1.removed.length}`,
+      );
+      assert(
+        "41.1c: same MMD → count unchanged",
+        reg.getCount() === 2,
+        `got ${reg.getCount()}`,
+      );
+      assert(
+        "41.1d: same MMD → IDs unchanged",
+        JSON.stringify(reg.getAllImages().map((i) => i.id).sort()) ===
+          JSON.stringify([...ids].sort()),
+      );
+
+      // Every user-metadata field preserved across the rebuild.
+      const afterMd = reg.getImage(idMd);
+      assert(
+        "41.2a: altText preserved across reconcile",
+        afterMd.altText === "User-edited alt text",
+      );
+      assert(
+        "41.2b: altTextSource preserved (user)",
+        afterMd.altTextSource === "user",
+      );
+      assert(
+        "41.2c: title preserved across reconcile",
+        afterMd.title === "User caption",
+      );
+      assert(
+        "41.2d: titleSource preserved (user)",
+        afterMd.titleSource === "user",
+      );
+      assert(
+        "41.2e: longDescription preserved across reconcile",
+        afterMd.longDescription === "A long description.",
+      );
+      assert(
+        "41.2f: longDescriptionSource preserved (user)",
+        afterMd.longDescriptionSource === "user",
+      );
+      assert(
+        "41.2g: decorative preserved across reconcile (true)",
+        afterMd.decorative === true,
+      );
+      assert(
+        "41.2h: textInImage preserved across reconcile",
+        afterMd.textInImage === "Visible label",
+      );
+      assert(
+        "41.2i: textInImageSource preserved (user)",
+        afterMd.textInImageSource === "user",
+      );
+      assert(
+        "41.2j: status preserved across reconcile (regression guard for Discovery 23 fix)",
+        afterMd.status === "cdn-linked",
+        `got "${afterMd.status}"`,
+      );
+      assert(
+        "41.2k: originalSyntax preserved (Stage 1 state-machine invariant)",
+        afterMd.originalSyntax === "markdown",
+        `got "${afterMd.originalSyntax}"`,
+      );
+      assert(
+        "41.2l: originalUrl preserved across reconcile",
+        afterMd.originalUrl === "https://cdn.mathpix.com/g41.png",
+      );
+    }
+
+    {
+      // Add an image to the MMD: new entry created, existing preserved.
+      const seedMmd =
+        "Intro.\n![Existing alt](https://cdn.mathpix.com/g41-keep.png)";
+      const expandedMmd =
+        "Intro.\n![Existing alt](https://cdn.mathpix.com/g41-keep.png)\nMore.\n![New alt](https://cdn.mathpix.com/g41-new.png)";
+
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(seedMmd);
+      const keptId = reg.getAllImages()[0].id;
+      reg.updateAltText(keptId, "USER-EDITED", "user");
+
+      const setDiff = reg.buildFromMMD(expandedMmd);
+      assert(
+        "41.3a: add-only → setDiff.added.length === 1",
+        setDiff.added.length === 1,
+        `got ${setDiff.added.length}`,
+      );
+      assert(
+        "41.3b: add-only → setDiff.removed.length === 0",
+        setDiff.removed.length === 0,
+        `got ${setDiff.removed.length}`,
+      );
+      assert(
+        "41.3c: existing entry still present after add",
+        reg.hasImage(keptId),
+      );
+      assert(
+        "41.3d: existing entry's user-edited altText preserved",
+        reg.getImage(keptId).altText === "USER-EDITED",
+      );
+      assert(
+        "41.3e: registry count rose to 2",
+        reg.getCount() === 2,
+      );
+    }
+
+    {
+      // Remove an image from the MMD: entry removed, others untouched.
+      const seedMmd =
+        "![A](https://cdn.mathpix.com/g41-a.png)\n\n![B](https://cdn.mathpix.com/g41-b.png)";
+      const trimmedMmd = "![A](https://cdn.mathpix.com/g41-a.png)";
+
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(seedMmd);
+      const idA = reg.getAllImages().find((i) => i.altText === "A").id;
+      const idB = reg.getAllImages().find((i) => i.altText === "B").id;
+      reg.updateAltText(idA, "KEEP_ME", "user");
+
+      const setDiff = reg.buildFromMMD(trimmedMmd);
+      assert(
+        "41.4a: remove-only → setDiff.added.length === 0",
+        setDiff.added.length === 0,
+        `got ${setDiff.added.length}`,
+      );
+      assert(
+        "41.4b: remove-only → setDiff.removed.length === 1",
+        setDiff.removed.length === 1,
+        `got ${setDiff.removed.length}`,
+      );
+      assert(
+        "41.4c: removed entry was idB",
+        setDiff.removed[0].id === idB,
+      );
+      assert(
+        "41.4d: surviving entry's user edit preserved",
+        reg.getImage(idA)?.altText === "KEEP_ME",
+      );
+      assert(
+        "41.4e: removed entry no longer in registry",
+        !reg.hasImage(idB),
+      );
+    }
+
+    {
+      // Mixed add + remove + match in a single reconcile call.
+      const seedMmd =
+        "![A](https://cdn.mathpix.com/g41-mix-a.png)\n![B](https://cdn.mathpix.com/g41-mix-b.png)";
+      const mutatedMmd =
+        "![A](https://cdn.mathpix.com/g41-mix-a.png)\n![C](https://cdn.mathpix.com/g41-mix-c.png)";
+
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(seedMmd);
+      const idA = reg.getAllImages().find((i) => i.altText === "A").id;
+      const idB = reg.getAllImages().find((i) => i.altText === "B").id;
+      reg.updateAltText(idA, "A-USER-EDIT", "user");
+
+      const setDiff = reg.buildFromMMD(mutatedMmd);
+      assert(
+        "41.5a: mixed → setDiff.added.length === 1 (the new C)",
+        setDiff.added.length === 1,
+        `got ${setDiff.added.length}`,
+      );
+      assert(
+        "41.5b: mixed → setDiff.removed.length === 1 (the removed B)",
+        setDiff.removed.length === 1,
+        `got ${setDiff.removed.length}`,
+      );
+      assert(
+        "41.5c: matched entry preserved its user edit",
+        reg.getImage(idA)?.altText === "A-USER-EDIT",
+      );
+      assert(
+        "41.5d: removed clone is the old B",
+        setDiff.removed[0].id === idB,
+      );
+    }
+
+    {
+      // mmdReference refreshes on match. IDs are hash(url + lineNumber),
+      // so a same-URL same-line alt-text edit keeps the ID stable but
+      // changes the literal MMD substring — which is exactly what
+      // mmdReference is meant to track. The refresh keeps mmdReference
+      // in sync with what's actually in the MMD after the user's edit.
+      const beforeMmd =
+        "![original alt](https://cdn.mathpix.com/g41-struct.png)";
+      const afterMmd =
+        "![user edited alt text](https://cdn.mathpix.com/g41-struct.png)";
+
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(beforeMmd);
+      const id = reg.getAllImages()[0].id;
+      const beforeEntry = reg.getImage(id);
+      assert(
+        "41.6a: precondition — mmdReference is the before-string",
+        beforeEntry.mmdReference ===
+          "![original alt](https://cdn.mathpix.com/g41-struct.png)",
+      );
+
+      const setDiff = reg.buildFromMMD(afterMmd);
+      assert(
+        "41.6b: same URL + same line → entry matches (no add/remove)",
+        setDiff.added.length === 0 && setDiff.removed.length === 0,
+        `added=${setDiff.added.length} removed=${setDiff.removed.length}`,
+      );
+      const afterEntry = reg.getImage(id);
+      assert(
+        "41.6c: matched entry mmdReference refreshes to the new literal",
+        afterEntry.mmdReference ===
+          "![user edited alt text](https://cdn.mathpix.com/g41-struct.png)",
+      );
+      assert(
+        "41.6d: matched entry lineNumber preserved (still 1)",
+        afterEntry.lineNumber === 1,
+      );
+      assert(
+        "41.6e: matched entry syntax preserved (still markdown)",
+        afterEntry.syntax === "markdown",
+      );
+    }
+
+    {
+      // F-N URL-fallback contract (commit 32069c8, Phase F-N, 2026-05-31;
+      // F-N strategy doc "Test 22"). When the user changes which line an
+      // image is on (e.g. inserts a paragraph above it), generateStableId
+      // hashes `url::lineNumber` so the candidate's hash-derived id drifts.
+      // Pass 2 of buildFromMMD recovers the entry by URL: the OLD id is
+      // preserved as the Map key, the line-shifted candidate's hash-derived
+      // id is discarded, and the entry lands in NEITHER added NOR removed.
+      // Its three structural fields (mmdReference, lineNumber, syntax) are
+      // refreshed from the candidate while all user metadata is preserved.
+      //
+      // This REPLACES the pre-F-N model these subtests used to encode
+      // (line-move retires the old id → removed, mints a new one → added);
+      // that false added/removed pair is exactly what triggered the F-N
+      // blob-URL revocation cascade, so the recovery is deliberate. The
+      // block remains a regression guard, now under the NEW semantics: any
+      // future change to the fallback's classification (dropping Pass 2, or
+      // routing the recovered entry through added/removed) surfaces here.
+      const beforeMmd =
+        "![alt](https://cdn.mathpix.com/g41-linemove.png)";
+      const afterMmd =
+        "Intro.\n\n![alt](https://cdn.mathpix.com/g41-linemove.png)";
+
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(beforeMmd);
+      // Capture the ID before the rebuild — F-N preserves it across the move.
+      const oldId = reg.getAllImages()[0].id;
+      reg.updateAltText(oldId, "USER_EDIT", "user");
+
+      const setDiff = reg.buildFromMMD(afterMmd);
+      assert(
+        "41.7a: line-move → removed is empty (retires nothing)",
+        setDiff.removed.length === 0,
+        `got ${setDiff.removed.length}`,
+      );
+      assert(
+        "41.7b: line-move → added is empty (mints nothing)",
+        setDiff.added.length === 0,
+        `got ${setDiff.added.length}`,
+      );
+      assert(
+        "41.7c: line-move → surviving entry keeps its original ID (URL-fallback preserved it)",
+        reg.getCount() === 1 && reg.getAllImages()[0].id === oldId,
+      );
+      assert(
+        "41.7d: line-move → surviving entry's lineNumber refreshed to the new line (3)",
+        reg.getImage(oldId)?.lineNumber === 3,
+        `got ${reg.getImage(oldId)?.lineNumber}`,
+      );
+      assert(
+        "41.7e: line-move → user metadata follows the surviving entry (the point of F-N)",
+        reg.getImage(oldId)?.altText === "USER_EDIT",
+        `got "${reg.getImage(oldId)?.altText}"`,
+      );
+      // 41.7f: the recovered entry lands in the URL-fallback bucket — it is
+      // counted in setDiff.urlFallback (return field `urlFallback:
+      // urlMatches.length`, populated where the Pass-2 match does
+      // `urlMatches.push({ existingId, candidate })`) and in setDiff.matched
+      // (`matchedIds.size + urlMatches.length`), NOT in added/removed. This
+      // positively locks the bucket so a future reclassification is caught.
+      assert(
+        "41.7f: line-move → entry recovered via the URL-fallback bucket (urlFallback === 1, matched === 1)",
+        setDiff.urlFallback === 1 && setDiff.matched === 1,
+        `urlFallback=${setDiff.urlFallback} matched=${setDiff.matched}`,
+      );
+    }
+
+    // ========================================================================
+    // GROUP 42: buildFromMMD — Q3 return shape, clones, defensiveness
+    // (Stage 6 — diff contract, snapshot-before-delete, error tolerance)
+    // ========================================================================
+    console.log(
+      "\n--- 42. buildFromMMD: Q3 return shape, clones, defensiveness ---",
+    );
+
+    {
+      // Return shape on an empty input string (fresh registry).
+      const reg = new MathPixImageRegistry();
+      const setDiff = reg.buildFromMMD("");
+      assert(
+        "42.1a: empty input returns {added:[], removed:[]}",
+        Array.isArray(setDiff.added) &&
+          setDiff.added.length === 0 &&
+          Array.isArray(setDiff.removed) &&
+          setDiff.removed.length === 0,
+      );
+    }
+
+    {
+      // Return shape on a no-change call against a populated registry.
+      const mmd = "![Z](https://cdn.mathpix.com/g42-nochange.png)";
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd);
+      const setDiff = reg.buildFromMMD(mmd);
+      assert(
+        "42.2a: no-change call returns empty added",
+        setDiff.added.length === 0,
+      );
+      assert(
+        "42.2b: no-change call returns empty removed",
+        setDiff.removed.length === 0,
+      );
+    }
+
+    {
+      // Removed clones excluded blob, independent of internal entries.
+      const mmd =
+        "![Clone test](https://cdn.mathpix.com/g42-clone.png)";
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd);
+      const id = reg.getAllImages()[0].id;
+
+      // Attach a fake blob so we can verify it's NOT in the clone.
+      const fakeBlob = new Blob(["fake"], { type: "image/png" });
+      reg.attachBlob(id, fakeBlob);
+      assert(
+        "42.3-pre: blob attached on internal entry",
+        reg._images.get(id).blob === fakeBlob,
+      );
+
+      const setDiff = reg.buildFromMMD(""); // remove everything
+      assert(
+        "42.3a: removed clone has same id as original",
+        setDiff.removed.length === 1 && setDiff.removed[0].id === id,
+      );
+      assert(
+        "42.3b: removed clone blob field is null (excluded)",
+        setDiff.removed[0].blob === null,
+        `got ${setDiff.removed[0].blob}`,
+      );
+
+      // Mutating the clone must not affect the (now-empty) registry's
+      // sentinel state — and a fresh rebuild from the seed must not pull
+      // the mutated value in.
+      setDiff.removed[0].altText = "MUTATED_CLONE";
+      reg.buildFromMMD(mmd);
+      const after = reg.getAllImages()[0];
+      assert(
+        "42.3c: mutating clone did NOT bleed back into registry",
+        after.altText === "Clone test",
+        `got "${after.altText}"`,
+      );
+    }
+
+    {
+      // Per-candidate try/catch: a malformed includegraphics block in the
+      // middle of an MMD must not abort the reconcile. We use a real
+      // URL alongside the malformed one to confirm the good detection
+      // still lands. (The current regex tolerates most syntaxes; the
+      // assertion is that whatever the regex emits, _createEntryFromDetection
+      // throwing on one candidate does not lose the next.)
+      const goodMmd = "![ok](https://cdn.mathpix.com/g42-tolerant.png)";
+      const reg = new MathPixImageRegistry();
+
+      // Monkey-patch _createEntryFromDetection to throw for the first call,
+      // then succeed for the second — this exercises the try/catch path
+      // without depending on the regex producing a malformed candidate.
+      const originalFn = reg._createEntryFromDetection.bind(reg);
+      let callIdx = 0;
+      reg._createEntryFromDetection = function (...args) {
+        callIdx++;
+        if (callIdx === 1) {
+          throw new Error("synthetic malformation");
+        }
+        return originalFn(...args);
+      };
+      const mmdMulti =
+        "![first](https://cdn.mathpix.com/g42-throw.png)\n" + goodMmd;
+
+      // Suppress the expected console.warn from the catch path.
+      const originalWarn = console.warn;
+      console.warn = function () {};
+      let setDiff;
+      try {
+        setDiff = reg.buildFromMMD(mmdMulti);
+      } finally {
+        console.warn = originalWarn;
+      }
+      assert(
+        "42.4a: per-candidate try/catch isolates the throw",
+        setDiff.added.length === 1,
+        `got ${setDiff.added.length}`,
+      );
+      assert(
+        "42.4b: surviving candidate is the second (good) entry",
+        reg.getAllImages()[0]?.altText === "ok",
+      );
+    }
+
+    {
+      // Defensive input handling: invalid types return the empty shape
+      // without throwing AND without mutating an existing populated registry.
+      const mmd = "![hold](https://cdn.mathpix.com/g42-hold.png)";
+      const reg = new MathPixImageRegistry();
+      reg.buildFromMMD(mmd);
+      const snapshot = JSON.stringify(reg.getAllImages());
+
+      const nullDiff = reg.buildFromMMD(null);
+      assert(
+        "42.5a: null does not throw, returns empty shape",
+        !!nullDiff && nullDiff.added.length === 0 && nullDiff.removed.length === 0,
+      );
+      const undefDiff = reg.buildFromMMD(undefined);
+      assert(
+        "42.5b: undefined does not throw, returns empty shape",
+        !!undefDiff && undefDiff.added.length === 0 && undefDiff.removed.length === 0,
+      );
+      const objDiff = reg.buildFromMMD({});
+      assert(
+        "42.5c: object does not throw, returns empty shape",
+        !!objDiff && objDiff.added.length === 0 && objDiff.removed.length === 0,
+      );
+
+      assert(
+        "42.5d: invalid-input calls did NOT mutate populated registry",
+        JSON.stringify(reg.getAllImages()) === snapshot,
       );
     }
 

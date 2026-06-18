@@ -235,10 +235,7 @@
       if (statusIcon) {
         var iconName = STATE_ICONS[state] || "download";
         statusIcon.setAttribute("data-icon", iconName);
-        // Re-populate icon if icon library is available
-        if (typeof window.getIcon === "function") {
-          statusIcon.innerHTML = window.getIcon(iconName);
-        }
+        if (typeof window.refreshIcons === "function") window.refreshIcons(statusIcon);
       }
 
       // Update state text

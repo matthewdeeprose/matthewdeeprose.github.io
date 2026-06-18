@@ -563,6 +563,13 @@
         tab: liveEl(this.elements.tabChemistry, "resume-tab-chemistry"),
         panel: liveEl(this.elements.panelChemistry, "resume-panel-chemistry"),
       },
+      // Stage 7: Context tab. The container-selector reset loop above already
+      // hides this panel when any sibling activates, so no other change to
+      // switchTab is required.
+      context: {
+        tab: liveEl(this.elements.tabContext, "resume-tab-context"),
+        panel: liveEl(this.elements.panelContext, "resume-panel-context"),
+      },
     };
 
     // Update the target tab's buttons and panels. The defensive reset above

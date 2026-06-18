@@ -254,9 +254,11 @@
    * @param {Object} [opts] - Reserved.
    * @param {Object} [registry] - When provided, mmdReference + syntax are
    *   refreshed after a transforming rewrite.
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Discovery 18 — passed
+   *   through to `S().findImage` so post-restore image lookups succeed.
    * @returns {{ mmd: string, transformed: boolean, action: string }}
    */
-  function writeAltText(mmd, entry, opts, registry) {
+  function writeAltText(mmd, entry, opts, registry, imageBlobUrlMap = null) {
     if (typeof mmd !== "string" || !entry) {
       return { mmd: mmd || "", transformed: false, action: "no-op" };
     }
@@ -268,7 +270,7 @@
         ? entry.altText
         : "";
 
-    const loc = S().findImage(mmd, entry);
+    const loc = S().findImage(mmd, entry, imageBlobUrlMap);
     if (!loc.found) {
       logWarn(`writeAltText(): image not found for entry ${entry.id || "?"}`);
       return { mmd, transformed: false, action: "image-not-found" };
@@ -316,9 +318,11 @@
    *
    * @param {string} mmd
    * @param {Object} registry - MathPixImageRegistry instance.
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Discovery 18 — passed
+   *   through to each `writeAltText` call so post-restore image lookups succeed.
    * @returns {{ mmd: string, transformations: number, actions: Object }}
    */
-  function writeAltTextForAll(mmd, registry) {
+  function writeAltTextForAll(mmd, registry, imageBlobUrlMap = null) {
     if (typeof mmd !== "string") {
       return { mmd: mmd || "", transformations: 0, actions: {} };
     }
@@ -331,7 +335,7 @@
     let transformations = 0;
     const actions = {};
     for (const entry of registry.getAllImages()) {
-      const r = writeAltText(current, entry, undefined, registry);
+      const r = writeAltText(current, entry, undefined, registry, imageBlobUrlMap);
       current = r.mmd;
       if (r.transformed) transformations++;
       actions[r.action] = (actions[r.action] || 0) + 1;
@@ -364,9 +368,11 @@
    *
    * @param {string} mmd
    * @param {Object} registry - MathPixImageRegistry instance.
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Discovery 18 — passed
+   *   through to `S().findImage` so post-restore image lookups succeed.
    * @returns {{ updated: number, actions: Object }}
    */
-  function parseAltText(mmd, registry) {
+  function parseAltText(mmd, registry, imageBlobUrlMap = null) {
     let updated = 0;
     const actions = {};
 
@@ -389,7 +395,7 @@
     const lines = mmd.split("\n");
 
     for (const entry of entries) {
-      const loc = S().findImage(mmd, entry);
+      const loc = S().findImage(mmd, entry, imageBlobUrlMap);
       if (!loc.found) {
         actions[PARSE_ALT_TEXT_ACTIONS.IMAGE_NOT_FOUND] =
           (actions[PARSE_ALT_TEXT_ACTIONS.IMAGE_NOT_FOUND] || 0) + 1;
@@ -452,6 +458,11 @@
    *
    * @param {string} mmd
    * @param {Object} registry - MathPixImageRegistry instance.
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Discovery 18 — threaded
+   *   through `writeAllCaptions` and `writeAltTextForAll` to the underlying
+   *   `findImage` calls so the URL-regex fallback can locate images on restored
+   *   sessions where the MMD holds blob URLs but registry entries hold CDN URLs.
+   *   `writeAppendix` does not call `findImage`, so it does not receive the map.
    * @returns {{
    *   mmd: string,
    *   captions: { mmd: string, transformations: number, actions: Object },
@@ -459,7 +470,7 @@
    *   appendix: { mmd: string, transformations: number, actions: Object }
    * }}
    */
-  function applyRegistryToMMD(mmd, registry) {
+  function applyRegistryToMMD(mmd, registry, imageBlobUrlMap = null) {
     if (typeof mmd !== "string") {
       logError("applyRegistryToMMD(): mmd must be a string");
       return {
@@ -474,8 +485,8 @@
       return { mmd, captions: null, altText: null, appendix: null };
     }
 
-    const r1 = S().writeAllCaptions(mmd, registry);
-    const r2 = writeAltTextForAll(r1.mmd, registry);
+    const r1 = S().writeAllCaptions(mmd, registry, undefined, imageBlobUrlMap);
+    const r2 = writeAltTextForAll(r1.mmd, registry, imageBlobUrlMap);
     const r3 = S().writeAppendix(r2.mmd, registry);
 
     logInfo(
@@ -511,13 +522,18 @@
    *
    * @param {string} mmd
    * @param {Object} registry - MathPixImageRegistry instance.
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - Discovery 18 — threaded
+   *   through `parseCaptions` and `parseAltText` to the underlying `findImage`
+   *   calls so the URL-regex fallback can locate images on restored sessions
+   *   where the MMD holds blob URLs but registry entries hold CDN URLs.
+   *   `parseAppendix` does not call `findImage`, so it does not receive the map.
    * @returns {{
    *   captions: { processed: number, updated: number, skipped: number, notFound: number },
    *   altText: { updated: number, actions: Object },
    *   appendix: { updated: number, actions: Object }
    * }}
    */
-  function reconcileMMDIntoRegistry(mmd, registry) {
+  function reconcileMMDIntoRegistry(mmd, registry, imageBlobUrlMap = null) {
     if (typeof mmd !== "string") {
       logError("reconcileMMDIntoRegistry(): mmd must be a string");
       return { captions: null, altText: null, appendix: null };
@@ -529,8 +545,8 @@
       return { captions: null, altText: null, appendix: null };
     }
 
-    const r1 = S().parseCaptions(mmd, registry);
-    const r2 = parseAltText(mmd, registry);
+    const r1 = S().parseCaptions(mmd, registry, imageBlobUrlMap);
+    const r2 = parseAltText(mmd, registry, imageBlobUrlMap);
     const r3 = S().parseAppendix(mmd, registry);
 
     logInfo(

@@ -377,10 +377,12 @@
       tabConfidence: document.getElementById("resume-tab-confidence"),
       tabAnalysis: document.getElementById("resume-tab-analysis"),
       tabChemistry: document.getElementById("resume-tab-chemistry"), // Phase 6B
+      tabContext: document.getElementById("resume-tab-context"), // Stage 7
       panelMmd: document.getElementById("resume-panel-mmd"),
       panelConfidence: document.getElementById("resume-panel-confidence"),
       panelAnalysis: document.getElementById("resume-panel-analysis"),
       panelChemistry: document.getElementById("resume-panel-chemistry"), // Phase 6B
+      panelContext: document.getElementById("resume-panel-context"), // Stage 7
 
       // MMD view controls
       mmdViewCodeBtn: document.getElementById("resume-mmd-view-code-btn"),
@@ -451,6 +453,9 @@
       convertSection: document.getElementById("resume-convert-section"),
       convertBtn: document.getElementById("resume-convert-btn"),
       convertCancelBtn: document.getElementById("resume-convert-cancel-btn"),
+      convertSizeReadout: document.getElementById("resume-convert-size-readout"),
+      convertSizeDetail: document.getElementById("resume-convert-size-detail"),
+      convertSizeAnnounce: document.getElementById("resume-convert-size-announce"),
       convertProgress: document.getElementById("resume-convert-progress"),
       convertProgressList: document.getElementById(
         "resume-convert-progress-list",
@@ -576,6 +581,31 @@
         this.switchTab("chemistry"),
       );
     }
+    // Stage 7: Context tab
+    if (this.elements.tabContext) {
+      this.elements.tabContext.addEventListener("click", () =>
+        this.switchTab("context"),
+      );
+    }
+
+    // Stage 7 equalisation: a scoped keydown handler on each resume tab button
+    // so arrows ACTIVATE (automatic-activation model), matching the upload
+    // group. The generic shared handler in mathpix-ui-manager.js stays bound
+    // too; this handler suppresses it for handled keys (see
+    // handleResumeTabKeydown) so behaviour is independent of registration order.
+    [
+      this.elements.tabMmd,
+      this.elements.tabConfidence,
+      this.elements.tabAnalysis,
+      this.elements.tabChemistry,
+      this.elements.tabContext,
+    ].forEach((tabBtn) => {
+      if (tabBtn) {
+        tabBtn.addEventListener("keydown", (e) =>
+          this.handleResumeTabKeydown(e),
+        );
+      }
+    });
 
     // MMD view controls
     if (this.elements.mmdViewCodeBtn) {
@@ -683,6 +713,22 @@
       );
     }
 
+    // Context-field edits (Stage 9, Q4) — a user edit in the Context tab marks
+    // the session modified so the resume "Download Updated ZIP" affordance shows.
+    // System writes (restore, hydrate, reset) do not dispatch this event.
+    // Resume-mode only: the manager dispatches on Context-tab edits in BOTH modes,
+    // but only an active restored session may surface the resume download button.
+    // restoredSession is the resume-active signal (set on restore; null in the
+    // constructor, clearSession, and resetToUploadState), so stand down when it is
+    // absent — otherwise an upload-mode context edit wrongly shows the button.
+    document.addEventListener("mathpix:context-edited", () => {
+      if (!this.restoredSession) {
+        return;
+      }
+      this.hasContextEdits = true;
+      this.updateSessionStatus("modified");
+    });
+
     // Download all button
     if (this.elements.downloadAllBtn) {
       this.elements.downloadAllBtn.addEventListener("click", () =>
@@ -711,6 +757,8 @@
           checkbox.checked = isChecked;
         });
         this.updateConvertButtonState();
+        // Formats drive the encode set (the WebP gate), so reproject the size.
+        this._refreshConvertSizeIndicator?.();
       });
     }
 
@@ -719,6 +767,8 @@
       checkbox.addEventListener("change", () => {
         this.updateSelectAllState();
         this.updateConvertButtonState();
+        // Formats drive the encode set (the WebP gate), so reproject the size.
+        this._refreshConvertSizeIndicator?.();
       });
     });
 
@@ -753,6 +803,98 @@
     });
 
     logDebug("Event listeners attached");
+  };
+
+  /**
+   * Stage 7 equalisation: scoped keyboard handler for the resume tablist.
+   *
+   * Mirrors the upload group's handleTabKeydown
+   * (ui/components/mathpix-pdf-result-renderer.js) but ACTIVATES via
+   * switchTab() instead of moving focus only. This equalises the resume
+   * tablist to the upload group's automatic-activation model: ArrowLeft/Up
+   * and ArrowRight/Down activate the previous/next visible tab, Home/End jump
+   * to and activate the first/last visible tab, and Enter/Space activate the
+   * focused tab. Visibility is tested with getComputedStyle exactly as
+   * handleTabKeydown does, so the conditionally-hidden chemistry tab is
+   * skipped. Traversal WRAPS at the ends (modulo), matching handleTabKeydown.
+   *
+   * @param {KeyboardEvent} event - keydown event on a resume tab button
+   * @private
+   */
+  proto.handleResumeTabKeydown = function (event) {
+    // Source-order list of the five resume tabs; any may be absent from the DOM.
+    const orderedTabs = [
+      { name: "mmd", element: this.elements.tabMmd },
+      { name: "confidence", element: this.elements.tabConfidence },
+      { name: "analysis", element: this.elements.tabAnalysis },
+      { name: "chemistry", element: this.elements.tabChemistry },
+      { name: "context", element: this.elements.tabContext },
+    ].filter((t) => t.element);
+
+    // Restrict to VISIBLE tabs, mirroring handleTabKeydown's getComputedStyle
+    // test, so the hidden chemistry tab is excluded from arrow traversal.
+    const isTabVisible = (el) => {
+      const style = window.getComputedStyle(el);
+      return style.display !== "none" && style.visibility !== "hidden";
+    };
+    const visibleTabs = orderedTabs.filter((t) => isTabVisible(t.element));
+    if (visibleTabs.length === 0) return;
+
+    const currentIndex = visibleTabs.findIndex(
+      (t) => t.element === event.currentTarget,
+    );
+    if (currentIndex === -1) return;
+
+    const length = visibleTabs.length;
+    let targetIndex = currentIndex;
+
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        // Next visible, wrapping — matches handleTabKeydown's modulo traversal.
+        targetIndex = (currentIndex + 1) % length;
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        // Previous visible, wrapping.
+        targetIndex = (currentIndex - 1 + length) % length;
+        break;
+      case "Home":
+        targetIndex = 0;
+        break;
+      case "End":
+        targetIndex = length - 1;
+        break;
+      case "Enter":
+      case " ":
+        // Activate the focused tab. preventDefault also stops the native
+        // button click from double-activating — switchTab is then called once,
+        // here. stopImmediatePropagation suppresses the generic handler (see
+        // below) for this handled key.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.switchTab(visibleTabs[currentIndex].name);
+        visibleTabs[currentIndex].element.focus();
+        return;
+      default:
+        // All other keys (Tab, Escape, Ctrl+Shift+F, etc.) fall through
+        // untouched so the document-level handlers keep working.
+        return;
+    }
+
+    // Handled navigation key: suppress the default AND stop the generic tab
+    // handler in mathpix-ui-manager.js, which is bound to these same buttons
+    // and computes focus targets across ALL mathpix tablists. For resume tabs
+    // it contributes only a focus() that can cross tablists at the group edges;
+    // suppressing it for handled keys makes this scoped handler's outcome
+    // independent of listener registration order.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    // Arrows ACTIVATE (automatic activation). switchTab sets aria-selected and
+    // the roving tabindex but does not move focus, so focus the target here.
+    this.switchTab(visibleTabs[targetIndex].name);
+    visibleTabs[targetIndex].element.focus();
   };
 
   console.log("[SessionRestorer] Init mixin loaded");

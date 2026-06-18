@@ -64,19 +64,32 @@ window.SetUpTool = (function () {
       allyRememberCheckbox: document.getElementById("setup-ally-remember"),
       allyStatusBadge: document.getElementById("setup-ally-status-badge"),
 
+      // Foundry credential inputs (Stage 3b, Task 3.2b)
+      fdyProxyUrlInput: document.getElementById("setup-fdy-proxy-url"),
+      fdyUserTokenInput: document.getElementById("setup-fdy-user-token"),
+      fdyToggleBtn: document.getElementById("setup-fdy-toggle-btn"),
+      fdySaveBtn: document.getElementById("setup-fdy-save-btn"),
+      fdyClearBtn: document.getElementById("setup-fdy-clear-btn"),
+      fdyTestBtn: document.getElementById("setup-fdy-test-btn"),
+      fdyStatusBadge: document.getElementById("setup-fdy-status-badge"),
+      fdyActiveBadge: document.getElementById("setup-fdy-active-badge"),
+
       // Status summary values
       summaryOrValue: document.getElementById("setup-summary-or-value"),
       summaryMpValue: document.getElementById("setup-summary-mp-value"),
+      summaryFdyValue: document.getElementById("setup-summary-fdy-value"),
       summaryAllyValue: document.getElementById("setup-summary-ally-value"),
 
       // Status summary items (for styling)
       summaryOrItem: document.getElementById("setup-summary-openrouter"),
       summaryMpItem: document.getElementById("setup-summary-mathpix"),
+      summaryFdyItem: document.getElementById("setup-summary-foundry"),
       summaryAllyItem: document.getElementById("setup-summary-ally"),
 
       // Model status summary
       summaryModelsValue: document.getElementById("setup-summary-models-value"),
       summaryModelsItem: document.getElementById("setup-summary-models"),
+      summaryModelsTypes: document.getElementById("setup-summary-models-types"),
     };
 
     logDebug("Elements cached");
@@ -102,21 +115,56 @@ window.SetUpTool = (function () {
   }
 
   // ============================================================
+  // Live-region status writes (3.5b follow-up)
+  // ============================================================
+  // Each aria-live status span in tools.html has the structure
+  //   <span aria-live="polite" aria-atomic="true">
+  //     <span class="visually-hidden">Provider Name: </span>
+  //     <span class="setup-status-text">{text}</span>
+  //   </span>
+  // The visually-hidden prefix gives screen-reader users context on which
+  // provider the announcement refers to. JS must target the inner
+  // .setup-status-text span so it doesn't overwrite the prefix.
+  function setStatusText(el, text) {
+    if (!el) return;
+    const inner = el.querySelector(".setup-status-text");
+    if (inner) {
+      inner.textContent = text;
+    } else {
+      // Defensive fallback: if HTML restructure was missed for this site,
+      // keep behaviour working but surface the gap so it can be fixed.
+      el.textContent = text;
+      logWarn(
+        "setup-status-text inner span not found in #" + el.id +
+          "; falling back to outer textContent (provider prefix lost)"
+      );
+    }
+  }
+
+  // ============================================================
   // Event emission
   // ============================================================
   function emitCredentialChange(service, action) {
+    const detail = { service: service, action: action };
+
     if (
       window.EmbedEventEmitter &&
       typeof window.EmbedEventEmitter.emit === "function"
     ) {
-      window.EmbedEventEmitter.emit("credentials:changed", {
-        service: service,
-        action: action,
-      });
-      logDebug("Emitted credentials:changed", { service: service, action: action });
+      window.EmbedEventEmitter.emit("credentials:changed", detail);
+      logDebug("Emitted credentials:changed", detail);
     } else {
-      logDebug("EmbedEventEmitter not available, skipping event emission");
+      logDebug("EmbedEventEmitter not available, skipping emit");
     }
+
+    // Bridge: EmbedEventEmitter and window are separate channels. Real
+    // consumers (enhanced-model-selection, provider-switcher-ui, Image
+    // Describer) subscribe via window.addEventListener('credentials:changed').
+    // Dispatch on window too so those subscribers fire alongside the
+    // EmbedEventEmitter ones. Same detail payload on both channels.
+    window.dispatchEvent(
+      new CustomEvent("credentials:changed", { detail: detail }),
+    );
   }
 
   // ============================================================
@@ -332,12 +380,12 @@ window.SetUpTool = (function () {
       : "setup-status-not-configured";
 
     if (elements.mpStatusBadge) {
-      elements.mpStatusBadge.textContent = badgeText;
+      setStatusText(elements.mpStatusBadge, badgeText);
       elements.mpStatusBadge.className =
         "setup-credential-summary-status " + badgeClass;
     }
     if (elements.summaryMpValue) {
-      elements.summaryMpValue.textContent = badgeText;
+      setStatusText(elements.summaryMpValue, badgeText);
     }
     if (elements.summaryMpItem) {
       elements.summaryMpItem.className = "setup-status-item " + badgeClass;
@@ -485,7 +533,7 @@ window.SetUpTool = (function () {
       : "setup-status-not-configured";
 
     if (elements.allyStatusBadge) {
-      elements.allyStatusBadge.textContent = badgeText;
+      setStatusText(elements.allyStatusBadge, badgeText);
       elements.allyStatusBadge.className =
         "setup-credential-summary-status " + badgeClass;
     }
@@ -495,10 +543,388 @@ window.SetUpTool = (function () {
       ? "Configured (" + region + ")"
       : badgeText;
     if (elements.summaryAllyValue) {
-      elements.summaryAllyValue.textContent = summaryText;
+      setStatusText(elements.summaryAllyValue, summaryText);
     }
     if (elements.summaryAllyItem) {
       elements.summaryAllyItem.className = "setup-status-item " + badgeClass;
+    }
+  }
+
+  // ============================================================
+  // Foundry credential management (Stage 3b, Task 3.2b)
+  // ============================================================
+  // localStorage keys:
+  //   - foundryProxyUrl       (camelCase, matches existing bridging code)
+  //   - foundry-user-token    (kebab-case)
+  //   - foundry-test-last-result (kebab-case, JSON-stringified)
+  //
+  // Active-provider id is 'azure-openai' (NOT 'foundry') — the
+  // ProviderSwitcher's KNOWN_PROVIDERS entry uses 'azure-openai' as the
+  // canonical id with label "Microsoft Foundry".
+  //
+  // The OpenRouter card has no active badge element yet — Foundry-only
+  // subscription is documented in the Task 3.2b Actuals.
+  function loadFoundryCredentials() {
+    if (!elements) return;
+
+    const storedUrl = localStorage.getItem("foundryProxyUrl");
+    const storedToken = localStorage.getItem("foundry-user-token");
+
+    if (elements.fdyProxyUrlInput) {
+      elements.fdyProxyUrlInput.value = storedUrl || "";
+    }
+    if (elements.fdyUserTokenInput) {
+      elements.fdyUserTokenInput.value = storedToken || "";
+    }
+
+    // Restore the persisted test result, if any
+    const lastResultJson = localStorage.getItem("foundry-test-last-result");
+    let lastResult = null;
+    if (lastResultJson) {
+      try {
+        lastResult = JSON.parse(lastResultJson);
+      } catch (err) {
+        logWarn("Could not parse foundry-test-last-result; ignoring", err);
+      }
+    }
+
+    updateFoundryStatus(!!storedUrl, lastResult);
+    updateFoundryActiveBadge();
+
+    logDebug(
+      "Foundry credentials loaded, configured:",
+      !!storedUrl,
+      "lastResult:",
+      lastResult
+    );
+  }
+
+  function saveFoundryCredentials() {
+    if (!elements || !elements.fdyProxyUrlInput) {
+      logError("Cannot save Foundry: elements not cached");
+      return;
+    }
+
+    const proxyUrl = elements.fdyProxyUrlInput.value.trim();
+    const userToken = elements.fdyUserTokenInput
+      ? elements.fdyUserTokenInput.value.trim()
+      : "";
+
+    if (!proxyUrl) {
+      logWarn("Foundry save attempted with empty proxy URL");
+      announce("Please enter a proxy URL before saving.");
+      return;
+    }
+
+    localStorage.setItem("foundryProxyUrl", proxyUrl);
+    if (userToken) {
+      localStorage.setItem("foundry-user-token", userToken);
+    } else {
+      localStorage.removeItem("foundry-user-token");
+    }
+
+    // Preserve any existing persisted test result so reloads and saves
+    // don't lose the green "Connected (Xms)" state.
+    const lastResultJson = localStorage.getItem("foundry-test-last-result");
+    let lastResult = null;
+    if (lastResultJson) {
+      try {
+        lastResult = JSON.parse(lastResultJson);
+      } catch (err) {
+        logWarn("Could not parse foundry-test-last-result; ignoring", err);
+      }
+    }
+
+    updateFoundryStatus(true, lastResult);
+    emitCredentialChange("foundry", "saved");
+    announce("Foundry credentials saved successfully.");
+    logInfo("Foundry credentials saved");
+  }
+
+  function clearFoundryCredentials() {
+    if (typeof window.safeConfirm === "function") {
+      window.safeConfirm(
+        "Are you sure you want to clear your Foundry credentials? This will also remove the last test result.",
+        "Clear Foundry Credentials"
+      ).then(function (confirmed) {
+        if (confirmed) {
+          performClearFoundryCredentials();
+        }
+      });
+    } else {
+      if (
+        confirm(
+          "Are you sure you want to clear your Foundry credentials? This will also remove the last test result."
+        )
+      ) {
+        performClearFoundryCredentials();
+      }
+    }
+  }
+
+  function performClearFoundryCredentials() {
+    localStorage.removeItem("foundryProxyUrl");
+    localStorage.removeItem("foundry-user-token");
+    localStorage.removeItem("foundry-test-last-result");
+
+    if (elements) {
+      if (elements.fdyProxyUrlInput) {
+        elements.fdyProxyUrlInput.value = "";
+      }
+      if (elements.fdyUserTokenInput) {
+        elements.fdyUserTokenInput.value = "";
+      }
+    }
+
+    updateFoundryStatus(false, null);
+    emitCredentialChange("foundry", "cleared");
+    announce("Foundry credentials cleared.");
+    logInfo("Foundry credentials cleared");
+  }
+
+  function toggleFoundryVisibility() {
+    if (!elements || !elements.fdyUserTokenInput || !elements.fdyToggleBtn) return;
+
+    const input = elements.fdyUserTokenInput;
+    const btn = elements.fdyToggleBtn;
+
+    if (input.type === "password") {
+      input.type = "text";
+      btn.setAttribute("aria-label", "Hide user token");
+      const iconSpan = btn.querySelector("[data-icon]");
+      if (iconSpan) {
+        btn.innerHTML = "";
+        btn.appendChild(iconSpan);
+        btn.appendChild(document.createTextNode(" Hide"));
+      }
+    } else {
+      input.type = "password";
+      btn.setAttribute("aria-label", "Show user token");
+      const iconSpan = btn.querySelector("[data-icon]");
+      if (iconSpan) {
+        btn.innerHTML = "";
+        btn.appendChild(iconSpan);
+        btn.appendChild(document.createTextNode(" Show"));
+      }
+    }
+  }
+
+  async function testFoundryConnection() {
+    if (!elements || !elements.fdyProxyUrlInput || !elements.fdyTestBtn) {
+      logError("Cannot test Foundry: elements not cached");
+      return;
+    }
+
+    const inputUrl = elements.fdyProxyUrlInput.value.trim();
+    const inputToken = elements.fdyUserTokenInput
+      ? elements.fdyUserTokenInput.value.trim()
+      : "";
+
+    if (!inputUrl) {
+      announce("Please enter and save a proxy URL first.");
+      return;
+    }
+
+    // Require an explicit save before testing so the test always reflects
+    // the persisted value (the value the provider actually uses).
+    const storedUrl = localStorage.getItem("foundryProxyUrl") || "";
+    const storedToken = localStorage.getItem("foundry-user-token") || "";
+    if (inputUrl !== storedUrl || inputToken !== storedToken) {
+      announce("Please save your credentials first.");
+      return;
+    }
+
+    // Strip trailing slash before appending /test
+    const baseUrl = storedUrl.replace(/\/+$/, "");
+    const testUrl = baseUrl + "/test";
+
+    const btn = elements.fdyTestBtn;
+    const originalBtnHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "Testing…";
+
+    if (elements.fdyStatusBadge) {
+      setStatusText(elements.fdyStatusBadge, "Testing…");
+      elements.fdyStatusBadge.className =
+        "setup-credential-summary-status setup-status-not-configured";
+    }
+
+    const headers = { "Content-Type": "application/json" };
+    if (storedToken) {
+      headers["x-user-token"] = storedToken;
+    }
+
+    const startTime = performance.now();
+    let result;
+
+    try {
+      const response = await fetch(testUrl, {
+        method: "POST",
+        headers: headers,
+      });
+
+      let payload;
+      try {
+        payload = await response.json();
+      } catch (parseErr) {
+        logWarn("Foundry /test response was not valid JSON", parseErr);
+        result = {
+          ok: false,
+          timestamp: Date.now(),
+          message: "Invalid response from proxy",
+          stage: "parse-error",
+          elapsedMs: Math.round(performance.now() - startTime),
+        };
+      }
+
+      if (!result) {
+        const elapsedMs =
+          typeof payload.elapsedMs === "number"
+            ? payload.elapsedMs
+            : Math.round(performance.now() - startTime);
+
+        if (payload.ok && payload.stage === "success") {
+          result = {
+            ok: true,
+            timestamp: Date.now(),
+            message: "Connected (" + elapsedMs + "ms)",
+            stage: "success",
+            elapsedMs: elapsedMs,
+          };
+        } else if (payload.stage === "config") {
+          result = {
+            ok: false,
+            timestamp: Date.now(),
+            message: "Worker misconfigured",
+            stage: "config",
+            elapsedMs: elapsedMs,
+          };
+        } else if (payload.stage === "network") {
+          result = {
+            ok: false,
+            timestamp: Date.now(),
+            message: "Cannot reach Azure",
+            stage: "network",
+            elapsedMs: elapsedMs,
+          };
+        } else if (payload.stage === "azure") {
+          const detail = (payload.error || "").toString().slice(0, 60);
+          result = {
+            ok: false,
+            timestamp: Date.now(),
+            message: detail ? "Azure error: " + detail : "Azure error",
+            stage: "azure",
+            elapsedMs: elapsedMs,
+          };
+        } else {
+          // Unknown stage — treat as parse error so it's visible to the user
+          result = {
+            ok: false,
+            timestamp: Date.now(),
+            message: "Invalid response from proxy",
+            stage: "parse-error",
+            elapsedMs: elapsedMs,
+          };
+        }
+      }
+    } catch (fetchErr) {
+      logWarn("Foundry /test fetch failed", fetchErr);
+      result = {
+        ok: false,
+        timestamp: Date.now(),
+        message: "Cannot reach proxy",
+        stage: "proxy-unreachable",
+        elapsedMs: Math.round(performance.now() - startTime),
+      };
+    }
+
+    try {
+      localStorage.setItem(
+        "foundry-test-last-result",
+        JSON.stringify(result)
+      );
+    } catch (storeErr) {
+      logWarn("Could not persist foundry-test-last-result", storeErr);
+    }
+
+    updateFoundryStatus(true, result);
+
+    btn.disabled = false;
+    btn.innerHTML = originalBtnHtml;
+
+    announce(
+      result.ok
+        ? "Foundry connection successful: " + result.message + "."
+        : "Foundry connection failed: " + result.message + "."
+    );
+    logInfo("Foundry test completed", result);
+  }
+
+  function updateFoundryStatus(isConfigured, lastResult) {
+    if (!elements || !elements.fdyStatusBadge) return;
+
+    let badgeText;
+    let badgeClass;
+
+    if (!isConfigured) {
+      badgeText = "Not configured";
+      badgeClass = "setup-status-not-configured";
+    } else if (
+      lastResult &&
+      lastResult.ok &&
+      lastResult.stage === "success"
+    ) {
+      badgeText = "Connected (" + lastResult.elapsedMs + "ms)";
+      badgeClass = "setup-status-configured";
+    } else if (lastResult) {
+      badgeText = lastResult.message || "Last test failed";
+      badgeClass = "setup-status-not-configured";
+    } else {
+      badgeText = "Configured (not tested)";
+      badgeClass = "setup-status-not-configured";
+    }
+
+    setStatusText(elements.fdyStatusBadge, badgeText);
+    elements.fdyStatusBadge.className =
+      "setup-credential-summary-status " + badgeClass;
+
+    // Summary row (added in Task 3.3b) — simpler text mapping than the badge:
+    // shows "Not configured" / "Configured" / "Connection error (last test)".
+    let summaryText;
+    let summaryClass;
+    if (!isConfigured) {
+      summaryText = "Not configured";
+      summaryClass = "setup-status-not-configured";
+    } else if (lastResult && lastResult.ok === false) {
+      summaryText = "Connection error (last test)";
+      summaryClass = "setup-status-error";
+    } else {
+      summaryText = "Configured";
+      summaryClass = "setup-status-configured";
+    }
+
+    if (elements.summaryFdyValue) {
+      setStatusText(elements.summaryFdyValue, summaryText);
+    }
+    if (elements.summaryFdyItem) {
+      elements.summaryFdyItem.className = "setup-status-item " + summaryClass;
+    }
+  }
+
+  function updateFoundryActiveBadge() {
+    if (!elements || !elements.fdyActiveBadge) return;
+
+    if (
+      window.ProviderSwitcher &&
+      typeof window.ProviderSwitcher.getActive === "function"
+    ) {
+      const active = window.ProviderSwitcher.getActive();
+      // The ProviderSwitcher's canonical id for Foundry is 'azure-openai'
+      // (with label "Microsoft Foundry"). The string 'foundry' is NOT a
+      // valid provider id.
+      elements.fdyActiveBadge.hidden = active !== "azure-openai";
+    } else {
+      elements.fdyActiveBadge.hidden = true;
     }
   }
 
@@ -515,14 +941,14 @@ window.SetUpTool = (function () {
 
     // Update credential section badge
     if (elements.orStatusBadge) {
-      elements.orStatusBadge.textContent = badgeText;
+      setStatusText(elements.orStatusBadge, badgeText);
       elements.orStatusBadge.className =
         "setup-credential-summary-status " + badgeClass;
     }
 
     // Update summary panel
     if (elements.summaryOrValue) {
-      elements.summaryOrValue.textContent = badgeText;
+      setStatusText(elements.summaryOrValue, badgeText);
     }
     if (elements.summaryOrItem) {
       elements.summaryOrItem.className =
@@ -533,44 +959,90 @@ window.SetUpTool = (function () {
   function updateModelStatusSummary() {
     if (!elements || !elements.summaryModelsValue) return;
 
-    var total = 0;
-    var downloaded = 0;
+    // Build per-type model groups, deduplicated across managers.
+    var groups = [];
 
-    // Count VLM/analysis models
-    if (
-      window.ImageDescriberModelManager &&
-      typeof window.ImageDescriberModelManager.getRegisteredModels === "function"
-    ) {
-      var vlmModels = window.ImageDescriberModelManager.getRegisteredModels();
-      total += vlmModels.length;
-      downloaded += vlmModels.filter(function (m) {
+    function addGroup(label, iconName, mgr, filterFn) {
+      if (!mgr || typeof mgr.getRegisteredModels !== "function") return;
+      var list = mgr.getRegisteredModels();
+      if (filterFn) list = list.filter(filterFn);
+      if (!list.length) return;
+      var dl = list.filter(function (m) {
         return m.state === "cached" || m.state === "loaded";
       }).length;
+      groups.push({
+        label: label,
+        icon: iconName,
+        total: list.length,
+        downloaded: dl,
+      });
     }
 
-    // Count text models (DE-4b)
-    if (
-      window.LocalTextModelManager &&
-      typeof window.LocalTextModelManager.getRegisteredModels === "function"
-    ) {
-      var textModels = window.LocalTextModelManager.getRegisteredModels();
-      total += textModels.length;
-      downloaded += textModels.filter(function (m) {
-        return m.state === "cached" || m.state === "loaded";
-      }).length;
-    }
+    // Dedup: text models are owned by LocalTextModelManager. The image manager
+    // re-registers three of them flagged type:'text' — exclude those here so
+    // they are not counted twice.
+    addGroup("Vision", "image", window.ImageDescriberModelManager, function (m) {
+      return m.type !== "text";
+    });
+    addGroup("Text", "document", window.LocalTextModelManager, null);
+    addGroup("Speech", "speaker", window.TTSNeuralGateway, null);
+
+    var total = groups.reduce(function (s, g) {
+      return s + g.total;
+    }, 0);
+    var downloaded = groups.reduce(function (s, g) {
+      return s + g.downloaded;
+    }, 0);
 
     if (total === 0) {
-      elements.summaryModelsValue.textContent = "Not available";
+      setStatusText(elements.summaryModelsValue, "Not available");
+      if (elements.summaryModelsTypes) elements.summaryModelsTypes.innerHTML = "";
       if (elements.summaryModelsItem) {
         elements.summaryModelsItem.className =
           "setup-status-item setup-status-not-configured";
+        elements.summaryModelsItem.style.removeProperty("--setup-fill");
       }
       return;
     }
 
-    var text = downloaded + " of " + total + " downloaded";
-    elements.summaryModelsValue.textContent = text;
+    // Single source of truth for the percentage: drives both the displayed text
+    // and the progress-bar fill, so the number and the bar can never disagree.
+    var fillPercent = Math.round((downloaded / total) * 100);
+
+    var text =
+      downloaded + " of " + total + " downloaded (" + fillPercent + "%)";
+    setStatusText(elements.summaryModelsValue, text);
+
+    // Per-type chips (icon + count). Inline getIcon() so the SVGs populate
+    // without a follow-up refreshIcons() call. Labels are static strings, so
+    // building the markup with innerHTML is safe here.
+    if (elements.summaryModelsTypes) {
+      elements.summaryModelsTypes.innerHTML = groups
+        .map(function (g) {
+          var icon =
+            typeof window.getIcon === "function" ? window.getIcon(g.icon) : "";
+          return (
+            '<span class="setup-type-chip">' +
+            icon +
+            '<span aria-hidden="true">' +
+            g.label +
+            " " +
+            g.downloaded +
+            "/" +
+            g.total +
+            "</span>" +
+            '<span class="visually-hidden">' +
+            g.label +
+            " models: " +
+            g.downloaded +
+            " of " +
+            g.total +
+            " downloaded.</span>" +
+            "</span>"
+          );
+        })
+        .join("");
+    }
 
     var statusClass = downloaded === total
       ? "setup-status-configured"
@@ -580,6 +1052,12 @@ window.SetUpTool = (function () {
 
     if (elements.summaryModelsItem) {
       elements.summaryModelsItem.className = "setup-status-item " + statusClass;
+      // Drive the progress-bar fill (see .setup-status-partial in light.css/dark.css).
+      // Decorative only — the aria-live value span is the accessible source of truth.
+      elements.summaryModelsItem.style.setProperty(
+        "--setup-fill",
+        fillPercent + "%"
+      );
     }
 
     logDebug("Model status summary updated:", text);
@@ -608,6 +1086,19 @@ window.SetUpTool = (function () {
     const allyRegion = localStorage.getItem("ally-region");
     updateAllyStatus(allyConfigured, allyRegion);
 
+    // Foundry (Task 3.3b)
+    const fdyConfigured = !!localStorage.getItem("foundryProxyUrl");
+    let fdyLastResult = null;
+    const fdyLastResultJson = localStorage.getItem("foundry-test-last-result");
+    if (fdyLastResultJson) {
+      try {
+        fdyLastResult = JSON.parse(fdyLastResultJson);
+      } catch (err) {
+        logWarn("Could not parse foundry-test-last-result; ignoring", err);
+      }
+    }
+    updateFoundryStatus(fdyConfigured, fdyLastResult);
+
     // Local AI models
     updateModelStatusSummary();
 
@@ -615,6 +1106,7 @@ window.SetUpTool = (function () {
       openrouter: orConfigured,
       mathpix: mpConfigured,
       ally: allyConfigured,
+      foundry: fdyConfigured,
     });
   }
 
@@ -626,6 +1118,7 @@ window.SetUpTool = (function () {
     loadOpenRouterKey();
     loadMathPixCredentials();
     loadAllyCredentials();
+    loadFoundryCredentials();
     refreshStatusSummary();
 
     // Listen for external credential changes (bidirectional sync — Phase SU-3)
@@ -641,6 +1134,8 @@ window.SetUpTool = (function () {
           loadMathPixCredentials();
         } else if (data && data.service === 'ally') {
           loadAllyCredentials();
+        } else if (data && data.service === 'foundry') {
+          loadFoundryCredentials();
         }
       });
       logDebug('Bidirectional sync listener registered');
@@ -653,6 +1148,15 @@ window.SetUpTool = (function () {
       logDebug('Model state change listener registered');
     }
 
+    // Listen for provider switches so the Foundry "Active" badge follows
+    // ProviderSwitcher.getActive(). The switcher dispatches CustomEvent
+    // 'provider:changed' on window — there is no subscribe() method.
+    window.addEventListener('provider:changed', function (event) {
+      logDebug('Received provider:changed event', event && event.detail);
+      updateFoundryActiveBadge();
+    });
+    logDebug('provider:changed listener registered');
+
     logInfo("Set Up Tool initialised");
   }
 
@@ -663,6 +1167,7 @@ window.SetUpTool = (function () {
     loadOpenRouterKey();
     loadMathPixCredentials();
     loadAllyCredentials();
+    loadFoundryCredentials();
     refreshStatusSummary();
     logDebug("Set Up Tool refreshed");
   }
@@ -709,6 +1214,22 @@ window.SetUpTool = (function () {
 
   window.setupToggleAlly = function () {
     toggleAllyVisibility();
+  };
+
+  window.setupSaveFoundry = function () {
+    saveFoundryCredentials();
+  };
+
+  window.setupClearFoundry = function () {
+    clearFoundryCredentials();
+  };
+
+  window.setupToggleFoundry = function () {
+    toggleFoundryVisibility();
+  };
+
+  window.setupTestFoundry = function () {
+    testFoundryConnection();
   };
 
   // ============================================================

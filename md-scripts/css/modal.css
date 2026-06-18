@@ -212,6 +212,36 @@
   outline-offset: 2px;
 }
 
+/* Optional action-button slot sitting between the status text and the dismiss
+   button. Buttons inherit colour from the status type via currentColor so they
+   theme correctly across light/dark and across success/error/warning/info
+   variants without needing per-type rules. */
+.universal-modal-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.universal-modal-status-actions:empty {
+  display: none;
+}
+
+.universal-modal-status-action {
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  outline: 0.2rem solid transparent;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
 .universal-modal-spinner {
   width: 16px;
   height: 16px;

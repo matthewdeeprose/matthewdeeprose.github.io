@@ -1063,13 +1063,92 @@
       assert("viaFallback: located on the correct line (index 2)", result.lineIndex === 2);
     }
 
+    // --- 25.1. Discovery 18: imageBlobUrlMap routes CDN entry to blob-URL MMD ---
+    // Restored-session scenario: registry entry carries the CDN URL it was
+    // originally minted with, but the live MMD has been rewritten to hold the
+    // blob URL via the session-restorer's imageBlobUrlMap. Without the third
+    // argument, findImage's URL-regex fallback would miss; with the map it
+    // matches against the blob form first.
+    console.log("\n--- 25.1. Discovery 18: blob-URL MMD via imageBlobUrlMap ---");
+    {
+      const cdnUrl = "https://cdn.mathpix.com/img-X.png";
+      const blobUrl = "blob:https://example.test/abc-123";
+      // MMD holds the blob URL only — there is no CDN URL anywhere.
+      const mmd = `Hello\n\n![original](${blobUrl})\n\nWorld`;
+      const reg = new Registry();
+      // Build the registry from a CDN-form MMD so the entry's originalUrl /
+      // originalSyntax match how a restored session would look on disk.
+      reg.buildFromMMD(`Hello\n\n![original](${cdnUrl})\n\nWorld`);
+      const id = reg.getAllImages()[0].id;
+      // Make mmdReference stale so we fall through to the URL-regex prong.
+      reg.updateImageReference(id, `![stale](${cdnUrl})`, "markdown");
+
+      const imageBlobUrlMap = new Map([[cdnUrl, blobUrl]]);
+      const result = Serialiser.findImage(mmd, reg.getImage(id), imageBlobUrlMap);
+
+      assert("D18 blob-prong: image found via blob URL", result.found === true);
+      assert("D18 blob-prong: viaFallback flag is true", result.viaFallback === true);
+      assert("D18 blob-prong: located on the correct line (index 2)", result.lineIndex === 2);
+    }
+
+    // --- 25.2. Discovery 18: safety net — map present but MMD only has CDN URL ---
+    // If the blob URL has been revoked from the MMD between map population and
+    // lookup (e.g. a hand-edit that swapped blob → CDN), the blob regex prong
+    // misses but the CDN safety-net prong must still succeed. This proves the
+    // fallback is two-prong inside, not blob-or-CDN-but-not-both.
+    console.log("\n--- 25.2. Discovery 18: safety net runs even when map has the URL ---");
+    {
+      const cdnUrl = "https://cdn.mathpix.com/img-Y.png";
+      const blobUrl = "blob:https://example.test/zzz-999";
+      // MMD holds the CDN URL only — the blob URL is NOT in the MMD.
+      const mmd = `Hello\n\n![ok](${cdnUrl})\n\nWorld`;
+      const reg = new Registry();
+      reg.buildFromMMD(mmd);
+      const id = reg.getAllImages()[0].id;
+      // Stale mmdReference so the fallback must run.
+      reg.updateImageReference(id, `![stale](${cdnUrl})`, "markdown");
+
+      // The map has an entry, but the blob URL no longer appears in the MMD.
+      const imageBlobUrlMap = new Map([[cdnUrl, blobUrl]]);
+      const result = Serialiser.findImage(mmd, reg.getImage(id), imageBlobUrlMap);
+
+      assert(
+        "D18 safety-net: image found via CDN URL when blob URL missing from MMD",
+        result.found === true,
+      );
+      assert("D18 safety-net: viaFallback flag is true", result.viaFallback === true);
+      assert("D18 safety-net: located on the correct line (index 2)", result.lineIndex === 2);
+    }
+
+    // --- 25.3. Discovery 18: legacy behaviour preserved when map omitted ---
+    // Existing callers that do not pass a third argument must continue to get
+    // the pre-Discovery-18 single-prong CDN match against entry.originalUrl.
+    console.log("\n--- 25.3. Discovery 18: legacy single-prong behaviour without map ---");
+    {
+      const cdnUrl = "https://cdn.mathpix.com/img-Z.png";
+      const mmd = `Hello\n\n![ok](${cdnUrl})\n\nWorld`;
+      const reg = new Registry();
+      reg.buildFromMMD(mmd);
+      const id = reg.getAllImages()[0].id;
+      reg.updateImageReference(id, `![stale](${cdnUrl})`, "markdown");
+
+      // No third argument — must still locate the image via the CDN URL.
+      const result = Serialiser.findImage(mmd, reg.getImage(id));
+
+      assert("D18 legacy: image found via CDN URL (no map provided)", result.found === true);
+      assert("D18 legacy: viaFallback flag is true", result.viaFallback === true);
+      assert("D18 legacy: located on the correct line (index 2)", result.lineIndex === 2);
+    }
+
     // --- 26. Image lookup: multiple images on same line ---
     console.log("\n--- 26. Image lookup: multiple images on same line ---");
     {
       const mmd =
         "![](https://cdn.mathpix.com/m1.png) ![](https://cdn.mathpix.com/m2.png)";
       const reg = new Registry();
-      const count = reg.buildFromMMD(mmd);
+      // Stage 6 Q3: buildFromMMD returns {added, removed}. On a fresh
+      // registry, added.length is the count of newly-inserted entries.
+      const setDiff = reg.buildFromMMD(mmd);
       const all = reg.getAllImages();
       // Set captions on whichever entries the registry created.
       all.forEach((e, i) => reg.updateTitle(e.id, `Caption ${i + 1}`, "user"));
@@ -1088,8 +1167,8 @@
       // Both wraps refuse → both produce no-op. MMD unchanged.
       assert(
         "Multi-images-same-line: registry detected both images",
-        count === 2 && all.length === 2,
-        `count=${count} all.length=${all.length}`,
+        setDiff.added.length === 2 && all.length === 2,
+        `added=${setDiff.added.length} all.length=${all.length}`,
       );
       assert(
         "Multi-images-same-line: MMD unchanged (both wraps refused as inline)",

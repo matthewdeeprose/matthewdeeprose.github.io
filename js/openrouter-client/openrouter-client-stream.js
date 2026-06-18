@@ -641,9 +641,17 @@ class OpenRouterStream {
             : "no content",
       });
 
-      // Ensure reader is closed - wrap in try-catch to handle cancellation errors
+      // Ensure reader is closed. reader.cancel() returns a Promise that REJECTS
+      // when the stream has already errored (e.g. a mid-stream network drop), so
+      // a synchronous try/catch can't catch it — attach a .catch() to swallow the
+      // async rejection and avoid an "Uncaught (in promise)" in the console. The
+      // try/catch still guards any synchronous throw from cancel() itself.
       try {
-        reader.cancel();
+        reader.cancel().catch((cancelError) => {
+          openRouterUtils.debug("Reader cancellation rejected (expected)", {
+            errorMessage: cancelError?.message,
+          });
+        });
       } catch (cancelError) {
         // Silently handle cancellation errors - they're expected when already aborted
         openRouterUtils.debug("Reader cancellation completed", {

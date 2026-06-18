@@ -187,20 +187,25 @@
   overflow: hidden;
 }
 
-/* Thumbnail container */
+/* Thumbnail container — fixed height so every grid card has an
+   identically-sized thumbnail box regardless of the image's aspect
+   ratio. Images of varying aspect ratios sit centred within the box;
+   tall/portrait images are letterboxed with whitespace above and
+   below, wide/landscape images fill more of the box width-wise. This
+   keeps the overall card grid visually uniform without cropping any
+   sketch annotations near the image edges (object-fit: contain). */
 .image-manager-thumbnail {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 140px;
-  max-height: 200px;
+  height: 180px;
   padding: 0.5rem;
   overflow: hidden;
 }
 
 .image-manager-thumbnail img {
   max-width: 100%;
-  max-height: 180px;
+  max-height: 100%;
   object-fit: contain;
 }
 
@@ -237,6 +242,31 @@
   line-height: 1.5;
   border-radius: 4px;
   cursor: pointer;
+}
+
+/* Stage 5 hook — dedicated class for the per-card Alt button so subsequent
+   Stage 5 chunks can adjust its colour, spacing, or focus behaviour
+   independently of the shared .image-manager-btn base. Intentionally empty:
+   the base class provides the current appearance, this rule reserves the
+   selector for later customisation without re-querying the DOM. */
+.image-manager-alt-btn {
+}
+
+/* Discovery 22 — needs-attention is signalled by the warning icon that
+   _buildAltButtonHTML appends inside the button, NOT by any CSS rule
+   targeting the .image-manager-alt-btn--needs-attention class. The
+   class itself is kept (without a CSS rule) as the testable contract
+   Stage 5 Cases 11A/11B/11C bind to via classList.contains. The
+   positioning rule below applies to the appended icon span only. */
+
+/* Position the appended warning icon at the right-hand edge of the
+   Alt button so it reads as a status indicator rather than part of
+   the label. margin-left: auto pushes it within the inline-flex
+   parent. */
+.image-manager-alt-btn-warning {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ============================================================================
@@ -290,8 +320,7 @@
   }
 
   .image-manager-thumbnail {
-    min-height: auto;
-    max-height: none;
+    height: auto;
   }
 
   .image-manager-thumbnail img {
@@ -331,4 +360,431 @@
   .image-manager-backdrop {
     display: none !important;
   }
+}
+
+/* ================================================================
+   STAGE 4 — IMAGE MANAGER GRID: METADATA CLUSTER + KEY + COUNTER
+   ================================================================ */
+
+/* Anchor the absolutely-positioned metadata cluster to its card */
+.image-manager-card {
+  position: relative;
+}
+
+/* Metadata cluster — three-slot wrapper (caption / alt / longDesc) in the
+   top-right corner of each card. Inline-flex keeps slots on one row. */
+.mmd-image-manager-metadata-cluster {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  z-index: 1;
+  color: currentColor;
+}
+
+/* Individual metadata slot — fixed-size square hosting one SVG icon. The
+   filled-versus-outline distinction lives in the SVG itself, so CSS only
+   provides layout and currentColor inheritance for the icon glyph. */
+.mmd-image-manager-metadata-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: currentColor;
+}
+
+/* Ensure inline SVG icons fill the slot and inherit colour */
+.mmd-image-manager-metadata-slot svg {
+  width: 100%;
+  height: 100%;
+  color: currentColor;
+}
+
+/* Icon key row — sits above the toolbar and explains the cluster glyphs.
+   Wrap allows the labels to fall onto a second row on narrow viewports. */
+.mmd-image-manager-icon-key {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 1rem 0;
+
+  line-height: 1.4;
+}
+.mmd-image-manager-icon-key {
+  font-size: 0.875rem; /* was 0.75rem — slightly larger labels */
+}
+.image-manager-actions {
+  flex-wrap: wrap; /* currently only set at the mobile breakpoint */
+}
+.mmd-image-manager-icon-key-item svg {
+  width: 1.25rem; /* was 1rem — matches cluster slots */
+  height: 1.25rem; /* was 1rem */
+}
+/* Key row — make icons unambiguously visible, larger labels */
+.mmd-image-manager-icon-key {
+  font-size: 1rem; /* was 0.75rem — match body text */
+}
+.mmd-image-manager-icon-key-item svg {
+  width: 1.5rem; /* was 1rem — bigger and unmissable */
+  height: 1.5rem;
+}
+
+/* Card actions — three buttons share the row width equally with
+   compact padding so all three fit without wrapping */
+.image-manager-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.image-manager-actions .image-manager-btn {
+  flex: 1; /* share the row width equally */
+  min-width: 0; /* allow shrinking below content-width */
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+/* Card actions — three buttons share the row width but stay at least
+   content-width so labels never clip. Wrap as a fallback if the card
+   becomes too narrow for all three. */
+.image-manager-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.image-manager-actions .image-manager-btn {
+  flex: 1 1 auto; /* was: flex: 1 — content-sized base, grow if space */
+  min-width: max-content; /* was: min-width: 0 — never narrower than text */
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+/* A single key entry — icon glyph paired with its descriptive label */
+.mmd-image-manager-icon-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: currentColor;
+}
+
+/* Constrain key icons to match the slot size for visual consistency */
+.mmd-image-manager-icon-key-item svg {
+  width: 1rem;
+  height: 1rem;
+  color: currentColor;
+}
+
+/* Coverage counter — sits beside the toolbar text reporting how many
+   images carry full metadata. Baseline styling matches the toolbar
+   controls; the "complete" colour variant is themed in light.css and
+   dark.css. */
+.mmd-image-manager-coverage-counter {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: currentColor;
+}
+
+/* ================================================================
+   STAGE 5 — EDIT ALT TEXT VIEW
+   Two sibling <section>s in the modal body: the grid view (default
+   visible) and the edit view (hidden until openEditAltText fires).
+   The grid wrapper has no styling — it just hosts the visually-hidden
+   <h2> heading and the existing children.
+   ================================================================ */
+
+/* Grid-view wrapper — no layout responsibility, just a semantic container
+   for the existing children plus the visually-hidden region heading. */
+.mmd-image-manager-grid-view[hidden] {
+  display: none;
+}
+
+/* Edit-view container. Block layout, padding matching modal body. The
+   [hidden] rule is defensive — browsers handle it natively but theming
+   layers occasionally override display, so we re-assert it. */
+.mmd-image-manager-edit-view {
+  padding: 1rem 1.25rem;
+}
+.mmd-image-manager-edit-view[hidden] {
+  display: none;
+}
+
+/* Header — Back button on the left, title block on the right. Bottom
+   border matches the rest of the modal's visual rhythm. */
+.mmd-image-manager-edit-view-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid currentColor;
+}
+
+/* Back button — inherits .image-manager-btn shape; this rule keeps the
+   icon + label aligned on one line and prevents the button from stretching. */
+.mmd-image-manager-edit-back-btn {
+  flex: 0 0 auto;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* Title block — heading + subtitle stacked. Heading is modestly sized
+   so it doesn't dominate the modal; subtitle is secondary text. */
+.mmd-image-manager-edit-view-titles {
+  flex: 1 1 auto;
+  min-width: 0; /* allow text-overflow:ellipsis on long filenames */
+}
+
+.mmd-image-manager-edit-view-titles h2 {
+  font-size: 1.1rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* Heading is programmatically focused by Chunk 3's Q8a forward-navigation
+   path. Sighted keyboard users must see where focus has landed.
+   ID-anchored selector (specificity 1,0,1) wins against any class-based
+   focus-suppressor in the cascade — confirmed needed via DevTools
+   diagnostic showing the previous class-based rule was being overridden
+   to outline-style: none. Outline width matches the project's 3px
+   pattern; offset is widened to 4px to suit the larger heading element. */
+#edit-alt-view-heading:focus,
+#edit-alt-view-heading:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 4px;
+}
+
+.mmd-image-manager-edit-view-subtitle {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Legacy-conflict banner — informational tint, not error styling.
+   Outside the form (sits between header and body) so scoping rules
+   under .mmd-image-manager-edit-form don't apply. */
+.mmd-image-manager-edit-banner {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid currentColor;
+  border-left-width: 4px;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  max-width: 70ch;
+}
+.mmd-image-manager-edit-banner[hidden] {
+  display: none;
+}
+
+/* Body — two-column grid at >=769px (preview left, form right);
+   single column on narrower viewports. */
+.mmd-image-manager-edit-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Image preview — figure renders the image responsively with an
+   optional caption beneath. */
+.mmd-image-manager-edit-preview {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mmd-image-manager-edit-preview img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+}
+
+.mmd-image-manager-edit-preview figcaption {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  text-align: center;
+}
+
+/* Form — vertical stack of field-groups. Scoped class names live under
+   .mmd-image-manager-edit-form so they don't collide with any future
+   form styling elsewhere in the project. */
+.mmd-image-manager-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mmd-image-manager-edit-form .field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mmd-image-manager-edit-form .field-group label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Label row — wraps a <label> and its sibling toggletip <button> on one
+   line. Decoupling the button from the <label>'s text content keeps the
+   field's accessible name clean (the button's aria-label no longer
+   leaks into the input's announced name). */
+.mmd-image-manager-edit-form .field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mmd-image-manager-edit-form .field-group input[type="text"],
+.mmd-image-manager-edit-form .field-group textarea {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Focus-visible on inputs and textareas — matches the project pattern
+   used by .image-manager-close-btn / .image-manager-action-btn so the
+   edit view doesn't introduce a second focus style. */
+.mmd-image-manager-edit-form .field-group input:focus-visible,
+.mmd-image-manager-edit-form .field-group textarea:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Disabled state — applies to Alt Text + Long Description when
+   decorative is ticked (Q3). Browser defaults vary considerably
+   across Firefox / Chrome / Safari; explicit styling keeps the
+   inactive feel consistent. Values stay visible (browser-greyed)
+   per Q3's "values remain visible" requirement. The opacity
+   reduction signals inactivity without making the text unreadable
+   on either light or dark themes. */
+.mmd-image-manager-edit-form .field-group input[type="text"]:disabled,
+.mmd-image-manager-edit-form .field-group textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.mmd-image-manager-edit-form .field-group textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+.mmd-image-manager-edit-form .field-help {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.mmd-image-manager-edit-form .field-count {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  align-self: flex-end;
+}
+
+/* Hint — distinct from .field-help so it reads as a conditional
+   message rather than baseline help. The --disable variant sits above
+   the Alt + Long Description fields when decorative is ticked (Q3). */
+.mmd-image-manager-edit-form .field-hint {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border-left: 3px solid currentColor;
+  background: transparent;
+}
+.mmd-image-manager-edit-form .field-hint[hidden] {
+  display: none;
+}
+
+/* Checkbox group — horizontal layout (checkbox + label inline). */
+.mmd-image-manager-edit-form .field-group--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mmd-image-manager-edit-form .field-group--checkbox label {
+  font-weight: 400;
+  cursor: pointer;
+}
+
+/* Form footer — Save button right-aligned, top border for visual
+   separation from the form body. */
+.mmd-image-manager-edit-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid currentColor;
+  margin-top: 0.5rem;
+}
+
+.mmd-image-manager-edit-save-btn {
+  min-width: 6rem;
+}
+
+/* Caption toggletip trigger — inline icon button sibling of the Caption
+   <label> within .field-label-row. Bare shell in Chunk 2;
+   UniversalToggletip.create adds the universal-toggletip-trigger class
+   in Chunk 3, which picks up the styling defined in
+   mathpix-scripts/css/universal-toggletip.css. The .field-label-row
+   flex `gap` provides horizontal spacing — no margin-left needed. */
+.mmd-image-manager-edit-form .field-label-row button {
+  padding: 0 0.25rem;
+  outline: 0.2rem solid transparent;
+  border: 0.2rem solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  vertical-align: middle;
+}
+
+/* ----------------------------------------------------------------
+   STAGE 5 — RESPONSIVE
+   ---------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .mmd-image-manager-edit-body {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .mmd-image-manager-edit-view {
+    padding: 0.75rem 0.75rem;
+  }
+
+  .mmd-image-manager-edit-view-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* ----------------------------------------------------------------
+   STAGE 5 — TOGGLETIP Z-INDEX OVERRIDE (Phase D Fix 1)
+   ---------------------------------------------------------------- */
+
+/* Toggletips spawned from inside the manager modal must render above
+   UniversalModal's z-index (107974). The library appends to body with
+   z-index 10001 (and increments inline for stacking), so we override
+   here with !important to win against the inline z-index. Scoped to
+   body.mathpix-manager-open so toggletips elsewhere in the app are
+   unaffected. */
+body.mathpix-manager-open .universal-toggletip {
+  z-index: 200000 !important;
 }

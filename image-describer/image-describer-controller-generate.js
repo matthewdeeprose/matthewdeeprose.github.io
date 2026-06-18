@@ -79,6 +79,48 @@
   }
 
   // ============================================================================
+  // ESCAPE-GUARD INSTRUCTION (Layer 1 — unsafe-failure hardening)
+  // ============================================================================
+  // The Foundry v1 surface silently strips images for non-vision models (HTTP
+  // 200, confabulated alt text — lesson 27). This instruction tells the model to
+  // refuse rather than invent when no image is present. Appended to the CLOUD
+  // user prompts only (buildUserPrompt + buildVerificationUserPrompt) — the
+  // tested position. Local builders (buildLocalPrompt/buildQwenPrompt/
+  // buildLfm2VlPrompt) never receive it.
+  //
+  // Wording "A" — selected empirically over wordings B and C (12-cell matrix +
+  // 3-rep stability rerun): 9/9 as-expected, caught the strip 3/3, zero false
+  // refusals on two vision models including the known escaper Phi-4-multimodal.
+  // SHIP VERBATIM — any rewording invalidates that result.
+  const ESCAPE_GUARD_INSTRUCTION =
+    "If no image is attached to this message, say so explicitly and do not invent a description.";
+
+  // ============================================================================
+  // IMAGE-STRIP TELEMETRY (Layer 2 — log-only observability, never user-facing)
+  // ============================================================================
+  // The Foundry v1 surface can silently strip an image (HTTP 200, text-scale
+  // prompt_tokens). The deterministic vision re-check (isModelVisionCapable) is
+  // the guard; this is observability ONLY — it emits logWarn + an
+  // `imageStripSuspected` event when a response's prompt_tokens lands implausibly
+  // close to the request's runtime text-token estimate (i.e. the image likely
+  // contributed nothing). It NEVER blocks generation and NEVER surfaces to the
+  // user.
+  //
+  // The floor is the delta below which a strip is suspected, in the SAME units
+  // the runtime check uses (prompt_tokens − charEstimate). Calibration-derived
+  // (Layer-2 step 4, 13-model gated azure-openai vision set, 9 June 2026): all
+  // no-image/strip deltas clustered at ~−720; the smallest genuine with-image
+  // delta was −20 (o4-mini) — cleanly separable with a ~700-token gap. The
+  // value is NEGATIVE because the chars/4 estimate systematically overshoots
+  // Foundry's tokenizer; −370 is the midpoint of the strip band (−720) and the
+  // smallest real-image delta (−20), giving ~350 tokens of headroom each side.
+  // Log-only, so a slightly off value is harmless (at worst a noisy/missed log).
+  const IMAGE_STRIP_MIN_BUMP_TOKENS = -370; // calibration-derived (see above)
+
+  // Rough chars-per-token divisor for the runtime text estimate (English ≈ 4).
+  const CHARS_PER_TOKEN = 4;
+
+  // ============================================================================
   // PROGRESS STAGES (moved from core — only used by generate methods)
   // ============================================================================
 
@@ -107,6 +149,15 @@
       message: "Generating description...",
       icon: "aiSparkle",
       weight: 60,
+    },
+    // Sub-state of GENERATING shown while a reasoning model thinks before it
+    // writes (it can emit no visible text for minutes). weight: 0 so it shares
+    // GENERATING's progress percentage and never shifts the downstream stages.
+    REASONING: {
+      message:
+        "Model is reasoning before it writes — this can take a few minutes for advanced models...",
+      icon: "hourglass",
+      weight: 0,
     },
     VERIFYING: {
       message: "Verifying visual accuracy...",
@@ -275,9 +326,107 @@
       }
     },
 
+    /**
+     * Whether the given model id is a reasoning model, per the registry
+     * capability list. Reasoning models (e.g. gpt-5-pro) can think for minutes
+     * before emitting any visible text, so we set expectations during that
+     * wait rather than letting the empty output look frozen.
+     * @param {string} modelId
+     * @returns {boolean}
+     */
+    _isReasoningModel(modelId) {
+      try {
+        const reg = window.modelRegistry;
+        if (!reg || typeof reg.getModel !== "function") return false;
+        const def = reg.getModel(modelId, true);
+        return !!(
+          def &&
+          Array.isArray(def.capabilities) &&
+          def.capabilities.includes("reasoning")
+        );
+      } catch (e) {
+        return false;
+      }
+    },
+
+    /**
+     * Enter the "reasoning" progress state: swap the progress message to the
+     * reasoning-aware one (the elapsed timer keeps ticking) and announce ONCE
+     * to screen readers. Idempotent — safe to call both from the upfront
+     * reasoning-model check and from each streaming heartbeat (the message swap
+     * is guarded so heartbeats don't re-fire showProgress, and the announcement
+     * is guarded so the screen reader is not spammed).
+     */
+    _enterReasoningState() {
+      this._reasoningPhaseActive = true;
+      if (this.currentStage !== "REASONING") {
+        this.showProgress("REASONING");
+      }
+      if (!this._reasoningAnnounced) {
+        this._reasoningAnnounced = true;
+        this.announceStatus(
+          "The model is reasoning before it writes. This can take a few minutes.",
+        );
+      }
+    },
+
+    /**
+     * Leave the reasoning state once real description text starts arriving:
+     * switch back to the "Generating description..." message. The elapsed timer
+     * continues uninterrupted. No-op if a reasoning phase was never entered.
+     */
+    _exitReasoningState() {
+      if (!this._reasoningPhaseActive) return;
+      this._reasoningPhaseActive = false;
+      if (this.currentStage === "REASONING") {
+        this.showProgress("GENERATING");
+      }
+    },
+
+    /**
+     * Lazily mount the reusable reasoning disclosure into its markup mount point
+     * (#imgdesc-reasoning-disclosure) and cache the instance. Returns the
+     * instance, or null if the component or the mount point is unavailable, so
+     * every caller degrades gracefully (the feature simply does not appear).
+     */
+    _ensureReasoningDisclosure() {
+      if (this._reasoningDisclosure) return this._reasoningDisclosure;
+      const Cls = window.EmbedReasoningDisclosureClass;
+      const mountPoint = document.getElementById("imgdesc-reasoning-disclosure");
+      if (typeof Cls !== "function" || !mountPoint) {
+        logWarn(
+          "Reasoning disclosure unavailable (component class or mount point missing)",
+        );
+        return null;
+      }
+      try {
+        this._reasoningDisclosure = new Cls();
+        this._reasoningDisclosure.mount(mountPoint);
+      } catch (e) {
+        logWarn("Failed to mount reasoning disclosure", e);
+        this._reasoningDisclosure = null;
+      }
+      return this._reasoningDisclosure;
+    },
+
+    /**
+     * Reset the reasoning disclosure at the start of a describe run, so a prior
+     * run's summary never lingers (including a cloud-to-local switch). Mounts on
+     * first use. Safe no-op when the component is unavailable.
+     */
+    _resetReasoningDisclosure() {
+      const d = this._ensureReasoningDisclosure();
+      if (d) d.reset();
+    },
+
     // ========================================================================
     // PROMPT BUILDING
     // ========================================================================
+
+    // Escape-guard instruction (Layer 1) exposed on the controller so console
+    // tooling (breadth-sweep harness) can read the shipped wording and build
+    // baseline/A conditions byte-identically. Read-only; do not mutate.
+    ESCAPE_GUARD_INSTRUCTION: ESCAPE_GUARD_INSTRUCTION,
 
     /**
      * Check if prompts are loaded and ready
@@ -454,6 +603,12 @@
           parts.push(analysisText);
         }
       }
+
+      // Escape-guard (Layer 1) — appended as a final, clearly-delimited line.
+      // Tested at this position (user prompt, not system prompt). See
+      // ESCAPE_GUARD_INSTRUCTION definition.
+      parts.push("");
+      parts.push(ESCAPE_GUARD_INSTRUCTION);
 
       const userPrompt = parts.join("\n");
 
@@ -1034,7 +1189,9 @@ ${description}
 
 ---
 
-Compare each visual claim in the description against the image. Report any inaccuracies you find, or confirm the description is visually accurate.`;
+Compare each visual claim in the description against the image. Report any inaccuracies you find, or confirm the description is visually accurate.
+
+${ESCAPE_GUARD_INSTRUCTION}`;
     },
 
     /**
@@ -1089,6 +1246,25 @@ Compare each visual claim in the description against the image. Report any inacc
       this.verificationStartTime = Date.now();
 
       const verifyEmbed = this.getOrCreateVerificationEmbed();
+
+      // ── Layer 2: deterministic vision re-check (verification path) ─────────
+      // The verification dropdown is vision-filtered at population time but
+      // shares the gate's bypass weaknesses and falls back to the main model.
+      // Re-check the model actually about to be used before sending the image;
+      // if it is not vision-capable, skip verification via the non-fatal path
+      // (this throw is caught in generate() → handleVerificationError) rather
+      // than send the image to a non-vision model.
+      const verifyModelInUse = verifyEmbed.model || this.getVerificationModel();
+      if (!this.isModelVisionCapable(verifyModelInUse)) {
+        logWarn(
+          "Verification vision re-check FAILED — skipping verification for non-vision model:",
+          verifyModelInUse,
+        );
+        throw new Error(
+          "Verification model cannot process images — visual verification skipped.",
+        );
+      }
+
       const systemPrompt = this.buildVerificationSystemPrompt();
       const userPrompt = this.buildVerificationUserPrompt(description);
 
@@ -1099,6 +1275,15 @@ Compare each visual claim in the description against the image. Report any inacc
 
       // Always use non-streaming for verification (simpler, result shown at once)
       const response = await verifyEmbed.sendRequest(userPrompt);
+
+      // ── Layer 2: log-only strip telemetry (verification path) ─────────────
+      this._checkImageStripTelemetry(
+        response,
+        systemPrompt,
+        userPrompt,
+        verifyModelInUse,
+        "verification",
+      );
 
       const verifyTime = Date.now() - this.verificationStartTime;
 
@@ -1258,58 +1443,64 @@ Compare each visual claim in the description against the image. Report any inacc
     },
 
     /**
-     * Populate the verification model selector
-     * Mirrors populateModelSelector() but for the verification dropdown
-     * Uses same registry and filtering as the main selector
+     * Populate the verification model selector.
+     * Provider-aware (Task 3.5b) — mirrors populateModelSelector but for the
+     * verification dropdown. The mismatch notice is shared with the main
+     * selector (rendered by populateModelSelector), so this function only
+     * clears the verification dropdown when the active provider has no
+     * vision models — it doesn't render its own notice.
      */
     populateVerificationModelSelector() {
       const selector = this.elements.verifyModel;
       if (!selector) return;
 
       // Check for model registry (lowercase r — matches main selector)
-      if (
-        !window.modelRegistry ||
-        typeof window.modelRegistry.getAllModels !== "function"
-      ) {
+      if (!window.modelRegistry) {
         logDebug("modelRegistry not available for verification selector");
         selector.innerHTML =
           '<option value="">Same as description model</option>';
         return;
       }
 
-      const allModels = window.modelRegistry.getAllModels();
+      // Determine the active provider (Task 3.5b)
+      const activeProvider =
+        window.ProviderSwitcher &&
+        typeof window.ProviderSwitcher.getActive === "function"
+          ? window.ProviderSwitcher.getActive()
+          : "openrouter";
 
-      if (!allModels || allModels.length === 0) {
-        selector.innerHTML =
-          '<option value="">Same as description model</option>';
-        return;
-      }
-
-      // Filter for vision-capable models (same logic as main selector)
+      // Get vision-capable models filtered to the active provider.
+      // Primary path: EmbedModelSelector.getEligibleModels. Fallback:
+      // KNOWN_VISION_MODELS via filterVisionModelsFallback (defined on
+      // controller-model.js, accessed via `this`).
       let visionModels = [];
 
-      // EmbedModelSelector is a singleton, not a class — use directly
       if (
         window.EmbedModelSelector &&
-        typeof window.EmbedModelSelector.getModelsWithCapabilities ===
-          "function"
+        typeof window.EmbedModelSelector.getEligibleModels === "function"
       ) {
         try {
-          const visionModelIds =
-            window.EmbedModelSelector.getModelsWithCapabilities(["vision"]);
-          visionModels = allModels.filter((m) => visionModelIds.includes(m.id));
+          visionModels = window.EmbedModelSelector.getEligibleModels({
+            providerId: activeProvider,
+            capabilities: ["vision"],
+          });
+          logDebug(
+            `verifySelector: getEligibleModels returned ${visionModels.length} vision models for provider '${activeProvider}'`,
+          );
         } catch (error) {
           logWarn(
-            "EmbedModelSelector failed for verify selector, using fallback:",
+            "verifySelector: getEligibleModels failed, using fallback:",
             error,
           );
-          visionModels = this.filterVisionModelsFallback(allModels);
+          visionModels = this.filterVisionModelsFallback(activeProvider);
         }
       } else {
-        visionModels = this.filterVisionModelsFallback(allModels);
+        visionModels = this.filterVisionModelsFallback(activeProvider);
       }
 
       if (visionModels.length === 0) {
+        // Shared mismatch notice (if any) is rendered by populateModelSelector.
+        // For the verification dropdown, just leave the safe default option.
         selector.innerHTML =
           '<option value="">Same as description model</option>';
         return;
@@ -1433,6 +1624,7 @@ Compare each visual claim in the description against the image. Report any inacc
       if (this.elements.progressFill) {
         const isGenerating =
           stage === "GENERATING" ||
+          stage === "REASONING" ||
           stage === "GENERATING_LOCAL" ||
           stage === "GENERATING_QWEN" ||
           stage === "GENERATING_LFM2VL";
@@ -1767,6 +1959,92 @@ Compare each visual claim in the description against the image. Report any inacc
     },
 
     /**
+     * Layer 2 — log-only image-strip telemetry. Compares a cloud response's
+     * prompt_tokens against a runtime per-request text estimate; when the gap
+     * (delta) is below the calibration-derived floor the image likely never
+     * reached the model, so emit a logWarn + `imageStripSuspected` event.
+     * NEVER throws, NEVER blocks generation, NEVER surfaces to the user.
+     * @param {Object} response - Embed response (cloud)
+     * @param {string} systemPrompt - System prompt sent this request
+     * @param {string} userPrompt - User prompt sent this request
+     * @param {string} modelId - Model actually used
+     * @param {string} [context] - Label ("cloud" | "verification")
+     */
+    _checkImageStripTelemetry(response, systemPrompt, userPrompt, modelId, context) {
+      try {
+        const t = (response && response.metadata && response.metadata.tokens) || {};
+        // Normalise across shapes: metadata.tokens.prompt (non-streaming) /
+        // .prompt_tokens (streaming) / raw.usage.prompt_tokens (fallback).
+        let promptTokens = null;
+        if (typeof t.prompt === "number") promptTokens = t.prompt;
+        else if (typeof t.prompt_tokens === "number") promptTokens = t.prompt_tokens;
+        else if (
+          response &&
+          response.raw &&
+          response.raw.usage &&
+          typeof response.raw.usage.prompt_tokens === "number"
+        )
+          promptTokens = response.raw.usage.prompt_tokens;
+
+        // A real multimodal request always carries a non-trivial prompt, so a
+        // prompt_tokens of 0 (or negative) means the provider/route did not
+        // report usage for this response — NOT that the image was stripped.
+        // Treat it the same as absent usage and skip, otherwise the comparison
+        // misfires (delta = 0 − textEstimate is hugely negative) and produces a
+        // false "image strip suspected" warning. Seen with some streaming
+        // reasoning models that omit usage counts (e.g. openai/gpt-5.5).
+        if (typeof promptTokens !== "number" || promptTokens <= 0) {
+          // Usage absent or unreported — skip the comparison, never throw.
+          logDebug("Strip telemetry skipped — prompt_tokens unavailable", {
+            context: context || "cloud",
+            promptTokens,
+          });
+          return;
+        }
+
+        const estimatedTextTokens = Math.round(
+          ((systemPrompt ? systemPrompt.length : 0) +
+            (userPrompt ? userPrompt.length : 0)) /
+            CHARS_PER_TOKEN,
+        );
+        const delta = promptTokens - estimatedTextTokens;
+
+        if (delta < IMAGE_STRIP_MIN_BUMP_TOKENS) {
+          const payload = {
+            model: modelId,
+            promptTokens: promptTokens,
+            estimatedTextTokens: estimatedTextTokens,
+            delta: delta,
+            threshold: IMAGE_STRIP_MIN_BUMP_TOKENS,
+            context: context || "cloud",
+          };
+          logWarn(
+            `Image strip suspected (${context || "cloud"}): prompt_tokens ` +
+              `${promptTokens} ≈ text estimate ${estimatedTextTokens} ` +
+              `(delta ${delta} < floor ${IMAGE_STRIP_MIN_BUMP_TOKENS}). The ` +
+              `image may not have reached the model.`,
+            payload,
+          );
+          if (
+            window.EmbedEventEmitter &&
+            typeof window.EmbedEventEmitter.emit === "function"
+          ) {
+            window.EmbedEventEmitter.emit("imageStripSuspected", payload);
+          }
+        } else {
+          logDebug("Strip telemetry OK", {
+            delta,
+            floor: IMAGE_STRIP_MIN_BUMP_TOKENS,
+            context: context || "cloud",
+          });
+        }
+      } catch (error) {
+        // Telemetry must never break generation.
+        logWarn("Strip telemetry check failed (non-fatal):", error);
+      }
+    },
+
+    /**
      * Generate image description
      */
     async generate() {
@@ -1798,6 +2076,7 @@ Compare each visual claim in the description against the image. Report any inacc
 
         // Stage 1: Validating
         this.showProgress("VALIDATING");
+        this._resetReasoningDisclosure();
         this.updateButtonStates();
 
         // Wait for prompts to be ready
@@ -1915,11 +2194,50 @@ Compare each visual claim in the description against the image. Report any inacc
         // Update system prompt
         embed.systemPrompt = systemPrompt;
 
+        // ── Layer 2: deterministic vision re-check (load-bearing) ──────────
+        // The population gate is filter-at-population only; bypass routes
+        // (show-all-models, restored preference, direct callers) can leave a
+        // non-vision model selected. Re-check the model ACTUALLY about to be
+        // used (embed.model — the embed is cached, so this is the real send
+        // target) before any image leaves the browser. Refuse loudly rather
+        // than silently confabulate. Cloud path only — local generators never
+        // reach this code.
+        const modelInUse = embed.model || this.getSelectedModel();
+        if (!this.isModelVisionCapable(modelInUse)) {
+          logWarn(
+            "Vision re-check FAILED — refusing to send image to non-vision model:",
+            modelInUse,
+          );
+          this.hideProgress(false);
+          this.showError(
+            "Selected model cannot process images — choose a vision-capable model.",
+          );
+          this.showStatus(
+            "Generation stopped: selected model cannot process images",
+            "error",
+          );
+          this.announceStatus(
+            "Selected model cannot process images. Choose a vision-capable model.",
+          );
+          return; // finally{} resets isGenerating / abortController / buttons
+        }
+
         // Attach the image (compression happens here for large files)
         await embed.attachFile(this.currentFile);
 
         // Stage 4: Generating
         this.showProgress("GENERATING");
+
+        // Reasoning models (e.g. gpt-5-pro) can think for minutes before any
+        // visible text arrives. Reset the per-run reasoning flags, and if this
+        // model reasons, set the reasoning-aware message up front so the wait
+        // never reads as a crash — even if no heartbeat events arrive.
+        this._reasoningAnnounced = false;
+        this._reasoningPhaseActive = false;
+        const isReasoningModel = this._isReasoningModel(modelInUse);
+        if (isReasoningModel) {
+          this._enterReasoningState();
+        }
 
         // Check reduced motion preference
         const useStreaming = !this.prefersReducedMotion();
@@ -1936,9 +2254,20 @@ Compare each visual claim in the description against the image. Report any inacc
           // content after each injectContent() once the box is scrollable.
           // preWrap: false — the embed injects rendered HTML, not raw text.
           this._prepareStreamingOutput({ preWrap: false });
+          // Track the reasoning→writing transition: the first heartbeat keeps
+          // the reasoning state alive; the first real TEXT chunk ends it.
+          let firstTextChunkSeen = false;
           response = await embed.sendStreamingRequest({
             userPrompt: userPrompt,
+            onReasoning: (info) => {
+              logDebug("Reasoning heartbeat", info);
+              if (!firstTextChunkSeen) this._enterReasoningState();
+            },
             onChunk: (chunk) => {
+              if (!firstTextChunkSeen && chunk && chunk.text) {
+                firstTextChunkSeen = true;
+                this._exitReasoningState();
+              }
               logDebug("Chunk received", { length: chunk.text?.length });
             },
             onComplete: (resp) => {
@@ -1955,6 +2284,40 @@ Compare each visual claim in the description against the image. Report any inacc
 
         // Store raw markdown for plain text copying (preserves original markdown with H1)
         this.lastRawOutput = response.text;
+
+        // ── Belt: never announce success on empty output (cloud path) ──────
+        // The azure-responses adapter now throws on a completed-but-empty or
+        // incomplete response (reasoning exhausted the token budget), so the
+        // catch below normally handles that case. This defends every cloud
+        // path: if the model returned no usable text for ANY reason, fail
+        // loudly here rather than running verification and reporting
+        // "Description generated successfully" on nothing.
+        if (
+          typeof this.lastRawOutput !== "string" ||
+          this.lastRawOutput.trim() === ""
+        ) {
+          logWarn("Cloud generation returned empty output — failing loudly");
+          this.hideProgress(false);
+          const emptyMsg =
+            "The model returned an empty description — it may have run out of token budget. Try raising max tokens or a different model.";
+          this.showStatus(emptyMsg, "error");
+          this.announceStatus(emptyMsg);
+          return;
+        }
+
+        // Reasoning Disclosure: show the model's own summary of its reasoning,
+        // when it returned one. response.reasoning is populated by core on both
+        // the streaming and reduced-motion paths. Reasoning models only; the
+        // component renders nothing when the summary is absent, so non-reasoning
+        // models leave no panel behind.
+        if (
+          isReasoningModel &&
+          this._reasoningDisclosure &&
+          typeof response.reasoning === "string" &&
+          response.reasoning.trim() !== ""
+        ) {
+          this._reasoningDisclosure.setReasoning(response.reasoning);
+        }
 
         // Apply MathJax typesetting before storing HTML
         // This converts LaTeX notation ($...$, $$...$$) into rendered mathematics
@@ -1974,6 +2337,16 @@ Compare each visual claim in the description against the image. Report any inacc
 
         // Extract and apply alt text to images (Phase 2E)
         this.extractAndApplyAltText();
+
+        // ── Layer 2: log-only strip telemetry (observability, never blocks) ──
+        // `response`, `systemPrompt`, `userPrompt`, `modelInUse` all in scope.
+        this._checkImageStripTelemetry(
+          response,
+          systemPrompt,
+          userPrompt,
+          modelInUse,
+          "cloud",
+        );
 
         // ── Visual Verification Pass (conditional) ──────────────────
         let verificationResult = null;
@@ -2137,6 +2510,7 @@ Compare each visual claim in the description against the image. Report any inacc
         // Stage: Loading model
         // (shows download progress on first use, fast on subsequent uses)
         this.showProgress("LOADING_MODEL");
+        this._resetReasoningDisclosure();
 
         // Check if FastVLM is already loaded — skip loading stage if so
         const currentStatus = gateway.getFastVLMStatus();
@@ -2397,6 +2771,7 @@ Compare each visual claim in the description against the image. Report any inacc
 
         // Stage: Loading model
         this.showProgress("LOADING_QWEN");
+        this._resetReasoningDisclosure();
 
         // Check if Qwen3.5 is already loaded — skip loading stage if so
         const currentStatus = gateway.getQwenStatus();
@@ -2661,6 +3036,7 @@ Compare each visual claim in the description against the image. Report any inacc
 
         // Stage: Loading model
         this.showProgress("LOADING_LFM2VL");
+        this._resetReasoningDisclosure();
 
         // Check if LFM2-VL is already loaded — skip loading stage if so
         const currentStatus = gateway.getLfm2VlStatus();
@@ -2987,6 +3363,28 @@ Compare each visual claim in the description against the image. Report any inacc
         compressionMaxWidth: 1200, // Max dimensions for AI analysis
         compressionMaxHeight: 900,
         compressionQuality: 0.7, // 70% JPEG quality (optimal from testing)
+
+        // STAGE 2 TASK 2.6: Foundry provider configuration.
+        // Reads the proxy URL from localStorage (key: 'foundryProxyUrl')
+        // with a hardcoded fallback for the smoke test. Stage 3 will
+        // replace the hardcoded fallback with a Set Up tool credential
+        // entry that writes to the same localStorage key. The library
+        // ignores this block entirely for OpenRouter-routed models —
+        // it only matters when the selected model id starts with
+        // `azure-openai/` or `azure-responses/` (the two Foundry surfaces,
+        // both reading the shared `foundryProxyUrl` credential — Task 5c).
+        providers: {
+          "azure-openai": {
+            proxyUrl:
+              localStorage.getItem("foundryProxyUrl") ||
+              "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev",
+          },
+          "azure-responses": {
+            proxyUrl:
+              localStorage.getItem("foundryProxyUrl") ||
+              "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev",
+          },
+        },
       };
 
       // STAGE 7: Add retry configuration if handler available

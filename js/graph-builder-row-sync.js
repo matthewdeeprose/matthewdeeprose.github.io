@@ -15,7 +15,10 @@
 const GraphBuilderRowSync = (function () {
   "use strict";
 
-  // ─── LOGGING CONFIGURATION ───
+  // ============================================
+  // LOGGING CONFIGURATION
+  // ============================================
+
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
   const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
@@ -44,14 +47,26 @@ const GraphBuilderRowSync = (function () {
       console.log("[GB RowSync] " + message, ...args);
   }
 
-  // ─── HELPERS ───
+  // ============================================
+  // HELPERS
+  // ============================================
+
   function escapeHtml(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
-  // currency/percentage → text + inputmode=decimal (allows "£1,200", "42%");
-  // validate/extract strip symbols so raw forms are accepted at entry time.
+  /**
+   * Map column data type to HTML input type and attributes.
+   *
+   * Currency and percentage columns use type="text" with inputmode="decimal"
+   * so users can enter notation like "£1,200" or "42%". validateFormData
+   * and extractFormData both strip [£$€¥₹%,\s] before parsing, so the raw
+   * symbols are acceptable at entry time.
+   *
+   * Plain "number" columns keep type="number" for browser-level numeric
+   * validation and mobile numeric keyboard.
+   */
   function inputTypeForColumn(col) {
     switch (col.type) {
       case "number":
@@ -66,7 +81,10 @@ const GraphBuilderRowSync = (function () {
     }
   }
 
-  // ─── VALIDATION BRIDGE ───
+  // ============================================
+  // VALIDATION BRIDGE
+  // ============================================
+
   /**
    * Trigger the core Graph Builder's validation + preview pipeline.
    * The core controller listens for input events on existing inputs,
@@ -118,7 +136,10 @@ const GraphBuilderRowSync = (function () {
     }
   }
 
-  // ─── CORE LOGIC ───
+  // ============================================
+  // CORE LOGIC
+  // ============================================
+
   var lastColumnCount = 2; // tracks previous count so we know when to act
 
   /**
@@ -272,9 +293,14 @@ const GraphBuilderRowSync = (function () {
     }
   }
 
-  // ─── MONKEY-PATCH addDataRow ───
-  // The existing GraphBuilder.addDataRow creates 2-column rows; in advanced
-  // mode we intercept the Add Row click to create rows with the right count.
+  // ============================================
+  // MONKEY-PATCH: addDataRow
+  // ============================================
+  //
+  // The existing GraphBuilder.addDataRow creates 2-column rows.
+  // When advanced mode is active, we intercept the "Add Row" click
+  // to create rows with the correct column count instead.
+
   var addRowIntercepted = false;
 
   function interceptAddRow() {
@@ -414,28 +440,10 @@ const GraphBuilderRowSync = (function () {
     logDebug("Added enhanced row: " + rowId + " with " + columns.length + " columns");
   }
 
-  // 3.2.b-3: keep preview stats in sync with row add/remove. A single
-  // MutationObserver on the rows container fires on any childList change,
-  // covering addEnhancedRow + the core's removeDataRow without coupling
-  // to either call site. Validation-pipeline showPreview() already keeps
-  // stats fresh on input edits; this observer covers the gap where add
-  // (empty row) and remove don't pass through validateFormData → showPreview.
-  var statsObserverInstalled = false;
-  function setupPreviewStatsObserver() {
-    if (statsObserverInstalled) return;
-    var container = document.getElementById("gb-data-rows");
-    if (!container || !window.MutationObserver) return;
-    var observer = new MutationObserver(function () {
-      if (window.GraphBuilderUI && typeof window.GraphBuilderUI.refreshPreviewStats === "function") {
-        window.GraphBuilderUI.refreshPreviewStats();
-      }
-    });
-    observer.observe(container, { childList: true });
-    statsObserverInstalled = true;
-    logDebug("Preview stats observer installed");
-  }
+  // ============================================
+  // PUBLIC API — called by GraphBuilderEnhanced
+  // ============================================
 
-  // ─── PUBLIC API — called by GraphBuilderEnhanced ───
   /**
    * Call this whenever the column configuration changes.
    * @param {Array} columns - Current column array from ColumnManager
@@ -445,7 +453,6 @@ const GraphBuilderRowSync = (function () {
     syncRows(columns);
     syncFormHeaders(columns);
     interceptAddRow();
-    setupPreviewStatsObserver();  // 3.2.b-3
   }
 
   /**

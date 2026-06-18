@@ -17,7 +17,7 @@ const LOG_LEVELS = {
   DEBUG: 3,
 };
 
-const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO; // More verbose for Phase 1 testing
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG; // More verbose for Phase 1 testing
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
@@ -72,6 +72,33 @@ class MathPixTotalDownloader extends MathPixBaseModule {
     this.config = MATHPIX_CONFIG.TOTAL_DOWNLOADER;
 
     logInfo("Initialising Total Downloader...");
+
+    // F-L Phase 2 — forward-defensive module-presence assertion. The image
+    // subsystem (MathPixImageRegistry, MathPixImageDownloader) loads via
+    // separate IIFE scripts in tools.html. Loading order is verified for
+    // current builds, but a future refactor or async tweak could re-introduce
+    // a race. Catch any such drift at construction so the user can reload
+    // before going through the whole pipeline.
+    if (typeof window.MathPixImageRegistry !== "function") {
+      logError(
+        "MathPixImageRegistry not loaded at construction — saved archives will not contain images",
+      );
+      if (typeof window.notifyError === "function") {
+        window.notifyError(
+          "Image packaging subsystem unavailable — saved archives will not contain images. Please reload the page.",
+        );
+      }
+    }
+    if (typeof window.MathPixImageDownloader !== "function") {
+      logError(
+        "MathPixImageDownloader not loaded at construction — saved archives will not contain images",
+      );
+      if (typeof window.notifyError === "function") {
+        window.notifyError(
+          "Image download subsystem unavailable — saved archives will not contain images. Please reload the page.",
+        );
+      }
+    }
   }
 
   /**
@@ -3635,6 +3662,43 @@ ${fileList}
   }
 
   /**
+   * Stage 8 (Q1/Q2): write the document context snapshot into the archive.
+   *
+   * Writes metadata/context.json — a flat eight-key object of strings,
+   * blanks serialised as "" — ALWAYS written so the schema is consistent
+   * across every ZIP (an absent file therefore always means a pre-Stage-8
+   * archive, never "blank this session").
+   *
+   * Deliberately free of `this` so tests can drive it via
+   * MathPixTotalDownloader.prototype.addContextToArchive.call(null, zip)
+   * against a fresh JSZip on a bare page. The "metadata" path is a string
+   * literal by design: no METADATA constant exists anywhere to reuse, and
+   * the three sibling metadata writers in createArchive already use the
+   * literal. Values are opaque — never validated against option lists.
+   * Never throws.
+   *
+   * @param {JSZip} zip - The archive under construction
+   * @returns {void}
+   */
+  addContextToArchive(zip) {
+    try {
+      if (!window.MathPixContextManager) {
+        logWarn(
+          "Context manager unavailable — context.json not written to archive",
+        );
+        return;
+      }
+      const context = window.MathPixContextManager.getContext();
+      zip
+        .folder("metadata")
+        .file("context.json", JSON.stringify(context, null, 2));
+      logDebug("Document context written to metadata/context.json");
+    } catch (error) {
+      logError("Failed to write document context to archive:", error);
+    }
+  }
+
+  /**
    * Create archive with real data (Phase 5 entry point)
    * Phase 5.5: Updated to separate formats from response
    * @param {Object} data - Real data from controller
@@ -3659,6 +3723,11 @@ ${fileList}
       const editsFolder = zip.folder(this.config.DIRECTORIES.EDITS);
       const convertedFolder = zip.folder(this.config.DIRECTORIES.CONVERTED);
       const historyFolder = zip.folder(this.config.DIRECTORIES.HISTORY);
+
+      // Stage 8 (Q2): snapshot the document context at the save click —
+      // written immediately after folder creation, before any awaited or
+      // conditional step, so a document-boundary reset cannot race the save.
+      this.addContextToArchive(zip);
 
       // Collect source files (Phase 2)
       const sourceResult = await this.collectSourceFiles(
@@ -3827,6 +3896,14 @@ ${fileList}
       //   1. Resume mode — live registry passed from session restorer (has blobs already)
       //   2. Fresh mode  — build registry from MMD and download from CDN
       let imageDownloadResult = null;
+      // F-L Phase 2 — effective registry + filenameMap hoisted to outer scope so
+      // the post-image-block Document Health Check can verify that every
+      // registry entry with content (blob || dataUri) actually landed in the
+      // ZIP at /images/<filename>. Both branches assign these after building
+      // their state; the chemistry replacement block updates filename entries
+      // in-place, so the map points at the rendered PNG by check time.
+      let effectiveImageRegistry = null;
+      let effectiveFilenameMap = null;
       try {
         if (
           data.imageRegistry &&
@@ -3845,6 +3922,8 @@ ${fileList}
           const imageCount = allImages.length;
 
           if (imageCount > 0) {
+            // F-L Phase 2 — capture for post-block Health Check.
+            effectiveImageRegistry = liveRegistry;
             const docBaseName =
               this.extractBaseNameFromSource(data.sourceState) || "document";
             const imagesFolder = zip.folder("images");
@@ -3985,9 +4064,7 @@ ${fileList}
                 // path silently no-ops.
                 const mdGfxRegex =
                   /!\[<smiles[^>]*>(.*?)<\/smiles>\]\(([^)]+)\)/g;
-                while (
-                  (chemMatch = mdGfxRegex.exec(originalMmd)) !== null
-                ) {
+                while ((chemMatch = mdGfxRegex.exec(originalMmd)) !== null) {
                   const smilesNotation = chemMatch[1];
                   const imgUrl = chemMatch[2].trim();
                   if (smilesNotation && imgUrl) {
@@ -4179,6 +4256,23 @@ ${fileList}
               }
             }
 
+            // F-L Phase 2 — capture filenameMap for the Health Check.
+            // Phase 7C-7 chemistry replacement (above) updates mapEntry
+            // filename in place where applicable.
+            effectiveFilenameMap = newFilenameMap;
+
+            // F-L Phase 2 — SC2 per-image loss summary. Loop logged each
+            // failure at logWarn already; surface a single user-facing
+            // notification at end-of-loop instead of per-image (avoid
+            // spamming the toast queue).
+            if (failed > 0) {
+              if (typeof window.notifyWarning === "function") {
+                window.notifyWarning(
+                  `${failed} of ${imageCount} image(s) could not be packaged — the archive may be incomplete.`,
+                );
+              }
+            }
+
             // Write registry JSON to /metadata/
             const registryJson = liveRegistry.toJSON();
             registryJson.filenameMap = newFilenameMap;
@@ -4197,6 +4291,7 @@ ${fileList}
             );
             logInfo("✓ Live image registry JSON added to ZIP /metadata/");
           } else {
+            // SC1 — legitimate zero-image resume case.
             logDebug("Live registry has no images — skipping image step");
           }
         } else if (
@@ -4216,9 +4311,20 @@ ${fileList}
 
           if (mmdContent && mmdContent.length > 0) {
             const imageRegistry = new window.MathPixImageRegistry();
-            const imageCount = imageRegistry.buildFromMMD(mmdContent);
+            // F-L Phase 2 primary fix — buildFromMMD returns {added, removed},
+            // not a number. The pre-fix code (`const imageCount = buildFromMMD(...)`
+            // then `if (imageCount > 0)`) treated the object as a number, NaN-coerced
+            // it for >, and gated SC4 permanently — every document with images
+            // silently fell through, skipping both /images/ packaging and the
+            // metadata write inside this branch. Reading the count from
+            // getAllImages() decouples the call site from buildFromMMD's return
+            // shape, which is itself the class of bug that caused this regression.
+            imageRegistry.buildFromMMD(mmdContent);
+            const imageCount = imageRegistry.getAllImages().length;
 
             if (imageCount > 0) {
+              // F-L Phase 2 — capture the registry for the post-block Health Check.
+              effectiveImageRegistry = imageRegistry;
               const docBaseName =
                 this.extractBaseNameFromSource(data.sourceState) || "document";
               imageRegistry.setDocumentId(docBaseName);
@@ -4368,17 +4474,14 @@ ${fileList}
                       )
                         ? ctrl.resultRenderer._chemistryData
                         : [];
-                      logDebug(
-                        "Phase 7C-5: chemistry data lookup",
-                        {
-                          entries: chemistryData.length,
-                          withRenderOptions: chemistryData.filter(
-                            (e) =>
-                              e?.renderOptions &&
-                              Object.keys(e.renderOptions).length > 0,
-                          ).length,
-                        },
-                      );
+                      logDebug("Phase 7C-5: chemistry data lookup", {
+                        entries: chemistryData.length,
+                        withRenderOptions: chemistryData.filter(
+                          (e) =>
+                            e?.renderOptions &&
+                            Object.keys(e.renderOptions).length > 0,
+                        ).length,
+                      });
                       const smilesToRenderOptions = new Map();
                       const smilesToRenderPreset = new Map();
                       for (const entry of chemistryData) {
@@ -4437,10 +4540,7 @@ ${fileList}
 
                         // Move original CDN image to /images/originals/
                         const origFilename = mapEntry.filename;
-                        const baseName = origFilename.replace(
-                          /\.[^/.]+$/,
-                          "",
-                        );
+                        const baseName = origFilename.replace(/\.[^/.]+$/, "");
                         const origExt =
                           origFilename.match(/\.[^/.]+$/)?.[0] || ".jpg";
 
@@ -4545,6 +4645,26 @@ ${fileList}
                 }
               }
 
+              // F-L Phase 2 — capture filenameMap for the Health Check. Note
+              // that Phase 6G chemistry replacement (above) has already updated
+              // mapEntry.filename in place where applicable, so this reference
+              // points at the post-replacement filenames.
+              effectiveFilenameMap = imageDownloadResult.filenameMap;
+
+              // F-L Phase 2 — SC6: log loud when downloads partially or fully
+              // failed. The Health Check downstream is the user-facing safety
+              // net; this is the developer-visibility signal.
+              if (imageDownloadResult.succeeded < imageDownloadResult.total) {
+                logError(
+                  `Image downloads partially failed: ${imageDownloadResult.succeeded}/${imageDownloadResult.total} succeeded`,
+                );
+                if (typeof window.notifyError === "function") {
+                  window.notifyError(
+                    `Image downloads failed (${imageDownloadResult.total - imageDownloadResult.succeeded} of ${imageDownloadResult.total}) — the archive may be incomplete.`,
+                  );
+                }
+              }
+
               // Always add registry JSON to /metadata/
               const registryJson = imageRegistry.toJSON();
               registryJson.filenameMap = imageDownloadResult.filenameMap;
@@ -4563,21 +4683,47 @@ ${fileList}
               );
               logInfo("✓ Image registry JSON added to ZIP /metadata/");
             } else {
+              // SC4 — legitimate non-image documents (text, strokes). Stays at
+              // logDebug post-fix; the Health Check covers any future regression.
               logDebug("No images found in MMD — skipping image download step");
             }
           } else {
-            logDebug("No MMD content available — skipping image download step");
+            // SC3 — post-OCR with no MMD is a real failure.
+            logError("No MMD content available — skipping image download step");
+            if (typeof window.notifyError === "function") {
+              window.notifyError(
+                "Could not read MMD content — images will not be included in the archive.",
+              );
+            }
           }
         } else {
-          logDebug(
+          // SC5 — image subsystem modules missing at createArchive time.
+          // The constructor-level assertion catches this forward-defensively;
+          // this is the runtime fallback if a future race lets it through.
+          logError(
             "Image registry/downloader modules not loaded — skipping image step",
           );
+          if (typeof window.notifyError === "function") {
+            window.notifyError(
+              "Image packaging subsystem unavailable — images will not be included in the archive. Please reload the page.",
+            );
+          }
         }
       } catch (imageError) {
-        logWarn(
-          "Image download/ZIP integration failed (non-critical):",
+        // SC7 — any exception inside the image block (CDN-CORS, network,
+        // JSZip failure, etc.). Pre-fix this was logWarn with a misleading
+        // "(non-critical)" suffix — but the failure aborts both /images/ AND
+        // the unconditional metadata write that lives inside the imageCount>0
+        // gate, breaking resume completely.
+        logError(
+          "Image download/ZIP integration failed:",
           imageError,
         );
+        if (typeof window.notifyError === "function") {
+          window.notifyError(
+            `Image packaging failed: ${imageError.message || "unknown error"}. The archive may be incomplete.`,
+          );
+        }
       }
 
       // Generate production README (Phase 4)
@@ -4597,6 +4743,85 @@ ${fileList}
       const readme = this.generateProductionReadme(manifest);
       zip.file("README.txt", readme);
 
+      // F-L Phase 2 — Document Health Check.
+      //
+      // Count-based predicate: how many registry entries have content (blob ||
+      // dataUri) AND landed in the ZIP at /images/<filename>? If fewer than
+      // expected, the archive is incomplete and the user must opt in before we
+      // produce the download.
+      //
+      // Walks the registry rather than enumerating /images/ folder contents so
+      // /images/originals/ (chemistry's preserved Mathpix crops) doesn't
+      // inflate the count. Phase 6G / 7C-7 update mapEntry.filename in place
+      // to point at the rendered PNG; that's the filename this check looks up.
+      if (
+        effectiveImageRegistry &&
+        typeof effectiveImageRegistry.getAllImages === "function"
+      ) {
+        const imagesWithContent = effectiveImageRegistry
+          .getAllImages()
+          .filter((img) => !!img.blob || !!img.dataUri);
+        const expected = imagesWithContent.length;
+
+        const actualInZip = imagesWithContent.filter((img) => {
+          const filename = effectiveFilenameMap?.[img.id]?.filename;
+          return !!filename && zip.file(`images/${filename}`) !== null;
+        }).length;
+
+        if (expected > 0 && actualInZip < expected) {
+          const isTotal = actualInZip === 0;
+          const missing = expected - actualInZip;
+
+          logError(
+            `Document Health Check failed: registry has ${expected} image(s) with content, ZIP has ${actualInZip}`,
+          );
+
+          const message = isTotal
+            ? `This document contains ${expected} image(s), but none were saved to the ZIP. Saving will produce an incomplete archive — reloading it will show the document without its images. Save anyway?`
+            : `${missing} of ${expected} images failed to save to the ZIP. Saving will produce an incomplete archive — reloading it will show the document missing those images. Save anyway?`;
+
+          // safeConfirm hard-codes autofocus on the confirm (Yes) button.
+          // Override via onOpen so default focus lands on cancel — the safe
+          // option for an action that produces an incomplete artefact.
+          const proceed =
+            typeof window.safeConfirm === "function"
+              ? await window.safeConfirm(message, "Image data missing from ZIP", {
+                  confirmText: "Save anyway",
+                  cancelText: "Cancel",
+                  onOpen: (modalInstance) => {
+                    try {
+                      const cancelBtn = modalInstance?.modal?.querySelector(
+                        ".universal-confirm-no",
+                      );
+                      if (cancelBtn && typeof cancelBtn.focus === "function") {
+                        cancelBtn.focus();
+                      }
+                    } catch (focusError) {
+                      logWarn(
+                        "Could not move default focus to cancel button:",
+                        focusError,
+                      );
+                    }
+                  },
+                })
+              : window.confirm(message);
+
+          if (!proceed) {
+            if (typeof window.notifyInfo === "function") {
+              window.notifyInfo("Download cancelled.");
+            }
+            logInfo(
+              "Document Health Check failed — user cancelled the download",
+            );
+            return null;
+          }
+
+          logWarn(
+            `Document Health Check failed but user chose to proceed (${actualInZip}/${expected} images saved)`,
+          );
+        }
+      }
+
       // Generate ZIP
       logInfo("Generating ZIP blob...");
       const blob = await zip.generateAsync({
@@ -4614,6 +4839,25 @@ ${fileList}
       this.triggerDownload(blob, filename);
 
       logInfo("✓ Archive created successfully");
+
+      // F-L Phase 2 — positive post-save notification. Turns silent success
+      // into visible success, with image count when applicable. The
+      // download-manager caller no longer fires its own generic notifySuccess
+      // (avoids double-toast).
+      const finalImageCount =
+        effectiveImageRegistry &&
+        typeof effectiveImageRegistry.getAllImages === "function"
+          ? effectiveImageRegistry.getAllImages().length
+          : 0;
+      if (typeof window.notifySuccess === "function") {
+        window.notifySuccess(
+          finalImageCount > 0
+            ? `Saved successfully — includes ${finalImageCount} image${finalImageCount === 1 ? "" : "s"}`
+            : "Saved successfully",
+        );
+      }
+
+      return { filename, imageCount: finalImageCount };
     } catch (error) {
       logError("Failed to create archive:", error);
       throw error;

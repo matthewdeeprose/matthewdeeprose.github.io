@@ -144,6 +144,8 @@
     },
   };
 
+  const PROMPT_VARIANT_STORAGE_KEY = "mathpix-ai-enhancer.promptVariantPath";
+
   // ============================================================================
   // MAIN CLASS
   // ============================================================================
@@ -283,6 +285,10 @@
        * @type {Object|null}
        */
       this.models = null;
+
+      this.loadedPromptPath = null;
+      this.loadedPromptVersion = null;
+      this.loadedPromptLabel = null;
 
       /**
        * Last error message for display
@@ -487,7 +493,39 @@
         this.cacheElements();
 
         // Load prompt configuration
-        await this.loadPromptConfig();
+        let initialPath = AI_ENHANCER_CONFIG.PROMPTS_PATH;
+        try {
+          const stored = localStorage.getItem(PROMPT_VARIANT_STORAGE_KEY);
+          if (stored && typeof stored === "string" && stored.length > 0) {
+            initialPath = stored;
+            logInfo(`Restoring persisted prompt variant: ${stored}`);
+          }
+        } catch (error) {
+          logWarn(
+            "Could not read persisted prompt variant from localStorage:",
+            error.message,
+          );
+        }
+
+        try {
+          await this.loadPromptConfig(initialPath);
+        } catch (error) {
+          if (initialPath !== AI_ENHANCER_CONFIG.PROMPTS_PATH) {
+            logWarn(
+              `Failed to restore persisted variant ${initialPath} — clearing and falling back to default.`,
+              error.message,
+            );
+            try {
+              localStorage.removeItem(PROMPT_VARIANT_STORAGE_KEY);
+            } catch (clearError) {
+              logWarn(
+                "Could not clear stale persisted variant:",
+                clearError.message,
+              );
+            }
+            await this.loadPromptConfig();
+          }
+        }
 
         // Set initial button state
         this.updateButtonState();
@@ -534,13 +572,14 @@
     /**
      * Load prompt configuration from JSON file
      *
+     * @param {string} [path] - Optional path to prompt JSON; defaults to AI_ENHANCER_CONFIG.PROMPTS_PATH
      * @returns {Promise<void>}
      */
-    async loadPromptConfig() {
+    async loadPromptConfig(path = AI_ENHANCER_CONFIG.PROMPTS_PATH) {
       logDebug("Loading prompt configuration...");
 
       try {
-        const response = await fetch(AI_ENHANCER_CONFIG.PROMPTS_PATH);
+        const response = await fetch(path);
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -559,7 +598,14 @@
           this.selectedModel = recommendedModel[1].id;
         }
 
+        this.loadedPromptPath = path;
+        this.loadedPromptVersion = config.version || null;
+        this.loadedPromptLabel = config.label || null;
+
         logInfo("Prompt configuration loaded", {
+          path: this.loadedPromptPath,
+          version: this.loadedPromptVersion,
+          label: this.loadedPromptLabel,
           modelsCount: Object.keys(this.models).length,
           defaultModel: this.selectedModel,
         });
@@ -588,7 +634,96 @@
             recommended: true,
           },
         };
+
+        this.loadedPromptPath = path;
+        this.loadedPromptVersion = null;
+        this.loadedPromptLabel = null;
+
+        if (path !== AI_ENHANCER_CONFIG.PROMPTS_PATH) {
+          throw error;
+        }
       }
+    }
+
+    async setPromptVariant(path) {
+      if (typeof path !== "string" || path.trim().length === 0) {
+        logError("setPromptVariant: path must be a non-empty string");
+        return { success: false, error: "Invalid path" };
+      }
+
+      const previousState = {
+        prompts: this.prompts,
+        models: this.models,
+        selectedModel: this.selectedModel,
+        loadedPromptPath: this.loadedPromptPath,
+        loadedPromptVersion: this.loadedPromptVersion,
+        loadedPromptLabel: this.loadedPromptLabel,
+      };
+
+      logInfo(`Switching prompt variant to: ${path}`);
+
+      const previousModel = this.selectedModel;
+
+      try {
+        await this.loadPromptConfig(path);
+      } catch (error) {
+        logError(
+          `Failed to load prompt variant from ${path} — restoring previous state`,
+          error,
+        );
+        this.prompts = previousState.prompts;
+        this.models = previousState.models;
+        this.selectedModel = previousState.selectedModel;
+        this.loadedPromptPath = previousState.loadedPromptPath;
+        this.loadedPromptVersion = previousState.loadedPromptVersion;
+        this.loadedPromptLabel = previousState.loadedPromptLabel;
+        return { success: false, error: error.message };
+      }
+
+      if (previousModel && this.models && this.models[Object.keys(this.models).find((k) => this.models[k].id === previousModel)]) {
+        this.selectedModel = previousModel;
+        logDebug(`Preserved user model selection: ${previousModel}`);
+      }
+
+      try {
+        if (path === AI_ENHANCER_CONFIG.PROMPTS_PATH) {
+          localStorage.removeItem(PROMPT_VARIANT_STORAGE_KEY);
+          logDebug("Cleared persisted variant (set back to production path)");
+        } else {
+          localStorage.setItem(PROMPT_VARIANT_STORAGE_KEY, path);
+          logDebug(`Persisted variant path: ${path}`);
+        }
+      } catch (error) {
+        logWarn("Could not persist prompt variant:", error.message);
+      }
+
+      return {
+        success: true,
+        path: this.loadedPromptPath,
+        version: this.loadedPromptVersion,
+        label: this.loadedPromptLabel,
+      };
+    }
+
+    getPromptVersion() {
+      return {
+        path: this.loadedPromptPath,
+        version: this.loadedPromptVersion,
+        label: this.loadedPromptLabel,
+        identifier: this.loadedPromptLabel
+          ? `${this.loadedPromptVersion || "unknown"}-${this.loadedPromptLabel}`
+          : (this.loadedPromptVersion || "unknown"),
+      };
+    }
+
+    async clearPromptVariant() {
+      try {
+        localStorage.removeItem(PROMPT_VARIANT_STORAGE_KEY);
+        logInfo("Cleared persisted prompt variant; reloading production prompt");
+      } catch (error) {
+        logWarn("Could not clear persisted prompt variant:", error.message);
+      }
+      return await this.setPromptVariant(AI_ENHANCER_CONFIG.PROMPTS_PATH);
     }
 
     // ==========================================================================
@@ -3882,7 +4017,15 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
         // Fallback: Try using window.markdownToHTML directly (CDN function)
         if (typeof window.markdownToHTML === "function") {
-          const html = window.markdownToHTML(this.enhancedMMD);
+          const renderOptions =
+            window.MATHPIX_CONFIG?.MMD_PREVIEW?.RENDER_OPTIONS || {};
+          if (Object.keys(renderOptions).length === 0) {
+            logWarn(
+              "MATHPIX_CONFIG.MMD_PREVIEW.RENDER_OPTIONS unavailable; " +
+                "AI enhancer preview will use library defaults",
+            );
+          }
+          const html = window.markdownToHTML(this.enhancedMMD, renderOptions);
           previewElement.innerHTML = html;
 
           // Trigger MathJax if available

@@ -17,12 +17,10 @@
  *      OpenRouter provider — preserving existing behaviour for every model
  *      string that exists today.
  *
- * Note: models with the 'local/' prefix bypass the registry entirely and are
- * handled by EmbedLocalBackend. This module's `resolve()` does not reflect
- * that routing — it returns the OpenRouter default for 'local/...' because
- * that's the honest result of applying the lookup rule. core.js's local/
- * guard pre-empts dispatch before resolve() is reached, so the asymmetry is
- * documented but never observable in practice.
+ * Note: `'local'` is reserved but has no registry entry — the local backend
+ * pre-empts dispatch in `openrouter-embed-core.js` before the registry is
+ * consulted, so `resolve()` returning `null` for `local/` prefixes is the
+ * honest result.
  *
  * Features:
  * - Pure-function `resolve(modelId)` — no caching, no instance state
@@ -88,8 +86,10 @@
   const RESERVED_PROVIDER_PREFIXES = new Set([
     "openrouter",
     "azure-openai",
+    "azure-responses",   // Stage 2 (Responses-API provider)
     "azure-inference",   // Stage 5 (deferred)
     "anthropic-foundry", // Stage 4 (deferred)
+    "local",             // No registry entry; local backend pre-empts dispatch in core.js
   ]);
 
   const DEFAULT_PROVIDER_ID = "openrouter";
@@ -152,11 +152,14 @@
      *   2. Otherwise (legacy OpenRouter form, bare model name, or any
      *      unrecognised prefix), fall back to the OpenRouter provider.
      *
-     * Note: models with the 'local/' prefix bypass the registry entirely
-     * and are handled by EmbedLocalBackend. This method does not reflect
-     * that routing — it returns the OpenRouter default for 'local/...'
-     * because that's the honest result of applying the lookup rule.
-     * core.js's local/ guard pre-empts dispatch before this is reached.
+     * Note: `'local'` is reserved but has no registry entry — the local
+     * backend pre-empts dispatch in `openrouter-embed-core.js` before the
+     * registry is consulted. `resolve('local/foo')` therefore returns
+     * `null` (strict reserved lookup of an unregistered provider) rather
+     * than falling through to the OpenRouter default. This is the honest
+     * result of applying the lookup rule; the local/ guard upstream in
+     * core.js means `resolve()` is never reached for a `local/` id in
+     * normal dispatch.
      *
      * @param {string} modelId
      * @returns {Provider|null}

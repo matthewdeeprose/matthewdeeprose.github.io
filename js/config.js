@@ -10,6 +10,12 @@
  */
 
 import { modelRegistry } from "./model-definitions.js";
+// Foundry (azure-openai/*) routed model variants. Imported AFTER
+// model-definitions.js so the registry, categories, and the OpenRouter sibling
+// ids used as fallbackTo all exist before these register. model-definitions.js
+// is an ES module (not a <script> tag), so wiring lives here rather than in
+// tools.html. See js/foundry-model-definitions.js.
+import "./foundry-model-definitions.js";
 
 /**
  * Get API key from localStorage

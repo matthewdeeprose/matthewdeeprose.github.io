@@ -1,0 +1,62 @@
+<!-- stage-10-render-harness-dark.html — Stage 10 Parcel 6 (dark twin). -->
+<!-- Identical to stage-10-render-harness.html EXCEPT for the inline pre-mount -->
+<!-- theme-force below: audit.mjs cannot set the engines' theme and a URL flag -->
+<!-- breaks its report-file lookup, so the dark state must be self-forced from -->
+<!-- a load-time signal BEFORE the view mounts. Mirrors tools.html's -->
+<!-- applyThemePreference() "Dark" branch. New file only — nothing is edited. -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stage 10 render harness — Edit Alt Text (dark)</title>
+
+    <!-- Theme links: mirror tools.html exactly (prefers-color-scheme media). -->
+    <link
+      rel="stylesheet"
+      id="lightCSS"
+      href="../light.css"
+      media="(prefers-color-scheme: light)"
+    />
+    <link rel="stylesheet" id="mainCSS" href="../main.css" media="all" />
+    <link
+      rel="stylesheet"
+      id="darkCSS"
+      href="../dark.css"
+      media="(prefers-color-scheme: dark)"
+    />
+
+    <!-- Pre-mount theme-force: point BOTH theme links at dark.css so the dark
+         stylesheet applies regardless of the OS prefers-color-scheme, BEFORE
+         the Edit-Alt view mounts. Mirrors tools.html applyThemePreference()
+         "Dark" branch. Runs here (after the links exist, before the mount). -->
+    <script>
+      document.getElementById("lightCSS").href = "../dark.css";
+      document.getElementById("darkCSS").href = "../dark.css";
+    </script>
+
+    <!-- Styling for the Edit-Alt view and the inlined ⓘ icon. -->
+    <link
+      rel="stylesheet"
+      href="../mathpix-scripts/css/mathpix-image-manager.css"
+    />
+    <link rel="stylesheet" href="../icon-library.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Stage 10 render harness — Edit Alt Text view (dark)</h1>
+      <p>
+        This page mounts the live Edit Alt Text sub-view of the MathPix Image
+        Manager in its decorative-on-with-conflict state for accessibility
+        auditing, forced to the dark theme. Untick the decorative checkbox to
+        see the off state.
+      </p>
+      <div id="harness-mount"></div>
+    </main>
+
+    <!-- icon-library.js BEFORE the mount so getIcon("infoCircle") resolves. -->
+    <script src="../icon-library.js"></script>
+    <script src="../mathpix-scripts/ui/components/mathpix-image-manager-ui.js"></script>
+    <script src="stage-10-render-harness.js"></script>
+  </body>
+</html>

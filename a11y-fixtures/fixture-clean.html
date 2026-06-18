@@ -1,0 +1,82 @@
+<!-- fixture-clean.html -->
+<!-- This page is semantically correct and SHOULD produce zero results from -->
+<!-- both audit engines at the configured fail levels (violation AND -->
+<!-- potentialviolation). It is the positive control for the test suite. -->
+<!--
+  Note on the CSS below: we deliberately do NOT declare colour, background,
+  or border properties. The IBM checker raises *potential* (manual-review)
+  reminders whenever it sees colour or border declarations, and our config
+  treats potentials as failures. Relying on the browser's safe defaults
+  (black text on white, default link colour, native button border) keeps the
+  positive control genuinely clean. We also avoid sensory words such as
+  "above"/"below", which trigger the sensory-language potential.
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fixture: Clean (should pass)</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 2rem;
+      }
+      /* Targets are comfortably larger than the 24px minimum, with spacing. */
+      /* No colour or border declarations here, on purpose (see note above). */
+      .action {
+        display: inline-block;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        margin: 0.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Native landmarks: header, nav, main, footer. -->
+    <header>
+      <h1>Clean fixture page</h1>
+    </header>
+
+    <nav aria-label="Primary">
+      <ul>
+        <li><a href="#content">Skip to content</a></li>
+      </ul>
+    </nav>
+
+    <main id="content">
+      <h2>About this page</h2>
+      <p>
+        This page uses native HTML landmarks, a logical heading order, a
+        properly labelled form control, default colours with sufficient
+        contrast, and target sizes that meet the minimum. It is the positive
+        control for the audit engines.
+      </p>
+
+      <h2>Search</h2>
+      <form>
+        <p>
+          <!-- The label is explicitly associated with the input via for/id. -->
+          <label for="search-term">Search term</label>
+          <input type="text" id="search-term" name="searchterm" />
+        </p>
+        <p>
+          <button type="submit" class="action">Search</button>
+        </p>
+      </form>
+
+      <h2>Related links</h2>
+      <p>
+        <!-- Links have clear, accessible text. -->
+        <a class="action" href="https://example.com">Visit example.com</a>
+      </p>
+    </main>
+
+    <footer>
+      <p>Positive control fixture &mdash; no seeded faults.</p>
+    </footer>
+  </body>
+</html>
