@@ -610,6 +610,15 @@
       this.lazyLoadDocumentAnalysis();
     }
 
+    // Phase 2 Stage 1 (P4): re-evaluate the Context AI control's enabled state
+    // whenever the Context tab is shown — PDF availability is dynamic and this
+    // single hook catches mouse, keyboard and programmatic activation. The
+    // control itself lives in mathpix-context-ai.js; this is the one-line
+    // bridge from the resume code.
+    if (tab === "context") {
+      window.MathPixContextAI?.refreshAvailability?.();
+    }
+
     // Phase 8A-8 D-1: verify no invariant drift at the end of the switch.
     assertResumeTabStateConsistent(resumeContainer, "switchTab:end");
   };

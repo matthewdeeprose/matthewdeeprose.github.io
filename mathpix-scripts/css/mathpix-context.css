@@ -31,19 +31,39 @@
  */
 
 /* ============================================================================
+   FORM — fill the available width
+   ============================================================================ */
+
+/* The app applies a global `form { max-width: 750px }` (an inline <style> in
+   tools.html) that caps EVERY form. That cap leaves the Context form floating
+   in the left ~65% of the (much wider) tab panel with a large empty gutter on
+   the right. Lift the cap for this form only so it fills its panel; the class
+   selector out-specifies the bare `form` element selector, so no !important is
+   needed. The two-column grid below then spreads across the full width. */
+.mathpix-context-form {
+  width: 100%;
+  max-width: none;
+}
+
+/* ============================================================================
    FIELDSET — base (narrow viewports): stacked, label above control
    ============================================================================ */
 
-/* Strip the default fieldset chrome and, crucially, reset its intrinsic
-   min-width (browsers default fieldsets to min-width: min-content, which
-   would prevent shrinking and cause horizontal overflow at 320px). */
+/* Card treatment: padding + radius give the themed background (light.css /
+   dark.css) room to read as a panel, matching the app's other titled cards
+   (e.g. .ally-config-section, .session-manager-group). The themed legend bar
+   sits at the top-left as the card's header chip.
+   Also reset the fieldset's intrinsic min-width (browsers default fieldsets to
+   min-width: min-content, which would prevent shrinking and cause horizontal
+   overflow at 320px). */
 .mathpix-context-form fieldset {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  border: 0;
+  border: 1px solid currentColor; /* background + any tint live in the theme files */
+  border-radius: 4px;
   margin: 0;
-  padding: 0;
+  padding: 1.25rem 1.5rem 1.5rem;
   min-width: 0;
 }
 
@@ -74,7 +94,13 @@
   margin: 0;
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
-  border-left: 3px solid currentColor;
+  /* border-left split into longhands (width + style only) so the theme files
+     can set ONLY the accent colour (border-left-color) without a shorthand
+     here — which loads after the theme files — resetting it. border-left-color
+     is deliberately left unset so it defaults to currentColor until a theme
+     overrides it. */
+  border-left-width: 3px;
+  border-left-style: solid;
   background: transparent;
 }
 
@@ -117,5 +143,159 @@
 
   .mathpix-context-form .mathpix-context-field:has(textarea) {
     grid-column: 1 / -1;
+  }
+}
+
+/* ============================================================================
+   AI AUTO-FILL CONTROL (P5) — layout only
+   The `.mathpix-context-ai` block follows the fieldset card and holds the
+   Analyse button, its hint, the cost preview, the progress host, the
+   before/after summary and the Undo button. Colour is theme-owned (light.css /
+   dark.css); the before/after emphasis is carried HERE by weight + style — not
+   colour alone — so the distinction survives in greyscale and for colour-blind
+   users. Borders and focus rings for the two buttons are also theme-owned and
+   deliberately absent here: the theme files load first, so a border shorthand
+   in this file would reset their colour.
+   ============================================================================ */
+
+.mathpix-context-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+/* Analyse + Undo buttons: icon + label aligned, comfortable target size, sized
+   to their content at the start of the row (the surrounding callouts stretch). */
+.mathpix-context-ai #resume-context-ai-analyse,
+.mathpix-context-ai #resume-context-ai-undo {
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Set `display` only where the button is visible: the Undo button keeps the
+   `hidden` attribute until a fill completes, and an unconditional `display`
+   would override `[hidden]`. */
+.mathpix-context-ai #resume-context-ai-analyse,
+.mathpix-context-ai #resume-context-ai-undo:not([hidden]) {
+  display: inline-flex;
+}
+
+.mathpix-context-ai #resume-context-ai-analyse:disabled {
+  cursor: not-allowed;
+}
+
+/* Cost preview — a compact left-accent callout (mirrors the convert size
+   readout); collapses entirely until it carries text. */
+#resume-context-ai-cost {
+  padding: 0.4rem 0.6rem;
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+#resume-context-ai-cost:empty {
+  display: none;
+}
+
+/* Progress — a house-style status row (icon-library icon + label) rendered by
+   the module as a left-accent callout, congruent with the cost/summary panels.
+   Collapses entirely between runs; colour (per data-state) is theme-owned. */
+#resume-context-ai-progress:empty {
+  display: none;
+}
+
+#resume-context-ai-progress:not(:empty) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.context-ai-progress-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.context-ai-progress-icon .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Summary — a heading plus one left-accent callout row per field. */
+#resume-context-ai-summary:empty {
+  display: none;
+}
+
+.context-ai-summary-heading {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.context-ai-summary-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.context-ai-summary-row {
+  padding: 0.4rem 0.6rem;
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.context-ai-summary-label {
+  font-weight: 600;
+}
+
+.context-ai-summary-arrow {
+  padding: 0 0.25rem;
+}
+
+#resume-context-ai-summary {
+  border: 1px solid currentcolor;
+
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+/* Non-colour emphasis for the before/after pair: the prior value is italic and
+   the new value is bold, so the change reads without relying on colour. Theme
+   files layer colour on top of these cues. */
+.context-ai-summary-before {
+  font-style: italic;
+}
+
+.context-ai-summary-after {
+  font-weight: 700;
+}
+
+/* Spinner — only animates when the user has NOT asked for reduced motion, so
+   reduced motion is the safe default (no animation outside this block). */
+@media (prefers-reduced-motion: no-preference) {
+  .context-ai-progress-spin .icon {
+    animation: context-ai-progress-spin 0.9s linear infinite;
+  }
+}
+
+@keyframes context-ai-progress-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

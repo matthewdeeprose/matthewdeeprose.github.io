@@ -109,6 +109,25 @@
     /^o4.*$/i, // o4, o4-mini, etc.
   ];
 
+  // Deployment-name patterns for models whose strict MaaS schema rejects
+  // `max_completion_tokens` (HTTP 422 extra_forbidden, confirmed 19 June 2026)
+  // and require plain `max_tokens` instead. Tested against the STRIPPED
+  // deployment id (e.g. "Mistral-Large-3"), not the prefixed library id.
+  // Add new strict surfaces here.
+  const PLAIN_MAX_TOKENS_PATTERNS = [/^Mistral-Large-3$/i];
+
+  // Reasoning-budget floor for chat-surface models that spend hidden reasoning
+  // budget before any visible content. A tiny token cap is consumed entirely by
+  // that hidden phase, yielding a completed-but-EMPTY answer (observed for Kimi
+  // at a 60-token cap, 19 June 2026). We raise sub-floor caps to this value.
+  //
+  // DISTINCT from REASONING_MODEL_PATTERNS: these models accept temperature/top_p
+  // (Kimi does), they just need a minimum budget. Mirrors the Responses provider's
+  // REASONING_OUTPUT_FLOOR, but at a far smaller, probe-sized value (1024 vs 16000)
+  // because the chat surface only needs enough headroom to emit visible content.
+  const REASONING_BUDGET_FLOOR = 1024;
+  const REASONING_BUDGET_FLOOR_PATTERNS = [/^Kimi-K2\.5$/i, /^gpt-oss.*$/i];
+
   // ============================================================================
   // INTERNAL HELPERS
   // ============================================================================
@@ -218,6 +237,45 @@
   }
 
   /**
+   * Test whether a stripped deployment id matches any pattern in
+   * PLAIN_MAX_TOKENS_PATTERNS — i.e. its strict MaaS schema rejects
+   * `max_completion_tokens` and needs plain `max_tokens`. Used by
+   * buildRequest to choose the token field name.
+   *
+   * @param {string} strippedDeploymentId - e.g. "Mistral-Large-3" (NOT
+   *   "azure-openai/Mistral-Large-3"). Strip the registry prefix before
+   *   calling this.
+   * @returns {boolean}
+   * @private
+   */
+  function usesPlainMaxTokens(strippedDeploymentId) {
+    if (typeof strippedDeploymentId !== "string" || !strippedDeploymentId) {
+      return false;
+    }
+    return PLAIN_MAX_TOKENS_PATTERNS.some((re) => re.test(strippedDeploymentId));
+  }
+
+  /**
+   * Test whether a stripped deployment id matches any pattern in
+   * REASONING_BUDGET_FLOOR_PATTERNS — i.e. it spends hidden reasoning budget
+   * before visible content and so needs a minimum token cap. Used by
+   * buildRequest to decide whether to raise a sub-floor token cap.
+   *
+   * @param {string} strippedDeploymentId - e.g. "Kimi-K2.5" (NOT
+   *   "azure-openai/Kimi-K2.5"). Strip the registry prefix before calling this.
+   * @returns {boolean}
+   * @private
+   */
+  function usesReasoningBudgetFloor(strippedDeploymentId) {
+    if (typeof strippedDeploymentId !== "string" || !strippedDeploymentId) {
+      return false;
+    }
+    return REASONING_BUDGET_FLOOR_PATTERNS.some((re) =>
+      re.test(strippedDeploymentId),
+    );
+  }
+
+  /**
    * Parse a single SSE `data:` line into a parsed chunk object.
    *
    * Returns null for the [DONE] terminator, malformed JSON (logged as warn),
@@ -311,15 +369,22 @@
      * though the surface does) is declared in config.models[i].capabilities
      * (architecture decision A7).
      *
-     *   - pdf: false is canonical — Foundry has uneven PDF support;
-     *     the library extracts text client-side before sending.
+     *   - pdf: true — the chat surface reads PDF via Azure server-side
+     *     extraction across the OpenAI-family vision deployments (proven this
+     *     session against an image-only scan: gpt-5.4/.4-mini/.4-nano, gpt-5/
+     *     .1/.2, gpt-4.1/-mini/-nano, gpt-4o, o4-mini all read it cheaply). The
+     *     floor is true; per-model variation is declared per model, not here —
+     *     gpt-4o-mini transmits but reads blind (its def omits the "pdf" token),
+     *     and non-OpenAI-format MaaS deployments (e.g. Phi-4-multimodal) reject
+     *     the file part on this route with HTTP 422, pending the deferred
+     *     azure-inference surface.
      *   - reasoning: true reflects o-series and GPT-5 family support.
      *     Empirical content-format work happens in Task 2.6.
      */
     capabilities: {
       streaming: true,
       images: true,
-      pdf: false,
+      pdf: true,
       reasoning: true,
       toolCalls: true,
     },
@@ -380,10 +445,40 @@
       //
       // `max_tokens` takes precedence if both are somehow set (unusual
       // but well-defined — the rename always wins).
+      //
+      // Token-field quirk (19 June 2026): strict-MaaS deployments
+      // (PLAIN_MAX_TOKENS_PATTERNS, e.g. Mistral-Large-3) reject
+      // `max_completion_tokens` with HTTP 422 extra_forbidden and need plain
+      // `max_tokens`. usesPlainMaxTokens picks the wire field accordingly;
+      // every other surface keeps the OpenAI-style `max_completion_tokens`.
+      const tokenField = usesPlainMaxTokens(deploymentName)
+        ? "max_tokens"
+        : "max_completion_tokens";
+      let tokenValue = null;
       if (typeof options.max_tokens === "number") {
-        body.max_completion_tokens = options.max_tokens;
+        tokenValue = options.max_tokens;
       } else if (typeof options.max_completion_tokens === "number") {
-        body.max_completion_tokens = options.max_completion_tokens;
+        tokenValue = options.max_completion_tokens;
+      }
+      if (tokenValue !== null) {
+        body[tokenField] = tokenValue;
+      }
+
+      // Reasoning-budget floor (19 June 2026). Chat models in
+      // REASONING_BUDGET_FLOOR_PATTERNS (e.g. Kimi-K2.5) spend hidden reasoning
+      // budget before emitting visible content, so a sub-floor cap returns a
+      // completed-but-empty answer. Raise such caps to REASONING_BUDGET_FLOOR.
+      if (
+        tokenValue !== null &&
+        typeof body[tokenField] === "number" &&
+        body[tokenField] < REASONING_BUDGET_FLOOR &&
+        usesReasoningBudgetFloor(deploymentName)
+      ) {
+        const original = body[tokenField];
+        body[tokenField] = REASONING_BUDGET_FLOOR;
+        logDebug(
+          `Reasoning-budget floor: raised ${tokenField} ${original} → ${REASONING_BUDGET_FLOOR} for ${deploymentName}`,
+        );
       }
 
       // Sampling-parameter drop for reasoning models (Task 2.4).
@@ -526,6 +621,12 @@
       const onComplete =
         typeof opts.onComplete === "function" ? opts.onComplete : null;
       const onError = typeof opts.onError === "function" ? opts.onError : null;
+      // Reasoning surfacing: some chat models stream their reasoning as
+      // delta.reasoning_content (e.g. Kimi-K2.5, null once visible content
+      // starts). Forward its TEXT through onReasoning, mirroring the Responses
+      // provider's summary-delta handling. The answer buffer is never touched.
+      const onReasoning =
+        typeof opts.onReasoning === "function" ? opts.onReasoning : null;
       const abortSignal = opts.abortSignal || null;
 
       try {
@@ -582,6 +683,25 @@
           const choice = parsed && parsed.choices && parsed.choices[0];
           const delta = choice && choice.delta;
           const contentPiece = delta && delta.content;
+
+          // Reasoning surfacing: forward delta.reasoning_content TEXT through
+          // onReasoning (typed summary payload), independent of delta.content.
+          // Kimi-K2.5 streams reasoning here, null once content starts.
+          const reasoningPiece = delta && delta.reasoning_content;
+          if (
+            onReasoning &&
+            typeof reasoningPiece === "string" &&
+            reasoningPiece.length > 0
+          ) {
+            try {
+              onReasoning({ type: "summary", text: reasoningPiece });
+            } catch (callbackErr) {
+              logWarn(
+                "onReasoning (reasoning_content) callback threw:",
+                callbackErr,
+              );
+            }
+          }
 
           // Emit only when content is a non-empty string. Role-only chunks
           // (typically the first) are skipped to avoid empty callbacks.

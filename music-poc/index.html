@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Accessible Music PoC</title>
+  </head>
+  <body>
+    <header>
+      <h1>Accessible Music proof of concept</h1>
+      <p>
+        Upload a MusicXML file to see it rendered as a visual score, a screen
+        reader note list, and a plain-language summary.
+      </p>
+    </header>
+
+    <main>
+      <!-- File chooser: visible label associated with the input by its id. -->
+      <div>
+        <label for="musicFile">Choose a MusicXML file</label>
+        <input type="file" id="musicFile" accept=".xml,.musicxml,.mxl" />
+      </div>
+
+      <!-- Transpose: shifts the source once so every output follows. Sits by the
+           input because it affects all outputs, not just one section. -->
+      <section aria-labelledby="transposeHeading">
+        <h2 id="transposeHeading">Transpose</h2>
+        <div id="transposeMount"></div>
+      </section>
+
+      <!-- Status line doubles as a polite live region; empty until updated. -->
+      <p id="status" aria-live="polite"></p>
+
+      <!-- Visual score: rendered output will be mounted into scoreMount. -->
+      <section aria-labelledby="scoreHeading">
+        <h2 id="scoreHeading">Visual score</h2>
+        <div id="scoreMount"></div>
+      </section>
+
+      <!-- Screen reader note list: a textual note-by-note listing. -->
+      <section aria-labelledby="noteListHeading">
+        <h2 id="noteListHeading">Screen reader note list</h2>
+        <div id="noteListMount"></div>
+      </section>
+
+      <!-- Plain-language summary of the piece. -->
+      <section aria-labelledby="summaryHeading">
+        <h2 id="summaryHeading">Plain-language summary</h2>
+        <div id="summaryMount"></div>
+      </section>
+
+      <!-- Audio playback: Play and Stop controls mounted into audioMount. -->
+      <section aria-labelledby="audioHeading">
+        <h2 id="audioHeading">Audio playback</h2>
+        <div id="audioMount"></div>
+      </section>
+
+      <!-- Download a Standard MIDI File built from the parsed model. -->
+      <section aria-labelledby="midiHeading">
+        <h2 id="midiHeading">Download as MIDI</h2>
+        <div id="midiMount"></div>
+      </section>
+
+      <!-- Download the source MusicXML back out. -->
+      <section aria-labelledby="exportHeading">
+        <h2 id="exportHeading">Download the source</h2>
+        <div id="exportMount"></div>
+      </section>
+
+      <!-- Download a baseline-tagged PDF of the current (possibly transposed)
+           score. Static HTML: the button reads state at click time, so it needs
+           no per-upload rebuild. icon-library.js auto-populates the data-icon
+           span on load because the button is in the initial DOM. pdfStatus is a
+           dedicated polite live region for the compile wait, kept separate from
+           #status so it never collides with the notify toasts. -->
+      <section aria-labelledby="pdfHeading">
+        <h2 id="pdfHeading">Download tagged PDF</h2>
+        <button type="button" id="pdfButton"><span aria-hidden="true" data-icon="download"></span> Download tagged PDF</button>
+        <p id="pdfStatus" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        An accessibility-focused experiment by the University of Southampton.
+      </p>
+    </footer>
+
+    <!--
+      Icon library lives at the repository root, one directory above this
+      music-poc folder. It is self-contained and auto-populates any
+      [data-icon] spans on load.
+    -->
+    <script src="../icon-library.js"></script>
+    <script src="js/music-log.js"></script>
+    <script src="js/music-announce.js"></script>
+    <script src="js/music-notify.js"></script>
+    <script src="js/music-confirm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.9.3/build/opensheetmusicdisplay.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/verovio@6.2.0/dist/verovio-toolkit-wasm.js"></script>
+    <script src="js/music-parse-note.js"></script>
+    <script src="js/music-parse-structure.js"></script>
+    <script src="js/music-parse.js"></script>
+    <script src="js/music-render-score.js"></script>
+    <script src="js/music-names.js"></script>
+    <script src="js/music-model-walk.js"></script>
+    <script src="js/music-render-phrase.js"></script>
+    <script src="js/music-render-text.js"></script>
+    <script src="js/music-render-summary.js"></script>
+    <script src="js/music-export.js"></script>
+    <script src="js/music-audio-schedule.js"></script>
+    <script src="js/music-audio.js"></script>
+    <script src="js/music-midi-build.js"></script>
+    <script src="js/music-midi.js"></script>
+    <script src="js/music-transpose.js"></script>
+    <script src="js/music-play-along.js"></script>
+    <!-- PDF pipeline: the pure builder and the rasterise primitive load before
+         the orchestrator that drives them. -->
+    <script src="js/music-pdf-markup.js"></script>
+    <script src="js/music-pdf-rasterise.js"></script>
+    <script src="js/music-pdf.js"></script>
+    <!-- music-app references all the other globals, so it loads last. -->
+    <script src="js/music-app.js"></script>
+  </body>
+</html>

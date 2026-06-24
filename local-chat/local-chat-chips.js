@@ -8,7 +8,10 @@
   "use strict";
 
   // ── Guard: state module must be loaded first ─────────────────────────────
-  var S = window.LocalChatState;
+  // Module-local, re-bindable state reference (defaults to the back-compat
+  // global). All internal code reads through `S`, so attach() can later swap
+  // in a different state object and the module follows it.
+  let S = window.LocalChatState;
   if (!S) {
     console.error(
       "[LocalChatChips] local-chat-state.js must be loaded before local-chat-chips.js",
@@ -593,9 +596,17 @@
     }
   }
 
+  // ── Attach a (possibly different) state object ────────────────────────
+  // Re-points the module's state reference. Not called anywhere yet; a future
+  // unified-chat caller can hand this module its own state instance.
+  function attach(state) {
+    S = state;
+  }
+
   // ── Expose module ────────────────────────────────────────────────────
 
   window.LocalChatChips = {
+    attach: attach,
     getStarterChips: getStarterChips,
     getSpeedRating: getSpeedRating,
     renderWelcomeCard: renderWelcomeCard,

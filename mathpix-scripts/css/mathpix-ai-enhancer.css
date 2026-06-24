@@ -1256,6 +1256,8 @@
 .document-analysis-container .stat-item dt {
   font-weight: 600;
   font-size: 0.85em;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .document-analysis-container .stat-item dd {

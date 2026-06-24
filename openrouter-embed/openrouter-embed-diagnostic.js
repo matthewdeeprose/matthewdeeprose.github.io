@@ -1947,6 +1947,141 @@ const hello = 'world';
       allOk =
         check("Non-reasoning model keeps top_p", body5.top_p === 0.9) && allOk;
 
+      // (a) Strict-MaaS token field: Mistral-Large-3 rejects
+      // max_completion_tokens (422 extra_forbidden, 19 June 2026) and needs
+      // plain max_tokens. buildRequest must emit max_tokens, NOT
+      // max_completion_tokens.
+      const body6 = provider.buildRequest(messages, {
+        model: "azure-openai/Mistral-Large-3",
+        max_tokens: 2000,
+      });
+      allOk =
+        check(
+          "Mistral-Large-3 uses plain max_tokens",
+          body6.max_tokens === 2000
+        ) && allOk;
+      allOk =
+        check(
+          "Mistral-Large-3 omits max_completion_tokens",
+          !("max_completion_tokens" in body6)
+        ) && allOk;
+
+      // (b) Regression guard: standard reasoning model (gpt-5.4-mini) still
+      // uses max_completion_tokens, NOT plain max_tokens.
+      const body7 = provider.buildRequest(messages, {
+        model: "azure-openai/gpt-5.4-mini",
+        max_tokens: 2000,
+      });
+      allOk =
+        check(
+          "gpt-5.4-mini uses max_completion_tokens",
+          body7.max_completion_tokens === 2000
+        ) && allOk;
+      allOk =
+        check(
+          "gpt-5.4-mini omits plain max_tokens",
+          !("max_tokens" in body7)
+        ) && allOk;
+
+      // (c) Regression guard: Kimi-K2.5 accepts temperature/top_p (19 June
+      // 2026) — it must NOT be treated as a sampling-drop reasoning model.
+      const body8 = provider.buildRequest(messages, {
+        model: "azure-openai/Kimi-K2.5",
+        max_tokens: 2000,
+        temperature: 0.5,
+      });
+      allOk =
+        check(
+          "Kimi-K2.5 keeps temperature (not dropped)",
+          body8.temperature === 0.5
+        ) && allOk;
+
+      // (d) Reasoning-budget floor: Kimi-K2.5 spends hidden reasoning budget,
+      // so a sub-floor cap (60) is raised to REASONING_BUDGET_FLOOR (1024).
+      const body9 = provider.buildRequest(messages, {
+        model: "azure-openai/Kimi-K2.5",
+        max_tokens: 60,
+      });
+      allOk =
+        check(
+          "Kimi-K2.5 max_tokens 60 floored to 1024",
+          body9.max_completion_tokens === 1024
+        ) && allOk;
+
+      // (e) Floor does NOT apply to Mistral-Large-3 — it is not in
+      // REASONING_BUDGET_FLOOR_PATTERNS, so a small cap passes through unchanged
+      // (and on the plain max_tokens field).
+      const body10 = provider.buildRequest(messages, {
+        model: "azure-openai/Mistral-Large-3",
+        max_tokens: 60,
+      });
+      allOk =
+        check(
+          "Mistral-Large-3 max_tokens 60 NOT floored",
+          body10.max_tokens === 60
+        ) && allOk;
+
+      // (f) Reasoning surfacing: a Kimi SSE chunk carrying
+      // delta.reasoning_content must fire onReasoning({ type:"summary", text })
+      // while the answer buffer (delta.content) stays clean. Mirrors the
+      // Responses summary-delta harness (RESPONSES TEST 13) with a fetch mock.
+      const origFetch = window.fetch;
+      try {
+        const sse =
+          'data: {"choices":[{"index":0,"delta":{"reasoning_content":"thinking..."}}]}\n\n' +
+          'data: {"choices":[{"index":0,"delta":{"content":"answer"}}]}\n\n' +
+          'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":5,"completion_tokens":1,"total_tokens":6}}\n\n' +
+          "data: [DONE]\n\n";
+        const stream = new ReadableStream({
+          start(c) {
+            c.enqueue(new TextEncoder().encode(sse));
+            c.close();
+          },
+        });
+        const fake = new Response(stream, {
+          status: 200,
+          headers: { "Content-Type": "text/event-stream" },
+        });
+        window.fetch = async () => fake;
+
+        const summaryPayloads = [];
+        let completeText = null;
+        await provider.streamRequest(messages, {
+          model: "azure-openai/Kimi-K2.5",
+          providerConfig: { proxyUrl: "http://test.invalid" },
+          onReasoning: (info) => {
+            if (info && info.type === "summary") summaryPayloads.push(info);
+          },
+          onComplete: (full) => {
+            completeText = full;
+          },
+        });
+
+        allOk =
+          check(
+            "Kimi reasoning_content fires onReasoning once with { type:'summary' }",
+            summaryPayloads.length === 1
+          ) && allOk;
+        allOk =
+          check(
+            "Kimi onReasoning summary text === 'thinking...'",
+            summaryPayloads[0] && summaryPayloads[0].text === "thinking..."
+          ) && allOk;
+        allOk =
+          check(
+            "Kimi answer text contains 'answer'",
+            typeof completeText === "string" && completeText.includes("answer")
+          ) && allOk;
+        allOk =
+          check(
+            "Kimi answer text does NOT contain reasoning_content",
+            typeof completeText === "string" &&
+              !completeText.includes("thinking...")
+          ) && allOk;
+      } finally {
+        window.fetch = origFetch;
+      }
+
       console.log(
         allOk
           ? "\n🎉 TEST 4 PASSED!\n"
@@ -2521,6 +2656,123 @@ const hello = 'world';
       return allOk;
     } catch (error) {
       console.error(`❌ RESPONSES TEST 7 FAILED with error: ${error.message}`);
+      return false;
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SUB-TEST 22: buildRequest — PDF file translation (file → input_file item)
+  //   Sibling of the vision test (TEST 7). A PDF file part must map to a single
+  //   input_file item carrying the unchanged file_data data-URL and the
+  //   filename. Two negative guards: an image array still yields input_image and
+  //   NO input_file, and a text-only array yields neither. Offline — tiny fake
+  //   base64, no real PDF, no network.
+  // ──────────────────────────────────────────────────────────────────────────
+  window.testEmbedResponses_BuildRequestPdf = async function () {
+    console.log("\n🧪 RESPONSES TEST 22: buildRequest — PDF file → input_file");
+    console.log("========================================================\n");
+    try {
+      let allOk = true;
+      const p = getResponsesProvider();
+      if (!p) return check("azure-responses provider available", false);
+
+      // Canonical content as openrouter-embed-file.js preparePDFContent produces:
+      // a PDF file part followed by a text part.
+      const pdfDataUrl = "data:application/pdf;base64,QUJD";
+      const pdfMsg = {
+        role: "user",
+        content: [
+          { type: "file", file: { filename: "x.pdf", file_data: pdfDataUrl } },
+          { type: "text", text: "summarise" },
+        ],
+      };
+      const body = p.buildRequest([pdfMsg], {
+        model: "azure-responses/gpt-5-pro",
+        max_tokens: 512,
+      });
+      const content =
+        Array.isArray(body.input) && body.input[0] ? body.input[0].content : null;
+      const fileParts = content
+        ? content.filter((part) => part.type === "input_file")
+        : [];
+      const filePart = fileParts[0];
+      const txtPart =
+        content && content.find((part) => part.type === "input_text");
+
+      allOk =
+        check("body.input is an item-array", Array.isArray(body.input)) && allOk;
+      allOk = check("exactly one input_file part", fileParts.length === 1) && allOk;
+      allOk =
+        check(
+          "input_file.filename === 'x.pdf'",
+          !!filePart && filePart.filename === "x.pdf"
+        ) && allOk;
+      allOk =
+        check(
+          "input_file.file_data passed through unchanged",
+          !!filePart && filePart.file_data === pdfDataUrl
+        ) && allOk;
+      allOk =
+        check(
+          "input_text part carries the prompt",
+          !!txtPart && txtPart.text === "summarise"
+        ) && allOk;
+
+      // Negative guard 1: an image array still maps to input_image, never input_file.
+      const imgDataUrl =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      const imgBody = p.buildRequest(
+        [
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: imgDataUrl } },
+              { type: "text", text: "describe" },
+            ],
+          },
+        ],
+        { model: "azure-responses/gpt-5-pro", max_tokens: 512 }
+      );
+      const imgContent =
+        Array.isArray(imgBody.input) && imgBody.input[0]
+          ? imgBody.input[0].content
+          : [];
+      allOk =
+        check(
+          "image array → input_image present",
+          imgContent.some((part) => part.type === "input_image")
+        ) && allOk;
+      allOk =
+        check(
+          "image array → NO input_file",
+          !imgContent.some((part) => part.type === "input_file")
+        ) && allOk;
+
+      // Negative guard 2: a text-only array yields neither input_file nor input_image.
+      const txtBody = p.buildRequest([{ role: "user", content: "just text" }], {
+        model: "azure-responses/gpt-5-pro",
+        max_tokens: 512,
+      });
+      const txtContent =
+        Array.isArray(txtBody.input) && txtBody.input[0]
+          ? txtBody.input[0].content
+          : [];
+      allOk =
+        check(
+          "text-only → neither input_file nor input_image",
+          !txtContent.some(
+            (part) => part.type === "input_file" || part.type === "input_image"
+          )
+        ) && allOk;
+
+      console.log(
+        allOk
+          ? "\n🎉 RESPONSES TEST 22 PASSED!\n"
+          : "\n❌ RESPONSES TEST 22 FAILED.\n"
+      );
+      return allOk;
+    } catch (error) {
+      console.error(`❌ RESPONSES TEST 22 FAILED with error: ${error.message}`);
       return false;
     }
   };
@@ -3589,6 +3841,7 @@ const hello = 'world';
       parseStreamChunk: await window.testEmbedResponses_ParseStreamChunk(),
       streamRequestMocked: await window.testEmbedResponses_StreamRequestMocked(),
       buildRequestVision: await window.testEmbedResponses_BuildRequestVision(),
+      buildRequestPdf: await window.testEmbedResponses_BuildRequestPdf(),
       buildRequestFloor: await window.testEmbedResponses_BuildRequestFloor(),
       parseResponseEmpty: await window.testEmbedResponses_ParseResponseEmpty(),
       streamHeartbeat: await window.testEmbedResponses_StreamHeartbeat(),
@@ -3630,6 +3883,7 @@ const hello = 'world';
       "parseStreamChunk",
       "streamRequestMocked",
       "buildRequestVision",
+      "buildRequestPdf",
       "buildRequestFloor",
       "parseResponseEmpty",
       "streamHeartbeat",

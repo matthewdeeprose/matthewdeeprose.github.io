@@ -9,7 +9,12 @@
   "use strict";
 
   // ── Shared state (from local-chat-state.js) ─────────────────────────────
-  var S = window.LocalChatState;
+  // S is a re-bindable module-local reference to the current conversation
+  // state, defaulting to window.LocalChatState. Internal code reads the
+  // cached DOM map (S.els) and the messages[] array live through S at call
+  // time, never caching either at load, so the state object can be swapped
+  // in future without leaving a stale snapshot behind.
+  let S = window.LocalChatState;
   if (!S) {
     console.error(
       "[LocalChat] local-chat-state.js must be loaded before local-chat.js",
@@ -25,9 +30,6 @@
 
   // ── Persistence module reference (from local-chat-persistence.js) ──────
   var P = window.LocalChatPersistence;
-
-  // ── Cached DOM references ───────────────────────────────────────────────
-  var els = S.els;
 
   function navigateToSetupModel(modelKey) {
     var radio = document.getElementById("SetUp");
@@ -45,36 +47,38 @@
   }
 
   function cacheElements() {
-    els.select = document.getElementById("local-chat-model-select");
-    els.status = document.getElementById("local-chat-model-status");
-    els.messageList = document.getElementById("local-chat-messages");
-    els.input = document.getElementById("local-chat-input");
-    els.sendBtn = document.getElementById("local-chat-send");
-    els.cancelBtn = document.getElementById("local-chat-cancel");
-    els.stats = document.getElementById("local-chat-stats");
-    els.systemInput = document.getElementById("local-chat-system-input");
-    els.clearBtn = document.getElementById("local-chat-clear");
-    els.downloadBtn = document.getElementById("local-chat-download");
-    els.newChatBtn = document.getElementById("local-chat-new-chat");
-    els.presetSelect = document.getElementById("local-chat-preset-select");
-    els.modelInfo = document.getElementById("local-chat-model-info-body");
+    var els = S.els;
+    els.select = document.getElementById(S.elId("model-select"));
+    els.status = document.getElementById(S.elId("model-status"));
+    els.messageList = document.getElementById(S.elId("messages"));
+    els.input = document.getElementById(S.elId("input"));
+    els.sendBtn = document.getElementById(S.elId("send"));
+    els.cancelBtn = document.getElementById(S.elId("cancel"));
+    els.stats = document.getElementById(S.elId("stats"));
+    els.systemInput = document.getElementById(S.elId("system-input"));
+    els.clearBtn = document.getElementById(S.elId("clear"));
+    els.downloadBtn = document.getElementById(S.elId("download"));
+    els.newChatBtn = document.getElementById(S.elId("new-chat"));
+    els.presetSelect = document.getElementById(S.elId("preset-select"));
+    els.modelInfo = document.getElementById(S.elId("model-info-body"));
     els.scrollBtn = null; // Created dynamically in init
-    els.temperatureSlider = document.getElementById("local-chat-temperature");
+    els.temperatureSlider = document.getElementById(S.elId("temperature"));
     els.temperatureValue = document.getElementById(
-      "local-chat-temperature-value",
+      S.elId("temperature-value"),
     );
     els.temperatureDesc = document.getElementById(
-      "local-chat-temperature-desc",
+      S.elId("temperature-desc"),
     );
-    els.maxTokensSlider = document.getElementById("local-chat-max-tokens");
-    els.maxTokensValue = document.getElementById("local-chat-max-tokens-value");
-    els.maxTokensDesc = document.getElementById("local-chat-max-tokens-desc");
-    els.inputCounter = document.getElementById("local-chat-input-counter");
+    els.maxTokensSlider = document.getElementById(S.elId("max-tokens"));
+    els.maxTokensValue = document.getElementById(S.elId("max-tokens-value"));
+    els.maxTokensDesc = document.getElementById(S.elId("max-tokens-desc"));
+    els.inputCounter = document.getElementById(S.elId("input-counter"));
   }
 
   // ── Model selector population ───────────────────────────────────────────
 
   function populateModelSelector() {
+    var els = S.els;
     if (!els.select) return;
     if (!window.LocalTextModelRegistry) {
       S.logWarn(
@@ -106,6 +110,7 @@
   // ── Model status display ────────────────────────────────────────────────
 
   function updateModelStatus() {
+    var els = S.els;
     if (!els.status || !S.currentModel) return;
 
     let state = "unknown";
@@ -157,6 +162,7 @@
   // ── Stats display ──────────────────────────────────────────────────────
 
   function updateStats(metadata) {
+    var els = S.els;
     if (!els.stats || !metadata) return;
     const parts = [];
     if (metadata.tokensPerSecond) {
@@ -174,6 +180,7 @@
   // ── Context gauge ──────────────────────────────────────────────────────
 
   function updateContextGauge() {
+    var els = S.els;
     if (!els.stats || !S.currentModel) return;
 
     // Get context limit from registry
@@ -193,10 +200,10 @@
     const estimatedTokens = Math.ceil(totalChars / 4);
 
     // Update or create the gauge element
-    let gauge = document.getElementById("local-chat-context-gauge");
+    let gauge = document.getElementById(S.elId("context-gauge"));
     if (!gauge) {
       gauge = document.createElement("span");
-      gauge.id = "local-chat-context-gauge";
+      gauge.id = S.elId("context-gauge");
       gauge.className = "local-chat-context-gauge";
       els.stats.appendChild(gauge);
     }
@@ -225,10 +232,11 @@
   // ── Message count badge ─────────────────────────────────────────────────
 
   function updateMessageCount() {
-    let countEl = document.getElementById("local-chat-message-count");
+    var els = S.els;
+    let countEl = document.getElementById(S.elId("message-count"));
     if (!countEl) {
       countEl = document.createElement("span");
-      countEl.id = "local-chat-message-count";
+      countEl.id = S.elId("message-count");
       countEl.className = "local-chat-message-count";
       if (els.stats) els.stats.appendChild(countEl);
     }
@@ -247,6 +255,7 @@
   // ── Embed instance management ──────────────────────────────────────────
 
   function getOrCreateEmbed() {
+    var els = S.els;
     if (S.currentEmbed && S.currentEmbed.model === "local/" + S.currentModel) {
       return S.currentEmbed;
     }
@@ -258,7 +267,7 @@
     }
 
     S.currentEmbed = new window.OpenRouterEmbed({
-      containerId: "local-chat-messages", // Required by constructor; overridden per-send
+      containerId: S.elId("messages"), // Required by constructor; overridden per-send
       model: "local/" + S.currentModel,
       systemPrompt: systemPrompt || undefined,
       max_tokens: S.getMaxTokens(),
@@ -274,6 +283,7 @@
   // ── Button state helpers ────────────────────────────────────────────────
 
   function updateButtonStates() {
+    var els = S.els;
     var hasMessages = S.messages.length > 0;
     if (els.clearBtn) els.clearBtn.disabled = !hasMessages;
     if (els.newChatBtn) els.newChatBtn.disabled = !hasMessages;
@@ -293,12 +303,14 @@
   // ── UI state helpers ───────────────────────────────────────────────────
 
   function disableSend() {
+    var els = S.els;
     if (els.sendBtn) els.sendBtn.disabled = true;
     if (els.cancelBtn) els.cancelBtn.hidden = false;
     if (els.input) els.input.disabled = true;
   }
 
   function enableSend() {
+    var els = S.els;
     if (els.sendBtn) els.sendBtn.disabled = false;
     if (els.cancelBtn) els.cancelBtn.hidden = true;
     if (els.input) {
@@ -343,6 +355,7 @@
   // ── Send flow ──────────────────────────────────────────────────────────
 
   function sendMessage() {
+    var els = S.els;
     if (!els.input) return;
 
     const text = els.input.value.trim();
@@ -429,6 +442,7 @@
   // ── WebGPU check ─────────────────────────────────────────────────────────
 
   function checkWebGPU() {
+    var els = S.els;
     const hasWebGPU = !!navigator.gpu;
     if (!hasWebGPU) {
       if (els.messageList) {
@@ -447,7 +461,17 @@
   // ── Init / Refresh ──────────────────────────────────────────────────────
 
   function init() {
+    var els = S.els;
     cacheElements();
+
+    // Hand every consumer this tool's state object explicitly, now that the
+    // elements are cached into it. For Local Chat S is window.LocalChatState
+    // (each consumer's own default), so this is behaviour-preserving — it just
+    // makes the wiring explicit. Placed before any consumer call below so they
+    // act on the attached state. No tool-switch / re-attach logic here.
+    Chips.attach(S);
+    M.attach(S);
+    P.attach(S);
 
     if (!checkWebGPU()) return;
 
@@ -457,7 +481,7 @@
     // Create scroll-to-bottom button
     if (els.messageList) {
       const scrollBtn = document.createElement("button");
-      scrollBtn.id = "local-chat-scroll-bottom";
+      scrollBtn.id = S.elId("scroll-bottom");
       scrollBtn.className = "local-chat-scroll-bottom";
       scrollBtn.setAttribute("aria-label", "Scroll to latest message");
       scrollBtn.hidden = true;
@@ -530,7 +554,7 @@
     // Escape key closes history panel
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
-        var panel = document.getElementById("local-chat-history-panel");
+        var panel = document.getElementById(S.elId("history-panel"));
         if (panel) {
           P.closeHistoryPanel();
           e.preventDefault();
@@ -568,11 +592,11 @@
   var exportMenuOpen = false;
 
   function getExportTrigger() {
-    return document.getElementById("local-chat-download");
+    return document.getElementById(S.elId("download"));
   }
 
   function getExportMenu() {
-    return document.getElementById("local-chat-export-menu");
+    return document.getElementById(S.elId("export-menu"));
   }
 
   function openExportMenu() {
@@ -684,6 +708,7 @@
   };
 
   window.localChatPresetChange = function () {
+    var els = S.els;
     if (!els.presetSelect || !els.systemInput) return;
     const key = els.presetSelect.value;
     if (key && S.SYSTEM_PRESETS[key]) {
@@ -701,6 +726,7 @@
   };
 
   window.localChatCancel = function () {
+    var els = S.els;
     if (!S.isGenerating || !S.currentModel) return;
 
     // Engine-aware cancellation: WebLLM vs ONNX
@@ -797,6 +823,7 @@
   };
 
   window.localChatModelChange = function () {
+    var els = S.els;
     if (!els.select) return;
     const newModel = els.select.value;
 

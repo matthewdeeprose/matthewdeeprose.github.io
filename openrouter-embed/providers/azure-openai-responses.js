@@ -301,26 +301,34 @@
    * translating canonical chat-completions content into Responses content
    * parts (plan §4).
    *
-   * Two regimes, chosen by whether the message carries any image part:
+   * Two regimes, chosen by whether the message carries any image or PDF file
+   * part:
    *
-   *   1. Text-only (string content, OR an array with no image_url part) →
-   *      EXISTING Task 2 behaviour byte-for-byte: a single
+   *   1. Text-only (string content, OR an array with no image_url and no PDF
+   *      file part) → EXISTING Task 2 behaviour byte-for-byte: a single
    *      `{ type:"input_text", text }` where `text` is `extractText(content)`
    *      (a string passes through unchanged; a text-only array concatenates).
    *      This branch must never change — the whole Task 2-4 text path and its
    *      assertions depend on it.
    *
-   *   2. Multimodal (array WITH at least one image_url part) → an
+   *   2. Multimodal (array WITH at least one image_url OR PDF file part) → an
    *      order-preserving translation of each part:
    *        - { type:"text", text:T }                  → { type:"input_text",  text:T }
    *        - { type:"image_url", image_url:{ url:U } } → { type:"input_image", image_url:U }
+   *        - { type:"file", file:{ filename:F, file_data:D } } (PDF data URL)
+   *                                                   → { type:"input_file", filename:F, file_data:D }
    *      The Responses surface takes `input_image.image_url` as a bare data-URL
    *      STRING (plan §4 / the OpenAI Responses surface), so the nested `{ url }`
    *      is unwrapped to its string. A bare-string `image_url` is also tolerated.
+   *      A PDF file part keeps its `file_data` data URL unchanged and carries the
+   *      `filename` alongside — the shape Azure's Responses surface documents for
+   *      document (PDF) input.
    *
-   * Inert until Task 5b: no Responses model def is images-eligible yet, so no
-   * image part can reach this adapter today. This is purely the translation
-   * machinery, ready for the model-level vision flag to be flipped in 5b.
+   * Image mapping is inert until Task 5b (no Responses model def is
+   * images-eligible yet, so no image part reaches this adapter today). The PDF
+   * file mapping IS live: gpt-5-pro accepts `input_file` PDF input, and without
+   * this branch a PDF array would fall into Regime 1 and the file part would be
+   * silently dropped.
    *
    * @param {string|Array|*} content
    * @returns {Array<Object>}
@@ -332,12 +340,27 @@
       return [{ type: "input_text", text: extractText(content) }];
     }
 
-    // Regime 1b: array with NO image part → preserve the existing text-only
-    // behaviour byte-for-byte (concatenate every text part into ONE input_text).
+    // Recognise a PDF file part. openrouter-embed-file.js builds these as
+    // { type:"file", file:{ filename, file_data } } with file_data a
+    // "data:application/pdf;base64,…" data URL. The gate is PDF-only by design:
+    // Azure documents PDF as the sole Responses file-input type, so any other
+    // file_data prefix is left to fall through Regime 1 unchanged.
+    const isPdfFilePart = (p) =>
+      p &&
+      typeof p === "object" &&
+      p.type === "file" &&
+      p.file &&
+      typeof p.file.file_data === "string" &&
+      p.file.file_data.startsWith("data:application/pdf");
+
+    // Regime 1b: array with NO image AND NO PDF file part → preserve the
+    // existing text-only behaviour byte-for-byte (concatenate every text part
+    // into ONE input_text).
     const hasImage = content.some(
       (p) => p && typeof p === "object" && p.type === "image_url",
     );
-    if (!hasImage) {
+    const hasPdfFile = content.some(isPdfFilePart);
+    if (!hasImage && !hasPdfFile) {
       return [{ type: "input_text", text: extractText(content) }];
     }
 
@@ -361,6 +384,18 @@
         if (typeof url === "string" && url) {
           out.push({ type: "input_image", image_url: url });
         }
+      } else if (isPdfFilePart(part)) {
+        // PDF file part → Responses input_file. The file_data data URL passes
+        // through unchanged; filename is carried alongside (Azure's documented
+        // document-input shape).
+        logDebug("Mapping PDF file part to input_file", {
+          filename: part.file.filename,
+        });
+        out.push({
+          type: "input_file",
+          filename: part.file.filename,
+          file_data: part.file.file_data,
+        });
       } else if (typeof part.text === "string") {
         // type:"text" (or any text-bearing part) → input_text.
         out.push({ type: "input_text", text: part.text });
@@ -537,15 +572,17 @@
      *     parts. buildRequest ships NO image mapping this task, and every
      *     Responses model def is images:false until Task 5, so the model-level
      *     gate prevents any image reaching this adapter (no silent strip).
-     *   - pdf: false — Foundry has uneven PDF support; the library extracts
-     *     text client-side.
+     *   - pdf: true — the Responses surface reads PDF natively via Azure
+     *     server-side extraction (proven on gpt-5-pro and all five Codex
+     *     deployments against an image-only scan). The floor is true; gate
+     *     per model via the model-level "pdf" capability token, not this floor.
      *   - reasoning: true — the Codex/pro family is reasoning-first.
      *   - toolCalls: false — out of scope for this workstream.
      */
     capabilities: {
       streaming: true,
       images: true,
-      pdf: false,
+      pdf: true,
       reasoning: true,
       toolCalls: false,
     },

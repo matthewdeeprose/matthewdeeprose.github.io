@@ -17,6 +17,17 @@
     window._SRShared;
   const proto = MathPixSessionRestorer.prototype;
 
+  // Companion stamp recording which document the restored mirror belongs to.
+  // Cross-reference MIRROR_SOURCE_KEY in mathpix-context-manager.js: the manager
+  // owns and clears this companion stamp (it is reset alongside the mirror); the
+  // restorer writes it here to record the source filename the mirror was
+  // restored from. The two IIFEs share no import, so each declares the literal
+  // independently. Declared at module scope (not inline at the write site)
+  // because the next parcel reads this key at the very top of
+  // extractAndRestoreContext and must reference the same declaration without a
+  // temporal-dead-zone error.
+  const MIRROR_SOURCE_KEY = "mathpix-context-current-source";
+
   /**
    * Phase 8C-CT-3e: shared paint helper for the resume panel's comprehensive
    * description. Prefers the cached HTML form, regenerates on miss if the
@@ -117,54 +128,147 @@
       } else {
         logWarn("notifyWarning unavailable — malformed-context notice logged only");
       }
-      return { branch: "malformed" };
+      // Branch value only — the WARN-toast side effect above is unchanged; the
+      // single tail return now owns object construction.
+      return "malformed";
     };
     try {
       if (!window.MathPixContextManager) {
         logWarn("Context manager unavailable — context restore skipped");
-        return { branch: "skipped" };
+        return { branch: "skipped", preserved: false };
       }
 
-      // Restore-start reset (Q3): the single definition of blank.
+      // Re-open capture (P3): BEFORE the restore-start reset wipes the mirror,
+      // grab any unsaved Context-tab edits belonging to the document being
+      // re-opened. The mirror lives under the literal key below — this mirrors
+      // the manager's MIRROR_STORAGE_KEY, which the restorer cannot import (the
+      // two IIFEs share no module). The companion stamp (module-scope
+      // MIRROR_SOURCE_KEY) records which document the mirror belongs to; we only
+      // adopt the mirror when its stamp base-name-matches the session being
+      // restored, stripping the extension from both the same way
+      // checkForMatchingSessions normalises. SILENT throughout — a
+      // missing/garbled mirror simply yields no capture: it never calls
+      // malformed(), never fires the WARN toast (that belongs only to the ZIP's
+      // context.json), and never throws.
+      let capturedContext = null;
+      try {
+        const mirrorRaw = localStorage.getItem("mathpix-context-current");
+        const stamp = localStorage.getItem(MIRROR_SOURCE_KEY);
+        const incoming = this.restoredSession?.source?.filename;
+        if (mirrorRaw && stamp && incoming) {
+          const stampBase = stamp.replace(/\.[^/.]+$/, "");
+          const incomingBase = incoming.replace(/\.[^/.]+$/, "");
+          if (stampBase === incomingBase) {
+            // Capture trichotomy (silent): a parse throw or a non-plain-object
+            // (null, array, primitive) yields no capture; a valid plain object
+            // is held verbatim.
+            const parsedMirror = JSON.parse(mirrorRaw);
+            if (
+              parsedMirror !== null &&
+              typeof parsedMirror === "object" &&
+              !Array.isArray(parsedMirror)
+            ) {
+              capturedContext = parsedMirror;
+            }
+          }
+        }
+      } catch (captureError) {
+        // Silent: any read/parse failure simply means nothing is captured.
+        capturedContext = null;
+        logDebug(
+          "Re-open context capture skipped (non-fatal):",
+          captureError?.message,
+        );
+      }
+
+      // Restore-start reset (Q3): the single definition of blank. This also
+      // clears the mirror and its companion stamp (MIRROR_SOURCE_KEY).
       window.MathPixContextManager.reset();
 
-      const zip = this.restoredSession?.zip;
-      if (!zip) {
-        logDebug("No ZIP handle on restored session — context stays blank");
-        return { branch: "missing-handle" };
-      }
-
-      // Exact-path lookup; null return means ABSENT (a pre-Stage-8 archive).
-      const file = zip.file("metadata/context.json");
-      if (!file) {
-        logDebug(
-          "metadata/context.json absent — pre-Stage-8 archive, context stays blank",
-        );
-        return { branch: "absent" };
-      }
-
-      let parsed;
+      // Record which document the (now-blank) mirror belongs to. When the
+      // restored session carries a source filename, stamp it verbatim — full
+      // filename, extension included; when absent, leave the key cleared by the
+      // reset above. Never throws: a storage failure is logged and ignored.
       try {
-        parsed = JSON.parse(await file.async("text"));
-      } catch (readOrParseError) {
-        return malformed(readOrParseError.message);
-      }
-      if (
-        parsed === null ||
-        typeof parsed !== "object" ||
-        Array.isArray(parsed)
-      ) {
-        return malformed("parsed value is not a plain object");
+        const sourceFilename = this.restoredSession?.source?.filename;
+        if (sourceFilename) {
+          localStorage.setItem(MIRROR_SOURCE_KEY, sourceFilename);
+        }
+      } catch (stampError) {
+        logWarn(
+          "Could not write the mirror source stamp — continuing without it:",
+          stampError,
+        );
       }
 
-      window.MathPixContextManager.setContext(parsed);
-      logInfo("Document context restored from session ZIP");
-      return { branch: "valid" };
+      // Determine the ZIP-context branch, applying each branch's side effects
+      // exactly as before (missing-handle/absent → blank; malformed → blank +
+      // WARN toast via malformed(); valid → setContext(parsed) + logInfo).
+      // Folded into a single inner function so the method has one tail return.
+      const determineBranch = async () => {
+        const zip = this.restoredSession?.zip;
+        if (!zip) {
+          logDebug("No ZIP handle on restored session — context stays blank");
+          return "missing-handle";
+        }
+
+        // Exact-path lookup; null return means ABSENT (a pre-Stage-8 archive).
+        const file = zip.file("metadata/context.json");
+        if (!file) {
+          logDebug(
+            "metadata/context.json absent — pre-Stage-8 archive, context stays blank",
+          );
+          return "absent";
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(await file.async("text"));
+        } catch (readOrParseError) {
+          return malformed(readOrParseError.message);
+        }
+        if (
+          parsed === null ||
+          typeof parsed !== "object" ||
+          Array.isArray(parsed)
+        ) {
+          return malformed("parsed value is not a plain object");
+        }
+
+        window.MathPixContextManager.setContext(parsed);
+        logInfo("Document context restored from session ZIP");
+        return "valid";
+      };
+
+      const branch = await determineBranch();
+
+      // Re-open preservation: if unsaved context was captured for this document,
+      // compare it against whatever the ZIP branch left in the manager (the flat
+      // eight-key string object). Any differing key means the user's unsaved
+      // edit diverges from the session value — restore the captured values over
+      // it. A capture that matches on every key (including an all-blank capture
+      // over a blank ZIP) leaves the ZIP value untouched and preserved false.
+      let preserved = false;
+      if (capturedContext) {
+        const zipContext = window.MathPixContextManager.getContext();
+        const diverged = Object.keys(zipContext).some(
+          (key) => (zipContext[key] ?? "") !== (capturedContext[key] ?? ""),
+        );
+        if (diverged) {
+          window.MathPixContextManager.setContext(capturedContext);
+          logInfo(
+            "Unsaved document context preserved on re-open (overrode session value)",
+          );
+          preserved = true;
+        }
+      }
+
+      return { branch, preserved };
     } catch (error) {
       // Paranoia backstop honouring the never-throws contract; unreachable
       // in practice and deliberately silent towards the user.
       logError("Context restore failed unexpectedly (non-fatal):", error);
-      return { branch: "malformed" };
+      return { branch: "malformed", preserved: false };
     }
   };
 
@@ -207,7 +311,9 @@
 
       // Stage 8 (Q3): restore the document context — early, discrete,
       // non-fatal; every restored document starts from a blank context.
-      await this.extractAndRestoreContext();
+      // P3: capture the result so a preserved re-open capture can raise the
+      // dirty signal after the recovery gates below have settled.
+      const ctxResult = await this.extractAndRestoreContext();
 
       // Phase 8F: Extract images from ZIP and restore registry
       // Must happen before loadMMDContent so blob URLs are in place for preview
@@ -422,6 +528,17 @@
           // All localStorage sessions are older, clean them up
           this.clearMatchingSessions(preExistingSessions);
         }
+      }
+
+      // P3: deferred dirty raise. If extractAndRestoreContext preserved an
+      // unsaved re-open capture over the session value, signal it as a Context
+      // edit now — AFTER the recovery block, so it fires whether or not
+      // applyRecoveredSession ran (and after that path's hasContextEdits = false
+      // reset). Dispatched exactly as the manager's updateField dirty signal so
+      // the Stage 9 resume-gated listener owns hasContextEdits +
+      // updateDownloadButtonVisibility; we deliberately do neither here.
+      if (ctxResult?.preserved) {
+        document.dispatchEvent(new CustomEvent("mathpix:context-edited"));
       }
 
       // Start persistence session only if auto-restore didn't reuse an existing key

@@ -9,7 +9,13 @@
   "use strict";
 
   // ── Guard: state module must be loaded first ─────────────────────────────
-  var S = window.LocalChatState;
+  // S is a re-bindable module-local reference to the current conversation
+  // state. It defaults to window.LocalChatState; attach(state) (below) can
+  // re-point it at a freshly-attached state object. Internal code reads the
+  // conversation state — its messages[] array and els{} DOM map — live
+  // through S at call time, never caching either at load, so a later
+  // attach() swap can never leave a stale snapshot behind.
+  let S = window.LocalChatState;
   if (!S) {
     console.error(
       "[LocalChatMessages] local-chat-state.js must be loaded before local-chat-messages.js",
@@ -17,14 +23,19 @@
     return;
   }
 
-  // Local alias — mutations (push/pop/splice) work through the alias.
-  // Reassignments must also write through to S.messages.
-  var messages = S.messages;
-  var els = S.els;
+  // Re-point the module at a freshly-attached state object. Not called from
+  // anywhere yet (Stage 1 part 1b) — wiring lands in a later step. The TTS
+  // active-speaker flag (activeBubbleBtn) and the export lock
+  // (activeExportingBtn) are genuinely module-level and deliberately NOT
+  // re-bound here; they belong to a later stage.
+  function attach(state) {
+    if (state) S = state;
+  }
 
   // ── Message rendering helpers ───────────────────────────────────────────
 
   function createUserBubble(text, messageIndex) {
+    var els = S.els;
     var bubble = document.createElement("div");
     bubble.className = "local-chat-bubble local-chat-bubble-user";
     bubble.textContent = text; // Plain text — no HTML for user input
@@ -40,6 +51,7 @@
   }
 
   function createAssistantBubble() {
+    var els = S.els;
     var bubble = document.createElement("div");
     bubble.className = "local-chat-bubble local-chat-bubble-assistant";
     if (els.messageList) {
@@ -96,8 +108,9 @@
   // ── Retry from error (5e) ────────────────────────────────────────────────
 
   function retryLastMessage(errorBubble) {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read conversation state from S live to stay in sync after reassignments
+    var messages = S.messages;
+    var els = S.els;
 
     if (S.isGenerating) return;
     if (messages.length === 0) return;
@@ -196,11 +209,13 @@
   }
 
   function scrollMessagesToBottom() {
+    var els = S.els;
     if (!els.messageList) return;
     els.messageList.scrollTop = els.messageList.scrollHeight;
   }
 
   function autoResizeTextarea() {
+    var els = S.els;
     if (!els.input) return;
     els.input.style.height = "auto";
     var maxHeight =
@@ -211,6 +226,7 @@
   // ── Input token counter (5d) ───────────────────────────────────────────
 
   function updateInputTokenCount() {
+    var els = S.els;
     if (!els.inputCounter || !els.input) return;
 
     var text = els.input.value;
@@ -483,6 +499,7 @@
   // ── Regenerate button ──────────────────────────────────────────────────
 
   function addRegenerateButton(bubble) {
+    var els = S.els;
     // Remove any existing regenerate button from other bubbles
     if (els.messageList) {
       var existing = els.messageList.querySelectorAll(
@@ -505,8 +522,9 @@
   }
 
   function regenerateLastResponse() {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read conversation state from S live to stay in sync after reassignments
+    var messages = S.messages;
+    var els = S.els;
 
     if (S.isGenerating) return;
     if (messages.length < 2) return; // Need at least user + assistant
@@ -640,8 +658,8 @@
   }
 
   function enterEditMode(bubble) {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read messages from S live to stay in sync after reassignments
+    var messages = S.messages;
 
     if (S.isGenerating) return;
     if (S.editingBubble) return; // Already editing another bubble
@@ -703,8 +721,9 @@
   }
 
   function commitEdit(bubble, msgIndex, newText) {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read conversation state from S live to stay in sync after reassignments
+    var messages = S.messages;
+    var els = S.els;
 
     if (!newText) {
       cancelEdit(bubble);
@@ -1384,7 +1403,7 @@
    * guard against reacting to Image Describer's playback events).
    */
   function showLocalChatEngineBadge() {
-    var badge = document.getElementById('local-chat-read-aloud-engine');
+    var badge = document.getElementById(S.elId('read-aloud-engine'));
     if (!badge) return;
     var engine = (window.TTSController && typeof window.TTSController.getEngine === 'function')
       ? window.TTSController.getEngine()
@@ -1394,7 +1413,7 @@
   }
 
   function hideLocalChatEngineBadge() {
-    var badge = document.getElementById('local-chat-read-aloud-engine');
+    var badge = document.getElementById(S.elId('read-aloud-engine'));
     if (!badge) return;
     badge.textContent = '';
     badge.hidden = true;
@@ -1542,6 +1561,7 @@
   // ── Expose module ────────────────────────────────────────────────────
 
   window.LocalChatMessages = {
+    attach: attach,
     createUserBubble: createUserBubble,
     createAssistantBubble: createAssistantBubble,
     showErrorInBubble: showErrorInBubble,

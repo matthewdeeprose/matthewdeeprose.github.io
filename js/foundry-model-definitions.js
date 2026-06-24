@@ -300,7 +300,7 @@ function createFoundryModel({
 // may differ; treat as a proxy until reconciled against Foundry invoices.
 
 const FOUNDRY_MODELS = [
-  // ── gpt-5.4-mini (migrated unchanged from model-definitions.js) ──────────
+  // ── gpt-5.4-mini (migrated unchanged from model-definitions.js; PDF verified 23 June 2026) ──
   createFoundryModel({
     deploymentName: "gpt-5.4-mini",
     displayName: "GPT-5.4 Mini",
@@ -317,6 +317,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 400000,
     fallbackTo: "openai/gpt-5.4-mini",
@@ -357,7 +358,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this Foundry deployment (Task 2.6 smoke test, re-confirmed 31 May 2026). An earlier project note claimed this deployment rejected images; that claim was falsified on re-verification — vision works correctly.",
   }),
 
-  // ── gpt-4o-mini (new — vision-capable, low-cost multimodal) ──────────────
+  // ── gpt-4o-mini (vision-capable, low-cost multimodal; PDF deliberately omitted — transmits but reads blind on this deployment, an Azure per-deployment quirk; sibling gpt-4o reads) ──
   createFoundryModel({
     deploymentName: "gpt-4o-mini",
     displayName: "GPT-4o Mini",
@@ -415,7 +416,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this Foundry deployment via a real Image Describer request (31 May 2026).",
   }),
 
-  // ── gpt-5.4-nano (new — vision empirically verified 31 May 2026) ─────────
+  // ── gpt-5.4-nano (new — vision verified 31 May 2026; PDF verified 23 June 2026) ──
   createFoundryModel({
     deploymentName: "gpt-5.4-nano",
     displayName: "GPT-5.4 Nano",
@@ -431,6 +432,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 400000,
     fallbackTo: "openai/gpt-5.4-nano",
@@ -473,7 +475,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this Foundry deployment via a real Image Describer request (31 May 2026). The earlier conservative default (vision disabled, pending verification) has been resolved.",
   }),
 
-  // ── gpt-5.4 (new — full-size flagship, vision-capable) ───────────────────
+  // ── gpt-5.4 (new — full-size flagship, vision-capable; PDF verified 23 June 2026) ──
   createFoundryModel({
     deploymentName: "gpt-5.4",
     displayName: "GPT-5.4",
@@ -489,6 +491,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 1050000,
     fallbackTo: "openai/gpt-5.4",
@@ -586,7 +589,7 @@ const FOUNDRY_MODELS = [
       "Text-only model — no image input support. Reasoning output is returned in a separate reasoning_content field, empirically verified via a real request through the Foundry proxy (2 June 2026).",
   }),
 
-  // ── gpt-5 (vision verified 4 June 2026 — initially registered text-only) ──
+  // ── gpt-5 (vision verified 4 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
   // Empirically (Phase A): serves 200 on the OpenAI-v1 surface, but REJECTS
   // temperature/top_p (400) → reasoning model. The GPT-5.x line is NON-UNIFORM:
   // 5.1/5.2/5.4 accept temperature, only bare gpt-5 rejects it. The anchored
@@ -608,6 +611,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 400000,
     fallbackTo: null,
@@ -648,7 +652,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this deployment via the Image Describer (4 June 2026). Initially registered text-only pending this verification (cf. gpt-oss-120b, which proved text-only).",
   }),
 
-  // ── gpt-5.1 (vision verified 4 June 2026 — initially registered text-only) ──
+  // ── gpt-5.1 (vision verified 4 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
   // Empirically (Phase A): serves 200 and ACCEPTS temperature/top_p → NOT a
   // reasoning model, no REASONING_MODEL_PATTERNS entry. Template: gpt-5.4
   // (non-reasoning) but TEXT-ONLY (no vision capability, no vision-inputs feature).
@@ -667,6 +671,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 400000,
     fallbackTo: "openai/gpt-5.1",
@@ -709,7 +714,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this deployment via the Image Describer (4 June 2026). Initially registered text-only pending this verification (cf. gpt-oss-120b, which proved text-only).",
   }),
 
-  // ── gpt-5.2 (vision verified 4 June 2026 — initially registered text-only) ──
+  // ── gpt-5.2 (vision verified 4 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
   // Empirically (Phase A): serves 200 and ACCEPTS temperature/top_p → NOT a
   // reasoning model, no REASONING_MODEL_PATTERNS entry. Template: gpt-5.4
   // (non-reasoning) but TEXT-ONLY (no vision capability, no vision-inputs feature).
@@ -728,6 +733,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 400000,
     fallbackTo: "openai/gpt-5.2",
@@ -770,7 +776,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this deployment via the Image Describer (4 June 2026). Initially registered text-only pending this verification (cf. gpt-oss-120b, which proved text-only).",
   }),
 
-  // ── gpt-4.1 (vision verified 6 June 2026 — initially registered text-only) ──
+  // ── gpt-4.1 (vision verified 6 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
   // Empirically (Phase A batch 2): serves 200 and ACCEPTS temperature/top_p →
   // NOT a reasoning model, no REASONING_MODEL_PATTERNS entry. Template: gpt-5.4
   // (non-reasoning) but TEXT-ONLY (no vision capability, no vision-inputs feature).
@@ -789,6 +795,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 1047576,
     fallbackTo: "openai/gpt-4.1",
@@ -831,7 +838,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this deployment via the Image Describer (6 June 2026). Initially registered text-only pending this verification.",
   }),
 
-  // ── gpt-4.1-mini (vision verified 6 June 2026 — initially registered text-only) ──
+  // ── gpt-4.1-mini (vision verified 6 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
   // Empirically (Phase A batch 2): serves 200 and ACCEPTS temperature/top_p →
   // NOT a reasoning model. Template: gpt-5.4 (non-reasoning) but TEXT-ONLY.
   createFoundryModel({
@@ -849,6 +856,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 1047576,
     fallbackTo: "openai/gpt-4.1-mini",
@@ -891,7 +899,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this deployment via the Image Describer (6 June 2026). Initially registered text-only pending this verification.",
   }),
 
-  // ── gpt-4.1-nano (vision verified 6 June 2026 — initially registered text-only) ──
+  // ── gpt-4.1-nano (vision verified 6 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
   // Empirically (Phase A batch 2): serves 200 and ACCEPTS temperature/top_p →
   // NOT a reasoning model. Template: gpt-5.4 (non-reasoning) but TEXT-ONLY.
   createFoundryModel({
@@ -909,6 +917,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 1047576,
     fallbackTo: "openai/gpt-4.1-nano",
@@ -951,7 +960,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this deployment via the Image Describer (6 June 2026). Initially registered text-only pending this verification.",
   }),
 
-  // ── gpt-4o (vision verified 6 June 2026 — initially registered text-only) ──
+  // ── gpt-4o (vision verified 6 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
   // Empirically (Phase A batch 2): serves 200 and ACCEPTS temperature/top_p →
   // NOT a reasoning model. Template: gpt-5.4 (non-reasoning) but TEXT-ONLY.
   // No openai/gpt-4o sibling registered in js/model-definitions.js → fallbackTo
@@ -971,6 +980,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 128000,
     fallbackTo: null,
@@ -1013,7 +1023,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this deployment via the Image Describer (6 June 2026). Initially registered text-only pending this verification.",
   }),
 
-  // ── o4-mini (vision verified 6 June 2026 — initially registered text-only) ──
+  // ── o4-mini (vision verified 6 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
   // Empirically (Phase A batch 2): serves 200 but REJECTS temperature/top_p
   // (400) → reasoning model. NO new REASONING_MODEL_PATTERNS entry needed — the
   // EXISTING /^o4.*$/i pattern in azure-openai-v1.js already matches "o4-mini".
@@ -1034,6 +1044,7 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
+      "pdf",
     ],
     maxContext: 200000,
     fallbackTo: "openai/o4-mini",
@@ -1099,6 +1110,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "grok-4-1-fast-reasoning",
     displayName: "Grok 4.1 Fast (Reasoning)",
+    upstreamProvider: "xAI",
     description:
       "xAI's Grok 4.1 Fast (reasoning variant), routed via Microsoft Foundry. Format 'xAI' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey), so it needs no separate transport. Accepts temperature/top_p. Text-only reasoning model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use x-ai/grok-4.1-fast for OpenRouter routing.",
     // Source: in-repo x-ai/grok-4.1-fast sibling costs
@@ -1153,6 +1165,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "grok-4-1-fast-non-reasoning",
     displayName: "Grok 4.1 Fast (Non-Reasoning)",
+    upstreamProvider: "xAI",
     description:
       "xAI's Grok 4.1 Fast (non-reasoning variant), routed via Microsoft Foundry. Format 'xAI' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use x-ai/grok-4.1-fast for OpenRouter routing.",
     // Source: in-repo x-ai/grok-4.1-fast sibling costs
@@ -1203,6 +1216,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "DeepSeek-V3.1",
     displayName: "DeepSeek V3.1",
+    upstreamProvider: "deepseek",
     description:
       "DeepSeek's V3.1 model, routed via Microsoft Foundry. Format 'DeepSeek' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use deepseek/deepseek-chat-v3.1 for OpenRouter routing.",
     // Source: in-repo deepseek/deepseek-chat-v3.1 sibling costs
@@ -1253,6 +1267,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "DeepSeek-R1",
     displayName: "DeepSeek R1",
+    upstreamProvider: "deepseek",
     description:
       "DeepSeek's R1 reasoning model, routed via Microsoft Foundry. Format 'DeepSeek' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only reasoning model; emits chain-of-thought in a separate reasoning_content field (empirically verified, same as gpt-oss-120b). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use deepseek/deepseek-r1 for OpenRouter routing.",
     // Source: in-repo deepseek/deepseek-r1 sibling costs
@@ -1307,6 +1322,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "cohere-command-a",
     displayName: "Cohere Command A",
+    upstreamProvider: "cohere",
     description:
       "Cohere's Command A model, routed via Microsoft Foundry. Format 'Cohere' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use cohere/command-a for OpenRouter routing.",
     // Source: in-repo cohere/command-a sibling costs
@@ -1357,6 +1373,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "Llama-3.3-70B-Instruct",
     displayName: "Llama 3.3 70B Instruct",
+    upstreamProvider: "meta-llama",
     description:
       "Meta's Llama 3.3 70B Instruct model, routed via Microsoft Foundry. Format 'Meta' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use meta-llama/llama-3.3-70b-instruct for OpenRouter routing.",
     // Source: in-repo meta-llama/llama-3.3-70b-instruct sibling costs
@@ -1407,6 +1424,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "Phi-4",
     displayName: "Phi-4",
+    upstreamProvider: "microsoft",
     description:
       "Microsoft's Phi-4 model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use microsoft/phi-4 for OpenRouter routing.",
     // Source: in-repo microsoft/phi-4 sibling costs
@@ -1458,6 +1476,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "Phi-4-mini-instruct",
     displayName: "Phi-4 Mini Instruct",
+    upstreamProvider: "microsoft",
     description:
       "Microsoft's Phi-4 Mini Instruct model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
     // provisional — Foundry MaaS pricing not yet reconciled (no in-repo sibling)
@@ -1511,6 +1530,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "Phi-4-multimodal-instruct",
     displayName: "Phi-4 Multimodal Instruct",
+    upstreamProvider: "microsoft",
     description:
       "Microsoft's Phi-4 Multimodal Instruct model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Multimodal by specification, but registered TEXT-ONLY here pending real-image vision verification (see imageSupportNote). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use microsoft/phi-4-multimodal-instruct for OpenRouter routing.",
     // Source: in-repo microsoft/phi-4-multimodal-instruct sibling costs (text input/output only)
@@ -1564,6 +1584,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "Phi-4-reasoning",
     displayName: "Phi-4 Reasoning",
+    upstreamProvider: "microsoft",
     description:
       "Microsoft's Phi-4 Reasoning model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only reasoning model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered (the in-repo microsoft/phi-4-reasoning-plus is a distinct SKU) — Foundry-only entry.",
     // provisional — Foundry MaaS pricing not yet reconciled (no in-repo sibling)
@@ -1619,6 +1640,7 @@ const FOUNDRY_MODELS = [
   createFoundryModel({
     deploymentName: "Phi-4-mini-reasoning",
     displayName: "Phi-4 Mini Reasoning",
+    upstreamProvider: "microsoft",
     description:
       "Microsoft's Phi-4 Mini Reasoning model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only reasoning model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
     // provisional — Foundry MaaS pricing not yet reconciled (no in-repo sibling)
@@ -1670,6 +1692,231 @@ const FOUNDRY_MODELS = [
   }),
 
   // ══════════════════════════════════════════════════════════════════════════
+  // NEW CHAT DEPLOYMENTS (June 2026) — four GlobalStandard chat models on
+  // accesstools-foundry-uk, azure-openai /openai/v1 surface
+  // ══════════════════════════════════════════════════════════════════════════
+  //
+  // All four are sampling-param chat models on the EXISTING azure-openai surface
+  // — no provider/transport change. reasoning=false for all four (none is a
+  // dedicated reasoning SKU); toolCalls=false (mirrors the text-only grounding
+  // siblings). Llama-4-Maverick registers vision=true as a HYPOTHESIS (Llama 4
+  // Maverick is multimodal by spec and the OpenRouter sibling is multimodal) —
+  // pending an Image Describer smoke test; the other three register text-only.
+  //
+  // upstreamProvider is set to the vendor (matching the registry's existing
+  // provider-id convention — "meta-llama"/"deepseek"/"moonshotai"/"mistralai")
+  // so each groups with its OpenRouter cousins. This is a DELIBERATE deviation
+  // from the earlier Foundry entries above, which left `provider` defaulted to
+  // "openai". Costs/maxContext/releaseDate are sourced from each model's in-repo
+  // OpenRouter sibling (a public-pricing proxy; Foundry billing may differ).
+
+  // ── Llama-4-Maverick-17B-128E-Instruct-FP8 (Meta format — vision HYPOTHESIS) ──
+  createFoundryModel({
+    deploymentName: "Llama-4-Maverick-17B-128E-Instruct-FP8",
+    displayName: "Llama 4 Maverick 17B 128E Instruct FP8",
+    upstreamProvider: "meta-llama",
+    description:
+      "Meta's Llama 4 Maverick (17B active / 400B total, 128-expert MoE, FP8), routed via Microsoft Foundry. Format 'Meta' — serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered vision-capable as a HYPOTHESIS (Llama 4 Maverick is multimodal by specification and the OpenRouter sibling meta-llama/llama-4-maverick supports image input) — NOT yet empirically verified on this Foundry deployment. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use meta-llama/llama-4-maverick for OpenRouter routing.",
+    // Source: in-repo meta-llama/llama-4-maverick sibling costs (input/output only; the sibling's image cost is omitted per the Foundry entry shape)
+    costs: { input: 0.18, output: 0.6 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "code",
+      "mathematics",
+      "vision",
+      "multilingual",
+    ],
+    maxContext: 1048576,
+    fallbackTo: "meta-llama/llama-4-maverick",
+    releaseDate: "2025-04-05",
+    categoryDescription:
+      "Multimodal MoE model (Meta format) routed via Microsoft Foundry — same upstream as meta-llama/llama-4-maverick, different transport",
+    modelArchitecture: {
+      parameters: "17B active (400B total)",
+      type: "mixture-of-experts",
+      optimisedFor: "multimodal-general-purpose",
+    },
+    bestFor: [
+      "multimodal applications and image reasoning",
+      "long-context processing",
+      "Foundry-funded production workloads",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "multimodal-general-purpose",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision verified on Foundry via the Image Describer (piston image, ~6s, 19 June 2026).",
+  }),
+
+  // ── DeepSeek-V3.2 (DeepSeek format — non-reasoning, text-only; supersedes V3.1) ──
+  createFoundryModel({
+    deploymentName: "DeepSeek-V3.2",
+    displayName: "DeepSeek V3.2",
+    upstreamProvider: "deepseek",
+    description:
+      "DeepSeek's V3.2 model, routed via Microsoft Foundry. Format 'DeepSeek' — serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Supersedes the Deprecating DeepSeek-V3.1 Foundry deployment. Registered text-only and non-reasoning for this integration (the upstream model also offers reasoning and tool use — NOT claimed here pending verification). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use deepseek/deepseek-v3.2 for OpenRouter routing.",
+    // Source: in-repo deepseek/deepseek-v3.2 sibling costs
+    costs: { input: 0.28, output: 0.4 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "code",
+      "mathematics",
+      "multilingual",
+    ],
+    maxContext: 163840,
+    fallbackTo: "deepseek/deepseek-v3.2",
+    releaseDate: "2025-12-01",
+    categoryDescription:
+      "General-purpose model (DeepSeek format) routed via Microsoft Foundry — same upstream as deepseek/deepseek-v3.2, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "instruction-tuned",
+      optimisedFor: "general-purpose",
+    },
+    bestFor: [
+      "general-purpose text generation and dialogue",
+      "Foundry-funded production workloads",
+      "UK data residency requirements",
+      "testing the Foundry adapter end-to-end",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-workloads",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Text-only: registered without vision capability (consistent with the DeepSeek-V3.1 sibling it supersedes). Image input not verified on this Foundry deployment.",
+  }),
+
+  // ── Kimi-K2.5 (MoonshotAI format — non-reasoning, text-only; NEW publisher) ──
+  createFoundryModel({
+    deploymentName: "Kimi-K2.5",
+    displayName: "Kimi K2.5",
+    upstreamProvider: "moonshotai",
+    description:
+      "MoonshotAI's Kimi K2.5 model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered text-only and non-reasoning for this integration. (The OpenRouter sibling moonshotai/kimi-k2.5 is natively multimodal upstream, but vision is NOT claimed here until verified on the Foundry deployment.) Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use moonshotai/kimi-k2.5 for OpenRouter routing.",
+    // Source: in-repo moonshotai/kimi-k2.5 sibling costs
+    costs: { input: 0.6, output: 3.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "code",
+      "mathematics",
+      "multilingual",
+    ],
+    maxContext: 262144,
+    fallbackTo: "moonshotai/kimi-k2.5",
+    releaseDate: "2026-01-27",
+    categoryDescription:
+      "General-purpose model (MoonshotAI format) routed via Microsoft Foundry — same upstream as moonshotai/kimi-k2.5, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "instruction-tuned",
+      optimisedFor: "general-purpose",
+    },
+    bestFor: [
+      "general-purpose text generation and dialogue",
+      "Foundry-funded production workloads",
+      "UK data residency requirements",
+      "testing the Foundry adapter end-to-end",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-workloads",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Text-only in this registration: registered without vision capability pending verification. The OpenRouter sibling moonshotai/kimi-k2.5 is natively multimodal upstream — vision is a candidate for a follow-up smoke test.",
+  }),
+
+  // ── Mistral-Large-3 (Mistral AI format — non-reasoning, text-only; NEW publisher) ──
+  createFoundryModel({
+    deploymentName: "Mistral-Large-3",
+    displayName: "Mistral Large 3",
+    upstreamProvider: "mistralai",
+    description:
+      "Mistral AI's Mistral Large 3 frontier model (41B active / 675B total, granular MoE), routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered text-only and non-reasoning for this integration. (The OpenRouter sibling mistralai/mistral-large-2512 'Mistral Large 3 2512' is multimodal upstream, but vision is NOT claimed here until verified on the Foundry deployment.) Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use mistralai/mistral-large-2512 for OpenRouter routing.",
+    // Source: in-repo mistralai/mistral-large-2512 ("Mistral Large 3 2512") sibling costs
+    costs: { input: 0.5, output: 1.5 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "code",
+      "mathematics",
+      "multilingual",
+    ],
+    maxContext: 262144,
+    fallbackTo: "mistralai/mistral-large-2512",
+    releaseDate: "2025-12-01",
+    categoryDescription:
+      "Frontier general-purpose model (Mistral AI format) routed via Microsoft Foundry — same upstream as mistralai/mistral-large-2512, different transport",
+    modelArchitecture: {
+      parameters: "41B active (675B total)",
+      type: "mixture-of-experts",
+      optimisedFor: "frontier-general-purpose",
+    },
+    bestFor: [
+      "frontier general-purpose generation",
+      "document analysis and coding assistance",
+      "Foundry-funded production workloads",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "frontier-general-purpose",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Text-only in this registration: registered without vision capability pending verification. The OpenRouter sibling mistralai/mistral-large-2512 is multimodal upstream — vision is a candidate for a follow-up smoke test.",
+  }),
+
+  // ══════════════════════════════════════════════════════════════════════════
   // RESPONSES-API SURFACE (six Codex/pro deployments — apiSurface: "responses")
   // ══════════════════════════════════════════════════════════════════════════
   //
@@ -1703,6 +1950,7 @@ const FOUNDRY_MODELS = [
       "mathematics",
       "multilingual",
       "vision",
+      "pdf",
     ],
     maxContext: 400000, // GPT-5 family value (matches gpt-5/gpt-5.1/gpt-5.2 entries)
     fallbackTo: null,
@@ -1739,19 +1987,19 @@ const FOUNDRY_MODELS = [
       "system-prompt",
     ],
     imageSupportNote:
-      "gpt-5-pro is vision-enabled: image input is wired through the azure-responses adapter (input_image translation) and verified end-to-end by a live Foundry image round-trip (Task 5b). The other Responses (Codex) deployments remain text-only.",
+      "gpt-5-pro is vision-enabled: image input is wired through the azure-responses adapter (input_image translation) and verified end-to-end by a live Foundry image round-trip (Task 5b). The Responses Codex deployments likewise accept image input (input_image), verified this session.",
   }),
 
-  // ── gpt-5-codex (Responses — reasoning, text-only) ───────────────────────
+  // ── gpt-5-codex (Responses — reasoning; reads images and PDFs) ──
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5-codex",
     displayName: "GPT-5 Codex",
     description:
-      "OpenAI's GPT-5 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Text-only. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+      "OpenAI's GPT-5 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
     // provisional — Foundry MaaS pricing not reconciled (no in-repo sibling)
     costs: { input: 0, output: 0 },
-    capabilities: ["text", "dialogue", "code", "reasoning"],
+    capabilities: ["text", "dialogue", "code", "reasoning", "vision", "pdf"],
     maxContext: 400000, // GPT-5 family value (matches gpt-5/gpt-5.1/gpt-5.2 entries)
     fallbackTo: null,
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
@@ -1787,19 +2035,19 @@ const FOUNDRY_MODELS = [
       "system-prompt",
     ],
     imageSupportNote:
-      "Text-only: no image input wired in this integration. Vision is out of scope for the Codex family.",
+      "Image input verified via the Responses surface (input_image) this session — the model describes diagrams and reads visible labels. The earlier ‘text-only, vision out of scope’ note is superseded.",
   }),
 
-  // ── gpt-5.1-codex (Responses — reasoning, text-only) ─────────────────────
+  // ── gpt-5.1-codex (Responses — reasoning; reads images and PDFs) ──
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.1-codex",
     displayName: "GPT-5.1 Codex",
     description:
-      "OpenAI's GPT-5.1 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Text-only. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+      "OpenAI's GPT-5.1 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
     // provisional — Foundry MaaS pricing not reconciled (no in-repo sibling)
     costs: { input: 0, output: 0 },
-    capabilities: ["text", "dialogue", "code", "reasoning"],
+    capabilities: ["text", "dialogue", "code", "reasoning", "vision", "pdf"],
     maxContext: 400000, // GPT-5 family value (matches gpt-5/gpt-5.1/gpt-5.2 entries)
     fallbackTo: null,
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
@@ -1835,19 +2083,19 @@ const FOUNDRY_MODELS = [
       "system-prompt",
     ],
     imageSupportNote:
-      "Text-only: no image input wired in this integration. Vision is out of scope for the Codex family.",
+      "Image input verified via the Responses surface (input_image) this session — the model describes diagrams and reads visible labels. The earlier ‘text-only, vision out of scope’ note is superseded.",
   }),
 
-  // ── gpt-5.1-codex-mini (Responses — reasoning, text-only) ────────────────
+  // ── gpt-5.1-codex-mini (Responses — reasoning; reads images and PDFs) ──
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.1-codex-mini",
     displayName: "GPT-5.1 Codex Mini",
     description:
-      "OpenAI's GPT-5.1 Codex Mini agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Smaller, lower-latency Codex variant. Text-only. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+      "OpenAI's GPT-5.1 Codex Mini agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Smaller, lower-latency Codex variant. Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
     // provisional — Foundry MaaS pricing not reconciled (no in-repo sibling)
     costs: { input: 0, output: 0 },
-    capabilities: ["text", "dialogue", "code", "reasoning"],
+    capabilities: ["text", "dialogue", "code", "reasoning", "vision", "pdf"],
     maxContext: 400000, // GPT-5 family value (matches gpt-5/gpt-5.1/gpt-5.2 entries)
     fallbackTo: null,
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
@@ -1883,19 +2131,19 @@ const FOUNDRY_MODELS = [
       "system-prompt",
     ],
     imageSupportNote:
-      "Text-only: no image input wired in this integration. Vision is out of scope for the Codex family.",
+      "Image input verified via the Responses surface (input_image) this session — the model describes diagrams and reads visible labels. The earlier ‘text-only, vision out of scope’ note is superseded.",
   }),
 
-  // ── gpt-5.2-codex (Responses — reasoning, text-only) ─────────────────────
+  // ── gpt-5.2-codex (Responses — reasoning; reads images and PDFs) ──
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.2-codex",
     displayName: "GPT-5.2 Codex",
     description:
-      "OpenAI's GPT-5.2 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Text-only. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+      "OpenAI's GPT-5.2 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
     // provisional — Foundry MaaS pricing not reconciled (no in-repo sibling)
     costs: { input: 0, output: 0 },
-    capabilities: ["text", "dialogue", "code", "reasoning"],
+    capabilities: ["text", "dialogue", "code", "reasoning", "vision", "pdf"],
     maxContext: 400000, // GPT-5 family value (matches gpt-5/gpt-5.1/gpt-5.2 entries)
     fallbackTo: null,
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
@@ -1931,10 +2179,10 @@ const FOUNDRY_MODELS = [
       "system-prompt",
     ],
     imageSupportNote:
-      "Text-only: no image input wired in this integration. Vision is out of scope for the Codex family.",
+      "Image input verified via the Responses surface (input_image) this session — the model describes diagrams and reads visible labels. The earlier ‘text-only, vision out of scope’ note is superseded.",
   }),
 
-  // ── gpt-5.3-codex (Responses — NON-reasoning, accepts temperature/top_p) ──
+  // ── gpt-5.3-codex (Responses — NON-reasoning, accepts temperature/top_p; reads images and PDFs) ──
   // The lone Responses model that accepts sampling params and emits NO
   // reasoning item (phase:"final_answer" only). temperature/top_p allowed here
   // ONLY — must stay in sync with SAMPLING_PARAMS_ALLOWED in
@@ -1944,10 +2192,10 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.3-codex",
     displayName: "GPT-5.3 Codex",
     description:
-      "OpenAI's GPT-5.3 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. UNLIKE the other Responses Codex models, it ACCEPTS temperature/top_p and emits NO reasoning item (phase:\"final_answer\" only), so it is registered without the reasoning capability. Text-only. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+      "OpenAI's GPT-5.3 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. UNLIKE the other Responses Codex models, it ACCEPTS temperature/top_p and emits NO reasoning item (phase:\"final_answer\" only), so it is registered without the reasoning capability. Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
     // provisional — Foundry MaaS pricing not reconciled (no in-repo sibling)
     costs: { input: 0, output: 0 },
-    capabilities: ["text", "dialogue", "code"],
+    capabilities: ["text", "dialogue", "code", "vision", "pdf"],
     maxContext: 400000, // GPT-5 family value (matches gpt-5/gpt-5.1/gpt-5.2 entries)
     fallbackTo: null,
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
@@ -1985,7 +2233,7 @@ const FOUNDRY_MODELS = [
       "system-prompt",
     ],
     imageSupportNote:
-      "Text-only: no image input wired in this integration. Vision is out of scope for the Codex family.",
+      "Image input verified via the Responses surface (input_image) this session — the model describes diagrams and reads visible labels. The earlier ‘text-only, vision out of scope’ note is superseded.",
   }),
 ];
 

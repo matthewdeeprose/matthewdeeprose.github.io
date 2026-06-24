@@ -89,7 +89,7 @@ const MathPixContextManager = (function () {
       { value: "ug4", label: "Undergraduate Year 4" },
       { value: "pg", label: "Postgraduate" },
       { value: "staff", label: "Staff / Academic" },
-    ].map((pair) => Object.freeze(pair))
+    ].map((pair) => Object.freeze(pair)),
   );
 
   // ---------------------------------------------------------------------------
@@ -127,7 +127,12 @@ const MathPixContextManager = (function () {
    * @type {Array<{key: string, label: string, type: string, defaultValue: string, options?: Array<{value: string, label: string}>}>}
    */
   const SCHEMA = [
-    { key: "subjectArea", label: "Subject Area", type: "text", defaultValue: "" },
+    {
+      key: "subjectArea",
+      label: "Subject Area",
+      type: "text",
+      defaultValue: "",
+    },
     {
       key: "specificTopic",
       label: "Specific Topic",
@@ -238,14 +243,14 @@ const MathPixContextManager = (function () {
     } catch (error) {
       logWarn(
         `Audience-level startup read failed (fetch threw — config unreachable); keeping the seeded fallback list. ${CONFIG_URL}`,
-        error
+        error,
       );
       return;
     }
 
     if (!response.ok) {
       logWarn(
-        `Audience-level startup read failed (HTTP ${response.status}); keeping the seeded fallback list.`
+        `Audience-level startup read failed (HTTP ${response.status}); keeping the seeded fallback list.`,
       );
       return;
     }
@@ -256,7 +261,7 @@ const MathPixContextManager = (function () {
     } catch (error) {
       logWarn(
         "Audience-level startup read failed (malformed JSON); keeping the seeded fallback list.",
-        error
+        error,
       );
       return;
     }
@@ -264,13 +269,13 @@ const MathPixContextManager = (function () {
     const list = config && config.audienceLevels;
     if (!Array.isArray(list)) {
       logWarn(
-        "Audience-level startup read failed (audienceLevels missing or not an array); keeping the seeded fallback list."
+        "Audience-level startup read failed (audienceLevels missing or not an array); keeping the seeded fallback list.",
       );
       return;
     }
     if (list.length === 0) {
       logWarn(
-        "Audience-level startup read failed (audienceLevels is an empty array); keeping the seeded fallback list."
+        "Audience-level startup read failed (audienceLevels is an empty array); keeping the seeded fallback list.",
       );
       return;
     }
@@ -283,7 +288,7 @@ const MathPixContextManager = (function () {
         (entry) =>
           entry &&
           typeof entry.value === "string" &&
-          typeof entry.label === "string"
+          typeof entry.label === "string",
       )
       .map((entry) => ({ value: entry.value, label: entry.label }));
 
@@ -291,14 +296,14 @@ const MathPixContextManager = (function () {
     // least one usable pair — covers "parsed but unusable", not only throws.
     if (projected.length === 0) {
       logWarn(
-        "Audience-level startup read failed (no usable {value, label} pair after projection); keeping the seeded fallback list."
+        "Audience-level startup read failed (no usable {value, label} pair after projection); keeping the seeded fallback list.",
       );
       return;
     }
 
     audienceField.options = projected;
     logInfo(
-      `Audience-level list read from config (${projected.length} entries).`
+      `Audience-level list read from config (${projected.length} entries).`,
     );
   })();
 
@@ -346,7 +351,7 @@ const MathPixContextManager = (function () {
       if (typeof value !== "string") {
         logWarn(
           `setContext skipping key "${key}": value is not a string.`,
-          value
+          value,
         );
         continue;
       }
@@ -401,6 +406,7 @@ const MathPixContextManager = (function () {
     cancelPendingMirrorWrite();
     try {
       localStorage.removeItem(MIRROR_STORAGE_KEY);
+      localStorage.removeItem(MIRROR_SOURCE_KEY);
     } catch (error) {
       logError("Context mirror clear failed.", error);
     }
@@ -451,6 +457,15 @@ const MathPixContextManager = (function () {
 
   /** Single flat key; serialised value byte-identical to Stage 8's context.json. */
   const MIRROR_STORAGE_KEY = "mathpix-context-current";
+
+  /**
+   * Companion stamp the session restorer writes to record which document the
+   * mirror belongs to, used only for re-open scoping. The manager never reads or
+   * writes its value and only clears it here (in reset), so file identity stays
+   * out of the manager. The session restorer declares the same literal locally,
+   * since the two IIFEs share no import.
+   */
+  const MIRROR_SOURCE_KEY = "mathpix-context-current-source";
 
   /**
    * Debounce delay for the mirror write, in milliseconds. Module-local by design:
@@ -530,7 +545,11 @@ const MathPixContextManager = (function () {
       logWarn("Stored context is malformed JSON; ignoring.", error);
       return;
     }
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
       logWarn("Stored context is not a plain object; ignoring.");
       return;
     }
@@ -561,7 +580,7 @@ const MathPixContextManager = (function () {
     const select = root.querySelector('[data-context-key="audienceLevel"]');
     if (!select) {
       logDebug(
-        `No audienceLevel control in "#${root.id}"; skipping options fill.`
+        `No audienceLevel control in "#${root.id}"; skipping options fill.`,
       );
       return;
     }

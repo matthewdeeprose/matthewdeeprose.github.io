@@ -55,24 +55,41 @@
         name: 'Local Text Registry (Phase 6)',
         tests: {
 
-            'getAll() returns exactly 3 models': function (assert) {
+            'getAll() returns exactly 6 models': function (assert) {
                 assert.assertNotNull(registry, 'Registry should be loaded on window');
                 var models = registry.getAll();
+                var expectedCount = registry.getEnabled().length;
                 assert.assertTrue(Array.isArray(models), 'Should return an array');
-                assert.assertEqual(models.length, 3, 'Should have exactly 3 models');
+                assert.assertEqual(models.length, expectedCount, 'Should have exactly ' + expectedCount + ' models');
             },
 
             'All models have required technical fields': function (assert) {
                 var models = registry.getAll();
-                var requiredFields = ['key', 'localModelId', 'hfModelId', 'className', 'quantisation', 'contextLimit', 'enabled'];
+                var universalFields = ['key', 'engine', 'localModelId', 'contextLimit', 'enabled'];
+                var onnxFields = ['hfModelId', 'className', 'quantisation'];
+                var webllmFields = ['mlcModelId'];
 
                 for (var i = 0; i < models.length; i++) {
                     var model = models[i];
-                    for (var j = 0; j < requiredFields.length; j++) {
-                        var field = requiredFields[j];
+                    for (var j = 0; j < universalFields.length; j++) {
+                        var field = universalFields[j];
                         assert.assertTrue(
                             model[field] !== undefined,
                             'Model "' + model.key + '" should have field "' + field + '"'
+                        );
+                    }
+                    // contextLimit must be present and a number; 0 is valid (phi-3.5-mini), not missing
+                    assert.assertEqual(
+                        typeof model.contextLimit, 'number',
+                        'Model "' + model.key + '" contextLimit should be a number (0 is valid)'
+                    );
+
+                    var engineFields = model.engine === 'webllm' ? webllmFields : onnxFields;
+                    for (var k = 0; k < engineFields.length; k++) {
+                        var engineField = engineFields[k];
+                        assert.assertTrue(
+                            model[engineField] !== undefined,
+                            'Model "' + model.key + '" (' + model.engine + ') should have field "' + engineField + '"'
                         );
                     }
                 }
@@ -98,9 +115,9 @@
                 }
             },
 
-            'All benchmarks have entries for all 5 hardware classes': function (assert) {
+            'All benchmarks have entries for all 4 shared hardware classes': function (assert) {
                 var models = registry.getAll();
-                var hardwareClasses = ['vega-10-igpu', 'gtx-1650-super', 'radeon-780m-igpu', 'rtx-4060', 'rtx-4070'];
+                var hardwareClasses = ['gtx-1650-super', 'radeon-780m-igpu', 'rtx-4060', 'rtx-4070'];
 
                 for (var i = 0; i < models.length; i++) {
                     var model = models[i];
@@ -119,7 +136,7 @@
 
             'Each benchmark entry has tokPerSec, contextSafe, loadTimeSec': function (assert) {
                 var models = registry.getAll();
-                var hardwareClasses = ['vega-10-igpu', 'gtx-1650-super', 'radeon-780m-igpu', 'rtx-4060', 'rtx-4070'];
+                var hardwareClasses = ['gtx-1650-super', 'radeon-780m-igpu', 'rtx-4060', 'rtx-4070'];
                 var requiredBenchmarkFields = ['tokPerSec', 'contextSafe', 'loadTimeSec'];
 
                 for (var i = 0; i < models.length; i++) {
@@ -150,7 +167,7 @@
             },
 
             'getModel() returns correct entries for each key': function (assert) {
-                var expectedKeys = ['lfm2-350m', 'lfm2-1.2b', 'phi-3.5-mini'];
+                var expectedKeys = ['lfm2-350m', 'lfm2.5-1.2b', 'phi-3.5-mini', 'llama-3.2-1b', 'qwen2.5-1.5b', 'llama-3.2-3b'];
                 for (var i = 0; i < expectedKeys.length; i++) {
                     var model = registry.getModel(expectedKeys[i]);
                     assert.assertNotNull(model, 'getModel("' + expectedKeys[i] + '") should return a model');
@@ -164,7 +181,7 @@
             },
 
             'getModelByLocalId() returns correct entries': function (assert) {
-                var expectedIds = ['local/lfm2-350m', 'local/lfm2-1.2b', 'local/phi-3.5-mini'];
+                var expectedIds = ['local/lfm2-350m', 'local/lfm2.5-1.2b', 'local/phi-3.5-mini', 'local/llama-3.2-1b', 'local/qwen2.5-1.5b', 'local/llama-3.2-3b'];
                 for (var i = 0; i < expectedIds.length; i++) {
                     var model = registry.getModelByLocalId(expectedIds[i]);
                     assert.assertNotNull(model, 'getModelByLocalId("' + expectedIds[i] + '") should return a model');
@@ -217,17 +234,8 @@
                 assert.assertEqual(typeof kv.bytesPerValue, 'number', 'bytesPerValue should be a number');
             },
 
-            'LFM2-1.2B has contextLimitIGPU set': function (assert) {
-                var lfm2 = registry.getModel('lfm2-1.2b');
-                assert.assertNotNull(lfm2, 'LFM2-1.2B should exist');
-                assert.assertTrue(
-                    typeof lfm2.contextLimitIGPU === 'number' && lfm2.contextLimitIGPU > 0,
-                    'LFM2-1.2B should have a positive contextLimitIGPU'
-                );
-            },
-
             'LFM2-1.2B has useExternalDataFormat true': function (assert) {
-                var lfm2 = registry.getModel('lfm2-1.2b');
+                var lfm2 = registry.getModel('lfm2.5-1.2b');
                 assert.assertTrue(lfm2.useExternalDataFormat === true, 'LFM2-1.2B should have useExternalDataFormat: true');
             },
 
@@ -261,10 +269,11 @@
                 }
             },
 
-            'getRegistry() returns array of length 3': function (assert) {
+            'getRegistry() returns array of length 6': function (assert) {
                 var models = gateway.getRegistry();
+                var expectedCount = registry.getEnabled().length;
                 assert.assertTrue(Array.isArray(models), 'Should return an array');
-                assert.assertEqual(models.length, 3, 'Should have 3 models');
+                assert.assertEqual(models.length, expectedCount, 'Should have ' + expectedCount + ' models');
             },
 
             'getModel("lfm2-350m") returns an object (not null)': function (assert) {

@@ -87,6 +87,11 @@ const ALLY_STATEMENT_PREVIEW = (function () {
     resultsContainer: null,
     courseDetails: null,
     courseMetadata: null,
+    copyButtons: null,
+    copyTextBtn: null,
+    copyFormattedBtn: null,
+    copyHtmlBtn: null,
+    downloadWordBtn: null,
   };
   // ========================================================================
   // DOM Utilities
@@ -108,6 +113,15 @@ const ALLY_STATEMENT_PREVIEW = (function () {
     elements.courseMetadata = document.getElementById(
       "ally-sp-course-metadata",
     );
+
+    // Copy buttons are optional - their absence must not fail initialisation
+    elements.copyButtons = document.getElementById("ally-sp-copy-buttons");
+    elements.copyTextBtn = document.getElementById("ally-sp-copy-text");
+    elements.copyFormattedBtn = document.getElementById(
+      "ally-sp-copy-formatted",
+    );
+    elements.copyHtmlBtn = document.getElementById("ally-sp-copy-html");
+    elements.downloadWordBtn = document.getElementById("ally-sp-download-word");
 
     const allFound =
       elements.executeButton &&
@@ -265,6 +279,10 @@ const ALLY_STATEMENT_PREVIEW = (function () {
 
       if (elements.courseDetails) {
         elements.courseDetails.hidden = true;
+      }
+
+      if (elements.copyButtons) {
+        elements.copyButtons.hidden = true;
       }
     }
 
@@ -795,6 +813,396 @@ const ALLY_STATEMENT_PREVIEW = (function () {
   }
 
   // ========================================================================
+  // Copy to Clipboard
+  // ========================================================================
+
+  /**
+   * Recursively serialises a DOM node to structured plain text.
+   *
+   * Unlike `innerText`, this works on a DETACHED (unrendered) node — it derives
+   * line breaks from the element structure rather than from layout, so the
+   * copy payload keeps its shape even though `wrapper` is never attached to the
+   * DOM. Mirrors the structure built by `renderListItems`.
+   *
+   *  - h3 / h4 / p  → own line, blank line after
+   *  - li           → "- " prefix, two-space indent per nesting level
+   *  - a            → link text followed by " (url)" when an href is present
+   *  - icons / SVG  → skipped (aria-hidden / data-icon / <svg>)
+   *
+   * @param {Node} node - The node to serialise
+   * @param {number} depth - Current list nesting depth (0 at top level)
+   * @returns {string} Plain text (normalised once by the caller)
+   */
+  function serialiseToText(node, depth) {
+    // Text node: collapse internal whitespace, no per-node trim
+    if (node.nodeType === Node.TEXT_NODE) {
+      return (node.textContent || "").replace(/\s+/g, " ");
+    }
+
+    // Only elements beyond this point
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return "";
+    }
+
+    // Skip icons and decorative SVG
+    if (
+      node.getAttribute("aria-hidden") === "true" ||
+      node.hasAttribute("data-icon") ||
+      node.tagName.toLowerCase() === "svg"
+    ) {
+      return "";
+    }
+
+    const tag = node.tagName.toLowerCase();
+
+    if (tag === "h3" || tag === "h4" || tag === "p") {
+      return "\n\n" + inlineText(node) + "\n";
+    }
+
+    if (tag === "li") {
+      let out = "\n" + "  ".repeat(depth) + "- " + inlineText(node);
+      // Nested lists live inside the <li> (see renderListItems)
+      node.childNodes.forEach(function (child) {
+        if (
+          child.nodeType === Node.ELEMENT_NODE &&
+          (child.tagName.toLowerCase() === "ul" ||
+            child.tagName.toLowerCase() === "ol")
+        ) {
+          out += serialiseToText(child, depth + 1);
+        }
+      });
+      return out;
+    }
+
+    if (tag === "ul" || tag === "ol") {
+      let out = "";
+      node.childNodes.forEach(function (child) {
+        if (
+          child.nodeType === Node.ELEMENT_NODE &&
+          child.tagName.toLowerCase() === "li"
+        ) {
+          out += serialiseToText(child, depth);
+        }
+      });
+      return out;
+    }
+
+    if (tag === "a") {
+      const text = (node.textContent || "").replace(/\s+/g, " ").trim();
+      const href = node.getAttribute("href");
+      return href && href.trim() ? text + " (" + href.trim() + ")" : text;
+    }
+
+    // Default (div, section, span, strong, …): recurse over children
+    let out = "";
+    node.childNodes.forEach(function (child) {
+      out += serialiseToText(child, depth);
+    });
+    return out;
+  }
+
+  /**
+   * Serialises the inline content of a block element (heading, paragraph, or
+   * the label portion of a list item). Inline elements pass through as text;
+   * block children (nested ul/ol) are stopped so the li branch can handle them.
+   * Skip guards (icons / SVG) still apply via the `a` and default handling.
+   *
+   * @param {Element} el - Block element whose inline text is wanted
+   * @returns {string} Inline text
+   */
+  function inlineText(el) {
+    let out = "";
+    el.childNodes.forEach(function (child) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        out += (child.textContent || "").replace(/\s+/g, " ");
+        return;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+
+      const childTag = child.tagName.toLowerCase();
+      // Stop at block-level children — the li branch serialises nested lists
+      if (childTag === "ul" || childTag === "ol") return;
+
+      // Reuse serialiseToText for inline handling: it skips icons/SVG, renders
+      // links as "text (url)", and recurses other inline wrappers (span, strong…)
+      out += serialiseToText(child, 0);
+    });
+    return out;
+  }
+
+  /**
+   * Clones the currently-rendered statement into a detached fragment, the
+   * shared source of truth for all copy/export paths (plain text, HTML, and
+   * the Word .docx export).
+   *
+   * Scope = "statement only": the intro paragraph (minus the data-freshness
+   * notice) plus each accessibility warning section (or the success message).
+   * The data-freshness notice, module-information details, issue-count
+   * breakdown, cache banners and the copy buttons themselves are excluded.
+   *
+   * Disclosures are always expanded: the "What this means" / "Suggestions"
+   * lists are revealed and the interactive "Read more" controls dropped, so
+   * exported content is complete and static.
+   *
+   * @returns {HTMLElement|null} The detached wrapper node, or null if there
+   *   is nothing to export.
+   */
+  function buildCopyFragment() {
+    const container = elements.resultsContainer;
+    if (!container) return null;
+
+    const wrapper = document.createElement("div");
+
+    // Intro (without the data-freshness notice)
+    const intro = container.querySelector(".ally-sp-intro");
+    if (intro) {
+      const introClone = intro.cloneNode(true);
+      const freshness = introClone.querySelector(".ally-sp-freshness-warning");
+      if (freshness) {
+        freshness.remove();
+      }
+      wrapper.appendChild(introClone);
+    }
+
+    // Warning sections (disclosures expanded, interactive controls removed)
+    const warnings = container.querySelectorAll(".ally-sp-warning");
+    if (warnings.length > 0) {
+      warnings.forEach(function (warning) {
+        const warningClone = warning.cloneNode(true);
+
+        // Drop the disclosure button(s) / chevron - useless in pasted content
+        warningClone
+          .querySelectorAll(".ally-sp-disclosure-button")
+          .forEach(function (btn) {
+            btn.remove();
+          });
+
+        // Reveal the expandable content
+        warningClone
+          .querySelectorAll(".ally-sp-expandable-content")
+          .forEach(function (content) {
+            content.removeAttribute("hidden");
+          });
+
+        wrapper.appendChild(warningClone);
+      });
+    } else {
+      // No warnings - include the success state instead
+      const success = container.querySelector(".ally-sp-success");
+      if (success) {
+        wrapper.appendChild(success.cloneNode(true));
+      }
+    }
+
+    if (!wrapper.firstChild) {
+      return null;
+    }
+
+    return wrapper;
+  }
+
+  /**
+   * Builds the copy payload (plain text + HTML) from the rendered statement.
+   * Shares the cloned fragment with the Word export via buildCopyFragment().
+   *
+   * @returns {{text: string, html: string}|null} Copy payload, or null if
+   *   there is nothing to copy.
+   */
+  function buildCopyContent() {
+    const wrapper = buildCopyFragment();
+    if (!wrapper) {
+      return null;
+    }
+
+    // Derive plain text from the structure (not innerText — wrapper is detached
+    // and unrendered, so innerText would collapse every block into one line).
+    const text = serialiseToText(wrapper, 0)
+      .replace(/[ \t]+\n/g, "\n") // strip trailing per-line spaces
+      .replace(/\n{3,}/g, "\n\n") // collapse blank-line runs
+      .trim();
+
+    return {
+      text: text,
+      html: wrapper.innerHTML,
+    };
+  }
+
+  /**
+   * Shows visual feedback on a copy button and announces success.
+   * The button label briefly becomes a tick + message, then restores.
+   * @param {HTMLButtonElement} button - The button that was clicked
+   * @param {string} message - Success message
+   */
+  function showCopyFeedback(button, message) {
+    if (button) {
+      const originalHTML = button.innerHTML;
+      button.innerHTML = '<span aria-hidden="true">✓</span> ' + message;
+      button.classList.add("ally-sp-copy-success");
+
+      setTimeout(function () {
+        button.innerHTML = originalHTML;
+        button.classList.remove("ally-sp-copy-success");
+      }, 2000);
+    }
+
+    if (typeof window.notifySuccess === "function") {
+      window.notifySuccess(message);
+    }
+
+    // The copy buttons live OUTSIDE the aria-live results container, so the
+    // screen-reader announcement is made explicitly here.
+    if (typeof ALLY_UI_MANAGER !== "undefined") {
+      ALLY_UI_MANAGER.announce(message);
+    }
+
+    logDebug("Copy feedback shown:", message);
+  }
+
+  /**
+   * Reports a copy failure to the user.
+   * @param {string} message - Error message
+   */
+  function showCopyError(message) {
+    if (typeof window.notifyError === "function") {
+      window.notifyError(message);
+    }
+    if (typeof ALLY_UI_MANAGER !== "undefined") {
+      ALLY_UI_MANAGER.announce(message);
+    }
+  }
+
+  /**
+   * Copies the statement as plain text.
+   */
+  async function copyAsText() {
+    const content = buildCopyContent();
+    if (!content) {
+      showCopyError("No content to copy");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(content.text);
+      showCopyFeedback(elements.copyTextBtn, "Text copied!");
+      logInfo("Statement copied as plain text");
+    } catch (error) {
+      logError("Copy failed:", error);
+      showCopyError("Failed to copy to clipboard");
+    }
+  }
+
+  /**
+   * Copies the statement as formatted (rich) content, preserving headings
+   * and lists when pasted into Word / Google Docs. Falls back to plain text
+   * if ClipboardItem is unsupported.
+   */
+  async function copyAsFormatted() {
+    const content = buildCopyContent();
+    if (!content) {
+      showCopyError("No content to copy");
+      return;
+    }
+
+    try {
+      // Wrap the fragment in a minimal HTML document so Word maps <h3>/<h4>
+      // to its built-in heading styles (a bare fragment pastes as Normal).
+      const html =
+        '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' +
+        content.html +
+        "</body></html>";
+
+      const htmlBlob = new Blob([html], { type: "text/html" });
+      const textBlob = new Blob([content.text], { type: "text/plain" });
+
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": htmlBlob,
+          "text/plain": textBlob,
+        }),
+      ]);
+
+      showCopyFeedback(elements.copyFormattedBtn, "Formatted text copied!");
+      logInfo("Statement copied as formatted text");
+    } catch (error) {
+      logError("Failed to copy formatted text:", error);
+      // Fallback to plain text if ClipboardItem is not supported
+      try {
+        await navigator.clipboard.writeText(content.text);
+        showCopyFeedback(elements.copyFormattedBtn, "Text copied (plain)");
+        logWarn("ClipboardItem not supported, fell back to plain text");
+      } catch (fallbackError) {
+        showCopyError("Failed to copy");
+      }
+    }
+  }
+
+  /**
+   * Copies the statement as HTML source.
+   */
+  async function copyAsHtml() {
+    const content = buildCopyContent();
+    if (!content) {
+      showCopyError("No content to copy");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(content.html);
+      showCopyFeedback(elements.copyHtmlBtn, "HTML copied!");
+      logInfo("Statement copied as HTML source");
+    } catch (error) {
+      logError("Failed to copy HTML:", error);
+      showCopyError("Failed to copy HTML");
+    }
+  }
+
+  /**
+   * Downloads the statement as a Word document (.docx) with genuine Word
+   * heading styles. Delegates to the ALLY_STATEMENT_PREVIEW_DOCX module,
+   * which lazy-loads the docx library on first use.
+   */
+  async function downloadAsWord() {
+    if (typeof ALLY_STATEMENT_PREVIEW_DOCX === "undefined") {
+      logError("ALLY_STATEMENT_PREVIEW_DOCX module not available");
+      showCopyError("Word export is not available");
+      return;
+    }
+
+    const fragment = buildCopyFragment();
+    if (!fragment) {
+      showCopyError("No content to download");
+      return;
+    }
+
+    const meta = {
+      courseName:
+        (selectedCourse && selectedCourse.name) ||
+        (lastPreviewData && lastPreviewData.courseName) ||
+        "",
+      courseCode:
+        (selectedCourse && selectedCourse.code) ||
+        (lastPreviewData && lastPreviewData.courseCode) ||
+        "",
+    };
+
+    if (typeof window.notifyInfo === "function") {
+      window.notifyInfo("Preparing Word document…");
+    }
+    if (typeof ALLY_UI_MANAGER !== "undefined") {
+      ALLY_UI_MANAGER.announce("Preparing Word document.");
+    }
+
+    try {
+      await ALLY_STATEMENT_PREVIEW_DOCX.download(fragment, meta);
+      showCopyFeedback(elements.downloadWordBtn, "Word document downloaded");
+      logInfo("Statement downloaded as Word document");
+    } catch (error) {
+      logError("Failed to generate Word document:", error);
+      showCopyError("Failed to create the Word document");
+    }
+  }
+
+  // ========================================================================
   // Main Render Function
   // ========================================================================
 
@@ -837,6 +1245,11 @@ const ALLY_STATEMENT_PREVIEW = (function () {
 
     // Show results
     container.hidden = false;
+
+    // Reveal the copy buttons now that there is a statement to copy
+    if (elements.copyButtons) {
+      elements.copyButtons.hidden = false;
+    }
 
     // Render course metadata
     renderCourseMetadata(issueData);
@@ -1463,6 +1876,20 @@ const ALLY_STATEMENT_PREVIEW = (function () {
       );
     }
 
+    // Copy buttons (optional - guard each)
+    if (elements.copyTextBtn) {
+      elements.copyTextBtn.addEventListener("click", copyAsText);
+    }
+    if (elements.copyFormattedBtn) {
+      elements.copyFormattedBtn.addEventListener("click", copyAsFormatted);
+    }
+    if (elements.copyHtmlBtn) {
+      elements.copyHtmlBtn.addEventListener("click", copyAsHtml);
+    }
+    if (elements.downloadWordBtn) {
+      elements.downloadWordBtn.addEventListener("click", downloadAsWord);
+    }
+
     listenersAttached = true;
     logDebug("Event listeners set up");
   }
@@ -1584,6 +2011,10 @@ const ALLY_STATEMENT_PREVIEW = (function () {
         elements.courseDetails.hidden = true;
       }
 
+      if (elements.copyButtons) {
+        elements.copyButtons.hidden = true;
+      }
+
       hideProgress();
 
       if (typeof ALLY_STATEMENT_PREVIEW_SEARCH !== "undefined") {
@@ -1598,6 +2029,25 @@ const ALLY_STATEMENT_PREVIEW = (function () {
      * @param {HTMLButtonElement} button - The disclosure button
      */
     toggleDisclosure: toggleDisclosure,
+
+    /**
+     * Builds the copy payload from the rendered statement (exposed for testing)
+     * @returns {{text: string, html: string}|null}
+     */
+    buildCopyContent: buildCopyContent,
+
+    /**
+     * Builds the detached statement fragment shared by all export paths
+     * (exposed for testing / Word export)
+     * @returns {HTMLElement|null}
+     */
+    buildCopyFragment: buildCopyFragment,
+
+    /**
+     * Downloads the rendered statement as a Word document (exposed for testing)
+     * @returns {Promise<void>}
+     */
+    downloadAsWord: downloadAsWord,
 
     /**
      * Expands all disclosure widgets
@@ -1811,6 +2261,36 @@ window.testAllyStatementPreview = function () {
     );
   }
 
+  // Copy button tests
+  test(
+    "has buildCopyContent method",
+    typeof ALLY_STATEMENT_PREVIEW.buildCopyContent === "function",
+  );
+
+  const copyGroup = document.getElementById("ally-sp-copy-buttons");
+  const copyTextBtn = document.getElementById("ally-sp-copy-text");
+  const copyFormattedBtn = document.getElementById("ally-sp-copy-formatted");
+  const copyHtmlBtn = document.getElementById("ally-sp-copy-html");
+
+  test("Copy button group exists", copyGroup !== null);
+  test("Copy Text button exists", copyTextBtn !== null);
+  test("Copy Formatted button exists", copyFormattedBtn !== null);
+  test("Copy HTML button exists", copyHtmlBtn !== null);
+
+  if (copyGroup) {
+    test("Copy button group is hidden initially", copyGroup.hidden === true);
+    test(
+      "Copy button group is outside the aria-live results container",
+      !!resultsContainer && !resultsContainer.contains(copyGroup),
+    );
+  }
+  if (copyTextBtn) {
+    test(
+      "Copy Text button has accessible name",
+      copyTextBtn.textContent.trim().length > 0,
+    );
+  }
+
   console.log("\n" + passed + " passed, " + failed + " failed");
   console.groupEnd();
 
@@ -1858,4 +2338,91 @@ window.testAllyStatementPreviewIntegration = function () {
   console.log("4. Test disclosure widgets with expandAll()/collapseAll()");
 
   console.groupEnd();
+};
+
+/**
+ * Copy-button test: renders mock data, then verifies the copy payload honours
+ * the "statement only" scope and the "disclosures always expanded" rule.
+ * NOTE: this renders into the live Statement Preview DOM.
+ */
+window.testAllyStatementPreviewCopy = function () {
+  console.group("ALLY_STATEMENT_PREVIEW Copy Tests");
+
+  let passed = 0;
+  let failed = 0;
+
+  function test(name, condition) {
+    if (condition) {
+      console.log("✓ " + name);
+      passed++;
+    } else {
+      console.error("✗ " + name);
+      failed++;
+    }
+  }
+
+  if (!ALLY_STATEMENT_PREVIEW.isInitialised()) {
+    ALLY_STATEMENT_PREVIEW.initialise(true);
+  }
+
+  // Render a statement with issues + a freshness date via the cache render path
+  const mockEntry = {
+    courseId: "copy-test-123",
+    courseName: "Copy Test Module",
+    courseCode: "COPY101",
+    termName: "2023-24",
+    timestamp: Date.now(),
+    data: {
+      courseName: "Copy Test Module",
+      courseCode: "COPY101",
+      termName: "2023-24",
+      lastCheckedOn: "2024-01-15T10:30:00Z",
+      filesCount: 45,
+      alternativeText2: 5,
+      htmlImageAlt2: 3,
+      htmlBrokenLink2: 2,
+    },
+  };
+
+  ALLY_STATEMENT_PREVIEW.renderFromCache(mockEntry);
+
+  const copyGroup = document.getElementById("ally-sp-copy-buttons");
+  test(
+    "Copy button group visible after render",
+    !!copyGroup && copyGroup.hidden === false,
+  );
+
+  const freshnessRendered = !!document.querySelector(
+    "#ally-sp-results .ally-sp-freshness-warning",
+  );
+  test("Freshness notice present in rendered statement", freshnessRendered);
+
+  const content = ALLY_STATEMENT_PREVIEW.buildCopyContent();
+  test("buildCopyContent returns an object", content && typeof content === "object");
+
+  if (content) {
+    test("Copy payload has non-empty text", content.text.trim().length > 0);
+    test("Copy payload has non-empty html", content.html.trim().length > 0);
+    test(
+      "Copy payload EXCLUDES the freshness notice",
+      content.html.indexOf("ally-sp-freshness-warning") === -1 &&
+        content.text.indexOf("last updated") === -1,
+    );
+    test(
+      "Copy payload INCLUDES expanded disclosure content",
+      content.text.indexOf("What this means") !== -1,
+    );
+    test(
+      "Copy payload DROPS the Read more disclosure buttons",
+      content.html.indexOf("ally-sp-disclosure-button") === -1,
+    );
+  }
+
+  console.log("\n" + passed + " passed, " + failed + " failed");
+  console.log(
+    "Note: this rendered mock data into the live preview. Reset with ALLY_STATEMENT_PREVIEW.reset().",
+  );
+  console.groupEnd();
+
+  return failed === 0;
 };

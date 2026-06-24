@@ -7504,6 +7504,41 @@ Science,91</pre
                         <p id="resume-context-extraInformation-hint" class="field-hint">Anything else that would help describe the content accurately.</p>
                       </div>
                     </fieldset>
+                    <div class="mathpix-context-ai">
+                      <button
+                        type="button"
+                        id="resume-context-ai-analyse"
+                        aria-describedby="resume-context-ai-analyse-hint"
+                        disabled
+                      >
+                        <span aria-hidden="true" data-icon="aiSparkle"></span>
+                        Analyse with AI
+                      </button>
+                      <p
+                        id="resume-context-ai-analyse-hint"
+                        class="field-hint"
+                      >
+                        Reads the document to suggest context values for the
+                        fields above. A PDF must be loaded before you can analyse
+                        it.
+                      </p>
+                      <div id="resume-context-ai-cost"></div>
+                      <div id="resume-context-ai-progress"></div>
+                      <div id="resume-context-ai-summary"></div>
+                      <button
+                        type="button"
+                        id="resume-context-ai-undo"
+                        hidden
+                      >
+                        <span aria-hidden="true" data-icon="undo"></span>
+                        Undo AI fill
+                      </button>
+                      <div
+                        id="resume-context-ai-announce"
+                        class="sr-only"
+                        aria-live="polite"
+                      ></div>
+                    </div>
                   </form>
                 </div>
               </div>
@@ -15896,6 +15931,51 @@ Science,91</pre
               <!-- Dynamically populated by ALLY_STATEMENT_PREVIEW -->
             </div>
 
+            <!-- Copy buttons (shown after a statement renders). Mounted as a
+                 sibling AFTER #ally-sp-results so the copy-success label swap is
+                 NOT announced by that container's aria-live="polite" region. -->
+            <div
+              id="ally-sp-copy-buttons"
+              class="ally-sp-copy-buttons button-group"
+              hidden
+            >
+              <span class="ally-sp-copy-label" id="ally-sp-copy-label"
+                >Copy as:</span
+              >
+              <button
+                type="button"
+                id="ally-sp-copy-text"
+                class="secondary-button"
+                aria-describedby="ally-sp-copy-label"
+              >
+                <span aria-hidden="true" data-icon="clipboard"></span> Text
+              </button>
+              <button
+                type="button"
+                id="ally-sp-copy-formatted"
+                class="secondary-button"
+                aria-describedby="ally-sp-copy-label"
+              >
+                <span aria-hidden="true" data-icon="document"></span> Formatted
+              </button>
+              <button
+                type="button"
+                id="ally-sp-copy-html"
+                class="secondary-button"
+                aria-describedby="ally-sp-copy-label"
+              >
+                <span aria-hidden="true">&lt;/&gt;</span> HTML
+              </button>
+              <button
+                type="button"
+                id="ally-sp-download-word"
+                class="secondary-button"
+              >
+                <span aria-hidden="true" data-icon="download"></span> Download
+                for Word
+              </button>
+            </div>
+
             <!-- Course details (collapsible, at end of results) -->
             <details
               id="ally-sp-course-details"
@@ -17134,7 +17214,7 @@ Science,91</pre
     <script src="mathpix-scripts/core/session-restorer/session-restorer-file-handling.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-diff-preview.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-edit-dialog.js?v=8.2"></script>
-    <script src="mathpix-scripts/core/session-restorer/session-restorer-restore.js?v=8.3"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-restore.js?v=8.5"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-images.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-display-layer.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-pdf.js?v=8.2"></script>
@@ -17159,7 +17239,7 @@ Science,91</pre
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-diff-engine.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-mmd-analyser.js"></script>
     <script src="mathpix-scripts/core/mathpix-image-registry.js"></script>
-    <script src="mathpix-scripts/core/mathpix-context-manager.js?v=9.0"></script>
+    <script src="mathpix-scripts/core/mathpix-context-manager.js?v=9.1"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-mmd-serialiser.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-integrator.js"></script>
     <script src="mathpix-scripts/testing/mathpix-alt-text-serialiser-tests.js"></script>
@@ -17186,6 +17266,10 @@ Science,91</pre
     <script src="mathpix-scripts/ai-enhancement/mathpix-context-ai.js"></script>
     <!-- Phase 2 Stage 1: Context auto-fill preflight harness (window.runContextAITests) -->
     <script src="mathpix-scripts/testing/mathpix-context-ai-tests.js"></script>
+    <!-- Re-open context survival P5: capture/normalise/trichotomy/divergence/stamp suite (window.runReopenContextTests) -->
+    <script src="mathpix-scripts/testing/mathpix-reopen-context-tests.js"></script>
+    <!-- Floor summary aggregator: one normalised table across every floor suite (window.runFloorSummary) -->
+    <script src="mathpix-scripts/testing/mathpix-floor-summary.js"></script>
     <script src="mathpix-scripts/testing/mathpix-f-o-storage-corruption-tests.js"></script>
     <script src="mathpix-scripts/testing/mathpix-item2-warn-gate-tests.js"></script>
     <script src="mathpix-scripts/testing/mathpix-phase5-testing.js"></script>
@@ -17396,6 +17480,13 @@ Science,91</pre
 
     <!-- Phase 8: Local Text Embed Backend tests (after test runner + backend) -->
     <script src="image-describer/testing/tests-local-text-embed.js"></script>
+
+    <!-- Unified Chat Stage 1a: Local Chat UI characterisation suite
+         (after test runner + local-chat modules + registry) -->
+    <script src="image-describer/testing/tests-local-chat-ui.js"></script>
+
+    <!-- Unified Chat Stage 1c: Local Chat isolation + gap-fill suite (static) -->
+    <script src="image-describer/testing/tests-local-chat-isolation.js"></script>
 
     <!-- Phase 10D-fix: OCR merge bug fix tests -->
     <script src="image-describer/testing/tests-10d-fix.js"></script>
@@ -20884,6 +20975,7 @@ Science,91</pre
     <script src="ally-scripts/ui/ally-course-report.js"></script>
     <script src="ally-scripts/ui/ally-statement-preview-config.js"></script>
     <script src="ally-scripts/ui/ally-statement-preview-search.js"></script>
+    <script src="ally-scripts/ui/ally-statement-preview-docx.js"></script>
     <script src="ally-scripts/ui/ally-statement-preview.js"></script>
   </body>
 </html>

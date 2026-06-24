@@ -714,6 +714,93 @@ legend.session-manager-group-header {
   border: 2px dashed #00131d;
 }
 
+/* Document Context form (Stage 7) — card + callout hint colours.
+   Card background matches the app's other titled panels
+   (.ally-config-section, .session-manager-group); the hint accent matches the
+   left-bordered callouts used elsewhere (e.g. .ally-chart-description). The
+   card border itself is currentColor (set structurally), as on those panels. */
+.mathpix-context-form fieldset {
+  background: #e1e8ec;
+}
+
+.mathpix-context-form .field-hint {
+  border-left-color: #005c84;
+  color: #495961;
+}
+
+/* Document Context — AI auto-fill control (Stage 7 / P5) colours.
+   Analyse is the primary (dark-filled) action, Undo the secondary (light). Both
+   take the convert-upload-label focus treatment — a layered box-shadow + outline
+   giving a focus indicator well above the 3:1 non-text floor. The cost preview
+   and summary rows reuse the left-accent callout palette; the before/after
+   colours only reinforce the weight/style cue already set structurally. */
+#resume-context-ai-analyse {
+  background: #00131d;
+  color: #fffff4;
+  border: 0.2rem solid #00131d;
+}
+
+#resume-context-ai-analyse:hover,
+#resume-context-ai-analyse:focus-visible {
+  background-color: #fffff4;
+  color: #00131d;
+  box-shadow: 0 0 0 0.4rem #005c84;
+  outline: 0.2rem solid #fffff4 !important;
+  border: 0.2rem solid #00131d;
+}
+
+#resume-context-ai-analyse:disabled {
+  background: #9fb1bd;
+  color: #00131d;
+  border: 0.2rem solid #495961;
+}
+
+#resume-context-ai-undo {
+  background: #fffff4;
+  color: #00131d;
+  border: 0.2rem solid #00131d;
+}
+
+#resume-context-ai-undo:hover,
+#resume-context-ai-undo:focus-visible {
+  background-color: #e1e8ec;
+  color: #00131d;
+  box-shadow: 0 0 0 0.4rem #005c84;
+  outline: 0.2rem solid #fffff4 !important;
+  border: 0.2rem solid #00131d;
+}
+
+#resume-context-ai-cost,
+.context-ai-summary-row {
+  border-left-color: #005c84;
+  background-color: #e1e8ec;
+}
+
+.context-ai-summary-before {
+  color: #495961;
+}
+
+.context-ai-summary-after {
+  color: #00131d;
+}
+
+/* Progress row — accent per state (the icon shape + label text also distinguish
+   the states, so colour is never the sole cue). */
+#resume-context-ai-progress[data-state="busy"] {
+  border-left-color: #005c84;
+  background-color: #e1e8ec;
+}
+
+#resume-context-ai-progress[data-state="done"] {
+  border-left-color: #005051;
+  background-color: #e1e8ec;
+}
+
+#resume-context-ai-progress[data-state="error"] {
+  border-left-color: #d5007f;
+  background-color: #e1e8ec;
+}
+
 .diff-removed {
   color: #d5007f;
   background-color: #fff8f8;
@@ -6133,3 +6220,6 @@ pre.language-json {
   white-space: nowrap;
 }
 
+#resume-context-ai-summary {
+  background: #9fb1bd;
+}

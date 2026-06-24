@@ -9,7 +9,16 @@
   "use strict";
 
   // ── Guard: state module must be loaded first ─────────────────────────────
-  var S = window.LocalChatState;
+  // S is a re-bindable module-local reference to the current conversation
+  // state. It defaults to window.LocalChatState; attach(state) (below) can
+  // re-point it at a freshly-attached state object. Internal code reads the
+  // conversation state — its messages[] array, els{} DOM map, and storage
+  // keys/limits — live through S at call time, never caching any of them at
+  // load, so a later attach() swap takes effect immediately. Reading the
+  // storage keys live (S.SESSION_KEY / S.ARCHIVE_KEY) is what lets a second
+  // tool use its own storage rather than reading and writing this tool's
+  // saved data.
+  let S = window.LocalChatState;
   if (!S) {
     console.error(
       "[LocalChatPersistence] local-chat-state.js must be loaded before local-chat-persistence.js",
@@ -17,10 +26,11 @@
     return;
   }
 
-  // Local aliases — mutations (push/pop/splice) work through the alias.
-  // Reassignments must also write through to S.messages.
-  var messages = S.messages;
-  var els = S.els;
+  // Re-point the module at a freshly-attached state object. Not called from
+  // anywhere yet (Stage 1 part 1b) — wiring lands in a later step.
+  function attach(state) {
+    if (state) S = state;
+  }
 
   // ── Messages module reference (from local-chat-messages.js) ────────────
   var M = window.LocalChatMessages;
@@ -28,18 +38,12 @@
   // ── Chips module reference (from local-chat-chips.js) ──────────────────
   var Chips = window.LocalChatChips;
 
-  // ── Constants from shared state ────────────────────────────────────────
-  var SESSION_KEY = S.SESSION_KEY;
-  var SESSION_MAX_BYTES = S.SESSION_MAX_BYTES;
-  var ARCHIVE_KEY = S.ARCHIVE_KEY;
-  var ARCHIVE_MAX_CONVERSATIONS = S.ARCHIVE_MAX_CONVERSATIONS;
-  var ARCHIVE_MAX_BYTES = S.ARCHIVE_MAX_BYTES;
-
   // ── Session persistence (5c) ────────────────────────────────────────────
 
   function saveSession() {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read conversation state from S live to stay in sync after reassignments
+    var messages = S.messages;
+    var els = S.els;
 
     try {
       var data = {
@@ -50,17 +54,17 @@
         maxTokens: S.getMaxTokens(),
       };
       var json = JSON.stringify(data);
-      if (json.length > SESSION_MAX_BYTES) {
+      if (json.length > S.SESSION_MAX_BYTES) {
         S.logWarn(
           "Session too large to save:",
           json.length,
           "bytes (cap:",
-          SESSION_MAX_BYTES,
+          S.SESSION_MAX_BYTES,
           ")",
         );
         return;
       }
-      sessionStorage.setItem(SESSION_KEY, json);
+      sessionStorage.setItem(S.SESSION_KEY, json);
     } catch (e) {
       S.logWarn("Failed to save session:", e.message);
     }
@@ -68,7 +72,7 @@
 
   function clearSession() {
     try {
-      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(S.SESSION_KEY);
     } catch (e) {
       // Ignore
     }
@@ -77,8 +81,9 @@
   // ── Conversation archive (5h-A) ─────────────────────────────────────────
 
   function archiveConversation() {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read conversation state from S live to stay in sync after reassignments
+    var messages = S.messages;
+    var els = S.els;
 
     if (messages.length === 0) return false;
 
@@ -121,7 +126,7 @@
     // Check size cap before adding
     var testArchive = [entry].concat(archive);
     var testJson = JSON.stringify(testArchive);
-    if (testJson.length > ARCHIVE_MAX_BYTES) {
+    if (testJson.length > S.ARCHIVE_MAX_BYTES) {
       S.logWarn(
         "Archive would exceed 2MB cap — conversation not archived. Consider deleting old conversations.",
       );
@@ -132,12 +137,12 @@
     archive.unshift(entry);
 
     // Enforce conversation count cap
-    if (archive.length > ARCHIVE_MAX_CONVERSATIONS) {
-      archive = archive.slice(0, ARCHIVE_MAX_CONVERSATIONS);
+    if (archive.length > S.ARCHIVE_MAX_CONVERSATIONS) {
+      archive = archive.slice(0, S.ARCHIVE_MAX_CONVERSATIONS);
     }
 
     try {
-      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+      localStorage.setItem(S.ARCHIVE_KEY, JSON.stringify(archive));
       S.logInfo(
         "Conversation archived:",
         title,
@@ -152,7 +157,7 @@
 
   function loadArchive() {
     try {
-      var json = localStorage.getItem(ARCHIVE_KEY);
+      var json = localStorage.getItem(S.ARCHIVE_KEY);
       if (!json) return [];
       var archive = JSON.parse(json);
       return Array.isArray(archive) ? archive : [];
@@ -168,7 +173,7 @@
       return entry.id !== id;
     });
     try {
-      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+      localStorage.setItem(S.ARCHIVE_KEY, JSON.stringify(archive));
       S.logInfo("Archived conversation deleted:", id);
     } catch (e) {
       S.logWarn("Failed to save archive after delete:", e.message);
@@ -177,7 +182,7 @@
 
   function getArchiveSize() {
     try {
-      var json = localStorage.getItem(ARCHIVE_KEY);
+      var json = localStorage.getItem(S.ARCHIVE_KEY);
       return json ? json.length : 0;
     } catch (e) {
       return 0;
@@ -187,7 +192,8 @@
   // ── Clear helper (5h-A) ─────────────────────────────────────────────────
 
   function performClear() {
-    messages = S.messages = [];
+    var els = S.els;
+    S.messages = [];
     S.currentEmbed = null;
     if (els.messageList) els.messageList.innerHTML = "";
     if (els.stats) els.stats.textContent = "";
@@ -202,8 +208,9 @@
   // ── Session restore ─────────────────────────────────────────────────────
 
   function restoreSession() {
+    var els = S.els;
     try {
-      var json = sessionStorage.getItem(SESSION_KEY);
+      var json = sessionStorage.getItem(S.SESSION_KEY);
       if (!json) return false;
 
       var data = JSON.parse(json);
@@ -268,7 +275,7 @@
       }
 
       // Restore messages and rebuild DOM
-      messages = S.messages = data.messages;
+      S.messages = data.messages;
       rebuildMessageList();
 
       // Force embed to recreate with restored system prompt
@@ -285,8 +292,9 @@
   // ── Rebuild message list from messages array ────────────────────────────
 
   function rebuildMessageList() {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read conversation state from S live to stay in sync after reassignments
+    var messages = S.messages;
+    var els = S.els;
 
     if (!els.messageList) return;
     els.messageList.innerHTML = "";
@@ -337,15 +345,16 @@
   // ── Restore banner ──────────────────────────────────────────────────────
 
   function showRestoreBanner() {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read conversation state from S live to stay in sync after reassignments
+    var messages = S.messages;
+    var els = S.els;
 
     if (!els.messageList) return;
 
     var banner = document.createElement("div");
     banner.className = "local-chat-restore-banner";
     banner.setAttribute("role", "status");
-    banner.id = "local-chat-restore-banner";
+    banner.id = S.elId("restore-banner");
 
     var msgCount = messages.length;
     var text = document.createElement("span");
@@ -398,7 +407,7 @@
   }
 
   function dismissRestoreBanner() {
-    var banner = document.getElementById("local-chat-restore-banner");
+    var banner = document.getElementById(S.elId("restore-banner"));
     if (banner) banner.remove();
   }
 
@@ -408,7 +417,6 @@
    * Returns model display name and safe filename slug.
    */
   function getExportMeta() {
-    messages = S.messages;
     var modelName = S.currentModel || "unknown";
     if (window.LocalTextModelRegistry) {
       var modelDef = window.LocalTextModelRegistry.getModel(S.currentModel);
@@ -440,7 +448,7 @@
   // ── Download conversation (Markdown) ────────────────────────────────
 
   function downloadConversation() {
-    messages = S.messages;
+    var messages = S.messages;
     if (messages.length === 0) return;
     var meta = getExportMeta();
 
@@ -468,7 +476,7 @@
   // ── Export as plain text ────────────────────────────────────────────
 
   function exportAsText() {
-    messages = S.messages;
+    var messages = S.messages;
     if (messages.length === 0) return;
     var meta = getExportMeta();
 
@@ -500,7 +508,7 @@
   // ── Export as HTML ──────────────────────────────────────────────────
 
   function exportAsHTML() {
-    messages = S.messages;
+    var messages = S.messages;
     if (messages.length === 0) return;
     var meta = getExportMeta();
 
@@ -562,13 +570,13 @@
   // ── Export as JSON ──────────────────────────────────────────────────
 
   function exportAsJSON() {
-    messages = S.messages;
+    var messages = S.messages;
     if (messages.length === 0) return;
     var meta = getExportMeta();
 
     // Get current system prompt
     var systemPrompt = "";
-    var systemInput = document.getElementById("local-chat-system");
+    var systemInput = document.getElementById(S.elId("system-input"));
     if (systemInput) systemPrompt = systemInput.value || "";
 
     var data = {
@@ -708,8 +716,9 @@
   }
 
   function resumeArchived(id) {
-    // Re-read messages from S to stay in sync after reassignments
-    messages = S.messages;
+    // Re-read conversation state from S live to stay in sync after reassignments
+    var messages = S.messages;
+    var els = S.els;
 
     var archive = loadArchive();
     var entry = null;
@@ -795,21 +804,22 @@
 
   function refreshHistoryUI() {
     // Refresh history panel (if open)
-    var panel = document.getElementById("local-chat-history-panel");
+    var panel = document.getElementById(S.elId("history-panel"));
     if (panel) {
       renderHistoryPanelContent(panel);
     }
   }
 
   function openHistoryPanel() {
+    var els = S.els;
     // If panel already exists, close it
-    if (document.getElementById("local-chat-history-panel")) {
+    if (document.getElementById(S.elId("history-panel"))) {
       closeHistoryPanel();
       return;
     }
 
     var panel = document.createElement("div");
-    panel.id = "local-chat-history-panel";
+    panel.id = S.elId("history-panel");
     panel.className = "local-chat-history-panel";
     panel.setAttribute("role", "region");
     panel.setAttribute("aria-label", "Conversation history");
@@ -873,7 +883,8 @@
   }
 
   function closeHistoryPanel() {
-    var panel = document.getElementById("local-chat-history-panel");
+    var els = S.els;
+    var panel = document.getElementById(S.elId("history-panel"));
     if (panel) panel.remove();
 
     // Show message list again
@@ -883,7 +894,7 @@
   }
 
   function updateHistoryButton() {
-    var historyBtn = document.getElementById("local-chat-history");
+    var historyBtn = document.getElementById(S.elId("history"));
     if (!historyBtn) return;
     var archive = loadArchive();
     historyBtn.disabled = archive.length === 0;
@@ -892,6 +903,7 @@
   // ── Expose module ────────────────────────────────────────────────────
 
   window.LocalChatPersistence = {
+    attach: attach,
     saveSession: saveSession,
     clearSession: clearSession,
     restoreSession: restoreSession,

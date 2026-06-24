@@ -3224,6 +3224,33 @@ span.ally-sp-disclosure-text {
   font-weight: 600;
 }
 
+/* ========================================================================
+   Statement Preview - Copy Buttons
+   ======================================================================== */
+
+.ally-sp-copy-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.ally-sp-copy-label {
+  font-weight: bold;
+  /* Centre the label against the buttons in the flex row */
+  align-self: center;
+}
+
+/* Buttons reuse the themed global .secondary-button. Guarantee the WCAG 2.2
+   target-size minimum (SC 2.5.8) even if base padding is reduced by a theme. */
+.ally-sp-copy-buttons .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 24px;
+}
+
 /* ally cache */
 /**
  * Ally Cache UI Styling

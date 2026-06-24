@@ -1631,6 +1631,17 @@ body.resume-focus-mode #resume-panel-confidence[hidden] {
   display: none !important;
 }
 
+/* Analysis, Chemistry and Context panels have no inner scroll container,
+   so the panel itself fills the remaining height and scrolls. */
+body.resume-focus-mode #resume-panel-analysis,
+body.resume-focus-mode #resume-panel-chemistry,
+body.resume-focus-mode #resume-panel-context {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
 /* MMD content area fills panel */
 body.resume-focus-mode #resume-mmd-content-area {
   flex: 1 1 0;
