@@ -81,6 +81,7 @@ const ALLY_STATEMENT_PREVIEW_DOCX = (function () {
   const FONT = "Aptos";
   const HEADING_COLOUR = "002E3B"; // brand dark teal
   const TEXT_COLOUR = "231F20"; // brand near-black
+  const LINK_COLOUR = "005C84"; // brand marine (hyperlinks)
 
   // Override Word's BUILT-IN styles via `default` (not `paragraphStyles`,
   // which only adds custom styles and leaves the stock Heading colours intact).
@@ -247,7 +248,13 @@ const ALLY_STATEMENT_PREVIEW_DOCX = (function () {
             new window.docx.ExternalHyperlink({
               link: href.trim(),
               children: [
-                new window.docx.TextRun({ text: text, style: "Hyperlink" }),
+                // Keep the Hyperlink style (underline) but force the brand
+                // colour via direct run formatting, which overrides the style.
+                new window.docx.TextRun({
+                  text: text,
+                  style: "Hyperlink",
+                  color: LINK_COLOUR,
+                }),
               ],
             }),
           );
