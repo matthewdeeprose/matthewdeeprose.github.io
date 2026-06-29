@@ -522,7 +522,7 @@ const MathPixImageManagerUI = (function () {
      * @private
      */
     async _reconcileOnOpen() {
-      const liveMMD = this.restorer?.restoredSession?.currentMMD ?? "";
+      let liveMMD = this.restorer?.restoredSession?.currentMMD ?? "";
       if (!liveMMD) {
         logDebug("_reconcileOnOpen: no current MMD, skipping");
         return;
@@ -562,6 +562,43 @@ const MathPixImageManagerUI = (function () {
         typeof this.restorer?.syncRegistryReferencesToBlobUrls === "function"
       ) {
         this.restorer.syncRegistryReferencesToBlobUrls();
+      }
+
+      // Lane C C-P3: manager-open generation host + pure-prose propagation.
+      // Generate chemistry descriptions into the registry, propagate them into the
+      // working MMD (alt slots + appendix) via the commit primitive, then refresh
+      // liveMMD so the Phase E reconcile below reads the PROPAGATED content, not the
+      // pre-propagation snapshot. Without the refresh, reconcile re-reads the
+      // <smiles> slot and clobbers the prose, freezing it on the wrong value (F9).
+      try {
+        const chemWriter = window.MathPixChemistryRegistryWriter;
+        if (chemWriter && typeof chemWriter.writeChemistryDescriptions === "function") {
+          const pristineMmd =
+            this.restorer?.restoredSession?.results?.mmd ||
+            this.restorer?.restoredSession?.currentMMD ||
+            "";
+          const chemistryData =
+            window.getMathPixController?.()?.resultRenderer?._chemistryData || [];
+          const chemResult = await chemWriter.writeChemistryDescriptions({
+            registry,
+            pristineMmd,
+            workingMmd: cdnMMD, // was liveMMD — CDN-form so alt-slot keys match img.originalUrl on recovered sessions
+            chemistryData,
+          });
+          const chemWrote = Array.isArray(chemResult?.results)
+            ? chemResult.results.filter((r) => r.altWritten || r.longWritten || r.textWritten).length
+            : 0;
+          if (chemWrote > 0) {
+            // Propagate registry → working MMD, then re-read the refreshed source.
+            this._writeMMDFromRegistry(registry);
+            liveMMD = this.restorer?.restoredSession?.currentMMD ?? liveMMD;
+          }
+          logInfo(
+            `Lane C manager-open host: chemistry generated for ${chemResult?.total ?? 0} image(s), ${chemWrote} wrote a field`,
+          );
+        }
+      } catch (chemErr) {
+        logError("Lane C manager-open chemistry generation failed", chemErr);
       }
 
       // Phase E: field-content reverse-sync (Stage 3.B) against the LIVE
@@ -2125,21 +2162,50 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      */
     _applyValuesToRegistry(registry, imageId, valuesByKey, fieldKeys) {
       let allOk = true;
+      // Read the current entry once so each provenance-stamped case can map its
+      // existing source through the PF4 / LC-D4 transition (C-P1a helper). If
+      // getImage returns null, optional chaining yields undefined, which
+      // nextSource resolves to "user" — identical to the pre-C-P1b behaviour.
+      const currentEntry = registry.getImage(imageId);
       for (const fieldKey of fieldKeys) {
         const value = valuesByKey[fieldKey];
         let ok = false;
         switch (fieldKey) {
           case "caption":
-            ok = registry.updateTitle(imageId, value, "user");
+            ok = registry.updateTitle(
+              imageId,
+              value,
+              window.MathPixAltTextProvenance.nextSource(
+                currentEntry?.titleSource,
+              ),
+            );
             break;
           case "altText":
-            ok = registry.updateAltText(imageId, value, "user");
+            ok = registry.updateAltText(
+              imageId,
+              value,
+              window.MathPixAltTextProvenance.nextSource(
+                currentEntry?.altTextSource,
+              ),
+            );
             break;
           case "longDescription":
-            ok = registry.updateLongDescription(imageId, value, "user");
+            ok = registry.updateLongDescription(
+              imageId,
+              value,
+              window.MathPixAltTextProvenance.nextSource(
+                currentEntry?.longDescriptionSource,
+              ),
+            );
             break;
           case "textInImage":
-            ok = registry.updateTextInImage(imageId, value, "user");
+            ok = registry.updateTextInImage(
+              imageId,
+              value,
+              window.MathPixAltTextProvenance.nextSource(
+                currentEntry?.textInImageSource,
+              ),
+            );
             break;
           case "decorative":
             ok = registry.updateDecorative(imageId, value);
@@ -2204,6 +2270,16 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
 
       if (typeof this.restorer.loadMMDContent === "function") {
         this.restorer.loadMMDContent(newMmd, originalMmd);
+      }
+
+      // Persist to the resume-session store so an Image Manager alt edit survives a
+      // refresh-then-reload-ZIP, recovered by applyRecoveredSession — the same store
+      // and code path an MMD-editor edit reaches via scheduleAutoSave. Called before
+      // session.currentMMD is reassigned so the resume undo stack captures the
+      // pre-edit content, identical to an editor edit. saveContentToStorage is
+      // self-sufficient: it derives its own key and normalises blob URLs.
+      if (this.restorer && typeof this.restorer.saveContentToStorage === "function") {
+        this.restorer.saveContentToStorage(newMmd);
       }
       if (session) session.currentMMD = newMmd;
 

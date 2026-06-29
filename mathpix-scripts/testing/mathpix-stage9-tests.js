@@ -163,6 +163,11 @@
     // Gate hygiene: record everything we touch and restore it in the finally.
     const priorContextRaw = localStorage.getItem(MIRROR_KEY);
     const priorResumeFallback = localStorage.getItem(RESUME_FALLBACK_KEY);
+    // Rows 16/17 — throwaway resume-session key for the Image Manager edit
+    // survival regression. Namespaced "__floortest__" so it can never collide
+    // with a real generated session key; saved here, restored in the finally.
+    const RESUME_TESTKEY = "mathpix-resume-session-__floortest__";
+    const priorResumeTestKey = localStorage.getItem(RESUME_TESTKEY);
     const snapshot = M.getContext();
 
     try {
@@ -421,12 +426,92 @@
           }
         });
       }
+
+      // ── Resume-store persistence — Image Manager edit survival ──────────
+      // Two paired rows protect the mechanism that lets an Image Manager alt
+      // edit survive a refresh-then-reload-ZIP. Row 16 proves the MECHANISM:
+      // saveContentToStorage round-trips an edited MMD into the resume-session
+      // store's `.current` field — the field applyRecoveredSession reads on a
+      // ZIP reload. Row 17 is the source-text GUARD that the manager save
+      // (_writeMMDFromRegistry) actually calls that writer. Both clean their
+      // throwaway key (RESUME_TESTKEY) in the suite's finally.
+      const ROW16 =
+        "16: resume store round-trips an edited MMD (manager-edit survival mechanism)";
+      if (typeof window.MathPixSessionRestorer !== "function") {
+        r.skip(ROW16, "no restorer on bare page");
+      } else {
+        await r.check(ROW16, () => {
+          const proto = window.MathPixSessionRestorer.prototype;
+          // Synthetic context with the minimal fields saveContentToStorage
+          // reads (currentMMD, storageKey, source.filename, undo/redo stacks),
+          // plus no-op stubs for its side-effecting collaborators and the REAL
+          // getMMDForStorage. A blob-free EDITED string makes getMMDForStorage a
+          // pass-through, so exact equality on `.current` holds.
+          const ctx = {
+            restoredSession: {
+              currentMMD: "PREVIOUS",
+              storageKey: RESUME_TESTKEY,
+              source: { filename: "floortest.zip" },
+              aiEnhanced: null,
+            },
+            undoStack: [],
+            redoStack: [],
+            updateSessionStatus: () => {},
+            pushToUndoStack: () => {},
+            imageBlobUrlMap: new Map(),
+            imageRegistry: { getAllImages: () => [] },
+            getMMDForStorage: proto.getMMDForStorage,
+            updateConvertSizeIndicator: () => {},
+            _refreshConvertSizeIndicator: () => {},
+          };
+          const EDITED = "![ZZFLOORTESTZZ manager alt](image.png)\n\nbody";
+          proto.saveContentToStorage.call(ctx, EDITED);
+          const raw = localStorage.getItem(RESUME_TESTKEY);
+          assert(raw !== null, "resume-session store: no record written");
+          const rec = JSON.parse(raw);
+          assert(
+            rec && rec.current === EDITED,
+            `resume-session store .current did not carry the edit (got ${JSON.stringify(
+              rec && rec.current,
+            )})`,
+          );
+        });
+      }
+
+      const ROW17 =
+        "17: _writeMMDFromRegistry persists to the resume store (calls saveContentToStorage)";
+      const UI = window.MathPixImageManagerUI;
+      if (
+        !UI ||
+        !UI.prototype ||
+        typeof UI.prototype._writeMMDFromRegistry !== "function"
+      ) {
+        r.skip(ROW17, "MathPixImageManagerUI._writeMMDFromRegistry not on bare page");
+      } else {
+        await r.check(ROW17, () => {
+          // Source-text guard: asserts the manager save still calls the
+          // resume-store writer. Catches REMOVAL of the saveContentToStorage
+          // call (the fix line that makes a manager edit reach the resume
+          // store), not behavioural breakage — Row 16 proves the mechanism.
+          const src = UI.prototype._writeMMDFromRegistry.toString();
+          assert(
+            /saveContentToStorage\s*\(/.test(src),
+            "_writeMMDFromRegistry no longer calls saveContentToStorage — Image Manager edits will not reach the resume store",
+          );
+        });
+      }
     } finally {
       // Restore the throwaway resume key first.
       if (priorResumeFallback === null) {
         localStorage.removeItem(RESUME_FALLBACK_KEY);
       } else {
         localStorage.setItem(RESUME_FALLBACK_KEY, priorResumeFallback);
+      }
+      // Restore the rows 16/17 throwaway resume-store key.
+      if (priorResumeTestKey === null) {
+        localStorage.removeItem(RESUME_TESTKEY);
+      } else {
+        localStorage.setItem(RESUME_TESTKEY, priorResumeTestKey);
       }
       // Restore the manager's in-memory context, then let its scheduled mirror
       // write fire so no stray timer survives, then pin the mirror key back to

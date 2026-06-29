@@ -4119,6 +4119,46 @@ ${fileList}
                   const perImageOverrideRecords = [];
                   let replacedCount = 0;
 
+                  // Lane C C-P2b export host: generate chemistry descriptions into the live
+                  // registry before the archive serialises it. Keying and PubChem reuse are
+                  // the writer's own; this host only supplies the registry, the pristine MMD,
+                  // and the chemistry data. No reconcile on this path, so the write is clean.
+                  try {
+                    const chemWriter = window.MathPixChemistryRegistryWriter;
+                    if (
+                      chemWriter &&
+                      typeof chemWriter.writeChemistryDescriptions === "function"
+                    ) {
+                      // No workingMmd here, by design. The reload-protection content gate exists to
+                      // recover a human edit whose provenance stamp was reset to null by a
+                      // buildFromMMD rebuild after a localStorage reload — which only happens on the
+                      // manager-open path. On export the edit lives in liveRegistry with its source
+                      // intact and is carried by toJSON() into the ZIP, so the source gate freezes it
+                      // before any slot is read. Passing originalMmd (pristine, raw <smiles>) would
+                      // classify every field as refresh anyway — harmless but misleading.
+                      const chemResult =
+                        await chemWriter.writeChemistryDescriptions({
+                          registry: liveRegistry,
+                          pristineMmd: originalMmd,
+                          chemistryData,
+                        });
+                      const chemWritten = Array.isArray(chemResult?.results)
+                        ? chemResult.results.filter(
+                            (r) =>
+                              r.altWritten || r.longWritten || r.textWritten,
+                          ).length
+                        : 0;
+                      logInfo(
+                        `Lane C export-host: chemistry descriptions generated for ${chemResult?.total ?? 0} image(s), ${chemWritten} wrote a field`,
+                      );
+                    }
+                  } catch (chemErr) {
+                    logError(
+                      "Lane C export-host chemistry generation failed",
+                      chemErr,
+                    );
+                  }
+
                   for (const img of allImages) {
                     const smiles = urlToSmiles.get(img.originalUrl);
                     if (!smiles) continue;

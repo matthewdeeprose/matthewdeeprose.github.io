@@ -715,7 +715,11 @@
         skipped++;
         continue;
       }
-      const ok = registry.updateTitle(entry.id, newTitle, "user");
+      const ok = registry.updateTitle(
+        entry.id,
+        newTitle,
+        window.MathPixAltTextProvenance.nextSource(entry.titleSource),
+      );
       if (ok) {
         updated++;
       } else {
@@ -1185,7 +1189,11 @@
           (actions[APPENDIX_ACTIONS.NO_OP] || 0) + 1;
         continue;
       }
-      const ok = registry.updateLongDescription(e.id, e.text, "user");
+      const ok = registry.updateLongDescription(
+        e.id,
+        e.text,
+        window.MathPixAltTextProvenance.nextSource(regEntry.longDescriptionSource),
+      );
       if (ok) {
         updated++;
         actions[APPENDIX_ACTIONS.UPDATED] =

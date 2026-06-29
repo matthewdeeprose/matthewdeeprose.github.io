@@ -592,7 +592,13 @@
       return;
     }
 
-    const mmdContent = this.restoredSession?.currentMMD || "";
+    // C-P2c (F22): re-derive chemistry from the pristine results.mmd, which is
+    // never blob-rewritten, so the SMILES survives after C-P3 turns the working
+    // slot to pure prose. currentMMD is the fallback for a partial/injected session.
+    const mmdContent =
+      this.restoredSession?.results?.mmd ||
+      this.restoredSession?.currentMMD ||
+      "";
     if (!mmdContent) return;
 
     const chemData = chemUtils.extractChemistryFromResponse({ text: mmdContent });

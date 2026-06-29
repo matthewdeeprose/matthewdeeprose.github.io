@@ -76,6 +76,7 @@
       <section aria-labelledby="pdfHeading">
         <h2 id="pdfHeading">Download tagged PDF</h2>
         <button type="button" id="pdfButton"><span aria-hidden="true" data-icon="download"></span> Download tagged PDF</button>
+        <button type="button" id="pdfLargePrintButton"><span aria-hidden="true" data-icon="download"></span> Download large-print PDF</button>
         <p id="pdfStatus" aria-live="polite"></p>
       </section>
     </main>
@@ -97,6 +98,8 @@
     <script src="js/music-notify.js"></script>
     <script src="js/music-confirm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.9.3/build/opensheetmusicdisplay.min.js"></script>
+    <!-- Self-hosted JSZip: used to unzip compressed MusicXML (.mxl) files. -->
+    <script src="https://matthewdeeprose.github.io/scripts/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/verovio@6.2.0/dist/verovio-toolkit-wasm.js"></script>
     <script src="js/music-parse-note.js"></script>
     <script src="js/music-parse-structure.js"></script>
@@ -119,6 +122,9 @@
     <script src="js/music-pdf-markup.js"></script>
     <script src="js/music-pdf-rasterise.js"></script>
     <script src="js/music-pdf.js"></script>
+    <!-- .mxl extractor: unzips compressed MusicXML to the inner XML string.
+         Loads after JSZip (above) and before the controller. -->
+    <script src="js/music-mxl.js"></script>
     <!-- music-app references all the other globals, so it loads last. -->
     <script src="js/music-app.js"></script>
   </body>

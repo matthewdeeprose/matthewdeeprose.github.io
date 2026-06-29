@@ -104,6 +104,7 @@
     <link rel="stylesheet" href="image-describer/image-describer.css" />
     <link rel="stylesheet" href="ally-scripts/css/ally-main.css" />
     <link rel="stylesheet" href="local-chat/local-chat.css" />
+    <link rel="stylesheet" href="chat/chat.css" />
     <link rel="stylesheet" href="setup-tool/setup-tool.css" />
 
     <link
@@ -776,6 +777,39 @@
               </svg>
               <label for="LocalChat" class="radio">Local Chat</label>
             </span>
+            <span class="tool-option-wrapper">
+              <input
+                type="radio"
+                id="Chat"
+                name="presentation"
+                value="Chat"
+                onclick="showChat()"
+              />
+              <!-- TODO: swap for dedicated Chat icon -->
+              <svg
+                height="21"
+                viewBox="0 0 21 21"
+                width="21"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <g
+                  fill="none"
+                  fill-rule="evenodd"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  transform="translate(2 3)"
+                >
+                  <path
+                    d="m14.5.5c1.1045695 0 2 .8954305 2 2v8c0 1.1045695-.8954305 2-2 2h-3l-3 3-3-3h-3c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"
+                  />
+                  <path d="m5.5 5.5h6" />
+                  <path d="m5.5 8.5h4" />
+                </g>
+              </svg>
+              <label for="Chat" class="radio">Chat</label>
+            </span>
           </fieldset>
         </nav>
         <!--  Screen reader announcement area for radio button switching -->
@@ -784,6 +818,15 @@
           class="sr-only"
           aria-live="polite"
           id="radioSRannounce"
+        ></span>
+        <!-- Shared screen-reader announcer region (window.accessibilityHelpers).
+             Kept SEPARATE from #radioSRannounce so tool-switch announcements and
+             tool announcements never clobber each other. -->
+        <span
+          class="sr-only"
+          role="status"
+          aria-live="polite"
+          id="a11y-sr-announce"
         ></span>
         <!-- MathJax status indicator for power users -->
         <div
@@ -16565,6 +16608,87 @@ Science,91</pre
           </section>
         </article>
 
+        <!-- Unified Chat Tool (Stage 2 step 2a) — minimal shell + empty model picker -->
+        <article
+          id="chat-app"
+          class="tool-container"
+          aria-hidden="true"
+          style="display: none"
+        >
+          <h1>Chat</h1>
+          <div class="chat-model-filter search-container">
+            <label for="chat-model-search" class="sr-only"
+              >Filter models by name or provider</label
+            >
+            <input
+              type="search"
+              id="chat-model-search"
+              class="search-input"
+              placeholder="Filter models by name or provider…"
+              aria-describedby="chat-search-help"
+            />
+            <div id="chat-search-help" class="sr-only">
+              Type to filter the model list by name or provider. The result
+              count is announced.
+            </div>
+            <button
+              type="button"
+              id="chat-model-filter-clear"
+              class="reset-filters-btn"
+            >
+              Clear filter
+            </button>
+            <div
+              id="chat-model-count"
+              class="model-count"
+              role="status"
+              aria-live="polite"
+            ></div>
+          </div>
+          <div class="chat-model-bar">
+            <label for="chat-model-select">Model</label>
+            <select id="chat-model-select">
+              <!-- Populated in step 2b from getAllEligibleModels -->
+            </select>
+            <span id="chat-model-status" aria-live="polite"
+              >No model selected</span
+            >
+          </div>
+
+          <!-- Message list -->
+          <div
+            id="chat-messages"
+            role="log"
+            aria-live="polite"
+            aria-label="Chat messages"
+            tabindex="0"
+          >
+            <!-- JS appends message elements here -->
+          </div>
+
+          <!-- Input area -->
+          <div class="chat-input-bar">
+            <label for="chat-input" class="visually-hidden"
+              >Your message</label
+            >
+            <textarea
+              id="chat-input"
+              rows="2"
+              placeholder="Type a message…"
+            ></textarea>
+            <button id="chat-send" type="button">Send</button>
+            <button id="chat-cancel" type="button" hidden>Cancel</button>
+          </div>
+
+          <!-- Input token counter -->
+          <div id="chat-input-counter" class="chat-input-counter" hidden></div>
+
+          <!-- Stats bar -->
+          <output id="chat-stats" class="chat-stats">
+            <!-- TPS, token count, model status updates -->
+          </output>
+        </article>
+
         <!-- Local Chat Tool (Phase 11a) -->
         <article id="local-chat-app" style="display: none" aria-hidden="true">
           <h1>Local Chat</h1>
@@ -16972,6 +17096,11 @@ Science,91</pre
         </div>
       </footer>
     </div>
+    <!-- Shared screen-reader announcer (defines window.accessibilityHelpers).
+         Plain IIFE, no dependencies; loaded FIRST in the body script block so the
+         global is published before any tool script (setup-tool, local-chat/*,
+         chat/*) can call announceToScreenReader/announce. -->
+    <script src="accessibility-announcer.js"></script>
     <!-- Load dependencies -->
     <script src="https://matthewdeeprose.github.io/markdownit/markdown-it.min.js"></script>
 
@@ -17106,6 +17235,8 @@ Science,91</pre
     <script src="mathpix-scripts/core/mathpix-chemistry-prose.js"></script>
     <!-- Phase 8C-CT: comprehensive tier engine (must load after descriptions) -->
     <script src="mathpix-scripts/core/mathpix-chemistry-comprehensive.js"></script>
+    <!-- Lane C C-P2a: chemistry registry writer (converter + freeze predicate; after the engine trio) -->
+    <script src="mathpix-scripts/core/mathpix-chemistry-registry-writer.js"></script>
     <!-- Phase 14-2 Step 1: engine-wide readiness primitive. Resolves once
          the parser has executed all six chemistry script tags above. -->
     <script>
@@ -17240,6 +17371,7 @@ Science,91</pre
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-mmd-analyser.js"></script>
     <script src="mathpix-scripts/core/mathpix-image-registry.js"></script>
     <script src="mathpix-scripts/core/mathpix-context-manager.js?v=9.1"></script>
+    <script src="mathpix-scripts/core/mathpix-alt-text-provenance.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-mmd-serialiser.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-integrator.js"></script>
     <script src="mathpix-scripts/testing/mathpix-alt-text-serialiser-tests.js"></script>
@@ -17275,6 +17407,8 @@ Science,91</pre
     <script src="mathpix-scripts/testing/mathpix-phase5-testing.js"></script>
     <script src="mathpix-scripts/testing/mathpix-phase6-testing.js"></script>
     <script src="mathpix-scripts/testing/mathpix-chemistry-tests.js"></script>
+    <!-- Lane C C-P2a: registry-writer converter + freeze predicate tests -->
+    <script src="mathpix-scripts/testing/mathpix-lane-c-tests.js"></script>
     <!-- Phase 12-0a: description-engine migration harness (SmilesDrawer baseline + stub RDKit) -->
     <script src="mathpix-scripts/testing/migration-harness.js"></script>
 
@@ -17366,6 +17500,12 @@ Science,91</pre
     <script src="local-chat/local-chat-messages.js"></script>
     <script src="local-chat/local-chat-persistence.js"></script>
     <script src="local-chat/local-chat.js"></script>
+
+    <!-- Unified Chat Tool (Stage 2) — loads after local-chat/* because it
+         depends on createChatState being defined -->
+    <script src="chat/chat.js"></script>
+    <script src="chat/chat-core.js"></script>
+    <script src="chat/chat-messages.js"></script>
 
     <!-- Spike Text LLM Harness (temporary — remove after Wave 3 spikes) -->
     <script src="image-describer/testing/spike-text-llm-harness.js"></script>
@@ -19549,6 +19689,17 @@ Science,91</pre
           },
           cleanup: null,
         },
+        "Chat": {
+          articleId: "chat-app",
+          displayName: "Chat",
+          announceText: "Switched to Chat tool",
+          init: function () {
+            if (window.Chat && typeof window.Chat.refresh === "function")
+              window.Chat.refresh();
+            return true;
+          },
+          cleanup: null,
+        },
       };
 
       // Track current tool for cleanup purposes
@@ -19774,6 +19925,10 @@ Science,91</pre
         switchToTool("Local Chat", isUserInitiated);
       }
 
+      function showChat(isUserInitiated = true) {
+        switchToTool("Chat", isUserInitiated);
+      }
+
       // Expose functions globally
       window.showSetUp = showSetUp;
       window.showOpenRouter = showOpenRouter;
@@ -19784,6 +19939,7 @@ Science,91</pre
       window.showImageDescTool = showImageDescTool;
       window.showAllyReporting = showAllyReporting;
       window.showLocalChat = showLocalChat;
+      window.showChat = showChat;
 
       // Expose settings for testing/configuration
       window.TOOL_SWITCH_SETTINGS = TOOL_SWITCH_SETTINGS;
@@ -19852,6 +20008,7 @@ Science,91</pre
           "Image Describer": "Image Describer",
           "Ally Reporting": "Ally Reporting",
           "Local Chat": "Local Chat",
+          "Chat": "Chat",
         };
 
         const toolName = radioToTool[toolValue] || "OpenRouter";
@@ -20977,5 +21134,18 @@ Science,91</pre
     <script src="ally-scripts/ui/ally-statement-preview-search.js"></script>
     <script src="ally-scripts/ui/ally-statement-preview-docx.js"></script>
     <script src="ally-scripts/ui/ally-statement-preview.js"></script>
+
+    <!-- Dev-only workflow tracer (window.trace). Standalone console helper for
+         recording a browser workflow into one ordered, reload-surviving
+         timeline during development. No tool depends on it; safe to remove. -->
+    <script src="util/workflow-trace.js"></script>
+
+    <!-- Dev-only localStorage wipe (window.mathpixWipe). Standalone console
+         helper to clear MathPix saved data to a clean slate during testing:
+         the live draft, all resume snapshots, and the Context-tab keys. Console
+         only, no UI — a destructive total wipe must never be user-clickable.
+         Call mathpixWipe() to clear, mathpixWipe.inspect() to look first. No
+         tool depends on it; safe to remove. -->
+    <script src="util/mathpix-wipe.js"></script>
   </body>
 </html>

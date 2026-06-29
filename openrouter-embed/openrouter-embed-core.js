@@ -755,6 +755,37 @@ class OpenRouterEmbed {
   }
 
   /**
+   * Build the wire messages array from a caller-supplied multi-turn thread.
+   *
+   * Honours an explicit `options.messages` array (the full conversation,
+   * role/content only) instead of synthesising a single-turn payload from
+   * `userPrompt`. The system prompt is prepended in exactly the same way
+   * `buildMessages()` does — only when `this.systemPrompt` is set — with a
+   * guard so a caller that already begins its array with a system turn does
+   * not receive a duplicate. The caller's array is never mutated (a shallow
+   * copy is taken first). The current user turn is NOT appended here: the
+   * caller's array already includes it, so re-appending would duplicate it.
+   *
+   * @param {Array<Object>} callerMessages - Caller's multi-turn thread
+   * @param {string} userPrompt - Current turn (used only for validation upstream)
+   * @returns {Array<Object>} Wire messages array (system turn prepended as needed)
+   */
+  _buildMessagesFromOptions(callerMessages, userPrompt) {
+    const copied = callerMessages.slice();
+
+    if (this.systemPrompt && copied[0]?.role !== "system") {
+      copied.unshift({ role: "system", content: this.systemPrompt });
+      logDebug("Prepended system prompt to caller-supplied messages");
+    }
+
+    logDebug("Built wire messages from caller-supplied thread", {
+      messageCount: copied.length,
+    });
+
+    return copied;
+  }
+
+  /**
    * Internal non-streaming fallback for reduced motion preference
    *
    * This method provides a true non-streaming request path when the user
@@ -788,9 +819,15 @@ class OpenRouterEmbed {
     this.announceToScreenReader("Processing request");
 
     try {
-      // Build messages and options
-      const messages = this.buildMessages(userPrompt);
-      const requestOptions = this.buildOptions(messages, provider);
+      // Build messages and options.
+      // Mirror the streaming path: honour a caller-supplied multi-turn thread
+      // when present so a reduced-motion caller keeps its history; otherwise
+      // fall back to today's exact single-turn behaviour. Same strict gate.
+      const wireMessages =
+        Array.isArray(options.messages) && options.messages.length
+          ? this._buildMessagesFromOptions(options.messages, userPrompt)
+          : this.buildMessages(userPrompt);
+      const requestOptions = this.buildOptions(wireMessages, provider);
 
       // Add abort signal if cancellation is enabled
       if (this._requestAbortController) {
@@ -805,8 +842,8 @@ class OpenRouterEmbed {
       // not (its transport remains with window.openRouterClient). The
       // function-type check keeps the OpenRouter path bytewise unchanged.
       const apiResponse = typeof provider.request === "function"
-        ? await provider.request(messages, requestOptions)
-        : await this.client.sendRequest(messages, requestOptions);
+        ? await provider.request(wireMessages, requestOptions)
+        : await this.client.sendRequest(wireMessages, requestOptions);
 
       // Check if cancelled during request
       if (this._requestAbortController?.signal?.aborted) {
@@ -1248,9 +1285,15 @@ class OpenRouterEmbed {
         this.systemPrompt = processedSystemPrompt;
       }
 
-      // Build messages and options (reuse existing methods)
-      const messages = this.buildMessages(processedUserPrompt);
-      const requestOptions = this.buildOptions(messages, provider);
+      // Build messages and options (reuse existing methods).
+      // Honour a caller-supplied multi-turn thread when present; otherwise
+      // fall back to today's exact single-turn behaviour. Gate strictly so an
+      // absent or empty options.messages produces a byte-identical request.
+      const wireMessages =
+        Array.isArray(options.messages) && options.messages.length
+          ? this._buildMessagesFromOptions(options.messages, processedUserPrompt)
+          : this.buildMessages(processedUserPrompt);
+      const requestOptions = this.buildOptions(wireMessages, provider);
 
       // Restore original systemPrompt
       this.systemPrompt = originalSystemPrompt;
@@ -1271,8 +1314,8 @@ class OpenRouterEmbed {
           base64Length: this.currentFileBase64?.length || 0,
           hasAnalysis: !!this.currentFileAnalysis,
           engine: this.currentFileAnalysis?.engine,
-          messageCount: messages.length,
-          messageRoles: messages.map((m) => m.role),
+          messageCount: wireMessages.length,
+          messageRoles: wireMessages.map((m) => m.role),
         });
       }
 
@@ -1491,10 +1534,10 @@ class OpenRouterEmbed {
         // (its transport remains with window.openRouterClient). The function-
         // type check keeps the OpenRouter path bytewise unchanged.
         if (typeof provider.streamRequest === "function") {
-          return provider.streamRequest(messages, streamingOptions);
+          return provider.streamRequest(wireMessages, streamingOptions);
         }
         return this.client.sendStreamingRequest(
-          messages,
+          wireMessages,
           streamingOptions,
           true,
         );

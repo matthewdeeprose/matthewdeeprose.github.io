@@ -163,6 +163,11 @@
     // > $10 = high
   };
 
+  // Stage 2 (Unified Chat) — clamp for a local model that reports a zero
+  // context window (Phi-3.5 only today). Named constant for lean v1; deriving a
+  // real window from kvCacheDims is parked on the parity track.
+  const LOCAL_ZERO_CONTEXT_CLAMP = 1024;
+
   // ============================================================================
   // MODEL SELECTOR CLASS
   // ============================================================================
@@ -697,6 +702,114 @@
         { capabilities, totalScanned: allModels.length }
       );
       return results;
+    }
+
+    /**
+     * Stage 2 (Unified Chat) — pure mapper from a local text-model registry
+     * entry to the unified-list shape. Copies only the fields the picker and
+     * token-budget window need; it does NOT spread the whole entry, so the
+     * engine-specific id fields (hfModelId / mlcModelId) and structural extras
+     * (kvCacheDims, benchmarks, userInfo) are deliberately left behind and every
+     * mapped model has the same clean shape. The id comes from localModelId; the
+     * label from userInfo.displayName (locals carry no top-level name). A
+     * contextLimit of 0 (Phi-3.5 only today) is clamped to
+     * LOCAL_ZERO_CONTEXT_CLAMP; the engine-specific id field is left untouched.
+     * @param {Object} entry — a LocalTextModelRegistry MODELS entry
+     * @returns {Object} { id, name, providerId, contextLimit, capabilities }
+     * @private
+     */
+    _mapLocalModelToSelector(entry) {
+      const rawContext =
+        typeof entry.contextLimit === "number" ? entry.contextLimit : 0;
+      const contextLimit =
+        rawContext <= 0 ? LOCAL_ZERO_CONTEXT_CLAMP : rawContext;
+      const displayName =
+        entry.userInfo && entry.userInfo.displayName
+          ? entry.userInfo.displayName
+          : entry.localModelId;
+      return {
+        id: entry.localModelId,
+        name: displayName,
+        providerId: "local",
+        contextLimit: contextLimit,
+        capabilities: ["text"],
+      };
+    }
+
+    /**
+     * Stage 2 (Unified Chat) — return every eligible model across all providers,
+     * cloud and local, in one capability-filtered list for the unified picker.
+     *
+     * Cloud side reuses the per-provider gate (getEligibleProviders +
+     * getEligibleModels) so the disabled-model filter, the Foundry two-surface
+     * grouping (PROVIDER_GROUPS), and the model-level capability gate stay in one
+     * place. A surface that is a member of another provider's group (e.g.
+     * azure-responses under azure-openai) is skipped as a standalone provider so
+     * its models are not gathered twice. When an embed is supplied,
+     * getEligibleModels returns [] for any provider not configured on that embed,
+     * so only providers the user can currently use contribute.
+     *
+     * Local side reads window.LocalTextModelRegistry.getEnabled() directly and
+     * maps each entry through _mapLocalModelToSelector. This bypasses the resolve
+     * gate on purpose: EmbedProviderLookup.resolve('local/…') returns null, so
+     * locals cannot flow through the cloud path. Mapped locals carry
+     * providerId:'local' and pass the same _modelHasCapabilities gate as cloud.
+     *
+     * Additive: getEligibleModels and getEligibleProviders are unchanged.
+     *
+     * @param {Object} [opts]
+     * @param {string[]} [opts.capabilities=[]] Tool-facing capability names
+     * @param {Object} [opts.embed] OpenRouterEmbed instance. When supplied, cloud
+     *                              models from providers not configured on this
+     *                              embed are excluded.
+     * @returns {Array<Object>} Cloud model objects (providerId injected) followed
+     *                          by mapped local models.
+     */
+    getAllEligibleModels({ capabilities = [], embed } = {}) {
+      // Surfaces owned by another provider's group must not be iterated alone.
+      const groupedMembers = new Set();
+      for (const ownerId of Object.keys(PROVIDER_GROUPS)) {
+        for (const memberId of PROVIDER_GROUPS[ownerId]) {
+          if (memberId !== ownerId) groupedMembers.add(memberId);
+        }
+      }
+
+      // Cloud branch — reuse the per-provider gate (single source of truth).
+      const cloud = [];
+      const providers = this.getEligibleProviders({ capabilities, embed });
+      for (const provider of providers) {
+        if (groupedMembers.has(provider.id)) continue;
+        const models = this.getEligibleModels({
+          providerId: provider.id,
+          capabilities,
+          embed,
+        });
+        for (const model of models) cloud.push(model);
+      }
+
+      // Local branch — separate source; resolve gate deliberately bypassed.
+      const local = [];
+      const localRegistry = window.LocalTextModelRegistry;
+      if (localRegistry && typeof localRegistry.getEnabled === "function") {
+        const enabled = localRegistry.getEnabled();
+        for (const entry of enabled) {
+          const mapped = this._mapLocalModelToSelector(entry);
+          if (this._modelHasCapabilities(mapped, capabilities)) {
+            local.push(mapped);
+          }
+        }
+      } else {
+        logDebug(
+          "getAllEligibleModels: window.LocalTextModelRegistry unavailable; local list empty"
+        );
+      }
+
+      const all = [...cloud, ...local];
+      logDebug(
+        `getAllEligibleModels: ${cloud.length} cloud + ${local.length} local = ${all.length} total`,
+        { capabilities, hasEmbed: !!embed }
+      );
+      return all;
     }
 
     // ==========================================================================

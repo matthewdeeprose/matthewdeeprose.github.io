@@ -4071,14 +4071,17 @@ window.testMatchSmartsPrimitive = async function () {
 // These harnesses are the real gate for batch 1:
 //
 //   window.testCatalogueEquivalence — proves runCatalogue's records for the
-//     six ported group types (acid, aldehyde, hydroxyl, thiol, nitrile,
-//     halogen) match the legacy _detectFunctionalGroupsFromGraph passes
-//     field-for-field, over the 20 migration + 15 tier-1 + 4 net-new blind-
-//     pass (halogen) fixtures. Each of the six types must be exercised.
+//     ported group types match the legacy _detectFunctionalGroupsFromGraph
+//     passes field-for-field. Batch 1 (class a): acid, aldehyde, hydroxyl,
+//     thiol, nitrile, halogen. Batch 2 (class b, SMARTS + refine): sulphonic
+//     acid, sulphonamide, sulphoxide. Run over the 20 migration + 15 tier-1 +
+//     net-new blind-pass fixtures (4 halogen + 2 sulphonyl). Each ported type
+//     must be exercised by >= 1 comparator fixture.
 //   window.testCatalogueRunner — basic unit assertions: known fixtures
 //     produce the expected records; matchSmarts is threaded on the canonical
 //     graphData._smiles (not the raw arg); the catalogue is not consumed by
-//     analyseStructure (dead-code guard).
+//     analyseStructure (dead-code guard); the S-cluster refine rejects the
+//     two-=O sulphone case (no sulphoxide / no sulphonic record).
 //   window.testCatalogueBatch1All — runs both and aggregates.
 //
 // Async (matchSmarts is synchronous and throws if RDKit is cold; the graph
@@ -4087,6 +4090,17 @@ window.testMatchSmartsPrimitive = async function () {
 // =========================================================================
 
 const BATCH1_SHORTNAMES = ["acid", "aldehyde", "hydroxyl", "thiol", "nitrile", "halogen"];
+// Phase 17-2b: class-(b) S-cluster shortNames emitted by the legacy passes
+// (sulphonic/sulphonamide pass "4", sulphoxide pass "4.5").
+const BATCH2_SHORTNAMES = ["sulphonic acid", "sulphonamide", "sulphoxide"];
+// Phase 17-2c: the carbonyl-C family shortNames emitted by the legacy passes
+// (ester pass "2", urea/lactam ring-internal pass "3 (Phase 9-3)", amide /
+// secondary amide / tertiary amide pass "3", ketone pass "5"). acid + aldehyde
+// are already in BATCH1.
+const BATCH3_SHORTNAMES = ["ester", "urea", "lactam", "amide", "secondary amide", "tertiary amide", "ketone"];
+// The full ported set the equivalence comparator filters on + asserts coverage
+// for. Widened from batch 1 to batch 1 + 2 + 3.
+const PORTED_SHORTNAMES = BATCH1_SHORTNAMES.concat(BATCH2_SHORTNAMES, BATCH3_SHORTNAMES);
 
 // 20 migration fixtures (mirrors migration-harness.js FIXTURES) + 15 tier-1
 // (mirrors TIER1_FIXTURES) + 4 net-new halogen fixtures. Halogen is BLIND in
@@ -4134,6 +4148,25 @@ const CATALOGUE_FIXTURES = [
   { name: "bromoethane (net-new halogen, aliphatic Br)",       smiles: "CCBr" },
   { name: "fluorobenzene (net-new halogen, ring-attached F)",  smiles: "Fc1ccccc1" },
   { name: "iodomethane (net-new halogen, aliphatic I)",        smiles: "CI" },
+  // --- net-new blind-pass fixtures (Phase 17-2b sulphonyl — BLIND in both
+  // baseline sets per findings § 6; sulphoxide is already covered by the
+  // tier-1 DMSO fixture above). Exercise the sulphonic-acid (O) and
+  // sulphonamide (N) branches of the class-(b) refine. ---
+  { name: "methanesulphonic acid (net-new sulphonyl, O branch → sulphonic acid)", smiles: "CS(=O)(=O)O" },
+  { name: "methanesulphonamide (net-new sulphonyl, N branch → sulphonamide)",      smiles: "CS(=O)(=O)N" },
+  // --- net-new blind-pass fixtures (Phase 17-2c carbonyl-C family — defined
+  // here, NOT in baselines; findings § 6.3/6.4). secondary/tertiary amide are
+  // BLIND in both baseline sets; ethyl propanoate exercises the non-acetate
+  // –OCOR ester shorthand (aspirin only hits –OCOCH₃); formamide is the
+  // MANDATORY divergence fixture — the sole witness to the amide ∩ aldehyde
+  // overlap (it emits an amide under correct placement, an aldehyde under wrong
+  // placement), so the comparator is non-vacuous on the hard chain. (urea,
+  // lactam, primary amide, ketone, –OCOCH₃ ester are already covered by the
+  // migration/tier-1 fixtures above.) ---
+  { name: "N-methylacetamide (net-new, secondary amide → –CONHR)",   smiles: "CC(=O)NC" },
+  { name: "N,N-dimethylacetamide (net-new, tertiary amide → –CONR₂)", smiles: "CC(=O)N(C)C" },
+  { name: "ethyl propanoate (net-new, ester non-acetate → –OCOR)",   smiles: "CCC(=O)OCC" },
+  { name: "formamide (net-new divergence, amide ∩ aldehyde → amide)", smiles: "O=CN" },
 ];
 
 // Shared offscreen-canvas graph-cache primer (mirrors migration-harness).
@@ -4172,7 +4205,7 @@ window.testCatalogueEquivalence = async function () {
     return { passed: 0, total: 1 };
   }
 
-  const BATCH1 = new Set(BATCH1_SHORTNAMES);
+  const PORTED = new Set(PORTED_SHORTNAMES);
   const FIELDS = ["name", "shortName", "shorthand", "attachmentVertexId"];
   const keyOf = (g) => g.atoms.slice().sort((a, b) => a - b).join(",");
 
@@ -4197,10 +4230,10 @@ window.testCatalogueEquivalence = async function () {
       const adjacency = helpers.buildAdjacencyMap(gd.graph);
       const oldGroups = helpers
         .detectFunctionalGroupsFromGraph(gd, adjacency)
-        .filter((g) => BATCH1.has(g.shortName));
+        .filter((g) => PORTED.has(g.shortName));
       const newGroups = helpers
         .runCatalogue(gd._smiles, gd, adjacency)
-        .filter((g) => BATCH1.has(g.shortName));
+        .filter((g) => PORTED.has(g.shortName));
       oldGroups.forEach((g) => {
         typeCoverage[g.shortName] = (typeCoverage[g.shortName] || 0) + 1;
       });
@@ -4225,6 +4258,16 @@ window.testCatalogueEquivalence = async function () {
         if (JSON.stringify(o.atoms) !== JSON.stringify(n.atoms)) {
           fxMismatches.push("atoms-order [" + k + "] old=" + JSON.stringify(o.atoms) + " new=" + JSON.stringify(n.atoms));
         }
+        // Phase 17-2c: `flanking` (urea/lactam only) is an ARRAY of objects, so
+        // it MUST be a deep compare — it cannot go in the FIELDS `o[f] !== n[f]`
+        // loop (arrays are reference-compared there and would always mismatch).
+        // Rows without `flanking` pass naturally: JSON.stringify(undefined) ===
+        // JSON.stringify(undefined) is `undefined === undefined` → no mismatch.
+        // This closes the L31 backstop gap: `flanking` was absent from FIELDS,
+        // so a missing/wrong flanking on a ring-internal record passed silently.
+        if (JSON.stringify(o.flanking) !== JSON.stringify(n.flanking)) {
+          fxMismatches.push("flanking [" + k + "] old=" + JSON.stringify(o.flanking) + " new=" + JSON.stringify(n.flanking));
+        }
         for (const f of FIELDS) {
           if (o[f] !== n[f]) {
             fxMismatches.push("field " + f + " [" + k + "] old=" + String(o[f]) + " new=" + String(n[f]));
@@ -4232,15 +4275,15 @@ window.testCatalogueEquivalence = async function () {
         }
       }
       check(
-        "fixture " + fx.name + ": six-type records equal (" + oldGroups.length + " grp)",
+        "fixture " + fx.name + ": ported-type records equal (" + oldGroups.length + " grp)",
         fxMismatches.length === 0,
         fxMismatches.join(" ; "),
       );
       if (fxMismatches.length) mismatchDetail.push({ fixture: fx.name, mismatches: fxMismatches });
     }
 
-    // Each of the six ported types must be exercised by >= 1 comparator fixture.
-    for (const t of BATCH1_SHORTNAMES) {
+    // Each ported type (batch 1 + 2) must be exercised by >= 1 comparator fixture.
+    for (const t of PORTED_SHORTNAMES) {
       check("type coverage: " + t + " exercised", (typeCoverage[t] || 0) >= 1, "count=" + (typeCoverage[t] || 0));
     }
   } finally {
@@ -4248,7 +4291,7 @@ window.testCatalogueEquivalence = async function () {
   }
 
   const passed = results.filter((r) => r.pass).length;
-  console.log("\nPhase 17-2a: SMARTS-catalogue equivalence (legacy passes vs runCatalogue, six ported types)\n");
+  console.log("\nPhase 17-2a/2b/2c: SMARTS-catalogue equivalence (legacy passes vs runCatalogue, " + PORTED_SHORTNAMES.length + " ported types)\n");
   console.table(results);
   if (mismatchDetail.length) {
     console.warn("Mismatch detail (fixture → field-level diffs):");
@@ -4304,9 +4347,41 @@ window.testCatalogueRunner = async function () {
     "live path still calls _detectFunctionalGroupsFromGraph",
   );
   check(
-    "catalogue table: six pure-SMARTS rows",
-    Array.isArray(helpers.functionalGroupsCatalogue) && helpers.functionalGroupsCatalogue.length === 6,
+    "catalogue table: twelve rows (6 pure-SMARTS batch 1 + 2 refine batch 2 + 4 refine batch 3)",
+    Array.isArray(helpers.functionalGroupsCatalogue) && helpers.functionalGroupsCatalogue.length === 12,
     "len=" + (helpers.functionalGroupsCatalogue ? helpers.functionalGroupsCatalogue.length : "n/a"),
+  );
+  check(
+    "catalogue table: exactly six class-(b) refine rows (sulphonyl, sulphoxide, ester, ring-internal-carbonyl, amide, ketone)",
+    Array.isArray(helpers.functionalGroupsCatalogue) &&
+      helpers.functionalGroupsCatalogue.filter((r) => typeof r.refine === "function").length === 6,
+    "refine rows=" +
+      (Array.isArray(helpers.functionalGroupsCatalogue)
+        ? helpers.functionalGroupsCatalogue.filter((r) => typeof r.refine === "function").map((r) => r.id).join(",")
+        : "n/a"),
+  );
+  check(
+    "catalogue table: hard chain ring-internal < amide < aldehyde (claim precedence)",
+    (() => {
+      const cat = helpers.functionalGroupsCatalogue;
+      if (!Array.isArray(cat)) return false;
+      const iRing = cat.findIndex((r) => r.id === "ring-internal-carbonyl");
+      const iAmide = cat.findIndex((r) => r.id === "amide");
+      const iAld = cat.findIndex((r) => r.id === "aldehyde");
+      return iRing !== -1 && iAmide !== -1 && iAld !== -1 && iRing < iAmide && iAmide < iAld;
+    })(),
+    "order=" + (Array.isArray(helpers.functionalGroupsCatalogue) ? helpers.functionalGroupsCatalogue.map((r) => r.id).join(" ") : "n/a"),
+  );
+  check(
+    "catalogue table: sulphonyl row ordered before hydroxyl (S–OH claim precedence)",
+    (() => {
+      const cat = helpers.functionalGroupsCatalogue;
+      if (!Array.isArray(cat)) return false;
+      const iSulphonyl = cat.findIndex((r) => r.id === "sulphonyl");
+      const iHydroxyl = cat.findIndex((r) => r.id === "hydroxyl");
+      return iSulphonyl !== -1 && iHydroxyl !== -1 && iSulphonyl < iHydroxyl;
+    })(),
+    "order=" + (Array.isArray(helpers.functionalGroupsCatalogue) ? helpers.functionalGroupsCatalogue.map((r) => r.id).join(" ") : "n/a"),
   );
 
   try {
@@ -4373,6 +4448,80 @@ window.testCatalogueRunner = async function () {
         JSON.stringify(sh),
       );
     }
+    // --- Phase 17-2b: S-cluster class-(b) refine rows ---
+    // methanesulphonic acid → one sulphonic-acid record [S, =O, =O, -OH],
+    // shorthand –SO₃H. Refine derives atoms[0]=S; atoms set is the four-atom
+    // sulphonyl claim. The -OH oxygen is claimed here, NOT re-emitted as a
+    // hydroxyl (proves the sulphonyl-before-hydroxyl ordering holds).
+    {
+      const gd = await _primeCatalogueGraph(utils, "CS(=O)(=O)O", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const sa = recs.find((r) => r.shortName === "sulphonic acid");
+      // Cross-check against the legacy pass: same record, field-for-field.
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "sulphonic acid") : null;
+      check(
+        "methanesulphonic acid: sulphonic-acid record (name/shorthand/4 atoms, S first)",
+        !!sa && sa.name === "sulphonic acid" && sa.shorthand === "–SO₃H" &&
+          sa.atoms.length === 4 && !recs.some((r) => r.shortName === "hydroxyl"),
+        JSON.stringify(recs),
+      );
+      check(
+        "methanesulphonic acid: catalogue record == legacy pass (atoms order + fields)",
+        !!sa && !!legacy && JSON.stringify(sa) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(sa) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // methanesulphonamide → one sulphonamide record, shorthand –SO₂NH₂ (N branch).
+    {
+      const gd = await _primeCatalogueGraph(utils, "CS(=O)(=O)N", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const sn = recs.find((r) => r.shortName === "sulphonamide");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "sulphonamide") : null;
+      check(
+        "methanesulphonamide: sulphonamide record (name/shorthand –SO₂NH₂/4 atoms)",
+        !!sn && sn.name === "sulphonamide" && sn.shorthand === "–SO₂NH₂" && sn.atoms.length === 4,
+        JSON.stringify(recs),
+      );
+      check(
+        "methanesulphonamide: catalogue record == legacy pass (atoms order + fields)",
+        !!sn && !!legacy && JSON.stringify(sn) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(sn) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // DMSO → one sulphoxide record [S, =O] (claim-subset, carbons NOT claimed).
+    {
+      const gd = await _primeCatalogueGraph(utils, "CS(=O)C", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const sx = recs.find((r) => r.shortName === "sulphoxide");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "sulphoxide") : null;
+      check(
+        "DMSO: sulphoxide record (name 'sulphoxide group'/shorthand S=O/atoms len 2)",
+        !!sx && sx.name === "sulphoxide group" && sx.shorthand === "S=O" && sx.atoms.length === 2,
+        JSON.stringify(recs),
+      );
+      check(
+        "DMSO: catalogue record == legacy pass (claim-subset [S,=O], atoms order + fields)",
+        !!sx && !!legacy && JSON.stringify(sx) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(sx) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // Sulphone rejection: dimethyl sulfone (two =O) must yield NEITHER a
+    // sulphoxide (refine: =O count !== 1) NOR a sulphonic/sulphonamide (refine:
+    // no single-bonded -O/-N substituent) — matching the legacy passes.
+    {
+      const gd = await _primeCatalogueGraph(utils, "CS(=O)(=O)C", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const sCluster = recs.filter((r) => BATCH2_SHORTNAMES.indexOf(r.shortName) !== -1);
+      check(
+        "dimethyl sulfone: refine rejects sulphone (no sulphoxide / sulphonic / sulphonamide record)",
+        sCluster.length === 0,
+        JSON.stringify(recs),
+      );
+    }
     // Canonical threading: a deliberately wrong raw `smiles` arg must be
     // ignored in favour of graphData._smiles — the acid record still appears.
     {
@@ -4385,6 +4534,127 @@ window.testCatalogueRunner = async function () {
         JSON.stringify(recs),
       );
     }
+    // --- Phase 17-2c: carbonyl-C family ---
+    // formamide O=CN → the amide row claims before the landed aldehyde row:
+    // exactly one primary-amide record, NO aldehyde record (the divergence).
+    {
+      const gd = await _primeCatalogueGraph(utils, "O=CN", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const amide = recs.find((r) => r.shortName === "amide");
+      const ald = recs.find((r) => r.shortName === "aldehyde");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "amide") : null;
+      check(
+        "formamide: amide claims before aldehyde (amide present, –CONH₂, NO aldehyde record)",
+        !!amide && !ald && amide.name === "amide" && amide.shorthand === "–CONH₂",
+        JSON.stringify(recs),
+      );
+      check(
+        "formamide: catalogue amide == legacy pass (atoms order + fields)",
+        !!amide && !!legacy && JSON.stringify(amide) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(amide) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // cyclohexanone O=C1CCCCC1 → the ring-internal refine returns null (no N
+    // flankers) and the ring carbonyl FALLS THROUGH to the ketone row.
+    {
+      const gd = await _primeCatalogueGraph(utils, "O=C1CCCCC1", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const ket = recs.find((r) => r.shortName === "ketone");
+      const ri = recs.find((r) => r.shortName === "urea" || r.shortName === "lactam");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "ketone") : null;
+      check(
+        "cyclohexanone: ring-internal returns null → ketone claims (C=O, no urea/lactam)",
+        !!ket && !ri && ket.name === "ketone" && ket.shorthand === "C=O",
+        JSON.stringify(recs),
+      );
+      check(
+        "cyclohexanone: catalogue ketone == legacy pass (claim-subset [C,=O], fields)",
+        !!ket && !!legacy && JSON.stringify(ket) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(ket) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // N-methylacetamide CC(=O)NC → secondary amide (1 N-carbon), –CONHR.
+    {
+      const gd = await _primeCatalogueGraph(utils, "CC(=O)NC", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const sa = recs.find((r) => r.shortName === "secondary amide");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "secondary amide") : null;
+      check(
+        "N-methylacetamide: secondary amide record (–CONHR) == legacy pass",
+        !!sa && sa.shorthand === "–CONHR" && !!legacy && JSON.stringify(sa) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(sa) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // N,N-dimethylacetamide CC(=O)N(C)C → tertiary amide (2 N-carbons), –CONR₂.
+    {
+      const gd = await _primeCatalogueGraph(utils, "CC(=O)N(C)C", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const ta = recs.find((r) => r.shortName === "tertiary amide");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "tertiary amide") : null;
+      check(
+        "N,N-dimethylacetamide: tertiary amide record (–CONR₂) == legacy pass",
+        !!ta && ta.shorthand === "–CONR₂" && !!legacy && JSON.stringify(ta) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(ta) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // ethyl propanoate CCC(=O)OCC → ester non-acetate → –OCOR (vs aspirin's –OCOCH₃).
+    {
+      const gd = await _primeCatalogueGraph(utils, "CCC(=O)OCC", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const es = recs.find((r) => r.shortName === "ester");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "ester") : null;
+      check(
+        "ethyl propanoate: ester record (non-acetate → –OCOR) == legacy pass",
+        !!es && es.shorthand === "–OCOR" && !!legacy && JSON.stringify(es) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(es) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // uracil O=c1cc[nH]c(=O)[nH]1 → urea + lactam ring carbonyls. Proves the
+    // runCatalogue widening: `flanking` is COPIED and attachmentVertexId is the
+    // ring carbon itself (= atoms[0]); records match the legacy pass field-for-
+    // field INCLUDING the flanking array.
+    {
+      const gd = await _primeCatalogueGraph(utils, "O=c1cc[nH]c(=O)[nH]1", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const legacyAll = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj) : [];
+      const keyOf = (g) => g.atoms.slice().sort((a, b) => a - b).join(",");
+      const urea = recs.find((r) => r.shortName === "urea");
+      const lactam = recs.find((r) => r.shortName === "lactam");
+      const legacyUrea = legacyAll.find((g) => g.shortName === "urea");
+      const legacyLactam = legacyAll.find((g) => g.shortName === "lactam");
+      check(
+        "uracil: urea record carries flanking (len 2) + attachmentVertexId == ringC (atoms[0])",
+        !!urea && Array.isArray(urea.flanking) && urea.flanking.length === 2 &&
+          urea.attachmentVertexId === urea.atoms[0],
+        JSON.stringify(urea),
+      );
+      check(
+        "uracil: urea catalogue record == legacy pass (incl. flanking deep-equal)",
+        !!urea && !!legacyUrea && keyOf(urea) === keyOf(legacyUrea) &&
+          JSON.stringify(urea) === JSON.stringify(legacyUrea),
+        "cat=" + JSON.stringify(urea) + " legacy=" + JSON.stringify(legacyUrea),
+      );
+      check(
+        "uracil: lactam catalogue record == legacy pass (incl. flanking deep-equal)",
+        !!lactam && !!legacyLactam && keyOf(lactam) === keyOf(legacyLactam) &&
+          JSON.stringify(lactam) === JSON.stringify(legacyLactam),
+        "cat=" + JSON.stringify(lactam) + " legacy=" + JSON.stringify(legacyLactam),
+      );
+    }
+    // Dead-code re-assert: after exercising the carbonyl-C rows, the live path
+    // still does NOT reference runCatalogue (the catalogue stays dead code).
+    check(
+      "dead-code (re-assert): analyseStructure still avoids runCatalogue",
+      typeof classify.analyseStructure === "function" &&
+        classify.analyseStructure.toString().indexOf("runCatalogue") === -1,
+      "live path calls _detectFunctionalGroupsFromGraph only",
+    );
   } finally {
     if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
   }

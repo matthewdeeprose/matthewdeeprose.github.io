@@ -1,0 +1,20 @@
+/*
+ * chat/chat.css — Unified Chat tool reflow guards.
+ *
+ * Additive, Chat-scoped styling. The Chat tool otherwise reuses the shared tool
+ * classes (.tool-container, .search-container, .model-count, …); this file only
+ * adds what those shared rules do not: keeping the model menu within its
+ * container when model names are long, especially at 400% zoom / reflow.
+ */
+
+/* The closed model menu must never push past its container. Long model names are
+ * clipped with an ellipsis on the CLOSED control; the open option list still
+ * shows full names (that list is browser-rendered and not affected by these
+ * rules). */
+#chat-model-select {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

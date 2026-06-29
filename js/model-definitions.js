@@ -40573,6 +40573,133 @@ modelRegistry.registerModel("z-ai/glm-5.2", {
     errorMessage: null,
   },
 });
+// Insert after other Sakana models in model-definitions.js
+
+modelRegistry.registerModel("sakana/fugu-ultra", {
+  provider: "sakana",
+  name: "Fugu Ultra",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "Fugu Ultra is the higher-performance model in Sakana AI's Fugu family, representing a paradigm shift from traditional monolithic architectures. Rather than a single model, Fugu is a learned multi-agent orchestration system: a language model trained to intelligently route tasks across a swappable pool of underlying models and to recursively call instances of itself. This dynamic routing enables optimised performance across diverse task types whilst maintaining flexibility and cost efficiency. Supports text and image input, with a 1M token context window and advanced reasoning capabilities.",
+  costs: {
+    input: 5.0,
+    output: 30.0,
+    image: 0.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Ultra-large context model with innovative multi-agent orchestration for complex task routing",
+    releaseDate: "2026-06-24",
+    modelArchitecture: {
+      parameters: "Proprietary multi-agent system",
+      type: "Learned multi-agent orchestration system",
+      architecture: "Dynamic task routing with recursive self-calling",
+      agentBased: true,
+    },
+    policyLinks: {
+      privacyPolicy: "https://sakana.ai/privacy",
+      acceptableUse: "",
+      termsOfService: "https://sakana.ai/terms",
+      lastUpdated: "2026-06-24",
+    },
+    languageSupport: [
+      "English",
+      "Japanese",
+      "Chinese",
+      "Spanish",
+      "French",
+      "German",
+    ],
+    bestFor: [
+      "Complex multi-step reasoning",
+      "Dynamic task orchestration",
+      "Large document analysis (1M tokens)",
+      "Image understanding with text",
+      "Specialised domain routing",
+      "Tool-intensive workflows",
+      "Recursive problem decomposition",
+    ],
+  },
+  parameterSupport: {
+    supported: [
+      "reasoning",
+      "include_reasoning",
+      "tools",
+      "tool_choice",
+      "structured_outputs",
+      "web_search_options",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "multi-agent-orchestration",
+      "dynamic-routing",
+      "web-search",
+      "tool-integration",
+      "recursive-calling",
+      "structured-outputs",
+      "reasoning-mode",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "multi-step-workflows",
+      "large-document-processing",
+      "image-analysis",
+      "tool-intensive-applications",
+      "domain-specific-routing",
+    ],
+    warnings: [
+      "Premium pricing model — suitable for high-value tasks requiring sophisticated orchestration",
+      "Multi-agent routing adds latency — ensure application handles asynchronous processing appropriately",
+      "Recursive self-calling may result in variable response times — implement appropriate timeout handling",
+      "1M token context window requires careful management of input formatting for optimal performance",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Fugu Ultra - Multi-agent orchestration system with 1M context, image support, web search",
+      parameterSection:
+        "Parameter controls for Fugu Ultra agent routing and reasoning configuration",
+      statusMessages: {
+        processing:
+          "Processing request with Fugu Ultra multi-agent orchestration system",
+        complete: "Response ready from Fugu Ultra",
+        reasoning: "Generating orchestrated reasoning with Fugu Ultra",
+        routing: "Routing task across Fugu Ultra agent pool",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;

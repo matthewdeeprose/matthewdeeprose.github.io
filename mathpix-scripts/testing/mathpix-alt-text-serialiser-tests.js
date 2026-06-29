@@ -273,8 +273,8 @@
         `got "${after.title}"`,
       );
       assert(
-        "Fixture 4: entry.titleSource is 'user' (MMD = user textarea)",
-        after.titleSource === "user",
+        "Fixture 4: entry.titleSource is 'ai-reviewed' (AI-seeded, human edit via MMD)",
+        after.titleSource === "ai-reviewed",
         `got "${after.titleSource}"`,
       );
       assert("Fixture 4: processed === 1", result.processed === 1);
@@ -1756,8 +1756,9 @@
     console.log("\n--- 9. parseAppendix source-field assertion ---");
     {
       // Setup with longDescriptionSource initially "ai-generated" so the
-      // assertion that source becomes "user" after parse is non-trivial.
-      // (User decision: parseAppendix writes "user", matching parseCaptions.)
+      // assertion that source becomes "ai-reviewed" after parse is non-trivial.
+      // (User decision: parseAppendix transitions "ai-generated" to
+      // "ai-reviewed" on a human edit, matching parseCaptions under PF4 / LC-D4.)
       const prefix = "![](https://cdn.mathpix.com/g9.png)";
       const reg = new Registry();
       reg.buildFromMMD(prefix);
@@ -1788,8 +1789,8 @@
         `got "${reg.getImage(id).longDescription}"`,
       );
       assert(
-        "G9: longDescriptionSource set to 'user' (NOT 'mmd', NOT 'ai-generated')",
-        reg.getImage(id).longDescriptionSource === "user",
+        "G9: longDescriptionSource is 'ai-reviewed' (AI-seeded, human edit via MMD)",
+        reg.getImage(id).longDescriptionSource === "ai-reviewed",
         `got "${reg.getImage(id).longDescriptionSource}"`,
       );
     }

@@ -110,7 +110,7 @@
   };
 
   // =========================================================================
-  // Phase 17-2a: SMARTS functional-group catalogue (batch 1 — pure-SMARTS).
+  // Phase 17-2a/2b: SMARTS functional-group catalogue.
   //
   // DEAD CODE. The live classification path (analyseStructure →
   // _detectFunctionalGroupsFromGraph) is UNCHANGED; runCatalogue (below) is
@@ -147,8 +147,270 @@
   // halogen.shorthand is null in the table and computed per-match from the
   // matched atom's element ("–F" / "–Cl" / "–Br" / "–I"), matching the legacy
   // pass's `"–" + el`.
+  //
+  // Batch 2 (Phase 17-2b) adds the first Q2-class-(b) rows: the S-cluster
+  // (sulphonic acid / sulphonamide, then sulphoxide). A class-(b) row carries a
+  // `refine(matchAtoms, ctx)` hook IN ADDITION to its SMARTS. The SMARTS only
+  // NARROWS the candidate atoms (matches the sulphur anchor); `refine`
+  // reproduces the legacy detection predicate verbatim from the graph adjacency
+  // — confirming, sub-typing, or REJECTING the match — and returns the legacy
+  // group record ({ name, shortName, shorthand, atoms }) or null. Because the
+  // refine re-derives `atoms` from adjacency exactly as the legacy pass does
+  // (NOT from SMARTS-match order), the record is byte-identical to the legacy
+  // pass's by construction, including atom ordering (§ 2.4 corollary 1) and the
+  // claim-subset (corollary 2: sulphoxide claims only [S, =O], not its carbons).
+  // ctx = { vertices, adjacency, claimed }; the refine consults `claimed` for
+  // its own !claimed guards, mirroring the legacy per-atom checks.
+  //
+  // ORDER (load-bearing — and where this batch deviates from the 17-2b dispatch
+  // § 3's "they append, no ordering surgery"): the sulphonic-acid row CLAIMS the
+  // S–OH oxygen, which the landed hydroxyl row [OX2H1] would otherwise match
+  // (the –OH on sulphur is OX2H1, just like an alcohol). The legacy cascade runs
+  // sulphonic/sulphonamide (pass "4") BEFORE hydroxyl (pass "7") so that oxygen
+  // is claimed first; the catalogue must preserve that. The two S rows are
+  // therefore INSERTED after `acid` and before `hydroxyl` (giving the exact
+  // legacy priority order acid < sulphonyl < sulphoxide < aldehyde < hydroxyl <
+  // …), per findings § 3.2's priority chain — not appended. The full-record
+  // comparator (testCatalogueEquivalence) is the backstop: a wrong placement
+  // surfaces as a spurious hydroxyl + missing sulphonic on methanesulphonic acid.
+  // sulphonic/sulphonamide is placed before sulphoxide per § 3 / findings Q4
+  // (2 =O vs 1 =O; mutually exclusive per S atom, so emission order only).
   const FUNCTIONAL_GROUPS = [
     { id: "acid",     smarts: "C(=O)[OH]",      name: "carboxylic acid", shortName: "acid",     shorthand: "–COOH" },
+    // --- batch 2: S-cluster, class (b) — SMARTS + refine (DEAD CODE) ---
+    {
+      id: "sulphonyl",
+      smarts: "[SX4](=O)(=O)[OX2,NX3]",
+      // name/shortName/shorthand are emitted by refine (branch on O vs N).
+      name: null, shortName: null, shorthand: null,
+      // Reproduces legacy pass "4" (Sulphonic acids/sulphonamides): S with two
+      // =O and one single-bonded -O (sulphonic acid) or -N (sulphonamide).
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const sVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => el(v) === "S");
+        if (!sVertex || claimed.has(sVertex.id)) return null;
+        const neighbours = adjacency.get(sVertex.id) || [];
+        const doubleOs = neighbours.filter(
+          (n) => el(n.vertex) === "O" && n.edge.bondType === "=" && !claimed.has(n.vertex.id),
+        );
+        if (doubleOs.length < 2) return null;
+        const singleOorN = neighbours.find(
+          (n) => (el(n.vertex) === "O" || el(n.vertex) === "N") && n.edge.bondType === "-" && !claimed.has(n.vertex.id),
+        );
+        if (!singleOorN) return null;
+        const isSulphonamide = el(singleOorN.vertex) === "N";
+        return {
+          name: isSulphonamide ? "sulphonamide" : "sulphonic acid",
+          shortName: isSulphonamide ? "sulphonamide" : "sulphonic acid",
+          shorthand: isSulphonamide ? "–SO₂NH₂" : "–SO₃H",
+          atoms: [sVertex.id, ...doubleOs.map((d) => d.vertex.id), singleOorN.vertex.id],
+        };
+      },
+    },
+    {
+      id: "sulphoxide",
+      smarts: "[SX3](=O)([#6])[#6]",
+      name: null, shortName: null, shorthand: null,
+      // Reproduces legacy pass "4.5" (Sulphoxides, Phase 15-2c LOCK 2 + R2):
+      // non-ring S with EXACTLY ONE =O and exactly two single-bonded C. The
+      // exact-1 =O test rejects a sulphone (two =O). Claim-subset [S, =O].
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const inRing = (v) => !!(v && v.value && v.value.rings && v.value.rings.length > 0);
+        const sVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => el(v) === "S");
+        if (!sVertex || claimed.has(sVertex.id) || inRing(sVertex)) return null;
+        const neighbours = adjacency.get(sVertex.id) || [];
+        if (neighbours.length !== 3) return null;
+        const doubleOs = neighbours.filter(
+          (n) => el(n.vertex) === "O" && n.edge.bondType === "=" && !claimed.has(n.vertex.id),
+        );
+        if (doubleOs.length !== 1) return null; // R2: rejects sulphone (=O count 2)
+        const singleCs = neighbours.filter(
+          (n) => el(n.vertex) === "C" && n.edge.bondType === "-" && !claimed.has(n.vertex.id),
+        );
+        if (singleCs.length !== 2) return null;
+        return {
+          name: "sulphoxide group",
+          shortName: "sulphoxide",
+          shorthand: "S=O",
+          atoms: [sVertex.id, doubleOs[0].vertex.id],
+        };
+      },
+    },
+    // --- end batch 2 ---
+    // --- batch 3 (Phase 17-2c): the carbonyl-C family, class (b) — SMARTS +
+    //     refine (DEAD CODE). Inserted immediately before the landed `aldehyde`
+    //     row so the hard claim-precedence chain ring-internal < amide <
+    //     aldehyde holds (findings Q4.5 / dispatch § 3). The only two
+    //     atom-sharing pairs in the whole family:
+    //       • a ring amide's carbonyl matches BOTH the ring-internal SMARTS and
+    //         the amide SMARTS → the ring-internal row claims first (it runs
+    //         earlier, claiming [ringC, =O]; the amide refine then sees the
+    //         carbonyl already claimed and returns null);
+    //       • formamide H–C(=O)–N is CX3H1 AND N-bearing → matches BOTH the
+    //         amide SMARTS and the landed aldehyde SMARTS → the amide row claims
+    //         first (runs before aldehyde).
+    //     ester and ketone are atom-disjoint from every row → claim-free
+    //     position; placed in legacy-emission order for legibility (the
+    //     comparator keys records by sorted-atom set, so row order is never
+    //     compared). Each refine reproduces its legacy pass byte-for-byte:
+    //     ester = pass "2", ring-internal = pass "3 (Phase 9-3)", amide =
+    //     pass "3", ketone = pass "5"; the refine re-derives `atoms` from
+    //     adjacency in legacy order (NOT SMARTS-match order), so the record is
+    //     byte-identical by construction. The ring-internal rows additionally
+    //     return `flanking` and an explicit `attachmentVertexId` (= the ring
+    //     carbon), both honoured by the widened runCatalogue refine push.
+    {
+      id: "ester",
+      smarts: "[#6](=O)[OX2][#6]",
+      name: null, shortName: null, shorthand: null,
+      // Legacy pass "2": a non-ring O bridging two single-bonded C, one of
+      // which carries a =O. Claim-subset [O_bridge, C, =O]. The !inRing guard
+      // on the bridging O preserves the legacy behaviour that a cyclic ester
+      // (lactone) is NOT matched (findings Q3.1) — [OX2] alone does not exclude
+      // a ring O.
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const inRing = (v) => !!(v && v.value && v.value.rings && v.value.rings.length > 0);
+        // The bridging O: non-ring, degree 2, exactly two single-bonded C.
+        const oVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => {
+            if (!v || el(v) !== "O" || inRing(v)) return false;
+            const nb = adjacency.get(v.id) || [];
+            if (nb.length !== 2) return false;
+            return nb.filter((n) => el(n.vertex) === "C" && n.edge.bondType === "-").length === 2;
+          });
+        if (!oVertex || claimed.has(oVertex.id)) return null;
+        const carbonNeighbours = (adjacency.get(oVertex.id) || []).filter(
+          (n) => el(n.vertex) === "C" && n.edge.bondType === "-",
+        );
+        for (const cn of carbonNeighbours) {
+          const cNeighbours = adjacency.get(cn.vertex.id) || [];
+          const doubleOVertex = cNeighbours.find(
+            (n) => el(n.vertex) === "O" && n.edge.bondType === "=" && !claimed.has(n.vertex.id),
+          );
+          if (!doubleOVertex) continue;
+          const atoms = [oVertex.id, cn.vertex.id, doubleOVertex.vertex.id];
+          // R-group sniff (legacy 650–662): terminal-methyl acyl → –OCOCH₃.
+          let esterShorthand = "–OCOR";
+          const rNeighbours = (adjacency.get(cn.vertex.id) || []).filter(
+            (n) => n.vertex.id !== oVertex.id && n.vertex.id !== doubleOVertex.vertex.id,
+          );
+          if (rNeighbours.length === 1 && el(rNeighbours[0].vertex) === "C") {
+            const rCarbonNeighbours = (adjacency.get(rNeighbours[0].vertex.id) || []).filter(
+              (n) => el(n.vertex) === "C" && n.vertex.id !== cn.vertex.id,
+            );
+            if (rCarbonNeighbours.length === 0) esterShorthand = "–OCOCH₃";
+          }
+          return { name: "ester", shortName: "ester", shorthand: esterShorthand, atoms };
+        }
+        return null;
+      },
+    },
+    {
+      id: "ring-internal-carbonyl",
+      smarts: "[#6;R](=[OX1])",
+      name: null, shortName: null, shorthand: null,
+      // Legacy pass "3 (Phase 9-3)": ring-internal carbonyls — urea linkages and
+      // lactams. The SMARTS over-matches (also a ring ketone and a ring carbonyl
+      // whose flankers give kind:null); the refine delegates to
+      // _classifyRingInternalCarbonyl and returns null for those, so they fall
+      // through to the ketone row (the null return is load-bearing — findings
+      // Q3.2/Q4). Claim-subset [ringC, =O]. Carries `flanking` and an explicit
+      // `attachmentVertexId` (= ringCId) — the widened refine push honours both.
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const cVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => v && el(v) === "C");
+        if (!cVertex || claimed.has(cVertex.id)) return null;
+        const result = _classifyRingInternalCarbonyl(cVertex, adjacency);
+        if (!result || !result.kind) return null;
+        const atoms = [result.ringCId, result.oId];
+        if (result.kind === "urea") {
+          return {
+            name: "urea linkage", shortName: "urea", shorthand: null,
+            atoms, attachmentVertexId: result.ringCId, flanking: result.flanking,
+          };
+        }
+        return {
+          name: "lactam", shortName: "lactam", shorthand: "cyclic amide",
+          atoms, attachmentVertexId: result.ringCId, flanking: result.flanking,
+        };
+      },
+    },
+    {
+      id: "amide",
+      smarts: "[CX3](=[OX1])[NX3]",
+      name: null, shortName: null, shorthand: null,
+      // Legacy pass "3" (exocyclic amides). Runs AFTER the ring-internal row so a
+      // ring amide's carbonyl is already claimed (refine returns null here), and
+      // BEFORE the landed aldehyde row so formamide H–C(=O)–N claims as an amide,
+      // not an aldehyde (findings Q4.5). Subtype by the nitrogen's carbon-
+      // neighbour count: 0 → amide (–CONH₂), 1 → secondary amide (–CONHR),
+      // 2 → tertiary amide (–CONR₂). Claim-subset [C, =O, N].
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const cVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => v && el(v) === "C");
+        if (!cVertex || claimed.has(cVertex.id)) return null;
+        const neighbours = adjacency.get(cVertex.id) || [];
+        let doubleO = null, singleN = null;
+        for (const n of neighbours) {
+          if (el(n.vertex) === "O" && n.edge.bondType === "=" && !claimed.has(n.vertex.id)) doubleO = n.vertex;
+          if (el(n.vertex) === "N" && n.edge.bondType === "-" && !claimed.has(n.vertex.id)) singleN = n.vertex;
+        }
+        if (!doubleO || !singleN) return null;
+        const atoms = [cVertex.id, doubleO.id, singleN.id];
+        const nCarbonNeighbours = (adjacency.get(singleN.id) || []).filter(
+          (n) => n.vertex.id !== cVertex.id && el(n.vertex) === "C",
+        );
+        let amideName, amideShorthand;
+        if (nCarbonNeighbours.length === 0) { amideName = "amide"; amideShorthand = "–CONH₂"; }
+        else if (nCarbonNeighbours.length === 1) { amideName = "secondary amide"; amideShorthand = "–CONHR"; }
+        else { amideName = "tertiary amide"; amideShorthand = "–CONR₂"; }
+        return { name: amideName, shortName: amideName, shorthand: amideShorthand, atoms };
+      },
+    },
+    {
+      id: "ketone",
+      smarts: "[CX3](=O)([#6])[#6]",
+      name: null, shortName: null, shorthand: null,
+      // Legacy pass "5" (ketones): a residual (unclaimed) C=O with two carbon
+      // neighbours. Fires on the residual =O after acid/ester/ring-internal/
+      // amide have claimed, exactly as legacy. Claim-subset [C, =O] only — the
+      // neighbour carbons stay free for the future alkyl walker (findings Q3.4).
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const candidates = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .filter((v) => v && el(v) === "C" && !claimed.has(v.id));
+        for (const cVertex of candidates) {
+          const neighbours = adjacency.get(cVertex.id) || [];
+          const doubleO = neighbours.find(
+            (n) => el(n.vertex) === "O" && n.edge.bondType === "=" && !claimed.has(n.vertex.id),
+          );
+          if (!doubleO) continue;
+          const carbonNeighbours = neighbours.filter((n) => el(n.vertex) === "C");
+          if (carbonNeighbours.length < 2) continue;
+          return { name: "ketone", shortName: "ketone", shorthand: "C=O", atoms: [cVertex.id, doubleO.vertex.id] };
+        }
+        return null;
+      },
+    },
+    // --- end batch 3 ---
     { id: "aldehyde", smarts: "[CX3H1]=O",      name: "aldehyde",        shortName: "aldehyde", shorthand: "–CHO" },
     { id: "hydroxyl", smarts: "[OX2H1]",        name: "hydroxyl",        shortName: "hydroxyl", shorthand: "–OH" },
     { id: "thiol",    smarts: "[SX2H1]",        name: "thiol group",     shortName: "thiol",    shorthand: "–SH" },
@@ -1126,13 +1388,16 @@
   }
 
   /**
-   * Phase 17-2a: SMARTS-catalogue functional-group runner (batch 1 — DEAD CODE).
+   * Phase 17-2a/2b: SMARTS-catalogue functional-group runner (DEAD CODE).
    *
-   * Matches the six pure-SMARTS rows of FUNCTIONAL_GROUPS against the molecule
-   * and reconstructs the legacy group records they correspond to. NOT called
-   * from analyseStructure / the live path — only the equivalence harness
-   * (window.testCatalogueEquivalence) reaches it until the consumption
-   * switchover sub-stage. Result: the migration canary is 20/0 by construction.
+   * Matches every FUNCTIONAL_GROUPS row against the molecule and reconstructs
+   * the legacy group records they correspond to. Class-(a) rows (batch 1) are
+   * pure-SMARTS, atoms-exact; class-(b) rows (batch 2: the S-cluster) carry a
+   * `refine` hook that reproduces the legacy graph-predicate and returns the
+   * legacy record (or null to reject). NOT called from analyseStructure / the
+   * live path — only the equivalence harness (window.testCatalogueEquivalence)
+   * reaches it until the consumption switchover sub-stage. Result: the
+   * migration canary is 20/0 by construction.
    *
    * Q1 index alignment (findings § 2 / § 4): matchSmarts MUST run on the same
    * canonical SMILES the cached graph was extracted from, else the returned
@@ -1188,6 +1453,44 @@
       const matches = matchMap[row.smarts] || [];
       for (const atomIdxs of matches) {
         if (!Array.isArray(atomIdxs) || atomIdxs.length === 0) continue;
+
+        // Class (b): SMARTS narrows candidate atoms; refine reproduces the
+        // legacy predicate (confirm / subtype / reject) and returns the legacy
+        // record (atoms = legacy-ordered claim-subset) or null. The !claimed
+        // guards live INSIDE refine (mirroring the legacy per-atom checks), so
+        // the generic full-match claim-guard below is skipped for these rows —
+        // a refine row claims only the subset it returns (e.g. sulphoxide
+        // claims [S, =O], leaving its carbons free for downstream passes).
+        if (typeof row.refine === "function") {
+          const rec = row.refine(atomIdxs, { vertices, adjacency, claimed });
+          if (!rec) continue;
+          rec.atoms.forEach(a => claimed.add(a));
+          // Phase 17-2c contract widening (additive — the landed S-cluster rows
+          // return neither field, so their emitted record stays byte-identical):
+          //   • honour a refine-supplied attachmentVertexId — the ring-internal
+          //     urea/lactam rows set it to the ring carbon itself (= atoms[0]),
+          //     which the generic _catalogueFindRingAttachment would NOT return
+          //     (it returns the first flanking ring neighbour). Guard on
+          //     `!= null` so a legitimate id of 0 is honoured, not treated falsy.
+          //   • copy a refine-supplied `flanking` array (urea/lactam only) so
+          //     the prose-consumed flanking[].element survives the catalogue
+          //     path; absent on every other row (key simply not added).
+          const emitted = {
+            name: rec.name,
+            shortName: rec.shortName,
+            shorthand: rec.shorthand,
+            atoms: rec.atoms.slice(),
+            attachmentVertexId:
+              rec.attachmentVertexId !== undefined && rec.attachmentVertexId !== null
+                ? rec.attachmentVertexId
+                : _catalogueFindRingAttachment(rec.atoms, adjacency),
+          };
+          if (rec.flanking !== undefined) emitted.flanking = rec.flanking;
+          groups.push(emitted);
+          continue;
+        }
+
+        // Class (a): pure-SMARTS, atoms-exact (batch 1).
         if (atomIdxs.some(a => claimed.has(a))) continue;
         atomIdxs.forEach(a => claimed.add(a));
         let shorthand = row.shorthand;
@@ -1897,7 +2200,7 @@
         // Phase 9-3 (CT-4ac): shared with comprehensive tier for ring-internal C=O
         classifyRingInternalCarbonyl: _classifyRingInternalCarbonyl,
         detectFunctionalGroupsFromGraph: _detectFunctionalGroupsFromGraph,
-        // Phase 17-2a: SMARTS-catalogue runner + table (batch 1, DEAD CODE).
+        // Phase 17-2a/2b: SMARTS-catalogue runner + table (DEAD CODE).
         // Exposed so window.testCatalogueEquivalence can prove record-for-record
         // equivalence vs the legacy passes. NOT wired into analyseStructure —
         // the consumption switchover is a later 17-2 sub-stage.

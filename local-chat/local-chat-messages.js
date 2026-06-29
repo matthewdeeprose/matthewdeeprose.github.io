@@ -170,11 +170,7 @@
         onComplete: function (response) {
           window.LocalChat._postGeneration(assistantBubble, response);
           S.announceToScreenReader("Response complete after retry.");
-          S.logInfo(
-            "Retry complete \u2014",
-            response.text.length,
-            "chars",
-          );
+          S.logInfo("Retry complete \u2014", response.text.length, "chars");
         },
         onError: function (error) {
           window.LocalChat._postError(assistantBubble, error);
@@ -295,8 +291,7 @@
         el.setAttribute("role", "math");
       }
       var label =
-        (el.textContent || "").trim() ||
-        "Mathematical expression " + (i + 1);
+        (el.textContent || "").trim() || "Mathematical expression " + (i + 1);
       el.setAttribute("aria-label", label + ". ");
       el.setAttribute("data-local-chat-enhanced", "true");
     }
@@ -323,7 +318,10 @@
         enhanceMathA11y(bubble);
       })
       .catch(function (err) {
-        S.logWarn("MathJax typeset failed:", err && err.message ? err.message : err);
+        S.logWarn(
+          "MathJax typeset failed:",
+          err && err.message ? err.message : err,
+        );
       });
   }
 
@@ -342,7 +340,7 @@
       var btn = document.createElement("button");
       btn.className = "local-chat-code-copy";
       btn.innerHTML =
-        '<span aria-hidden="true" data-icon="clipboard"></span> Copy code';
+        '<span aria-hidden="true" data-icon="clipboardCopy"></span> Copy code';
       btn.addEventListener("click", function () {
         var code = pre.querySelector("code");
         var text = code ? code.textContent : pre.textContent;
@@ -354,7 +352,7 @@
             S.announceToScreenReader("Code copied to clipboard.");
             setTimeout(function () {
               btn.innerHTML =
-                '<span aria-hidden="true" data-icon="clipboard"></span> Copy code';
+                '<span aria-hidden="true" data-icon="clipboardCopy"></span> Copy code';
             }, 2000);
           })
           .catch(function () {
@@ -383,7 +381,7 @@
     copyBtn.className = "local-chat-copy";
     copyBtn.setAttribute("aria-label", "Copy response");
     copyBtn.innerHTML =
-      '<span aria-hidden="true" data-icon="copy"></span> Copy';
+      '<span aria-hidden="true" data-icon="clipboardCopy"></span> Copy';
     copyBtn.addEventListener("click", function () {
       // Re-read messages from S to stay in sync after reassignments
       var msgs = S.messages;
@@ -415,7 +413,7 @@
     var btn = document.createElement("button");
     btn.className = "local-chat-copy-formatted";
     btn.innerHTML =
-      '<span aria-hidden="true" data-icon="clipboard"></span> Copy formatted';
+      '<span aria-hidden="true" data-icon="clipboardCopy"></span> Copy formatted';
 
     btn.addEventListener("click", function () {
       // Re-read messages from S to stay in sync
@@ -429,13 +427,13 @@
       var toRemove = clone.querySelectorAll(
         ".local-chat-bubble-actions, .local-chat-timestamp, .local-chat-model-badge",
       );
-      toRemove.forEach(function (el) { el.remove(); });
+      toRemove.forEach(function (el) {
+        el.remove();
+      });
       // Strip mathpix/local-chat internal attrs from cloned math elements
       // so pasted output doesn't carry our enhancement markers. Keep
       // role="math" + aria-label — they're useful in the paste target.
-      var mathEls = clone.querySelectorAll(
-        "mjx-container, mjx-assistive-mml",
-      );
+      var mathEls = clone.querySelectorAll("mjx-container, mjx-assistive-mml");
       mathEls.forEach(function (el) {
         el.removeAttribute("data-mathpix-enhanced");
         el.removeAttribute("data-math-index");
@@ -458,9 +456,7 @@
           .then(function () {
             btn.innerHTML =
               '<span aria-hidden="true" data-icon="check"></span> Copied';
-            S.announceToScreenReader(
-              "Formatted response copied to clipboard.",
-            );
+            S.announceToScreenReader("Formatted response copied to clipboard.");
             setTimeout(function () {
               btn.innerHTML =
                 '<span aria-hidden="true" data-icon="clipboard"></span> Copy formatted';
@@ -488,7 +484,7 @@
         S.announceToScreenReader("Response copied to clipboard.");
         setTimeout(function () {
           btn.innerHTML =
-            '<span aria-hidden="true" data-icon="clipboard"></span> Copy formatted';
+            '<span aria-hidden="true" data-icon="clipboardCopy"></span> Copy formatted';
         }, 2000);
       })
       .catch(function () {
@@ -502,9 +498,7 @@
     var els = S.els;
     // Remove any existing regenerate button from other bubbles
     if (els.messageList) {
-      var existing = els.messageList.querySelectorAll(
-        ".local-chat-regenerate",
-      );
+      var existing = els.messageList.querySelectorAll(".local-chat-regenerate");
       existing.forEach(function (btn) {
         btn.remove();
       });
@@ -848,11 +842,14 @@
     // .imgdesc-save-audio-note sibling (".Processed locally on your device.")
     // to the skip list — it lives inside the bubble for layout but must not
     // be read aloud or exported.
-    if (window.TTSSemantic && typeof window.TTSSemantic.linearise === 'function') {
+    if (
+      window.TTSSemantic &&
+      typeof window.TTSSemantic.linearise === "function"
+    ) {
       var result = window.TTSSemantic.linearise(bubble, {
         verbosity: window.TTSSemantic.getVerbosity(),
         skipSelectors:
-          '.local-chat-bubble-actions, .local-chat-model-badge, .local-chat-timestamp, .imgdesc-save-audio-note'
+          ".local-chat-bubble-actions, .local-chat-model-badge, .local-chat-timestamp, .imgdesc-save-audio-note",
       });
       if (result && result.text) return result;
     }
@@ -860,7 +857,7 @@
     // Fallback: clone-and-strip approach (no sections — controller uses legacy chunking)
     var clone = bubble.cloneNode(true);
     var remove = clone.querySelectorAll(
-      ".local-chat-bubble-actions, .local-chat-model-badge, .local-chat-timestamp, .imgdesc-save-audio-note"
+      ".local-chat-bubble-actions, .local-chat-model-badge, .local-chat-timestamp, .imgdesc-save-audio-note",
     );
     for (var i = 0; i < remove.length; i++) remove[i].remove();
     var plainText = (clone.innerText || clone.textContent || "").trim();
@@ -879,10 +876,15 @@
    * @returns {Promise<Element|null>}
    */
   function prepareBubbleForTts(bubble) {
-    if (window.TTSRewriters && typeof window.TTSRewriters.preparePanelForTts === 'function') {
+    if (
+      window.TTSRewriters &&
+      typeof window.TTSRewriters.preparePanelForTts === "function"
+    ) {
       return window.TTSRewriters.preparePanelForTts(bubble);
     }
-    S.logWarn('TTSRewriters.preparePanelForTts not available — returning unmodified clone');
+    S.logWarn(
+      "TTSRewriters.preparePanelForTts not available — returning unmodified clone",
+    );
     return Promise.resolve(bubble ? bubble.cloneNode(true) : null);
   }
 
@@ -904,7 +906,10 @@
 
     return prepareBubbleForTts(bubble).then(function (target) {
       if (!target) return null;
-      if (window.TTSSemantic && typeof window.TTSSemantic.linearise === 'function') {
+      if (
+        window.TTSSemantic &&
+        typeof window.TTSSemantic.linearise === "function"
+      ) {
         var result = window.TTSSemantic.linearise(target, {
           verbosity: window.TTSSemantic.getVerbosity(),
           // Same skipSelectors as the sync path — never read action bar,
@@ -912,11 +917,11 @@
           // device" reassurance note aloud. Plus belt-and-braces math
           // source-format guards in case any leaked past the math pass.
           skipSelectors:
-            '.local-chat-bubble-actions, .local-chat-model-badge, .local-chat-timestamp, .imgdesc-save-audio-note, mathml, asciimath, latex'
+            ".local-chat-bubble-actions, .local-chat-model-badge, .local-chat-timestamp, .imgdesc-save-audio-note, mathml, asciimath, latex",
         });
         if (result && result.text) return result;
       }
-      var plain = (target.innerText || target.textContent || '').trim();
+      var plain = (target.innerText || target.textContent || "").trim();
       return plain ? { text: plain, sections: null } : null;
     });
   }
@@ -1126,8 +1131,8 @@
   // conversation-level (one #local-chat-read-aloud-engine span next to the
   // existing Voice Settings link); Save buttons are per-bubble.
 
-  var EXPORT_FORMAT_KEY = 'local-chat-tts-export-format';
-  var DEFAULT_EXPORT_FORMAT = 'mp3';
+  var EXPORT_FORMAT_KEY = "local-chat-tts-export-format";
+  var DEFAULT_EXPORT_FORMAT = "mp3";
 
   /** Currently-exporting bubble's main Save button — panel-level lock. */
   var activeExportingBtn = null;
@@ -1137,16 +1142,20 @@
   function getLocalChatExportFormat() {
     try {
       var stored = localStorage.getItem(EXPORT_FORMAT_KEY);
-      if (stored === 'wav' || stored === 'mp3') return stored;
-    } catch (e) { /* localStorage unavailable */ }
+      if (stored === "wav" || stored === "mp3") return stored;
+    } catch (e) {
+      /* localStorage unavailable */
+    }
     return DEFAULT_EXPORT_FORMAT;
   }
 
   function setLocalChatExportFormat(format) {
-    if (format !== 'wav' && format !== 'mp3') return;
+    if (format !== "wav" && format !== "mp3") return;
     try {
       localStorage.setItem(EXPORT_FORMAT_KEY, format);
-    } catch (e) { /* localStorage unavailable */ }
+    } catch (e) {
+      /* localStorage unavailable */
+    }
     refreshAllSaveAudioButtons();
   }
 
@@ -1158,22 +1167,22 @@
    */
   function refreshSaveButtonFormatLabels(btn) {
     if (!btn) return;
-    var label = btn.querySelector('.local-chat-save-audio-label');
+    var label = btn.querySelector(".local-chat-save-audio-label");
     var formatBtn = btn.parentElement
-      ? btn.parentElement.querySelector('.local-chat-save-audio-format')
+      ? btn.parentElement.querySelector(".local-chat-save-audio-format")
       : null;
     var formatLabel = formatBtn
-      ? formatBtn.querySelector('.local-chat-save-audio-format-label')
+      ? formatBtn.querySelector(".local-chat-save-audio-format-label")
       : null;
     var format = getLocalChatExportFormat();
     var upper = format.toUpperCase();
-    if (label) label.textContent = 'Save as ' + upper;
-    btn.setAttribute('aria-label', 'Save bubble as ' + upper + ' audio file');
+    if (label) label.textContent = "Save as " + upper;
+    btn.setAttribute("aria-label", "Save bubble as " + upper + " audio file");
     if (formatLabel) formatLabel.textContent = upper;
     if (formatBtn) {
       formatBtn.setAttribute(
-        'aria-label',
-        'Change audio format. Currently ' + upper + '.'
+        "aria-label",
+        "Change audio format. Currently " + upper + ".",
       );
     }
   }
@@ -1195,55 +1204,66 @@
    */
   function refreshLocalChatSaveAudioEnabled(bubble) {
     if (!bubble) return;
-    var btn = bubble.querySelector('.local-chat-save-audio-main');
-    var formatBtn = bubble.querySelector('.local-chat-save-audio-format');
+    var btn = bubble.querySelector(".local-chat-save-audio-main");
+    var formatBtn = bubble.querySelector(".local-chat-save-audio-format");
     if (!btn) return;
     // Don't disturb the in-flight visuals — the click handler owns the
     // disabled flag while activeExportingBtn === btn.
     if (activeExportingBtn === btn) return;
 
-    var label = btn.querySelector('.local-chat-save-audio-label');
+    var label = btn.querySelector(".local-chat-save-audio-label");
     var format = getLocalChatExportFormat();
     var upper = format.toUpperCase();
 
     var preflight = getBubbleResultFast(bubble);
     var hasText = !!(preflight && preflight.text);
     var isGenerating = !!S.isGenerating;
-    var engine = (window.TTSController && typeof window.TTSController.getEngine === 'function')
-      ? window.TTSController.getEngine()
-      : 'webspeech';
-    var isNeural = engine !== 'webspeech';
+    var engine =
+      window.TTSController &&
+      typeof window.TTSController.getEngine === "function"
+        ? window.TTSController.getEngine()
+        : "webspeech";
+    var isNeural = engine !== "webspeech";
     var modelReady = false;
-    if (isNeural && window.TTSNeuralGateway &&
-        typeof window.TTSNeuralGateway.getModelState === 'function') {
-      var state = window.TTSNeuralGateway.getModelState('supertonic');
-      modelReady = (state === 'loaded' || state === 'cached');
+    if (
+      isNeural &&
+      window.TTSNeuralGateway &&
+      typeof window.TTSNeuralGateway.getModelState === "function"
+    ) {
+      var state = window.TTSNeuralGateway.getModelState("supertonic");
+      modelReady = state === "loaded" || state === "cached";
     }
-    var someoneElseExporting = (activeExportingBtn && activeExportingBtn !== btn);
+    var someoneElseExporting = activeExportingBtn && activeExportingBtn !== btn;
 
     var canExport =
-      hasText && !isGenerating && isNeural && modelReady && !someoneElseExporting;
+      hasText &&
+      !isGenerating &&
+      isNeural &&
+      modelReady &&
+      !someoneElseExporting;
     btn.disabled = !canExport;
     if (formatBtn) formatBtn.disabled = !canExport;
 
     // Label nudges users to the action required (most-specific first).
     if (!isNeural) {
-      if (label) label.textContent = 'Save as ' + upper + ' (requires natural voice)';
+      if (label)
+        label.textContent = "Save as " + upper + " (requires natural voice)";
       btn.setAttribute(
-        'aria-label',
-        'Save as ' + upper + ' — requires natural voice engine'
+        "aria-label",
+        "Save as " + upper + " — requires natural voice engine",
       );
     } else if (!modelReady) {
-      if (label) label.textContent = 'Save as ' + upper + ' (model loading…)';
+      if (label) label.textContent = "Save as " + upper + " (model loading…)";
       btn.setAttribute(
-        'aria-label',
-        'Save as ' + upper + ' — model is loading'
+        "aria-label",
+        "Save as " + upper + " — model is loading",
       );
     } else if (someoneElseExporting) {
-      if (label) label.textContent = 'Save as ' + upper + ' (another export running)';
+      if (label)
+        label.textContent = "Save as " + upper + " (another export running)";
       btn.setAttribute(
-        'aria-label',
-        'Save as ' + upper + ' — another export is in progress'
+        "aria-label",
+        "Save as " + upper + " — another export is in progress",
       );
     } else {
       refreshSaveButtonFormatLabels(btn);
@@ -1256,9 +1276,7 @@
    * format-toggle clicks. Cheap — O(n) over assistant bubbles per call.
    */
   function refreshAllSaveAudioButtons() {
-    var bubbles = document.querySelectorAll(
-      '.local-chat-bubble-assistant'
-    );
+    var bubbles = document.querySelectorAll(".local-chat-bubble-assistant");
     for (var i = 0; i < bubbles.length; i++) {
       refreshLocalChatSaveAudioEnabled(bubbles[i]);
     }
@@ -1277,26 +1295,29 @@
    */
   function handleLocalChatSaveAudioClick(bubble, btn) {
     if (!window.TTSController) {
-      S.logWarn('TTSController not available');
+      S.logWarn("TTSController not available");
       return;
     }
 
     // Panel-level export lock — at most one export in flight.
     if (activeExportingBtn && activeExportingBtn !== btn) {
-      if (typeof window.notifyWarning === 'function') {
+      if (typeof window.notifyWarning === "function") {
         window.notifyWarning(
-          'Another audio export is already in progress. Please wait for it to finish.'
+          "Another audio export is already in progress. Please wait for it to finish.",
         );
       }
       return;
     }
 
     var format = getLocalChatExportFormat();
-    var exportFn = format === 'mp3'
-      ? window.TTSController.exportMp3
-      : window.TTSController.exportWav;
-    if (typeof exportFn !== 'function') {
-      S.logWarn('TTSController.export' + format.toUpperCase() + ' not available');
+    var exportFn =
+      format === "mp3"
+        ? window.TTSController.exportMp3
+        : window.TTSController.exportWav;
+    if (typeof exportFn !== "function") {
+      S.logWarn(
+        "TTSController.export" + format.toUpperCase() + " not available",
+      );
       return;
     }
 
@@ -1305,61 +1326,64 @@
     // controller is the Clearspeak-rewritten one from getPreparedBubbleResult.
     var preflight = getBubbleResultFast(bubble);
     if (!preflight || !preflight.text) {
-      S.logWarn('No text to export');
+      S.logWarn("No text to export");
       return;
     }
 
-    var label = btn.querySelector('.local-chat-save-audio-label');
-    var icon = btn.querySelector('[data-icon]');
-    var formatBtn = bubble.querySelector('.local-chat-save-audio-format');
+    var label = btn.querySelector(".local-chat-save-audio-label");
+    var icon = btn.querySelector("[data-icon]");
+    var formatBtn = bubble.querySelector(".local-chat-save-audio-format");
 
     // Claim the panel lock and lock the clicked button immediately.
     activeExportingBtn = btn;
     btn.disabled = true;
     if (formatBtn) formatBtn.disabled = true;
-    if (label) label.textContent = 'Generating…';
+    if (label) label.textContent = "Generating…";
     if (icon) {
-      icon.setAttribute('data-icon', 'hourglass');
-      if (typeof window.refreshIcons === 'function') window.refreshIcons(icon);
+      icon.setAttribute("data-icon", "hourglass");
+      if (typeof window.refreshIcons === "function") window.refreshIcons(icon);
     }
     // Cascade-disable every other bubble's Save button via the refresh
     // predicate (which gates on activeExportingBtn).
     refreshAllSaveAudioButtons();
-    if (typeof S.announceToScreenReader === 'function') {
-      S.announceToScreenReader('Generating ' + format.toUpperCase() + ' audio file.');
+    if (typeof S.announceToScreenReader === "function") {
+      S.announceToScreenReader(
+        "Generating " + format.toUpperCase() + " audio file.",
+      );
     }
 
     getPreparedBubbleResult(bubble)
       .then(function (result) {
         if (!result || !result.text) {
-          throw new Error('No text to export after rewriter pipeline');
+          throw new Error("No text to export after rewriter pipeline");
         }
         return exportFn.call(window.TTSController, result);
       })
       .then(function () {
-        if (typeof S.announceToScreenReader === 'function') {
-          S.announceToScreenReader('Audio file saved.');
+        if (typeof S.announceToScreenReader === "function") {
+          S.announceToScreenReader("Audio file saved.");
         }
-        if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess('Audio file saved successfully.');
+        if (typeof window.notifySuccess === "function") {
+          window.notifySuccess("Audio file saved successfully.");
         }
       })
       .catch(function (err) {
-        S.logError('Audio export failed', err);
-        var msg = (err && err.message) ? err.message : 'unknown error';
-        if (typeof S.announceToScreenReader === 'function') {
-          S.announceToScreenReader('Audio export failed: ' + msg);
+        S.logError("Audio export failed", err);
+        var msg = err && err.message ? err.message : "unknown error";
+        if (typeof S.announceToScreenReader === "function") {
+          S.announceToScreenReader("Audio export failed: " + msg);
         }
-        if (typeof window.notifyWarning === 'function') {
-          window.notifyWarning('Audio export failed: ' + msg);
+        if (typeof window.notifyWarning === "function") {
+          window.notifyWarning("Audio export failed: " + msg);
         }
       })
       .then(function () {
         // finally — always restore the panel lock, icon, and labels.
         activeExportingBtn = null;
         if (icon) {
-          icon.setAttribute('data-icon', 'download');
-          if (typeof window.refreshIcons === 'function') window.refreshIcons(icon);
+          icon.setAttribute("data-icon", "download");
+          if (typeof window.refreshIcons === "function")
+            window.refreshIcons(icon);
         }
         // Refresh every bubble so the cascade-disabled siblings come back.
         refreshAllSaveAudioButtons();
@@ -1379,19 +1403,29 @@
    */
   function onExportProgress(data) {
     if (!activeExportingBtn) return;
-    if (!data || typeof data.chunk !== 'number' || typeof data.totalChunks !== 'number') return;
-    var label = activeExportingBtn.querySelector('.local-chat-save-audio-label');
+    if (
+      !data ||
+      typeof data.chunk !== "number" ||
+      typeof data.totalChunks !== "number"
+    )
+      return;
+    var label = activeExportingBtn.querySelector(
+      ".local-chat-save-audio-label",
+    );
     if (label) {
-      label.textContent = 'Generating ' + data.chunk + ' of ' + data.totalChunks + '…';
+      label.textContent =
+        "Generating " + data.chunk + " of " + data.totalChunks + "…";
     }
   }
 
   function onExportEncodeProgress(data) {
     if (!activeExportingBtn) return;
-    if (!data || typeof data.percent !== 'number') return;
+    if (!data || typeof data.percent !== "number") return;
     var percent = Math.max(0, Math.min(100, Math.round(data.percent)));
-    var label = activeExportingBtn.querySelector('.local-chat-save-audio-label');
-    if (label) label.textContent = 'Encoding MP3 ' + percent + '%…';
+    var label = activeExportingBtn.querySelector(
+      ".local-chat-save-audio-label",
+    );
+    if (label) label.textContent = "Encoding MP3 " + percent + "%…";
   }
 
   // ── Engine badge (conversation-level) ──────────────────────────────
@@ -1403,19 +1437,22 @@
    * guard against reacting to Image Describer's playback events).
    */
   function showLocalChatEngineBadge() {
-    var badge = document.getElementById(S.elId('read-aloud-engine'));
+    var badge = document.getElementById(S.elId("read-aloud-engine"));
     if (!badge) return;
-    var engine = (window.TTSController && typeof window.TTSController.getEngine === 'function')
-      ? window.TTSController.getEngine()
-      : 'webspeech';
-    badge.textContent = engine === 'webspeech' ? 'Browser voice' : 'Natural voice';
+    var engine =
+      window.TTSController &&
+      typeof window.TTSController.getEngine === "function"
+        ? window.TTSController.getEngine()
+        : "webspeech";
+    badge.textContent =
+      engine === "webspeech" ? "Browser voice" : "Natural voice";
     badge.hidden = false;
   }
 
   function hideLocalChatEngineBadge() {
-    var badge = document.getElementById(S.elId('read-aloud-engine'));
+    var badge = document.getElementById(S.elId("read-aloud-engine"));
     if (!badge) return;
-    badge.textContent = '';
+    badge.textContent = "";
     badge.hidden = true;
   }
 
@@ -1434,32 +1471,34 @@
    * so it's not read aloud or exported.
    */
   function addSaveAudioButton(bubble) {
-    if (typeof window.TTSController === 'undefined' ||
-        !window.TTSController.isAvailable()) {
-      S.logDebug('TTSController not available — skipping Save Audio button');
+    if (
+      typeof window.TTSController === "undefined" ||
+      !window.TTSController.isAvailable()
+    ) {
+      S.logDebug("TTSController not available — skipping Save Audio button");
       return;
     }
 
     var actions = getOrCreateActions(bubble);
 
     // Split-button container — Image Describer pattern, role="group".
-    var split = document.createElement('span');
-    split.className = 'imgdesc-save-audio-split';
-    split.setAttribute('role', 'group');
-    split.setAttribute('aria-label', 'Save audio');
+    var split = document.createElement("span");
+    split.className = "imgdesc-save-audio-split";
+    split.setAttribute("role", "group");
+    split.setAttribute("aria-label", "Save audio");
 
-    var main = document.createElement('button');
-    main.type = 'button';
+    var main = document.createElement("button");
+    main.type = "button";
     main.className =
-      'local-chat-save-audio-main imgdesc-save-audio-main local-chat-read-aloud';
+      "local-chat-save-audio-main imgdesc-save-audio-main local-chat-read-aloud";
     main.innerHTML =
       '<span aria-hidden="true" data-icon="download"></span>' +
       ' <span class="local-chat-save-audio-label">Save as MP3</span>';
 
-    var formatBtn = document.createElement('button');
-    formatBtn.type = 'button';
+    var formatBtn = document.createElement("button");
+    formatBtn.type = "button";
     formatBtn.className =
-      'local-chat-save-audio-format imgdesc-format-toggle local-chat-read-aloud';
+      "local-chat-save-audio-format imgdesc-format-toggle local-chat-read-aloud";
     formatBtn.innerHTML =
       '<span aria-hidden="true" data-icon="arrowDown"></span>' +
       '<span class="visually-hidden local-chat-save-audio-format-label">MP3</span>';
@@ -1467,27 +1506,29 @@
     split.appendChild(main);
     split.appendChild(formatBtn);
     actions.appendChild(split);
-    if (typeof window.refreshIcons === 'function') window.refreshIcons(split);
+    if (typeof window.refreshIcons === "function") window.refreshIcons(split);
 
     // Reassurance note — GDPR/UK education compliance signalling per
     // tts-semantic-rendering-guide.md §7. Skipped from TTS payload.
-    var note = document.createElement('small');
-    note.className = 'imgdesc-save-audio-note';
-    note.textContent = 'Processed locally on your device.';
+    var note = document.createElement("small");
+    note.className = "imgdesc-save-audio-note";
+    note.textContent = "Processed locally on your device.";
     bubble.appendChild(note);
 
-    main.addEventListener('click', function () {
+    main.addEventListener("click", function () {
       handleLocalChatSaveAudioClick(bubble, main);
     });
-    formatBtn.addEventListener('click', function () {
+    formatBtn.addEventListener("click", function () {
       // Refuse format changes mid-export — would relabel the running
       // button mid-stream and look like a bug.
       if (activeExportingBtn) return;
       var current = getLocalChatExportFormat();
-      var next = current === 'mp3' ? 'wav' : 'mp3';
+      var next = current === "mp3" ? "wav" : "mp3";
       setLocalChatExportFormat(next);
-      if (typeof S.announceToScreenReader === 'function') {
-        S.announceToScreenReader('Audio format set to ' + next.toUpperCase() + '.');
+      if (typeof S.announceToScreenReader === "function") {
+        S.announceToScreenReader(
+          "Audio format set to " + next.toUpperCase() + ".",
+        );
       }
     });
 
@@ -1520,40 +1561,45 @@
    * on the same event are supported by EmbedEventEmitter.
    */
   function wireSaveAudioEvents() {
-    if (!window.EmbedEventEmitter ||
-        typeof window.EmbedEventEmitter.on !== 'function') {
+    if (
+      !window.EmbedEventEmitter ||
+      typeof window.EmbedEventEmitter.on !== "function"
+    ) {
       S.logWarn(
-        'EmbedEventEmitter not available — Save Audio events will not be wired'
+        "EmbedEventEmitter not available — Save Audio events will not be wired",
       );
       return;
     }
 
-    window.EmbedEventEmitter.on('tts:start', function () {
+    window.EmbedEventEmitter.on("tts:start", function () {
       // Singleton-coexistence guard: only show our badge when a Local
       // Chat bubble triggered playback. Image Describer's tts:start
       // fires for its own button — activeBubbleBtn is null then.
       if (activeBubbleBtn) showLocalChatEngineBadge();
     });
-    window.EmbedEventEmitter.on('tts:end', function () {
+    window.EmbedEventEmitter.on("tts:end", function () {
       hideLocalChatEngineBadge();
     });
-    window.EmbedEventEmitter.on('tts:error', function () {
+    window.EmbedEventEmitter.on("tts:error", function () {
       hideLocalChatEngineBadge();
     });
 
-    window.EmbedEventEmitter.on('tts:engineChanged', function () {
+    window.EmbedEventEmitter.on("tts:engineChanged", function () {
       hideLocalChatEngineBadge(); // engine changed mid-playback → hide stale label
       refreshAllSaveAudioButtons();
     });
-    window.EmbedEventEmitter.on('model:stateChange', function (data) {
-      if (data && data.category && data.category !== 'tts') return;
+    window.EmbedEventEmitter.on("model:stateChange", function (data) {
+      if (data && data.category && data.category !== "tts") return;
       refreshAllSaveAudioButtons();
     });
 
-    window.EmbedEventEmitter.on('tts:exportProgress', onExportProgress);
-    window.EmbedEventEmitter.on('tts:exportEncodeProgress', onExportEncodeProgress);
+    window.EmbedEventEmitter.on("tts:exportProgress", onExportProgress);
+    window.EmbedEventEmitter.on(
+      "tts:exportEncodeProgress",
+      onExportEncodeProgress,
+    );
 
-    S.logDebug('Save Audio TTS events wired');
+    S.logDebug("Save Audio TTS events wired");
   }
 
   wireSaveAudioEvents();

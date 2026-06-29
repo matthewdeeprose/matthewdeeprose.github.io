@@ -423,7 +423,11 @@
           (actions[PARSE_ALT_TEXT_ACTIONS.NO_OP] || 0) + 1;
         continue;
       }
-      const ok = registry.updateAltText(entry.id, currentAlt, "user");
+      const ok = registry.updateAltText(
+        entry.id,
+        currentAlt,
+        window.MathPixAltTextProvenance.nextSource(entry.altTextSource),
+      );
       if (ok) {
         updated++;
         actions[PARSE_ALT_TEXT_ACTIONS.UPDATED] =
