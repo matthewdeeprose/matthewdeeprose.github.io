@@ -855,7 +855,7 @@ const ALLY_STATEMENT_PREVIEW = (function () {
 
     const tag = node.tagName.toLowerCase();
 
-    if (tag === "h3" || tag === "h4" || tag === "p") {
+    if (/^h[1-6]$/.test(tag) || tag === "p") {
       return "\n\n" + inlineText(node) + "\n";
     }
 
@@ -1002,6 +1002,29 @@ const ALLY_STATEMENT_PREVIEW = (function () {
   }
 
   /**
+   * Promotes the headings in a detached copy fragment so the exported content
+   * starts at <h1>. The statement renders in-page at <h3>/<h4> (beneath the
+   * page's own <h2>); for standalone copy/paste those become <h1>/<h2>. This
+   * mirrors the Word export, which maps the same h3/h4 to Heading 1/2.
+   * Operates in place on a throwaway clone — never on the live DOM.
+   * @param {HTMLElement} root - Detached wrapper to mutate
+   */
+  function promoteHeadings(root) {
+    const SHIFT = 2; // h3 -> h1, h4 -> h2
+    root.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(function (h) {
+      const level = parseInt(h.tagName.charAt(1), 10);
+      const newLevel = Math.max(1, level - SHIFT);
+      if (newLevel === level) return;
+      const replacement = document.createElement("h" + newLevel);
+      for (let i = 0; i < h.attributes.length; i++) {
+        replacement.setAttribute(h.attributes[i].name, h.attributes[i].value);
+      }
+      while (h.firstChild) replacement.appendChild(h.firstChild);
+      h.parentNode.replaceChild(replacement, h);
+    });
+  }
+
+  /**
    * Builds the copy payload (plain text + HTML) from the rendered statement.
    * Shares the cloned fragment with the Word export via buildCopyFragment().
    *
@@ -1013,6 +1036,10 @@ const ALLY_STATEMENT_PREVIEW = (function () {
     if (!wrapper) {
       return null;
     }
+
+    // Shift headings so the copied statement starts at <h1> (h3 -> h1,
+    // h4 -> h2), matching the Word export. Safe: wrapper is a throwaway clone.
+    promoteHeadings(wrapper);
 
     // Derive plain text from the structure (not innerText — wrapper is detached
     // and unrendered, so innerText would collapse every block into one line).
