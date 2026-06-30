@@ -499,6 +499,21 @@ class MathJaxManager {
       this.lastHealthCheck = Date.now();
       this.consecutiveFailures = 0; // Reset failure counter
 
+      // Item H (startup-perf-gate-test-scripts-plan.md): once the manager
+      // confirms MathJax is genuinely healthy, the primitive 15s loading
+      // watchdog in tools.html must never fire its destructive cache-busting
+      // reload. Cancel it here. The hook is defined alongside the watchdog;
+      // this is a harmless no-op until that watchdog side lands (optional
+      // chaining), and idempotent thereafter (clearTimeout on a cleared timer).
+      if (typeof window.__cancelMathJaxWatchdog === "function") {
+        try {
+          window.__cancelMathJaxWatchdog("manager-healthy");
+          logDebug("Cancelled MathJax loading watchdog (manager healthy)");
+        } catch (cancelError) {
+          logWarn("Could not cancel MathJax watchdog:", cancelError?.message);
+        }
+      }
+
       logDebug("✅ MathJax passive health check passed", {
         version: window.MathJax.version || "unknown",
         hasProcessedContent,

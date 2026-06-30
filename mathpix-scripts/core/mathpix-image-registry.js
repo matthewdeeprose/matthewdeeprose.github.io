@@ -133,6 +133,19 @@
   /** Valid image source types */
   const VALID_IMAGE_SOURCES = ["mathpix-ocr", "user-upload", "user-paste"];
 
+  /**
+   * Single flat localStorage key holding the serialised registry; the
+   * registry's reload-survival mirror, counterpart to the context mirror's
+   * data key.
+   */
+  const MIRROR_REGISTRY_KEY = "mathpix-registry-current";
+
+  /**
+   * Module-local debounce, deliberately matching the context mirror, not a
+   * config key.
+   */
+  const MIRROR_REGISTRY_DEBOUNCE_MS = 1000;
+
   /** Regex patterns for CDN detection */
   const CDN_PATTERNS = [
     /cdn\.mathpix\.com/,
@@ -404,6 +417,9 @@
         lastUpdated: null,
         version: REGISTRY_VERSION,
       };
+
+      /** @private {?number} Pending debounced mirror-write handle, null when idle. */
+      this._pendingMirrorTimer = null;
 
       logDebug("MathPixImageRegistry instance created");
     }
@@ -1049,6 +1065,7 @@
       logDebug(
         `Alt text updated for ${id}: "${altText}" (source: ${entry.altTextSource})`,
       );
+      this._scheduleMirrorWrite();
       return true;
     }
 
@@ -1090,6 +1107,7 @@
       this._metadata.lastUpdated = new Date().toISOString();
 
       logDebug(`Long description updated for ${id}`);
+      this._scheduleMirrorWrite();
       return true;
     }
 
@@ -1130,6 +1148,7 @@
       logDebug(
         `Title updated for ${id}: "${title}" (source: ${entry.titleSource})`,
       );
+      this._scheduleMirrorWrite();
       return true;
     }
 
@@ -1202,6 +1221,7 @@
       logDebug(
         `Text-in-image updated for ${id}: "${text}" (source: ${entry.textInImageSource})`,
       );
+      this._scheduleMirrorWrite();
       return true;
     }
 
@@ -1582,6 +1602,146 @@
       }
 
       return stats;
+    }
+
+    // ========================================================================
+    // RELOAD-SURVIVAL MIRROR (write side)
+    // ========================================================================
+
+    /**
+     * Synchronously write the serialised registry to the localStorage mirror.
+     * Never throws — a quota or serialisation failure logs ERROR and is
+     * swallowed, matching the context manager's mirror write.
+     *
+     * @returns {void}
+     */
+    _writeMirrorNow() {
+      try {
+        localStorage.setItem(MIRROR_REGISTRY_KEY, JSON.stringify(this.toJSON()));
+        logDebug("Registry mirror written to localStorage.");
+      } catch (error) {
+        logError("Registry mirror write failed.", error);
+      }
+    }
+
+    /**
+     * Cancel any pending debounced mirror write.
+     *
+     * @returns {void}
+     */
+    _cancelMirrorWrite() {
+      if (this._pendingMirrorTimer !== null) {
+        clearTimeout(this._pendingMirrorTimer);
+        this._pendingMirrorTimer = null;
+      }
+    }
+
+    /**
+     * Debounced, never-throws write triggered by the source mutators, mirroring
+     * the context manager's scheduleMirrorWrite.
+     *
+     * @returns {void}
+     */
+    _scheduleMirrorWrite() {
+      this._cancelMirrorWrite();
+      this._pendingMirrorTimer = setTimeout(() => {
+        this._pendingMirrorTimer = null;
+        this._writeMirrorNow();
+      }, MIRROR_REGISTRY_DEBOUNCE_MS);
+    }
+
+    // ------------------------------------------------------------------------
+    // RELOAD-SURVIVAL MIRROR (read side)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Merge provenance source labels (and their content) from a parsed mirror
+     * object back into the live registry after a reload.
+     *
+     * The restorer reads the localStorage mirror key and passes the already-
+     * parsed object in; this method performs no localStorage access of its own.
+     * Entries are matched by `originalUrl` (the registry's URL-fallback identity
+     * key), NOT by id — the F-N note on generateStableId warns that recomputing
+     * ids from scratch reintroduces the line-shift cascade, so we reconcile by
+     * URL exactly as buildFromMMD's Pass 2 does.
+     *
+     * Only the four content/source pairs are restored — altText, longDescription,
+     * title, textInImage — and only when the LIVE entry has no source for that
+     * field yet (sourceField null/undefined) AND the mirror's source is a valid
+     * member of that field's allow-list. A live entry that already carries a
+     * source for a field is never overwritten. The `decorative` flag and all
+     * other fields are deliberately left untouched.
+     *
+     * Fields are set DIRECTLY on the entry — this is restore bookkeeping, like
+     * the syncXForRestore setters. It does NOT call the update* mutators, does
+     * NOT flip `isModified`, and does NOT schedule a mirror write.
+     *
+     * Never throws: malformed input yields `{ matched: 0, applied: 0 }`.
+     *
+     * @param {Object} mirror - Parsed mirror object (shape of toJSON() output)
+     * @returns {{matched: number, applied: number}} `matched` counts live
+     *   entries that found a mirror entry by URL; `applied` counts individual
+     *   field restorations performed across all matched entries.
+     */
+    hydrateFromMirror(mirror) {
+      // Defensive guard — never throw on bad input.
+      if (
+        !mirror ||
+        typeof mirror !== "object" ||
+        !Array.isArray(mirror.images)
+      ) {
+        logWarn(
+          "hydrateFromMirror(): mirror missing or malformed; nothing applied.",
+        );
+        return { matched: 0, applied: 0 };
+      }
+
+      // Index mirror entries by originalUrl. Skip any entry without a non-empty
+      // string URL; on duplicate URLs, last-wins is acceptable.
+      const mirrorByUrl = new Map();
+      for (const m of mirror.images) {
+        if (!m || typeof m !== "object") continue;
+        if (typeof m.originalUrl !== "string" || m.originalUrl.length === 0) {
+          continue;
+        }
+        mirrorByUrl.set(m.originalUrl, m);
+      }
+
+      // Each triple: [contentField, sourceField, allowList].
+      const fieldTriples = [
+        ["altText", "altTextSource", VALID_ALT_TEXT_SOURCES],
+        ["longDescription", "longDescriptionSource", VALID_LONG_DESC_SOURCES],
+        ["title", "titleSource", VALID_TITLE_SOURCES],
+        ["textInImage", "textInImageSource", VALID_TEXT_IN_IMAGE_SOURCES],
+      ];
+
+      let matched = 0;
+      let applied = 0;
+
+      for (const entry of this._images.values()) {
+        const mirrorEntry = mirrorByUrl.get(entry.originalUrl);
+        if (!mirrorEntry) continue;
+        matched++;
+
+        for (const [contentField, sourceField, allowList] of fieldTriples) {
+          const liveSource = entry[sourceField];
+          const mirrorSource = mirrorEntry[sourceField];
+          // Apply only into an empty slot, and only a valid, non-null source.
+          if (liveSource !== null && liveSource !== undefined) continue;
+          if (mirrorSource === null || mirrorSource === undefined) continue;
+          if (!allowList.includes(mirrorSource)) continue;
+
+          entry[contentField] =
+            typeof mirrorEntry[contentField] === "string"
+              ? mirrorEntry[contentField]
+              : "";
+          entry[sourceField] = mirrorSource;
+          applied++;
+        }
+      }
+
+      logInfo(`hydrateFromMirror(): matched=${matched} applied=${applied}`);
+      return { matched, applied };
     }
 
     // ========================================================================

@@ -1723,6 +1723,33 @@ if (context.eagerDiff) {
         logInfo(
           `applyRecoveredSession: setDiff added=${setDiff.added.length} removed=${setDiff.removed.length}`,
         );
+
+        // Registry mirror hydrate (read side). buildFromMMD has just rebuilt the
+        // registry from the recovered MMD with provenance sources null — the
+        // autosave store never carried them. Restore those source labels and
+        // their content from the localStorage mirror, matched by originalUrl.
+        // The key literal matches MIRROR_REGISTRY_KEY in mathpix-image-registry.js;
+        // declared locally because the two scopes share no import, exactly as the
+        // context mirror declares its key literal locally.
+        const MIRROR_REGISTRY_KEY = "mathpix-registry-current";
+        let registryMirror = null;
+        try {
+          const rawMirror = localStorage.getItem(MIRROR_REGISTRY_KEY);
+          if (rawMirror) registryMirror = JSON.parse(rawMirror);
+        } catch (mirrorError) {
+          logWarn(
+            "applyRecoveredSession: registry mirror read/parse failed; skipping hydrate.",
+            mirrorError,
+          );
+        }
+        if (registryMirror) {
+          const hydrateResult = this.imageRegistry.hydrateFromMirror(registryMirror);
+          logInfo(
+            `applyRecoveredSession: registry mirror hydrate matched=${hydrateResult.matched} applied=${hydrateResult.applied}`,
+          );
+        } else {
+          logDebug("applyRecoveredSession: no registry mirror to hydrate.");
+        }
       }
 
       this.restoredSession.loadedFromKey = sessionInfo.key;

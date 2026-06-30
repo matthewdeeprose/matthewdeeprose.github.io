@@ -38,6 +38,13 @@
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
+  // Tokens held back beyond the answer reservation, to absorb the estimator's
+  // approximation and any slack in a copied/borrowed context limit. Tunable.
+  const BUDGET_SAFETY_MARGIN = 512;
+  // Answer-room reservation used only if the embed exposes no numeric max_tokens;
+  // matches the embed's own default so behaviour stays consistent if it fires.
+  const DEFAULT_ANSWER_RESERVATION = 2000;
+
   function shouldLog(level) {
     if (DISABLE_ALL_LOGGING) return false;
     if (ENABLE_ALL_LOGGING) return true;
@@ -111,6 +118,17 @@
     // Optional system-prompt input — not present in step 1, so this resolves to
     // null and the per-send systemPrompt becomes undefined.
     els.systemInput = document.getElementById(S.elId("system"));
+    // Generation-parameters panel (5c-i). Cached into the SAME S.els the shared
+    // helpers read, so S.getTemperature()/S.getMaxTokens() see the live sliders.
+    els.temperatureSlider = document.getElementById(S.elId("temperature"));
+    els.temperatureValue = document.getElementById(S.elId("temperature-value"));
+    els.temperatureDesc = document.getElementById(S.elId("temperature-desc"));
+    els.maxTokensSlider = document.getElementById(S.elId("max-tokens"));
+    els.maxTokensValue = document.getElementById(S.elId("max-tokens-value"));
+    els.maxTokensDesc = document.getElementById(S.elId("max-tokens-desc"));
+    // System-prompt preset select (5c-ii-b). Changing it fills the system box from
+    // the shared S.SYSTEM_PRESETS map; "None (custom)" clears it. Wired in wire().
+    els.presetSelect = document.getElementById(S.elId("preset-select"));
   }
 
   // ── Bubble rendering (delegated to the step-3 messages module) ─────────────
@@ -156,6 +174,18 @@
       els.input.disabled = false;
       els.input.focus();
     }
+  }
+
+  // Trim notice — written to the visible stats region (#chat-stats), an <output>
+  // with implicit role="status"/aria-live="polite", so it is seen AND announced
+  // without colliding with the shared "Generating response." cue. Wording makes
+  // clear the model won't see older turns; nothing is deleted.
+  function announceTrim(dropped) {
+    if (!S.els.stats) return;
+    S.els.stats.textContent =
+      dropped > 0
+        ? "Older messages aren't sent to this model, to fit its context limit."
+        : "";
   }
 
   // ── Provider id from the full model id ─────────────────────────────────────
@@ -237,6 +267,40 @@
     S.setMessageListLive("polite");
   }
 
+  // ── Token-budget sliding window ────────────────────────────────────────────
+
+  // Impure estimate via the published bridge (step one). Separate so the pure
+  // window function stays testable with an injected estimate.
+  function estimateWithBridge(messages) {
+    if (window.TokenEstimator && typeof window.TokenEstimator.estimateTokens === "function") {
+      return window.TokenEstimator.estimateTokens(messages);
+    }
+    logError("window.TokenEstimator unavailable — trimming to the latest turn only");
+    return Number.MAX_SAFE_INTEGER; // fail safe: trim rather than over-send
+  }
+
+  /**
+   * Pure limit-aware sliding window. Keeps a recent slice of the thread that fits
+   * the model's context window once the answer reservation and safety margin are
+   * held back. Never returns empty — the most recent message is always kept, even
+   * if it alone exceeds the budget (a tiny placeholder window). Trims the PAYLOAD
+   * only; the caller's stored S.messages is untouched.
+   * @returns {{messages: Array, dropped: number}}
+   */
+  function applyTokenWindow(o) {
+    const estimate = o.estimate || estimateWithBridge;
+    const inputBudget = o.limit - o.answerReservation - o.safetyMargin;
+    const sysMsgs =
+      o.systemPrompt && o.systemPrompt.trim()
+        ? [{ role: "system", content: o.systemPrompt }]
+        : [];
+    const kept = o.messages.slice();
+    while (kept.length > 1 && estimate(sysMsgs.concat(kept)) > inputBudget) {
+      kept.shift();
+    }
+    return { messages: kept, dropped: o.messages.length - kept.length };
+  }
+
   // ── Send flow ──────────────────────────────────────────────────────────────
 
   function sendMessage() {
@@ -282,10 +346,38 @@
     embed.systemPrompt = systemPrompt || undefined;
     embed.container = assistantBubble; // the embed renders its output here
 
-    // Multi-turn payload — role/content only.
-    const messagesForApi = S.messages.map(function (m) {
+    // Per-turn generation parameters from the Parameters panel. Reading the helpers
+    // (not the elements) keeps the slider as the single source. max_tokens is set
+    // BEFORE the budget block below, so the answer reservation tracks the slider.
+    embed.temperature = S.getTemperature();
+    embed.max_tokens = S.getMaxTokens();
+
+    // Normalise the full thread to role/content.
+    const fullThread = S.messages.map(function (m) {
       return { role: m.role, content: m.content };
     });
+    // Limit-aware sliding window: keep a recent slice that fits the chosen
+    // model's context window, reserving room for the answer. Trims the PAYLOAD
+    // only — S.messages and the on-screen thread are untouched. The reservation
+    // reads the embed's live max_tokens, so when the max-tokens slider lands it
+    // tracks the slider with no change here.
+    const contextLimit = window.Chat.getContextLimit(S.currentModel);
+    const answerReservation =
+      embed && typeof embed.max_tokens === "number"
+        ? embed.max_tokens
+        : DEFAULT_ANSWER_RESERVATION;
+    const windowed = applyTokenWindow({
+      messages: fullThread,
+      limit: contextLimit,
+      answerReservation: answerReservation,
+      safetyMargin: BUDGET_SAFETY_MARGIN,
+      systemPrompt: systemPrompt,
+    });
+    announceTrim(windowed.dropped);
+    if (windowed.dropped > 0) {
+      logInfo("token budget: dropped", windowed.dropped, "oldest turn(s) to fit", contextLimit, "tokens for", S.currentModel);
+    }
+    const messagesForApi = windowed.messages;
 
     embed
       .sendStreamingRequest({
@@ -394,6 +486,37 @@
         }
       });
     }
+    // Parameters panel (5c-i): live value + description on drag. The banding is
+    // owned by the shared description helpers — we do not reimplement it here.
+    if (els.temperatureSlider) {
+      els.temperatureSlider.addEventListener("input", function () {
+        const val = parseFloat(els.temperatureSlider.value);
+        if (els.temperatureValue) els.temperatureValue.textContent = val.toFixed(1);
+        if (els.temperatureDesc) els.temperatureDesc.textContent = S.getTemperatureDescription(val);
+      });
+    }
+    if (els.maxTokensSlider) {
+      els.maxTokensSlider.addEventListener("input", function () {
+        const val = parseInt(els.maxTokensSlider.value, 10);
+        if (els.maxTokensValue) els.maxTokensValue.textContent = val;
+        if (els.maxTokensDesc) els.maxTokensDesc.textContent = S.getMaxTokensDescription(val);
+      });
+    }
+    // System-prompt preset (5c-ii-b): selecting a preset fills the system box from
+    // the shared S.SYSTEM_PRESETS map; "None (custom)" clears it. Textarea only —
+    // Chat has no welcome card / currentEmbed to touch.
+    if (els.presetSelect) {
+      els.presetSelect.addEventListener("change", function () {
+        if (!els.systemInput) return;
+        const key = els.presetSelect.value;
+        if (key && S.SYSTEM_PRESETS[key]) {
+          els.systemInput.value = S.SYSTEM_PRESETS[key];
+        } else {
+          els.systemInput.value = "";
+        }
+        S.logInfo("Chat system-prompt preset changed to:", key || "none (custom)");
+      });
+    }
     wired = true;
   }
 
@@ -443,5 +566,6 @@
     _getOrCreateEmbed: getOrCreateEmbed,
     _postGeneration: postGeneration,
     _updateConversationUI: updateConversationUI,
+    applyTokenWindow: applyTokenWindow,
   };
 })();

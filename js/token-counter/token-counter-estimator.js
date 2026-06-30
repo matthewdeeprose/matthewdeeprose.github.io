@@ -223,3 +223,7 @@ export class TokenEstimator {
 
 // Export singleton instance
 export const estimator = new TokenEstimator();
+
+// Publish the singleton on window so the IIFE tool layer (Chat's token budget)
+// can reach it without an ES-module import, mirroring window.modelRegistry.
+window.TokenEstimator = estimator;

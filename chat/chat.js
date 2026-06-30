@@ -131,6 +131,12 @@
   const FOUNDRY_PROXY_FALLBACK =
     "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
 
+  // Conservative context limit used ONLY when a model id is not found in the
+  // picker's list (getContextLimit's error path). This should not occur for a
+  // model the user has actually picked — it is a defensive floor so callers of
+  // getContextLimit always receive a positive number rather than undefined.
+  const BUDGET_FALLBACK_LIMIT = 8192;
+
   // Fixed display order for the grouped picker. Groups with zero models are
   // skipped at build time. Foundry's two surfaces (azure-openai + azure-responses)
   // are unified by the selector under the single providerId "azure-openai".
@@ -884,6 +890,43 @@
     eventsWired = true;
   }
 
+  // ── Context-limit lookup (token budget, step 2a) ──────────────────────────
+
+  /**
+   * Return the context-window limit for a model id, reusing the picker's
+   * already-normalised unified list (the module-local `allModels`). Because that
+   * list is built by the selector's getAllEligibleModels, the normalisation is
+   * already applied: cloud entries carry `maxContext` as-is, and local entries
+   * carry `contextLimit` with Phi-3.5's zero already clamped to 1024. We read
+   * whichever the matched entry exposes.
+   *
+   * When the id is not present (or the list has not been built yet), this is an
+   * error path that should not occur for a model the user has picked; we log a
+   * WARN and return BUDGET_FALLBACK_LIMIT so callers always receive a positive
+   * number.
+   * @param {string} modelId the full model id (e.g. "local/…", "anthropic/…")
+   * @returns {number} the context limit, or BUDGET_FALLBACK_LIMIT on a miss
+   */
+  function getContextLimit(modelId) {
+    const entry = allModels.find((m) => m.id === modelId);
+    if (entry) {
+      return entry.maxContext ?? entry.contextLimit;
+    }
+    logWarn(
+      "getContextLimit: model id not found in picker list ('" +
+        modelId +
+        "') — using fallback limit " +
+        BUDGET_FALLBACK_LIMIT,
+    );
+    return BUDGET_FALLBACK_LIMIT;
+  }
+
+  // Look up the full unified entry for a model id (the same cached, gated list
+  // getContextLimit reads), so consumers see exactly what the picker shows.
+  function getModelEntry(modelId) {
+    return allModels.find(function (m) { return m.id === modelId; }) || null;
+  }
+
   // ── Lifecycle ───────────────────────────────────────────────────────────
 
   /**
@@ -931,6 +974,12 @@
     // (e.g. chat-messages.js's provider badge) have one source of truth rather
     // than their own copy of the provider labels.
     groupOrder: GROUP_ORDER,
+    // Context-window limit lookup over the picker's normalised list (token
+    // budget, step 2a). Consumed by the trimming logic in a later step.
+    getContextLimit: getContextLimit,
+    // Full unified entry by id, over the same cached/gated list — so the Model
+    // information populator (chat-model-info.js) reads exactly what the picker shows.
+    getModelEntry: getModelEntry,
   };
 
   window.Chat = Chat;

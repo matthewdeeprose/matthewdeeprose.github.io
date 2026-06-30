@@ -42,6 +42,18 @@
         }
       })();
     </script>
+    <!-- Connection warm-up for the third-party CDNs on the startup critical
+         path (Item D, docs/startup-perf-gate-test-scripts-plan.md). jsdelivr
+         serves BOTH MathJax and mathpix-markdown-it, so warming it shrinks the
+         CDN-latency variance behind the MathJax watchdog race. No crossorigin:
+         these scripts are fetched in no-cors mode, so a crossorigin preconnect
+         would open a separate, unused connection. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://matthewdeeprose.github.io" />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <link rel="dns-prefetch" href="https://matthewdeeprose.github.io" />
+    <link rel="dns-prefetch" href="https://unpkg.com" />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
     <meta name="description" content="Accessibility tools" />
     <meta
       name="keywords"
@@ -196,39 +208,108 @@
         max-width: 750px;
       }
     </style>
+    <!-- Item E (docs/startup-perf-gate-test-scripts-plan.md): preload the pinned
+         MathJax core at high priority so it is fetched ahead of the ~270 other
+         scripts that compete for connections, shrinking the chance it slips past
+         the watchdog. No crossorigin — must match the loader below (no-cors). -->
+    <link
+      rel="preload"
+      as="script"
+      href="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
+    />
+    <!-- Item E: `defer` (not `async`). The window.MathJax config further down is
+         an INLINE script, so it runs during parse; a deferred external script
+         runs only AFTER parsing completes — guaranteeing the config (assistiveMml
+         + explorer) is read before MathJax initialises. With `async`, a fast/
+         cached core could execute before the config and silently drop those a11y
+         features. `defer` still downloads in parallel during parse. -->
     <script
       type="text/javascript"
       id="MathJax-script"
-      async
+      defer
       src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"
     ></script>
     <script>
-      // MathJax loading timeout detection (add after MathJax script tag)
+      // MathJax loading watchdog — LAST-RESORT recovery only.
+      //
+      // Items A/B/C/H (docs/startup-perf-gate-test-scripts-plan.md). The previous
+      // version fired a destructive cache-busting reload on a blunt 15s timer,
+      // which double-loaded MathJax and threw `replaceChild` whenever startup was
+      // merely slow (a CDN-latency race — see the Phase 2 investigation). This
+      // version only reloads on a GENUINE failure:
+      //   A — reload uses the IDENTICAL pinned bundle (mathjax@3.2.2), not
+      //       `mathjax@3`, so a real reload can hit cache and cannot version-skew.
+      //   B — a true load `error` recovers immediately; a slow-but-succeeding
+      //       load never triggers the reload. The reload also no-ops if MathJax
+      //       is already up, so it can never double-load a healthy instance.
+      //   C — threshold raised 15s -> 25s and made the LAST resort, so the 20s
+      //       safety net and the MathJaxManager 30s monitor win first.
+      //   H — window.__cancelMathJaxWatchdog lets MathJaxManager (js/mathjax-
+      //       manager.js, checkHealth) stand the watchdog down on confirmed health.
       (function () {
-        const MATHJAX_TIMEOUT = 15000; // 15 seconds
+        const MATHJAX_WATCHDOG_TIMEOUT = 25000; // was 15000 — now last resort
+        const MATHJAX_SRC =
+          "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js";
 
-        setTimeout(function () {
-          if (
-            !window.MathJax ||
-            typeof window.MathJax.typesetPromise !== "function"
-          ) {
-            console.error("MathJax failed to load within timeout");
-            console.warn("Attempting cache-busting reload...");
+        let watchdogTimer = null;
+        let reloaded = false;
 
-            // Remove the old script
-            const oldScript = document.getElementById("MathJax-script");
-            if (oldScript) oldScript.remove();
+        function mathJaxIsUp() {
+          return (
+            !!window.MathJax &&
+            typeof window.MathJax.typesetPromise === "function"
+          );
+        }
 
-            // Add new script with cache buster
-            const script = document.createElement("script");
-            script.src =
-              "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js?v=" +
-              Date.now();
-            script.id = "MathJax-script";
-            script.async = true;
-            document.head.appendChild(script);
+        function cancelWatchdog(reason) {
+          if (watchdogTimer !== null) {
+            clearTimeout(watchdogTimer);
+            watchdogTimer = null;
+            if (reason) console.log("[MathJax watchdog] stood down:", reason);
           }
-        }, MATHJAX_TIMEOUT);
+        }
+        // H: exposed so MathJaxManager can cancel the reload on confirmed health.
+        window.__cancelMathJaxWatchdog = cancelWatchdog;
+
+        function reloadMathJax(reason) {
+          // Never double-load a healthy MathJax, and never reload twice.
+          if (reloaded || mathJaxIsUp()) return;
+          reloaded = true;
+          cancelWatchdog();
+          console.error("[MathJax watchdog] reloading MathJax —", reason);
+
+          const oldScript = document.getElementById("MathJax-script");
+          if (oldScript) oldScript.remove();
+
+          const script = document.createElement("script");
+          // A: identical pinned bundle; cache-buster only to bypass a bad cache entry.
+          script.src = MATHJAX_SRC + "?v=" + Date.now();
+          script.id = "MathJax-script";
+          script.async = true;
+          document.head.appendChild(script);
+        }
+
+        // B: a genuine network/parse failure on the primary script — the case a
+        // timer cannot distinguish from "slow" — recovers immediately.
+        const primary = document.getElementById("MathJax-script");
+        if (primary) {
+          primary.addEventListener("error", function () {
+            reloadMathJax("primary script failed to load");
+          });
+          primary.addEventListener("load", function () {
+            if (mathJaxIsUp()) cancelWatchdog("primary loaded and API ready");
+          });
+        }
+
+        // C: last-resort timer — only reloads if MathJax genuinely never came up.
+        watchdogTimer = setTimeout(function () {
+          watchdogTimer = null;
+          if (!mathJaxIsUp()) {
+            reloadMathJax(
+              "MathJax not ready after " + MATHJAX_WATCHDOG_TIMEOUT + "ms",
+            );
+          }
+        }, MATHJAX_WATCHDOG_TIMEOUT);
       })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns@4.1.0/cdn.min.js"></script>
@@ -16655,6 +16736,83 @@ Science,91</pre
             >
           </div>
 
+          <!-- Model information (collapsible) — Chat 5c-iii -->
+          <details class="local-chat-model-info" id="chat-model-info">
+            <summary>Model information</summary>
+            <div id="chat-model-info-body">
+              <!-- Populated by the cross-provider populator (5c-iii-b) -->
+            </div>
+          </details>
+
+          <!-- System prompt (collapsible) — Chat 5c-ii -->
+          <details class="local-chat-system-prompt">
+            <summary>System prompt</summary>
+            <div class="local-chat-preset-bar">
+              <label for="chat-preset-select">Preset</label>
+              <select id="chat-preset-select">
+                <option value="">None (custom)</option>
+                <option value="helpful">Helpful assistant</option>
+                <option value="concise">Concise answers</option>
+                <option value="ukhe">UK higher education</option>
+                <option value="code">Code assistant</option>
+                <option value="explain">Explain simply</option>
+              </select>
+            </div>
+            <label for="chat-system" class="visually-hidden">System prompt text</label>
+            <textarea
+              id="chat-system"
+              rows="3"
+              placeholder="Optional instructions for the model…"
+            ></textarea>
+          </details>
+
+          <!-- Generation parameters (collapsible) — Chat 5c-i -->
+          <details class="local-chat-parameters">
+            <summary>Parameters</summary>
+
+            <div class="local-chat-param-group">
+              <label for="chat-temperature">
+                Temperature
+                <output id="chat-temperature-value" for="chat-temperature"
+                  >0.7</output
+                >
+              </label>
+              <input
+                type="range"
+                id="chat-temperature"
+                min="0"
+                max="2"
+                step="0.1"
+                value="0.7"
+                aria-describedby="chat-temperature-desc"
+              />
+              <span id="chat-temperature-desc" class="local-chat-param-desc">
+                Balanced creativity and consistency
+              </span>
+            </div>
+
+            <div class="local-chat-param-group">
+              <label for="chat-max-tokens">
+                Max tokens
+                <output id="chat-max-tokens-value" for="chat-max-tokens"
+                  >1024</output
+                >
+              </label>
+              <input
+                type="range"
+                id="chat-max-tokens"
+                min="128"
+                max="4096"
+                step="128"
+                value="1024"
+                aria-describedby="chat-max-tokens-desc"
+              />
+              <span id="chat-max-tokens-desc" class="local-chat-param-desc">
+                Moderate length responses
+              </span>
+            </div>
+          </details>
+
           <!-- Message list -->
           <div
             id="chat-messages"
@@ -17510,6 +17668,7 @@ Science,91</pre
     <script src="chat/chat-core.js"></script>
     <script src="chat/chat-messages.js"></script>
     <script src="chat/chat-persistence.js"></script>
+    <script src="chat/chat-model-info.js"></script>
 
     <!-- Spike Text LLM Harness (temporary — remove after Wave 3 spikes) -->
     <script type="application/dev-test" data-src="image-describer/testing/spike-text-llm-harness.js"></script>
@@ -17631,6 +17790,9 @@ Science,91</pre
 
     <!-- Unified Chat Stage 1c: Local Chat isolation + gap-fill suite (static) -->
     <script type="application/dev-test" data-src="image-describer/testing/tests-local-chat-isolation.js"></script>
+
+    <!-- Unified Chat Stage 2b-ii: Chat token-budget sliding-window maths suite (static) -->
+    <script type="application/dev-test" data-src="chat/tests-chat-budget.js"></script>
 
     <!-- Phase 10D-fix: OCR merge bug fix tests -->
     <script type="application/dev-test" data-src="image-describer/testing/tests-10d-fix.js"></script>
