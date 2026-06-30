@@ -18,10 +18,16 @@
  *
  * Loads AFTER chat/chat.js so window.ChatState and the engine handle exist.
  *
- * @version 0.2.0 — step 5b-0b: postGeneration delegates the assistant-bubble
- *                   build to the shared window.ChatMessages.renderAssistantTurn
- *                   helper, so the live path and the restore path share one code
- *                   path
+ * @version 0.4.0 — step 5b-iii: standing Clear-conversation button + the
+ *                   conversation-state UI seam (updateConversationUI) — the one
+ *                   place conversation-dependent controls are enabled/disabled.
+ *                   Today the seam owns exactly one control (the clear button);
+ *                   parity controls (sliders, regenerate, history) hook in here
+ *                   later instead of toggling inline.
+ *                   step 5b-ii: wire persistence into the lifecycle — restore the
+ *                   saved session (and show the restore banner) on init, and save
+ *                   the session at the end of postGeneration so each completed
+ *                   assistant turn (with its model + providerId) is persisted
  */
 (function () {
   "use strict";
@@ -100,6 +106,7 @@
     els.input = document.getElementById(S.elId("input"));
     els.sendBtn = document.getElementById(S.elId("send"));
     els.cancelBtn = document.getElementById(S.elId("cancel"));
+    els.clearBtn = document.getElementById(S.elId("clear"));
     els.stats = document.getElementById(S.elId("stats"));
     // Optional system-prompt input — not present in step 1, so this resolves to
     // null and the per-send systemPrompt becomes undefined.
@@ -213,6 +220,12 @@
     S.setMessageListLive("polite");
     S.announceToScreenReader("Response ready.");
     scrollMessagesToBottom();
+    // Persist the thread now the assistant turn is pushed and rendered, so the
+    // saved session includes the completed turn with its model + providerId.
+    window.ChatPersistence.saveSession();
+    // Refresh conversation-state-dependent UI (the clear button) now the thread
+    // has a completed turn — routed through the single seam, not toggled inline.
+    updateConversationUI();
   }
 
   function postError(assistantBubble, error) {
@@ -314,6 +327,41 @@
     logDebug("cancel — generating flag cleared, send re-enabled");
   }
 
+  // ── Conversation-state UI seam ─────────────────────────────────────────────
+
+  // Single source of truth for conversation-state-dependent UI. Every control
+  // whose enabled/visible state depends on the thread (today: the clear button;
+  // later, as we reach parity: sliders, regenerate, history) is updated HERE, and
+  // callers that change the thread call updateConversationUI() afterwards rather
+  // than toggling a control inline. This keeps controls from drifting out of sync
+  // with the thread.
+  function updateConversationUI() {
+    const hasMessages = S.messages.length > 0;
+    if (S.els.clearBtn) {
+      S.els.clearBtn.disabled = !hasMessages;
+    }
+    // Future parity controls hook in here.
+  }
+
+  // ── Clear conversation ─────────────────────────────────────────────────────
+
+  // Confirm-then-clear, no archive (Chat has no history). Local Chat consumes
+  // window.safeConfirm asynchronously (it returns a Promise), so we await it here
+  // and match that contract. performClear() (confirmed in 5b) already clears the
+  // session, empties S.messages and the message list, focuses the input, and
+  // announces "Conversation cleared." — we do not duplicate any of that; we only
+  // confirm, call performClear, then refresh the UI seam.
+  async function handleClear() {
+    if (S.messages.length === 0) return; // nothing to clear
+    const ok =
+      typeof window.safeConfirm === "function"
+        ? await window.safeConfirm("Clear this conversation? This cannot be undone.")
+        : window.confirm("Clear this conversation? This cannot be undone.");
+    if (!ok) return;
+    window.ChatPersistence.performClear();
+    updateConversationUI();
+  }
+
   // ── Global handlers + wiring ───────────────────────────────────────────────
 
   window.chatSend = sendMessage;
@@ -330,6 +378,11 @@
     if (els.cancelBtn) {
       els.cancelBtn.addEventListener("click", function () {
         window.chatCancel();
+      });
+    }
+    if (els.clearBtn) {
+      els.clearBtn.addEventListener("click", function () {
+        handleClear();
       });
     }
     if (els.input) {
@@ -355,6 +408,21 @@
   function init() {
     cacheElements();
     wire();
+    // Restore any saved session once on load (cacheElements() above has populated
+    // S.els.messageList, which the restore path rebuilds into). Persistence binds
+    // its own state via its default window.ChatState capture — core does not call
+    // attach on the other modules, so we do not add an attach call here. init() is
+    // not async and self-runs on DOMContentLoaded, so kick the restore off without
+    // blocking; show the banner only when a thread was actually restored.
+    window.ChatPersistence.restoreSession().then(function (restored) {
+      if (restored) {
+        window.ChatPersistence.showRestoreBanner();
+      }
+      // In all cases, sync the conversation-state UI once after restore resolves
+      // through the single seam, so the clear button reflects whether a thread was
+      // restored (enabled) or not (disabled on a fresh load).
+      updateConversationUI();
+    });
     logInfo("init complete (core send loop wired)");
   }
 
@@ -374,5 +442,6 @@
     sendMessage: sendMessage,
     _getOrCreateEmbed: getOrCreateEmbed,
     _postGeneration: postGeneration,
+    _updateConversationUI: updateConversationUI,
   };
 })();

@@ -50,6 +50,9 @@ const trace = (function () {
   const PERSIST_KEY = 'workflow-trace-timeline';
   const FLAG_KEY = 'workflow-trace-active';
 
+  // Arm flag for the two-phase trace.selfTest() flush guard (see selfTest()).
+  const SELFTEST_KEY = 'workflow-trace-selftest';
+
   // DOM ids for the self-owned recording indicator and its injected styles.
   const INDICATOR_ID = 'workflow-trace-indicator';
   const INDICATOR_STYLE_ID = 'workflow-trace-indicator-styles';
@@ -440,6 +443,7 @@ const trace = (function () {
       '  display:flex;align-items:center;gap:8px;',
       '  padding:6px 12px;border-radius:16px;',
       '  background:#1b1b1b;color:#ffffff;',
+      '  outline:2px solid #fffff4;outline-offset:0;', // defined edge in both themes; outline keeps box size + corner radius
       '  font:600 13px/1.4 system-ui,Segoe UI,Arial,sans-serif;',
       '  box-shadow:0 2px 8px rgba(0,0,0,0.5);',
       '  pointer-events:none;',
@@ -575,6 +579,323 @@ const trace = (function () {
     return trace;
   }
 
+  // --- Self-test: synchronous-flush guard (capture-to-test, Lesson 3) ------
+  // A phase-aware test that proves the SYNCHRONOUS flush — not the 250ms
+  // debounce — carries the final records across a reload. It is the first
+  // worked example of the capture-to-test convention: record a marker, prove
+  // the behaviour at the storage boundary, leave no residue.
+  //
+  // Two phases, chosen by whether SELFTEST_KEY is set in localStorage:
+  //   ARM   (flag absent) — start, drop a unique marker, then NEUTRALISE the
+  //                         debounce so only the flush can persist it; set the
+  //                         flag; tell the user to reload and call again.
+  //   CHECK (flag present) — after the reload the auto-resume has already run,
+  //                         so read memory + the persisted store and report
+  //                         whether the marker survived; always clean up.
+  function selfTest() {
+    const MARKER = 'selftest-flush-probe';
+
+    // Helper: does a parsed timeline array hold the probe marker?
+    function hasMarker(list) {
+      return Array.isArray(list) && list.some(function (e) {
+        return e && e.type === 'step' && e.label === MARKER;
+      });
+    }
+    // Helper: read and parse the persisted store, never throwing.
+    function readPersisted() {
+      try {
+        const saved = localStorage.getItem(PERSIST_KEY);
+        return saved ? JSON.parse(saved) : null;
+      } catch (e) {
+        log.warn('Could not read the persisted store: ' + e);
+        return null;
+      }
+    }
+
+    let armed = false;
+    try { armed = localStorage.getItem(SELFTEST_KEY) === '1'; }
+    catch (e) { armed = false; }
+
+    if (!armed) {
+      // --- ARM phase -------------------------------------------------------
+      reset();          // clean slate — no residue from a prior trace
+      start();
+      step(MARKER);     // drop the marker via the existing step()/record() path
+
+      // CRITICAL: neutralise the debounce so the ONLY thing that can persist the
+      // marker is the synchronous boundary flush. Cancel the pending timer and
+      // do NOT call writeTimeline()/persist() — the persisted store must stay
+      // empty until the flush fires at navigation.
+      if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+
+      // Set the arm flag AFTER cancelling the debounce. It is not part of the
+      // timeline, so write it directly — same try/catch idiom as the resume block.
+      try { localStorage.setItem(SELFTEST_KEY, '1'); }
+      catch (e) { log.warn('Could not set the self-test arm flag: ' + e); }
+
+      // Precondition: the marker must NOT yet be in the persisted store.
+      if (hasMarker(readPersisted())) {
+        log.warn('Debounce was not neutralised — the marker is already persisted; ' +
+          'this run cannot prove the flush. Proceeding; the reload will reveal the truth.');
+      }
+
+      log.info('trace.selfTest armed. Reload the page at ANY speed, then call ' +
+        'trace.selfTest() again to read the result.');
+      return { phase: 'armed' };
+    }
+
+    // --- CHECK phase -------------------------------------------------------
+    // The reload has happened and auto-resume has restored the timeline into
+    // memory before this call. markerPersisted is the real proof (the flush
+    // wrote before navigation); markerInMemory is informational (restore path).
+    let pass = false;
+    let markerPersisted = false;
+    let reloadMarker = false;
+    let markerInMemory = false;
+    try {
+      markerInMemory = hasMarker(timeline);
+      reloadMarker = timeline.some(function (e) { return e && e.type === 'reload'; });
+      markerPersisted = hasMarker(readPersisted());
+
+      pass = markerPersisted && reloadMarker;
+      log.warn('[trace.selfTest] flush guard — markerPersisted: ' + markerPersisted +
+        ', reloadMarker: ' + reloadMarker + ', markerInMemory: ' + markerInMemory +
+        ' — ' + (pass ? 'PASS' : 'FAIL'));
+      if (!pass) {
+        log.warn('Synchronous flush did NOT carry the boundary records across the ' +
+          'reload (the debounce was neutralised, so the flush was the only writer).');
+      }
+      return {
+        phase: 'checked',
+        pass: pass,
+        markerPersisted: markerPersisted,
+        reloadMarker: reloadMarker,
+        markerInMemory: markerInMemory,
+      };
+    } finally {
+      // Always clear the arm flag (even on FAIL or a throw) so a failed run never
+      // strands the tracer in check-mode, then reset() for a residue-free teardown.
+      try { localStorage.removeItem(SELFTEST_KEY); } catch (e) { /* best effort */ }
+      reset();
+    }
+  }
+
+  // --- Resume-key family resolver (shared seam; pure read) -----------------
+  // The family-scan + newest-pick + loadedFromKey logic, lifted out of
+  // resumeKey() so BOTH the live path and the guard test (resumeKeyTest) drive
+  // the EXACT same resolution with an explicit base-name. Pure read: it only
+  // reads localStorage and mutates nothing. Returns { key, source, candidates }.
+  //
+  // Mirrors checkForMatchingSessions in session-restorer-sessions.js: the prefix
+  // MUST stay in sync with the app's k.startsWith("mathpix-resume-session"), the
+  // same extension-stripping regex, and the same stored-name field fallback
+  // order (sourceFileName || sourceFilename || '').
+  function resolveFromFamily(baseName, loadedFromKey) {
+    const RESUME_PREFIX = 'mathpix-resume-session';
+
+    let rawKeys = [];
+    try {
+      rawKeys = Object.keys(localStorage).filter(function (k) {
+        return k.startsWith(RESUME_PREFIX);
+      });
+    } catch (e) {
+      log.warn('Could not enumerate localStorage for resume keys: ' + e);
+      rawKeys = [];
+    }
+
+    const candidates = [];
+    if (baseName !== null) {
+      for (let i = 0; i < rawKeys.length; i += 1) {
+        const k = rawKeys[i];
+        let data = null;
+        try { data = JSON.parse(localStorage.getItem(k)); }
+        catch (e) { continue; }   // skip invalid entries, as checkForMatchingSessions does
+        if (!data) continue;
+        const storedName = data.sourceFileName || data.sourceFilename || '';
+        const storedBaseName = storedName.replace(/\.[^/.]+$/, '');
+        if (storedBaseName && storedBaseName === baseName && data.current) {
+          candidates.push({
+            key: k,
+            lastModified: data.lastModified || 0,
+            currentLen: (data.current || '').length,
+          });
+        }
+      }
+      // Newest first — the lesson is newest, not first match.
+      candidates.sort(function (a, b) { return b.lastModified - a.lastModified; });
+    }
+
+    // Resolve the key, in order of trust.
+    let key = null;
+    let source = null;
+    if (loadedFromKey) {
+      // loadedFromKey is ground truth on the recovered path. Accept it if it
+      // appears among the candidate family OR among the raw localStorage keys.
+      const inCandidates = candidates.some(function (c) { return c.key === loadedFromKey; });
+      const inRaw = rawKeys.indexOf(loadedFromKey) !== -1;
+      if (inCandidates || inRaw) {
+        key = loadedFromKey;
+        source = 'loadedFromKey';
+      }
+    }
+    if (key === null && candidates.length > 0) {
+      key = candidates[0].key;       // newest of the filename-matched family
+      source = 'filename-newest';
+    }
+
+    return { key: key, source: source, candidates: candidates };
+  }
+
+  // --- Resume-key resolver (read-only; MathPix Lesson 1) -------------------
+  // Resolve which mathpix-resume-session key the tracer should bind to after a
+  // reload — loadedFromKey when the app recovered a session, else filename-and-
+  // newest over the resume-key family. It implements the readme's resume-key
+  // lesson: match by filename and NEWEST timestamp, not first match.
+  //
+  // PURE-READ: it only reads localStorage and the live restorer singleton. It
+  // mutates nothing, writes no key, sets no flag, and does NOT auto-bind or touch
+  // the tracer's own persistence. It degrades gracefully when the MathPix app is
+  // absent (the tracer is notionally standalone), returning a clear null-result
+  // shape rather than throwing. Always returns:
+  //   { key, source, filename, candidates, loadedFromKey }
+  function resumeKey() {
+    // The full result shape is returned on EVERY path, including every failure
+    // path — this function never throws.
+    const result = {
+      key: null,
+      source: null,
+      filename: null,
+      candidates: [],
+      loadedFromKey: null,
+    };
+
+    // Resolve the restorer defensively — the tracer must not assume the app exists
+    // (same existence-guard idiom the network patches use for window.fetch).
+    const getSR = window.getMathPixSessionRestorer;
+    if (typeof getSR !== 'function') {
+      log.debug('MathPix session restorer not present — resumeKey unavailable');
+      return result;
+    }
+    let SR = null;
+    try { SR = getSR(); } catch (e) { SR = null; }
+    if (!SR) {
+      log.debug('MathPix session restorer not present — resumeKey unavailable');
+      return result;
+    }
+
+    // Read the live fields off the recovered session (all optional).
+    const restored = SR.restoredSession || null;
+    const filename = (restored && restored.source && restored.source.filename) || null;
+    const loadedFromKey = (restored && restored.loadedFromKey != null) ? restored.loadedFromKey : null;
+    result.filename = filename;
+    result.loadedFromKey = loadedFromKey;
+
+    // Strip the extension to the base-name, then resolve over the family via the
+    // shared seam so the guard test drives the identical logic.
+    const uploadedBaseName = filename ? filename.replace(/\.[^/.]+$/, '') : null;
+    const resolved = resolveFromFamily(uploadedBaseName, loadedFromKey);
+    result.candidates = resolved.candidates;
+    result.key = resolved.key;
+    result.source = resolved.source;
+
+    // Deliberately NO content-differs / newerSessions gate here: the app's gate
+    // compares against live page state (restoredSession.currentMMD), so it is a
+    // property of the running page, not of the stored key set — replicating it
+    // would make this resolver fragile. We resolve over the key family only.
+
+    log.info('resumeKey resolved: key=' + (result.key || 'null') +
+      ', source=' + (result.source || 'null'));
+    return result;
+  }
+
+  // --- Resume-key guard: pure-read assertion over the family seam ----------
+  // Proves resumeKey()'s family-resolution (Lesson 1: filename + NEWEST, prefer
+  // loadedFromKey) WITHOUT a reload. resumeKey() reads the LIVE restorer's
+  // filename, so the guard cannot steer it from an argument; instead it drives
+  // the shared resolveFromFamily() seam directly with an explicit base-name —
+  // the exact code path resumeKey() uses (OPTION (a): the clean testable seam).
+  //
+  // It DOES write three throwaway localStorage keys to build a sibling family,
+  // so cleanup is exact and crash-safe (finally). Every fake key uses the app's
+  // resume prefix, so it lives in the namespace mathpixWipe clears — a manual
+  // backstop if cleanup is ever interrupted.
+  function resumeKeyTest() {
+    // Guard-only base-name — deliberately not a real filename, so it can never
+    // collide with a live session.
+    const BASE = '__wt-guard-fixture__';
+    const PREFIX = 'mathpix-resume-session';   // mirror resolveFromFamily/mathpixWipe
+    // Three fake keys, ascending lastModified so 'newest' is unambiguous.
+    const fakes = [
+      { key: PREFIX + '-' + BASE + '-1000', lastModified: 1000 },
+      { key: PREFIX + '-' + BASE + '-3000', lastModified: 3000 }, // newest
+      { key: PREFIX + '-' + BASE + '-2000', lastModified: 2000 },
+    ];
+    const NEWEST = PREFIX + '-' + BASE + '-3000';
+    const OLDEST = PREFIX + '-' + BASE + '-1000';
+    const PHANTOM = PREFIX + '-' + BASE + '-9999';   // never written to localStorage
+
+    const rows = [];
+    function check(name, pass) { rows.push({ name: name, pass: !!pass }); }
+
+    try {
+      // Seed the sibling family. Field names MUST match what resolveFromFamily
+      // reads: sourceFileName (base-name source), current (truthy gate),
+      // lastModified (newest tie-break). Without the match the asserts test nothing.
+      fakes.forEach(function (f) {
+        const payload = {
+          sourceFileName: BASE + '.pdf',
+          current: 'x',
+          lastModified: f.lastModified,
+        };
+        localStorage.setItem(f.key, JSON.stringify(payload));
+      });
+
+      // A. Newest wins: family resolution returns the lastModified=3000 key, NOT
+      //    the first-written (1000) or first-encountered key.
+      const a = resolveFromFamily(BASE, null);
+      check('A newest-of-family wins (3000 key)',
+        a.key === NEWEST && a.source === 'filename-newest');
+
+      // B. loadedFromKey preferred: an OLDER sibling that exists beats newest,
+      //    proving ground-truth trumps the timestamp.
+      const b = resolveFromFamily(BASE, OLDEST);
+      check('B present loadedFromKey beats newest',
+        b.key === OLDEST && b.source === 'loadedFromKey');
+
+      // C. loadedFromKey ignored when absent: a phantom key not in the set falls
+      //    back to NEWEST, never the phantom.
+      const c = resolveFromFamily(BASE, PHANTOM);
+      check('C phantom loadedFromKey falls back to newest',
+        c.key === NEWEST && c.source === 'filename-newest');
+    } catch (err) {
+      check('guard threw: ' + err, false);
+    } finally {
+      // Exact, crash-safe cleanup: remove each fake by exact key string — on
+      // pass, fail, or throw.
+      fakes.forEach(function (f) {
+        try { localStorage.removeItem(f.key); } catch (e) { /* best effort */ }
+      });
+      // Best-effort: confirm none survived; WARN (never throw) if any did.
+      let leaked = 0;
+      fakes.forEach(function (f) {
+        try { if (localStorage.getItem(f.key) !== null) leaked += 1; }
+        catch (e) { /* ignore */ }
+      });
+      if (leaked > 0) {
+        log.warn('resumeKeyTest cleanup left ' + leaked + ' fake key(s); ' +
+          'sweep manually with mathpixWipe({ families: [\'resume\'] }).');
+      }
+    }
+
+    const passed = rows.filter(function (r) { return r.pass; }).length;
+    const total = rows.length;
+    rows.forEach(function (r) {
+      log.warn('[trace.resumeKeyTest] ' + (r.pass ? 'PASS' : 'FAIL') + ' — ' + r.name);
+    });
+    log.warn('[trace.resumeKeyTest] ' + passed + '/' + total + ' passed.');
+    return { passed: passed, total: total, rows: rows };
+  }
+
   // --- Public API ----------------------------------------------------------
   // Built (and the local `trace` bound) BEFORE the restore/auto-resume block
   // below, so the chaining `return trace;` inside start() resolves cleanly when
@@ -589,6 +910,9 @@ const trace = (function () {
     step: step,
     clear: clear,
     reset: reset,
+    selfTest: selfTest,
+    resumeKey: resumeKey,
+    resumeKeyTest: resumeKeyTest,
     export: exportLog,
     setLevel: setLevel,
     config: config,

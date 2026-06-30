@@ -16,9 +16,16 @@
  *
  * Loads AFTER chat/chat-core.js so window.ChatState (and core's globals) exist.
  *
- * @version 0.3.0 — step 5b-0a: shared renderAssistantTurn helper so the live
- *                   path and the restore path build identical assistant bubbles
- *                   from one code path
+ * @version 0.3.2 — step 5b-ii-fix-2: renderRichContent now wraps mermaid diagrams
+ *                   for accessibility deterministically (initAccessibilityFeatures
+ *                   per .mermaid-container) instead of relying on the visibility-gated
+ *                   observer, which never fires for diagrams restored into the hidden
+ *                   Chat panel. Self-guarded (no-op on already-wrapped live diagrams).
+ *                   Builds on 5b-ii-fix: renderRichContent awaits the bridge's readiness
+ *                   gate (ensureMarkdownEditorReady) before process(), so the
+ *                   restore-on-load path no longer races the bridge's main.js boot
+ *                   self-test through the shared debounce. Bounded — a never-ready
+ *                   bridge degrades to the plain render. Warm send path is unaffected.
  */
 (function () {
   "use strict";
@@ -464,6 +471,32 @@
       logWarn("markdown bridge unavailable — leaving the streamed plain render in place");
       return;
     }
+    // The bridge can hand back its boot self-test output if process() runs during
+    // the DOMContentLoaded tick (restore-on-load races the bridge's own main.js
+    // integration test through the shared debounce). Wait for the bridge's readiness
+    // gate first — it resolves after document.readyState is "complete", which also
+    // defers us past that collision. Bounded, so a never-ready bridge degrades to the
+    // plain render rather than hanging.
+    if (typeof bridge.ensureMarkdownEditorReady === "function") {
+      const READY_TIMEOUT_MS = 8000;
+      let timer = null;
+      const ready = await Promise.race([
+        bridge.ensureMarkdownEditorReady().then(
+          function (v) { return v; },
+          function () { return false; },
+        ),
+        new Promise(function (resolve) {
+          timer = setTimeout(function () { resolve("timeout"); }, READY_TIMEOUT_MS);
+        }),
+      ]);
+      if (timer) clearTimeout(timer);
+      if (ready === "timeout" || ready === false) {
+        logWarn(
+          "markdown bridge not ready (" + ready + ") — leaving the streamed plain render in place",
+        );
+        return;
+      }
+    }
     try {
       const html = await bridge.process(rawMarkdown);
       bubble.innerHTML = html; // replace the embed's plain render ONLY on success
@@ -473,10 +506,34 @@
       if (typeof bridge.initializePendingCharts === "function") {
         bridge.initializePendingCharts(bubble);
       }
+      // Wrap any mermaid diagrams for accessibility (figure + caption + long
+      // description) deterministically, rather than relying on MermaidAccessibility's
+      // visibility-gated IntersectionObserver — restored bubbles are built while the
+      // Chat panel is hidden, so the observer never fires for them. The feature
+      // self-guards on data-accessibility-initialized, so this is a no-op on any
+      // diagram the observer already wrapped on the live path.
+      if (
+        window.MermaidAccessibility &&
+        typeof window.MermaidAccessibility.initAccessibilityFeatures === "function"
+      ) {
+        const mermaidContainers = bubble.querySelectorAll(".mermaid-container");
+        mermaidContainers.forEach(function (container, i) {
+          try {
+            const diagramId =
+              container.id || "chat-mermaid-" + Date.now() + "-" + i;
+            window.MermaidAccessibility.initAccessibilityFeatures(
+              container,
+              diagramId,
+            );
+          } catch (e) {
+            logWarn(
+              "mermaid accessibility wrap failed for a diagram:",
+              (e && e.message) || e,
+            );
+          }
+        });
+      }
       enhanceMathA11y(bubble);
-      // Mermaid accessibility (figure/caption/long-description) is applied
-      // automatically by window.MermaidAccessibility's global observers once the
-      // diagram is in the live, visible DOM — no call is needed here.
     } catch (err) {
       logWarn(
         "bridge render failed — keeping the streamed plain render:",

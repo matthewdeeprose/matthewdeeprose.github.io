@@ -3,3 +3,5 @@ experiments/
 test/
 sample/
 *mcp*
+readme.md
+*.zip

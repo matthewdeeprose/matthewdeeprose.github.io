@@ -16680,6 +16680,12 @@ Science,91</pre
             <button id="chat-cancel" type="button" hidden>Cancel</button>
           </div>
 
+          <!-- Clear conversation (step 5b-iii) — wired in chat-core.js -->
+          <button id="chat-clear" type="button" class="local-chat-clear">
+            <span aria-hidden="true" data-icon="trash"></span>
+            Clear conversation
+          </button>
+
           <!-- Input token counter -->
           <div id="chat-input-counter" class="chat-input-counter" hidden></div>
 
@@ -17170,7 +17176,7 @@ Science,91</pre
     <script src="js/graph-builder-row-sync.js"></script>
     <script src="js/graph-builder-enhanced.js"></script>
     <script src="js/graph-builder-charts-enhanced.js"></script>
-    <script src="js/graph-builder-testing.js"></script>
+    <script type="application/dev-test" data-src="js/graph-builder-testing.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js"></script>
 
     <!-- Fix for implicit figures module -->
@@ -17185,7 +17191,7 @@ Science,91</pre
     <!-- Load our markdown editor implementation -->
     <script src="md-scripts/markdown-utils/markdown-editor.js"></script>
     <script src="md-scripts/markdown-utils/markdown-live-editor.js"></script>
-    <script src="md-scripts/markdown-utils/markdown-live-editor-tests.js"></script>
+    <script type="application/dev-test" data-src="md-scripts/markdown-utils/markdown-live-editor-tests.js"></script>
 
     <script
       src="md-scripts/markdown-utils/markdown-examples-loader.js"
@@ -17355,10 +17361,7 @@ Science,91</pre
     <script src="mathpix-scripts/core/session-restorer/session-restorer-convert.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-file-registration.js?v=9.0"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-index.js?v=8.2"></script>
-    <script
-      type="module"
-      src="js/testing/image-describer-camera-tests.js"
-    ></script>
+    <script type="application/dev-test" data-module="true" data-src="js/testing/image-describer-camera-tests.js"></script>
 
     <!-- Phase 6.2: Convert UI Controller -->
     <script
@@ -17374,43 +17377,43 @@ Science,91</pre
     <script src="mathpix-scripts/core/mathpix-alt-text-provenance.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-mmd-serialiser.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-integrator.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-alt-text-serialiser-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-alt-text-integrator-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-alt-text-serialiser-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-alt-text-integrator-tests.js"></script>
     <script src="mathpix-scripts/ui/components/mathpix-image-manager-ui.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-stage4-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-stage5-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-stage6-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-stage7-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-stage8-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-stage9-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-stage10-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-stage4-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-stage5-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-stage6-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-stage7-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-stage8-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-stage9-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-stage10-tests.js"></script>
     <!-- F-L Phase 2: round-trip regression tests (window.runPreStage7RoundtripTests) -->
-    <script src="mathpix-scripts/testing/mathpix-pre-stage-7-roundtrip-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-pre-stage-7-roundtrip-tests.js"></script>
     <script src="mathpix-scripts/core/mathpix-image-downloader.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-semantic-mapper.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-multipass.js"></script>
-    <script src="mathpix-scripts/ai-enhancement/mathpix-ai-test-harness.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/ai-enhancement/mathpix-ai-test-harness.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-data-provider.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-enhancer.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-session-restorer-refactor-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-convert-size-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-session-restorer-refactor-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-convert-size-tests.js"></script>
     <!-- Phase 2 Stage 1: Context auto-fill pure prompt/parse/coerce core (window.MathPixContextAI) -->
     <script src="mathpix-scripts/ai-enhancement/mathpix-context-ai.js"></script>
     <!-- Phase 2 Stage 1: Context auto-fill preflight harness (window.runContextAITests) -->
-    <script src="mathpix-scripts/testing/mathpix-context-ai-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-context-ai-tests.js"></script>
     <!-- Re-open context survival P5: capture/normalise/trichotomy/divergence/stamp suite (window.runReopenContextTests) -->
-    <script src="mathpix-scripts/testing/mathpix-reopen-context-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-reopen-context-tests.js"></script>
     <!-- Floor summary aggregator: one normalised table across every floor suite (window.runFloorSummary) -->
-    <script src="mathpix-scripts/testing/mathpix-floor-summary.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-f-o-storage-corruption-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-item2-warn-gate-tests.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-phase5-testing.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-phase6-testing.js"></script>
-    <script src="mathpix-scripts/testing/mathpix-chemistry-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-floor-summary.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-f-o-storage-corruption-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-item2-warn-gate-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-phase5-testing.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-phase6-testing.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-chemistry-tests.js"></script>
     <!-- Lane C C-P2a: registry-writer converter + freeze predicate tests -->
-    <script src="mathpix-scripts/testing/mathpix-lane-c-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-lane-c-tests.js"></script>
     <!-- Phase 12-0a: description-engine migration harness (SmilesDrawer baseline + stub RDKit) -->
-    <script src="mathpix-scripts/testing/migration-harness.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/migration-harness.js"></script>
 
     <!-- OpenRouter Embed Reasoning Disclosure (Reasoning Disclosure Task 3) —
          reusable <details> disclosure for model reasoning summaries. Plain IIFE,
@@ -17420,15 +17423,15 @@ Science,91</pre
     <script src="openrouter-embed/openrouter-embed-reasoning-disclosure.js"></script>
 
     <!-- OpenRouter Embed Diagnostics -->
-    <script src="openrouter-embed/openrouter-embed-diagnostic.js"></script>
+    <script type="application/dev-test" data-src="openrouter-embed/openrouter-embed-diagnostic.js"></script>
 
     <!-- OpenRouter Embed Stage Test Suites (each defines window.testEmbedStageN_* functions;
          must execute after openrouter-embed-core.js, but the suites use the embed lazily
          inside test bodies so order with the type="module" core script is fine) -->
-    <script src="js/testing/openrouter-embed-stage1-tests.js"></script>
-    <script src="js/testing/openrouter-embed-stage2-tests.js"></script>
-    <script src="js/testing/openrouter-embed-stage3-tests.js"></script>
-    <script src="js/testing/openrouter-embed-stage4-phase2-tests.js"></script>
+    <script type="application/dev-test" data-src="js/testing/openrouter-embed-stage1-tests.js"></script>
+    <script type="application/dev-test" data-src="js/testing/openrouter-embed-stage2-tests.js"></script>
+    <script type="application/dev-test" data-src="js/testing/openrouter-embed-stage3-tests.js"></script>
+    <script type="application/dev-test" data-src="js/testing/openrouter-embed-stage4-phase2-tests.js"></script>
     <script
       type="module"
       src="openrouter-embed/openrouter-embed-progress.js"
@@ -17506,20 +17509,21 @@ Science,91</pre
     <script src="chat/chat.js"></script>
     <script src="chat/chat-core.js"></script>
     <script src="chat/chat-messages.js"></script>
+    <script src="chat/chat-persistence.js"></script>
 
     <!-- Spike Text LLM Harness (temporary — remove after Wave 3 spikes) -->
-    <script src="image-describer/testing/spike-text-llm-harness.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/spike-text-llm-harness.js"></script>
 
     <!-- Resilient Fetch — chunked Range-request downloads for large HF models -->
     <script src="openrouter-embed/resilient-fetch.js"></script>
 
     <!-- Spike WebLLM Harness (temporary — remove after WebLLM spikes) -->
-    <script src="image-describer/testing/spike-webllm-harness.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/spike-webllm-harness.js"></script>
 
-    <script src="image-describer/testing/spike-lfm2vl-harness.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/spike-lfm2vl-harness.js"></script>
 
     <!-- TTS Spike Harness (TEMPORARY — remove after spikes complete) -->
-    <script src="tts/tts-spike-harness.js"></script>
+    <script type="application/dev-test" data-src="tts/tts-spike-harness.js"></script>
 
     <!-- TTS Neural Gateway — Phase 2a: Supertonic TTS via Transformers.js -->
     <script src="tts/tts-neural-gateway.js"></script>
@@ -17585,75 +17589,75 @@ Science,91</pre
     <script src="image-describer/image-describer-controller-camera.js"></script>
 
     <!-- Image Describer Test Harness (after controller) -->
-    <script src="image-describer/testing/image-describer-test-harness.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/image-describer-test-harness.js"></script>
 
     <!-- Test helpers: extractSummary(), waitForImages() -->
-    <script src="image-describer/testing/extract-test-summary.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/extract-test-summary.js"></script>
 
-    <script src="image-describer/testing/phase5a2-test-runner.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/phase5a2-test-runner.js"></script>
 
-    <script src="image-describer/testing/phase5c1-test-runner.js"></script>
-    <script src="image-describer/testing/phase5c2-test-runner.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/phase5c1-test-runner.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/phase5c2-test-runner.js"></script>
 
     <!-- Phase 9A: Modular test runner framework -->
-    <script src="image-describer/testing/test-runner.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/test-runner.js"></script>
 
     <!-- Phase 9B: Cache tests (after test runner) -->
-    <script src="image-describer/testing/tests-cache.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-cache.js"></script>
 
     <!-- Phase 9C: Model Manager tests (after test runner) -->
-    <script src="image-describer/testing/tests-model-manager.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-model-manager.js"></script>
 
     <!-- Phase 10A: Florence-2 gateway tests (after test runner) -->
-    <script src="image-describer/testing/tests-florence2.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-florence2.js"></script>
 
     <!-- Phase 10C: Florence-2 overlay + review tests (after test runner + overlay) -->
-    <script src="image-describer/testing/tests-overlay-objects.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-overlay-objects.js"></script>
 
-    <script src="image-describer/testing/tests-10cfix.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-10cfix.js"></script>
 
     <!-- Phase 10D: OCR merge tests (after test runner + OCR module) -->
-    <script src="image-describer/testing/tests-10d-ocr-merge.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-10d-ocr-merge.js"></script>
 
     <!-- Phase 6: Local Text Gateway tests (after test runner + gateway) -->
-    <script src="image-describer/testing/tests-local-text-gateway.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-local-text-gateway.js"></script>
 
     <!-- Phase 8: Local Text Embed Backend tests (after test runner + backend) -->
-    <script src="image-describer/testing/tests-local-text-embed.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-local-text-embed.js"></script>
 
     <!-- Unified Chat Stage 1a: Local Chat UI characterisation suite
          (after test runner + local-chat modules + registry) -->
-    <script src="image-describer/testing/tests-local-chat-ui.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-local-chat-ui.js"></script>
 
     <!-- Unified Chat Stage 1c: Local Chat isolation + gap-fill suite (static) -->
-    <script src="image-describer/testing/tests-local-chat-isolation.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-local-chat-isolation.js"></script>
 
     <!-- Phase 10D-fix: OCR merge bug fix tests -->
-    <script src="image-describer/testing/tests-10d-fix.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-10d-fix.js"></script>
 
     <!-- Phase 11A: Depth Anything V2 integration tests -->
-    <script src="image-describer/testing/tests-11a-depth.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-11a-depth.js"></script>
 
     <!-- Phase 11B: Depth zone overlay tests -->
-    <script src="image-describer/testing/tests-11b-depth-overlay.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-11b-depth-overlay.js"></script>
 
     <!-- Phase 11C: Cache recall flow tests -->
-    <script src="image-describer/testing/tests-11c-cache-recall.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-11c-cache-recall.js"></script>
 
     <!-- Phase 11D: Cache recall UX tests -->
-    <script src="image-describer/testing/tests-11d-cache-recall-ux.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-11d-cache-recall-ux.js"></script>
 
     <!-- Phase 12-prep: Transformers.js v4 compatibility tests -->
-    <script src="image-describer/testing/tests-12-v4-compat.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-12-v4-compat.js"></script>
 
     <!-- Phase 12B: Transformers.js benchmark suite (v3 vs v4 performance) -->
-    <script src="image-describer/testing/tests-12b-benchmark.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-12b-benchmark.js"></script>
 
     <!-- Phase 13E: FastVLM integration tests -->
-    <script src="image-describer/testing/tests-13-fastvlm.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-13-fastvlm.js"></script>
 
     <!-- Pre-refactor regression tests for controller extraction -->
-    <script src="image-describer/testing/tests-refactor-controller.js"></script>
+    <script type="application/dev-test" data-src="image-describer/testing/tests-refactor-controller.js"></script>
 
     <!-- Initialize the editor -->
     <script>
@@ -20354,7 +20358,7 @@ Science,91</pre
     <script type="module" src="js/utilities/memory-manager.js"></script>
     <script type="module" src="js/utilities/memory-debug-commands.js"></script>
     <script type="module" src="js/main.js" crossorigin="anonymous"></script>
-    <script type="module" src="js/tests.js" crossorigin="anonymous"></script>
+    <script type="application/dev-test" data-module="true" data-crossorigin="anonymous" data-src="js/tests.js"></script>
     <script>
       document
         .getElementById("temperature")
@@ -21147,5 +21151,48 @@ Science,91</pre
          Call mathpixWipe() to clear, mathpixWipe.inspect() to look first. No
          tool depends on it; safe to remove. -->
     <script src="util/mathpix-wipe.js"></script>
+    <!-- Gated test/diagnostic harness loader. The test/dev scripts above are
+         inert <script type="application/dev-test"> data blocks on a normal load
+         (zero fetch, zero execution). They load — in document order, after every
+         production script — only when the dev flag is set, mirroring the existing
+         ?use-markdownit-bridge convention in js/main.js.
+           Enable:  tools.html?dev=1   (or ?test) — persists in localStorage
+           Disable: tools.html?dev=0
+         See docs/startup-perf-gate-test-scripts-plan.md. -->
+    <script>
+      (function () {
+        const params = new URLSearchParams(location.search);
+        const off = params.get("dev") === "0";
+        if (off) {
+          localStorage.removeItem("dev-test-harnesses");
+        } else if (params.has("dev") || params.has("test")) {
+          localStorage.setItem("dev-test-harnesses", "true");
+        }
+        // ?dev=0 disables immediately on this very load (params.has("dev") is
+        // true even for the value "0", so it must be excluded explicitly).
+        const enabled =
+          !off &&
+          (params.has("dev") ||
+            params.has("test") ||
+            localStorage.getItem("dev-test-harnesses") === "true");
+        if (!enabled) return;
+        document
+          .querySelectorAll('script[type="application/dev-test"]')
+          .forEach(function (tpl) {
+            const s = document.createElement("script");
+            s.src = tpl.getAttribute("data-src");
+            if (tpl.getAttribute("data-module") === "true") s.type = "module";
+            const co = tpl.getAttribute("data-crossorigin");
+            if (co) s.crossOrigin = co;
+            s.async = false; // ordered (defer-like) execution among harnesses
+            document.body.appendChild(s);
+          });
+        console.log(
+          "[dev-test] harnesses enabled — loaded " +
+            document.querySelectorAll('script[type="application/dev-test"]').length +
+            " gated script(s)"
+        );
+      })();
+    </script>
   </body>
 </html>
