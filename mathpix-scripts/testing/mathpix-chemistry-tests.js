@@ -4098,11 +4098,16 @@ const BATCH2_SHORTNAMES = ["sulphonic acid", "sulphonamide", "sulphoxide"];
 // secondary amide / tertiary amide pass "3", ketone pass "5"). acid + aldehyde
 // are already in BATCH1.
 const BATCH3_SHORTNAMES = ["ester", "urea", "lactam", "amide", "secondary amide", "tertiary amide", "ketone"];
+// Phase 17-2d: the O-bridge family shortNames emitted by the legacy passes
+// (methoxy pass "8", acyclic ether pass "8.5"). Without these in PORTED, the
+// comparator's PORTED.has(g.shortName) filter drops both records → total
+// silence on the new rows.
+const BATCH4_SHORTNAMES = ["methoxy", "ether"];
 // The full ported set the equivalence comparator filters on + asserts coverage
-// for. Widened from batch 1 to batch 1 + 2 + 3.
-const PORTED_SHORTNAMES = BATCH1_SHORTNAMES.concat(BATCH2_SHORTNAMES, BATCH3_SHORTNAMES);
+// for. Widened from batch 1 to batch 1 + 2 + 3 + 4.
+const PORTED_SHORTNAMES = BATCH1_SHORTNAMES.concat(BATCH2_SHORTNAMES, BATCH3_SHORTNAMES, BATCH4_SHORTNAMES);
 
-// 20 migration fixtures (mirrors migration-harness.js FIXTURES) + 15 tier-1
+// 20 migration fixtures (mirrors migration-harness.js FIXTURES) + 14 tier-1-unique
 // (mirrors TIER1_FIXTURES) + 4 net-new halogen fixtures. Halogen is BLIND in
 // both baseline sets (findings § 6) — the four net-new cover all four halogen
 // elements and both ring-attached and aliphatic attachment.
@@ -4167,6 +4172,16 @@ const CATALOGUE_FIXTURES = [
   { name: "N,N-dimethylacetamide (net-new, tertiary amide → –CONR₂)", smiles: "CC(=O)N(C)C" },
   { name: "ethyl propanoate (net-new, ester non-acetate → –OCOR)",   smiles: "CCC(=O)OCC" },
   { name: "formamide (net-new divergence, amide ∩ aldehyde → amide)", smiles: "O=CN" },
+  // --- net-new blind-pass fixtures (Phase 17-2d O-bridge family — defined
+  // here, NOT in baselines). acyclic ether is already covered by diethyl ether
+  // (tier-1) and methoxy by Naproxen (migration); anisole is the MANDATORY
+  // methoxy < ether divergence fixture — a clean single-group ring-attached
+  // methoxy whose O is ALSO matched by the ether SMARTS [OX2]([#6])[#6]. Under
+  // correct order methoxy claims it first (→ a methoxy record); under wrong
+  // order ether claims the O (→ a spurious ether record), so the comparator is
+  // non-vacuous on the methoxy < ether chain. It also de-risks the Naproxen
+  // methoxy claim with a second, single-group witness. ---
+  { name: "anisole (net-new divergence, methoxy ∩ ether → methoxy)", smiles: "COc1ccccc1" },
 ];
 
 // Shared offscreen-canvas graph-cache primer (mirrors migration-harness).
@@ -4291,7 +4306,7 @@ window.testCatalogueEquivalence = async function () {
   }
 
   const passed = results.filter((r) => r.pass).length;
-  console.log("\nPhase 17-2a/2b/2c: SMARTS-catalogue equivalence (legacy passes vs runCatalogue, " + PORTED_SHORTNAMES.length + " ported types)\n");
+  console.log("\nPhase 17-2a/2b/2c/2d: SMARTS-catalogue equivalence (legacy passes vs runCatalogue, " + PORTED_SHORTNAMES.length + " ported types)\n");
   console.table(results);
   if (mismatchDetail.length) {
     console.warn("Mismatch detail (fixture → field-level diffs):");
@@ -4347,14 +4362,14 @@ window.testCatalogueRunner = async function () {
     "live path still calls _detectFunctionalGroupsFromGraph",
   );
   check(
-    "catalogue table: twelve rows (6 pure-SMARTS batch 1 + 2 refine batch 2 + 4 refine batch 3)",
-    Array.isArray(helpers.functionalGroupsCatalogue) && helpers.functionalGroupsCatalogue.length === 12,
+    "catalogue table: fourteen rows (6 pure-SMARTS batch 1 + 2 refine batch 2 + 4 refine batch 3 + 2 refine batch 4)",
+    Array.isArray(helpers.functionalGroupsCatalogue) && helpers.functionalGroupsCatalogue.length === 14,
     "len=" + (helpers.functionalGroupsCatalogue ? helpers.functionalGroupsCatalogue.length : "n/a"),
   );
   check(
-    "catalogue table: exactly six class-(b) refine rows (sulphonyl, sulphoxide, ester, ring-internal-carbonyl, amide, ketone)",
+    "catalogue table: exactly eight class-(b) refine rows (sulphonyl, sulphoxide, ester, ring-internal-carbonyl, amide, ketone, methoxy, ether)",
     Array.isArray(helpers.functionalGroupsCatalogue) &&
-      helpers.functionalGroupsCatalogue.filter((r) => typeof r.refine === "function").length === 6,
+      helpers.functionalGroupsCatalogue.filter((r) => typeof r.refine === "function").length === 8,
     "refine rows=" +
       (Array.isArray(helpers.functionalGroupsCatalogue)
         ? helpers.functionalGroupsCatalogue.filter((r) => typeof r.refine === "function").map((r) => r.id).join(",")
@@ -4380,6 +4395,17 @@ window.testCatalogueRunner = async function () {
       const iSulphonyl = cat.findIndex((r) => r.id === "sulphonyl");
       const iHydroxyl = cat.findIndex((r) => r.id === "hydroxyl");
       return iSulphonyl !== -1 && iHydroxyl !== -1 && iSulphonyl < iHydroxyl;
+    })(),
+    "order=" + (Array.isArray(helpers.functionalGroupsCatalogue) ? helpers.functionalGroupsCatalogue.map((r) => r.id).join(" ") : "n/a"),
+  );
+  check(
+    "catalogue table: methoxy row ordered before ether (shared-O claim precedence, Phase 17-2d)",
+    (() => {
+      const cat = helpers.functionalGroupsCatalogue;
+      if (!Array.isArray(cat)) return false;
+      const iMethoxy = cat.findIndex((r) => r.id === "methoxy");
+      const iEther = cat.findIndex((r) => r.id === "ether");
+      return iMethoxy !== -1 && iEther !== -1 && iMethoxy < iEther;
     })(),
     "order=" + (Array.isArray(helpers.functionalGroupsCatalogue) ? helpers.functionalGroupsCatalogue.map((r) => r.id).join(" ") : "n/a"),
   );
@@ -4647,8 +4673,55 @@ window.testCatalogueRunner = async function () {
         "cat=" + JSON.stringify(lactam) + " legacy=" + JSON.stringify(legacyLactam),
       );
     }
-    // Dead-code re-assert: after exercising the carbonyl-C rows, the live path
-    // still does NOT reference runCatalogue (the catalogue stays dead code).
+    // --- Phase 17-2d: O-bridge family (methoxy, acyclic ether) ---
+    // anisole COc1ccccc1 → the methoxy row claims the ring-attached –OCH₃
+    // BEFORE the ether row (whose [OX2]([#6])[#6] SMARTS also matches the
+    // methoxy O): exactly one methoxy record, NO ether record (the ordering
+    // divergence — wrong order would emit an ether here). Cross-checked
+    // field-for-field against the legacy pass, incl. the explicit
+    // attachmentVertexId = the ring carbon (not one of the record's own atoms).
+    {
+      const gd = await _primeCatalogueGraph(utils, "COc1ccccc1", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const meth = recs.find((r) => r.shortName === "methoxy");
+      const eth = recs.find((r) => r.shortName === "ether");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "methoxy") : null;
+      check(
+        "anisole: methoxy claims before ether (methoxy present, –OCH₃, atoms len 2, NO ether record)",
+        !!meth && !eth && meth.name === "methoxy group" && meth.shorthand === "–OCH₃" && meth.atoms.length === 2,
+        JSON.stringify(recs),
+      );
+      check(
+        "anisole: methoxy catalogue record == legacy pass (explicit attachmentVertexId = ring C, not in atoms)",
+        !!meth && !!legacy && JSON.stringify(meth) === JSON.stringify(legacy) &&
+          meth.attachmentVertexId !== null && meth.atoms.indexOf(meth.attachmentVertexId) === -1,
+        "cat=" + JSON.stringify(meth) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // diethyl ether CCOCC → one ether record [O] (single-atom claim-subset),
+    // shorthand null, attachment null (no ring — generic finder). Cross-checked
+    // field-for-field against the legacy pass.
+    {
+      const gd = await _primeCatalogueGraph(utils, "CCOCC", canvas);
+      const adj = gd ? helpers.buildAdjacencyMap(gd.graph) : null;
+      const recs = gd ? helpers.runCatalogue(gd._smiles, gd, adj) : [];
+      const eth = recs.find((r) => r.shortName === "ether");
+      const legacy = gd ? helpers.detectFunctionalGroupsFromGraph(gd, adj).find((g) => g.shortName === "ether") : null;
+      check(
+        "diethyl ether: ether record (name 'ether'/shorthand null/atoms len 1/attach null)",
+        !!eth && eth.name === "ether" && eth.shorthand === null &&
+          eth.atoms.length === 1 && eth.attachmentVertexId === null,
+        JSON.stringify(recs),
+      );
+      check(
+        "diethyl ether: ether catalogue record == legacy pass (claim-subset [O], fields)",
+        !!eth && !!legacy && JSON.stringify(eth) === JSON.stringify(legacy),
+        "cat=" + JSON.stringify(eth) + " legacy=" + JSON.stringify(legacy),
+      );
+    }
+    // Dead-code re-assert: after exercising the carbonyl-C + O-bridge rows, the
+    // live path still does NOT reference runCatalogue (catalogue stays dead code).
     check(
       "dead-code (re-assert): analyseStructure still avoids runCatalogue",
       typeof classify.analyseStructure === "function" &&

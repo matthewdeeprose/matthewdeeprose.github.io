@@ -156,6 +156,7 @@ const MathPixImageManagerUI = (function () {
       input: "edit-alt-caption-input",
       help: "edit-alt-caption-help",
       count: "edit-alt-caption-count",
+      provenance: "edit-alt-caption-provenance",
       hint: "edit-alt-caption-hint",
       toggletip: "edit-alt-caption-toggletip",
     },
@@ -163,21 +164,34 @@ const MathPixImageManagerUI = (function () {
       input: "edit-alt-alttext-input",
       help: "edit-alt-alttext-help",
       count: "edit-alt-alttext-count",
+      provenance: "edit-alt-alttext-provenance",
     },
     longDescription: {
       input: "edit-alt-longdesc-input",
       help: "edit-alt-longdesc-help",
       count: "edit-alt-longdesc-count",
+      provenance: "edit-alt-longdesc-provenance",
     },
     textInImage: {
       input: "edit-alt-textinimage-input",
       help: "edit-alt-textinimage-help",
       count: "edit-alt-textinimage-count",
+      provenance: "edit-alt-textinimage-provenance",
     },
     decorative: {
       input: "edit-alt-decorative-input",
     },
   };
+
+  // --- Provenance labels (registry source state per field) ---
+  const EDIT_PROVENANCE_LABELS = {
+    user: "Edited by you",
+    "ai-generated": "Generated automatically",
+    "ai-reviewed": "Generated, then edited by you",
+  };
+  // Visible text shows only for these three states. "original" and null carry the
+  // data-provenance attribute but no label. "ai-generated" is algorithmic
+  // generation, not model output; "ai-reviewed" today means generated then edited.
 
   // Q3 disable hint sits above the Alt + Long Description block and is shared.
   const EDIT_VIEW_DISABLE_HINT_ID = "edit-alt-disable-hint";
@@ -817,9 +831,6 @@ const MathPixImageManagerUI = (function () {
       const status = MathPixImageRegistry.getMetadataStatus(entry);
       const clusterHTML = this._buildMetadataClusterHTML(status);
 
-      // Stage 4 — per-card Alt button placeholder (Stage 5 wiring point)
-      const altButtonHTML = this._buildAltButtonHTML(safeId, entry.id, status);
-
       // Build meaningful alt text: prefer user/OCR alt text, fall back to identifiable description
       const altText = entry.altText
         ? `Image ${index + 1} of ${total}: ${entry.altText}`
@@ -839,6 +850,16 @@ const MathPixImageManagerUI = (function () {
       // Group label for screen readers — used by aria-labelledby on the card
       // and to give context to the Replace/Remove buttons within it
       const displayName = friendlyName || safeId;
+
+      // Stage 4 — per-card Alt button placeholder (Stage 5 wiring point).
+      // Built here (not earlier) so displayName is in scope for its aria-label.
+      const altButtonHTML = this._buildAltButtonHTML(
+        safeId,
+        entry.id,
+        status,
+        displayName,
+      );
+
       const groupLabel = entry.altText
         ? `${entry.altText} — ${sizeDisplay}`
         : `${displayName} — ${sizeDisplay}`;
@@ -973,7 +994,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * @returns {string} HTML string
      * @private
      */
-    _buildAltButtonHTML(safeId, rawId, status) {
+    _buildAltButtonHTML(safeId, rawId, status, displayName) {
       const needsAttention = status.altState === "no-alt";
       // Two DOM signals, both gated by `needsAttention` above so they
       // cannot drift apart:
@@ -994,7 +1015,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
                     data-action="alt"
                     data-image-id="${safeId}"
                     onclick="openEditAltText('${escapeForOnclick(rawId)}')"
-                    aria-label="Edit alt text for image ${safeId}">
+                    aria-label="Edit alt text for image ${this._escapeAttr(displayName)}">
               <span aria-hidden="true" data-icon="pencil"></span> Alt${warningIcon}
             </button>`;
     }
@@ -1078,9 +1099,10 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
                 -->
                 <input type="text"
                        id="${FIELD_IDS.caption.input}"
-                       aria-describedby="${FIELD_IDS.caption.help} ${FIELD_IDS.caption.count}" />
+                       aria-describedby="${FIELD_IDS.caption.help} ${FIELD_IDS.caption.count} ${FIELD_IDS.caption.provenance}" />
                 <p id="${FIELD_IDS.caption.help}" class="field-help">${FIELD_HELP_TEXT.caption}</p>
                 <small id="${FIELD_IDS.caption.count}" class="field-count">${formatCharacterCount(0)}</small>
+                <small id="${FIELD_IDS.caption.provenance}" class="field-provenance" data-provenance=""></small>
                 <p id="${FIELD_IDS.caption.hint}" class="field-hint" hidden>${INCLUDEGRAPHICS_CLEAR_HINT}</p>
               </div>
 
@@ -1095,27 +1117,30 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
                 <label for="${FIELD_IDS.altText.input}">${FIELD_LABELS.altText}</label>
                 <textarea id="${FIELD_IDS.altText.input}"
                           rows="3"
-                          aria-describedby="${FIELD_IDS.altText.help} ${FIELD_IDS.altText.count}"></textarea>
+                          aria-describedby="${FIELD_IDS.altText.help} ${FIELD_IDS.altText.count} ${FIELD_IDS.altText.provenance}"></textarea>
                 <p id="${FIELD_IDS.altText.help}" class="field-help">${FIELD_HELP_TEXT.altText}</p>
                 <small id="${FIELD_IDS.altText.count}" class="field-count">${formatCharacterCount(0)}</small>
+                <small id="${FIELD_IDS.altText.provenance}" class="field-provenance" data-provenance=""></small>
               </div>
 
               <div class="field-group">
                 <label for="${FIELD_IDS.longDescription.input}">${FIELD_LABELS.longDescription}</label>
                 <textarea id="${FIELD_IDS.longDescription.input}"
                           rows="5"
-                          aria-describedby="${FIELD_IDS.longDescription.help} ${FIELD_IDS.longDescription.count}"></textarea>
+                          aria-describedby="${FIELD_IDS.longDescription.help} ${FIELD_IDS.longDescription.count} ${FIELD_IDS.longDescription.provenance}"></textarea>
                 <p id="${FIELD_IDS.longDescription.help}" class="field-help">${FIELD_HELP_TEXT.longDescription}</p>
                 <small id="${FIELD_IDS.longDescription.count}" class="field-count">${formatCharacterCount(0)}</small>
+                <small id="${FIELD_IDS.longDescription.provenance}" class="field-provenance" data-provenance=""></small>
               </div>
 
               <div class="field-group">
                 <label for="${FIELD_IDS.textInImage.input}">${FIELD_LABELS.textInImage}</label>
                 <input type="text"
                        id="${FIELD_IDS.textInImage.input}"
-                       aria-describedby="${FIELD_IDS.textInImage.help} ${FIELD_IDS.textInImage.count}" />
+                       aria-describedby="${FIELD_IDS.textInImage.help} ${FIELD_IDS.textInImage.count} ${FIELD_IDS.textInImage.provenance}" />
                 <p id="${FIELD_IDS.textInImage.help}" class="field-help">${FIELD_HELP_TEXT.textInImage}</p>
                 <small id="${FIELD_IDS.textInImage.count}" class="field-count">${formatCharacterCount(0)}</small>
+                <small id="${FIELD_IDS.textInImage.provenance}" class="field-provenance" data-provenance=""></small>
               </div>
 
               <div class="field-group field-group--checkbox">
@@ -1205,6 +1230,18 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       if (longDescInput) longDescInput.value = entry.longDescription || "";
       if (textInImageInput) textInImageInput.value = entry.textInImage || "";
       if (decorativeInput) decorativeInput.checked = Boolean(entry.decorative);
+
+      // Surface per-field registry provenance (caption reads titleSource).
+      this._applyFieldProvenance(FIELD_IDS.caption.provenance, entry.titleSource);
+      this._applyFieldProvenance(FIELD_IDS.altText.provenance, entry.altTextSource);
+      this._applyFieldProvenance(
+        FIELD_IDS.longDescription.provenance,
+        entry.longDescriptionSource,
+      );
+      this._applyFieldProvenance(
+        FIELD_IDS.textInImage.provenance,
+        entry.textInImageSource,
+      );
 
       // 4. Populate <img> preview from _getImageSrc(). When null, hide
       // the <figure> so the body collapses cleanly rather than showing a
@@ -1395,6 +1432,24 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     _setFieldCount(countElementId, value) {
       const el = document.getElementById(countElementId);
       if (el) el.textContent = formatCharacterCount(value.length);
+    }
+
+    /**
+     * Surface the registry provenance state for a field. Writes the
+     * data-provenance attribute for every state (null becomes ""), and a
+     * visible label only for the three states in EDIT_PROVENANCE_LABELS
+     * ("user", "ai-generated", "ai-reviewed"). "original" yields attribute
+     * "original" with empty text.
+     * @param {string} elementId
+     * @param {string|null|undefined} source
+     * @private
+     */
+    _applyFieldProvenance(elementId, source) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const state = source == null ? "" : String(source);
+      el.setAttribute("data-provenance", state);
+      el.textContent = EDIT_PROVENANCE_LABELS[state] || "";
     }
 
     // ------------------------------------------------------------------------

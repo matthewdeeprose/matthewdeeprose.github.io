@@ -1235,7 +1235,13 @@ const ALLY_MAIN_CONTROLLER = (function () {
       ) {
         var selectedCourse = ALLY_COURSE_SEARCH.getSelectedCourse();
         if (selectedCourse) {
-          cacheFilters.courseName = "eq:" + selectedCourse.name;
+          // Key the cache by the unique courseId so same-named courses do not
+          // collide; fall back to courseName only if the id is somehow absent.
+          if (selectedCourse.id) {
+            cacheFilters.courseId = selectedCourse.id;
+          } else {
+            cacheFilters.courseName = "eq:" + selectedCourse.name;
+          }
         }
       }
 
@@ -1358,11 +1364,17 @@ const ALLY_MAIN_CONTROLLER = (function () {
         ) {
           const selectedCourse = ALLY_COURSE_SEARCH.getSelectedCourse();
           if (selectedCourse) {
-            // Use courseName for filtering (API field)
-            addFilter("courseName", "eq:" + selectedCourse.name);
-            logDebug(
-              "Added course filter: courseName=eq:" + selectedCourse.name,
-            );
+            // Filter by the unique courseId so name-duplicate courses cannot
+            // return the wrong record; fall back to courseName if id is absent.
+            if (selectedCourse.id) {
+              addFilter("courseId", selectedCourse.id);
+              logDebug("Added course filter: courseId=" + selectedCourse.id);
+            } else {
+              addFilter("courseName", "eq:" + selectedCourse.name);
+              logDebug(
+                "Added course filter: courseName=eq:" + selectedCourse.name,
+              );
+            }
           }
         }
 
@@ -2012,7 +2024,13 @@ const ALLY_MAIN_CONTROLLER = (function () {
     ) {
       var selectedCourse = ALLY_COURSE_SEARCH.getSelectedCourse();
       if (selectedCourse) {
-        filters.courseName = "eq:" + selectedCourse.name;
+        // Filter by the unique courseId so name-duplicate courses cannot return
+        // the wrong record; fall back to courseName only if the id is absent.
+        if (selectedCourse.id) {
+          filters.courseId = selectedCourse.id;
+        } else {
+          filters.courseName = "eq:" + selectedCourse.name;
+        }
       }
     }
 

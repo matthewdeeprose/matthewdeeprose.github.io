@@ -165,6 +165,11 @@
     bubble.textContent = text; // plain text — never HTML for user input
     if (typeof index === "number") bubble.dataset.messageIndex = index;
     if (els.messageList) els.messageList.appendChild(bubble);
+    // Edit affordance (step 6). Added only when we have a numeric index to edit
+    // against. Because both the live send path and chat-persistence.js's
+    // rebuildMessageList() funnel user turns through here, live AND restored user
+    // bubbles get the button from this one code path — never at the call sites.
+    if (typeof index === "number") addEditButton(bubble, index);
     return bubble;
   }
 
@@ -572,6 +577,213 @@
     }
   }
 
+  // ── Message editing (step 6) ────────────────────────────────────────────────
+  // Slice 1: the user-turn edit affordance only — swap the bubble for a labelled
+  // textarea and a Cancel button, and restore on Cancel. NO Re-send, NO thread
+  // truncation, NO send-path change in this slice; those land in later slices.
+  //
+  // The wording, the HIDE_CLASS, and the cancel focus target are isolated here
+  // deliberately so they are one-line changes.
+  const EDIT_BUTTON_LABEL = "Edit";
+  const EDIT_BUTTON_RESEND_LABEL = "Re-send";
+  const EDIT_TEXTAREA_LABEL = "Edit your message";
+  const EDIT_ANNOUNCE_ENTER = "Editing your message.";
+  const EDIT_ANNOUNCE_CANCEL = "Edit cancelled.";
+  const EDIT_ANNOUNCE_COMMIT =
+    "Message updated. Later messages removed. Generating a new response.";
+  // Visually-hidden utility class (main.css) — used to name the edit textarea.
+  const HIDE_CLASS = "visually-hidden";
+
+  /**
+   * Append an Edit button to a user bubble. The icon is decorative (aria-hidden);
+   * the visible "Edit" text is always present as the button's accessible name.
+   * @param {HTMLElement} bubble the user bubble
+   * @param {number} messageIndex the turn's index in S.messages
+   */
+  function addEditButton(bubble, messageIndex) {
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "local-chat-edit-btn";
+    editBtn.innerHTML =
+      '<span aria-hidden="true" data-icon="pencil"></span> ' + EDIT_BUTTON_LABEL;
+    editBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      enterEditMode(bubble);
+    });
+    bubble.appendChild(editBtn);
+    // Populate the pencil glyph (injected via innerHTML; the auto-populator only
+    // runs once at DOMContentLoaded), mirroring renderAssistantTurn.
+    if (typeof window.refreshIcons === "function") {
+      window.refreshIcons(bubble);
+    }
+  }
+
+  /**
+   * Swap a user bubble for a labelled edit textarea and a Cancel button. One edit
+   * at a time; never while a generation is in flight. Clearing innerHTML below
+   * does not remove dataset.messageIndex (an attribute), so it survives for cancel.
+   * @param {HTMLElement} bubble the user bubble being edited
+   */
+  function enterEditMode(bubble) {
+    if (S.isGenerating) return;
+    if (S.editingBubble) return; // already editing another bubble
+
+    const msgIndex = parseInt(bubble.dataset.messageIndex, 10);
+    if (isNaN(msgIndex) || !S.messages[msgIndex]) return;
+
+    S.editingBubble = bubble;
+    const originalText = S.messages[msgIndex].content;
+
+    bubble.innerHTML = "";
+    bubble.classList.add("local-chat-bubble-editing");
+
+    // Accessible name via a visually-hidden <label> tied by id.
+    const taId = S.elId("edit-textarea-" + msgIndex);
+    const label = document.createElement("label");
+    label.className = HIDE_CLASS;
+    label.htmlFor = taId;
+    label.textContent = EDIT_TEXTAREA_LABEL;
+
+    const textarea = document.createElement("textarea");
+    textarea.id = taId;
+    textarea.className = "local-chat-edit-textarea";
+    textarea.value = originalText;
+    textarea.rows = Math.min(
+      8,
+      Math.max(2, originalText.split("\n").length + 1),
+    );
+
+    bubble.appendChild(label);
+    bubble.appendChild(textarea);
+
+    // Buttons bar — Re-send (primary action first) then Cancel.
+    const btnBar = document.createElement("div");
+    btnBar.className = "local-chat-edit-buttons";
+
+    const resendBtn = document.createElement("button");
+    resendBtn.type = "button";
+    resendBtn.className = "local-chat-edit-resend";
+    resendBtn.textContent = EDIT_BUTTON_RESEND_LABEL;
+    resendBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      commitEdit(bubble, msgIndex, textarea.value.trim());
+    });
+    btnBar.appendChild(resendBtn);
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "local-chat-edit-cancel";
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      cancelEdit(bubble);
+    });
+    btnBar.appendChild(cancelBtn);
+    bubble.appendChild(btnBar);
+
+    S.announceToScreenReader(EDIT_ANNOUNCE_ENTER);
+    textarea.focus();
+    logDebug("edit mode entered for turn", msgIndex);
+  }
+
+  /**
+   * Restore a user bubble from its stored message text (NOT stashed innerHTML), so
+   * the re-attached Edit button's click listener is live and not orphaned.
+   * @param {HTMLElement} bubble the bubble being cancelled
+   */
+  function cancelEdit(bubble) {
+    if (!bubble) return;
+    const msgIndex = parseInt(bubble.dataset.messageIndex, 10);
+
+    bubble.classList.remove("local-chat-bubble-editing");
+    bubble.innerHTML = "";
+    if (!isNaN(msgIndex) && S.messages[msgIndex]) {
+      bubble.textContent = S.messages[msgIndex].content; // mirrors createUserBubble
+    }
+    addEditButton(bubble, msgIndex); // fresh, live button
+    S.editingBubble = null;
+
+    S.announceToScreenReader(EDIT_ANNOUNCE_CANCEL);
+    // Cancel focus target (easy to change): the freshly re-attached Edit button.
+    const btn = bubble.querySelector(".local-chat-edit-btn");
+    if (btn) btn.focus();
+    logDebug("edit cancelled for turn", msgIndex);
+  }
+
+  /**
+   * Commit an edited user turn: rewrite the turn, drop the old reply and every
+   * later turn, re-render the bubble to rest, persist the truncated thread, and
+   * regenerate through the shared send back half. An empty edit discards (like
+   * Cancel) and sends nothing.
+   * @param {HTMLElement} bubble the user bubble being committed
+   * @param {number} msgIndex the turn's index in S.messages
+   * @param {string} newText the trimmed edited text
+   */
+  function commitEdit(bubble, msgIndex, newText) {
+    if (!newText) {
+      cancelEdit(bubble); // empty edit discards, does not send
+      return;
+    }
+
+    // These two lines mirror the front-half send-setup dispatchSend deliberately
+    // does not own. "off" silences the message-list live log for the DOM surgery
+    // below and the streamed reply that follows.
+    S.setMessageListLive("off");
+    S.isGenerating = true;
+
+    // Rewrite the edited turn, then truncate: the slice drops the edited turn's
+    // old reply and every later turn. dispatchSend reads this truncated S.messages
+    // live at send time, so the token window re-applies to the new payload.
+    S.messages[msgIndex].content = newText;
+    S.messages = S.messages.slice(0, msgIndex + 1);
+
+    // Remove the on-screen bubbles after the edited one. Capture the next
+    // reference BEFORE removing, and only remove siblings carrying the bubble
+    // class — any non-bubble control (e.g. a scroll-to-bottom button) stays put.
+    let sibling = bubble.nextElementSibling;
+    while (sibling) {
+      const next = sibling.nextElementSibling;
+      if (sibling.classList.contains("local-chat-bubble")) {
+        sibling.remove();
+      }
+      sibling = next;
+    }
+
+    // Rebuild the edited bubble to its resting shape (same construction as
+    // cancelEdit). dataset.messageIndex persists through innerHTML changes, so the
+    // re-attached Edit button resolves the same index.
+    bubble.classList.remove("local-chat-bubble-editing");
+    bubble.innerHTML = "";
+    bubble.textContent = newText;
+    addEditButton(bubble, msgIndex);
+
+    S.editingBubble = null;
+
+    // Persist the truncated thread now, so a failed re-send still leaves the
+    // correct saved state.
+    window.ChatPersistence.saveSession();
+
+    // Refresh conversation-state UI through the single seam.
+    window.ChatCore._updateConversationUI();
+
+    // Regenerate through the shared send back half: disableSend, the assistant
+    // bubble, the token window over the truncated thread, the send, and
+    // postGeneration (pushes the assistant turn, renders the badge from the
+    // CURRENT S.currentModel, re-enables and refocuses the input, saves, announces).
+    window.ChatCore._dispatchSend({ userPrompt: newText });
+
+    // Placed AFTER _dispatchSend deliberately: the last write to the shared
+    // announcer region wins, so this supersedes dispatchSend's generic cue.
+    S.announceToScreenReader(EDIT_ANNOUNCE_COMMIT);
+
+    // Commit focus target (easy to change): the edited bubble's fresh Edit button.
+    // The input is refocused on completion by enableSend.
+    const editBtn = bubble.querySelector(".local-chat-edit-btn");
+    if (editBtn) editBtn.focus();
+
+    logDebug("edit committed for turn", msgIndex);
+  }
+
   // ── Expose module ──────────────────────────────────────────────────────────
 
   window.ChatMessages = {
@@ -586,6 +798,10 @@
     addTimestamp: addTimestamp,
     renderRichContent: renderRichContent,
     renderAssistantTurn: renderAssistantTurn,
+    addEditButton: addEditButton,
+    enterEditMode: enterEditMode,
+    cancelEdit: cancelEdit,
+    commitEdit: commitEdit,
     // Exposed for inspection/testing.
     _modelDisplayName: modelDisplayName,
     _providerLabel: providerLabel,

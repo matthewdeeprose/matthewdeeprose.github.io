@@ -206,6 +206,64 @@
       );
       return "kept[0].content = " + r.messages[0].content;
     },
+
+    // ── Edit-plus-window coexistence (plan step 6) ────────────────────────
+    // These two cases model commitEdit's truncation as DATA: edit a turn,
+    // slice(0, k+1), then window. The end-to-end edit is proven separately in
+    // the slice-3 browser run; here we only assert the window sees the
+    // truncated payload.
+    "edit-plus-window: truncation removes post-edit turns; window sees only the truncated payload":
+      function () {
+        const full = ten(10);
+        // mirrors commitEdit — S.messages[4].content = newText;
+        // S.messages = S.messages.slice(0, 5)
+        full[4].content = "EDITED";
+        const truncated = full.slice(0, 5);
+        const r = applyTokenWindow({
+          messages: truncated,
+          limit: 200,
+          answerReservation: 20,
+          safetyMargin: 0,
+          systemPrompt: "",
+          estimate: est,
+        }); // limit is generous so nothing trims
+        assertEqual(r.dropped, 0, "edit-plus-window: nothing dropped");
+        assertEqual(r.messages.length, 5, "edit-plus-window: kept all 5 truncated turns");
+        assertEqual(
+          r.messages[r.messages.length - 1].content,
+          "EDITED",
+          "edited turn is the latest in the payload"
+        );
+        return "truncated 5, dropped 0, last = " + r.messages[r.messages.length - 1].content;
+      },
+
+    "edit-plus-window: the truncated thread still trims from the front to fit":
+      function () {
+        const full = ten(10);
+        full[6].content = "EDITED";
+        const truncated = full.slice(0, 7); // truncated = [m0..m5, EDITED], length 7
+        const r = applyTokenWindow({
+          messages: truncated,
+          limit: 60,
+          answerReservation: 20,
+          safetyMargin: 0,
+          systemPrompt: "",
+          estimate: est,
+        }); // tight limit forces a front-drop over the truncated 7; inputBudget = 40, kept shrinks to 3
+        assertEqual(r.dropped, 4, "dropped from the front of the truncated thread");
+        assertEqual(r.messages.length, 3, "edit-plus-window: kept 3 after front-drop");
+        assertEqual(
+          r.messages[0].content,
+          "m4",
+          "oldest surviving is m4 (m0–m3 front-dropped)"
+        );
+        assertEqual(
+          r.messages[r.messages.length - 1].content,
+          "EDITED",
+          "edited turn survives as the latest"
+        );
+        return "truncated 7 → kept 3 (front-dropped), last = " + r.messages[r.messages.length - 1].content;
+      },
   };
 
   // ── Shape 1 runner ──────────────────────────────────────────────────────

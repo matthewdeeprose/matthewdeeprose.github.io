@@ -90,6 +90,8 @@
     "runStage9Tests",
     "runConvertSizeTests",
     "runContextAITests",
+    "runRegistryMirrorWriteTests",
+    "runRegistryMirrorHydrateTests",
     "runReopenContextTests",
   ];
 

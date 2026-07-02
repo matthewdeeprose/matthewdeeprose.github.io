@@ -312,7 +312,6 @@
     if (S.isGenerating) return;
 
     S.isGenerating = true;
-    disableSend();
     S.setMessageListLive("off");
 
     // Clear the input.
@@ -322,6 +321,23 @@
     S.messages.push({ role: "user", content: text });
     createUserBubble(text, S.messages.length - 1);
     scrollMessagesToBottom();
+
+    // Hand off to the shared back half (assistant bubble → embed → stream).
+    dispatchSend({ userPrompt: text });
+  }
+
+  /**
+   * Shared send back-half: create the assistant bubble, set the per-turn embed
+   * properties, apply the token window and fire the streaming request. Extracted
+   * verbatim from sendMessage so a later edit-resend slice can reuse it.
+   *
+   * Owns the disableSend() side (moved here from sendMessage's front half); the
+   * enable side stays with postGeneration/postError, which the callbacks below
+   * call. assistantBubble is closed over by the callbacks.
+   * @param {{userPrompt: string}} opts
+   */
+  function dispatchSend(opts) {
+    disableSend();
 
     // Empty assistant bubble + typing indicator.
     const assistantBubble = createAssistantBubble();
@@ -342,7 +358,7 @@
     // Set per-turn instance properties. embed.model = the FULL chosen id is what
     // routes the request to the right provider; no "local/" re-prefixing.
     embed.model = S.currentModel;
-    const systemPrompt = els.systemInput ? els.systemInput.value.trim() : "";
+    const systemPrompt = S.els.systemInput ? S.els.systemInput.value.trim() : "";
     embed.systemPrompt = systemPrompt || undefined;
     embed.container = assistantBubble; // the embed renders its output here
 
@@ -381,7 +397,7 @@
 
     embed
       .sendStreamingRequest({
-        userPrompt: text, // required by the embed core's validation
+        userPrompt: opts.userPrompt, // required by the embed core's validation
         messages: messagesForApi,
         onChunk: function () {
           // The embed writes the text into embed.container itself; we only clear
@@ -563,6 +579,7 @@
   window.ChatCore = {
     init: init,
     sendMessage: sendMessage,
+    _dispatchSend: dispatchSend,
     _getOrCreateEmbed: getOrCreateEmbed,
     _postGeneration: postGeneration,
     _updateConversationUI: updateConversationUI,

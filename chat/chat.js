@@ -348,6 +348,10 @@
     const opt = select.options[select.selectedIndex] || null;
     S.currentModel = (opt && opt.value) || null;
     updateModelStatus();
+    // Refresh the Model information panel for the newly-selected model (covers
+    // first-open auto-pick, manual switch, and live re-resolve — all route here).
+    // Guarded so module load order can never make this fatal.
+    if (window.ChatModelInfo) window.ChatModelInfo.update();
   }
 
   /**

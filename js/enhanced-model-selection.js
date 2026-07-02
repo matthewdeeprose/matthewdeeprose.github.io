@@ -505,17 +505,25 @@ const EnhancedModelSelection = (function () {
    * Fallback for when no registry access is possible
    */
   function loadModelsFromExistingSelectWithCarefulDetection() {
+    // Bail BEFORE warning when there is nothing to parse yet. This function is
+    // reached on every smart-polling tick while the registry is absent, so
+    // warning above this guard spammed the console once per poll (~120 lines
+    // over the 30s poll window) even though no fallback parsing ever ran — most
+    // visibly when another tool is active and #model-select is never populated.
+    const existingSelect = document.querySelector("#model-select");
+    if (!existingSelect || existingSelect.options.length <= 1) {
+      return false;
+    }
+
+    // A real fallback is now happening: the select is populated but no registry
+    // was found, so we parse by pattern. This warns at most once — a successful
+    // parse completes init() and stops the poll.
     logWarn(
       "Using careful pattern detection - disabled models cannot be detected"
     );
     logWarn(
       "For complete disabled model exclusion, ensure modelRegistry is globally accessible"
     );
-
-    const existingSelect = document.querySelector("#model-select");
-    if (!existingSelect || existingSelect.options.length <= 1) {
-      return false;
-    }
 
     allModels = [];
     const optgroups = existingSelect.querySelectorAll("optgroup");

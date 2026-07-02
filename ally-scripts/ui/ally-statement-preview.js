@@ -1461,10 +1461,11 @@ const ALLY_STATEMENT_PREVIEW = (function () {
    * @returns {Promise<Object>} Issue data from API
    */
   async function fetchPreviewData() {
-    const filters = {
-      allyEnabled: "true",
-      courseName: "eq:" + selectedCourse.name,
-    };
+    // Filter by the unique courseId so name-duplicate courses cannot return the
+    // wrong record. Fall back to courseName only if the id is somehow absent.
+    const filters = selectedCourse.id
+      ? { allyEnabled: "true", courseId: selectedCourse.id }
+      : { allyEnabled: "true", courseName: "eq:" + selectedCourse.name };
 
     const response = await ALLY_API_CLIENT.fetchIssues({
       limit: 1,
@@ -1705,10 +1706,11 @@ const ALLY_STATEMENT_PREVIEW = (function () {
     };
 
     // Build request info for debug
-    const filters = {
-      allyEnabled: "true",
-      courseName: "eq:" + selectedCourse.name,
-    };
+    // Filter by the unique courseId so name-duplicate courses cannot return the
+    // wrong record. Fall back to courseName only if the id is somehow absent.
+    const filters = selectedCourse.id
+      ? { allyEnabled: "true", courseId: selectedCourse.id }
+      : { allyEnabled: "true", courseName: "eq:" + selectedCourse.name };
 
     debugData.request = {
       endpoint: "ISSUES",

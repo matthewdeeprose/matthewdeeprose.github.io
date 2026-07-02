@@ -16844,6 +16844,42 @@ Science,91</pre
             Clear conversation
           </button>
 
+          <!-- Export conversation (step 7 slice 3) — menu behaviour wired in chat-export.js (slice 4), enabled via updateConversationUI (slice 5) -->
+          <div class="local-chat-export-wrapper">
+            <button
+              id="chat-export"
+              type="button"
+              class="local-chat-download"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="chat-export-menu"
+              disabled
+            >
+              <span aria-hidden="true" data-icon="download"></span>
+              Export
+            </button>
+            <ul
+              id="chat-export-menu"
+              class="local-chat-export-menu"
+              role="menu"
+              aria-label="Export formats"
+              hidden
+            >
+              <li role="none">
+                <button type="button" role="menuitem" id="chat-export-markdown" data-export="markdown">Markdown (.md)</button>
+              </li>
+              <li role="none">
+                <button type="button" role="menuitem" id="chat-export-text" data-export="text">Plain text (.txt)</button>
+              </li>
+              <li role="none">
+                <button type="button" role="menuitem" id="chat-export-html" data-export="html">HTML (.html)</button>
+              </li>
+              <li role="none">
+                <button type="button" role="menuitem" id="chat-export-json" data-export="json">JSON (.json)</button>
+              </li>
+            </ul>
+          </div>
+
           <!-- Input token counter -->
           <div id="chat-input-counter" class="chat-input-counter" hidden></div>
 
@@ -17561,6 +17597,7 @@ Science,91</pre
     <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-context-ai-tests.js"></script>
     <!-- Re-open context survival P5: capture/normalise/trichotomy/divergence/stamp suite (window.runReopenContextTests) -->
     <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-reopen-context-tests.js"></script>
+    <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-registry-mirror-tests.js"></script>
     <!-- Floor summary aggregator: one normalised table across every floor suite (window.runFloorSummary) -->
     <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-floor-summary.js"></script>
     <script type="application/dev-test" data-src="mathpix-scripts/testing/mathpix-f-o-storage-corruption-tests.js"></script>
@@ -17669,6 +17706,7 @@ Science,91</pre
     <script src="chat/chat-messages.js"></script>
     <script src="chat/chat-persistence.js"></script>
     <script src="chat/chat-model-info.js"></script>
+    <script src="chat/chat-export.js"></script>
 
     <!-- Spike Text LLM Harness (temporary — remove after Wave 3 spikes) -->
     <script type="application/dev-test" data-src="image-describer/testing/spike-text-llm-harness.js"></script>
@@ -17793,6 +17831,7 @@ Science,91</pre
 
     <!-- Unified Chat Stage 2b-ii: Chat token-budget sliding-window maths suite (static) -->
     <script type="application/dev-test" data-src="chat/tests-chat-budget.js"></script>
+    <script type="application/dev-test" data-src="chat/tests-chat-export.js"></script>
 
     <!-- Phase 10D-fix: OCR merge bug fix tests -->
     <script type="application/dev-test" data-src="image-describer/testing/tests-10d-fix.js"></script>

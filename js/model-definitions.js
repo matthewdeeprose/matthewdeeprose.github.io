@@ -40700,6 +40700,152 @@ modelRegistry.registerModel("sakana/fugu-ultra", {
     errorMessage: null,
   },
 });
+
+modelRegistry.registerModel("anthropic/claude-sonnet-5", {
+  provider: "anthropic",
+  name: "Claude Sonnet 5",
+  category: "LargeContext",
+  disabled: false,
+  description:
+    "Claude Sonnet 5 is Anthropic's most capable Sonnet-class model, delivering frontier performance across coding, agents, and professional work. Features adaptive thinking with selectable reasoning effort levels (low, medium, high, max, and x-high), enabling users to balance speed and depth of analysis. Supports a 1M-token context window with text, image, and file inputs. Includes an updated tokeniser and real-time cyber safeguards that block certain high-risk dual-use activities. Optimised for complex problem-solving and enterprise applications.",
+  costs: {
+    input: 2.0,
+    output: 10.0,
+    image: 0.0,
+    file: 0.0,
+  },
+  capabilities: [
+    "text",
+    "dialogue",
+    "code",
+    "mathematics",
+    "reasoning",
+    "tool_calling",
+    "vision",
+    "multilingual",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-3.5-sonnet",
+  isFree: false,
+  metadata: {
+    categoryDescription:
+      "Frontier-class model with extended context window for complex reasoning and analysis",
+    releaseDate: "2026-06-30",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "Transformer with adaptive reasoning",
+      reasoningModes: ["low", "medium", "high", "max", "x-high"],
+      tokeniser: "updated",
+    },
+    policyLinks: {
+      privacyPolicy: "https://www.anthropic.com/privacy",
+      acceptableUse: "https://www.anthropic.com/legal/aup",
+      termsOfService: "https://www.anthropic.com/legal/terms-of-service",
+      lastUpdated: "2026-06-30",
+    },
+    languageSupport: [
+      "English",
+      "Spanish",
+      "French",
+      "German",
+      "Italian",
+      "Portuguese",
+      "Dutch",
+      "Russian",
+      "Japanese",
+      "Chinese",
+      "Korean",
+      "Arabic",
+      "Hindi",
+    ],
+    bestFor: [
+      "Complex coding tasks and software development",
+      "Agentic workflows and autonomous systems",
+      "Professional document analysis and generation",
+      "Long-form reasoning and research",
+      "Multi-step problem solving",
+      "Enterprise knowledge work",
+      "Document processing with embedded images",
+    ],
+    securityFeatures: [
+      "Real-time cyber safeguards",
+      "Dual-use activity detection",
+      "High-risk activity blocking",
+    ],
+  },
+  parameterSupport: {
+    supported: [
+      "max_tokens",
+      "stop",
+      "reasoning",
+      "include_reasoning",
+      "tools",
+      "tool_choice",
+      "structured_outputs",
+      "response_format",
+      "verbosity",
+      "max_completion_tokens",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: { p10: 0, p50: 0, p90: 0 },
+      min_p: { p10: 0, p50: 0, p90: 0 },
+      presence_penalty: { p10: 0, p50: 0, p90: 0 },
+      repetition_penalty: { p10: 1, p50: 1, p90: 1 },
+      temperature: { p10: 0.1, p50: 0.7, p90: 1.1 },
+      top_k: { p10: 0, p50: 0, p90: 0 },
+      top_p: { p10: 0.9, p50: 1, p90: 1 },
+    },
+    features: [
+      "adaptive-reasoning",
+      "reasoning-effort-control",
+      "file-processing",
+      "tool-calling",
+      "structured-outputs",
+      "vision-input",
+      "long-context-processing",
+      "system-prompt",
+    ],
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "code-generation",
+      "document-analysis",
+      "professional-workflows",
+      "multi-step-problem-solving",
+      "agentic-systems",
+      "research-support",
+    ],
+    warnings: [
+      "Higher token costs compared to smaller models — monitor usage for cost optimisation",
+      "Reasoning modes with higher effort levels may significantly increase latency and token consumption",
+      "Real-time cyber safeguards may block certain legitimate technical requests — plan accordingly for security-sensitive applications",
+      "1M context window may require careful prompt engineering to avoid relevance degradation in extremely long documents",
+    ],
+    ariaLabels: {
+      modelSelect:
+        "Claude Sonnet 5 - Frontier Sonnet-class model with 1M context, adaptive reasoning, file processing",
+      parameterSection:
+        "Parameter controls for Claude Sonnet 5 reasoning effort and output configuration",
+      statusMessages: {
+        processing: "Processing request with Claude Sonnet 5 model",
+        complete: "Response ready from Claude Sonnet 5",
+        reasoning:
+          "Generating adaptive reasoning output with Claude Sonnet 5 at selected effort level",
+        safeguardCheck:
+          "Running cyber safeguard checks on Claude Sonnet 5 request",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+
 modelRegistry.validateAllFallbacks();
 export { modelRegistry };
 window.modelRegistry = modelRegistry;

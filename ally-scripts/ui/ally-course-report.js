@@ -757,18 +757,27 @@ const ALLY_COURSE_REPORT = (function () {
           )
         : "https://prod.ally.ac/api/v2/clients/" + clientId;
 
-    var overallFilters = {
-      allyEnabled: "true",
-      courseName: "eq:" + course.name,
-    };
+    // Filter by the unique courseId so name-duplicate courses cannot return the
+    // wrong record. Fall back to courseName only if the id is somehow absent
+    // (should not happen — search always supplies course.id).
+    var courseFilters = course.id
+      ? { allyEnabled: "true", courseId: course.id }
+      : { allyEnabled: "true", courseName: "eq:" + course.name };
+
+    // Debug URL fragment mirroring courseFilters
+    var courseFilterQuery = course.id
+      ? "courseId=" + encodeURIComponent(course.id)
+      : "courseName=" + encodeURIComponent("eq:" + course.name);
+
+    var overallFilters = courseFilters;
 
     debugData.requests.overall = {
       endpoint: "OVERALL",
       region: region,
       url:
         baseUrl +
-        "/reports/overall?limit=1&offset=0&allyEnabled=true&courseName=" +
-        encodeURIComponent("eq:" + course.name),
+        "/reports/overall?limit=1&offset=0&allyEnabled=true&" +
+        courseFilterQuery,
       options: {
         limit: 1,
         offset: 0,
@@ -785,10 +794,7 @@ const ALLY_COURSE_REPORT = (function () {
     try {
       overallResult = await ALLY_API_CLIENT.fetchOverall({
         limit: 1,
-        filters: {
-          allyEnabled: "true",
-          courseName: "eq:" + course.name,
-        },
+        filters: courseFilters,
         onProgress: function (p) {
           handleProgress(p, "overview");
         },
@@ -828,18 +834,15 @@ const ALLY_COURSE_REPORT = (function () {
     showProgress("Fetching issue details...", 50);
 
     var issuesStartTime = Date.now();
-    var issuesFilters = {
-      allyEnabled: "true",
-      courseName: "eq:" + course.name,
-    };
+    var issuesFilters = courseFilters;
 
     debugData.requests.issues = {
       endpoint: "ISSUES",
       region: region,
       url:
         baseUrl +
-        "/reports/issues?limit=1&offset=0&allyEnabled=true&courseName=" +
-        encodeURIComponent("eq:" + course.name),
+        "/reports/issues?limit=1&offset=0&allyEnabled=true&" +
+        courseFilterQuery,
       options: {
         limit: 1,
         offset: 0,
@@ -856,10 +859,7 @@ const ALLY_COURSE_REPORT = (function () {
     try {
       issuesResult = await ALLY_API_CLIENT.fetchIssues({
         limit: 1,
-        filters: {
-          allyEnabled: "true",
-          courseName: "eq:" + course.name,
-        },
+        filters: courseFilters,
         onProgress: function (p) {
           handleProgress(p, "issues");
         },

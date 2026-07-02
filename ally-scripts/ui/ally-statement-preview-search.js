@@ -583,6 +583,18 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
         html += "</div>";
       }
 
+      // Internal ID (the Ally courseId used to query the API — shown to help
+      // users debug which exact course record is being reported on)
+      if (selectedCourse.id) {
+        html += '<div class="ally-selected-course-item">';
+        html += "<dt>Internal ID</dt>";
+        html +=
+          '<dd class="ally-selected-course-id ally-selected-course-code ally-selected-course-term">' +
+          escapeHtml(selectedCourse.id) +
+          "</dd>";
+        html += "</div>";
+      }
+
       html += "</dl>";
 
       elements.selectedDisplay.innerHTML = html;

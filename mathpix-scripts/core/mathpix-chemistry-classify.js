@@ -413,6 +413,100 @@
     // --- end batch 3 ---
     { id: "aldehyde", smarts: "[CX3H1]=O",      name: "aldehyde",        shortName: "aldehyde", shorthand: "–CHO" },
     { id: "hydroxyl", smarts: "[OX2H1]",        name: "hydroxyl",        shortName: "hydroxyl", shorthand: "–OH" },
+    // --- batch 4 (Phase 17-2d): the O-bridge family, class (b) — SMARTS +
+    //     refine (DEAD CODE). methoxy then acyclic ether, inserted immediately
+    //     after the landed `hydroxyl` row in legacy-emission order (legacy
+    //     passes 8, 8.5). The one hard intra-batch claim constraint is
+    //     methoxy < ether: ether's SMARTS [OX2]([#6])[#6] also matches a
+    //     methoxy O (ring-C–O–CH₃), so methoxy MUST claim first or ether
+    //     mis-reads it and emits a wrong record. ester (landed far ahead in
+    //     batch 3) already claims the acetate bridging O, so ester < ether
+    //     auto-holds — an aspirin ester O the ether SMARTS also matches is
+    //     already in `claimed` when the ether row runs. hydroxyl is disjoint:
+    //     [OX2H1] needs an H-bearing O, but a methoxy/ether O carries no H, so
+    //     the two never share an atom (findings § 4). Each refine reproduces
+    //     its legacy pass byte-for-byte and re-derives `atoms` from adjacency
+    //     in legacy order, so the record is byte-identical by construction.
+    //     methoxy supplies `attachmentVertexId` explicitly (= the ring atom,
+    //     matching the ring-internal precedent) via the existing refine-push
+    //     guard; no runCatalogue change. ether omits it — the generic
+    //     _catalogueFindRingAttachment reproduces the legacy
+    //     findRingAttachment([O]) value.
+    {
+      id: "methoxy",
+      smarts: "[c,C;R][OX2][CH3]",
+      name: null, shortName: null, shorthand: null,
+      // Legacy pass "8" (Phase 11-1f): a ring-attached –O–CH₃. The bridging O
+      // is a ring branch-point O (single-bonded to the ring), degree 2, whose
+      // other neighbour is a non-ring methyl C via a single bond, and that
+      // methyl has no onward unclaimed non-ring heavy neighbour (onward-guard).
+      // Claim-subset [O, methylC]. attachmentVertexId = the ring atom (explicit).
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const inRing = (v) => !!(v && v.value && v.value.rings && v.value.rings.length > 0);
+        const oVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => v && el(v) === "O" && !claimed.has(v.id));
+        if (!oVertex) return null;
+        const oNeighbours = adjacency.get(oVertex.id) || [];
+        if (oNeighbours.length !== 2) return null;
+        // Ring attachment (single-bonded ring neighbour) + the methyl neighbour.
+        const ringNb = oNeighbours.find(
+          (n) => inRing(n.vertex) && n.edge.bondType === "-",
+        );
+        if (!ringNb) return null;
+        const methylEdge = oNeighbours.find((n) => n.vertex.id !== ringNb.vertex.id);
+        if (!methylEdge || methylEdge.edge.bondType !== "-") return null;
+        const methylVertex = methylEdge.vertex;
+        if (el(methylVertex) !== "C" || inRing(methylVertex) || claimed.has(methylVertex.id)) return null;
+        const methylNeighbours = adjacency.get(methylVertex.id) || [];
+        const onward = methylNeighbours.filter(
+          (n) => n.vertex.id !== oVertex.id && !claimed.has(n.vertex.id) && !inRing(n.vertex),
+        );
+        if (onward.length > 0) return null;
+        return {
+          name: "methoxy group",
+          shortName: "methoxy",
+          shorthand: "–OCH₃",
+          atoms: [oVertex.id, methylVertex.id],
+          attachmentVertexId: ringNb.vertex.id,
+        };
+      },
+    },
+    {
+      id: "ether",
+      smarts: "[OX2]([#6])[#6]",
+      name: null, shortName: null, shorthand: null,
+      // Legacy pass "8.5" (Phase 15-2c): a non-ring O with degree 2 and exactly
+      // two single-bonded C neighbours. Fires only on the residual R–O–R' after
+      // ester (pass 2) and methoxy (pass 8, the row above) have claimed their
+      // O's — the shared `claimed` Set + row order reproduce that. Claim-subset
+      // [O] only. attachmentVertexId omitted → the generic
+      // _catalogueFindRingAttachment supplies the legacy findRingAttachment([O]).
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const inRing = (v) => !!(v && v.value && v.value.rings && v.value.rings.length > 0);
+        const oVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => v && el(v) === "O" && !inRing(v) && !claimed.has(v.id));
+        if (!oVertex) return null;
+        const neighbours = adjacency.get(oVertex.id) || [];
+        if (neighbours.length !== 2) return null;
+        const singleCs = neighbours.filter(
+          (n) => el(n.vertex) === "C" && n.edge.bondType === "-",
+        );
+        if (singleCs.length !== 2) return null;
+        return {
+          name: "ether",
+          shortName: "ether",
+          shorthand: null,
+          atoms: [oVertex.id],
+        };
+      },
+    },
+    // --- end batch 4 ---
     { id: "thiol",    smarts: "[SX2H1]",        name: "thiol group",     shortName: "thiol",    shorthand: "–SH" },
     { id: "nitrile",  smarts: "[CX2]#[NX1]",    name: "nitrile",         shortName: "nitrile",  shorthand: "–CN" },
     { id: "halogen",  smarts: "[F,Cl,Br,I;X1]", name: "halogen",         shortName: "halogen",  shorthand: null },
