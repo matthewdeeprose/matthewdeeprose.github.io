@@ -190,6 +190,33 @@
       }
     }
     /* Checkbox styles */
+    /* Sits the two option fieldsets side by side when there is room, and
+       stacks them when there is not. The flex-basis values are the wrap
+       threshold: below roughly 37rem of content width the row breaks. Display
+       options is given twice the growth factor because its longest label -
+       "Only show pairs passing both WCAG AA and APCA Lc 75" - is far wider
+       than any simulation label, so an even split would wrap it while leaving
+       the radio column half empty.
+       The row is a plain presentational wrapper: both fieldsets keep their own
+       legend, so the grouping a screen reader reports is unchanged. */
+    .options-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    /* Groups the four display/filter checkboxes. Border and legend colours
+       come from the site's own fieldset/legend rules in light.css and
+       dark.css - only spacing is set here. */
+    .display-options-fieldset {
+      flex: 2 1 22rem;
+      margin: 0;
+      padding: 1rem 1rem 0;
+    }
+    .display-options-fieldset legend {
+      font-weight: 600;
+    }
+
     .checkbox-container {
       display: flex;
       align-items: center;
@@ -204,6 +231,91 @@
     .checkbox-label {
       font-weight: 500;
       cursor: pointer;
+    }
+
+    /* Colour vision simulation
+       The class goes on the STABLE containers, never on generated card
+       markup: generateContrastCards() replaces cardsContainer.innerHTML
+       wholesale, so a per-element class would be wiped. Putting it on the
+       container also means the selected mode survives regeneration for free.
+       The class names are prefixed cvd- so they cannot collide with anything
+       the card generator emits.
+       Only the -webkit- prefix is kept. -moz-, -ms- and -o- never existed for
+       this property. */
+    .cvd-protanopia {
+      -webkit-filter: url(#protanopia);
+      filter: url(#protanopia);
+    }
+    .cvd-deuteranopia {
+      -webkit-filter: url(#deuteranopia);
+      filter: url(#deuteranopia);
+    }
+    .cvd-tritanopia {
+      -webkit-filter: url(#tritanopia);
+      filter: url(#tritanopia);
+    }
+    .cvd-greyscale {
+      -webkit-filter: url(#greyscale);
+      filter: url(#greyscale);
+    }
+
+    /* Border and legend colours come from the site's own fieldset/legend
+       rules in light.css and dark.css - only spacing is set here, matching
+       .display-options-fieldset above. */
+    .cvd-simulation-fieldset {
+      flex: 1 1 14rem;
+      margin: 0;
+      padding: 1rem 1rem 0;
+    }
+    .cvd-simulation-fieldset legend {
+      font-weight: 600;
+    }
+    .radio-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .radio-input {
+      width: 1rem;
+      height: 1rem;
+    }
+    .radio-label {
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .cvd-description {
+      margin: 0 0 0.75rem;
+    }
+    .cvd-caveat {
+      margin: 0 0 1.5rem;
+      font-weight: 600;
+    }
+    /* Shown only where the simulation cannot mean anything */
+    .cvd-forced-colors-note {
+      display: none;
+    }
+
+    /* Under forced colours the user's own colours have already replaced the
+       palette, so a simulation of the palette is meaningless. Neutralise the
+       filter, hide the controls, and say why rather than leaving a control
+       that silently misleads. */
+    @media (forced-colors: active) {
+      .cvd-protanopia,
+      .cvd-deuteranopia,
+      .cvd-tritanopia,
+      .cvd-greyscale {
+        -webkit-filter: none;
+        filter: none;
+      }
+      .cvd-simulation-fieldset,
+      .cvd-description,
+      .cvd-caveat {
+        display: none;
+      }
+      .cvd-forced-colors-note {
+        display: block;
+      }
     }
     /* Results section styles */
     .results-section {
@@ -234,8 +346,16 @@
       text-align: center;
       min-height: 3rem;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+    }
+    /* The background colour's own hex, under its name, when "Show hex codes"
+       is ticked. aria-hidden because the header already carries the same value
+       in visually-hidden text - exposing both would read the code twice. */
+    .card-header-hex {
+      font-weight: 400;
+      font-size: 0.875rem;
     }
     .card-body {
       padding: 1rem;
@@ -274,6 +394,9 @@
       display: flex;
       gap: 0.25rem;
       flex-shrink: 0;
+      /* A third badge (APCA) overflows a 16rem grid cell without wrapping */
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     /* Responsive adjustment for smaller cards */
@@ -311,6 +434,11 @@
       color: #7c2d12;
       border-color: #7c2d12;
     }
+    /* APCA badge — 10.9:1 against the inherited #fffff4 badge background */
+    .badge-apca {
+      color: #4c1d95;
+      border-color: #4c1d95;
+    }
 
     /* Graphics section styling */
     .graphics-section {
@@ -326,7 +454,6 @@
     .graphics-warning {
       font-size: 0.75rem;
       margin-bottom: 0.75rem;
-      font-style: italic;
       font-weight: 500;
     }
 
@@ -348,6 +475,46 @@
     .contrast-ratio {
       font-size: 0.75rem;
       margin-left: 0.5rem;
+    }
+    /* Measured APCA value, shown beside the WCAG ratio */
+    .contrast-apca {
+      white-space: nowrap;
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+      display: inline-block;
+    }
+    /* Results summary and the APCA beta note */
+    .results-summary {
+      margin: 0.5rem 0 1rem;
+      font-size: 0.875rem;
+    }
+    /* Visible background on APCA, read once in reading order. This text used to
+       live in the checkbox's aria-describedby, where a screen reader repeated it
+       on every focus and sighted users never saw it at all. */
+    .apca-intro {
+      margin: 0 0 1rem;
+      max-width: 70ch;
+    }
+    /* Collapses the explanatory prose, which is useful but sits between the
+       controls and the cards and pushes the results down the page.
+       Unlike .colour-input-summary this keeps the native marker and adds NO
+       outline override, so the site's own focus treatment applies unmodified -
+       a component rule setting outline or box-shadow here would replace that
+       treatment rather than add to it. */
+    .explanations-details {
+      margin: 0 0 1.5rem;
+      max-width: 70ch;
+    }
+    .explanations-summary {
+      cursor: pointer;
+      font-weight: 600;
+      padding: 0.25rem 0;
+    }
+    .explanations-details > p {
+      margin-top: 0.75rem;
+    }
+    .explanations-details > p:last-child {
+      margin-bottom: 0;
     }
     /* Unusable backgrounds section */
     .unusable-section {
@@ -636,36 +803,174 @@
             <h2 id="results-title" class="results-title">
               Contrast Analysis Results
             </h2>
-            <div class="checkbox-container">
-              <input
-                type="checkbox"
-                id="showRatios"
-                class="checkbox-input"
-                aria-describedby="ratios-help"
-              />
-              <label for="showRatios" class="checkbox-label">
-                Show contrast ratios
-              </label>
-              <div id="ratios-help" class="visually-hidden">
-                When checked, displays numerical contrast ratios alongside AA
-                and AAA badges
-              </div>
+            <div class="options-row">
+              <fieldset class="display-options-fieldset">
+                <legend>Display and filter options</legend>
+                <div class="checkbox-container">
+                  <input
+                    type="checkbox"
+                    id="showRatios"
+                    class="checkbox-input"
+                    aria-describedby="ratios-help"
+                  />
+                  <label for="showRatios" class="checkbox-label">
+                    Show contrast ratios
+                  </label>
+                  <div id="ratios-help" class="visually-hidden">
+                    When checked, displays numerical contrast ratios alongside
+                    AA and AAA badges
+                  </div>
+                </div>
+
+                <div class="checkbox-container">
+                  <input
+                    type="checkbox"
+                    id="showHexCodes"
+                    class="checkbox-input"
+                    aria-describedby="hex-help"
+                  />
+                  <label for="showHexCodes" class="checkbox-label">
+                    Show hex codes
+                  </label>
+                  <div id="hex-help" class="visually-hidden">
+                    When checked, displays hex colour codes alongside colour
+                    names
+                  </div>
+                </div>
+
+                <div class="checkbox-container">
+                  <input
+                    type="checkbox"
+                    id="showAPCA"
+                    class="checkbox-input"
+                    aria-describedby="apca-help"
+                  />
+                  <label for="showAPCA" class="checkbox-label">
+                    Show APCA rating
+                  </label>
+                  <div id="apca-help" class="visually-hidden">
+                    When checked, shows each pair's APCA level. Tick Show
+                    contrast ratios too for the Lc value.
+                  </div>
+                </div>
+
+                <div class="checkbox-container">
+                  <input
+                    type="checkbox"
+                    id="filterPassesBoth"
+                    class="checkbox-input"
+                    aria-describedby="filter-help"
+                  />
+                  <label for="filterPassesBoth" class="checkbox-label">
+                    Only show pairs passing both WCAG AA and APCA Lc 75
+                  </label>
+                  <div id="filter-help" class="visually-hidden">
+                    Also switches on Show APCA rating. Hides the Graphics and
+                    Large Text section.
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset class="cvd-simulation-fieldset">
+                <legend>Colour vision simulation</legend>
+                <div class="radio-container">
+                  <input
+                    type="radio"
+                    name="cvdMode"
+                    id="cvdModeNone"
+                    class="radio-input"
+                    value="none"
+                    checked
+                  />
+                  <label for="cvdModeNone" class="radio-label">None</label>
+                </div>
+                <div class="radio-container">
+                  <input
+                    type="radio"
+                    name="cvdMode"
+                    id="cvdModeProtanopia"
+                    class="radio-input"
+                    value="protanopia"
+                  />
+                  <label for="cvdModeProtanopia" class="radio-label">
+                    Protanopia
+                  </label>
+                </div>
+                <div class="radio-container">
+                  <input
+                    type="radio"
+                    name="cvdMode"
+                    id="cvdModeDeuteranopia"
+                    class="radio-input"
+                    value="deuteranopia"
+                  />
+                  <label for="cvdModeDeuteranopia" class="radio-label">
+                    Deuteranopia
+                  </label>
+                </div>
+                <div class="radio-container">
+                  <input
+                    type="radio"
+                    name="cvdMode"
+                    id="cvdModeTritanopia"
+                    class="radio-input"
+                    value="tritanopia"
+                  />
+                  <label for="cvdModeTritanopia" class="radio-label">
+                    Tritanopia
+                  </label>
+                </div>
+                <div class="radio-container">
+                  <input
+                    type="radio"
+                    name="cvdMode"
+                    id="cvdModeGreyscale"
+                    class="radio-input"
+                    value="greyscale"
+                  />
+                  <label for="cvdModeGreyscale" class="radio-label">
+                    Greyscale (luminance only)
+                  </label>
+                </div>
+              </fieldset>
             </div>
 
-            <div class="checkbox-container">
-              <input
-                type="checkbox"
-                id="showHexCodes"
-                class="checkbox-input"
-                aria-describedby="hex-help"
-              />
-              <label for="showHexCodes" class="checkbox-label">
-                Show hex codes
-              </label>
-              <div id="hex-help" class="visually-hidden">
-                When checked, displays hex colour codes alongside colour names
-              </div>
-            </div>
+            <details class="explanations-details">
+              <summary class="explanations-summary">
+                How to read these results
+              </summary>
+              <p class="cvd-description" id="cvdDescription">
+                Colours are shown as they are, with no simulation applied.
+              </p>
+              <p class="cvd-caveat">
+                The contrast ratios and APCA values on the cards are always
+                computed from the original colours. They do not change under
+                simulation.
+              </p>
+              <p class="cvd-forced-colors-note">
+                Colour vision simulation is unavailable because your system is
+                using forced colours. Your own colour choices have already
+                replaced this palette, so simulating the palette would show you
+                nothing about it.
+              </p>
+              <p class="apca-intro">
+                APCA, the Accessible Perceptual Contrast Algorithm, is the
+                candidate contrast method for WCAG 3. It models perceived
+                readability more closely than the WCAG 2 ratio, particularly
+                for light text on dark backgrounds. Filtering to pairs that
+                pass both standards removes the Graphics and Large Text
+                section, because a pair that does not reach 4.5 to 1 cannot
+                satisfy WCAG AA. APCA is in beta and subject to change.
+              </p>
+            </details>
+
+            <p class="results-summary" id="resultsSummary"></p>
+            <span
+              id="resultsAnnouncement"
+              class="visually-hidden"
+              role="status"
+              aria-live="polite"
+            ></span>
             <ul
               class="cards-container"
               id="cardsContainer"
@@ -683,7 +988,7 @@
               <h3 id="unusable-title" class="unusable-title">
                 <span aria-hidden="true">⚠️</span> Unusable Background Colours
               </h3>
-              <p style="margin-bottom: 1rem">
+              <p style="margin-bottom: 1rem" id="unusableDescription">
                 These colours cannot be used as backgrounds because they don't
                 provide sufficient contrast with any text colour for WCAG AA
                 compliance.
@@ -812,6 +1117,7 @@
       </footer>
     </div>
     <script src="https://matthewdeeprose.github.io/scripts/chroma.min.js"></script>
+    <script src="contrast-cards-cvd.js"></script>
 
     <script>
       const ColourContrastAnalyser = (function () {
@@ -898,6 +1204,49 @@ const DEFAULT_COLOURS = [
           { name: "Digital Amethyst", hex: "#ff34d3" },
         ];
 
+        // WCAG 2 contrast ratio thresholds
+        const WCAG_THRESHOLDS = Object.freeze({
+          GRAPHICS: 3.0,
+          AA_NORMAL: 4.5,
+          AAA_NORMAL: 7.0,
+        });
+
+        // APCA lightness contrast required by the "passes both" filter
+        const APCA_FILTER_MINIMUM = 75;
+
+        // APCA levels, highest first. Only the highest level met is badged -
+        // APCA badges do not stack the way WCAG AA and AAA do.
+        const APCA_LEVELS = Object.freeze([
+          { min: 90, badge: "Lc90+", description: "the preferred level for body text" },
+          { min: 75, badge: "Lc75+", description: "the minimum for body text" },
+          { min: 60, badge: "Lc60+", description: "the minimum for larger content text" },
+          {
+            min: 45,
+            badge: "Lc45+",
+            description:
+              "the minimum for large headline text and essential non-text",
+          },
+          {
+            min: 30,
+            badge: "Lc30+",
+            description:
+              "spot-readable only, such as placeholder or disabled text",
+          },
+        ]);
+
+        // Lowest badged level; below this a pair carries no APCA badge
+        const APCA_LOWEST_LEVEL = APCA_LEVELS[APCA_LEVELS.length - 1].min;
+
+        // Spoken when ticking the filter switches the APCA checkbox on, since
+        // a programmatic .checked change is invisible to a screen reader
+        const COUPLING_ANNOUNCEMENT = "Show APCA rating has been switched on.";
+
+        // Wording for the standard the unusable list and summary are judged against
+        const STANDARD_LABELS = Object.freeze({
+          DEFAULT: "a contrast ratio of 3 to 1",
+          PASSES_BOTH: "both WCAG AA and APCA Lc 75",
+        });
+
         // DOM elements
         let elements = {};
 
@@ -905,7 +1254,30 @@ const DEFAULT_COLOURS = [
         let parsedColours = [];
         let showContrastRatios = false;
         let showHexCodes = false;
+        let showAPCA = false;
+        let filterPassesBoth = false;
         let hasColoursWithNames = false;
+
+        // Last summary text spoken through the live region, so an unchanged
+        // summary is never rewritten (and so never spoken twice)
+        let lastAnnouncedSummary = "";
+
+        // Last colour vision simulation mode spoken. Tracked separately from
+        // lastAnnouncedSummary because the two messages are independent - a
+        // simulation change must not re-speak the results summary, and a
+        // summary change must not re-speak the simulation mode.
+        let lastAnnouncedSimulationMode = "none";
+
+        /**
+         * Find the highest APCA level an absolute Lc value meets
+         * @param {number} lcAbsolute - Absolute APCA lightness contrast
+         * @returns {Object|null} Matching level object, or null below the lowest level
+         */
+        function getAPCALevel(lcAbsolute) {
+          return (
+            APCA_LEVELS.find((level) => lcAbsolute >= level.min) || null
+          );
+        }
 
         /**
          * Initialise the application
@@ -921,12 +1293,31 @@ const DEFAULT_COLOURS = [
             clearBtn: document.getElementById("clearBtn"),
             showRatios: document.getElementById("showRatios"),
             showHexCodes: document.getElementById("showHexCodes"),
+            showAPCA: document.getElementById("showAPCA"),
+            filterPassesBoth: document.getElementById("filterPassesBoth"),
+            resultsSummary: document.getElementById("resultsSummary"),
+            resultsAnnouncement: document.getElementById("resultsAnnouncement"),
             cardsContainer: document.getElementById("cardsContainer"),
             unusableSection: document.getElementById("unusableSection"),
             unusableColours: document.getElementById("unusableColours"),
+            unusableDescription: document.getElementById("unusableDescription"),
             colourInputDetails: document.getElementById("colourInputDetails"),
             colourInputSummary: document.getElementById("colourInputSummary"),
+            cvdModeRadios: document.querySelectorAll('input[name="cvdMode"]'),
+            cvdDescription: document.getElementById("cvdDescription"),
           };
+
+          // Generate the SVG filters the simulation classes reference. A
+          // filter that fails to resolve renders nothing and throws nothing,
+          // so an absent host is indistinguishable from a subtle simulation -
+          // hence the explicit warning rather than a silent no-op.
+          if (window.ContrastCardsCVD) {
+            window.ContrastCardsCVD.buildSVGFilters();
+          } else {
+            logWarn(
+              "ContrastCardsCVD not loaded - colour vision simulation unavailable"
+            );
+          }
 
           // Bind event listeners
           bindEventListeners();
@@ -952,6 +1343,15 @@ const DEFAULT_COLOURS = [
             "change",
             handleShowHexCodesChange
           );
+          elements.showAPCA.addEventListener("change", handleShowAPCAChange);
+          elements.filterPassesBoth.addEventListener(
+            "change",
+            handleFilterPassesBothChange
+          );
+
+          elements.cvdModeRadios.forEach((radio) => {
+            radio.addEventListener("change", handleCVDModeChange);
+          });
 
           // Details/summary accessibility handling
           elements.colourInputDetails.addEventListener(
@@ -993,6 +1393,12 @@ const DEFAULT_COLOURS = [
             parsedColours = [...DEFAULT_COLOURS];
             updateHexCodesCheckboxState();
             generateContrastCards();
+
+            // Seed the announcement baseline WITHOUT announcing. This load lands
+            // inside the page load window, and a live region must not speak the
+            // initial set - only later, user-initiated changes to it.
+            lastAnnouncedSummary = elements.resultsSummary.textContent;
+
             logInfo(
               `Auto-generated contrast cards for ${parsedColours.length} default colours`
             );
@@ -1028,6 +1434,7 @@ const DEFAULT_COLOURS = [
 
             updateHexCodesCheckboxState();
             generateContrastCards();
+            announceResultsSummary();
             logInfo(
               `Generated contrast cards for ${parsedColours.length} colours`
             );
@@ -1049,7 +1456,9 @@ const DEFAULT_COLOURS = [
           ).join("\n");
           elements.colourInput.value = defaultInput;
 
-          // Automatically generate cards with default colours
+          // Automatically generate cards with default colours. This announces
+          // via handleGenerateCards - do not announce again here, or the one
+          // event speaks twice.
           handleGenerateCards();
         }
 
@@ -1063,6 +1472,8 @@ const DEFAULT_COLOURS = [
           elements.unusableSection.classList.remove("visible");
           clearErrorMessages();
           parsedColours = [];
+          elements.resultsSummary.textContent = "No colours to analyse.";
+          announceResultsSummary();
         }
 
         /**
@@ -1076,6 +1487,7 @@ const DEFAULT_COLOURS = [
           if (parsedColours.length > 0) {
             generateContrastCards();
           }
+          announceResultsSummary();
         }
 
         /**
@@ -1089,6 +1501,154 @@ const DEFAULT_COLOURS = [
           if (parsedColours.length > 0) {
             generateContrastCards();
           }
+          announceResultsSummary();
+        }
+
+        /**
+         * Handle show APCA rating checkbox change
+         */
+        function handleShowAPCAChange() {
+          showAPCA = elements.showAPCA.checked;
+          logDebug("Show APCA rating:", showAPCA);
+
+          // Re-generate cards if colours are already parsed
+          if (parsedColours.length > 0) {
+            generateContrastCards();
+          }
+          announceResultsSummary();
+        }
+
+        /**
+         * Handle "passes both standards" filter checkbox change
+         */
+        function handleFilterPassesBothChange() {
+          filterPassesBoth = elements.filterPassesBoth.checked;
+          logDebug("Filter to pairs passing both standards:", filterPassesBoth);
+
+          // Ticking the filter switches APCA on as well, so the evidence for
+          // what is being filtered out is on screen rather than rows silently
+          // vanishing. Unticking the filter leaves the APCA setting alone.
+          // Setting .checked fires no change event, which is what we want - but
+          // it also means a non-sighted user gets no sign that a second control
+          // moved, so the change is announced instead.
+          let couplingMessage = "";
+          if (filterPassesBoth && !elements.showAPCA.checked) {
+            elements.showAPCA.checked = true;
+            showAPCA = true;
+            couplingMessage = COUPLING_ANNOUNCEMENT;
+            logDebug("Filter switched Show APCA rating on");
+          }
+
+          // Re-generate cards if colours are already parsed
+          if (parsedColours.length > 0) {
+            generateContrastCards();
+          }
+          announceResultsSummary(couplingMessage);
+        }
+
+        /**
+         * Handle a colour vision simulation mode change.
+         *
+         * The cards are NOT regenerated. The filter is presentational and the
+         * generated HTML is identical under every mode, so regenerating would
+         * cost 45 cards of DOM work to produce the same markup - and would
+         * re-run the summary announcement as a side effect.
+         * @param {Event} event - Change event from a cvdMode radio
+         */
+        function handleCVDModeChange(event) {
+          applySimulationMode(event.target.value);
+        }
+
+        /**
+         * Move the simulation class to the two stable containers.
+         * Never onto generated card markup, which generateContrastCards()
+         * replaces wholesale.
+         * @param {string} mode - A ContrastCardsCVD.MODES value
+         */
+        function applySimulationMode(mode) {
+          const cvd = window.ContrastCardsCVD;
+          if (!cvd) {
+            logWarn("Colour vision simulation requested but module not loaded");
+            return;
+          }
+
+          const targets = [elements.cardsContainer, elements.unusableSection];
+
+          // Remove every simulation class before adding the wanted one, so
+          // the classes cannot stack when a mode is selected twice.
+          cvd.getModes().forEach((candidate) => {
+            if (candidate === cvd.MODES.NONE) return;
+            targets.forEach((target) =>
+              target.classList.remove(`cvd-${candidate}`)
+            );
+          });
+
+          if (mode !== cvd.MODES.NONE) {
+            targets.forEach((target) => target.classList.add(`cvd-${mode}`));
+          }
+
+          const modeInfo = cvd.describeMode(mode);
+          elements.cvdDescription.textContent = modeInfo.description;
+          logDebug("Colour vision simulation mode:", mode);
+
+          announceSimulationMode(mode, modeInfo.label);
+        }
+
+        /**
+         * Announce a simulation mode change through the live region.
+         *
+         * Deliberately NOT routed through announceResultsSummary, which
+         * composes summaryText + extraMessage and would re-speak the whole
+         * results summary alongside the simulation line. This writes a short
+         * message of its own, with its own write-if-changed guard, to the
+         * same long-lived region.
+         * @param {string} mode - A ContrastCardsCVD.MODES value
+         * @param {string} label - Human-readable mode label
+         */
+        function announceSimulationMode(mode, label) {
+          if (mode === lastAnnouncedSimulationMode) {
+            logDebug("Simulation mode unchanged - nothing announced");
+            return;
+          }
+          lastAnnouncedSimulationMode = mode;
+
+          // Reached only via applySimulationMode, which has already returned
+          // early if the module is absent, so the global is safe to read here.
+          const announcement =
+            mode === window.ContrastCardsCVD.MODES.NONE
+              ? "Colour vision simulation off."
+              : `${label} simulation on.`;
+          elements.resultsAnnouncement.textContent = announcement;
+          logDebug("Announced:", announcement);
+        }
+
+        /**
+         * Announce the results summary through the live region.
+         * Called ONLY from user-initiated changes - never from the page load
+         * generation, whose text is seeded into lastAnnouncedSummary instead.
+         * Writes when the summary text has changed, or when a supplementary
+         * message needs to be carried even though the summary has not.
+         * @param {string} [extraMessage] - Supplementary sentence to append
+         */
+        function announceResultsSummary(extraMessage = "") {
+          const summaryText = elements.resultsSummary.textContent;
+          const summaryChanged = summaryText !== lastAnnouncedSummary;
+
+          if (!summaryChanged && !extraMessage) {
+            logDebug("Results summary unchanged - nothing announced");
+            return;
+          }
+
+          // The comparison baseline stays the summary text ALONE. The extra
+          // sentence is never folded into it, or the write-if-changed guard
+          // would compare against a string the summary never held.
+          lastAnnouncedSummary = summaryText;
+
+          const announcement = extraMessage
+            ? `${summaryText} ${extraMessage}`
+            : summaryText;
+          elements.resultsAnnouncement.textContent = announcement;
+          logDebug("Announced:", announcement);
         }
 
         /**
@@ -1278,8 +1838,9 @@ const DEFAULT_COLOURS = [
           const unusableColours = [];
 
           for (const backgroundColour of parsedColours) {
-            const contrastingColours = [];
-            const graphicsOnlyColours = [];
+            // Evaluate every pair first, then bucket - the filter needs the
+            // full candidate set before anything is placed in a section.
+            const candidates = [];
 
             for (const textColour of parsedColours) {
               if (backgroundColour.hex === textColour.hex) continue;
@@ -1289,26 +1850,50 @@ const DEFAULT_COLOURS = [
                 textColour.hex
               );
 
-              if (contrastRatio >= 4.5) {
-                // AA standard for normal text
-                const isAAA = contrastRatio >= 7.0;
-                contrastingColours.push({
-                  colour: textColour,
-                  ratio: contrastRatio,
-                  isAA: true,
-                  isAAA: isAAA,
-                  type: "normal",
-                });
-              } else if (contrastRatio >= 3.0) {
-                // Graphics and large text only
-                graphicsOnlyColours.push({
-                  colour: textColour,
-                  ratio: contrastRatio,
-                  isGraphics: true,
-                  type: "graphics",
-                });
-              }
+              // Hard floor: a pair below 3 to 1 is never rendered, in any mode
+              if (contrastRatio < WCAG_THRESHOLDS.GRAPHICS) continue;
+
+              // Argument order is load-bearing: contrastAPCA(text, background)
+              // is NOT symmetric, unlike chroma.contrast above.
+              const apcaSigned = chroma.contrastAPCA(
+                textColour.hex,
+                backgroundColour.hex
+              );
+
+              // The sign is discarded deliberately, not overlooked: it only
+              // restates which colour is lighter, which the card already shows.
+              const apcaValue = Math.round(Math.abs(apcaSigned));
+
+              const isAA = contrastRatio >= WCAG_THRESHOLDS.AA_NORMAL;
+
+              candidates.push({
+                colour: textColour,
+                ratio: contrastRatio,
+                apcaValue: apcaValue,
+                apcaLevel: getAPCALevel(apcaValue),
+                isAA: isAA,
+                isAAA: contrastRatio >= WCAG_THRESHOLDS.AAA_NORMAL,
+                isGraphics: !isAA,
+                type: isAA ? "normal" : "graphics",
+              });
             }
+
+            const visibleCandidates = filterPassesBoth
+              ? candidates.filter(
+                  (candidate) =>
+                    candidate.isAA &&
+                    candidate.apcaValue >= APCA_FILTER_MINIMUM
+                )
+              : candidates;
+
+            // With the filter on this is always empty, because a graphics pair
+            // sits between 3 and 4.5 to 1 and so cannot satisfy WCAG AA.
+            const graphicsOnlyColours = visibleCandidates.filter(
+              (candidate) => !candidate.isAA
+            );
+            const contrastingColours = visibleCandidates.filter(
+              (candidate) => candidate.isAA
+            );
 
             if (
               contrastingColours.length > 0 ||
@@ -1332,10 +1917,75 @@ const DEFAULT_COLOURS = [
           // Update unusable colours section
           updateUnusableSection(unusableColours);
 
+          // Update the visible summary. This is NOT a live region - announcing
+          // is a separate, user-initiated step (see announceResultsSummary).
+          updateResultsSummary(cardsHTML.length, unusableColours.length);
+
           logInfo(
             `Generated ${cardsHTML.length} cards, ${unusableColours.length} unusable colours`
           );
         }
+
+        /**
+         * Update the visible results summary text
+         * @param {number} cardCount - Number of cards rendered
+         * @param {number} unusableCount - Number of colours with no usable text colour
+         */
+        function updateResultsSummary(cardCount, unusableCount) {
+          const standardLabel = filterPassesBoth
+            ? STANDARD_LABELS.PASSES_BOTH
+            : STANDARD_LABELS.DEFAULT;
+
+          let summary = `Showing ${cardCount} of ${parsedColours.length} background colours.`;
+
+          if (unusableCount > 0) {
+            summary += ` ${unusableCount} ${
+              unusableCount === 1 ? "has" : "have"
+            } no text colour meeting ${standardLabel}.`;
+          } else {
+            summary += " Every colour has at least one usable text colour.";
+          }
+
+          elements.resultsSummary.textContent = summary;
+          logDebug("Results summary:", summary);
+        }
+        /**
+         * Build the APCA badge, screen reader wording and measured value for one pair.
+         * Shared by the normal text and graphics loops, which paint their rows
+         * differently but measure APCA the same way - from the pair's own colours.
+         * @param {Object} contrast - Candidate object carrying apcaValue and apcaLevel
+         * @param {string} valueColour - Colour to paint the measured Lc value in
+         * @returns {Object} Badge HTML, badge screen reader text, value HTML and value screen reader text
+         */
+        function buildAPCAParts(contrast, valueColour) {
+          const parts = {
+            badge: "",
+            badgeScreenReaderText: "",
+            valueHTML: "",
+            valueScreenReaderText: "",
+          };
+
+          if (!showAPCA) return parts;
+
+          const level = contrast.apcaLevel;
+
+          if (level) {
+            parts.badge = `<span class="contrast-badge badge-apca" aria-hidden="true">${level.badge}</span>`;
+            parts.badgeScreenReaderText = `meets APCA level Lc ${level.min}, ${level.description}`;
+          } else {
+            // Below the lowest level there is no badge, but the reader is still told
+            parts.badgeScreenReaderText = `is below APCA Lc ${APCA_LOWEST_LEVEL}`;
+          }
+
+          // The measured value rides on the existing ratios checkbox
+          if (showContrastRatios) {
+            parts.valueHTML = `<span class="contrast-apca" style="color: ${valueColour};" aria-hidden="true">Lc ${contrast.apcaValue}</span>`;
+            parts.valueScreenReaderText = `, APCA lightness contrast ${contrast.apcaValue}`;
+          }
+
+          return parts;
+        }
+
         /**
          * Generate HTML for a single contrast card
          * @param {Object} backgroundColour - Background colour object
@@ -1368,6 +2018,15 @@ const DEFAULT_COLOURS = [
             ? `<span class="visually-hidden">, hex code ${backgroundColour.hex}</span>`
             : "";
 
+          // ...and the visible one under the name, matching how each text
+          // colour already shows its own hex. Suppressed when the name IS the
+          // hex, which is the hex-only input case, or the card would print the
+          // same code twice.
+          const backgroundHexVisible =
+            showHexCodes && backgroundColour.name !== backgroundColour.hex
+              ? `<span class="card-header-hex" aria-hidden="true">${backgroundColour.hex}</span>`
+              : "";
+
           let cardHTML = `
             <li class="colour-card" style="background-color: ${
               backgroundColour.hex
@@ -1375,7 +2034,7 @@ const DEFAULT_COLOURS = [
                 <div class="card-header" style="color: ${headerTextColour};">
                     <span class="visually-hidden">Background colour: </span>${escapeHTML(
                       backgroundColour.name
-                    )}${backgroundHexForSR}
+                    )}${backgroundHexForSR}${backgroundHexVisible}
                 </div>
                 <div class="card-body">
         `;
@@ -1407,6 +2066,14 @@ const DEFAULT_COLOURS = [
                 );
               }
 
+              const apcaParts = buildAPCAParts(contrast, contrast.colour.hex);
+              if (apcaParts.badge) {
+                badges.push(apcaParts.badge);
+              }
+              if (apcaParts.badgeScreenReaderText) {
+                badgeScreenReaderText.push(apcaParts.badgeScreenReaderText);
+              }
+
               // Build screen reader announcement for badges
               const badgesScreenReaderSpan =
                 badgeScreenReaderText.length > 0
@@ -1429,7 +2096,7 @@ const DEFAULT_COLOURS = [
               if (showContrastRatios) {
                 displayText += `<span class="visually-hidden">, contrast ratio ${contrast.ratio.toFixed(
                   1
-                )} to 1</span>`;
+                )} to 1${apcaParts.valueScreenReaderText}</span>`;
               }
 
               // Show hex code visually if checkbox is checked
@@ -1459,7 +2126,9 @@ const DEFAULT_COLOURS = [
                             <div class="contrast-text">
                                 <span class="colour-name" style="color: ${
                                   contrast.colour.hex
-                                };">${displayText}</span>${ratioDisplay}
+                                };">${displayText}</span>${ratioDisplay}${
+                apcaParts.valueHTML
+              }
                             </div>
                             <div class="colour-swatch-small" style="background-color: ${
                               contrast.colour.hex
@@ -1493,8 +2162,23 @@ const DEFAULT_COLOURS = [
               const badges = [
                 '<span class="contrast-badge badge-graphics" aria-hidden="true">G / AA18</span>',
               ];
-              const badgesScreenReaderSpan =
-                '<span class="visually-hidden">has contrast above 3 to 1, suitable for graphics and large text only, satisfying WCAG double A for 18 point or higher</span>';
+              const badgeScreenReaderText = [
+                "has contrast above 3 to 1, suitable for graphics and large text only, satisfying WCAG double A for 18 point or higher",
+              ];
+
+              // APCA is measured from the pair's own colours, even though this
+              // row is painted in the header text colour rather than the pair's
+              const apcaParts = buildAPCAParts(contrast, headerTextColour);
+              if (apcaParts.badge) {
+                badges.push(apcaParts.badge);
+              }
+              if (apcaParts.badgeScreenReaderText) {
+                badgeScreenReaderText.push(apcaParts.badgeScreenReaderText);
+              }
+
+              const badgesScreenReaderSpan = `<span class="visually-hidden">${badgeScreenReaderText.join(
+                ", "
+              )}</span>`;
 
               // Build graphics colour display with conditional information based on checkbox settings
               let displayText = `<span class="visually-hidden">Graphics colour: </span>${escapeHTML(
@@ -1510,7 +2194,7 @@ const DEFAULT_COLOURS = [
               if (showContrastRatios) {
                 displayText += `<span class="visually-hidden">, contrast ratio ${contrast.ratio.toFixed(
                   1
-                )} to 1</span>`;
+                )} to 1${apcaParts.valueScreenReaderText}</span>`;
               }
 
               // Show hex code visually if checkbox is checked
@@ -1537,7 +2221,7 @@ const DEFAULT_COLOURS = [
                     <div class="contrast-item" style="${borderStyle}">
                         <div class="contrast-text-container">
                             <div class="contrast-text">
-                                <span class="colour-name" style="color: ${headerTextColour};">${displayText}</span>${ratioDisplay}
+                                <span class="colour-name" style="color: ${headerTextColour};">${displayText}</span>${ratioDisplay}${apcaParts.valueHTML}
                             </div>
                             <div class="colour-swatch-small" style="background-color: ${
                               contrast.colour.hex
@@ -1570,6 +2254,13 @@ const DEFAULT_COLOURS = [
             elements.unusableSection.classList.remove("visible");
             return;
           }
+
+          // The list follows the active filter, so its wording has to name the
+          // standard those colours actually failed
+          const standardLabel = filterPassesBoth
+            ? STANDARD_LABELS.PASSES_BOTH
+            : STANDARD_LABELS.DEFAULT;
+          elements.unusableDescription.textContent = `These colours cannot be used as backgrounds because no other colour in the palette meets ${standardLabel} against them.`;
 
           const coloursHTML = unusableColours
             .map(
@@ -1629,12 +2320,102 @@ const DEFAULT_COLOURS = [
         }
 
         /**
+         * Set a checkbox by clicking it, so its change handler runs and the
+         * module state stays in step. Assigning .checked directly fires no
+         * change event and silently desynchronises the two.
+         * @param {HTMLInputElement} input - Checkbox to set
+         * @param {boolean} wanted - Desired checked state
+         */
+        function setCheckboxByClick(input, wanted) {
+          if (input.checked !== wanted) input.click();
+        }
+
+        /**
+         * Prove the filter/APCA coupling announcement.
+         *
+         * The coupling only engages on the transition into "filter on while APCA
+         * is off", so this establishes that precondition itself rather than
+         * assuming it - an assertion that reddens when the page merely happened
+         * to be in another state is a false alarm, and false alarms get ignored.
+         * If the precondition cannot be reached the row SKIPS; it never fails
+         * for a reason other than the behaviour under test.
+         *
+         * @returns {Object} Outcome with result "passed", "failed" or "skipped"
+         */
+        function testCouplingAnnouncement() {
+          const outcome = { name: "coupling announcement", result: "not run" };
+
+          const original = {
+            showAPCA: elements.showAPCA.checked,
+            filterPassesBoth: elements.filterPassesBoth.checked,
+            announcement: elements.resultsAnnouncement.textContent,
+            lastAnnounced: lastAnnouncedSummary,
+          };
+
+          try {
+            // Reach the only state the coupling can fire from
+            setCheckboxByClick(elements.filterPassesBoth, false);
+            setCheckboxByClick(elements.showAPCA, false);
+
+            // Check DOM and module state agree before trusting the run
+            const preconditionMet =
+              elements.showAPCA.checked === false &&
+              showAPCA === false &&
+              elements.filterPassesBoth.checked === false &&
+              filterPassesBoth === false;
+
+            if (!preconditionMet) {
+              outcome.result = "skipped";
+              outcome.reason =
+                "could not reach the precondition: filter off with APCA off";
+              return outcome;
+            }
+
+            elements.filterPassesBoth.click();
+
+            const spoken = elements.resultsAnnouncement.textContent;
+            outcome.spoken = spoken;
+            outcome.checks = {
+              apcaSwitchedOn:
+                elements.showAPCA.checked === true && showAPCA === true,
+              couplingSentenceSpoken: spoken.endsWith(COUPLING_ANNOUNCEMENT),
+              announcementLedBySummary: spoken.startsWith(
+                elements.resultsSummary.textContent
+              ),
+              summaryNotContaminated: !elements.resultsSummary.textContent.includes(
+                COUPLING_ANNOUNCEMENT
+              ),
+            };
+            outcome.result = Object.values(outcome.checks).every(Boolean)
+              ? "passed"
+              : "failed";
+          } finally {
+            // Restore in a finally so a throw cannot leave the page mutated
+            setCheckboxByClick(elements.filterPassesBoth, original.filterPassesBoth);
+            setCheckboxByClick(elements.showAPCA, original.showAPCA);
+            elements.resultsAnnouncement.textContent = original.announcement;
+            lastAnnouncedSummary = original.lastAnnounced;
+
+            outcome.restoredCleanly =
+              elements.showAPCA.checked === original.showAPCA &&
+              elements.filterPassesBoth.checked === original.filterPassesBoth &&
+              elements.resultsAnnouncement.textContent === original.announcement &&
+              lastAnnouncedSummary === original.lastAnnounced;
+          }
+
+          console.table({ ...outcome.checks, result: outcome.result });
+          return outcome;
+        }
+
+        /**
          * Console testing function to verify checkbox states and screen reader output
          */
         function testScreenReaderOutput() {
           console.log("=== CHECKBOX STATE TEST ===");
           console.log("Show Hex Codes:", showHexCodes);
           console.log("Show Contrast Ratios:", showContrastRatios);
+          console.log("Show APCA Rating:", showAPCA);
+          console.log("Filter to pairs passing both:", filterPassesBoth);
           console.log("");
 
           console.log("=== SAMPLE SCREEN READER OUTPUT ===");
@@ -1651,22 +2432,42 @@ const DEFAULT_COLOURS = [
           const textColour = { name: "Rich Black", hex: "#00131D" };
           const ratio = 18.9;
 
+          // Measured from the real pair, text colour first - the argument order
+          // of contrastAPCA is load-bearing
+          const textAPCA = Math.round(
+            Math.abs(chroma.contrastAPCA(textColour.hex, bgColour.hex))
+          );
+          const textAPCALevel = getAPCALevel(textAPCA);
+
           let srText = `Text colour: ${textColour.name}`;
           if (showHexCodes) {
             srText += `, hex code ${textColour.hex}`;
           }
           if (showContrastRatios) {
             srText += `, contrast ratio ${ratio.toFixed(1)} to 1`;
+            if (showAPCA) {
+              srText += `, APCA lightness contrast ${textAPCA}`;
+            }
           }
           console.log("Text colour:", srText);
-          console.log(
-            "WCAG badge:",
-            "has contrast above 7 to 1 satisfying WCAG triple A, has contrast above 4.5 to 1 satisfying WCAG double A"
-          );
+
+          let wcagBadgeText =
+            "has contrast above 7 to 1 satisfying WCAG triple A, has contrast above 4.5 to 1 satisfying WCAG double A";
+          if (showAPCA) {
+            wcagBadgeText += textAPCALevel
+              ? `, meets APCA level Lc ${textAPCALevel.min}, ${textAPCALevel.description}`
+              : `, is below APCA Lc ${APCA_LOWEST_LEVEL}`;
+          }
+          console.log("WCAG badge:", wcagBadgeText);
 
           // Graphics colour example
           const graphicsColour = { name: "Horizon 3", hex: "#E63037" };
           const graphicsRatio = 3.5;
+
+          const graphicsAPCA = Math.round(
+            Math.abs(chroma.contrastAPCA(graphicsColour.hex, bgColour.hex))
+          );
+          const graphicsAPCALevel = getAPCALevel(graphicsAPCA);
 
           let srGraphicsText = `Graphics colour: ${graphicsColour.name}`;
           if (showHexCodes) {
@@ -1676,19 +2477,44 @@ const DEFAULT_COLOURS = [
             srGraphicsText += `, contrast ratio ${graphicsRatio.toFixed(
               1
             )} to 1`;
+            if (showAPCA) {
+              srGraphicsText += `, APCA lightness contrast ${graphicsAPCA}`;
+            }
           }
           console.log("Graphics colour:", srGraphicsText);
+
+          let graphicsBadgeText =
+            "has contrast above 3 to 1, suitable for graphics and large text only, satisfying WCAG double A for 18 point or higher";
+          if (showAPCA) {
+            graphicsBadgeText += graphicsAPCALevel
+              ? `, meets APCA level Lc ${graphicsAPCALevel.min}, ${graphicsAPCALevel.description}`
+              : `, is below APCA Lc ${APCA_LOWEST_LEVEL}`;
+          }
+          console.log("Graphics badge:", graphicsBadgeText);
+          console.log("");
+
+          console.log("=== RESULTS SUMMARY ===");
+          console.log("Visible summary:", elements.resultsSummary.textContent);
           console.log(
-            "Graphics badge:",
-            "has contrast above 3 to 1, suitable for graphics and large text only, satisfying WCAG double A for 18 point or higher"
+            "Live region content:",
+            elements.resultsAnnouncement.textContent
           );
           console.log("");
         }
 
         // Public API
+        // getAPCALevel and DEFAULT_COLOURS are exported for the measurement
+        // surface in contrast-cards-cvd.js and for guidance documents that
+        // quote the palette. Both were closure-scoped, which forced an
+        // external analysis to lift the APCA ladder out of the page with a
+        // regex - one that silently found three of five levels.
         return {
           initialise: initialise,
+          getAPCALevel: getAPCALevel,
+          DEFAULT_COLOURS: DEFAULT_COLOURS,
+          APCA_LEVELS: APCA_LEVELS,
           testScreenReaderOutput: testScreenReaderOutput,
+          testCouplingAnnouncement: testCouplingAnnouncement,
         };
       })();
 
