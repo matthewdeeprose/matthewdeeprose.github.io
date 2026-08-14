@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Door Panel Studio</title>
+    <link rel="stylesheet" href="door-panel-studio.css" />
+  </head>
+  <body>
+    <a class="dps-skip" href="#dps-main">Skip to the panel frame</a>
+
+    <div class="dps-app" id="dpsApp">
+      <header class="dps-appheader">
+        <div class="dps-headerbar">
+          <h1>Door Panel Studio</h1>
+          <p>
+            A working model of the lecture-theatre door panel. Every figure is
+            computed in the browser; nothing is copied from a document.
+          </p>
+          <div class="dps-headeractions">
+            <button type="button" id="dpsPresent" aria-pressed="false">
+              Presentation mode
+            </button>
+          </div>
+        </div>
+
+        <!-- One long-lived polite live region. It lives in the ALWAYS-RENDERED
+             header on purpose: a live region inside a hidden tab panel is
+             removed from the accessibility tree and silently stops speaking. -->
+        <div
+          id="dpsLive"
+          role="status"
+          aria-live="polite"
+          class="dps-visually-hidden"
+        ></div>
+
+        <p class="dps-forced-note dps-note">
+          <strong>Forced colours are active.</strong> The colour-vision
+          simulations are switched off in this mode on purpose. Your operating
+          system has replaced the page's colours with its own, so a simulation
+          drawn over them would describe colours nobody is looking at.
+        </p>
+        <p id="dpsChromaWarning" class="dps-note" hidden>
+          <strong>chroma.js did not load.</strong> Every measurement on this
+          page depends on it. Check the network connection and reload.
+        </p>
+
+        <p class="dps-legend" id="dpsLegend">
+          <b>Presentation mode.</b>
+          <kbd>←</kbd> <kbd>→</kbd> previous / next usable colour &nbsp;
+          <kbd>↑</kbd> <kbd>↓</kbd> choose role (<span id="dpsLegendRole"
+            >Status word</span
+          >) &nbsp; <kbd>1</kbd>–<kbd>9</kbd> status &nbsp; <kbd>s</kbd>
+          simulation &nbsp; <kbd>g</kbd> cap-height overlay &nbsp;
+          <kbd>Esc</kbd> leave
+        </p>
+
+        <div class="dps-tablist" role="tablist" aria-label="Views">
+          <button
+            type="button"
+            class="dps-tab"
+            id="dpsTab-configure"
+            role="tab"
+            aria-selected="true"
+            aria-controls="dpsView-configure"
+          >
+            Configure
+          </button>
+          <button
+            type="button"
+            class="dps-tab"
+            id="dpsTab-gallery"
+            role="tab"
+            aria-selected="false"
+            tabindex="-1"
+            aria-controls="dpsView-gallery"
+          >
+            Gallery
+          </button>
+          <button
+            type="button"
+            class="dps-tab"
+            id="dpsTab-checks"
+            role="tab"
+            aria-selected="false"
+            tabindex="-1"
+            aria-controls="dpsView-checks"
+          >
+            Checks
+          </button>
+        </div>
+
+        <!-- A link, not a tab: the evidence report is a separate page now.
+             It says where it goes and what it does, because a bare
+             "Evidence" would not tell a reader they are leaving the tool. -->
+        <p class="dps-evidencelink">
+          <a href="door-panel-studio-evidence.html" id="dpsEvidenceLink"
+            >Open the evidence report</a
+          >
+          <span class="dps-hint">
+            — findings, line budget, the separation sweep, every palette colour
+            on both backgrounds, and the export, on a separate page.
+          </span>
+        </p>
+      </header>
+
+      <div
+        class="dps-view dps-stage"
+        id="dpsView-configure"
+        role="tabpanel"
+        aria-labelledby="dpsTab-configure"
+      >
+        <!-- ============================================================
+             PREVIEW PANE. Its own scroll container, so the frame stays in
+             view while the controls scroll beside it: there is never a
+             state where the control being changed cannot see its own
+             effect. Nothing here is sticky - see the shell comment.
+             ============================================================ -->
+        <main id="dps-main" class="dps-preview" tabindex="-1">
+          <div
+            class="dps-panelscroll"
+            id="dpsPanelScroll"
+            tabindex="0"
+            role="region"
+            aria-label="Panel preview, scrollable when the frame is larger than the column"
+          >
+          <div class="dps-panel" id="dpsPanel">
+            <div class="dps-surface" id="dpsSurface" data-simulation="none">
+              <div class="dps-header">
+                <!-- The real lockup, inlined. Iteration 1 substituted a text
+                     wordmark on the reasoning that inline SVG icons are
+                     forbidden; that rule covers UI icons for which the icon
+                     library has an entry, and a brand lockup is content with
+                     no entry. The source file's <style> block and .cls-1
+                     are stripped so nothing leaks into this page's CSS,
+                     and fill="currentColor" keeps the logo's colour a
+                     measured role rather than a picture. -->
+                <p class="dps-line">
+<svg data-role="logo" class="dps-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1522 620" fill="currentColor" role="img" aria-label="University of Southampton logo" focusable="false"><path d="M510.22,258.63c0,13.88-11.37,23.92-27.2,23.92s-27.21-10-27.21-23.92V216.3h11.33v42.32c0,8.54,6.34,14.1,15.88,14.11s15.87-5.55,15.87-14.11V216.31h11.33Z"/><path d="M546.71,233.56c8.48,0,15.88,5.53,15.88,17.45v30.25H552.15V251.74c0-6.11-3.66-8.91-8.44-8.9-4,0-9.22,1.94-13.55,5.58v32.84H519.72v-46.4h10.44v5.67a24.75,24.75,0,0,1,16.54-7Z"/><path d="M584.45,222a6.23,6.23,0,1,1-6.23-6.13A6.18,6.18,0,0,1,584.45,222ZM573,281.26v-46.4h10.44v46.4Z"/><path d="M618.56,281.26H607.41l-18.56-46.4h11.07L613,270.06l13-35.2h11.07Z"/><path d="M683.48,258.5c0,.71,0,1.41-.07,2.12h-34c0,.28.06.55.1.82,1.07,7.35,5.82,12,12.74,12a32.37,32.37,0,0,0,14.72-4l2.51,6.82a29.92,29.92,0,0,1-17.92,6.31c-13.88,0-23-10.95-23-24.5s9.12-24.57,22.93-24.5C675.89,233.56,683.51,244.17,683.48,258.5Zm-33.81-5.22H672.9c-1-6.46-4.35-10.63-11.18-10.63C655.26,242.65,651,246.86,649.67,253.28Z"/><path d="M721.32,233.54l-1.79,10.12a11.81,11.81,0,0,0-1.47,0A25.58,25.58,0,0,0,702,250v31.31H691.54v-46.4H702v6.38c5.38-5.09,12.17-7.74,18.09-7.74C720.5,233.5,720.91,233.51,721.32,233.54Z"/><path d="M743.27,233.56c6.14,0,13.33,1.71,17.82,6.08l-4.36,6.81c-3-2.93-8.14-4.47-13.1-4.47s-8.39,1.71-8.47,5.38c-.1,2.8,1.88,3.84,9.68,5.84,7.59,2,17.79,4.2,17.83,14.7,0,10.73-10.75,14.66-20.07,14.66-7.47,0-15.13-2.54-19-7.35l4.37-6.83c2.84,3.81,8.7,5.8,14.27,5.81,5.78,0,10-2.27,10-6.13s-4.15-4.53-10.32-6.17c-11.75-3.07-17.14-5.82-17.12-13.91,0-10.62,9.2-14.42,18.42-14.42Z"/><path d="M781.82,222a6.23,6.23,0,1,1-6.23-6.13A6.18,6.18,0,0,1,781.82,222Zm-11.45,59.23v-46.4h10.44v46.4Z"/><path d="M821.59,279.38a24.38,24.38,0,0,1-11.69,3.17c-7.43,0-14.14-3.95-14.14-14.3V243.16h-9.07v-6.61l8.63-1.69h.44V222H806.2v12.89h13.13v8.3H806.2v24.33c0,4.67,2.88,6.14,6.44,6.13a21.77,21.77,0,0,0,6.61-1.27Z"/><path d="M847.69,299.82h-9.6l7.41-18.73-20.44-46.24H836.4l14.08,33.68,13.32-33.68h10.93Z"/><path d="M948.35,258.06c0,13.55-9.39,24.5-23.86,24.5s-23.86-10.95-23.86-24.5,9.49-24.59,23.86-24.5S948.35,244.51,948.35,258.06Zm-37,0c0,8.89,5.08,15.16,13.13,15.16s13.13-6.18,13.13-15.16-5-15.15-13.13-15.15S911.28,249.17,911.36,258.06Z"/><path d="M971.44,232.25v2.61h13.18v8.3H971.44v38.1H961v-38.1h-9.07v-6.61l8.64-1.69H961v-2c0-12.64,7-18.39,16-18.36a30.36,30.36,0,0,1,13.89,3.77l-2.53,7.22a27,27,0,0,0-9.83-2.09C974.05,223.36,971.44,226.5,971.44,232.25Z"/><path d="M532.77,312.64l-12.16,14.92c-6.31-5.06-15.27-8.75-26.31-8.76-10,0-16.89,3.12-17.36,12.07-.27,5.87,2.68,7.91,21.14,12.88,15.86,4.28,36.66,9.22,36.81,31.94.16,23.6-22.57,32.85-41.28,32.85-16.06,0-33.55-6.76-42.33-18l12.59-14.1c6.57,8.05,18.93,12.7,29.76,12.67,11.57,0,18.21-5.17,18.28-12.68.15-7.87-6.31-9.45-21-13.5-25.05-7-37-12.27-37-30.94,0-23.74,19.49-32.73,40.54-32.73C510.48,299.26,523.77,304.52,532.77,312.64Z"/><path d="M622.48,368.91c0,21.92-15.77,39.63-40.06,39.63-24.13,0-40-17.71-40-39.63s15.92-39.78,40-39.63C606.71,329.28,622.48,347,622.48,368.91Zm-58.8,0c0,12.69,7.26,21.63,18.74,21.63s18.74-8.82,18.74-21.63-7.13-21.62-18.74-21.62S563.56,356.23,563.68,368.91Z"/><path d="M703.13,406.44h-21v-9.08c-7.68,7.36-17.29,11.18-25.91,11.18-13.76,0-25.27-8.71-25.27-28.22V331.39h21v46.29c0,8.59,4.36,12.91,11.25,12.93,6.06,0,13.07-2.69,18.9-7.67V331.39h21Z"/><path d="M768.75,403.41a47.68,47.68,0,0,1-20.7,5.11c-13,0-24.45-6.58-24.45-24.21V347.64H709.17V334.46l14-3.08h.46v-20.3h21v20.3h20.21v16.26H744.62v33.94c0,7.24,4.06,9.69,9.67,9.68a35.93,35.93,0,0,0,10.22-1.88Z"/><path d="M824.09,329.3c13.83,0,25.7,8.84,25.7,28.2v48.94h-21v-46.3c0-9-5.49-12.94-12.61-12.92-5.9,0-12.92,2.77-18.87,7.72v51.5h-21V301.37h21v39.16c7.87-7.39,17.71-11.24,26.8-11.23Z"/><path d="M935.11,406.44h-21v-8.05c-7.51,7.05-16.11,10.15-24.2,10.15-19.08,0-32.44-17.56-32.44-39.63s13.36-39.63,32.44-39.63c8.09,0,16.69,3.11,24.2,10.16v-8.05h21Zm-21-24.54v-26c-5.93-5.89-13.6-8.88-19.54-8.89-9.82,0-15.77,8.61-15.77,21.88s5.73,21.87,15.77,21.88C900.48,390.78,908.15,387.79,914.08,381.9Z"/><path d="M1044,329.29c13.45,0,24.8,8.7,24.77,28.21v48.94h-21v-46.3c0-9.06-5.16-13-12-12.94-5.4,0-11.82,2.49-17.44,6.82.09,1.12.13,2.28.13,3.48v48.94h-21v-46.3c0-9-5.09-12.93-11.71-12.92-5.5,0-12,2.72-17.55,7.51v51.71h-21V331.39h21v9.09c7.56-7.37,17-11.2,25.66-11.2,8.9,0,16.93,3.91,21.26,12.35,8.43-8,19.12-12.35,28.89-12.35Z"/><path d="M1126.52,329.29c19.58-.08,32.79,17.56,32.82,39.62,0,23.68-14.47,39.65-33,39.63-7.87,0-16.45-3.23-23.71-9.85v37.77h-21V331.39h21v8.16c7.17-6.77,15.75-10.27,23.93-10.27Zm11.55,39.62c0-12.83-5.78-21.87-15.77-21.87-6,0-13.62,2.93-19.71,9v25.35c6.16,6.12,13.39,9.65,19.68,9.59C1131.49,390.9,1138.11,383.1,1138.07,368.91Z"/><path d="M1222.27,403.41a47.72,47.72,0,0,1-20.71,5.11c-13,0-24.45-6.58-24.45-24.21V347.64h-14.43V334.46l14-3.08h.46v-20.3h21v20.3h20.21v16.26h-20.21v33.94c0,7.24,4.06,9.69,9.67,9.68a36,36,0,0,0,10.22-1.88Z"/><path d="M1304.6,368.91c0,21.92-15.76,39.63-40,39.63-24.13,0-40.06-17.71-40.06-39.63s15.93-39.78,40.06-39.63C1288.84,329.28,1304.6,347,1304.6,368.91Zm-58.79,0c0,12.69,7.25,21.63,18.74,21.63s18.74-8.82,18.74-21.63-7.14-21.62-18.74-21.62S1245.69,356.23,1245.81,368.91Z"/><path d="M1360.56,329.29c13.78,0,25.72,8.85,25.72,28.21v48.94h-21v-46.3c0-8.95-5.27-12.92-12.16-12.92-5.78,0-13.13,2.78-19.31,7.78v51.44h-21V331.39h21v9.14c8-7.55,18-11.25,26.78-11.25Z"/><path d="M179.88,193.43l2.93-.94a1.17,1.17,0,1,1,.72,2.22l-2.93.95a7.85,7.85,0,0,1,.09,1.19,7.2,7.2,0,0,1-.08,1.05l5,1.64a6.25,6.25,0,0,0,3.43-.26,7.23,7.23,0,1,0-4.48-13.74,6.13,6.13,0,0,0-2.92,1.8l-3.09,4.24A7.41,7.41,0,0,1,179.88,193.43Z"/><path d="M183,183.14c.23-.09.47-.19.73-.27a10,10,0,0,1,4.69-.37,19.32,19.32,0,0,0-.84-5.65,19.44,19.44,0,0,0-5.64,1,10,10,0,0,1,1.09,4.54Q183,182.77,183,183.14Z"/><path d="M162.22,182.87c.26.08.5.18.74.27q0-.37,0-.78a10,10,0,0,1,1.1-4.56,19.82,19.82,0,0,0-5.65-1,19.36,19.36,0,0,0-.82,5.65A10,10,0,0,1,162.22,182.87Z"/><path d="M156.88,199.28a6.26,6.26,0,0,0,3.43.26l5-1.63a7.45,7.45,0,0,1-.08-1.06,7.85,7.85,0,0,1,.1-1.19l-2.93-.95a1.17,1.17,0,0,1,.72-2.22l2.92.94a7.77,7.77,0,0,1,1.3-1.86l-3.08-4.23a6.27,6.27,0,0,0-2.93-1.8,7.22,7.22,0,1,0-4.47,13.74Z"/><path d="M169.63,189.91a7.83,7.83,0,0,1,2.17-.67v-3a1.18,1.18,0,0,1,2.35,0v3a7.53,7.53,0,0,1,2.17.68l3.08-4.23a6.08,6.08,0,0,0,.81-3.33,7.24,7.24,0,0,0-14.47,0,6.08,6.08,0,0,0,.81,3.33Z"/><path d="M190,202l-.76.21c.16.19.33.4.49.62a10,10,0,0,1,1.79,4.33,19.29,19.29,0,0,0,5.13-2.55,19.23,19.23,0,0,0-2.67-5.05A10.06,10.06,0,0,1,190,202Z"/><path d="M266.75,228.74V172.43c0-1.5-7.56-6.72-24.85-9.11s-22.25-7.52-22.25-7.52v60.6c2.92,2.39,3.43,2.09,23.38,4.4C263.62,223.18,266.75,228.74,266.75,228.74Z"/><path d="M296.4,220.8c20-2.31,20.45-2,23.38-4.4V155.8s-5,5.13-22.26,7.52-24.84,7.61-24.84,9.11v56.31S275.81,223.18,296.4,220.8Z"/><path d="M170.26,212.91a6.06,6.06,0,0,0,1.31-3.17v-5.32a7.54,7.54,0,0,1-2.1-.71l-1.85,2.53a1.14,1.14,0,0,1-.94.49,1.19,1.19,0,0,1-.69-.23,1.16,1.16,0,0,1-.26-1.63l1.84-2.53a7.76,7.76,0,0,1-1.35-1.77l-5.05,1.64a6,6,0,0,0-2.62,2.22,7.23,7.23,0,0,0,11.71,8.48Z"/><path d="M173.41,214.56c-.16-.22-.3-.43-.43-.65-.14.22-.28.43-.44.65a10,10,0,0,1-3.58,3.05,19.37,19.37,0,0,0,4,4.08,20,20,0,0,0,4-4.09A10,10,0,0,1,173.41,214.56Z"/><path d="M156.28,202.78c.16-.22.32-.43.48-.62L156,202a10,10,0,0,1-4-2.46,19.44,19.44,0,0,0-2.65,5.07,19.89,19.89,0,0,0,5.14,2.53A9.93,9.93,0,0,1,156.28,202.78Z"/><path d="M184.78,202.21h0l-5-1.63a7.76,7.76,0,0,1-1.35,1.77l1.85,2.53a1.17,1.17,0,0,1-.26,1.63,1.19,1.19,0,0,1-.69.23,1.17,1.17,0,0,1-.95-.49l-1.85-2.53a7.88,7.88,0,0,1-2.1.71v5.32a6.06,6.06,0,0,0,1.31,3.17,7.23,7.23,0,0,0,11.71-8.48A6,6,0,0,0,184.78,202.21Z"/><path d="M173,202.81a6,6,0,1,0-6-6A6,6,0,0,0,173,202.81Z"/><path d="M378.22,202.21h0l-5-1.63a7.72,7.72,0,0,1-1.34,1.77l1.84,2.53a1.16,1.16,0,0,1-.26,1.63,1.19,1.19,0,0,1-.69.23,1.17,1.17,0,0,1-.95-.49l-1.84-2.53a7.88,7.88,0,0,1-2.1.71v5.32a6.06,6.06,0,0,0,1.31,3.17,7.23,7.23,0,0,0,11.71-8.48A6,6,0,0,0,378.22,202.21Z"/><path d="M387.16,190.18a7.23,7.23,0,0,0-9.12-4.64,6.27,6.27,0,0,0-2.93,1.8L372,191.58a8,8,0,0,1,1.29,1.85l2.93-.94a1.17,1.17,0,0,1,.72,2.22l-2.94.95a7.85,7.85,0,0,1,.1,1.19,7.2,7.2,0,0,1-.08,1.05l5,1.64a6.22,6.22,0,0,0,3.42-.26A7.23,7.23,0,0,0,387.16,190.18Z"/><path d="M363.7,212.91a6.16,6.16,0,0,0,1.31-3.17v-5.32a7.44,7.44,0,0,1-2.1-.71l-1.85,2.53a1.17,1.17,0,0,1-.95.49,1.19,1.19,0,0,1-.69-.23,1.17,1.17,0,0,1-.26-1.63l1.84-2.53a8.05,8.05,0,0,1-1.35-1.77l-5,1.64a6,6,0,0,0-2.62,2.22,7.23,7.23,0,0,0,11.71,8.48Z"/><path d="M366.85,214.56c-.16-.22-.3-.43-.44-.65-.13.22-.27.43-.43.65a10.11,10.11,0,0,1-3.58,3.05,19.37,19.37,0,0,0,4,4.08,19.7,19.7,0,0,0,4-4.09A9.94,9.94,0,0,1,366.85,214.56Z"/><path d="M400.25,160.9c-2.32-1.08-58-26.4-130.55-26.4s-128.18,25.3-130.53,26.37l-4.49,2V279.81c0,16.82,3.15,44.71,13.64,76.62,20.5,62.42,61.35,105.54,119.06,124.69a7.55,7.55,0,0,0,4.73,0c57.73-19.16,99.38-62.33,119.51-124.84,10.2-31.69,13.06-60.58,13.06-76.36v-117ZM207.38,168a1.39,1.39,0,0,1,1.6-1.36l3.14.47V161a1.38,1.38,0,0,1,.57-1.12,1.41,1.41,0,0,1,1.24-.2l2.71.89v-4.6a3,3,0,0,1,4.51-2.58c.47.27.91.55,1.37.84,2.07,1.33,4.65,3,11.7,4.67,2,.49,4.62.95,7.38,1.44a134.75,134.75,0,0,1,15,3.28c6,1.83,10.08,4.15,12.42,7.08a2.93,2.93,0,0,1,.65,1.84,3.05,3.05,0,0,1,.65-1.84c2.35-2.93,6.41-5.25,12.43-7.08a134.59,134.59,0,0,1,15-3.28c2.76-.49,5.37-1,7.39-1.44,7.05-1.69,9.63-3.34,11.7-4.67.46-.29.9-.57,1.36-.84a3.07,3.07,0,0,1,1.52-.41,2.92,2.92,0,0,1,1.49.4,3,3,0,0,1,1.51,2.59v4.6l2.7-.89a1.43,1.43,0,0,1,1.25.2,1.38,1.38,0,0,1,.57,1.12v6.14l3.14-.47A1.38,1.38,0,0,1,332,168v50.6c0,4.8-3.62,6.84-12.66,6.37-30.69-.93-42.2,7-42.2,7-.07,2.84-2.91,4.6-7.47,4.6s-7.4-1.76-7.46-4.6c0,0-11.51-7.91-42.21-7-9,.47-12.66-1.57-12.66-6.37Zm60,99c1.86.81,7,4.13,8.37,7.67.47,1.23-.42,3-1,4.33-1.78,3.95-3.23,7-3.44,7.49a35.32,35.32,0,0,0-3.41,13.36A24.69,24.69,0,0,0,272.67,316l-.89-.1a46.64,46.64,0,0,0-10,.46,3.75,3.75,0,0,1-3.59-1.84c-2.46-3.51-6.49-6.7-12.81-8.6-7.65-2.29-17.73-5-26.1-7.16h0c-16-4.5-11.72-13.91-15.56-13.53s-1.84,6.77-.38,9.4a30.82,30.82,0,0,1-9.94-3.76c-11.82-9.44-11.26-21-8.63-29.26,22.26-6,52.28-11.71,85.54-11.71h1.16c3.73,3.11,11.47,10.31,8.79,16.4-.18.42-.35.86-.53,1.3A59.56,59.56,0,0,0,269.05,262c-2.07-.89-4-1-4.64.64S265.29,266.05,267.36,267Zm11.2,23.18.08-.16c.23-.5,5.74-12.23,9.14-20.59,3.11-7.66-3-15.22-7.25-19.29A319,319,0,0,1,319.81,254c1.77,1.5,3.67,3,4,4.48-11.15-1-17.26,1.5-16.58,5.44.34,1.59,2.79,2.14,5,1.59,1.93-.35,10.33-1.18,16.57,3.57,2.85,2.16,4.53,5.7,5,10.51l0,.36c0,.44.07.88.08,1.34.28,7.67-3.17,14.38-10.3,20-23,18-36.45,15.52-38.38,15-6.39-3.77-9.39-9-9.17-15.86A26.91,26.91,0,0,1,278.56,290.13ZM147.25,206l-.63-.49.22-.76a21.63,21.63,0,0,1,3.68-7.09,10,10,0,0,1,4-14.13l.7-.32a22,22,0,0,1,1.16-7.87l.27-.75.8,0a21.79,21.79,0,0,1,7.9,1.3,10,10,0,0,1,15.22,0,22.19,22.19,0,0,1,7.86-1.33l.8,0,.27.75a21.88,21.88,0,0,1,1.21,7.89l.66.31a10,10,0,0,1,4,14.15,21.74,21.74,0,0,1,3.69,7.06l.23.76-.63.49a22.08,22.08,0,0,1-7.16,3.58,10,10,0,0,1-10,9.18,10.25,10.25,0,0,1-2.34-.27,22.07,22.07,0,0,1-5.58,5.69l-.66.45-.66-.45a22,22,0,0,1-5.62-5.68,10.49,10.49,0,0,1-2.31.26,10,10,0,0,1-10-9.21A22,22,0,0,1,147.25,206Zm30.39,76.63a32,32,0,0,1-12.44-15.2c3.59-1.2,7.62-2.47,12.05-3.76v0C176.13,268.77,175.56,276.08,177.64,282.67ZM377.05,352c-8.3,25.59-20.35,47.76-35.82,65.87-18.7,21.92-43.08,38-71.49,47.87a161,161,0,0,1-70.67-47.85c-15.56-18.11-27.74-40.26-36.2-65.83a268.33,268.33,0,0,1-13.05-79c2.2-.88,5.19-2,8.87-3.35,2.47,7.47,8,14.23,17,20.57a94.79,94.79,0,0,0,25.44,12.3s26.3,7.57,41.86,12.22c9.92,3.16,9.47,10.5,7.88,15.54-.11.3-.23.6-.33.91-.21.61-.45,1.24-.72,1.87a.59.59,0,0,1,0,.08c-.27.62-.56,1.24-.9,1.87-.42-.41-1.45-6.33-12.36-11.7s-27.41-2.92-29.27-2c-.93.45-1,.92-.14,1.54a8.31,8.31,0,0,1,1.39,1.1c2.59,2.61,2.18,8.71,9.85,16.63a35.55,35.55,0,0,0,7.75,5.29C237,351,242,348.68,244,348.44c-.13.38-.23.77-.39,1.13C227,378.81,220.4,404,219.45,425l3.34,2.81a150.39,150.39,0,0,0,20.79,14.89v0l6.14,3.5a156.5,156.5,0,0,0,20,9.23c19.64-7.26,37.5-17.79,52.13-31.36,0,0,1.91-1.82,3-3.12-2.11-.21-4.24-.39-6.43-.5-28.17-1.21-36.24-12.39-31.32-29.31.15-.52,1-2.24-.13-3.2-.89-.79-2.36-.15-2.94.13-29,13.74-37.15,54.51-37.15,54.51s-1.16-32.58,21.59-54.36,41.9-17.38,42.76-17.38c9.23,2.19,11.22-3.24,11.7-7.6a2.3,2.3,0,0,1,.81-1.65c4.25-3,9-14.78,4.2-19-2.35-2.2-11.81-4.56-14.13-5.33a35.2,35.2,0,0,1-6.09-2.44A5.74,5.74,0,0,1,305,332c-1.69-4.82-6.25-7.47-7.33-8.21,9.59-2.15,20-7.57,30.94-16.15a38.84,38.84,0,0,0,8.17-8.56c2.08-2.35,2.21-5,6-6.62,7.8-3.72,7.58-7.79,6.22-9.14s-6.37.57-7,1.14a31.87,31.87,0,0,0-.23-6.94,2.56,2.56,0,0,0-.05-.27c0-.18-.05-.36-.08-.53-.05-.33-.11-.65-.17-1,0-.07,0-.14,0-.2-1.58-8-6.07-14.74-10.66-19.64a324,324,0,0,1,58.83,17.14A267.28,267.28,0,0,1,377.05,352Zm15.1-146a22.08,22.08,0,0,1-7.16,3.58,10,10,0,0,1-10,9.18,10.16,10.16,0,0,1-2.33-.27,22.07,22.07,0,0,1-5.58,5.69l-.66.45-.66-.45a22,22,0,0,1-5.62-5.68,10.56,10.56,0,0,1-2.31.26,10,10,0,0,1-10-9.21,21.93,21.93,0,0,1-7.14-3.54l-.63-.49.22-.76A21.63,21.63,0,0,1,344,197.7a10,10,0,0,1,4-14.13l.69-.32a21.87,21.87,0,0,1,1.17-7.87l.27-.75.79,0a21.74,21.74,0,0,1,7.9,1.3,10,10,0,0,1,15.22,0,22.23,22.23,0,0,1,7.87-1.33l.8,0,.27.75a21.74,21.74,0,0,1,1.2,7.89l.67.31a10,10,0,0,1,4,14.15,21.64,21.64,0,0,1,3.7,7.06l.23.76Z"/><path d="M383.38,202l-.75.21c.16.19.32.4.48.62a9.9,9.9,0,0,1,1.8,4.33,19.44,19.44,0,0,0,5.13-2.55,19.86,19.86,0,0,0-2.67-5.05A10,10,0,0,1,383.38,202Z"/><path d="M363.06,189.91a8,8,0,0,1,2.18-.67v-3a1.18,1.18,0,0,1,2.35,0v3a7.73,7.73,0,0,1,2.17.68l3.08-4.23a6.08,6.08,0,0,0,.81-3.33,7.24,7.24,0,0,0-14.47,0,6.08,6.08,0,0,0,.81,3.33Z"/><path d="M376.43,183.14c.24-.09.48-.19.74-.27a10,10,0,0,1,4.69-.37,19.28,19.28,0,0,0-.85-5.65,19.55,19.55,0,0,0-5.64,1,9.91,9.91,0,0,1,1.09,4.54Q376.46,182.77,376.43,183.14Z"/><path d="M360.44,196.85a6,6,0,1,0,6-5.95A6,6,0,0,0,360.44,196.85Z"/><path d="M355.66,182.87c.26.08.5.18.73.27q0-.37,0-.78a9.88,9.88,0,0,1,1.11-4.56,19.82,19.82,0,0,0-5.66-1,19.71,19.71,0,0,0-.82,5.65A10,10,0,0,1,355.66,182.87Z"/><path d="M353.74,199.54l5-1.63a7.45,7.45,0,0,1-.08-1.06,7.85,7.85,0,0,1,.09-1.19l-2.92-.95a1.17,1.17,0,1,1,.72-2.22l2.92.94a8,8,0,0,1,1.29-1.86l-3.08-4.23a6.13,6.13,0,0,0-2.92-1.8,7.21,7.21,0,0,0-5.53.43,7.23,7.23,0,0,0,1.05,13.31A6.25,6.25,0,0,0,353.74,199.54Z"/><path d="M345.44,199.49a19.44,19.44,0,0,0-2.65,5.07,19.64,19.64,0,0,0,5.13,2.53,9.93,9.93,0,0,1,1.79-4.31c.16-.22.33-.43.49-.62l-.76-.21A10,10,0,0,1,345.44,199.49Z"/></svg>
+                </p>
+                <div class="dps-datetime">
+                  <p class="dps-line">
+                    <span data-role="clock">14:34</span>
+                  </p>
+                  <p class="dps-line">
+                    <span data-role="date">Friday 15 May</span>
+                  </p>
+                </div>
+              </div>
+              <div class="dps-body" id="dpsBody">
+                <p class="dps-line dps-badge" id="dpsBadge">
+                  <span data-role="status-text" id="dpsStatusWord"
+                    >Currently Running</span
+                  >
+                </p>
+                <p class="dps-line dps-spacer-line">
+                  <span data-role="times">14:00 - 16:00</span
+                  ><span data-role="room"> | Lecture Theatre A</span>
+                </p>
+                <p class="dps-line dps-spacer-line">
+                  <span data-role="code">MANG1049</span>
+                </p>
+                <p class="dps-line dps-title-line">
+                  <span data-role="title"
+                    >Even More Ideas that Shape the Cont World</span
+                  >
+                </p>
+                <div class="dps-divider"></div>
+              </div>
+              <div class="dps-footer"></div>
+            </div>
+            <div class="dps-overlay" id="dpsOverlay" aria-hidden="true"></div>
+          </div>
+          </div>
+
+          <!-- The same state as the rail's "Status shown", driven from under
+               the panel where a reader is already looking. Two controls, one
+               state: syncStatusChoice pushes to both, so neither can drift.
+
+               The legend must NOT repeat the rail's wording. Two groups named
+               "Status shown" is an IBM fieldset_label_valid violation - and
+               rightly, because a screen-reader user meeting the second group
+               has no way to tell it from the first. Naming it by WHERE it sits
+               is what distinguishes them; they still drive one state. -->
+          <fieldset class="dps-statusradios">
+            <legend>Status shown - switch it here, under the panel</legend>
+            <div id="dpsStatusChoiceBelow"></div>
+          </fieldset>
+
+          <!-- The demo cluster: the two things a stakeholder is asked to try
+               for themselves, together, under the thing they change. The
+               simulation select used to live in the rail beside the colour
+               controls, which put it a scroll away from its own effect. -->
+          <div class="dps-field dps-demofield">
+            <label for="dpsSimulation">Colour vision simulation</label>
+            <select id="dpsSimulation"></select>
+            <p class="dps-hint" id="dpsSimulationDescription"></p>
+          </div>
+
+          <p class="dps-hint" id="dpsFrameReadout"></p>
+
+          <!-- The settings summary: two lines, dense, meant to be
+               photographed off a large display. -->
+          <div
+            id="dpsSummary"
+            class="dps-summary dps-readout"
+            role="region"
+            aria-label="Current settings summary"
+          ></div>
+        </main>
+
+        <!-- ============================================================
+             CONTROL COLUMN
+             ============================================================ -->
+        <div class="dps-rail" tabindex="0" role="region" aria-label="Controls, scrollable">
+          <section
+            class="dps-card"
+            aria-labelledby="dpsFitHeading"
+            id="dpsFitCard"
+          >
+            <h2 id="dpsFitHeading">Does it fit?</h2>
+            <p class="dps-hint">
+              Measured by rendering each string at its own size and reading the
+              box back, never by assuming an average character width.
+            </p>
+            <div id="dpsFitReport"></div>
+          </section>
+
+          <section class="dps-card" aria-labelledby="dpsFrameHeading">
+            <h2 id="dpsFrameHeading">Frame</h2>
+            <div class="dps-field">
+              <label for="dpsFrameHeight"
+                >Frame height on this screen (CSS pixels)</label
+              >
+              <input
+                type="range"
+                id="dpsFrameHeight"
+                min="200"
+                max="1400"
+                step="2"
+                value="520"
+              />
+            </div>
+            <div class="dps-buttonrow">
+              <button type="button" class="dps-secondary" id="dpsScaleActual">
+                Actual size
+              </button>
+              <button type="button" class="dps-secondary" id="dpsScaleNative">
+                1:1 panel pixels
+              </button>
+              <button type="button" class="dps-secondary" id="dpsScaleFit">
+                Fit the pane
+              </button>
+            </div>
+
+            <div class="dps-field-row">
+              <fieldset>
+                <legend>Status shown</legend>
+                <div id="dpsStatusChoice"></div>
+              </fieldset>
+
+              <fieldset>
+                <legend>Overlays</legend>
+                <div class="dps-field">
+                  <input type="checkbox" id="dpsOverlayCaps" />
+                  <label for="dpsOverlayCaps" style="display: inline"
+                    >Cap-height rules</label
+                  >
+                </div>
+                <div class="dps-field">
+                  <input type="checkbox" id="dpsOverlayGrid" />
+                  <label for="dpsOverlayGrid" style="display: inline"
+                    >Nine-line budget grid</label
+                  >
+                </div>
+                <div class="dps-field">
+                  <input type="checkbox" id="dpsOverlayCalibration" />
+                  <label for="dpsOverlayCalibration" style="display: inline"
+                    >100 mm calibration block</label
+                  >
+                </div>
+                <div class="dps-field">
+                  <input type="checkbox" id="dpsMagnify" />
+                  <label for="dpsMagnify" style="display: inline"
+                    >Magnify the readouts</label
+                  >
+                </div>
+              </fieldset>
+            </div>
+
+          </section>
+
+          <section class="dps-card" aria-labelledby="dpsContentHeading">
+            <h2 id="dpsContentHeading">Content</h2>
+            <p class="dps-hint">
+              The wording is a size decision. Type a shorter status and watch
+              the fitting report and the budget move.
+            </p>
+            <div id="dpsContentControls"></div>
+            <div class="dps-buttonrow">
+              <button type="button" class="dps-secondary" id="dpsContentReset">
+                Restore the original wording
+              </button>
+            </div>
+          </section>
+
+          <section class="dps-card" aria-labelledby="dpsBadgeHeading">
+            <h2 id="dpsBadgeHeading">Badge</h2>
+            <p class="dps-hint">
+              The badge's size has nothing to do with contrast — no colour
+              choice changes it. Three things do: the cap height, the padding
+              below, and the length of the wording.
+            </p>
+            <div class="dps-field-row">
+              <div class="dps-field">
+                <label for="dpsBadgePadY">Padding, vertical (em)</label>
+                <input
+                  type="number"
+                  id="dpsBadgePadY"
+                  min="0"
+                  max="3"
+                  step="0.05"
+                />
+              </div>
+              <div class="dps-field">
+                <label for="dpsBadgePadX">Padding, horizontal (em)</label>
+                <input
+                  type="number"
+                  id="dpsBadgePadX"
+                  min="0"
+                  max="3"
+                  step="0.05"
+                />
+              </div>
+            </div>
+            <p class="dps-hint dps-readout" id="dpsBadgePadReadout"></p>
+
+            <fieldset>
+              <legend>Style</legend>
+              <p class="dps-hint">
+                Filled puts a block of colour behind the word. Outlined puts a
+                ring and the word in the status colour on the page background —
+                which changes both the saturated area and the gate the colour
+                answers to, because an outlined badge's colour is text.
+              </p>
+              <div id="dpsBadgeStyle"></div>
+              <div id="dpsBadgeStyleReadout" class="dps-readout"></div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Saturated area</legend>
+              <p class="dps-hint">
+                The one property a contrast ratio cannot see. Reported, not
+                judged: neither the guidance nor WCAG states a limit on how
+                much of a panel may be a high-chroma colour, so there is no
+                threshold here and no verdict.
+              </p>
+              <div id="dpsBadgeAreaReadout" class="dps-readout"></div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Shape</legend>
+              <div id="dpsBadgeShape"></div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Border</legend>
+              <p class="dps-hint">
+                A border draws the badge's boundary, so the fill no longer has
+                to carry 3:1 against the page on its own. Off by default, so
+                the figures stay comparable.
+              </p>
+              <fieldset>
+                <legend>Colour scheme</legend>
+                <div id="dpsSchemeChoice"></div>
+                <div id="dpsSchemeReadout" class="dps-readout"></div>
+              </fieldset>
+
+              <div class="dps-field">
+                <label for="dpsBadgeBorder">Badge border</label>
+                <select id="dpsBadgeBorder"></select>
+              </div>
+              <div class="dps-field">
+                <label for="dpsBadgeBorderMm">Thickness (mm on the glass)</label>
+                <input
+                  type="number"
+                  id="dpsBadgeBorderMm"
+                  min="0.05"
+                  max="5"
+                  step="0.05"
+                />
+              </div>
+              <div class="dps-field">
+                <label for="dpsBadgeBorderColour">Border colour</label>
+                <select id="dpsBadgeBorderColour"></select>
+              </div>
+              <div id="dpsBadgeBorderReadout" class="dps-readout"></div>
+            </fieldset>
+          </section>
+
+          <section class="dps-card" aria-labelledby="dpsColourHeading">
+            <h2 id="dpsColourHeading">Roles</h2>
+            <p class="dps-hint">
+              One row per role: a role's colour and its size are one decision.
+              Colours that cannot meet a role's gate stay in the list,
+              disabled, with the measured reason — that reason is the teaching.
+            </p>
+            <div class="dps-buttonrow">
+              <button type="button" id="dpsPresetPanelRecommended">
+                Show the recommended panel
+              </button>
+              <button type="button" id="dpsPresetPanelAsBuilt">
+                Show the as-built panel
+              </button>
+            </div>
+            <p class="dps-hint">
+              The page opens on the recommended panel. The as-built one — the
+              colleague's colours, sizes, padding and wording — is one click
+              away, and every gallery card scores a variation of the same
+              thing. The buttons below change one dimension at a time.
+            </p>
+            <div class="dps-buttonrow">
+              <button type="button" id="dpsPresetColoursAsBuilt">
+                As-built colours
+              </button>
+              <button type="button" id="dpsPresetColoursGuidance">
+                Best available colours
+              </button>
+              <button type="button" id="dpsPresetSizeAsBuilt">
+                As-built sizes
+              </button>
+              <button type="button" id="dpsPresetSizeGuidance">
+                Guidance sizes
+              </button>
+              <button type="button" id="dpsPresetSizeBestFit">
+                Best fit in budget
+              </button>
+            </div>
+
+            <fieldset id="dpsApproach">
+              <legend>What must be readable as you approach?</legend>
+              <p class="dps-hint">
+                600 mm is not the decision — <em>everything</em> here must be
+                readable at 600 mm, and that is the floor. The decision is what
+                must <em>also</em> be readable from about 1,400 mm, because
+                only one or two things can be. Choosing one promotes it and
+                demotes whatever held the approach range before.
+              </p>
+              <div class="dps-field">
+                <label for="dpsApproachRole">Give the approach range to</label>
+                <select id="dpsApproachRole"></select>
+              </div>
+              <div id="dpsApproachReadout" class="dps-readout"></div>
+            </fieldset>
+
+            <fieldset id="dpsFillGate">
+              <legend>Badge fill gate</legend>
+              <p class="dps-hint">
+                Badge fills only. The logo, divider and footer bar keep the
+                Lc 45 non-text floor whichever setting is chosen.
+              </p>
+              <div id="dpsFillGateChoice"></div>
+              <div id="dpsFillGateReadout" class="dps-readout"></div>
+            </fieldset>
+
+            <fieldset id="dpsChroma">
+              <legend>Chroma ceiling</legend>
+              <p class="dps-hint">
+                The solver maximises separation, and maximising separation
+                <em>selects for extreme colours</em> — that is not a side
+                effect, it is what the objective does, and it is why the
+                recommendation is a saturated orange beside a saturated green.
+                So softer tones cannot be a preference applied afterwards. This
+                shrinks the candidate pool <em>before</em> the solver runs, and
+                the table below is what that costs.
+              </p>
+              <div class="dps-field">
+                <input type="checkbox" id="dpsChromaOn" />
+                <label for="dpsChromaOn" style="display: inline"
+                  >Limit how saturated a status colour may be</label
+                >
+              </div>
+              <div class="dps-field">
+                <label for="dpsChromaCeiling"
+                  >Ceiling, in LCH chroma <span id="dpsChromaValue"></span
+                ></label>
+                <input
+                  type="range"
+                  id="dpsChromaCeiling"
+                  min="10"
+                  max="130"
+                  step="5"
+                />
+              </div>
+              <div id="dpsChromaReadout" class="dps-readout"></div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Design for</legend>
+              <p class="dps-hint">
+                The panel always shows the status in words, so nobody has to
+                read the colour to read the panel. These switches record a
+                consideration, not a rule: whatever you tick, every mode below
+                is still measured and still shown. Ticking one only tells the
+                colour chooser which audiences it must keep the statuses apart
+                for.
+              </p>
+              <div class="dps-field">
+                <input type="checkbox" id="dpsDesignForCvd" />
+                <label for="dpsDesignForCvd" style="display: inline"
+                  >Colour blindness (protanopia, deuteranopia,
+                  tritanopia)</label
+                >
+              </div>
+              <div class="dps-field">
+                <input type="checkbox" id="dpsDesignForGrey" />
+                <label for="dpsDesignForGrey" style="display: inline"
+                  >Greyscale (colour removed entirely - photocopies, e-ink,
+                  monochrome screens)</label
+                >
+              </div>
+              <div id="dpsDesignForReadout" class="dps-readout"></div>
+            </fieldset>
+
+            <div id="dpsRoleControls"></div>
+          </section>
+
+          <section class="dps-card" aria-labelledby="dpsCapHeading">
+            <h2 id="dpsCapHeading">What cap height means</h2>
+            <div class="dps-capexplain">
+              <div class="dps-capdiagram" id="dpsCapDiagram" aria-hidden="true">
+                <div class="dps-capdiagram__em">
+                  <span class="dps-capdiagram__letter">H</span>
+                  <span class="dps-capdiagram__capband"></span>
+                </div>
+                <p class="dps-capdiagram__key">
+                  <span class="dps-capdiagram__swatch dps-capdiagram__swatch--em"
+                  ></span>
+                  font size
+                  <span
+                    class="dps-capdiagram__swatch dps-capdiagram__swatch--cap"
+                  ></span>
+                  cap height
+                </p>
+              </div>
+              <div>
+                <p>
+                  Cap height is the height of a capital letter: what you would
+                  measure with a ruler held against the glass. Font size is
+                  larger, because it includes room above and below for accents
+                  and descenders.
+                </p>
+                <p id="dpsCapSentence"></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="dps-card" aria-labelledby="dpsGeometryHeading">
+            <h2 id="dpsGeometryHeading">Geometry</h2>
+            <div class="dps-field-row">
+              <div class="dps-field">
+                <label for="dpsPanelWpx">Panel width (px)</label>
+                <input type="number" id="dpsPanelWpx" min="1" step="1" />
+              </div>
+              <div class="dps-field">
+                <label for="dpsPanelHpx">Panel height (px)</label>
+                <input type="number" id="dpsPanelHpx" min="1" step="1" />
+              </div>
+              <div class="dps-field">
+                <label for="dpsPanelWmm">Active width (mm)</label>
+                <input type="number" id="dpsPanelWmm" min="1" step="0.1" />
+              </div>
+              <div class="dps-field">
+                <label for="dpsPanelHmm">Active height (mm)</label>
+                <input type="number" id="dpsPanelHmm" min="1" step="0.1" />
+              </div>
+              <div class="dps-field">
+                <label for="dpsDistance">Viewing distance (mm)</label>
+                <input type="number" id="dpsDistance" min="1" step="10" />
+              </div>
+              <div class="dps-field">
+                <label for="dpsCapRatio">Cap height ratio (of font size)</label>
+                <input
+                  type="number"
+                  id="dpsCapRatio"
+                  min="0.1"
+                  max="1"
+                  step="0.001"
+                />
+              </div>
+              <div class="dps-field">
+                <label for="dpsLineSpacing"
+                  >Rendered line spacing</label
+                >
+                <input
+                  type="number"
+                  id="dpsLineSpacing"
+                  min="1"
+                  max="3"
+                  step="0.05"
+                />
+              </div>
+              <div class="dps-field">
+                <label for="dpsPaddingMm">Vertical padding (mm)</label>
+                <input type="number" id="dpsPaddingMm" min="0" step="0.5" />
+              </div>
+            </div>
+            <div class="dps-buttonrow">
+              <button type="button" class="dps-secondary" id="dpsCapInter">
+                Inter (0.727)
+              </button>
+              <button type="button" class="dps-secondary" id="dpsCapRuleOfThumb">
+                Rule of thumb (0.70)
+              </button>
+            </div>
+            <div id="dpsGeometryReadout" class="dps-readout"></div>
+          </section>
+
+          <section class="dps-card" aria-labelledby="dpsPaletteHeading">
+            <h2 id="dpsPaletteHeading">Palette</h2>
+            <div class="dps-field">
+              <label for="dpsPaletteInput"
+                >Palette (one colour per line, <code>name #hex</code>)</label
+              >
+              <textarea id="dpsPaletteInput" rows="5" spellcheck="false"
+              ></textarea>
+              <p class="dps-hint">
+                The built-in list is 45 University of Southampton brand
+                colours. Replacing it recomputes every figure on the page.
+              </p>
+            </div>
+            <div class="dps-buttonrow">
+              <button type="button" id="dpsPaletteApply">Apply palette</button>
+              <button type="button" class="dps-secondary" id="dpsPaletteReset">
+                Restore the 45 brand colours
+              </button>
+            </div>
+            <p class="dps-readout" id="dpsPaletteStatus"></p>
+          </section>
+        </div>
+      </div>
+
+      <!-- ==============================================================
+           GALLERY VIEW
+           ============================================================== -->
+      <div
+        class="dps-view dps-scrollview"
+        id="dpsView-gallery"
+        role="tabpanel"
+        aria-labelledby="dpsTab-gallery"
+        tabindex="0"
+        hidden
+      >
+      <section class="dps-card" aria-labelledby="dpsGalleryHeading">
+        <h2 id="dpsGalleryHeading">Ten panels, ranked</h2>
+        <p class="dps-hint">
+          Colour sets from the solver crossed with three size schemes, each
+          scored by the same findings engine as the main preview and shown
+          worst-shortfall-last. The commentary under each frame is composed
+          from that configuration's own findings, so it cannot drift from its
+          numbers. Choose one to load it into the preview.
+        </p>
+        <div class="dps-buttonrow">
+          <button type="button" id="dpsRunGallery">Build the gallery</button>
+        </div>
+        <div id="dpsGallery" class="dps-gallery"></div>
+      </section>
+
+      <section class="dps-card" aria-labelledby="dpsEnumerationHeading">
+        <h2 id="dpsEnumerationHeading">Every set, exhaustively</h2>
+        <p class="dps-hint">
+          The ten cards above are curated. This is the whole space the tool
+          owns — badge style × chroma ceiling × set size — with each cell
+          stating its pool, its gate, the best separation that pool can hold
+          and the mode that binds it. A cell that yields no set says why, as a
+          result rather than a blank, and the counts are printed so a silent
+          cap cannot hide between them. The enumeration cross-checks itself
+          against the recorded baselines <em>by set membership</em>: two
+          different trios can share a ΔE, and only the names settle whether the
+          pool has moved.
+        </p>
+        <div class="dps-buttonrow">
+          <button type="button" id="dpsRunEnumeration">
+            Enumerate every set
+          </button>
+        </div>
+        <div id="dpsEnumeration" class="dps-readout"></div>
+      </section>
+      </div>
+
+      <!-- ==============================================================
+           CHECKS VIEW.
+
+           The other eight sections moved to door-panel-studio-evidence.html
+           in iteration 5. Verification did NOT go with them, and the reason
+           matters: it is an instrument rather than a report. The render
+           canary paints a real panel and measures the boxes, so it has to
+           live where the panel is - moving it would have left the most
+           valuable assertion in the project pointing at nothing.
+           ============================================================== -->
+      <div
+        class="dps-view dps-scrollview"
+        id="dpsView-checks"
+        role="tabpanel"
+        aria-labelledby="dpsTab-checks"
+        tabindex="0"
+        hidden
+      >
+      <section class="dps-card" aria-labelledby="dpsVerifyHeading">
+        <h2 id="dpsVerifyHeading">Verification</h2>
+        <p class="dps-hint">
+          A wrong colour-vision matrix still looks like a plausible simulation.
+          The cross-check runs the same swatches through this page&rsquo;s arithmetic
+          and through the browser&rsquo;s own SVG filters, and compares them. The
+          canaries then check the geometry against hand arithmetic, the solver
+          in both directions, and what the page actually RENDERS against what
+          the model says it should.
+        </p>
+        <div class="dps-buttonrow">
+          <button type="button" id="dpsRunVerify">
+            Cross-check the simulation against the browser
+          </button>
+          <button type="button" class="dps-secondary" id="dpsRunCanaries">
+            Run the geometry, render and solver canaries
+          </button>
+        </div>
+        <div
+          class="dps-scroll"
+          id="dpsVerifyOut"
+          tabindex="0"
+          role="region"
+          aria-label="Verification output, scrollable"
+        ></div>
+      </section>
+      </div>
+    </div>
+
+    <!-- The off-screen measurer. Strings are rendered here at their real
+         size and the box is read back, so the character budget is measured
+         rather than estimated from an assumed advance width. -->
+    <div class="dps-measurer" id="dpsMeasurer" aria-hidden="true"></div>
+
+    <script src="https://matthewdeeprose.github.io/scripts/chroma.min.js"></script>
+    <!--
+      The three siblings, in load order. Split out of this file on 14 August
+      2026: CVD first because everything measures through it, then the app,
+      then the checks harness, which reads the app's internals bridge and so
+      cannot load before it.
+
+      door-panel-studio-cvd.js is INLINED VERBATIM from contrast-cards-cvd.js
+      in this repository at commit 22d70a7, copied by script rather than
+      retyped. A retyped CVD matrix still produces a picture that looks like a
+      plausible simulation, so the module carries its own gating instrument:
+      verifyAgainstFilters() runs the same swatches through this arithmetic
+      and through the browser's own SVG filters and compares them. It is
+      exposed on this page under Verification.
+    -->
+    <script src="door-panel-studio-cvd.js"></script>
+    <script src="door-panel-studio-app.js"></script>
+    <script src="door-panel-studio-checks.js"></script>
+  </body>
+</html>

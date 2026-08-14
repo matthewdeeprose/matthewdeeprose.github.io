@@ -1,0 +1,1169 @@
+/* ------------------------------------------------------------------
+   Principle 6: nothing moves. This is stated once, globally, so no
+   later rule in this file can reintroduce motion by accident.
+   ------------------------------------------------------------------ */
+*,
+*::before,
+*::after {
+  transition: none;
+  animation: none;
+  scroll-behavior: auto;
+  box-sizing: border-box;
+}
+
+:root {
+  --ui-bg: #fafafa;
+  --ui-surface: #ffffff;
+  --ui-ink: #111111;
+  --ui-muted: #495961;
+  --ui-accent: #005c84;
+  --ui-line: #9eb1bd;
+  --ui-rule: #d1c6c0;
+  --ui-pass: #01530d;
+  --ui-fail: #5a0202;
+  --ui-note-bg: #f5f5f5;
+  --ui-gap: 1rem;
+}
+
+html {
+  font-size: 100%;
+}
+
+/* The shell owns the viewport and the two panes do the scrolling, so
+   in normal use there is nothing here to scroll: the app is exactly
+   one viewport tall and this resolves to no scrollbar.
+
+   `auto`, NOT `hidden`. Hidden was the trapdoor: it makes anything
+   that overflows the shell - for any reason, at any font size, in any
+   browser - unreachable at EVERY scroll position rather than merely
+   below the fold, so the page reads as blank and only zooming out
+   reveals it. A failure that can still be scrolled to is a layout
+   bug; one that cannot is an invisible page. */
+html,
+body {
+  height: 100%;
+  overflow: auto;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ui-bg);
+  color: var(--ui-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue",
+    Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--ui-accent);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.25;
+  margin: 0 0 0.5rem;
+}
+
+h1 {
+  font-size: 1.9rem;
+}
+h2 {
+  font-size: 1.5rem;
+}
+h3 {
+  font-size: 1.15rem;
+}
+h4 {
+  font-size: 1rem;
+}
+
+p {
+  margin: 0 0 0.75rem;
+  max-width: 68ch;
+}
+
+code,
+samp,
+kbd,
+textarea {
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+}
+
+/* --- Focus: this page's own treatment, applied once ---------------- */
+:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.dps-skip {
+  position: absolute;
+  left: -100vw;
+  top: 0;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  padding: 0.5rem 1rem;
+  z-index: 20;
+}
+.dps-skip:focus {
+  left: 0;
+}
+
+.dps-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- The app shell -------------------------------------------------
+   A viewport-height grid: header, then the stage. The stage's two panes
+   each scroll independently, so the frame is NEVER in the reader's
+   scroll container and cannot scroll away from the control being
+   changed. That removes the class of bug entirely, rather than
+   compensating for it - the previous sticky arrangement needed two
+   fixes (escaping its own containing block, then a measured-height
+   check to stop it covering the controls) and would have needed more. */
+.dps-app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+.dps-appheader {
+  padding: 0.5rem 1rem 0;
+  border-bottom: 1px solid var(--ui-line);
+  background: var(--ui-surface);
+}
+
+.dps-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
+  gap: var(--ui-gap);
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.75rem;
+}
+
+/* min-height/min-width 0 on both, because a grid item's automatic
+   minimum is its content, which would defeat the overflow.
+
+   `position: relative` is doing real work, not decoration. A scroll
+   container only clips an absolutely-positioned descendant when it is
+   also that descendant's containing block; static, it is not, and the
+   descendant escapes to the initial containing block instead.
+   Measured: the visually-hidden size labels and the cap-diagram spans
+   escaped this way and extended the DOCUMENT to 3,755 px against a
+   955 px viewport - invisible while the document could not scroll,
+   and a 2,800 px phantom scrollbar the moment it could. */
+.dps-preview,
+.dps-rail,
+.dps-scrollview {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.dps-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* A frame larger than its pane - 1:1 panel pixels is 1920 px wide -
+   scrolls inside the preview rather than pushing the layout. */
+.dps-panelscroll {
+  max-width: 100%;
+  overflow: auto;
+}
+
+/* 64rem, not 90rem. The stage previously split only above 1440 px, so
+   at 1280 and 1366 - meeting-room laptops and most projectors, which is
+   where this is actually opened - it fell through to a stacked layout
+   nobody had measured. */
+@media (max-width: 64rem) {
+  .dps-stage {
+    grid-template-columns: minmax(0, 1fr);
+    /* The preview row sizes to the fitted frame; the controls take
+       whatever is left and scroll. */
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+}
+
+/* --- Tabs ---------------------------------------------------------- */
+.dps-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.4rem 0 0;
+}
+
+.dps-tab {
+  font: inherit;
+  font-weight: 700;
+  background: transparent;
+  color: var(--ui-accent);
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 0.25rem 0.25rem 0 0;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.dps-evidencelink {
+  margin: 0.4rem 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.dps-tab[aria-selected="true"] {
+  background: var(--ui-bg);
+  color: var(--ui-ink);
+  border-color: var(--ui-line);
+  border-bottom: 1px solid var(--ui-bg);
+}
+
+.dps-view {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dps-view[hidden] {
+  display: none;
+}
+
+/* Gallery and Evidence are ordinary scrolling documents inside the
+   stage row, rather than two panes. */
+.dps-scrollview {
+  overflow: auto;
+  min-height: 0;
+  padding: 0.75rem;
+}
+
+/* --- Escape hatch: a viewport too short to hold the shell -----------
+   The locked shell deliberately does not scroll - its height is
+   pinned to the viewport and the stage clips. That is right while the
+   viewport can hold it, and a trap when it cannot: anything that
+   overflows is then not merely below the fold, and only zooming out
+   reveals it.
+
+   So below 36rem (576 px) of viewport height the lock comes off and
+   the page becomes an ordinary scrolling document. The frame is then
+   sized from the viewport rather than from the pane, because a pane
+   whose height is its own content cannot also be the budget for that
+   content - see SHORT_VIEWPORT_QUERY, which must match this query.
+
+   Placed HERE, after every rule it overrides, deliberately: these
+   are all equal specificity, so document order decides, and an
+   earlier media query would silently lose to a later modifier. That
+   exact mistake made the control grids stop collapsing in the last
+   iteration. */
+@media (max-height: 36rem) {
+  html,
+  body {
+    height: auto;
+  }
+
+  .dps-app {
+    height: auto;
+    max-height: none;
+  }
+
+  .dps-stage,
+  .dps-view,
+  .dps-preview,
+  .dps-rail,
+  .dps-scrollview {
+    overflow: visible;
+  }
+}
+
+.dps-headerbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.dps-headerbar h1 {
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.dps-headerbar p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ui-muted);
+  max-width: 60ch;
+}
+
+.dps-headeractions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* --- Presentation mode ---------------------------------------------
+   The control pane is removed from the layout and the frame takes the
+   viewport. Driven from the keyboard, with the legend always visible -
+   an undiscoverable shortcut is not a feature. */
+.dps-app--present .dps-rail,
+.dps-app--present .dps-tablist,
+.dps-app--present .dps-headerbar p {
+  display: none;
+}
+
+.dps-app--present .dps-stage {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.dps-app--present .dps-preview {
+  align-items: center;
+}
+
+.dps-legend {
+  display: none;
+  font-size: 0.85rem;
+  border: 1px solid var(--ui-line);
+  background: var(--ui-surface);
+  padding: 0.35rem 0.6rem;
+  margin: 0;
+}
+
+.dps-app--present .dps-legend {
+  display: block;
+}
+
+.dps-legend kbd {
+  border: 1px solid var(--ui-muted);
+  border-radius: 0.2rem;
+  padding: 0 0.25rem;
+  font-size: 0.9em;
+  background: var(--ui-note-bg);
+}
+
+.dps-legend b {
+  font-weight: 700;
+}
+
+/* --- The merged role table ------------------------------------------
+   A role's colour and its size are one decision, so they are one row. */
+.dps-roletable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.dps-roletable th,
+.dps-roletable td {
+  border: 1px solid var(--ui-rule);
+  padding: 0.2rem 0.3rem;
+  vertical-align: middle;
+}
+
+.dps-roletable th[scope="row"] {
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dps-roletable select {
+  min-width: 7rem;
+}
+
+.dps-roletable input[type="number"] {
+  width: 5rem;
+}
+
+.dps-roletable .dps-cyclebtn {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85rem;
+}
+
+.dps-rolecell-actions {
+  display: flex;
+  gap: 0.2rem;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.dps-roledetail {
+  font-size: 0.85rem;
+}
+
+.dps-roledetail summary {
+  cursor: pointer;
+  color: var(--ui-accent);
+  font-weight: 600;
+}
+
+.dps-roledetail p {
+  margin: 0.2rem 0 0;
+  max-width: none;
+  color: var(--ui-muted);
+}
+
+body.dps-magnify .dps-roletable {
+  font-size: 1.15rem;
+}
+
+/* --- Settings summary: two dense lines, meant to be photographed --- */
+/* One row, under the panel. Deliberately compact: iteration 11 has to
+   pin this whole column on a 1080p screen, so a second status control
+   may cost a line of height and no more. */
+.dps-statusradios {
+  margin: 0.4rem 0 0;
+  padding: 0.3rem 0.6rem 0.4rem;
+  border: 1px solid var(--ui-line);
+}
+
+.dps-statusradios > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.1rem;
+}
+
+.dps-statusradios legend {
+  padding: 0 0.3rem;
+  font-size: 0.9rem;
+}
+
+/* Second half of the demo cluster. Same compactness rule as the radios
+   above it: iteration 12 has to pin this column on a 1080p screen. */
+.dps-demofield {
+  margin: 0.4rem 0 0;
+}
+
+.dps-demofield .dps-hint {
+  margin: 0.2rem 0 0;
+}
+
+.dps-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1rem;
+  border: 1px solid var(--ui-line);
+  background: var(--ui-surface);
+  padding: 0.4rem 0.6rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.dps-summary b {
+  font-weight: 700;
+}
+
+body.dps-magnify .dps-summary {
+  font-size: 1.3rem;
+}
+
+/* --- Compact control rows ----------------------------------------
+   One grid row per role, with a shared column template so the columns
+   line up down the rail. The visible role name is the select's real
+   label, so its accessible name is what is on screen. */
+.dps-rows {
+  display: grid;
+  grid-template-columns:
+    minmax(6rem, auto) minmax(6rem, 1fr) auto auto auto
+    minmax(8rem, auto);
+  gap: 0.2rem 0.4rem;
+  align-items: center;
+}
+
+
+.dps-rows--size {
+  grid-template-columns: minmax(7rem, auto) 6rem minmax(9rem, 1fr) auto;
+}
+
+/* Content is typed, so the field has to be wide enough to read back. */
+.dps-rows--content {
+  grid-template-columns: minmax(8rem, auto) minmax(12rem, 1fr) auto auto;
+}
+
+/* AFTER the modifiers on purpose: these carry the same specificity, so a
+   media query placed above them would lose the cascade and the rows
+   would never collapse. */
+@media (max-width: 48rem) {
+  .dps-rows,
+  .dps-rows--size,
+  .dps-rows--content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dps-rows label {
+    margin-top: 0.4rem;
+  }
+}
+
+.dps-rows label {
+  font-weight: 600;
+  margin: 0;
+}
+
+.dps-rows select,
+.dps-rows input[type="number"] {
+  min-width: 0;
+}
+
+.dps-rows .dps-cyclebtn {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.9rem;
+}
+
+.dps-rowfigure {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+body.dps-magnify .dps-rowfigure {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.dps-rowdetail {
+  grid-column: 1 / -1;
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.dps-rowdetail summary {
+  cursor: pointer;
+  color: var(--ui-accent);
+  font-weight: 600;
+}
+
+.dps-rowdetail p {
+  margin: 0.2rem 0 0 1rem;
+  max-width: none;
+  color: var(--ui-muted);
+}
+
+/* --- Cap height explainer ----------------------------------------- */
+.dps-capexplain {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.dps-capdiagram__em {
+  position: relative;
+  display: inline-block;
+  /* The em box: --dps-cap-demo-size is written by JS from the live
+     ratio input, so the drawing follows the number. */
+  height: var(--dps-cap-demo-size, 7rem);
+  width: 5rem;
+  border: 2px dashed var(--ui-accent);
+  background: var(--ui-note-bg);
+}
+
+.dps-capdiagram__letter {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-size: var(--dps-cap-demo-size, 7rem);
+  line-height: 1;
+  font-weight: 700;
+  color: var(--ui-ink);
+}
+
+.dps-capdiagram__capband {
+  position: absolute;
+  left: -0.35rem;
+  right: -0.35rem;
+  bottom: var(--dps-cap-demo-baseline, 0);
+  height: var(--dps-cap-demo-cap, 5rem);
+  border: 2px solid var(--ui-fail);
+  background: rgba(90, 2, 2, 0.08);
+}
+
+.dps-capdiagram__key {
+  font-size: 0.85rem;
+  margin: 0.75rem 0 0;
+  max-width: none;
+}
+
+.dps-capdiagram__swatch {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: -0.1em;
+}
+
+.dps-capdiagram__swatch--em {
+  border: 2px dashed var(--ui-accent);
+}
+
+.dps-capdiagram__swatch--cap {
+  border: 2px solid var(--ui-fail);
+  margin-left: 0.6rem;
+}
+
+/* --- Gallery ------------------------------------------------------- */
+.dps-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(23rem, 1fr));
+  gap: 1rem;
+}
+
+.dps-galleryitem {
+  border: 1px solid var(--ui-line);
+  padding: 0.5rem;
+  background: var(--ui-surface);
+}
+
+.dps-galleryitem h3 {
+  font-size: 1rem;
+  margin: 0 0 0.35rem;
+}
+
+/* Space below the miniature, so its own clipped edge reads as the panel
+   clipping rather than as the card cutting it off. */
+.dps-galleryitem .dps-panel {
+  margin-bottom: 0.5rem;
+}
+
+.dps-gallerycomment {
+  font-size: 0.9rem;
+  margin: 0.4rem 0;
+  max-width: none;
+}
+
+.dps-galleryfigures {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 0.4rem;
+  max-width: none;
+  color: var(--ui-muted);
+}
+
+/* --- The per-card status strip -------------------------------------
+   The set the card is ranked on, shown as it renders and again through
+   the greyscale filter. The chips carry their wording, so the strip is
+   never colour alone. */
+.dps-striprow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.3rem;
+}
+
+.dps-striplabel {
+  font-size: 0.8rem;
+  color: var(--ui-muted);
+  min-width: 6.5rem;
+}
+
+.dps-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+/* The same filter the preview uses, so the two cannot disagree. */
+.dps-strip--grey {
+  filter: url(#greyscale);
+}
+
+.dps-chip {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.15em 0.6em;
+  border-radius: 0.5em;
+  white-space: nowrap;
+}
+
+/* --- The off-screen measurer --------------------------------------
+   Strings are rendered here at their real size and read back. It is
+   never visible and never in the accessibility tree. */
+.dps-measurer {
+  position: absolute;
+  left: -20000px;
+  top: 0;
+  visibility: hidden;
+  white-space: normal;
+  overflow-wrap: normal;
+  pointer-events: none;
+}
+
+.dps-card {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-line);
+  border-radius: 0.25rem;
+  padding: 0.75rem 1rem 1rem;
+  margin: 0 0 var(--ui-gap);
+}
+
+.dps-card > h2,
+.dps-card > h3 {
+  margin-top: 0;
+}
+
+fieldset {
+  border: 1px solid var(--ui-rule);
+  border-radius: 0.25rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+legend {
+  font-weight: 700;
+  padding: 0 0.25rem;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+}
+
+input[type="number"],
+input[type="text"],
+select,
+textarea {
+  font: inherit;
+  color: var(--ui-ink);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-muted);
+  border-radius: 0.2rem;
+  padding: 0.25rem 0.35rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ui-surface);
+  background: var(--ui-accent);
+  border: 1px solid var(--ui-accent);
+  border-radius: 0.2rem;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+
+button.dps-secondary {
+  color: var(--ui-accent);
+  background: var(--ui-surface);
+}
+
+button[aria-pressed="true"] {
+  color: var(--ui-surface);
+  background: var(--ui-ink);
+  border-color: var(--ui-ink);
+}
+
+.dps-field {
+  margin: 0 0 0.5rem;
+}
+
+.dps-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.dps-buttonrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.dps-hint {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--ui-muted);
+  margin: 0.15rem 0 0;
+  max-width: none;
+}
+
+/* --- Readouts (magnifiable for projection) ------------------------ */
+.dps-readout {
+  font-variant-numeric: tabular-nums;
+}
+
+body.dps-magnify .dps-readout {
+  font-size: 1.35em;
+  font-weight: 700;
+}
+
+body.dps-magnify table {
+  font-size: 1.2em;
+}
+
+.dps-verdict-pass {
+  color: var(--ui-pass);
+  font-weight: 700;
+}
+.dps-verdict-fail {
+  color: var(--ui-fail);
+  font-weight: 700;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 0 0 0.4rem;
+}
+
+th,
+td {
+  border: 1px solid var(--ui-rule);
+  padding: 0.25rem 0.4rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: var(--ui-note-bg);
+}
+
+.dps-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Wide tables scroll sideways inside their own container. There is
+   deliberately no max-height: a vertical scroller here would clip its
+   own content out of view, which costs keyboard users a reachable
+   region and leaves an automated contrast check unable to resolve the
+   background of anything below the fold. */
+.dps-scroll {
+  overflow-x: auto;
+}
+
+.dps-swatch {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.15em;
+  border: 1px solid var(--ui-ink);
+}
+
+.dps-note {
+  background: var(--ui-note-bg);
+  border-left: 4px solid var(--ui-accent);
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 0.75rem;
+}
+
+.dps-forced-note {
+  display: none;
+}
+
+/* ==================================================================
+   THE FRAME (layer 3). Driven entirely by CSS custom properties.
+   Every length below resolves from --dps-frame-h, so one property
+   write rescales the whole panel with no re-render.
+   ================================================================== */
+.dps-panel {
+  /* Written by JS: --dps-frame-h, --dps-aspect, --dps-mm,
+     --dps-panelpx, --dps-line-height, --dps-pad-x, --dps-pad-y */
+  position: relative;
+  /* content-box, and it is load-bearing. The page sets box-sizing:
+     border-box globally, so the 0.75rem bezel below was being taken OUT
+     of the declared frame: the surface rendered 571.2 x 348 where
+     --dps-mm had been computed from 372, making every millimetre in the
+     preview 6.4% small and the aspect 1.641 against a true 1.6.
+     The scale-invariance canary cannot see this - it compares ratios at
+     two frame heights and a constant proportional error cancels - so it
+     passed throughout while the preview wrapped a title the arithmetic
+     said fitted. The renderedScale rows in the canary now assert it. */
+  box-sizing: content-box;
+  width: calc(var(--dps-frame-h) * var(--dps-aspect));
+  height: var(--dps-frame-h);
+  border: 0.75rem solid #2b2b2b;
+  border-radius: 0.4rem;
+  background: #2b2b2b;
+  flex: none;
+}
+
+/* The surface carries the PANEL's own root font size, modelling the
+   colleague's `html { font-size: calc(max(1vw, 1vh)) }` and
+   `.single-room_body { font-size: 1rem }`.
+
+   Without it the surface inherited the studio page's 16 px, and every
+   em inside the panel resolved against a number that had nothing to do
+   with the panel: the badge's `.5em 1em` padding was a fixed 8/16 px at
+   every frame size, and each line carried a 1.2 x 16 = 19.2 px strut
+   around text that might be 6.5 px. Measured before the fix, at a
+   200 px frame: a 35.2 px pill around a 6.4 px word. It cut both ways -
+   at a 675 px frame with guidance sizes the same 16 px padding sat
+   around a 95.6 px word and read as too tight. */
+.dps-surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--dps-colour-page-bg);
+  font-size: calc(var(--dps-rootFontMm) * var(--dps-mm));
+  line-height: var(--dps-line-height);
+  font-weight: 700;
+}
+
+.dps-surface[data-simulation="protanopia"] {
+  filter: url(#protanopia);
+}
+.dps-surface[data-simulation="deuteranopia"] {
+  filter: url(#deuteranopia);
+}
+.dps-surface[data-simulation="tritanopia"] {
+  filter: url(#tritanopia);
+}
+.dps-surface[data-simulation="greyscale"] {
+  filter: url(#greyscale);
+}
+
+.dps-header {
+  flex: none;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--dps-colour-header-bg);
+  padding: calc(var(--dps-pad-y) * var(--dps-mm))
+    calc(var(--dps-pad-x) * var(--dps-mm));
+}
+
+.dps-datetime {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.dps-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 calc(var(--dps-pad-x) * var(--dps-mm));
+  overflow: hidden;
+}
+
+/* Where a line hosts exactly ONE role, JS puts that role's size here,
+   on the box itself - so the box's own em units and its strut both
+   resolve against the role. Lines hosting two roles (times and room)
+   leave it unset and fall back to the surface root, which is right:
+   no single role owns that box. */
+.dps-line {
+  margin: 0;
+  max-width: none;
+  font-size: var(--dps-line-fs, 1em);
+}
+
+/* Padding is STATE, seeded from the colleague's own rule (.5em 1em).
+   The horizontal value decides how many characters the status word can
+   hold, so the character-budget measurer reads the same state rather
+   than this stylesheet - a padding change that did not move the budget
+   would mean the two had drifted apart.
+
+   Every length here is em, and the em is now the status word's own
+   size, because the size and the padding sit on the SAME element -
+   `.single-course_body_state` does exactly this with `font-size: 2em;
+   padding: .5em 1em; margin-top: .1em; border-radius: 0.5em`. The
+   margin and radius take the colleague's values for the same reason. */
+.dps-badge {
+  align-self: flex-start;
+  background: var(--dps-badge-fill);
+  border-radius: 0.5em;
+  padding: calc(var(--dps-badge-pad-y) * 1em)
+    calc(var(--dps-badge-pad-x) * 1em);
+  text-transform: uppercase;
+  margin: 0.1em 0 0;
+  max-width: 100%;
+  border: var(--dps-badge-border-w) solid var(--dps-badge-border-colour);
+}
+
+/* A wrapped two-line pill reads as broken; a full-width bar at the same
+   cap height reads as designed. Presentation, not a gate. */
+.dps-badge--bar {
+  align-self: stretch;
+  max-width: none;
+}
+
+/* `.5em`, from the colleague's `.single-course_body_title`, which pairs
+   `padding-top: .5em` with `font-size: 6em` on one element. Ours is the
+   same arrangement now, so the same number means the same thing. The
+   0.35em these carried before was tuned by eye against the 16 px the
+   bug was imposing, and is not evidence of anything. */
+.dps-title-line {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 0.5em;
+}
+
+/* The code line hosts one role and resolves this against it, matching
+   `.single-course_body_code`. The times/room line hosts two, so its em
+   is the surface root - the one place our model and the colleague's
+   markup genuinely differ, because we split one element into two
+   separately-sized roles. */
+.dps-spacer-line {
+  padding-top: 0.5em;
+}
+
+.dps-divider {
+  flex: none;
+  border-top: calc(var(--dps-thickness-divider) * var(--dps-mm)) solid
+    var(--dps-colour-divider);
+  margin-top: 0.3em;
+  height: calc(var(--dps-mm) * 18);
+}
+
+.dps-footer {
+  flex: none;
+  background: var(--dps-colour-footer-bar);
+  height: calc(var(--dps-thickness-footer-bar) * var(--dps-mm));
+}
+
+/* Every inked element carries its own two properties, written by JS
+   from the role model. Adding a role needs no new CSS rule. */
+.dps-surface [data-role] {
+  font-size: var(--dps-role-fs);
+  color: var(--dps-role-ink);
+}
+
+/* The lockup is sized by HEIGHT, from the same role size every other
+   element uses, and its width follows from the viewBox. `currentColor`
+   means the fill is whatever the logo role's ink is, so the colour on
+   screen is the colour the contrast figures are about. */
+.dps-logo {
+  display: block;
+  height: 1em;
+  width: auto;
+}
+
+/* --- Overlays: drawn ABOVE the filtered surface so measurement aids
+       stay legible under simulation ------------------------------- */
+.dps-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* An overlay with nothing drawn in it still SPANS the whole panel, and
+   that is not free. axe resolves a text element's background by walking
+   the elements whose rects intersect it - `pointer-events: none` does
+   not exempt anything from that - so an empty overlay made all seven of
+   the panel's text spans undeterminable: ratio 0, reason "background
+   color could not be determined because it is overlapped by another
+   element". Removing the element cleared all seven; nothing else did.
+   Taken out of the box tree when there is nothing to draw. */
+.dps-overlay:empty {
+  display: none;
+}
+
+/* The one line the whole size model reduces to. Given its own weight
+   because the four-row table is its output, not its source. */
+.dps-rule {
+  border-left: 0.25rem solid var(--ui-accent, #005c84);
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.dps-caprule {
+  position: absolute;
+  border: 1px solid #ffffff;
+  outline: 1px solid #000000;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.dps-caplabel {
+  position: absolute;
+  background: #ffffff;
+  color: #111111;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0 0.2em;
+  white-space: nowrap;
+  border: 1px solid #111111;
+}
+
+.dps-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #ffffff;
+}
+
+.dps-gridline.dps-gridline--over {
+  border-top-style: solid;
+  border-top-color: #fcbc00;
+  border-top-width: 2px;
+}
+
+.dps-gridlabel {
+  position: absolute;
+  right: 0.15rem;
+  background: #ffffff;
+  color: #111111;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 0.2em;
+  border: 1px solid #111111;
+}
+
+.dps-calibration {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100 * var(--dps-mm));
+  height: calc(20 * var(--dps-mm));
+  background: #ffffff;
+  border: 2px solid #111111;
+  color: #111111;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* --- Forced colours: neutralise the filters, and say why ---------- */
+@media (forced-colors: active) {
+  .dps-surface[data-simulation] {
+    filter: none;
+  }
+  .dps-forced-note {
+    display: block;
+  }
+  .dps-swatch {
+    forced-color-adjust: none;
+  }
+}
+
+@media print {
+  .dps-rail {
+    display: none;
+  }
+}

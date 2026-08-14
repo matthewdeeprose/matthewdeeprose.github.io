@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Door Panel Studio — Evidence</title>
+    <style>
+      /* ==================================================================
+         DOOR PANEL STUDIO - EVIDENCE
+
+         A report, not a tool. It computes NOTHING: every figure on this page
+         is handed over by door-panel-studio.html, already derived, and this
+         file only formats it. That is deliberate and it is the whole reason
+         the split is safe - two copies of a measurement can disagree, two
+         copies of a table cannot.
+
+         So there is no chroma, no colour-vision module, and no arithmetic
+         here beyond rounding a number for display.
+         ================================================================== */
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ui-bg: #fafafa;
+        --ui-surface: #ffffff;
+        --ui-ink: #111111;
+        --ui-muted: #4a4a4a;
+        --ui-line: #c9c9c9;
+        --ui-rule: #b4b4b4;
+        --ui-accent: #005c84;
+        --ui-note-bg: #eef4f8;
+        --ui-pass: #14532d;
+        --ui-fail: #7f1d1d;
+        --ui-gap: 0.75rem;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ui-bg: #101418;
+          --ui-surface: #171d23;
+          --ui-ink: #f2f5f7;
+          --ui-muted: #c3ccd4;
+          --ui-line: #3a444e;
+          --ui-rule: #4a555f;
+          --ui-accent: #91dcf4;
+          --ui-note-bg: #16222b;
+          --ui-pass: #86efac;
+          --ui-fail: #fca5a5;
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --ui-bg: #101418;
+        --ui-surface: #171d23;
+        --ui-ink: #f2f5f7;
+        --ui-muted: #c3ccd4;
+        --ui-line: #3a444e;
+        --ui-rule: #4a555f;
+        --ui-accent: #91dcf4;
+        --ui-note-bg: #16222b;
+        --ui-pass: #86efac;
+        --ui-fail: #fca5a5;
+      }
+
+      body {
+        margin: 0;
+        padding: 0 0 3rem;
+        background: var(--ui-bg);
+        color: var(--ui-ink);
+        font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue",
+          Arial, sans-serif;
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+
+      a {
+        color: var(--ui-accent);
+      }
+
+      .dps-skip {
+        position: absolute;
+        left: -9999px;
+      }
+
+      .dps-skip:focus {
+        left: 0.5rem;
+        top: 0.5rem;
+        z-index: 2;
+        background: var(--ui-surface);
+        padding: 0.5rem 0.75rem;
+        border: 2px solid var(--ui-accent);
+      }
+
+      header,
+      main {
+        max-width: 78rem;
+        margin: 0 auto;
+        padding: 0 1rem;
+      }
+
+      header {
+        padding-top: 1rem;
+      }
+
+      h1 {
+        font-size: 1.35rem;
+        margin: 0 0 0.25rem;
+      }
+
+      .dps-card {
+        background: var(--ui-surface);
+        border: 1px solid var(--ui-line);
+        border-radius: 0.25rem;
+        padding: 0.75rem 1rem 1rem;
+        margin: 0 0 var(--ui-gap);
+      }
+
+      .dps-card > h2 {
+        margin-top: 0;
+        font-size: 1.1rem;
+      }
+
+      .dps-note {
+        background: var(--ui-note-bg);
+        border: 1px solid var(--ui-line);
+        border-radius: 0.25rem;
+        padding: 0.5rem 0.9rem;
+        margin: 0 0 var(--ui-gap);
+      }
+
+      .dps-hint {
+        font-size: 0.9rem;
+        color: var(--ui-muted);
+        max-width: 70ch;
+      }
+
+      /* Wide tables scroll inside their own region rather than making the
+         page scroll sideways. Focusable, so the keyboard can reach them. */
+      .dps-scroll {
+        overflow: auto;
+        border: 1px solid var(--ui-line);
+        border-radius: 0.25rem;
+      }
+
+      .dps-scroll:focus-visible {
+        outline: 3px solid var(--ui-accent);
+        outline-offset: 2px;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.85rem;
+      }
+
+      caption {
+        text-align: left;
+        font-weight: 700;
+        padding: 0.4rem 0.5rem;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--ui-rule);
+        padding: 0.25rem 0.5rem;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      thead th {
+        background: var(--ui-note-bg);
+        position: sticky;
+        top: 0;
+      }
+
+      .dps-num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .dps-swatch {
+        display: inline-block;
+        width: 0.8rem;
+        height: 0.8rem;
+        border: 1px solid var(--ui-rule);
+        margin-right: 0.3rem;
+        vertical-align: -0.1rem;
+      }
+
+      .dps-verdict-pass {
+        color: var(--ui-pass);
+        font-weight: 700;
+      }
+
+      .dps-verdict-fail {
+        color: var(--ui-fail);
+        font-weight: 700;
+      }
+
+      textarea {
+        width: 100%;
+        font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+        font-size: 0.8rem;
+        background: var(--ui-surface);
+        color: var(--ui-ink);
+        border: 1px solid var(--ui-rule);
+        border-radius: 0.25rem;
+        padding: 0.4rem;
+      }
+
+      .dps-field label {
+        display: block;
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin: 0.5rem 0 0.2rem;
+      }
+
+      @media (forced-colors: active) {
+        .dps-swatch {
+          forced-color-adjust: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="dps-skip" href="#dps-main">Skip to the findings</a>
+
+    <header>
+      <h1>Door Panel Studio — Evidence</h1>
+      <p class="dps-hint" id="dpsSource">
+        Figures handed over by the studio.
+      </p>
+      <p>
+        <a href="door-panel-studio.html">Back to the Door Panel Studio tool</a>
+      </p>
+    </header>
+
+    <main id="dps-main" tabindex="-1">
+      <div class="dps-note">
+        <p>
+          <strong>What this is for.</strong> It reads the panel against
+          <em>Accessible door panels: principles and guidance</em>: the
+          cap-height ladder in section 2, the nine-line budget in section 3,
+          and the two contrast gates in section 4. It is a measuring
+          instrument, not a conformance claim.
+        </p>
+      </div>
+
+      <!-- Shown only when this page is opened directly, with nothing handed
+           over. It must not look like a report of zero findings. -->
+      <div class="dps-note" id="dpsNoPayload" hidden>
+        <p>
+          <strong>No figures have been handed over yet.</strong> This report
+          does not compute anything itself — it formats figures produced by
+          the studio. Open
+          <a href="door-panel-studio.html">the Door Panel Studio tool</a>,
+          configure the panel, and use its <em>Evidence</em> link.
+        </p>
+      </div>
+
+      <div id="dpsReport" hidden>
+        <section class="dps-card" aria-labelledby="dpsFindingsHeading">
+          <h2 id="dpsFindingsHeading">Findings, worst first</h2>
+          <p class="dps-hint">
+            Size and colour are ranked together on one shortfall figure, so a
+            size defect cannot hide behind a colour one.
+          </p>
+          <div
+            class="dps-scroll"
+            id="dpsFindings"
+            tabindex="0"
+            role="region"
+            aria-label="Findings table, scrollable"
+          ></div>
+        </section>
+
+        <section class="dps-card" aria-labelledby="dpsBudgetHeading">
+          <h2 id="dpsBudgetHeading">Line budget</h2>
+          <div id="dpsBudget" class="dps-readout"></div>
+        </section>
+
+        <section class="dps-card" aria-labelledby="dpsSeparationHeading">
+          <h2 id="dpsSeparationHeading">
+            How many statuses this palette supports
+          </h2>
+          <p class="dps-hint">
+            Maximum dispersion: for each set size, the set that maximises the
+            smallest pairwise delta E across all five modes.
+          </p>
+          <div
+            class="dps-scroll"
+            id="dpsSeparation"
+            tabindex="0"
+            role="region"
+            aria-label="Separation sweep, scrollable"
+          ></div>
+        </section>
+
+        <section class="dps-card" aria-labelledby="dpsPairHeading">
+          <h2 id="dpsPairHeading">The status set, mode by mode</h2>
+          <div
+            class="dps-scroll"
+            id="dpsPairTable"
+            tabindex="0"
+            role="region"
+            aria-label="Status pair table, scrollable"
+          ></div>
+        </section>
+
+        <section class="dps-card" aria-labelledby="dpsBackgroundHeading">
+          <h2 id="dpsBackgroundHeading">
+            Every palette colour, on both backgrounds
+          </h2>
+          <p class="dps-hint">
+            The background in use against the one the guidance's own section 4
+            analysis assumes.
+          </p>
+          <div id="dpsBackgroundSummary" class="dps-readout"></div>
+          <div
+            class="dps-scroll"
+            id="dpsBackgroundTable"
+            tabindex="0"
+            role="region"
+            aria-label="Palette on both backgrounds, scrollable"
+          ></div>
+        </section>
+
+        <section class="dps-card" aria-labelledby="dpsExportHeading">
+          <h2 id="dpsExportHeading">Export</h2>
+          <div class="dps-field">
+            <label for="dpsExportCss">Custom properties</label>
+            <textarea id="dpsExportCss" rows="10" readonly spellcheck="false"
+            ></textarea>
+          </div>
+          <div class="dps-field">
+            <label for="dpsExportText">Figures</label>
+            <textarea id="dpsExportText" rows="14" readonly spellcheck="false"
+            ></textarea>
+          </div>
+        </section>
+
+        <section class="dps-card" aria-labelledby="dpsProvenanceHeading">
+          <h2 id="dpsProvenanceHeading">Provenance</h2>
+          <ul>
+            <li>
+              The colour-vision simulation is
+              <code>contrast-cards-cvd.js</code>, inlined verbatim from
+              Contrast Cards at commit <code>22d70a7</code>. Coefficients from
+              DaltonLens.
+            </li>
+            <li>
+              The 45 brand colours and the APCA level ladder are copied from
+              <code>contrastCards.html</code> as data. No derived figure is
+              copied from anywhere.
+            </li>
+            <li>
+              The millimetre method, the cap-height ladder, the nine-line
+              budget and the two gates come from
+              <em>Accessible door panels: principles and guidance</em>.
+            </li>
+            <li>
+              The panel design being modelled is a colleague's build. This is
+              our own semantic markup reproducing their layout, not their
+              output.
+            </li>
+            <li>
+              Every figure on this page was computed by
+              <code>door-panel-studio.html</code> and handed over. This file
+              performs no measurement of its own.
+            </li>
+          </ul>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+        const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+        const ENABLE_ALL_LOGGING = false;
+        const DISABLE_ALL_LOGGING = false;
+
+        function shouldLog(level) {
+          if (DISABLE_ALL_LOGGING) return false;
+          if (ENABLE_ALL_LOGGING) return true;
+          return level <= DEFAULT_LOG_LEVEL;
+        }
+        function logError(message, ...args) {
+          if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+        }
+        function logWarn(message, ...args) {
+          if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+        }
+        function logInfo(message, ...args) {
+          if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+        }
+        function logDebug(message, ...args) {
+          if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+        }
+
+        // The one key the tool writes and this page reads.
+        const PAYLOAD_KEY = "dps-evidence-payload";
+
+        /* --- The four presentation helpers, moved with the tables they
+               format. Nothing here measures anything. -------------------- */
+
+        function escapeHtml(value) {
+          return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        }
+
+        function round(value, places) {
+          const factor = Math.pow(10, places);
+          return Math.round(value * factor) / factor;
+        }
+
+        function mmText(value) {
+          return round(value, 2) + " mm";
+        }
+
+        // The trailing space is load-bearing: it separates the swatch from
+        // the name that follows it in every table, and dropping it showed up
+        // as a one-character-per-row difference in the before/after diff.
+        function swatchHtml(hex) {
+          return (
+            '<span class="dps-swatch" style="background:' +
+            escapeHtml(hex) +
+            '"></span> '
+          );
+        }
+
+        function verdictHtml(passes) {
+          return passes
+            ? '<span class="dps-verdict-pass">passes</span>'
+            : '<span class="dps-verdict-fail">fails</span>';
+        }
+
+        /* --- The tables ------------------------------------------------- */
+
+        function renderFindings(P) {
+          const findings = P.findings;
+          if (findings.length === 0) {
+            document.getElementById("dpsFindings").innerHTML =
+              "<p>Nothing falls short at these settings.</p>";
+            return;
+          }
+          const body = findings
+            .map(
+              (finding) =>
+                "<tr><td>" +
+                escapeHtml(finding.kind) +
+                "</td><td>" +
+                escapeHtml(finding.subject) +
+                '</td><td class="dps-num">' +
+                (Number.isFinite(finding.shortfall)
+                  ? round(finding.shortfall, 2) + "x"
+                  : "no contrast at all") +
+                "</td><td>" +
+                escapeHtml(finding.detail) +
+                "</td><td>" +
+                escapeHtml(finding.remedy) +
+                "</td></tr>"
+            )
+            .join("");
+
+          document.getElementById("dpsFindings").innerHTML =
+            "<table><caption>" +
+            findings.length +
+            " findings, worst first</caption><thead><tr><th scope=\"col\">Kind</th><th scope=\"col\">Subject</th><th scope=\"col\">Shortfall</th><th scope=\"col\">Measured</th><th scope=\"col\">Why</th></tr></thead><tbody>" +
+            body +
+            "</tbody></table>";
+        }
+
+        function renderBudget(P) {
+          const budget = P.budget;
+          document.getElementById("dpsBudget").innerHTML =
+            "<p>Usable height " +
+            mmText(budget.usableHeightMm) +
+            " after " +
+            P.constants.paddingMm +
+            " mm of padding. At the " +
+            P.constants.bodyCapMm +
+            " mm body floor and the guidance's " +
+            P.constants.lineSpacing +
+            " line spacing, one line is " +
+            mmText(budget.lineHeightMm) +
+            ", so the panel holds <strong>" +
+            round(budget.lines, 2) +
+            " lines</strong>.</p><p>The design as set consumes " +
+            mmText(budget.consumedMm) +
+            ", which is <strong>" +
+            round(budget.consumedLines, 2) +
+            " of those lines</strong>, leaving " +
+            mmText(budget.headroomMm) +
+            ". " +
+            verdictHtml(budget.consumedLines <= budget.lines) +
+            ".</p><p class=\"dps-hint\">Text lines only. Padding inside the badge, the divider block and the footer bar are not counted here.</p>";
+        }
+
+        function renderPairTable(P) {
+          const modes = P.modes;
+          const fillRows = P.fills
+            .map(
+              (record) =>
+                "<tr><th scope=\"row\">" +
+                escapeHtml(record.name) +
+                "</th><td>" +
+                swatchHtml(record.hex) +
+                escapeHtml(record.paletteName) +
+                " " +
+                escapeHtml(record.hex) +
+                '</td><td class="dps-num">' +
+                record.wcag +
+                '</td><td class="dps-num">' +
+                record.lc +
+                "</td><td>" +
+                verdictHtml(record.passes) +
+                "</td></tr>"
+            )
+            .join("");
+
+          const pairRows = P.pairs
+            .map((pair) => {
+              const cells = modes
+                .map(
+                  (mode) =>
+                    '<td class="dps-num">' +
+                    round(pair.perMode[mode], 2) +
+                    "</td>"
+                )
+                .join("");
+              return (
+                "<tr><th scope=\"row\">" +
+                escapeHtml(pair.aLabel) +
+                " against " +
+                escapeHtml(pair.bLabel) +
+                "</th>" +
+                cells +
+                '<td class="dps-num">' +
+                round(pair.minDeltaE, 2) +
+                "</td><td>" +
+                escapeHtml(pair.worstMode) +
+                "</td><td>" +
+                verdictHtml(pair.minDeltaE >= P.constants.statusPairBar) +
+                "</td></tr>"
+              );
+            })
+            .join("");
+
+          document.getElementById("dpsPairTable").innerHTML =
+            "<table><caption>Each fill against the page background</caption><thead><tr><th scope=\"col\">Role</th><th scope=\"col\">Colour</th><th scope=\"col\">WCAG</th><th scope=\"col\">Lc</th><th scope=\"col\">Verdict</th></tr></thead><tbody>" +
+            fillRows +
+            "</tbody></table><table><caption>Every pair, in every mode. Delta E is CIE76. The binding figure is the smallest.</caption><thead><tr><th scope=\"col\">Pair</th>" +
+            modes
+              .map((mode) => "<th scope=\"col\">" + escapeHtml(mode) + "</th>")
+              .join("") +
+            "<th scope=\"col\">Smallest</th><th scope=\"col\">Worst mode</th><th scope=\"col\">Against the " +
+            P.constants.statusPairBar +
+            " bar</th></tr></thead><tbody>" +
+            pairRows +
+            "</tbody></table>";
+        }
+
+        function renderBackgroundComparison(P) {
+          const current = P.background.current;
+          const guidance = P.background.guidance;
+          const bodyGate = P.background.bodyGate;
+
+          function summarise(score, label) {
+            return (
+              "<tr><th scope=\"row\">" +
+              escapeHtml(label) +
+              "</th><td>" +
+              swatchHtml(score.background) +
+              escapeHtml(score.background) +
+              '</td><td class="dps-num">' +
+              score.wcagCount +
+              '</td><td class="dps-num">' +
+              score.gateCount +
+              '</td><td class="dps-num">' +
+              score.preferredCount +
+              '</td><td class="dps-num">' +
+              score.bothCount +
+              '</td><td class="dps-num">' +
+              score.wcagOnlyCount +
+              "</td></tr>"
+            );
+          }
+
+          document.getElementById("dpsBackgroundSummary").innerHTML =
+            "<table><caption>Of " +
+            P.background.paletteLength +
+            " colours, how many clear each bar as text</caption><thead><tr><th scope=\"col\">Background</th><th scope=\"col\">Hex</th><th scope=\"col\">WCAG AA</th><th scope=\"col\">Lc " +
+            bodyGate +
+            "</th><th scope=\"col\">Lc " +
+            P.background.preferredGate +
+            "</th><th scope=\"col\">Both</th><th scope=\"col\">WCAG only</th></tr></thead><tbody>" +
+            summarise(current, "In use on the panel") +
+            summarise(guidance, "Assumed by the guidance") +
+            "</tbody></table>";
+
+          const rows = current.rows
+            .map((row, index) => {
+              const other = guidance.rows[index];
+              return (
+                "<tr><th scope=\"row\">" +
+                swatchHtml(row.hex) +
+                escapeHtml(row.name) +
+                "</th><td>" +
+                escapeHtml(row.hex) +
+                '</td><td class="dps-num">' +
+                row.wcag +
+                '</td><td class="dps-num">' +
+                row.lc +
+                "</td><td>" +
+                verdictHtml(row.passesWcag && row.passesGate) +
+                '</td><td class="dps-num">' +
+                other.wcag +
+                '</td><td class="dps-num">' +
+                other.lc +
+                "</td><td>" +
+                verdictHtml(other.passesWcag && other.passesGate) +
+                "</td></tr>"
+              );
+            })
+            .join("");
+
+          document.getElementById("dpsBackgroundTable").innerHTML =
+            "<table><caption>Every palette colour as text, on both backgrounds</caption><thead><tr><th scope=\"col\">Colour</th><th scope=\"col\">Hex</th><th scope=\"col\">WCAG on " +
+            escapeHtml(current.background) +
+            "</th><th scope=\"col\">Lc</th><th scope=\"col\">Both gates</th><th scope=\"col\">WCAG on " +
+            escapeHtml(guidance.background) +
+            "</th><th scope=\"col\">Lc</th><th scope=\"col\">Both gates</th></tr></thead><tbody>" +
+            rows +
+            "</tbody></table>";
+        }
+
+        function renderSeparation(P) {
+          const host = document.getElementById("dpsSeparation");
+          const separation = P.separation;
+
+          if (separation.empty) {
+            host.innerHTML =
+              "<p>No colour in this palette can serve as a badge fill on this background, so there is nothing to separate.</p>";
+            return;
+          }
+
+          if (separation.error) {
+            host.innerHTML =
+              "<p>The search ran out of its step budget, so this is not an answer about the palette. " +
+              escapeHtml(separation.error) +
+              "</p>";
+            return;
+          }
+
+          const bar = separation.bar;
+          const distinct = separation.distinct;
+
+          const body = separation.rows
+            .map((row) => {
+              if (!row.possible) {
+                return (
+                  '<tr><td class="dps-num">' +
+                  row.size +
+                  "</td><td>none</td><td>" +
+                  escapeHtml(row.reason) +
+                  "</td><td>fails</td></tr>"
+                );
+              }
+              const names = row.set
+                .map(
+                  (colour) =>
+                    swatchHtml(colour.hex) + escapeHtml(colour.name)
+                )
+                .join(", ");
+              return (
+                '<tr><td class="dps-num">' +
+                row.size +
+                '</td><td class="dps-num">' +
+                round(row.threshold, 2) +
+                "</td><td>" +
+                names +
+                "</td><td>" +
+                (row.threshold >= bar
+                  ? '<span class="dps-verdict-pass">clears ' + bar + "</span>"
+                  : row.threshold >= distinct
+                  ? "distinct but under " + bar
+                  : '<span class="dps-verdict-fail">under ' +
+                    distinct +
+                    "</span>") +
+                "</td></tr>"
+              );
+            })
+            .join("");
+
+          const clearingBar = separation.rows.filter(
+            (row) => row.possible && row.threshold >= bar
+          );
+          const clearingDistinct = separation.rows.filter(
+            (row) => row.possible && row.threshold >= distinct
+          );
+
+          const verdict =
+            "<p>" +
+            separation.usable +
+            " of " +
+            separation.paletteLength +
+            " colours clear the badge fill gate (" +
+            escapeHtml(separation.fillGateLabel) +
+            ") on " +
+            escapeHtml(separation.pageBg) +
+            ". Whether a fill can also carry the status word is a separate constraint, reported under Badge fill gate.</p><p>This palette supports <strong>" +
+            (clearingBar.length
+              ? clearingBar[clearingBar.length - 1].size + " statuses"
+              : "no set of two or more statuses") +
+            "</strong> at the delta E " +
+            bar +
+            " status-pair bar, and <strong>" +
+            (clearingDistinct.length
+              ? clearingDistinct[clearingDistinct.length - 1].size +
+                " statuses"
+              : "none") +
+            "</strong> at the delta E " +
+            distinct +
+            " distinctness bar.</p>";
+
+          host.innerHTML =
+            verdict +
+            "<table><caption>Maximum dispersion: the set of N that maximises the smallest pairwise delta E across all five modes</caption><thead><tr><th scope=\"col\">Statuses</th><th scope=\"col\">Smallest separation</th><th scope=\"col\">The set</th><th scope=\"col\">Verdict</th></tr></thead><tbody>" +
+            body +
+            "</tbody></table>";
+        }
+
+        function renderExport(P) {
+          const seen = {};
+          const lines = [];
+          const clashes = [];
+          P.exportRoles.forEach((record) => {
+            const name = record.cssVar;
+            if (seen[name] === undefined) {
+              seen[name] = record.hex;
+              lines.push("  " + name + ": " + record.hex + ";");
+            } else if (seen[name] !== record.hex) {
+              clashes.push(
+                name +
+                  " is asked for two different values (" +
+                  seen[name] +
+                  " and " +
+                  record.hex +
+                  ") by roles that share it"
+              );
+            }
+          });
+
+          document.getElementById("dpsExportCss").value =
+            ":root {\n" +
+            lines.join("\n") +
+            "\n}\n" +
+            (clashes.length
+              ? "\n/* " + clashes.join("\n   ") + " */\n"
+              : "");
+
+          const g = P.geometry;
+          const sg = P.stateGeometry;
+          const text = [];
+          text.push("Door Panel Studio - derived figures");
+          text.push(
+            "Panel " +
+              sg.panelWpx +
+              " by " +
+              sg.panelHpx +
+              " px on " +
+              sg.panelWmm +
+              " by " +
+              sg.panelHmm +
+              " mm, read at " +
+              sg.distanceMm +
+              " mm, cap ratio " +
+              sg.capRatio
+          );
+          text.push(
+            "1 px = " +
+              round(g.mmPerPx, 5) +
+              " mm; 1 rem = " +
+              round(g.rootFontPx, 2) +
+              " px = " +
+              round(g.rootFontMm, 4) +
+              " mm"
+          );
+          text.push("");
+          text.push("Role\tCap mm\tFont mm\tFloor mm\tSize\tWCAG\tLc\tGate Lc\tContrast");
+          P.exportRoles.forEach((record) => {
+            if (record.kind === "surface") return;
+            text.push(
+              [
+                record.name,
+                record.capMm === null ? "-" : round(record.capMm, 2),
+                record.fontMm === null ? "-" : round(record.fontMm, 2),
+                record.floorMm === null ? "-" : record.floorMm,
+                record.sizePasses === null
+                  ? "-"
+                  : record.sizePasses
+                  ? "passes"
+                  : "fails",
+                record.worstWcag,
+                record.worstLc,
+                record.gateLc,
+                record.contrastPasses ? "passes" : "fails",
+              ].join("\t")
+            );
+          });
+          text.push("");
+          text.push("Status pairs, smallest delta E across all five modes:");
+          P.pairs.forEach((pair) => {
+            text.push(
+              pair.aLabel +
+                " against " +
+                pair.bLabel +
+                "\t" +
+                round(pair.minDeltaE, 2) +
+                "\tworst mode " +
+                pair.worstMode
+            );
+          });
+          text.push("");
+          text.push(
+            "Line budget: " +
+              round(P.budget.lines, 2) +
+              " lines available, " +
+              round(P.budget.consumedLines, 2) +
+              " consumed"
+          );
+          text.push("");
+          text.push("Findings, worst first:");
+          P.findings.forEach((finding) => {
+            text.push(
+              (Number.isFinite(finding.shortfall)
+                ? round(finding.shortfall, 2) + "x"
+                : "no contrast") +
+                "\t" +
+                finding.kind +
+                "\t" +
+                finding.subject +
+                "\t" +
+                finding.detail
+            );
+          });
+
+          document.getElementById("dpsExportText").value = text.join("\n");
+        }
+
+        /* --- Load ------------------------------------------------------- */
+
+        function readPayload() {
+          let raw = null;
+          try {
+            raw = window.localStorage.getItem(PAYLOAD_KEY);
+          } catch (error) {
+            logWarn("localStorage is not readable", error);
+            return null;
+          }
+          if (!raw) return null;
+          try {
+            return JSON.parse(raw);
+          } catch (error) {
+            logError("The handed-over payload could not be parsed", error);
+            return null;
+          }
+        }
+
+        function init() {
+          const payload = readPayload();
+          if (!payload) {
+            document.getElementById("dpsNoPayload").hidden = false;
+            logInfo("No evidence payload found");
+            return;
+          }
+
+          document.getElementById("dpsReport").hidden = false;
+          document.getElementById("dpsSource").textContent =
+            "Figures handed over by the studio for a " +
+            payload.stateGeometry.panelWmm +
+            " by " +
+            payload.stateGeometry.panelHmm +
+            " mm panel read at " +
+            payload.stateGeometry.distanceMm +
+            " mm. This report formats them; it computes nothing.";
+
+          renderFindings(payload);
+          renderBudget(payload);
+          renderSeparation(payload);
+          renderPairTable(payload);
+          renderBackgroundComparison(payload);
+          renderExport(payload);
+          logInfo("Evidence report rendered");
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", init);
+        } else {
+          init();
+        }
+      })();
+    </script>
+  </body>
+</html>
